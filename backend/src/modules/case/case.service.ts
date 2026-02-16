@@ -38,7 +38,7 @@ export class CaseService {
     private readonly caseRepository: CaseRepository,
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any, role: string) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId);
@@ -54,11 +54,8 @@ export class CaseService {
 
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
-    
-    const investigateTask = allTasks.filter((task) =>
-      tasksIds.includes(task.task_id)
-    );
 
+    const investigateTask = allTasks.filter((task) => tasksIds.includes(task.task_id));
 
     if (!investigateTask) throw new BadRequestException('No "Investigate Case" task found for this case');
 
@@ -77,7 +74,6 @@ export class CaseService {
           });
 
           if (updatedCase.status === CaseStatus.STATUS_21_SUSPENDED && subCase?.status === CaseStatus.STATUS_21_SUSPENDED) {
-
             await prisma.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_21_SUSPENDED, updated_at: new Date() },
@@ -138,7 +134,7 @@ export class CaseService {
           );
         }
       } catch (notificationError) {
-        this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError.message}`);
+        this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError}`);
       }
       return { success: true, ...result };
     } catch (err) {
@@ -150,7 +146,7 @@ export class CaseService {
         outcome: Outcome.FAILURE,
       });
       this.logger.error('suspendCase failed', { error: err, caseId, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to suspend case: ${err.message}`);
+      throw new InternalServerErrorException(`Failed to suspend case: ${err}`);
     }
   }
 
@@ -204,7 +200,6 @@ export class CaseService {
           });
 
           if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && subCase?.status === CaseStatus.STATUS_21_SUSPENDED) {
-
             await prisma.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
@@ -256,7 +251,7 @@ export class CaseService {
           );
         }
       } catch (notificationError) {
-        this.logger.warn(`Failed to send resumption notification for case ${caseId}: ${notificationError.message}`);
+        this.logger.warn(`Failed to send resumption notification for case ${caseId}: ${notificationError}`);
       }
 
       return { success: true, ...result };
@@ -270,7 +265,7 @@ export class CaseService {
       });
 
       this.logger.error('resumeCase failed', { error: err, caseId, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to resume case: ${err.message}`);
+      throw new InternalServerErrorException(`Failed to resume case: ${err}`);
     }
   }
 
@@ -320,7 +315,7 @@ export class CaseService {
       return { success: true, ...result };
     } catch (err) {
       this.logger.error('abandonCase failed', { error: err, caseId, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to abandon case : ${err.message}`);
+      throw new InternalServerErrorException(`Failed to abandon case : ${err}`);
     }
   }
 
@@ -564,11 +559,11 @@ export class CaseService {
         userId,
         operation: 'completeCaseCreation',
         entityName: CaseService.name,
-        actionPerformed: `Failed to complete draft case ${caseId}: ${err.message}`,
+        actionPerformed: `Failed to complete draft case ${caseId}: ${err}`,
         outcome: Outcome.FAILURE,
       });
 
-      throw new InternalServerErrorException(`Failed to complete case creation: ${err.message}`);
+      throw new InternalServerErrorException(`Failed to complete case creation: ${err}`);
     }
   }
 

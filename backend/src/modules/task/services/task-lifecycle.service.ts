@@ -72,20 +72,13 @@ export class TaskLifecycleService {
           });
 
           if (updatedCase.status === CaseStatus.STATUS_10_ASSIGNED && subCase?.status === CaseStatus.STATUS_10_ASSIGNED) {
-
             await tx.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_10_ASSIGNED, updated_at: new Date() },
             });
-
           }
-
         }
-
       }
-
-
-
 
       await this.flowableService.handleTaskAssigned({
         taskId,
@@ -182,16 +175,12 @@ export class TaskLifecycleService {
           });
 
           if (updatedCase.status === CaseStatus.STATUS_10_ASSIGNED && subCase?.status === CaseStatus.STATUS_10_ASSIGNED) {
-
             await tx.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_10_ASSIGNED, updated_at: new Date() },
             });
-
           }
-
         }
-
       }
 
       await this.flowableService.handleTaskAssigned({
@@ -279,16 +268,12 @@ export class TaskLifecycleService {
           });
 
           if (updatedCase.status === CaseStatus.STATUS_10_ASSIGNED && subCase?.status === CaseStatus.STATUS_10_ASSIGNED) {
-
             await tx.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_10_ASSIGNED, updated_at: new Date() },
             });
-
           }
-
         }
-
       }
 
       await this.flowableService.handleTaskAssigned({
@@ -357,17 +342,16 @@ export class TaskLifecycleService {
             },
           });
 
-          if (updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT && subCase?.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
-
+          if (
+            updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT &&
+            subCase?.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT
+          ) {
             await tx.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, updated_at: new Date() },
             });
-
           }
-
         }
-
       }
 
       await this.flowableService.handleCaseStatusChanged({
@@ -426,7 +410,9 @@ export class TaskLifecycleService {
       //   });
       // }
     } catch (e) {
-      this.logger.warn(`Failed notifications for unassign: ${e.message}`, TaskLifecycleService.name);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      const errorStack = e instanceof Error ? e.stack : undefined;
+      this.logger.warn(`Failed notifications for unassign: ${errorMessage}`, errorStack, TaskLifecycleService.name);
     }
 
     await this.loggingOrchestrationService.logActionsWithHistory(

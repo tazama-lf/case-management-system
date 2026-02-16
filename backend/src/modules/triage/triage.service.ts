@@ -174,7 +174,9 @@ export class TriageService {
 
       return alert;
     } catch (error) {
-      this.logger.error(`Manual triage failed for alert ${alertId}: ${error.message}`, error.stack, TriageService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Manual triage failed for alert ${alertId}: ${errorMessage}`, errorStack, TriageService.name);
       throw error;
     }
   }
@@ -388,12 +390,14 @@ export class TriageService {
         }
       }
     } catch (error) {
-      this.logger.error(`Triage failed for alert ${alertId}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Triage failed for alert ${alertId}: ${errorMessage}`, errorStack, TriageService.name);
       await this.audit.logAction({
         userId,
         operation: 'AI_TRIAGE_FAILED',
         entityName: 'Alert',
-        actionPerformed: `Triage failed for alert ${alertId}: ${error.message}`,
+        actionPerformed: `Triage failed for alert ${alertId}: ${errorMessage}`,
         outcome: 'FAILURE',
       });
       throw new InternalServerErrorException('Triage process failed');
@@ -500,12 +504,14 @@ export class TriageService {
         message: 'Triage completed. Investigation task will be created by workflow engine.',
       };
     } catch (error) {
-      this.logger.error(`Failed to complete triage for case ${caseId}. Error: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to complete triage for case ${caseId}. Error: ${errorMessage}`, errorStack, TriageService.name);
       await this.audit.logAction({
         userId,
         operation: 'INVESTIGATION_TASK_TRIGGER_FAILED',
         entityName: 'Task',
-        actionPerformed: `Failed to complete triage for case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to complete triage for case ${caseId}: ${errorMessage}`,
         outcome: 'FAILURE',
       });
       throw new InternalServerErrorException('Failed to complete triage');
@@ -558,7 +564,13 @@ export class TriageService {
 
       this.logger.log(`End - Updating alert ${alertId} and triage task ${taskId} with prediction`, TriageService.name);
     } catch (error) {
-      this.logger.error(`Failed to update alert ${alertId} and triage task ${taskId}. Error: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(
+        `Failed to update alert ${alertId} and triage task ${taskId}. Error: ${errorMessage}`,
+        errorStack,
+        TriageService.name,
+      );
       throw new InternalServerErrorException('Failed to update alert and triage task');
     }
   }
@@ -577,7 +589,9 @@ export class TriageService {
         isTruePositive: false,
       };
     } catch (error) {
-      this.logger.error(`AI prediction failed: ${error.message}`, error.stack, TriageService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`AI prediction failed: ${errorMessage}`, errorStack, TriageService.name);
       throw new InternalServerErrorException('AI prediction failed');
     }
   }

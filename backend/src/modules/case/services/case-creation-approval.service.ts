@@ -185,8 +185,10 @@ export class CaseCreationApprovalService {
         alert: result.alert,
       };
     } catch (err) {
-      this.logger.error('[ManualCase] Manual case creation failed', { error: err, dto, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to create case & link alert: ${err.message}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
+      this.logger.error('[ManualCase] Manual case creation failed', { error: errorMessage, stack: errorStack, dto, userId, tenantId });
+      throw new InternalServerErrorException(`Failed to create case & link alert: ${errorMessage}`);
     }
   }
 
@@ -307,7 +309,9 @@ export class CaseCreationApprovalService {
         message: 'Case saved as draft.',
       };
     } catch (err) {
-      this.logger.error('[DraftCase] Failed to save case as draft', { error: err, dto, userId, tenantId });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
+      this.logger.error('[DraftCase] Failed to save case as draft', { error: errorMessage, stack: errorStack, dto, userId, tenantId });
 
       // Log failure for audit trail
       await this.loggingOrchestrationService.logActions({
@@ -318,7 +322,7 @@ export class CaseCreationApprovalService {
         outcome: Outcome.FAILURE,
       });
 
-      throw new InternalServerErrorException(`Failed to save case as draft: ${err.message}`);
+      throw new InternalServerErrorException(`Failed to save case as draft: ${errorMessage}`);
     }
   }
 
@@ -597,9 +601,11 @@ export class CaseCreationApprovalService {
             : 'Case creation approved. Investigation task created.',
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
-        `[ApproveCaseCreation] Failed to approve case creation: ${error.message}`,
-        error.stack,
+        `[ApproveCaseCreation] Failed to approve case creation: ${errorMessage}`,
+        errorStack,
         CaseCreationApprovalService.name,
       );
 
@@ -607,7 +613,7 @@ export class CaseCreationApprovalService {
         userId: supervisorId,
         operation: 'approveCaseCreation',
         entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Failed to approve case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to approve case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
       });
 
@@ -668,15 +674,12 @@ export class CaseCreationApprovalService {
         CaseCreationApprovalService.name,
       );
 
-      await this.commentRepository.createComment(
-        supervisorId,
-        {
-          caseId: caseId,
-          taskId: completeNewCaseTask.task_id,
-          note: `Case creation rejected. Reason: ${reason}`,
-          tenantId: tenantId,
-        },
-      );
+      await this.commentRepository.createComment(supervisorId, {
+        caseId: caseId,
+        taskId: completeNewCaseTask.task_id,
+        note: `Case creation rejected. Reason: ${reason}`,
+        tenantId: tenantId,
+      });
 
       this.flowableService.handleCaseStatusChanged({
         caseId,
@@ -713,16 +716,14 @@ export class CaseCreationApprovalService {
 
       return { success: true, case: result.case, completedTask: result.completedTask, newTask: completeNewCaseTask };
     } catch (error) {
-      this.logger.error(
-        `Failed to reject case creation for case ${caseId}: ${error.message}`,
-        error.stack,
-        CaseCreationApprovalService.name,
-      );
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to reject case creation for case ${caseId}: ${errorMessage}`, errorStack, CaseCreationApprovalService.name);
       await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
         operation: 'rejectCaseCreation',
         entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Failed to reject case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to reject case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
       });
       throw error;
@@ -816,8 +817,10 @@ export class CaseCreationApprovalService {
 
       return { success: true, case: result.case, completedTask: result.completedTask, newTask: investigateTask };
     } catch (err) {
-      this.logger.error('completeCase failed', { error: err, caseId, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to complete case: ${err.message}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
+      this.logger.error('completeCase failed', { error: errorMessage, stack: errorStack, caseId, userId, tenantId });
+      throw new InternalServerErrorException(`Failed to complete case: ${errorMessage}`);
     }
   }
 

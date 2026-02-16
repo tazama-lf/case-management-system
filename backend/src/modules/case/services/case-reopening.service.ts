@@ -46,7 +46,9 @@ export class CaseReopeningService {
       if (existingCase.parent_id) {
         const parentCase = await this.caseQueryService.retrieveCase(existingCase.parent_id);
         if (!REOPENABLE_CASE_STATUSES.includes(parentCase.status)) {
-          throw new BadRequestException(`SubCase ${caseId} cannot be reopened as the parent Case ${parentCase.case_id} is not in a valid closed state for reopening`);
+          throw new BadRequestException(
+            `SubCase ${caseId} cannot be reopened as the parent Case ${parentCase.case_id} is not in a valid closed state for reopening`,
+          );
         }
       }
 
@@ -78,8 +80,12 @@ export class CaseReopeningService {
               },
             });
 
-            if (updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT && (subCase?.status === CaseStatus.STATUS_82_CLOSED_CONFIRMED || subCase?.status === CaseStatus.STATUS_81_CLOSED_REFUTED || subCase?.status === CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE)) {
-
+            if (
+              updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT &&
+              (subCase?.status === CaseStatus.STATUS_82_CLOSED_CONFIRMED ||
+                subCase?.status === CaseStatus.STATUS_81_CLOSED_REFUTED ||
+                subCase?.status === CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE)
+            ) {
               await tx.case.update({
                 where: { case_id: updatedCase.parent_id },
                 data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
@@ -101,8 +107,6 @@ export class CaseReopeningService {
           },
           userId,
         );
-
-
 
         this.flowableService.handleCaseStatusChanged({
           caseId,
@@ -197,13 +201,15 @@ export class CaseReopeningService {
         approvalTask: result.approvalTask,
       };
     } catch (error) {
-      this.logger.error(`Failed to reopen case ${caseId}: ${error.message}`, error.stack, CaseReopeningService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to reopen case ${caseId}: ${errorMessage}`, errorStack, CaseReopeningService.name);
 
       await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'reopenCase',
         entityName: CaseReopeningService.name,
-        actionPerformed: `Failed to reopen case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to reopen case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
       });
 
@@ -236,7 +242,9 @@ export class CaseReopeningService {
           requesterId = metadata.requestedBy;
           requesterRole = metadata.requesterRole;
         } catch (parseError) {
-          this.logger.warn(`Failed to parse reopening metadata: ${parseError.message}`, CaseReopeningService.name);
+          const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
+          const errorStack = parseError instanceof Error ? parseError.stack : undefined;
+          this.logger.warn(`Failed to parse reopening metadata: ${errorMessage}`, errorStack, CaseReopeningService.name);
         }
       }
 
@@ -287,8 +295,12 @@ export class CaseReopeningService {
             },
           });
 
-          if (updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT && (subCase?.status === CaseStatus.STATUS_82_CLOSED_CONFIRMED || subCase?.status === CaseStatus.STATUS_81_CLOSED_REFUTED || subCase?.status === CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE)) {
-
+          if (
+            updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT &&
+            (subCase?.status === CaseStatus.STATUS_82_CLOSED_CONFIRMED ||
+              subCase?.status === CaseStatus.STATUS_81_CLOSED_REFUTED ||
+              subCase?.status === CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE)
+          ) {
             await tx.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
@@ -351,7 +363,9 @@ export class CaseReopeningService {
             },
           });
         } catch (notificationError) {
-          this.logger.warn(`Failed to send analyst notification: ${notificationError.message}`, CaseReopeningService.name);
+          const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
+          const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
+          this.logger.warn(`Failed to send analyst notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
         }
       } else {
         try {
@@ -366,7 +380,9 @@ export class CaseReopeningService {
             },
           });
         } catch (notificationError) {
-          this.logger.warn(`Failed to send group notification: ${notificationError.message}`, CaseReopeningService.name);
+          const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
+          const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
+          this.logger.warn(`Failed to send group notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
         }
       }
 
@@ -405,13 +421,15 @@ export class CaseReopeningService {
         },
       };
     } catch (error) {
-      this.logger.error(`Failed to approve case reopening: ${error.message}`, error.stack, CaseReopeningService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to approve case reopening: ${errorMessage}`, errorStack, CaseReopeningService.name);
 
       await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
         operation: 'approveCaseReopening',
         entityName: CaseReopeningService.name,
-        actionPerformed: `Failed to approve case reopening for ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to approve case reopening for ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
       });
 
@@ -449,7 +467,9 @@ export class CaseReopeningService {
           const metadata = JSON.parse(reopeningTask.comments[0].note);
           requesterId = metadata.requestedBy;
         } catch (parseError) {
-          this.logger.warn(`Failed to parse reopening metadata: ${parseError.message}`, CaseReopeningService.name);
+          const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
+          const errorStack = parseError instanceof Error ? parseError.stack : undefined;
+          this.logger.warn(`Failed to parse reopening metadata: ${errorMessage}`, errorStack, CaseReopeningService.name);
         }
       }
 
@@ -508,7 +528,9 @@ export class CaseReopeningService {
             },
           });
         } catch (notificationError) {
-          this.logger.warn(`Failed to send rejection notification: ${notificationError.message}`, CaseReopeningService.name);
+          const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
+          const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
+          this.logger.warn(`Failed to send rejection notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
         }
       }
 
@@ -540,13 +562,15 @@ export class CaseReopeningService {
         rejection_reason: rejectionReason,
       };
     } catch (error) {
-      this.logger.error(`Failed to reject case reopening: ${error.message}`, error.stack, CaseReopeningService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to reject case reopening: ${errorMessage}`, errorStack, CaseReopeningService.name);
 
       await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
         operation: 'rejectCaseReopening',
         entityName: CaseReopeningService.name,
-        actionPerformed: `Failed to reject case reopening for ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to reject case reopening for ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
       });
 

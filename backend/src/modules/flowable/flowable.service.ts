@@ -31,7 +31,7 @@ import {
 export class FlowableService implements OnModuleInit {
   private flowableClient: AxiosInstance;
   private readonly flowableUrl: string;
-  private readonly tenantId: string;
+  // private readonly tenantId: string;
   private readonly maxRetries = FlowableDefaults.MAX_RETRIES;
   private readonly retryDelayMs = FlowableDefaults.RETRY_DELAY_MS;
 
@@ -53,7 +53,7 @@ export class FlowableService implements OnModuleInit {
   async onModuleInit() {
     // Check if Flowable is enabled
     const flowableEnabled = this.configService.get<boolean>('FLOWABLE_ENABLED', true);
-    
+
     if (!flowableEnabled) {
       this.logger.log('Flowable is disabled via configuration, skipping initialization', FlowableService.name);
       return;
@@ -71,25 +71,27 @@ export class FlowableService implements OnModuleInit {
         this.logger.log('Flowable initialized successfully', FlowableService.name);
         return;
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : undefined;
         this.logger.error(
-          `Failed to initialize Flowable (attempt ${attempt}/${this.maxRetries}): ${error.message}`,
-          error.stack,
+          `Failed to initialize Flowable (attempt ${attempt}/${this.maxRetries}): ${errorMessage}`,
+          errorStack,
           FlowableService.name,
         );
 
         if (attempt === this.maxRetries) {
           // Make this a warning instead of error to allow application to start
           const skipOnFailure = this.configService.get<boolean>('FLOWABLE_SKIP_ON_FAILURE', false);
-          
+
           if (skipOnFailure) {
             this.logger.warn(
               `Flowable initialization failed after ${this.maxRetries} attempts. Continuing without Flowable as FLOWABLE_SKIP_ON_FAILURE=true`,
-              FlowableService.name
+              FlowableService.name,
             );
             return;
           } else {
-            this.logger.error('Max retry attempts reached. CMS cannot start without Flowable.', error.stack, FlowableService.name);
-            throw new Error(`Flowable initialization failed after ${this.maxRetries} attempts: ${error.message}`);
+            this.logger.error('Max retry attempts reached. CMS cannot start without Flowable.', errorStack, FlowableService.name);
+            throw new Error(`Flowable initialization failed after ${this.maxRetries} attempts: ${errorMessage}`);
           }
         }
 
@@ -123,16 +125,20 @@ export class FlowableService implements OnModuleInit {
       this.logger.log(`BPMN process deployed successfully: ${response.data.id}`, FlowableService.name);
       return response.data;
     } catch (error) {
-      if (error.code === 'ENOENT') {
+      const errorCode = (error as unknown as { code?: string }).code;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      if (errorCode === 'ENOENT') {
         this.logger.error(
           `BPMN file not found at ${bpmnFilePath}. Cannot start CMS without BPMN process.`,
-          error.stack,
+          errorStack,
           FlowableService.name,
         );
         throw new Error(`Critical: BPMN file not found at ${bpmnFilePath}`);
       }
 
-      this.logger.error(`Failed to deploy BPMN process: ${error.message}`, error.stack, FlowableService.name);
+      this.logger.error(`Failed to deploy BPMN process: ${errorMessage}`, errorStack, FlowableService.name);
       throw new HttpException('Failed to deploy BPMN process', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -277,25 +283,24 @@ export class FlowableService implements OnModuleInit {
   async healthCheck(): Promise<{ status: string; message?: string }> {
     try {
       this.logger.log(`Testing connection to: ${this.flowableUrl}`, FlowableService.name);
-      
+
       const response = await this.flowableClient.get(FlowableApiEndpoints.DEPLOYMENTS, {
         params: { size: 1 },
       });
-      
+
       this.logger.log('Flowable health check passed', FlowableService.name);
       return { status: 'healthy' };
     } catch (error) {
-      let errorMessage = `Flowable connection failed: ${error.message}`;
-      
-      if (error.code === 'ECONNREFUSED') {
+      let errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      const errorCode = (error as unknown as { code?: string }).code;
+
+      if (errorCode === 'ECONNREFUSED') {
         errorMessage = `Cannot connect to Flowable server at ${this.flowableUrl} - server may not be running`;
-      } else if (error.code === 'ECONNRESET') {
+      } else if (errorCode === 'ECONNRESET') {
         errorMessage = `Connection reset by Flowable server at ${this.flowableUrl} - check server status and credentials`;
-      } else if (error.response?.status === 401) {
-        errorMessage = `Authentication failed for Flowable server - check FLOWABLE_USERNAME and FLOWABLE_PASSWORD`;
       }
-      
-      this.logger.error(`Health check failed: ${errorMessage}`, error.stack, FlowableService.name);
+      this.logger.error(`Health check failed: ${errorMessage}`, errorStack, FlowableService.name);
       throw new Error(errorMessage);
     }
   }

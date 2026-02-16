@@ -50,7 +50,9 @@ export class AlertService {
       this.loggerService.log(`End - Alert Creation - ${newAlert.alert_id}`, AlertService.name);
       return newAlert;
     } catch (error) {
-      this.loggerService.error(`Error creating alert: ${error.message}`, error, AlertService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.loggerService.error(`Error creating alert: ${errorMessage}`, errorStack, AlertService.name);
       throw new InternalServerErrorException('Failed to create alert');
     }
   }
@@ -71,7 +73,9 @@ export class AlertService {
       this.loggerService.log(`End - Alert Update - ${alertId}`, AlertService.name);
       return updatedAlert;
     } catch (error) {
-      this.loggerService.error(`Error updating alert ${alertId}: ${error.message}`, error, AlertService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.loggerService.error(`Error updating alert ${alertId}: ${errorMessage}`, errorStack, AlertService.name);
       throw new InternalServerErrorException(`Failed to update alert ${alertId}`);
     }
   }
@@ -157,8 +161,9 @@ export class AlertService {
       return sanitizedAlert;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
-
-      this.loggerService.error(`Failed to fetch alert ${alertId}: ${error.message}`, AlertService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.loggerService.error(`Failed to fetch alert ${alertId}: ${errorMessage}`, errorStack, AlertService.name);
       throw new InternalServerErrorException('Unable to retrieve alert details');
     }
   }

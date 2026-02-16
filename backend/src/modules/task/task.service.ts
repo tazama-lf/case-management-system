@@ -37,7 +37,7 @@ export class TaskService {
     private readonly eventLogService: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   async createTask(taskDTO: CreateTaskDto, userId: string) {
     this.logger.log('Start - createTask', TaskService.name);
@@ -77,10 +77,12 @@ export class TaskService {
 
       return { ...createdTask, candidateGroup: taskDTO.candidateGroup };
     } catch (error) {
-      this.logger.error('Error creating task', error, TaskService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error creating task: ${errorMessage}`, errorStack, TaskService.name);
       this.loggingOrchestrationService.logActions({
         userId,
-        actionPerformed: `Error creating task with candidateGroup: ${taskDTO.candidateGroup} - ${error.message}`,
+        actionPerformed: `Error creating task with candidateGroup: ${taskDTO.candidateGroup} - ${errorMessage}`,
         entityName: TaskService.name,
         operation: 'createTask',
         outcome: Outcome.FAILURE,
@@ -149,7 +151,6 @@ export class TaskService {
               });
 
               if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && subCase?.status === CaseStatus.STATUS_20_IN_PROGRESS) {
-
                 await tx.case.update({
                   where: { case_id: updatedCase.parent_id },
                   data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
@@ -173,9 +174,6 @@ export class TaskService {
 
         // Check if task is being completed and is fraud/AML investigation
         if (updateData.status === TaskStatus.STATUS_30_COMPLETED) {
-
-
-
           // if (existingTask.name === 'Investigate Fraud') {
           //   await this.flowableService.handleTaskCompleted({
           //     caseId: updatedTask.case_id,
@@ -188,7 +186,6 @@ export class TaskService {
           //     },
           //   });
           // }
-
           // if (existingTask.name === 'Investigate AML') {
           //   await this.flowableService.handleTaskCompleted({
           //     caseId: updatedTask.case_id,
@@ -560,10 +557,10 @@ export class TaskService {
       const statusFilter = includeCompleted
         ? {}
         : {
-          status: {
-            not: TaskStatus.STATUS_30_COMPLETED,
-          },
-        };
+            status: {
+              not: TaskStatus.STATUS_30_COMPLETED,
+            },
+          };
 
       return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, true);
     } catch (error) {
