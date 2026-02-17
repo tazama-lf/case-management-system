@@ -449,7 +449,6 @@ export class CaseService {
             autoCloseEligible: targetStatus === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT ? false : true,
             caseType: updateData.caseType || existingCase.case_type!,
             casePriority: updateData.priority || existingCase.priority!,
-            readyForAssignment: targetStatus === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT ? true : false,
           },
         });
 

@@ -104,7 +104,6 @@ export class CaseCreationApprovalService {
             autoCloseEligible: false,
             caseType: updatedAlert.alert_type,
             casePriority: priority,
-            readyForAssignment: true,
           },
         });
 
@@ -771,7 +770,6 @@ export class CaseCreationApprovalService {
             autoCloseEligible: false,
             CaseType: updatedCase.case_type,
             casePriority: existingCase.priority!,
-            readyForAssignment: 'true',
           },
         });
         return { case: updatedCase, completedTask: updatedTask };
@@ -866,22 +864,6 @@ export class CaseCreationApprovalService {
         createdCase.case_id,
       );
 
-      // await this.eventLogService.logEventAction({
-      //   userId,
-      //   operation: 'createCase',
-      //   entityName: 'CaseCreationApprovalService',
-      //   actionPerformed: `Case ${createdCase.case_id} created successfully`,
-      //   outcome: Outcome.SUCCESS,
-      // });
-
-      // await this.caseHistoryService.logCaseHistoryAction({
-      //   userId,
-      //   operation: 'createCase',
-      //   entityName: 'CaseCreationApprovalService',
-      //   actionPerformed: `Case ${createdCase.case_id} created successfully`,
-      //   case_id: createdCase.case_id,
-      // });
-
       return createdCase;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -901,37 +883,12 @@ export class CaseCreationApprovalService {
       };
       if (status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
         await this.taskRepository.transaction(async (tx) => {
-          // Fetch the case to get the tenant_id
           const caseRecord = await this.taskRepository.findCaseBasic(caseId, tx);
           if (!caseRecord) {
             throw new NotFoundException(`Case ${caseId} not found`);
           }
 
-          if (caseType === CaseType.FRAUD_AND_AML) {
-            // Create separate tasks for Fraud and AML investigations
-            // await this.taskService.createTask(
-            //   {
-            //     caseId: caseId,
-            //     status: TaskStatus.STATUS_01_UNASSIGNED,
-            //     name: 'Investigate Fraud',
-            //     description: `Fraud investigation task created for case: ${caseId}`,
-            //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-            //   },
-            //   userId,
-            // );
-            // await this.taskService.createTask(
-            //   {
-            //     caseId: caseId,
-            //     status: TaskStatus.STATUS_01_UNASSIGNED,
-            //     name: 'Investigate AML',
-            //     description: `AML investigation task created for case: ${caseId}`,
-            //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-            //   },
-            //   userId,
-            // );
-            //FLowable here
-          } else {
-            // Otherwise create a single task for other case types
+          if (caseType !== CaseType.FRAUD_AND_AML) {
             await this.taskRepository.createTask(
               {
                 case: {
@@ -967,22 +924,6 @@ export class CaseCreationApprovalService {
         },
         caseId,
       );
-
-      // await this.eventLogService.logEventAction({
-      //   userId,
-      //   operation: 'updateCaseStatus',
-      //   entityName: 'CaseCreationApprovalService',
-      //   actionPerformed: `Updated case ${caseId} status to ${status}`,
-      //   outcome: Outcome.SUCCESS,
-      // });
-
-      // await this.caseHistoryService.logCaseHistoryAction({
-      //   userId,
-      //   operation: 'updateCaseStatus',
-      //   entityName: 'CaseCreationApprovalService',
-      //   actionPerformed: `Updated case ${caseId} status to ${status}`,
-      //   case_id: caseId,
-      // });
 
       this.logger.log(`End - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
       return updatedCase;

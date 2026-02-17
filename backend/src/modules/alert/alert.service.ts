@@ -2,7 +2,7 @@ import { Injectable, InternalServerErrorException, BadRequestException, NotFound
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { IngestAlertDto } from './dto/IngestAlert.dto';
-import { Alert, CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus } from '@prisma/client-cms';
+import { Alert, CaseCreationType, CaseStatus, CaseType, Priority, Prisma, TaskStatus } from '@prisma/client-cms';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { ConfigService } from '@nestjs/config';
 import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
@@ -57,10 +57,10 @@ export class AlertService {
     }
   }
 
-  async updateAlert(alertId: number, userId: string, updateData: UpdateAlertDTO): Promise<Alert> {
+  async updateAlert(alertId: number, userId: string, updateData: UpdateAlertDTO, tx?: Prisma.TransactionClient): Promise<Alert> {
     this.loggerService.log(`Start - Alert Update - ${alertId}`, AlertService.name);
     try {
-      const updatedAlert = await this.alertRepository.updateAlert(alertId, updateData);
+      const updatedAlert = await this.alertRepository.updateAlert(alertId, updateData, tx);
 
       await this.loggingOrchestrationService.logActions({
         userId,

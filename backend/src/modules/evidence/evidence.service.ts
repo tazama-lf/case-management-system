@@ -30,7 +30,7 @@ export class EvidenceService {
     private taskRepository: TaskRepository,
     private readonly eventLogSerice: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
-  ) { }
+  ) {}
 
   private sha256(buffer: Buffer): string {
     return crypto.createHash('sha256').update(buffer).digest('hex');
@@ -78,7 +78,7 @@ export class EvidenceService {
         'text/html',
         'image/png',
         'image/jpeg',
-        'image/tiff'
+        'image/tiff',
       ],
       EDD: [
         'application/pdf',
@@ -89,7 +89,7 @@ export class EvidenceService {
         'text/html',
         'image/png',
         'image/jpeg',
-        'image/tiff'
+        'image/tiff',
       ],
       ADVERSE_MEDIA: [
         'application/pdf',
@@ -100,7 +100,7 @@ export class EvidenceService {
         'text/html',
         'image/png',
         'image/jpeg',
-        'image/tiff'
+        'image/tiff',
       ],
       SANCTIONS: [
         'application/pdf',
@@ -111,7 +111,7 @@ export class EvidenceService {
         'text/html',
         'image/png',
         'image/jpeg',
-        'image/tiff'
+        'image/tiff',
       ],
       SAR_STR_FILING: [
         'application/pdf',
@@ -122,14 +122,22 @@ export class EvidenceService {
         'text/html',
         'image/png',
         'image/jpeg',
-        'image/tiff'
+        'image/tiff',
       ],
       OTHER: [
-        'audio/mpeg', 'text/css', 'application/json',
-        'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'text/plain', 'application/vnd.ms-powerpoint', 'application/epub+zip',
-        'text/html', 'image/png', 'image/jpeg', 'image/tiff'
-      ]
+        'audio/mpeg',
+        'text/css',
+        'application/json',
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        'application/vnd.ms-powerpoint',
+        'application/epub+zip',
+        'text/html',
+        'image/png',
+        'image/jpeg',
+        'image/tiff',
+      ],
     };
 
     const maxFilesPerSection: Record<string, number> = {
@@ -146,7 +154,7 @@ export class EvidenceService {
     // Check if the number of files in this upload exceeds max allowed
     if (files.length > maxFilesPerSection[sectionKey]) {
       throw new BadRequestException(
-        `Cannot attach files. Maximum ${maxFilesPerSection[sectionKey]} files allowed for section ${dto.evidenceType}`
+        `Cannot attach files. Maximum ${maxFilesPerSection[sectionKey]} files allowed for section ${dto.evidenceType}`,
       );
     }
 
@@ -154,7 +162,9 @@ export class EvidenceService {
       // Validate MIME type
       const allowed = allowedMimeTypes[dto.evidenceType];
       if (!allowed?.includes(file.mimetype)) {
-        throw new BadRequestException(`File type ${file.mimetype} is not allowed for ${dto.evidenceType} evidence. File: ${file.originalname}`);
+        throw new BadRequestException(
+          `File type ${file.mimetype} is not allowed for ${dto.evidenceType} evidence. File: ${file.originalname}`,
+        );
       }
 
       // Validate file size
@@ -162,8 +172,6 @@ export class EvidenceService {
         throw new BadRequestException(`File exceeds 50MB: ${file.originalname}`);
       }
     }
-
-
 
     const task = await this.prisma.task.findUnique({ where: { task_id: dto.taskId } });
     if (!task) throw new NotFoundException(`Task ${dto.taskId} not found`);
@@ -266,15 +274,18 @@ export class EvidenceService {
       task_id: dto.taskId,
     });
 
-
-
-
     return metadata;
   }
 
   async deleteEvidence(evidenceId: string, fileName: string, userId: string): Promise<EvidenceResponseDto> {
-
-    if (evidenceId === null || evidenceId === undefined || evidenceId.trim() === '' || fileName === null || fileName === undefined || fileName.trim() === '') {
+    if (
+      evidenceId === null ||
+      evidenceId === undefined ||
+      evidenceId.trim() === '' ||
+      fileName === null ||
+      fileName === undefined ||
+      fileName.trim() === ''
+    ) {
       this.logger.log(`Evidence Id  ${evidenceId} or fileName  ${fileName} is not found`);
       this.logger.error(`Evidence Id or fileName is not found: ${evidenceId} , ${fileName}`);
       throw new BadRequestException(`Evidence Id is not found: ${evidenceId}, or fileName is empty: ${fileName}`);
@@ -295,14 +306,12 @@ export class EvidenceService {
       this.logger.log(`Attachment deletion result: ${JSON.stringify(deleteResult)}`);
 
       this.evidenceRepository.deleteEvidenceById(evidenceId);
-
     } catch (error) {
-
-      if (error.status === 409) {
-        throw new ConflictException(
-          'Document was updated. Please retry.'
-        );
-      }
+      // if (error.status === 409) {
+      //   throw new ConflictException(
+      //     'Document was updated. Please retry.'
+      //   );
+      // }
       throw error;
     }
 
@@ -381,7 +390,8 @@ export class EvidenceService {
       query = { tenantId, reportId: evidenceId, page: 1, limit: 1 };
     }
     // if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) throw new UnauthorizedException('Invalid role');
+    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role))
+      throw new UnauthorizedException('Invalid role');
     const result = await this.couchdb.queryDocuments(query);
 
     const evidenceDoc = result.data?.[0];
@@ -452,7 +462,9 @@ export class EvidenceService {
         },
       };
     } catch (error) {
-      this.logger.error(`Failed to download evidence: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to download evidence: ${errorMessage}`, errorStack);
       if (error instanceof BadRequestException || error instanceof NotFoundException || error instanceof UnauthorizedException) {
         throw error;
       }
@@ -509,12 +521,14 @@ export class EvidenceService {
         try {
           decrypted = this.decrypt(encryptedBuffer, att.encryption.key, att.encryption.iv, att.encryption.authTag);
         } catch (decErr) {
-          this.logger.error(`Decryption failed for ${evidenceId}:${att.fileName} - ${decErr.message}`);
+          const errorMessage = decErr instanceof Error ? decErr.message : String(decErr);
+          const errorStack = decErr instanceof Error ? decErr.stack : undefined;
+          this.logger.error(`Decryption failed for ${evidenceId}:${att.fileName} - ${errorMessage}`, errorStack);
           details.push({
             fileName: att.fileName,
             verified: false,
             reason: 'decryption failed',
-            error: decErr.message,
+            error: errorMessage,
           });
           allVerified = false;
           continue;
@@ -547,7 +561,9 @@ export class EvidenceService {
         details,
       };
     } catch (error) {
-      this.logger.error(`Failed to verify evidence: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to verify evidence: ${errorMessage}`, errorStack);
       if (error instanceof NotFoundException || error instanceof UnauthorizedException) throw error;
       throw new InternalServerErrorException('Failed to verify evidence');
     }
@@ -556,7 +572,7 @@ export class EvidenceService {
   async getEvidenceByTaskId(taskId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
     const query: any = { taskId, archive: false, page: 1, limit: 100 };
     // if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    // else 
+    // else
     if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
@@ -592,12 +608,7 @@ export class EvidenceService {
   }
 
   async getEvidenceByCaseId(caseId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
-
-
-
-
     const allDocs: any[] = [];
-
 
     const query: any = { caseId: caseId, page: 1, limit: 100 };
 
@@ -605,15 +616,12 @@ export class EvidenceService {
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
       throw new UnauthorizedException('Invalid role');
     }
-    this.logger.log(
-      `role=${role}`
-    );
+    this.logger.log(`role=${role}`);
 
     const result = await this.couchdb.queryDocuments(query);
 
     const docs = result.data || [];
     allDocs.push(...docs);
-
 
     const evidence = allDocs.map((item) => ({
       id: item.evidenceId,

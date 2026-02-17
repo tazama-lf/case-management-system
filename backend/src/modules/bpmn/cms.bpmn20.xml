@@ -40,8 +40,6 @@
                     <flowable:value id="CRITICAL" name="Critical"/>
                     <flowable:value id="BREACH" name="Breach"/>
                 </flowable:formProperty>
-                <flowable:formProperty id="readyForAssignment" name="Ready for Assignment" 
-                                       type="boolean" default="true"/>
             </extensionElements>
         </userTask>
 

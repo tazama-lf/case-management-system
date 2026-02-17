@@ -40,7 +40,7 @@ export class AlertRepository extends BaseRepository {
 
       return createdAlert;
     } catch (error) {
-      throw new Error(`Failed to create alert: ${error.message}`);
+      throw error;
     }
   }
 
@@ -72,7 +72,7 @@ export class AlertRepository extends BaseRepository {
       }
       return transactionRecord;
     } catch (error) {
-      throw new Error(`Failed to create transaction record: ${error.message}`);
+      throw error;
     }
   }
 
@@ -132,7 +132,7 @@ export class AlertRepository extends BaseRepository {
 
       return updatedAlert;
     } catch (error) {
-      throw new Error(`Failed to update alert ${alertId}: ${error.message}`);
+      throw error;
     }
   }
 
@@ -170,7 +170,7 @@ export class AlertRepository extends BaseRepository {
 
       return alerts;
     } catch (error) {
-      throw new Error(`Failed to fetch alerts: ${error.message}`);
+      throw error;
     }
   }
 
@@ -181,7 +181,7 @@ export class AlertRepository extends BaseRepository {
       const totalCount = await client.alert.count({ where: whereClause });
       return totalCount;
     } catch (error) {
-      throw new Error(`Failed to count alerts: ${error.message}`);
+      throw error;
     }
   }
 
@@ -203,7 +203,7 @@ export class AlertRepository extends BaseRepository {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new Error(`Failed to get ReferenceId with TxTp ${txTp}: ${error.message}`);
+      throw error;
     }
   }
 }
