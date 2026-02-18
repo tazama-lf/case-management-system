@@ -13,6 +13,7 @@ import { FlowableService } from '../flowable/flowable.service';
 import { AuthService } from '../auth/auth.service';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
+import { CLOSED_CASE_STATUSES } from 'src/constants/case.constants';
 
 export interface TaskWithCase extends Task {
   case: {
@@ -534,7 +535,7 @@ export class TaskService {
         },
       });
 
-      if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && (subCase?.status === CaseStatus.STATUS_20_IN_PROGRESS || subCase?.status === CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL)) {
+      if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && subCase?.status && (subCase.status === CaseStatus.STATUS_20_IN_PROGRESS || subCase.status === CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL || CLOSED_CASE_STATUSES.includes(subCase.status))) {
         await tx.case.update({
           where: { case_id: parentId },
           data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },

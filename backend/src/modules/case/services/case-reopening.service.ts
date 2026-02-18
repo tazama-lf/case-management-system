@@ -27,7 +27,7 @@ export class CaseReopeningService {
     private readonly caseQueryService: CaseQueryService,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+  ) { }
 
   private determineOriginalClosedStatus(caseData: any): CaseStatus {
     return determineOriginalClosedStatus(caseData);
@@ -41,15 +41,6 @@ export class CaseReopeningService {
 
       if (!REOPENABLE_CASE_STATUSES.includes(existingCase.status)) {
         throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
-      }
-
-      if (existingCase.parent_id) {
-        const parentCase = await this.caseQueryService.retrieveCase(existingCase.parent_id);
-        if (!REOPENABLE_CASE_STATUSES.includes(parentCase.status)) {
-          throw new BadRequestException(
-            `SubCase ${caseId} cannot be reopened as the parent Case ${parentCase.case_id} is not in a valid closed state for reopening`,
-          );
-        }
       }
 
       if (!reason || reason.trim().length < VALIDATION_LENGTHS.MIN_REOPENING_REASON) {
@@ -71,26 +62,11 @@ export class CaseReopeningService {
           });
 
           if (updatedCase.parent_id) {
-            const subCase = await tx.case.findFirst({
-              where: {
-                parent_id: updatedCase.parent_id,
-                NOT: {
-                  case_id: updatedCase.case_id,
-                },
-              },
+            await tx.case.update({
+              where: { case_id: updatedCase.parent_id },
+              data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
             });
 
-            if (
-              updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT &&
-              (subCase?.status === CaseStatus.STATUS_82_CLOSED_CONFIRMED ||
-                subCase?.status === CaseStatus.STATUS_81_CLOSED_REFUTED ||
-                subCase?.status === CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE)
-            ) {
-              await tx.case.update({
-                where: { case_id: updatedCase.parent_id },
-                data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
-              });
-            }
           }
 
           return { case: updatedCase };
