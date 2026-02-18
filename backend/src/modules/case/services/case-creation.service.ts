@@ -45,6 +45,7 @@ export class CaseCreationService {
           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
         },
         userId,
+        tenantId,
       );
 
       await this.loggingOrchestrationService.logActions({

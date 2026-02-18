@@ -353,8 +353,8 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Case not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Compliance officers can only access confirmed closed cases' })
   async getCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
-    const { isComplianceOfficer } = extractUserData(req);
-    return this.caseService.retrieveCase(caseId, isComplianceOfficer);
+    const { isComplianceOfficer, tenantId } = extractUserData(req);
+    return this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
   }
 
   @Get('parentId/:caseId')
@@ -399,8 +399,8 @@ export class CaseController {
   })
   @ApiResponse({ status: 404, description: 'Case not found' })
   async completeCaseCreation(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
-    const { userId, role } = extractUserData(req);
-    return this.caseService.completeCaseCreation(caseId, dto, userId, role);
+    const { userId, tenantId, role } = extractUserData(req);
+    return this.caseService.completeCaseCreation(caseId, dto, userId, tenantId, role);
   }
 
   @Put(':caseId/approve')
@@ -476,8 +476,8 @@ export class CaseController {
   })
   @ApiResponse({ status: 500, description: 'Internal Server Error - System error during approval', type: CaseErrorResponseDto })
   async approveCaseClosure(@Param('caseId') caseId: number, @Body() dto: ApproveCaseClosureDto, @Req() req: AuthenticatedRequest) {
-    const { userId: supervisorId } = extractUserData(req);
-    return this.caseService.approveCaseClosure(caseId, dto.finalOutcome, dto.supervisorComments, supervisorId);
+    const { userId: supervisorId, tenantId } = extractUserData(req);
+    return this.caseService.approveCaseClosure(caseId, dto.finalOutcome, dto.supervisorComments, supervisorId, tenantId);
   }
 
   @Put(':caseId/reject')
@@ -541,8 +541,8 @@ export class CaseController {
     description: 'Conflict - Case not in STATUS_22_PENDING_FINAL_APPROVAL state',
   })
   async rejectCaseClosure(@Param('caseId') caseId: number, @Body() dto: RejectCaseClosureDto, @Req() req: AuthenticatedRequest) {
-    const { userId: supervisorId } = extractUserData(req);
-    return this.caseService.rejectCaseClosure(caseId, dto.rejectionReason, supervisorId);
+    const { userId: supervisorId, tenantId } = extractUserData(req);
+    return this.caseService.rejectCaseClosure(caseId, dto.rejectionReason, supervisorId, tenantId);
   }
 
   @Put(':caseId/approve-creation')
@@ -777,8 +777,8 @@ export class CaseController {
     description: 'Not Found - Case or approval task not found',
   })
   async returnCaseForReview(@Param('caseId') caseId: number, @Body() dto: ReturnCaseForReviewDto, @Req() req: AuthenticatedRequest) {
-    const { userId: supervisorId } = extractUserData(req);
-    return this.caseService.returnCaseForReview(caseId, dto.reviewComments, supervisorId);
+    const { userId: supervisorId, tenantId } = extractUserData(req);
+    return this.caseService.returnCaseForReview(caseId, dto.reviewComments, supervisorId, tenantId);
   }
 
   @Post('save-as-draft')

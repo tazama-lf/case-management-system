@@ -46,7 +46,7 @@ export class CaseCreationApprovalService {
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
     this.logger.log(`Start - Manual Case Creation`, CaseCreationApprovalService.name);
 
-    const existingAlert = await this.caseRepository.findAlert(dto.alertId);
+    const existingAlert = await this.caseRepository.findAlert(dto.alertId, tenantId);
 
     if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string })?.status !== 'NALT') {
       throw new BadRequestException(`Case Already Exists`);
@@ -121,6 +121,7 @@ export class CaseCreationApprovalService {
             candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
           },
           userId,
+          tenantId,
         );
       } else {
         if (caseType === CaseType.FRAUD_AND_AML) {
@@ -159,6 +160,7 @@ export class CaseCreationApprovalService {
               candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
             },
             userId,
+            tenantId,
           );
         }
       }
@@ -177,6 +179,7 @@ export class CaseCreationApprovalService {
           outcome: Outcome.SUCCESS,
         },
         result.case.case_id,
+        tenantId,
       );
 
       return {
@@ -206,7 +209,7 @@ export class CaseCreationApprovalService {
   async saveCaseAsDraft(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
     this.logger.log(`Start - Save As Draft`, CaseCreationApprovalService.name);
 
-    const existingAlert = await this.caseRepository.findAlert(dto.alertId);
+    const existingAlert = await this.caseRepository.findAlert(dto.alertId, tenantId);
 
     if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as any)?.status !== 'NALT') {
       throw new BadRequestException(
@@ -256,6 +259,7 @@ export class CaseCreationApprovalService {
           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
         },
         userId,
+        tenantId,
       );
       await this.flowableService.handleTaskAssigned({
         taskId: completeCaseTask.task_id,
@@ -273,31 +277,8 @@ export class CaseCreationApprovalService {
           outcome: Outcome.SUCCESS,
         },
         result.case.case_id,
+        tenantId,
       );
-      // await this.auditLogService.logAction({
-      //   userId,
-      //   operation: 'saveCaseAsDraft',
-      //   entityName: 'CaseCreation',
-      //   actionPerformed: `Draft case ${result.case.case_id} created`,
-      //   outcome: Outcome.SUCCESS,
-      // });
-
-      // await this.eventLogService.logEventAction({
-      //   userId,
-      //   operation: 'saveCaseAsDraft',
-      //   entityName: 'CaseCreation',
-      //   actionPerformed: `Draft case ${result.case.case_id} created`,
-      //   outcome: Outcome.SUCCESS,
-      // });
-
-      // await this.caseHistoryService.logCaseHistoryAction({
-      //   userId,
-      //   operation: 'saveCaseAsDraft',
-      //   entityName: 'CaseCreation',
-      //   actionPerformed: `Draft case ${result.case.case_id} created`,
-      //   case_id: result.case.case_id,
-      // });
-
       this.logger.log(`Draft saved: case ${result.case.case_id}`, CaseCreationApprovalService.name);
 
       return {
@@ -322,8 +303,8 @@ export class CaseCreationApprovalService {
     }
   }
 
-  private async validateCaseCreationApprovalPreconditions(caseId: number): Promise<void> {
-    const caseData = await this.caseRepository.findCaseWithApprovalTask(caseId);
+  private async validateCaseCreationApprovalPreconditions(caseId: number, tenantId: string): Promise<void> {
+    const caseData = await this.caseRepository.findCaseWithApprovalTask(caseId, tenantId);
 
     if (!caseData) {
       throw new NotFoundException(`Case ${caseId} not found`);
@@ -371,7 +352,7 @@ export class CaseCreationApprovalService {
       );
 
       // First check the case status
-      const caseData = await this.caseRepository.findCaseBasicInfo(caseId);
+      const caseData = await this.caseRepository.findCaseBasicInfo(caseId, tenantId);
 
       if (!caseData) {
         throw new NotFoundException(`Case ${caseId} not found`);
@@ -420,6 +401,7 @@ export class CaseCreationApprovalService {
 
       const approvalTask = await this.caseRepository.findTaskByNameAndStatus(
         caseId,
+        tenantId,
         'Approve Case Creation',
         TaskStatus.STATUS_01_UNASSIGNED,
       );
@@ -548,6 +530,7 @@ export class CaseCreationApprovalService {
             candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
           },
           supervisorId,
+          tenantId,
         );
 
         this.logger.log(
@@ -579,6 +562,7 @@ export class CaseCreationApprovalService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        tenantId,
       );
 
       this.logger.log(
@@ -618,7 +602,7 @@ export class CaseCreationApprovalService {
   async rejectCaseCreation(caseId: number, supervisorId: string, tenantId: string, reason: string) {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case creation for case ${caseId}`, CaseCreationApprovalService.name);
-      await this.validateCaseCreationApprovalPreconditions(caseId);
+      await this.validateCaseCreationApprovalPreconditions(caseId, tenantId);
 
       if (!reason || reason.trim().length < VALIDATION_LENGTHS.MIN_REOPENING_REASON) {
         throw new BadRequestException(
@@ -626,7 +610,7 @@ export class CaseCreationApprovalService {
         );
       }
 
-      const existingCase = await this.caseQueryService.retrieveCase(caseId);
+      const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
 
       const result = await this.caseRepository.executeTransaction(async (tx) => {
         const updatedCase = await this.caseRepository.updateCase(caseId, {
@@ -643,6 +627,7 @@ export class CaseCreationApprovalService {
           approvalTask.task_id,
           { status: TaskStatus.STATUS_30_COMPLETED, assignedUserId: supervisorId },
           supervisorId,
+          tenantId,
         );
 
         return { case: updatedCase, completedTask: approvalTask };
@@ -662,6 +647,7 @@ export class CaseCreationApprovalService {
           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
         },
         supervisorId,
+        tenantId,
       );
       this.logger.log(
         `[REJECT_CASE_CREATION] Complete New Case task ${completeNewCaseTask.task_id} created for case ${caseId}`,
@@ -693,6 +679,7 @@ export class CaseCreationApprovalService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        tenantId,
       );
 
       // await this.eventLogService.logEventAction({
@@ -730,7 +717,7 @@ export class CaseCreationApprovalService {
   }
 
   async completeCase(caseId: number, userId: string, tenantId: string) {
-    const existingCase = await this.caseQueryService.retrieveCase(caseId);
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) throw new BadRequestException('Only cases in DRAFT status can be completed');
 
@@ -750,7 +737,7 @@ export class CaseCreationApprovalService {
     try {
       const result = await this.caseRepository.executeTransaction(async (tx) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, userId);
-        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];
         const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
         if (!completeNewCaseTask) throw new BadRequestException('No Complete New Case task found');
         if (completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
@@ -760,6 +747,7 @@ export class CaseCreationApprovalService {
           completeNewCaseTask.task_id,
           { status: TaskStatus.STATUS_30_COMPLETED },
           userId,
+          tenantId,
         );
         // Updated Implementation Might Need to Move
         await this.flowableService.handleTaskCompleted({
@@ -785,6 +773,7 @@ export class CaseCreationApprovalService {
           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
         },
         userId,
+        tenantId,
       );
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -796,6 +785,7 @@ export class CaseCreationApprovalService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        tenantId,
       );
 
       // await this.eventLogService.logEventAction({
@@ -861,6 +851,7 @@ export class CaseCreationApprovalService {
           outcome: Outcome.SUCCESS,
         },
         createdCase.case_id,
+        createdCase.tenant_id,
       );
 
       // await this.eventLogService.logEventAction({
@@ -888,7 +879,7 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async updateCaseStatus(caseId: number, status: CaseStatus, userId: string, priority?: Priority, caseType?: CaseType): Promise<Case> {
+  async updateCaseStatus(caseId: number, status: CaseStatus, userId: string, tenantId: string, priority?: Priority, caseType?: CaseType): Promise<Case> {
     this.logger.log(`Start - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
     try {
       const updateData: Record<string, unknown> = {
@@ -899,7 +890,7 @@ export class CaseCreationApprovalService {
       if (status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
         await this.taskRepository.transaction(async (tx) => {
           // Fetch the case to get the tenant_id
-          const caseRecord = await this.taskRepository.findCaseBasic(caseId, tx);
+          const caseRecord = await this.taskRepository.findCaseBasic(caseId, tenantId, tx);
           if (!caseRecord) {
             throw new NotFoundException(`Case ${caseId} not found`);
           }
@@ -963,6 +954,7 @@ export class CaseCreationApprovalService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        updatedCase.tenant_id,
       );
 
       // await this.eventLogService.logEventAction({

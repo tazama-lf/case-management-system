@@ -123,7 +123,8 @@ export class TaskController {
   })
   async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.createTask(createTaskDto, userId);
+    const tenantId = req.user.token.tenantId;
+    return this.taskService.createTask(createTaskDto, userId, tenantId);
   }
 
   @Patch(':taskId/reassign')
@@ -519,7 +520,8 @@ export class TaskController {
   })
   async updateTask(@Param('taskId') taskId: number, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.updateTask(taskId, dto, userId);
+    const tenantId = req.user.token.tenantId;
+    return this.taskService.updateTask(taskId, dto, userId, tenantId);
   }
 
   @Get()
@@ -569,8 +571,9 @@ export class TaskController {
     status: 401,
     description: 'Unauthorized - Invalid or missing authentication',
   })
-  async getTasks(@Query('status') status?: string) {
-    return this.taskService.getTasks(status);
+  async getTasks(@Req() req: AuthenticatedRequest, @Query('status') status?: string) {
+    const tenantId = req.user.token.tenantId;
+    return this.taskService.getTasks(tenantId, status);
   }
 
   @Get('case/:caseId')
@@ -623,8 +626,9 @@ export class TaskController {
   })
   async getTasksByCaseId(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
+    const tenantId = req.user.token.tenantId;
     const userClaims = req.user.token.claims || [];
-    return this.taskService.getTasksByCaseId(caseId, userId, userClaims);
+    return this.taskService.getTasksByCaseId(caseId, tenantId, userId, userClaims);
   }
 
   @Get('work-queues/:candidateGroup')
@@ -766,7 +770,8 @@ export class TaskController {
           TaskController.name,
         );
 
-        const domainTasks = await this.taskService.getTasksByCandidateGroup(candidateGroup, userId);
+        const tenantId = req.user.token.tenantId;
+        const domainTasks = await this.taskService.getTasksByCandidateGroup(candidateGroup, userId, tenantId);
 
         let filteredTasks = domainTasks;
         if (unassignedOnly === 'true') {
@@ -850,8 +855,9 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async getTaskById(@Param('taskId') taskId: number) {
-    return this.taskService.getTaskById(taskId);
+  async getTaskById(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest) {
+    const tenantId = req.user.token.tenantId;
+    return this.taskService.getTaskById(taskId, tenantId);
   }
 
   @Get('statistics')
@@ -892,7 +898,8 @@ export class TaskController {
   async getWorkQueueStatistics(@Req() req: AuthenticatedRequest) {
     try {
       const userId = req.user.token.clientId;
-      const statistics = await this.taskService.getWorkQueueStatistics(userId);
+      const tenantId = req.user.token.tenantId;
+      const statistics = await this.taskService.getWorkQueueStatistics(userId, tenantId);
       return {
         success: true,
         data: statistics,

@@ -41,7 +41,6 @@ export class TriageService {
     private readonly flowableService: FlowableService,
     private readonly alertService: AlertService,
     private audit: AuditLogService,
-    // private eventLogService: EventLogService,
     private readonly caseCreationService: CaseCreationApprovalService,
     private taskService: TaskService,
     private commentService: CommentService,
@@ -49,8 +48,6 @@ export class TriageService {
     private readonly eventEmitter: EventEmitter2,
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly featureExtractionService: FeatureExtractionService,
-    // private readonly caseHistoryService: CaseHistoryService,
-    // private readonly taskHistoryService: TaskHistoryService,
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
@@ -77,7 +74,7 @@ export class TriageService {
         throw new InternalServerErrorException('Alert case_id is missing.');
       }
 
-      const existingCase = await this.caseRepository.findCaseById(alert.case_id);
+      const existingCase = await this.caseRepository.findCaseById(alert.case_id, tenantId);
 
       const completeNewCaseTask = existingCase.tasks.find((t) => t.name === 'Complete New Case');
 
@@ -89,6 +86,7 @@ export class TriageService {
         completeNewCaseTask.task_id,
         { assignedUserId: userId, status: TaskStatus.STATUS_30_COMPLETED },
         userId,
+        tenantId,
       );
 
       await this.commentService.addComment(
@@ -101,7 +99,7 @@ export class TriageService {
       }
 
       if (updateAlertDto?.status && this.closableStatuses.includes(updateAlertDto.status)) {
-        await this.caseCreationService.updateCaseStatus(alert.case_id, updateAlertDto.status, userId);
+        await this.caseCreationService.updateCaseStatus(alert.case_id, updateAlertDto.status, userId, tenantId);
 
         await this.flowableService.handleTaskCompleted({
           caseId: existingCase.case_id,
@@ -129,6 +127,7 @@ export class TriageService {
           alert.case_id,
           updateAlertDto.status,
           userId,
+          tenantId,
           priority,
           updateAlertDto.alertType as CaseType,
         );
@@ -143,6 +142,7 @@ export class TriageService {
             alert.case_id,
             CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
             userId,
+            tenantId,
             priority,
             updateAlertDto.alertType as CaseType,
           );
@@ -192,6 +192,7 @@ export class TriageService {
           candidateGroup: 'investigator',
         },
         userId,
+        tenantId,
       );
 
       const triageTaskId = triageTask.task_id;
@@ -239,6 +240,7 @@ export class TriageService {
         priority,
         predictedTruePositive,
         userId,
+        tenantId,
       );
 
       if (predictedConfidence < confidenceThreshold) {
@@ -259,6 +261,7 @@ export class TriageService {
           triageTaskId,
           'Triage complete - confidence percentage below threshold manual investigation needed',
           priority,
+          tenantId,
           predictedAlertType,
         );
       }
@@ -280,6 +283,7 @@ export class TriageService {
           CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
           userId,
           triageTaskId,
+          tenantId,
           predictedAlertType,
           'Triage complete - false positive (case auto-closed refuted)',
         );
@@ -295,6 +299,7 @@ export class TriageService {
               description: 'Triage complete - true positive and case contains both fraud and aml',
             },
             userId,
+            tenantId,
           );
           await this.flowableService.handleTaskCompleted({
             caseId: caseId,
@@ -312,6 +317,7 @@ export class TriageService {
             caseId,
             CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
             userId,
+            tenantId,
             priority,
             predictedAlertType,
           );
@@ -339,6 +345,7 @@ export class TriageService {
             triageTaskId,
             'Triage complete - confidence percentage above threshold and true positive with case type aml',
             priority,
+            tenantId,
             predictedAlertType,
           );
         }
@@ -361,6 +368,7 @@ export class TriageService {
               CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
               userId,
               triageTaskId,
+              tenantId,
               predictedAlertType,
               'Triage complete - true positive (case auto-closed confirmed)',
             );
@@ -383,6 +391,7 @@ export class TriageService {
             triageTaskId,
             'Triage complete - confidence percentage above threshold and true positive with case type fraud and transaction occured',
             priority,
+            tenantId,
             predictedAlertType,
           );
         }
@@ -405,11 +414,12 @@ export class TriageService {
     status: CaseStatus,
     userId: string,
     taskId: number,
+    tenantId: string,
     caseType?: CaseType,
     customDescription?: string,
   ) {
     try {
-      const existingCase = await this.caseRepository.findCaseById(caseId);
+      const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
 
       if (!existingCase) {
         throw new NotFoundException(`Case ${caseId} not found`);
@@ -422,9 +432,10 @@ export class TriageService {
           description: customDescription ?? `Auto-closed case with status ${status}`,
         },
         userId,
+        tenantId,
       );
 
-      const updatedCase = await this.caseCreationService.updateCaseStatus(caseId, status, userId, undefined, caseType);
+      const updatedCase = await this.caseCreationService.updateCaseStatus(caseId, status, userId, tenantId, undefined, caseType);
 
       this.eventEmitter.emit(
         'case.status.changed',
@@ -440,6 +451,7 @@ export class TriageService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        existingCase.tenant_id,
       );
 
       return { updatedCase, updatedTask };
@@ -462,21 +474,23 @@ export class TriageService {
     taskId: number,
     triageTaskDesc: string,
     priority: Priority,
+    tenantId: string,
     alertType?: CaseType,
   ): Promise<unknown> {
     try {
       this.logger.log(`Start - AI triage completed for case ${caseId}`, TriageService.name);
-      const existingCase = await this.caseRepository.findCaseById(caseId);
+      const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
       if (!existingCase) {
         throw new NotFoundException(`Case ${caseId} not found`);
       }
 
-      await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc }, userId);
+      await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED, description: triageTaskDesc }, userId, tenantId);
 
       const updatedCase = await this.caseCreationService.updateCaseStatus(
         caseId,
         CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         userId,
+        tenantId,
         priority,
         alertType as CaseType,
       );
@@ -490,6 +504,7 @@ export class TriageService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        existingCase.tenant_id,
         taskId,
       );
 
@@ -521,6 +536,7 @@ export class TriageService {
     priority: Priority,
     predictedTruePositive: boolean,
     userId: string,
+    tenantId: string,
   ): Promise<void> {
     try {
       this.logger.log(`Start - Updating alert ${alertId} and triage task ${taskId} with prediction`, TriageService.name);
@@ -542,6 +558,7 @@ export class TriageService {
           description: `Prediction applied: Type=${predictedAlertType}, Confidence=${predictedConfidence}`,
         },
         userId,
+        tenantId,
       );
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -553,6 +570,7 @@ export class TriageService {
           outcome: Outcome.SUCCESS,
         },
         task.case_id,
+        task.tenant_id,
         taskId,
       );
 

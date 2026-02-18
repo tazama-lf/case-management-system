@@ -43,6 +43,7 @@ export class CaseClosureApprovalService {
           candidateGroup: CANDIDATE_GROUPS.COMPLIANCE_OFFICER,
         },
         userId,
+        tenantId,
       );
 
       await this.loggingOrchestrationService.logActions({
@@ -76,7 +77,8 @@ export class CaseClosureApprovalService {
 
   async closeCase(caseId: number, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
     try {
-      const caseData = await this.caseRepository.findCaseWithPermissionCheck(caseId, userId);
+      const caseData = await this.caseRepository.findCaseWithPermissionCheck(caseId, tenantId, userId);
+
       if (!caseData) {
         throw new NotFoundException(`Case ${caseId} not found or you don't have permission to close it`);
       }
@@ -101,6 +103,7 @@ export class CaseClosureApprovalService {
           const subCase = await this.prismaService.case.findMany({
             where: {
               parent_id: caseId,
+              tenant_id: caseData.tenant_id,
             },
           });
 
@@ -136,7 +139,9 @@ export class CaseClosureApprovalService {
         const investigationTask =
           caseData.tasks
             .filter(
-              (task) => TASK_NAMES.INVESTIGATE_CASE_VARIANTS.includes(task.name as any) && task.status === TaskStatus.STATUS_30_COMPLETED,
+              (task) => 
+                TASK_NAMES.INVESTIGATE_CASE_VARIANTS.includes(task.name as any) && 
+                (task.status === TaskStatus.STATUS_20_IN_PROGRESS || task.status === TaskStatus.STATUS_30_COMPLETED),
             )
             .sort((a, b) => {
               const aTime = new Date(a.created_at ?? 0).getTime();
@@ -149,6 +154,7 @@ export class CaseClosureApprovalService {
             message: 'Investigation task not found for this case',
             caseId,
             missingTask: TASK_NAMES.INVESTIGATE_CASE,
+            availableTasks: caseData.tasks.map(t => ({ name: t.name, status: t.status })),
           });
         }
 
@@ -228,6 +234,7 @@ export class CaseClosureApprovalService {
             outcome: Outcome.SUCCESS,
           },
           caseId,
+          caseData.tenant_id,
         );
 
         // Auto-generate SAR_STR_FILING task if case is confirmed
@@ -272,6 +279,7 @@ export class CaseClosureApprovalService {
           candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
         },
         userId,
+        tenantId,
       );
 
       const result = await this.caseRepository.updateCaseStatusAndCompleteTask(
@@ -318,6 +326,7 @@ export class CaseClosureApprovalService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        caseData.tenant_id,
       );
 
       return {
@@ -347,11 +356,12 @@ export class CaseClosureApprovalService {
         message: 'System error occurred during case closure',
         caseId,
         error: error.message,
+        stack: error.stack,
       });
     }
   }
 
-  async approveCaseClosure(caseId: number, finalOutcome: string, comments: string, supervisorId: string) {
+  async approveCaseClosure(caseId: number, finalOutcome: string, comments: string, supervisorId: string, tenantId: string) {
     try {
       if (!finalOutcome || !CASE_CLOSURE_OUTCOMES.includes(finalOutcome as any)) {
         throw new BadRequestException({
@@ -361,7 +371,7 @@ export class CaseClosureApprovalService {
         });
       }
 
-      const caseDetails = await this.caseRepository.findCaseForClosureApproval(caseId);
+      const caseDetails = await this.caseRepository.findCaseForClosureApproval(caseId, tenantId);
 
       if (!caseDetails) {
         throw new NotFoundException(`Case ${caseId} not found`);
@@ -473,6 +483,7 @@ export class CaseClosureApprovalService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        caseDetails.tenant_id,
       );
 
       this.logger.log(
@@ -523,18 +534,18 @@ export class CaseClosureApprovalService {
     }
   }
 
-  async rejectCaseClosure(caseId: number, comments: string, supervisorId: string) {
+  async rejectCaseClosure(caseId: number, comments: string, supervisorId: string, tenantId: string) {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case closure for ${caseId}`, CaseClosureApprovalService.name);
 
-      await this.validateApprovalPreconditions(caseId, supervisorId, { autoClaimApprovalTask: true });
+      await this.validateApprovalPreconditions(caseId, tenantId, supervisorId, { autoClaimApprovalTask: true });
 
       if (!comments || comments.trim().length < VALIDATION_LENGTHS.MIN_REJECTION_REASON) {
         const errorMsg = `Rejection comments must be at least ${VALIDATION_LENGTHS.MIN_REJECTION_REASON} characters`;
         throw new BadRequestException(errorMsg);
       }
 
-      const caseDetails = await this.caseRepository.findCaseWithCompletedInvestigation(caseId);
+      const caseDetails = await this.caseRepository.findCaseWithCompletedInvestigation(caseId, tenantId);
 
       if (!caseDetails) {
         throw new NotFoundException(`Case ${caseId} not found`);
@@ -594,6 +605,7 @@ export class CaseClosureApprovalService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        caseDetails.tenant_id,
       );
 
       this.logger.log(
@@ -634,9 +646,9 @@ export class CaseClosureApprovalService {
     }
   }
 
-  async returnCaseForReview(caseId: number, comments: string, supervisorId: string) {
+  async returnCaseForReview(caseId: number, comments: string, supervisorId: string, tenantId: string) {
     try {
-      await this.validateApprovalPreconditions(caseId, supervisorId, { autoClaimApprovalTask: true });
+      await this.validateApprovalPreconditions(caseId, tenantId, supervisorId, { autoClaimApprovalTask: true });
 
       const result = await this.prismaService.$transaction(async (tx) => {
         const updatedCase = await tx.case.update({
@@ -693,6 +705,7 @@ export class CaseClosureApprovalService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        result.updatedCase.tenant_id,
       );
 
       return {
@@ -712,8 +725,8 @@ export class CaseClosureApprovalService {
     }
   }
 
-  private async validateApprovalPreconditions(caseId: number, supervisorId?: string, options: { autoClaimApprovalTask?: boolean } = {}) {
-    const caseData = await this.caseRepository.findCaseForReview(caseId);
+  private async validateApprovalPreconditions(caseId: number, tenantId: string, supervisorId?: string, options: { autoClaimApprovalTask?: boolean } = {}) {
+    const caseData = await this.caseRepository.findCaseForReview(caseId, tenantId);
 
     if (!caseData) {
       throw new NotFoundException(`Case ${caseId} not found`);
@@ -743,7 +756,7 @@ export class CaseClosureApprovalService {
     if (shouldAttemptAutoClaim) {
       const approvalTaskId = approvalValidation.approvalTask!.task_id;
       this.logger.log(`Auto-claiming approval task ${approvalTaskId} for supervisor ${supervisorId}`, CaseClosureApprovalService.name);
-      await this.taskService.claimTask(approvalTaskId, supervisorId!);
+      await this.taskService.claimTask(approvalTaskId, supervisorId!, tenantId);
 
       const taskIndex = caseData.tasks.findIndex((task) => task.task_id === approvalTaskId);
       if (taskIndex >= 0) {

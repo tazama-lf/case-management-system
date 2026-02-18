@@ -41,7 +41,7 @@ export class CaseService {
   ) { }
 
   async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any, role: string) {
-    const existingCase = await this.caseQueryService.retrieveCase(caseId);
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (!role.toLowerCase().includes('supervisor')) {
       if (existingCase.case_owner_user_id !== userId) {
@@ -53,7 +53,7 @@ export class CaseService {
       throw new BadRequestException('Only cases in "IN PROGRESS" status can be suspended');
 
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
-    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];
     
     const investigateTask = allTasks.filter((task) =>
       tasksIds.includes(task.task_id)
@@ -70,6 +70,7 @@ export class CaseService {
           const subCase = await prisma.case.findFirst({
             where: {
               parent_id: updatedCase.parent_id,
+              tenant_id: updatedCase.tenant_id,
               NOT: {
                 case_id: updatedCase.case_id,
               },
@@ -84,13 +85,10 @@ export class CaseService {
             });
           }
         }
-
-        // const updatedTask = await this.taskService.updateTask(investigateTask.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId);
         const updatedTask = await Promise.all(
-          investigateTask.map((task) => this.taskService.updateTask(task.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId)),
+          investigateTask.map((task) => this.taskService.updateTask(task.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId, tenantId)),
         );
-        const createCommentDto = new CreateCommentDto();
-        //  createCommentDto.taskId = updatedTask.task_id;
+        const createCommentDto = new CreateCommentDto()
         createCommentDto.caseId = updatedCase.case_id;
         createCommentDto.note = `Case suspended: ${reason}`;
         await this.commentService.addComment(createCommentDto, userId);
@@ -104,6 +102,7 @@ export class CaseService {
             outcome: Outcome.SUCCESS,
           },
           caseId,
+          updatedCase.tenant_id,
         );
 
         return { case: updatedCase, task: updatedTask };
@@ -157,13 +156,13 @@ export class CaseService {
   async resumeCase(caseId: number, reason: string, userId: string, tenantId: string, authDetails: any) {
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
 
-    const existingCase = await this.caseQueryService.retrieveCase(caseId);
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (existingCase.case_owner_user_id !== userId) throw new BadRequestException('Only Case owner can resume a case');
 
     if (existingCase.status !== CaseStatus.STATUS_21_SUSPENDED) throw new BadRequestException('Only suspended cases can be resumed');
 
-    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];
     this.logger.error(`All Tasks: ${JSON.stringify(allTasks)}`);
     // const investigateTask = allTasks.find((t) => t.name === (TASK_NAMES.INVESTIGATE_CASE || TASK_NAMES.INVESTIGATE_AML ||TASK_NAMES.INVESTIGATE_FRAUD));
     const investigateTask = allTasks.filter(
@@ -186,17 +185,12 @@ export class CaseService {
       });
 
       const result = await this.prismaService.$transaction(async (prisma) => {
-        const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_20_IN_PROGRESS }, userId);
-        // const updatedTask = await this.taskService.updateTask(
-        //   investigateTask.task_id,
-        //   { status: TaskStatus.STATUS_20_IN_PROGRESS },
-        //   userId,
-        // );
-
+      const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_20_IN_PROGRESS }, userId)
         if (updatedCase.parent_id) {
           const subCase = await prisma.case.findFirst({
             where: {
               parent_id: updatedCase.parent_id,
+              tenant_id: updatedCase.tenant_id,
               NOT: {
                 case_id: updatedCase.case_id,
               },
@@ -213,7 +207,7 @@ export class CaseService {
         }
 
         const updatedTask = await Promise.all(
-          investigateTask.map((t) => this.taskService.updateTask(t.task_id, { status: TaskStatus.STATUS_20_IN_PROGRESS }, userId)),
+          investigateTask.map((t) => this.taskService.updateTask(t.task_id, { status: TaskStatus.STATUS_20_IN_PROGRESS }, userId, tenantId)),
         );
         const createCommentDto = new CreateCommentDto();
         createCommentDto.caseId = caseId;
@@ -229,6 +223,7 @@ export class CaseService {
             outcome: Outcome.SUCCESS,
           },
           caseId,
+          updatedCase.tenant_id,
         );
 
         return { case: updatedCase, task: updatedTask };
@@ -276,11 +271,11 @@ export class CaseService {
 
   async abandonCase(caseId: number, reason: string, userId: string, tenantId: string) {
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for abandonment is required');
-    const existingCase = await this.caseQueryService.retrieveCase(caseId);
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case doesn't exist for caseId ${caseId}`);
     if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) throw new BadRequestException('Cannot abandon case other than draft status');
 
-    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];
     const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
     if (!completeNewCaseTask) throw new BadRequestException('No complete new Case Task exists');
     if (completeNewCaseTask?.status === TaskStatus.STATUS_30_COMPLETED) {
@@ -294,6 +289,7 @@ export class CaseService {
           completeNewCaseTask.task_id,
           { status: TaskStatus.STATUS_30_COMPLETED },
           userId,
+          tenantId,
         );
         const createCommentDto = new CreateCommentDto();
         //createCommentDto.taskId = updatedTask.task_id;
@@ -312,6 +308,7 @@ export class CaseService {
             outcome: Outcome.SUCCESS,
           },
           caseId,
+          updatedCase.tenant_id,
         );
 
         return { case: updatedCase, task: updatedTask };
@@ -344,16 +341,16 @@ export class CaseService {
     return this.caseClosureApprovalService.closeCase(caseId, dto, userId, tenantId, role);
   }
 
-  async approveCaseClosure(caseId: number, finalOutcome: string, comments: string, supervisorId: string) {
-    return this.caseClosureApprovalService.approveCaseClosure(caseId, finalOutcome, comments, supervisorId);
+  async approveCaseClosure(caseId: number, finalOutcome: string, comments: string, supervisorId: string, tenantId: string) {
+    return this.caseClosureApprovalService.approveCaseClosure(caseId, finalOutcome, comments, supervisorId, tenantId);
   }
 
-  async rejectCaseClosure(caseId: number, comments: string, supervisorId: string) {
-    return this.caseClosureApprovalService.rejectCaseClosure(caseId, comments, supervisorId);
+  async rejectCaseClosure(caseId: number, comments: string, supervisorId: string, tenantId: string) {
+    return this.caseClosureApprovalService.rejectCaseClosure(caseId, comments, supervisorId, tenantId);
   }
 
-  async returnCaseForReview(caseId: number, comments: string, supervisorId: string) {
-    return this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId);
+  async returnCaseForReview(caseId: number, comments: string, supervisorId: string, tenantId: string) {
+    return this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId, tenantId);
   }
 
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
@@ -387,8 +384,8 @@ export class CaseService {
     return this.caseQueryService.updateCase(caseId, updateData, userId);
   }
 
-  async completeCaseCreation(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string, role: string) {
-    const existingCase = await this.caseQueryService.retrieveCase(caseId);
+  async completeCaseCreation(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string, tenantId: string, role: string) {
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
 
     if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) {
@@ -428,7 +425,7 @@ export class CaseService {
           reason: `Case creation completed by ${role}`,
         });
 
-        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
+        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];
         const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
 
         if (!completeNewCaseTask) {
@@ -445,6 +442,7 @@ export class CaseService {
             assignedUserId: userId,
           },
           userId,
+          tenantId,
         );
         await this.flowableService.handleTaskCompleted({
           caseId: completedTask.case_id,
@@ -483,6 +481,7 @@ export class CaseService {
             candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
           },
           userId,
+          tenantId,
         );
 
         this.logger.log(`[CompleteCaseCreation] Approval task ${nextTask.task_id} created for supervisor review`, CaseService.name);
@@ -513,6 +512,7 @@ export class CaseService {
               candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
             },
             userId,
+            tenantId,
           );
         }
 
@@ -545,6 +545,7 @@ export class CaseService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        existingCase.tenant_id,
       );
 
       return {
@@ -572,8 +573,8 @@ export class CaseService {
     }
   }
 
-  async retrieveCase(caseId: number, isComplianceOfficer?: boolean) {
-    return this.caseQueryService.retrieveCase(caseId, isComplianceOfficer);
+  async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean) {
+    return this.caseQueryService.retrieveCase(caseId, tenantId, isComplianceOfficer);
   }
 
   async getSubCasesDetails(caseId: number) {

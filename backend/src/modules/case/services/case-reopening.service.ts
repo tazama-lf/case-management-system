@@ -37,14 +37,14 @@ export class CaseReopeningService {
     try {
       this.logger.log(`Investigator ${userId} reopening case ${caseId}`, CaseReopeningService.name);
 
-      const existingCase = await this.caseQueryService.retrieveCase(caseId);
+      const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
 
       if (!REOPENABLE_CASE_STATUSES.includes(existingCase.status)) {
         throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
       }
 
       if (existingCase.parent_id) {
-        const parentCase = await this.caseQueryService.retrieveCase(existingCase.parent_id);
+        const parentCase = await this.caseQueryService.retrieveCase(existingCase.parent_id, tenantId);
         if (!REOPENABLE_CASE_STATUSES.includes(parentCase.status)) {
           throw new BadRequestException(`SubCase ${caseId} cannot be reopened as the parent Case ${parentCase.case_id} is not in a valid closed state for reopening`);
         }
@@ -100,6 +100,7 @@ export class CaseReopeningService {
             candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
           },
           userId,
+          tenantId,
         );
 
 
@@ -119,6 +120,7 @@ export class CaseReopeningService {
             outcome: Outcome.SUCCESS,
           },
           caseId,
+          existingCase.tenant_id,
         );
 
         return {
@@ -152,6 +154,7 @@ export class CaseReopeningService {
             candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
           },
           userId,
+          tenantId,
         );
 
         await this.commentRepository.createComment(
@@ -188,6 +191,7 @@ export class CaseReopeningService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        existingCase.tenant_id,
       );
 
       return {
@@ -215,10 +219,10 @@ export class CaseReopeningService {
     try {
       this.logger.log(`Supervisor ${supervisorId} approving case reopening for ${caseId}`, CaseReopeningService.name);
 
-      const caseData = await this.validateReopeningPreconditions(caseId);
+      const caseData = await this.validateReopeningPreconditions(caseId, tenantId);
 
       // Step 2: Find the reopening approval task
-      const reopeningTask = await this.caseRepository.findUnassignedTaskForReopening(caseId);
+      const reopeningTask = await this.caseRepository.findUnassignedTaskForReopening(caseId, tenantId);
 
       if (!reopeningTask) {
         throw new NotFoundException(`"Approve Case Reopening" task not found for case ${caseId}`);
@@ -328,6 +332,7 @@ export class CaseReopeningService {
           candidateGroup,
         },
         supervisorId,
+        tenantId,
       );
 
       this.flowableService.handleCaseStatusChanged({
@@ -379,6 +384,7 @@ export class CaseReopeningService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        caseData.tenant_id,
       );
 
       this.logger.log(`Case ${caseId} reopening approved. Status: ${newCaseStatus}`, CaseReopeningService.name);
@@ -435,9 +441,9 @@ export class CaseReopeningService {
         throw new BadRequestException(errorMsg);
       }
 
-      const caseData = await this.validateReopeningPreconditions(caseId);
+      const caseData = await this.validateReopeningPreconditions(caseId, tenantId);
 
-      const reopeningTask = await this.caseRepository.findReopeningTaskForRejection(caseId);
+      const reopeningTask = await this.caseRepository.findReopeningTaskForRejection(caseId, tenantId);
 
       if (!reopeningTask) {
         throw new NotFoundException(`"Approve Case Reopening" task not found for case ${caseId}`);
@@ -521,6 +527,7 @@ export class CaseReopeningService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        caseData.tenant_id,
       );
 
       this.logger.log(`Case ${caseId} reopening rejected. Restored to ${originalClosedStatus}`, CaseReopeningService.name);
@@ -554,8 +561,8 @@ export class CaseReopeningService {
     }
   }
 
-  private async validateReopeningPreconditions(caseId: number): Promise<any> {
-    const caseData = await this.caseRepository.findCaseForReopening(caseId);
+  private async validateReopeningPreconditions(caseId: number, tenantId: string): Promise<any> {
+    const caseData = await this.caseRepository.findCaseForReopening(caseId, tenantId);
 
     if (!caseData) {
       throw new NotFoundException(`Case ${caseId} not found`);

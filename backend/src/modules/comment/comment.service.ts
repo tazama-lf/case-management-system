@@ -49,10 +49,10 @@ export class CommentService {
         }
     }
 
-    async getComment(commentId: number, userId: string) {
+    async getComment(commentId: number, userId: string, tenantId: string) {
         this.logger.log('Retrieving comment', CommentService.name);
         try {
-            const comment = await this.commentRepository.getCommentsByCommentId(commentId);
+            const comment = await this.commentRepository.getCommentsByCommentId(commentId, tenantId);
 
             if (!comment) {
                 throw new NotFoundException('Comment not found');

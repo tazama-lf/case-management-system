@@ -22,22 +22,32 @@ export class TaskLifecycleService {
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
-  private async getTaskOrThrow(taskId: number) {
-    const task = await this.prisma.task.findUnique({ where: { task_id: taskId } });
+  private async getTaskOrThrow(taskId: number, tenantId: string) {
+    const task = await this.prisma.task.findUnique({ 
+      where: { 
+        task_id: taskId,
+        tenant_id: tenantId 
+      } 
+    });
     if (!task) throw new NotFoundException(`Task ${taskId} not found`);
     return task;
   }
 
-  private async getCaseOrThrow(caseId: number) {
-    const c = await this.prisma.case.findUnique({ where: { case_id: caseId } });
+  private async getCaseOrThrow(caseId: number, tenantId: string) {
+    const c = await this.prisma.case.findUnique({ 
+      where: { 
+        case_id: caseId,
+        tenant_id: tenantId 
+      } 
+    });
     if (!c) throw new NotFoundException(`Case ${caseId} not found`);
     return c;
   }
 
   async assignTaskToInvestigator(taskId: number, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
     this.validateAssignee(assignedUserId);
-    const existingTask = await this.getTaskOrThrow(taskId);
-    const existingCase = await this.getCaseOrThrow(existingTask.case_id);
+    const existingTask = await this.getTaskOrThrow(taskId, tenantId);
+    const existingCase = await this.getCaseOrThrow(existingTask.case_id, tenantId);
     // Define investigation task names that should update case status
     const investigationTasks = ['Investigate Case', 'Investigate Fraud', 'Investigate AML'];
     const isInvestigationTask = investigationTasks.includes(existingTask.name || '');
@@ -109,13 +119,6 @@ export class TaskLifecycleService {
       return { updatedTask, updatedCase };
     });
 
-    // this.emitAssignment(taskId, result.updatedTask.case_id, assignedUserId, previousAssignedUserId || undefined);
-    // this.emitCaseStatusChange(
-    //   existingTask.case_id,
-    //   previousCaseStatus,
-    //   CaseStatus.STATUS_10_ASSIGNED,
-    //   `Case assigned to investigator ${assignedUserId} by supervisor ${supervisorId}`,
-    // );
 
     await this.loggingOrchestrationService.logActionsWithHistory(
       {
@@ -128,6 +131,7 @@ export class TaskLifecycleService {
         outcome: Outcome.SUCCESS,
       },
       existingTask.case_id,
+      existingTask.tenant_id,
       taskId,
     );
 
@@ -143,9 +147,9 @@ export class TaskLifecycleService {
 
   async reassignTask(taskId: number, actorUserId: string, tenantId: string, assignedUserId: string, note: string) {
     this.validateAssignee(assignedUserId);
-    const existingTask = await this.getTaskOrThrow(taskId);
+    const existingTask = await this.getTaskOrThrow(taskId, tenantId);
     const previousAssignedUserId = existingTask.assigned_user_id;
-    const existingCase = await this.getCaseOrThrow(existingTask.case_id);
+    const existingCase = await this.getCaseOrThrow(existingTask.case_id, tenantId);
     const previousCaseStatus = existingCase.status;
 
     // Define investigation task names that should update case status
@@ -214,14 +218,6 @@ export class TaskLifecycleService {
       return { updatedTask, updatedCase };
     });
 
-    // this.emitAssignment(taskId, result.updatedTask.case_id, assignedUserId, previousAssignedUserId || undefined);
-    // this.emitCaseStatusChange(
-    //   existingTask.case_id,
-    //   previousCaseStatus,
-    //   CaseStatus.STATUS_10_ASSIGNED,
-    //   `Case reassigned to investigator ${assignedUserId} by ${actorUserId}`,
-    // );
-
     await this.loggingOrchestrationService.logActionsWithHistory(
       {
         userId: assignedUserId,
@@ -231,6 +227,7 @@ export class TaskLifecycleService {
         outcome: Outcome.SUCCESS,
       },
       existingTask.case_id,
+      existingTask.tenant_id,
       taskId,
     );
 
@@ -238,11 +235,11 @@ export class TaskLifecycleService {
   }
 
   async selfAssignTask(taskId: number, investigatorUserId: string, tenantId: string) {
-    const existingTask = await this.getTaskOrThrow(taskId);
+    const existingTask = await this.getTaskOrThrow(taskId, tenantId);
     if (existingTask.assigned_user_id) throw new BadRequestException(`Task ${taskId} is already assigned.`);
     if (existingTask.status !== TaskStatus.STATUS_01_UNASSIGNED)
       throw new BadRequestException(`Task ${taskId} must be unassigned to self-assign.`);
-    const existingCase = await this.getCaseOrThrow(existingTask.case_id);
+    const existingCase = await this.getCaseOrThrow(existingTask.case_id, tenantId);
     const previousCaseStatus = existingCase.status;
 
     // Define investigation task names that should update case status
@@ -300,14 +297,6 @@ export class TaskLifecycleService {
       return { updatedTask, updatedCase };
     });
 
-    // this.emitAssignment(taskId, result.updatedTask.case_id, investigatorUserId, undefined);
-    // this.emitCaseStatusChange(
-    //   existingTask.case_id,
-    //   previousCaseStatus,
-    //   CaseStatus.STATUS_10_ASSIGNED,
-    //   `Case self-assigned by investigator ${investigatorUserId}`,
-    // );
-
     await this.loggingOrchestrationService.logActionsWithHistory(
       {
         userId: investigatorUserId,
@@ -319,6 +308,7 @@ export class TaskLifecycleService {
         outcome: Outcome.SUCCESS,
       },
       existingTask.case_id,
+      existingTask.tenant_id,
       taskId,
     );
 
@@ -327,12 +317,12 @@ export class TaskLifecycleService {
 
   async unassignTask(taskId: number, actorUserId: string, tenantId: string, reason: string) {
     if (!reason || !reason.trim()) throw new BadRequestException('Reason for unassigning task is required');
-    const existingTask = await this.getTaskOrThrow(taskId);
+    const existingTask = await this.getTaskOrThrow(taskId, tenantId);
     if (existingTask.status === TaskStatus.STATUS_30_COMPLETED)
       throw new BadRequestException(`Cannot unassign a completed task (${taskId})`);
     if (!existingTask.assigned_user_id) throw new BadRequestException(`Task ${taskId} is already unassigned`);
 
-    const existingCase = await this.getCaseOrThrow(existingTask.case_id);
+    const existingCase = await this.getCaseOrThrow(existingTask.case_id, tenantId);
     const previousCaseStatus = existingCase.status;
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -396,18 +386,6 @@ export class TaskLifecycleService {
       return { updatedTask };
     });
 
-    // const candidateGroup = existingTask.candidateGroup?.toLowerCase() || '';
-    // this.eventEmitter.emit(
-    //   'task.unassigned',
-    //   new TaskUnassignedEvent(taskId, result.updatedTask.case_id, existingTask.assigned_user_id || undefined, candidateGroup, reason),
-    // );
-    // this.emitCaseStatusChange(
-    //   existingTask.case_id,
-    //   previousCaseStatus,
-    //   CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-    //   `Task unassigned. Reason: ${reason}`,
-    // );
-
     try {
       if (existingTask.assigned_user_id) {
         await this.notificationService.sendNotification({
@@ -417,14 +395,6 @@ export class TaskLifecycleService {
           metadata: { taskId, caseId: existingTask.case_id, unassignedBy: actorUserId, reason, taskTitle: existingTask.name },
         });
       }
-      // if (candidateGroup) {
-      //   await this.notificationService.sendGroupNotification({
-      //     candidateGroup,
-      //     type: 'TASK_AVAILABLE',
-      //     message: `Task "${existingTask.name || taskId}" is now available in the ${candidateGroup} work queue`,
-      //     metadata: { taskId, caseId: existingTask.case_id, unassignmentReason: reason },
-      //   });
-      // }
     } catch (e) {
       this.logger.warn(`Failed notifications for unassign: ${e.message}`, TaskLifecycleService.name);
     }
@@ -438,62 +408,24 @@ export class TaskLifecycleService {
         outcome: Outcome.SUCCESS,
       },
       existingTask.case_id,
+      existingTask.tenant_id,
       taskId,
     );
 
     return {
       ...result.updatedTask,
-      // message: `Task successfully unassigned and returned to ${candidateGroup} work queue`,
-      // candidateGroup,
       unassignmentReason: reason,
     };
   }
 
-  // async releaseTask(taskId: string, actorUserId: string) {
-  //   const existingTask = await this.getTaskOrThrow(taskId);
-  //   const previousAssignedUserId = existingTask.assigned_user_id;
-  //   const updatedTask = await this.prisma.task.update({
-  //     where: { task_id: taskId },
-  //     data: { assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED },
-  //     include: { case: true },
-  //   });
-  //   this.eventEmitter.emit(
-  //     'task.unassigned',
-  //     new TaskUnassignedEvent(taskId, updatedTask.case_id, previousAssignedUserId || undefined, existingTask.candidateGroup || undefined),
-  //   );
-  //   await this.auditLogService.logAction({
-  //     userId: actorUserId,
-  //     actionPerformed: `Released task ${taskId}`,
-  //     entityName: 'TaskService',
-  //     operation: 'releaseTask',
-  //     outcome: 'SUCCESS',
-  //     performedAt: new Date(),
-  //   });
-  //   return updatedTask;
-  // }
 
-  async completeTask(taskId: number, actorUserId: string) {
-    const existingTask = await this.getTaskOrThrow(taskId);
+  async completeTask(taskId: number, actorUserId: string, tenantId: string) {
+    const existingTask = await this.getTaskOrThrow(taskId, tenantId);
     const updatedTask = await this.prisma.task.update({
       where: { task_id: taskId },
       data: { status: TaskStatus.STATUS_30_COMPLETED },
       include: { case: true },
     });
-    // await this.flowableService.handleTaskCompleted({
-    //   caseId: existingTask.case_id,
-    //   taskName: existingTask.name!,
-    //   newStatus: TaskStatus.STATUS_30_COMPLETED,
-    // });
-    // this.eventEmitter.emit(
-    //   'task.status.changed',
-    //   new TaskStatusChangedEvent(
-    //     taskId,
-    //     updatedTask.case_id,
-    //     updatedTask.name || '',
-    //     TaskStatus.STATUS_30_COMPLETED,
-    //     updatedTask.assigned_user_id || undefined,
-    //   ),
-    // );
     await this.loggingOrchestrationService.logActionsWithHistory(
       {
         userId: actorUserId,
@@ -503,6 +435,7 @@ export class TaskLifecycleService {
         outcome: Outcome.SUCCESS,
       },
       existingTask.case_id,
+      existingTask.tenant_id,
       taskId,
     );
 

@@ -14,12 +14,14 @@ export class TaskHistoryService {
         actionPerformed: string;
         case_id: number;
         task_id: number;
+        tenant_id: string;
         performedAt?: Date;
     }) {
         const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
         return this.prisma.taskHistory.create({
             data: {
                 user_id,
+                tenant_id: data.tenant_id,
                 operation: data.operation,
                 entity_name: data.entityName,
                 action_performed: data.actionPerformed,
@@ -30,17 +32,20 @@ export class TaskHistoryService {
         });
     }
 
-    async getLogs(limit = 50, offset = 0) {
+    async getLogs(tenantId: string, limit = 50, offset = 0) {
         return this.prisma.taskHistory.findMany({
+            where: { tenant_id: tenantId },
             orderBy: { performed_at: 'desc' },
             take: limit,
             skip: offset,
         });
     }
-    async getTaskHistory(caseId: number) {
+    async getTaskHistory(caseId: number, tenantId: string) {
         return this.prisma.taskHistory.findMany({
-            where: { case_id: caseId },
-
+            where: { 
+                case_id: caseId,
+                tenant_id: tenantId 
+            },
         });
     }
 }

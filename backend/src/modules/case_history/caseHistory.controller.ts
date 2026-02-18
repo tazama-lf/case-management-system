@@ -1,8 +1,9 @@
-import { Controller, Get, Injectable, Query, UseGuards, Param } from "@nestjs/common";
+import { Controller, Get, Injectable, Query, UseGuards, Param, Req } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiOkResponse, ApiUnauthorizedResponse, ApiBearerAuth, ApiTags, ApiParam, ApiResponse, } from "@nestjs/swagger";
 import { TazamaAuthGuard } from "src/guards/tazama-auth.guard";
 import { CaseHistoryService } from "./caseHistory.service";
 import { LoggerService } from "@tazama-lf/frms-coe-lib";
+import { AuthenticatedRequest } from "src/utils/types/auth.types";
 import { RequireInvestigatorOrSupervisorRoleOrComplianceRole } from "src/decorators/auth.decorator";
 
 @ApiTags('CaseHistory')
@@ -29,8 +30,9 @@ export class CaseHistoryController {
     })
     @ApiOkResponse({ description: 'Event log entries returned successfully.' })
     @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
-    async getLogs(@Query('limit') limit = 50, @Query('offset') offset = 0) {
-        return this.caseHistoryService.getLogs(Number(limit), Number(offset));
+    async getLogs(@Query('limit') limit = 50, @Query('offset') offset = 0, @Req() req: AuthenticatedRequest) {
+        const tenantId = req.user.token.tenantId;
+        return this.caseHistoryService.getLogs(tenantId, Number(limit), Number(offset));
     }
 
     @Get(':caseId')
@@ -50,8 +52,9 @@ export class CaseHistoryController {
         description: 'Action history retrieved successfully',
     })
     @ApiResponse({ status: 404, description: 'Case History not found' })
-    async getCaseHistory(@Param('caseId') caseId: number) {
+    async getCaseHistory(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
         this.loggerService.log(`Cases are: ${caseId}`);
-        return this.caseHistoryService.getCaseHistory(caseId);
+        const tenantId = req.user.token.tenantId;
+        return this.caseHistoryService.getCaseHistory(caseId, tenantId);
     }
 }

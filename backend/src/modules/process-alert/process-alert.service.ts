@@ -48,9 +48,9 @@ export class ProcessAlertService {
                         name: 'Complete New Case',
                         description: `Manual triage required for alert: ${alert.alert_id}`,
                         candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-                        // assignedUserId: userId
                     },
                     userId,
+                    tenantId
                 );
                 break;
             }
@@ -63,12 +63,13 @@ export class ProcessAlertService {
                         status: TaskStatus.STATUS_01_UNASSIGNED,
                         name: 'Investigate Case',
                         description: `Investigate case: ${alert.case_id}`,
-                        candidateGroup: 'Investigations',
+                        candidateGroup: 'Investigations'
                     },
                     userId,
+                    tenantId
                 );
 
-                await this.caseCreationService.updateCaseStatus(alert.case_id, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, userId);
+                await this.caseCreationService.updateCaseStatus(alert.case_id, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, userId, tenantId);
                 break;
             }
         }

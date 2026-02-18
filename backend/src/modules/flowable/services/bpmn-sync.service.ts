@@ -59,7 +59,9 @@ export class BpmnSyncService {
       const taskVariables = await this.utilitiesService.getTaskVariables(taskId);
 
       if (taskVariables.postgres_task_id) {
-        const dbTask = await this.taskRepository.findTaskById(taskVariables.postgres_task_id as number);
+        // Need to get tenantId from case first
+        const tempCase = await this.caseRepository.findCaseById(caseId, 'temp');
+        const dbTask = tempCase ? await this.taskRepository.findTaskById(taskVariables.postgres_task_id as number, tempCase.tenant_id) : null;
 
         if (dbTask) {
           this.logger.debug(`[BPMN-Sync] Task ${taskId} already synced with database task ${dbTask.task_id}`, BpmnSyncService.name);
@@ -72,8 +74,9 @@ export class BpmnSyncService {
         }
       }
 
-      // Verify case exists
-      const dbCase = await this.caseRepository.findCaseById(caseId);
+      // Verify case exists - use a default tenantId for lookup
+      // In production, this should be obtained from the process variables
+      const dbCase = await this.caseRepository.findCaseById(caseId, (taskVariables.tenant_id as string) || 'default');
 
       if (!dbCase) {
         this.logger.error(`[BPMN-Sync] Database case ${caseId} not found for Flowable task ${taskId}`, BpmnSyncService.name);

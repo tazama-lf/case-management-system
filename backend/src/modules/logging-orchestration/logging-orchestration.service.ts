@@ -27,7 +27,7 @@ export class LoggingOrchestrationService {
     }
   }
 
-  async logActionsWithHistory(logData: LogDataDTO, case_id: number, task_id?: number): Promise<void> {
+  async logActionsWithHistory(logData: LogDataDTO, case_id: number, tenant_id: string, task_id?: number): Promise<void> {
     try {
       const performedAt = new Date();
       await this.auditLogService.logAction(logData);
@@ -41,6 +41,7 @@ export class LoggingOrchestrationService {
             entityName: logData.entityName,
             actionPerformed: logData.actionPerformed,
             case_id,
+            tenant_id,
             performedAt,
           }),
         ]);
@@ -54,6 +55,7 @@ export class LoggingOrchestrationService {
             actionPerformed: logData.actionPerformed,
             case_id,
             task_id,
+            tenant_id,
             performedAt,
           }),
         ]);

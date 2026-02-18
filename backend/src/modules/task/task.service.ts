@@ -39,11 +39,11 @@ export class TaskService {
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) { }
 
-  async createTask(taskDTO: CreateTaskDto, userId: string) {
+  async createTask(taskDTO: CreateTaskDto, userId: string, tenantId: string) {
     this.logger.log('Start - createTask', TaskService.name);
     try {
       // Fetch the case to get the tenant_id
-      const caseRecord = await this.taskRepository.findCaseBasic(taskDTO.caseId);
+      const caseRecord = await this.taskRepository.findCaseBasic(taskDTO.caseId, tenantId);
       if (!caseRecord) {
         throw new NotFoundException(`Case ${taskDTO.caseId} not found`);
       }
@@ -72,6 +72,7 @@ export class TaskService {
           outcome: Outcome.SUCCESS,
         },
         createdTask.case_id,
+        caseRecord.tenant_id,
         createdTask.task_id,
       );
 
@@ -92,11 +93,11 @@ export class TaskService {
     return this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId, notes);
   }
 
-  async updateTask(taskId: number, updateData: Partial<UpdateTaskDto>, userId: string) {
+  async updateTask(taskId: number, updateData: Partial<UpdateTaskDto>, userId: string, tenantId: string) {
     this.logger.log(`Start - Update Task: ${taskId}`, TaskService.name);
 
     try {
-      const existingTask = await this.taskRepository.findTaskWithCase(taskId);
+      const existingTask = await this.taskRepository.findTaskWithCase(taskId, tenantId);
 
       if (!existingTask) {
         throw new NotFoundException(`Task ${taskId} not found`);
@@ -122,7 +123,7 @@ export class TaskService {
         const txResult = await this.taskRepository.transaction(async (tx) => {
           const taskRecord = await this.taskRepository.updateTask(taskId, updateInput, tx);
 
-          const caseRecord = await this.taskRepository.findCaseStatus(taskRecord.case_id, tx);
+          const caseRecord = await this.taskRepository.findCaseStatus(taskRecord.case_id, tenantId, tx);
           if (!caseRecord) throw new NotFoundException(`Case ${taskRecord.case_id} not found`);
 
           if (this.isCaseEligibleForInProgress(caseRecord.status)) {
@@ -173,34 +174,6 @@ export class TaskService {
 
         // Check if task is being completed and is fraud/AML investigation
         if (updateData.status === TaskStatus.STATUS_30_COMPLETED) {
-
-
-
-          // if (existingTask.name === 'Investigate Fraud') {
-          //   await this.flowableService.handleTaskCompleted({
-          //     caseId: updatedTask.case_id,
-          //     taskName: 'Investigate Fraud',
-          //     newStatus: TaskStatus.STATUS_30_COMPLETED,
-          //     completionVariables: {
-          //       fraudInvestigationAction: 'complete',
-          //       fraudRecommendedOutcome: updateData.recommendedOutcome,
-          //       fraudInvestigationNotes: updateData.finalNotes,
-          //     },
-          //   });
-          // }
-
-          // if (existingTask.name === 'Investigate AML') {
-          //   await this.flowableService.handleTaskCompleted({
-          //     caseId: updatedTask.case_id,
-          //     taskName: 'Investigate AML',
-          //     newStatus: TaskStatus.STATUS_30_COMPLETED,
-          //     completionVariables: {
-          //       amlInvestigationAction: 'complete',
-          //       amlRecommendedOutcome: updateData.recommendedOutcome,
-          //       amlInvestigationNotes: updateData.finalNotes,
-          //     },
-          //   });
-          // }
         } else {
           await this.flowableService.handleTaskAssigned({
             taskId: updatedTask.task_id,
@@ -221,6 +194,7 @@ export class TaskService {
             outcome: Outcome.SUCCESS,
           },
           updatedTask.case_id,
+          updatedTask.tenant_id,
           updatedTask.task_id,
         );
       } else {
@@ -250,7 +224,7 @@ export class TaskService {
     }
   }
 
-  async getTasksByCandidateGroup(candidateGroup: string, userId: string) {
+  async getTasksByCandidateGroup(candidateGroup: string, userId: string, tenantId: string) {
     this.logger.log(`Retrieving tasks for candidateGroup: ${candidateGroup}`, TaskService.name);
 
     try {
@@ -259,6 +233,7 @@ export class TaskService {
           candidateGroup: candidateGroup,
           status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] },
         },
+        tenantId,
         true,
       )) as TaskWithCase[];
 
@@ -284,10 +259,11 @@ export class TaskService {
     }
   }
 
-  async getInvestigationQueue() {
+  async getInvestigationQueue(tenantId: string) {
     try {
       const dbTasks: TaskWithCase[] = (await this.taskRepository.findTasks(
         { candidateGroup: 'investigations', status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED] } },
+        tenantId,
         true,
       )) as any;
 
@@ -298,30 +274,15 @@ export class TaskService {
     }
   }
 
-  async getTasksByCaseId(caseId: number, userId?: string, userClaims: string[] = []) {
+  async getTasksByCaseId(caseId: number, tenantId: string, userId?: string, userClaims: string[] = []) {
     this.logger.log('Retrieving tasks by case', TaskService.name);
 
     try {
-      const tasks = await this.taskRepository.findTasks({ case_id: caseId }, true);
+      const tasks = await this.taskRepository.findTasks({ case_id: caseId }, tenantId, true);
 
       const isInvestigator = userClaims.includes('CMS_INVESTIGATOR');
       const isSupervisor = userClaims.includes('CMS_SUPERVISOR');
-      const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
-
-      // const filteredTasks = tasks.filter((task) => {
-
-      //   const isComplianceTask =
-      //     task.candidateGroup?.toLowerCase() === 'compliance';
-
-      //   // Investigator should NOT see compliance tasks
-      //   if (isSupervisor || isComplianceOfficer) {
-      //     return true;
-      //   } else if (isInvestigator) {
-      //     return !isComplianceTask;
-      //   }
-
-      //   return true;
-      // });
+      const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER')
 
       const enrichedTasks = await Promise.all(
         tasks.map(async (task) => {
@@ -386,26 +347,26 @@ export class TaskService {
     return this.lifecycle.selfAssignTask(taskId, investigatorUserId, tenantId);
   }
 
-  async getTasks(status?: string) {
+  async getTasks(tenantId: string, status?: string) {
     try {
       const where = status ? { status: status as TaskStatus } : {};
-      return await this.taskRepository.findTasks(where, true);
+      return await this.taskRepository.findTasks(where, tenantId, true);
     } catch (error) {
       this.logger.error('Error retrieving tasks', error, TaskService.name);
       throw error;
     }
   }
 
-  async getTaskById(taskId: number) {
+  async getTaskById(taskId: number, tenantId: string) {
     try {
-      return await this.taskRepository.findTaskWithCase(taskId);
+      return await this.taskRepository.findTaskWithCase(taskId, tenantId);
     } catch (error) {
       this.logger.error(`Error retrieving task ${taskId}`, error, TaskService.name);
       throw error;
     }
   }
 
-  async getWorkQueue(filters: {
+  async getWorkQueue(tenantId: string, filters: {
     role?: string;
     candidateGroup?: string;
     page?: number;
@@ -432,10 +393,10 @@ export class TaskService {
         whereClause.assigned_user_id = assignedToMe;
       }
 
-      const totalCount = await this.taskRepository.countTasks(whereClause);
+      const totalCount = await this.taskRepository.countTasks(whereClause, tenantId);
 
       const start = (page - 1) * limit;
-      const dbTasks = (await this.taskRepository.findTasks(whereClause, true, start, limit)) as TaskWithCase[];
+      const dbTasks = (await this.taskRepository.findTasks(whereClause, tenantId, true, start, limit)) as TaskWithCase[];
 
       const tasks = dbTasks.map((task) => ({
         taskId: task.task_id,
@@ -461,7 +422,7 @@ export class TaskService {
     }
   }
 
-  async getWorkQueueStatistics(userId: string) {
+  async getWorkQueueStatistics(userId: string, tenantId: string) {
     try {
       const candidateGroups = ['Supervisors', 'Investigations', 'Investigator'];
       const statistics: Record<string, any> = {};
@@ -472,6 +433,7 @@ export class TaskService {
             candidateGroup: group,
             status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] },
           },
+          tenantId,
           false,
         );
 
@@ -487,6 +449,7 @@ export class TaskService {
           assigned_user_id: userId,
           status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] },
         },
+        tenantId,
         false,
       );
 
@@ -507,11 +470,11 @@ export class TaskService {
     }
   }
 
-  async claimTask(taskId: number, userId: string) {
+  async claimTask(taskId: number, userId: string, tenantId: string) {
     this.logger.log(`User ${userId} claiming task ${taskId}`, TaskService.name);
 
     try {
-      const existingTask = await this.taskRepository.findTaskById(taskId);
+      const existingTask = await this.taskRepository.findTaskById(taskId, tenantId);
       if (!existingTask) {
         throw new NotFoundException(`Task ${taskId} not found`);
       }
@@ -537,6 +500,7 @@ export class TaskService {
           outcome: Outcome.SUCCESS,
         },
         updatedTask.case_id,
+        updatedTask.tenant_id,
         taskId,
       );
 
@@ -551,11 +515,11 @@ export class TaskService {
     return this.lifecycle.unassignTask(taskId, userId, tenantId, reason || '');
   }
 
-  async completeTask(taskId: number, userId: string, auditLogService?: AuditLogService) {
-    return this.lifecycle.completeTask(taskId, userId);
+  async completeTask(taskId: number, userId: string, tenantId: string, auditLogService?: AuditLogService) {
+    return this.lifecycle.completeTask(taskId, userId, tenantId);
   }
 
-  async getUserTasks(userId: string, includeCompleted: boolean = false) {
+  async getUserTasks(userId: string, tenantId: string, includeCompleted: boolean = false) {
     try {
       const statusFilter = includeCompleted
         ? {}
@@ -565,7 +529,7 @@ export class TaskService {
           },
         };
 
-      return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, true);
+      return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, tenantId, true);
     } catch (error) {
       this.logger.error(`Error retrieving tasks for user ${userId}`, error, TaskService.name);
       throw error;

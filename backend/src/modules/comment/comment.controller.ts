@@ -25,7 +25,8 @@ export class CommentController {
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async getComment(@Param('commentId') commentId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.commentService.getComment(commentId, userId);
+    const tenantId = req.user.token.tenantId;
+    return this.commentService.getComment(commentId, userId, tenantId);
   }
 
   @Get()
