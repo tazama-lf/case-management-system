@@ -33,7 +33,7 @@ export class TaskService {
     private readonly flowableService: FlowableService,
     private readonly authService: AuthService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+  ) { }
 
   async createTask(taskDTO: CreateTaskDto, userId: string) {
     this.logger.log('Start - createTask', TaskService.name);
@@ -470,10 +470,10 @@ export class TaskService {
       const statusFilter = includeCompleted
         ? {}
         : {
-            status: {
-              not: TaskStatus.STATUS_30_COMPLETED,
-            },
-          };
+          status: {
+            not: TaskStatus.STATUS_30_COMPLETED,
+          },
+        };
 
       return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, true);
     } catch (error) {
@@ -534,7 +534,7 @@ export class TaskService {
         },
       });
 
-      if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && subCase?.status === CaseStatus.STATUS_20_IN_PROGRESS) {
+      if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && (subCase?.status === CaseStatus.STATUS_20_IN_PROGRESS || subCase?.status === CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL)) {
         await tx.case.update({
           where: { case_id: parentId },
           data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },

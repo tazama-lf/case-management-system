@@ -262,6 +262,33 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
         );
       }
 
+    } else if (onReopenCase && CLOSED_STATUSES.includes(caseData.status)) {
+      if (caseData.parentId) {
+        if (parentCaseDetails && CLOSED_STATUSES.includes(parentCaseDetails.status)) {
+          actions.push(
+            <button
+              key="reopen"
+              onClick={() => onReopenCase(caseData)}
+              className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              <PlayIcon className="h-4 w-4" />
+              Reopen Case
+            </button>
+          );
+        }
+
+      } else {
+        actions.push(
+          <button
+            key="reopen"
+            onClick={() => onReopenCase(caseData)}
+            className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            <PlayIcon className="h-4 w-4" />
+            Reopen Case
+          </button>
+        );
+      }
     }
 
     // Abandon Case button - show for draft cases only

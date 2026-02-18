@@ -276,7 +276,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   };
 
   const addTriageAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
-    if (task.name === 'Complete New Case' && task.assignee && onUpdateStatus) {
+    if (task.name === 'Complete New Case' && onUpdateStatus) {
       const isLoading = loadingAlertForTask === task.id;
       actions.push(
         <button
@@ -369,6 +369,11 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       addUnassignAction(actions, task);
       addViewAction(actions, task);
       addApprovalActions(actions, task);
+      return actions;
+    }
+
+    if (task.name.toLowerCase() === 'complete new case') {
+      addTriageAction(actions, task);
       return actions;
     }
 
@@ -550,6 +555,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
           />
         </Suspense>
       )}
+
     </div>)
 };
 
