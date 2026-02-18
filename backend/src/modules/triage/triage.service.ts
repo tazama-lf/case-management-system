@@ -5,7 +5,6 @@ import { CreateCommentDto } from '../comment/dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from '../task/task.service';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
-import { CommentService } from '../comment/comment.service';
 import { Priority, CaseStatus, CaseType, Prisma, TaskStatus, CaseCreationType } from '@prisma/client-cms';
 import { AIPrediction, Prediction } from '../../utils/interfaces/Prediction';
 import { CaseStatusChangedEvent } from '../events/domain-events';
@@ -42,7 +41,6 @@ export class TriageService {
     private readonly alertService: AlertService,
     private readonly caseCreationService: CaseCreationApprovalService,
     private taskService: TaskService,
-    private commentService: CommentService,
     private configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
     private readonly casePriorityUtil: CasePriorityUtil,
@@ -143,8 +141,6 @@ export class TriageService {
           if (alert.alert_type === CaseType.FRAUD_AND_AML) {
             await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, alert.case_id, priority);
             await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, alert.case_id, priority);
-          } else {
-            //do Nothing
           }
 
           await this.flowableService.handleTaskCompleted({
@@ -157,22 +153,11 @@ export class TriageService {
               casePriority: alert.priority,
             },
           });
-
-          this.logger.log(
-            `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Sent to investigation`,
-            TriageService.name,
-          );
         }
         return { alert };
       });
-      // const alert = await this.alertService.updateAlert(alertId, userId, {
-      //   confidencePer: updateAlertDto.confidence_per,
-      //   priority: updateAlertDto.priority,
-      //   priority_score: updateAlertDto.priorityScore,
-      //   predictionOutcome: updateAlertDto.predictionOutcome,
-      //   alertType: updateAlertDto.alertType,
-      // });
 
+      this.logger.log(`End - handleManualTriage`, TriageService.name);
       return transactionResult.alert;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
