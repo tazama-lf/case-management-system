@@ -5,11 +5,10 @@ import { ApiProperty } from '@nestjs/swagger';
  */
 export class AlertDto {
   @ApiProperty({
-    description: 'Unique alert identifier',
-    format: 'uuid',
-    example: '123e4567-e89b-12d3-a456-426614174000'
+    description: 'AlertId of the alert to triage',
+    example: 123
   })
-  alert_id: string;
+  alert_id: number;
 
   @ApiProperty({
     description: 'Alert priority level',

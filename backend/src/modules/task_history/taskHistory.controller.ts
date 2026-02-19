@@ -43,9 +43,9 @@ export class TaskHistoryController {
     })
     @ApiParam({
         name: 'caseId',
-        type: 'string',
-        description: 'UUID of the case',
-        example: '123e4567-e89b-12d3-a456-426614174000',
+        type: 'number',
+        description: 'case Id',
+        example: '123',
     })
     @ApiResponse({
         status: 200,

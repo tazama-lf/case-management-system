@@ -59,11 +59,11 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   onTaskClick,
 
 }) => {
-  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
-  const [showManualTriageModal, setShowManualTriageModal] = useState(false);
-  const [loadingAlertForTask, setLoadingAlertForTask] = useState<number | null>(null);
+  //const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  // const [showManualTriageModal, setShowManualTriageModal] = useState(false);
+  // const [loadingAlertForTask, setLoadingAlertForTask] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<User>(); // Replace with actual user fetching logic
-  const { success, error: showError } = useToast();
+  // const { success, error: showError } = useToast();
   const { performManualTriage } = useAlertOperations();
   const { hasComplianceOfficerRole, hasSupervisorRole, hasInvestigatorRole } = useAuth();
   // const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
@@ -113,33 +113,33 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     );
   };
 
-  const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
-    try {
-      await performManualTriage({
-        alertId: alert.alert_id,
-        data: triageData,
-      });
+  // const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
+  //   try {
+  //     await performManualTriage({
+  //       alertId: alert.alert_id,
+  //       data: triageData,
+  //     });
 
-      // Close modal immediately
-      setShowManualTriageModal(false);
-      setSelectedAlert(null);
-      setLoadingAlertForTask(null);
+  //     // Close modal immediately
+  //     setShowManualTriageModal(false);
+  //     setSelectedAlert(null);
+  //     setLoadingAlertForTask(null);
 
-      success('Manual Triage Completed', 'The alert has been triaged successfully.');
+  //     success('Manual Triage Completed', 'The alert has been triaged successfully.');
 
-      // Brief delay to ensure backend has processed the triage and created new tasks
-      await new Promise(resolve => setTimeout(resolve, 500));
+  //     // Brief delay to ensure backend has processed the triage and created new tasks
+  //     await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Refresh tasks to show updated "Complete New Case" status and new "Investigate" task
-      if (onRefreshCases) {
-        await onRefreshCases();
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to perform triage. Please try again.';
-      showError('Triage Failed', errorMessage);
-      throw error;
-    }
-  };
+  //     // Refresh tasks to show updated "Complete New Case" status and new "Investigate" task
+  //     if (onRefreshCases) {
+  //       await onRefreshCases();
+  //     }
+  //   } catch (error) {
+  //     const errorMessage = error instanceof Error ? error.message : 'Failed to perform triage. Please try again.';
+  //     showError('Triage Failed', errorMessage);
+  //     throw error;
+  //   }
+  // };
 
   const createActionButton = (
     key: string,
@@ -275,50 +275,50 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     }
   };
 
-  const addTriageAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
-    if (task.name === 'Complete New Case' && onUpdateStatus) {
-      const isLoading = loadingAlertForTask === task.id;
-      actions.push(
-        <button
-          key="complete-triage"
-          onClick={async () => {
-            try {
-              if (alertId == null || alertId == undefined) {
-                console.error('alert Id is undefined');
-                showError('Error', 'AlertId is undefined');
-                return;
-              }
-              // Fetch alert details for triage analysis
-              const alertDetails = await triageService.getAlertById(alertId);
-              setSelectedAlert(transformBackendAlertToUI(alertDetails));
-              setShowManualTriageModal(true);
-            } catch (error) {
-              console.error('Failed to load alert for triage:', error);
-              const errorMessage = error instanceof Error ? error.message : 'Failed to load alert details';
-              showError('Error', errorMessage);
-            } finally {
-              setLoadingAlertForTask(null);
-            }
-          }}
-          disabled={isLoading}
-          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Complete triage"
-        >
-          {/* Show loading spinner or normal icon based on state */}
-          {isLoading ? (
-            <>
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700 mr-1" />
-              Loading...
-            </>
-          ) : (
-            <>
-              <CheckIcon className="h-4 w-4 mr-1" />
-              {/* Complete */}
-            </>
-          )}
-        </button>);
-    }
-  };
+  // const addTriageAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
+  //   if (task.name === 'Complete New Case' && onUpdateStatus) {
+  //     const isLoading = loadingAlertForTask === task.id;
+  //     actions.push(
+  //       <button
+  //         key="complete-triage"
+  //         onClick={async () => {
+  //           try {
+  //             if (alertId == null || alertId == undefined) {
+  //               console.error('alert Id is undefined');
+  //               showError('Error', 'AlertId is undefined');
+  //               return;
+  //             }
+  //             // Fetch alert details for triage analysis
+  //             const alertDetails = await triageService.getAlertById(alertId);
+  //             setSelectedAlert(transformBackendAlertToUI(alertDetails));
+  //             setShowManualTriageModal(true);
+  //           } catch (error) {
+  //             console.error('Failed to load alert for triage:', error);
+  //             const errorMessage = error instanceof Error ? error.message : 'Failed to load alert details';
+  //             showError('Error', errorMessage);
+  //           } finally {
+  //             setLoadingAlertForTask(null);
+  //           }
+  //         }}
+  //         disabled={isLoading}
+  //         className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+  //         title="Complete triage"
+  //       >
+  //         {/* Show loading spinner or normal icon based on state */}
+  //         {isLoading ? (
+  //           <>
+  //             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700 mr-1" />
+  //             Loading...
+  //           </>
+  //         ) : (
+  //           <>
+  //             <CheckIcon className="h-4 w-4 mr-1" />
+  //             {/* Complete */}
+  //           </>
+  //         )}
+  //       </button>);
+  //   }
+  // };
 
   const addStatusAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
     if (task.assignee && onUpdateStatus && task.name !== 'Complete New Case' && isCurrentUserAssigned(task) && task.status.toUpperCase() !== 'SUSPENDED') {
@@ -373,7 +373,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     }
 
     if (task.name.toLowerCase() === 'complete new case') {
-      addTriageAction(actions, task);
+      // addTriageAction(actions, task);
       return actions;
     }
 
@@ -386,7 +386,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     addReassignAction(actions, task);
     addUnassignAction(actions, task);
     addApprovalActions(actions, task);
-    addTriageAction(actions, task);
+    // addTriageAction(actions, task);
     addStatusAction(actions, task);
 
     return actions;
@@ -542,7 +542,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       )}
 
       {/* Manual Triage Modal */}
-      {selectedAlert && (
+      {/* {selectedAlert && (
         <Suspense fallback={<div>Loading modal...</div>}>
           <ManualTriageModal
             isOpen={showManualTriageModal}
@@ -554,7 +554,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
             onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
           />
         </Suspense>
-      )}
+      )} */}
 
     </div>)
 };
