@@ -53,7 +53,7 @@ import { UserWorkloadResponseDto } from './dto/user-workload-response.dto';
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class CaseController {
-  constructor(private readonly caseService: CaseService) {}
+  constructor(private readonly caseService: CaseService) { }
 
   // @Get(':caseId/action-history')
   // @RequireInvestigatorOrSupervisorRole()
@@ -101,7 +101,12 @@ export class CaseController {
     summary: 'Abandon a DRAFT case',
     description: 'Abandons a DRAFT case, requires reason, closes associated task, and logs the event.',
   })
-  @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to abandon' })
+  @ApiParam({
+    name: 'caseId',
+    type: 'number',
+    description: 'Case Id of the case to abandon',
+    example: 123,
+  })
   @ApiBody({ type: RequestAbandonCaseDto })
   @ApiResponse({ status: 200, description: 'Case abandoned successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
@@ -119,7 +124,12 @@ export class CaseController {
     summary: 'Reopen an closed case',
     description: 'Reopen a closed case, requires reason, resumes associated task, and logs the event.',
   })
-  @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to resume' })
+  @ApiParam({
+    name: 'caseId',
+    type: 'number',
+    description: 'Case Id of the case to reopen',
+    example: 123,
+  })
   @ApiBody({ type: RequestReopenCaseDto })
   @ApiResponse({ status: 200, description: 'Case reopened successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
@@ -137,7 +147,12 @@ export class CaseController {
     summary: 'Suspend an in-progress case',
     description: 'Suspends a an in-progress case, requires reason, blocks associated task, and logs the event.',
   })
-  @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to suspend' })
+  @ApiParam({
+    name: 'caseId',
+    type: 'number',
+    description: 'Case Id of the case to suspend',
+    example: 123,
+  })
   @ApiBody({ type: RequestSuspendCaseDto })
   @ApiResponse({ status: 200, description: 'Case suspended successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
@@ -155,7 +170,12 @@ export class CaseController {
     summary: 'Resume an suspended case',
     description: 'Resumes a suspended case, requires reason, resumes associated task, and logs the event.',
   })
-  @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to resume' })
+  @ApiParam({
+    name: 'caseId',
+    type: 'number',
+    description: 'Case Id of the case to resume',
+    example: 123,
+  })
   @ApiBody({ type: RequestResumeCaseDto })
   @ApiResponse({ status: 200, description: 'Case resumed successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
@@ -173,7 +193,12 @@ export class CaseController {
     summary: 'Complete a DRAFT case',
     description: 'Completes a DRAFT case and creates investigation task. Also syncs with Flowable.',
   })
-  @ApiParam({ name: 'caseId', type: 'string', description: 'UUID of the case to complete' })
+  @ApiParam({
+    name: 'caseId',
+    type: 'number',
+    description: 'Case Id of the case to complete',
+    example: 123,
+  })
   @ApiResponse({ status: 200, description: 'Case completed successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing information' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to complete cases' })
@@ -224,9 +249,9 @@ export class CaseController {
   })
   @ApiParam({
     name: 'caseId',
-    type: 'string',
-    description: 'UUID of the case to close',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the case to close',
+    example: 123,
   })
   @ApiBody({ type: CloseCaseDto })
   @ApiResponse({
@@ -432,9 +457,9 @@ export class CaseController {
   })
   @ApiParam({
     name: 'caseId',
-    type: 'string',
-    description: 'UUID of the case to approve closure for',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the case to approve closure for',
+    example: 123,
   })
   @ApiBody({
     type: ApproveCaseClosureDto,
@@ -499,9 +524,9 @@ export class CaseController {
   })
   @ApiParam({
     name: 'caseId',
-    type: 'string',
-    description: 'UUID of the case to reject closure for',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the case to reject closure for',
+    example: 123,
   })
   @ApiBody({
     type: RejectCaseClosureDto,
@@ -556,9 +581,9 @@ export class CaseController {
   })
   @ApiParam({
     name: 'caseId',
-    type: 'string',
-    description: 'UUID of the case to approve creation for',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'caseId of the case to approve creation for',
+    example: '123',
   })
   @ApiResponse({
     status: 200,
@@ -597,9 +622,9 @@ export class CaseController {
   })
   @ApiParam({
     name: 'caseId',
-    type: 'string',
-    description: 'UUID of the case to reject creation for',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the case to reject creation for',
+    example: 123,
   })
   @ApiBody({ type: RejectCaseCreationBodyDto })
   @ApiResponse({
@@ -640,9 +665,9 @@ export class CaseController {
   })
   @ApiParam({
     name: 'caseId',
-    type: 'string',
-    description: 'UUID of the case to approve reopening for',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the case to approve reopening for',
+    example: 123,
   })
   @ApiResponse({
     status: 200,
@@ -685,9 +710,9 @@ export class CaseController {
   })
   @ApiParam({
     name: 'caseId',
-    type: 'string',
-    description: 'UUID of the case to reject reopening for',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the case to reject reopening for',
+    example: 123,
   })
   @ApiBody({
     type: RejectCaseReopeningDto,
@@ -754,9 +779,9 @@ export class CaseController {
   })
   @ApiParam({
     name: 'caseId',
-    type: 'string',
-    description: 'UUID of the case to return for review',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the case to return for review',
+    example: 123,
   })
   @ApiBody({ type: ReturnCaseForReviewDto })
   @ApiResponse({

@@ -54,7 +54,7 @@ export class TaskController {
   constructor(
     private readonly taskService: TaskService,
     private readonly loggerService: LoggerService,
-  ) {}
+  ) { }
 
   @Post()
   @RequireAlertTriageRole()
@@ -134,9 +134,9 @@ export class TaskController {
   })
   @ApiParam({
     name: 'taskId',
-    type: 'string',
-    description: 'UUID of the task to reassign',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the task to reassign',
+    example: 123,
   })
   @ApiBody({
     type: ReassignTaskDto,
@@ -209,9 +209,9 @@ export class TaskController {
   })
   @ApiParam({
     name: 'taskId',
-    type: 'string',
-    description: 'UUID of the task to unassign',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the task',
+    example: 123,
   })
   @ApiBody({
     type: UnassignTaskDto,
@@ -305,9 +305,9 @@ export class TaskController {
   })
   @ApiParam({
     name: 'taskId',
-    type: 'string',
-    description: 'UUID of the task to assign',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the task to assign',
+    example: 123,
   })
   @ApiBody({
     type: AssignTaskDto,
@@ -395,9 +395,9 @@ export class TaskController {
   })
   @ApiParam({
     name: 'taskId',
-    type: 'string',
-    description: 'UUID of the task to self-assign',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the task to self-assigns',
+    example: 123,
   })
   @ApiResponse({
     status: 200,
@@ -458,9 +458,9 @@ export class TaskController {
   })
   @ApiParam({
     name: 'taskId',
-    type: 'string',
-    description: 'UUID of the task to update',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the task to update',
+    example: 123,
   })
   @ApiBody({
     type: UpdateTaskDto,
@@ -580,9 +580,9 @@ export class TaskController {
   })
   @ApiParam({
     name: 'caseId',
-    type: 'string',
-    description: 'UUID of the case',
-    example: '550e8400-e29b-41d4-a716-446655440000',
+    type: 'number',
+    description: 'CaseId of the case',
+    example: 550,
   })
   @ApiResponse({
     status: 200,
@@ -805,9 +805,9 @@ export class TaskController {
   })
   @ApiParam({
     name: 'taskId',
-    type: 'string',
-    description: 'UUID of the task',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'CaseId of the task',
+    example: 123,
   })
   @ApiResponse({
     status: 200,
