@@ -3,8 +3,8 @@ import { PrismaService } from 'prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { NotificationService } from 'src/modules/notification/notification.service';
-import { CaseStatus, TaskStatus, Prisma } from '@prisma/client-cms';
-import { TaskAssignedEvent, TaskUnassignedEvent, TaskStatusChangedEvent, CaseStatusChangedEvent } from '../../events/domain-events';
+import { CaseStatus, TaskStatus } from '@prisma/client-cms';
+import { TaskAssignedEvent, CaseStatusChangedEvent } from '../../events/domain-events';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
@@ -45,7 +45,6 @@ export class TaskLifecycleService {
   }
 
   async assignTaskToInvestigator(taskId: number, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
-    this.validateAssignee(assignedUserId);
     const existingTask = await this.getTaskOrThrow(taskId, tenantId);
     const existingCase = await this.getCaseOrThrow(existingTask.case_id, tenantId);
     // Define investigation task names that should update case status
@@ -82,20 +81,13 @@ export class TaskLifecycleService {
           });
 
           if (updatedCase.status === CaseStatus.STATUS_10_ASSIGNED && subCase?.status === CaseStatus.STATUS_10_ASSIGNED) {
-
             await tx.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_10_ASSIGNED, updated_at: new Date() },
             });
-
           }
-
         }
-
       }
-
-
-
 
       await this.flowableService.handleTaskAssigned({
         taskId,
@@ -146,11 +138,8 @@ export class TaskLifecycleService {
   }
 
   async reassignTask(taskId: number, actorUserId: string, tenantId: string, assignedUserId: string, note: string) {
-    this.validateAssignee(assignedUserId);
     const existingTask = await this.getTaskOrThrow(taskId, tenantId);
-    const previousAssignedUserId = existingTask.assigned_user_id;
     const existingCase = await this.getCaseOrThrow(existingTask.case_id, tenantId);
-    const previousCaseStatus = existingCase.status;
 
     // Define investigation task names that should update case status
     const investigationTasks = ['Investigate Case', 'Investigate Fraud', 'Investigate AML'];
@@ -186,16 +175,12 @@ export class TaskLifecycleService {
           });
 
           if (updatedCase.status === CaseStatus.STATUS_10_ASSIGNED && subCase?.status === CaseStatus.STATUS_10_ASSIGNED) {
-
             await tx.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_10_ASSIGNED, updated_at: new Date() },
             });
-
           }
-
         }
-
       }
 
       await this.flowableService.handleTaskAssigned({
@@ -276,16 +261,12 @@ export class TaskLifecycleService {
           });
 
           if (updatedCase.status === CaseStatus.STATUS_10_ASSIGNED && subCase?.status === CaseStatus.STATUS_10_ASSIGNED) {
-
             await tx.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_10_ASSIGNED, updated_at: new Date() },
             });
-
           }
-
         }
-
       }
 
       await this.flowableService.handleTaskAssigned({
@@ -347,17 +328,16 @@ export class TaskLifecycleService {
             },
           });
 
-          if (updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT && subCase?.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
-
+          if (
+            updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT &&
+            subCase?.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT
+          ) {
             await tx.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, updated_at: new Date() },
             });
-
           }
-
         }
-
       }
 
       await this.flowableService.handleCaseStatusChanged({
@@ -396,7 +376,9 @@ export class TaskLifecycleService {
         });
       }
     } catch (e) {
-      this.logger.warn(`Failed notifications for unassign: ${e.message}`, TaskLifecycleService.name);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      const errorStack = e instanceof Error ? e.stack : undefined;
+      this.logger.warn(`Failed notifications for unassign: ${errorMessage}`, errorStack, TaskLifecycleService.name);
     }
 
     await this.loggingOrchestrationService.logActionsWithHistory(
@@ -448,9 +430,5 @@ export class TaskLifecycleService {
 
   private emitCaseStatusChange(caseId: number, prev: CaseStatus, next: CaseStatus, reason: string) {
     this.eventEmitter.emit('case.status.changed', new CaseStatusChangedEvent(caseId, next, reason));
-  }
-
-  private validateAssignee(id: string) {
-    if (!id) throw new BadRequestException('Assigned user ID cannot be null or undefined');
   }
 }

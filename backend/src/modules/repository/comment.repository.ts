@@ -11,16 +11,21 @@ export class CommentRepository extends BaseRepository {
   }
 
   async createComment(userId: string, createCommentDto: CreateCommentDto, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
-    return await client.comment.create({
-      data: {
-        user_id: userId,
-        tenant_id: createCommentDto.tenantId,
-        case_id: createCommentDto.caseId,
-        task_id: createCommentDto.taskId ?? null,
-        note: createCommentDto.note,
-      },
-    });
+    try {
+      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const createdComment = await client.comment.create({
+        data: {
+          user_id: userId,
+          tenant_id: createCommentDto.tenantId,
+          case_id: createCommentDto.caseId,
+          task_id: createCommentDto.taskId ?? null,
+          note: createCommentDto.note,
+        },
+      });
+      return createdComment;
+    } catch (error) {
+      throw error;
+    }
   }
 
   async getCommentsByCommentId(commentId: number, tenantId: string, tx?: Prisma.TransactionClient) {

@@ -104,7 +104,6 @@ export class CaseCreationApprovalService {
             autoCloseEligible: false,
             caseType: updatedAlert.alert_type,
             casePriority: priority,
-            readyForAssignment: true,
           },
         });
 
@@ -128,26 +127,6 @@ export class CaseCreationApprovalService {
           await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, result.case.case_id, priority);
           await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, result.case.case_id, priority);
 
-          // await this.taskService.createTask(
-          //   {
-          //     caseId: result.case.case_id,
-          //     status: TaskStatus.STATUS_01_UNASSIGNED,
-          //     name: 'Investigate Fraud',
-          //     description: `Fraud Investigation task for manually created case ${result.case.case_id}`,
-          //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-          //   },
-          //   userId,
-          // );
-          // await this.taskService.createTask(
-          //   {
-          //     caseId: result.case.case_id,
-          //     status: TaskStatus.STATUS_01_UNASSIGNED,
-          //     name: 'Investigate AML',
-          //     description: `AML Investigation task for manually created case ${result.case.case_id}`,
-          //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-          //   },
-          //   userId,
-          // );
 
           // Flowable here
         } else {
@@ -188,8 +167,10 @@ export class CaseCreationApprovalService {
         alert: result.alert,
       };
     } catch (err) {
-      this.logger.error('[ManualCase] Manual case creation failed', { error: err, dto, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to create case & link alert: ${err.message}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
+      this.logger.error('[ManualCase] Manual case creation failed', { error: errorMessage, stack: errorStack, dto, userId, tenantId });
+      throw new InternalServerErrorException(`Failed to create case & link alert: ${errorMessage}`);
     }
   }
 
@@ -288,7 +269,9 @@ export class CaseCreationApprovalService {
         message: 'Case saved as draft.',
       };
     } catch (err) {
-      this.logger.error('[DraftCase] Failed to save case as draft', { error: err, dto, userId, tenantId });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
+      this.logger.error('[DraftCase] Failed to save case as draft', { error: errorMessage, stack: errorStack, dto, userId, tenantId });
 
       // Log failure for audit trail
       await this.loggingOrchestrationService.logActions({
@@ -299,7 +282,7 @@ export class CaseCreationApprovalService {
         outcome: Outcome.FAILURE,
       });
 
-      throw new InternalServerErrorException(`Failed to save case as draft: ${err.message}`);
+      throw new InternalServerErrorException(`Failed to save case as draft: ${errorMessage}`);
     }
   }
 
@@ -581,9 +564,11 @@ export class CaseCreationApprovalService {
             : 'Case creation approved. Investigation task created.',
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
-        `[ApproveCaseCreation] Failed to approve case creation: ${error.message}`,
-        error.stack,
+        `[ApproveCaseCreation] Failed to approve case creation: ${errorMessage}`,
+        errorStack,
         CaseCreationApprovalService.name,
       );
 
@@ -591,7 +576,7 @@ export class CaseCreationApprovalService {
         userId: supervisorId,
         operation: 'approveCaseCreation',
         entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Failed to approve case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to approve case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
       });
 
@@ -654,15 +639,12 @@ export class CaseCreationApprovalService {
         CaseCreationApprovalService.name,
       );
 
-      await this.commentRepository.createComment(
-        supervisorId,
-        {
-          caseId: caseId,
-          taskId: completeNewCaseTask.task_id,
-          note: `Case creation rejected. Reason: ${reason}`,
-          tenantId: tenantId,
-        },
-      );
+      await this.commentRepository.createComment(supervisorId, {
+        caseId: caseId,
+        taskId: completeNewCaseTask.task_id,
+        note: `Case creation rejected. Reason: ${reason}`,
+        tenantId: tenantId,
+      });
 
       this.flowableService.handleCaseStatusChanged({
         caseId,
@@ -700,16 +682,14 @@ export class CaseCreationApprovalService {
 
       return { success: true, case: result.case, completedTask: result.completedTask, newTask: completeNewCaseTask };
     } catch (error) {
-      this.logger.error(
-        `Failed to reject case creation for case ${caseId}: ${error.message}`,
-        error.stack,
-        CaseCreationApprovalService.name,
-      );
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to reject case creation for case ${caseId}: ${errorMessage}`, errorStack, CaseCreationApprovalService.name);
       await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
         operation: 'rejectCaseCreation',
         entityName: CaseCreationApprovalService.name,
-        actionPerformed: `Failed to reject case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to reject case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
       });
       throw error;
@@ -758,7 +738,6 @@ export class CaseCreationApprovalService {
             autoCloseEligible: false,
             CaseType: updatedCase.case_type,
             casePriority: existingCase.priority!,
-            readyForAssignment: 'true',
           },
         });
         return { case: updatedCase, completedTask: updatedTask };
@@ -788,26 +767,12 @@ export class CaseCreationApprovalService {
         tenantId,
       );
 
-      // await this.eventLogService.logEventAction({
-      //   userId,
-      //   operation: 'completeCase',
-      //   entityName: CaseCreationApprovalService.name,
-      //   actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
-      //   outcome: Outcome.SUCCESS,
-      // });
-
-      // await this.caseHistoryService.logCaseHistoryAction({
-      //   userId,
-      //   operation: 'completeCase',
-      //   entityName: CaseCreationApprovalService.name,
-      //   actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
-      //   case_id: caseId,
-      // });
-
       return { success: true, case: result.case, completedTask: result.completedTask, newTask: investigateTask };
     } catch (err) {
-      this.logger.error('completeCase failed', { error: err, caseId, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to complete case: ${err.message}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
+      this.logger.error('completeCase failed', { error: errorMessage, stack: errorStack, caseId, userId, tenantId });
+      throw new InternalServerErrorException(`Failed to complete case: ${errorMessage}`);
     }
   }
 
@@ -854,22 +819,6 @@ export class CaseCreationApprovalService {
         createdCase.tenant_id,
       );
 
-      // await this.eventLogService.logEventAction({
-      //   userId,
-      //   operation: 'createCase',
-      //   entityName: 'CaseCreationApprovalService',
-      //   actionPerformed: `Case ${createdCase.case_id} created successfully`,
-      //   outcome: Outcome.SUCCESS,
-      // });
-
-      // await this.caseHistoryService.logCaseHistoryAction({
-      //   userId,
-      //   operation: 'createCase',
-      //   entityName: 'CaseCreationApprovalService',
-      //   actionPerformed: `Case ${createdCase.case_id} created successfully`,
-      //   case_id: createdCase.case_id,
-      // });
-
       return createdCase;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -895,31 +844,7 @@ export class CaseCreationApprovalService {
             throw new NotFoundException(`Case ${caseId} not found`);
           }
 
-          if (caseType === CaseType.FRAUD_AND_AML) {
-            // Create separate tasks for Fraud and AML investigations
-            // await this.taskService.createTask(
-            //   {
-            //     caseId: caseId,
-            //     status: TaskStatus.STATUS_01_UNASSIGNED,
-            //     name: 'Investigate Fraud',
-            //     description: `Fraud investigation task created for case: ${caseId}`,
-            //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-            //   },
-            //   userId,
-            // );
-            // await this.taskService.createTask(
-            //   {
-            //     caseId: caseId,
-            //     status: TaskStatus.STATUS_01_UNASSIGNED,
-            //     name: 'Investigate AML',
-            //     description: `AML investigation task created for case: ${caseId}`,
-            //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-            //   },
-            //   userId,
-            // );
-            //FLowable here
-          } else {
-            // Otherwise create a single task for other case types
+          if (caseType !== CaseType.FRAUD_AND_AML) {
             await this.taskRepository.createTask(
               {
                 case: {
@@ -956,22 +881,6 @@ export class CaseCreationApprovalService {
         caseId,
         updatedCase.tenant_id,
       );
-
-      // await this.eventLogService.logEventAction({
-      //   userId,
-      //   operation: 'updateCaseStatus',
-      //   entityName: 'CaseCreationApprovalService',
-      //   actionPerformed: `Updated case ${caseId} status to ${status}`,
-      //   outcome: Outcome.SUCCESS,
-      // });
-
-      // await this.caseHistoryService.logCaseHistoryAction({
-      //   userId,
-      //   operation: 'updateCaseStatus',
-      //   entityName: 'CaseCreationApprovalService',
-      //   actionPerformed: `Updated case ${caseId} status to ${status}`,
-      //   case_id: caseId,
-      // });
 
       this.logger.log(`End - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
       return updatedCase;

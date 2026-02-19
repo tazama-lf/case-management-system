@@ -3,7 +3,7 @@ import { TriageService } from './triage.service';
 import { ManualAlertUpdateDTO } from '../alert/dto';
 import { HealthCheckResponseDTO, AlertTriageResponseDTO } from './dto/triage.dto';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
+import { RequireAnyClaims, RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
 
@@ -24,6 +24,7 @@ export class TriageController {
     description: 'Service is healthy',
     type: HealthCheckResponseDTO,
   })
+  @RequireAnyClaims()
   getTest() {
     return { status: 'ok' };
   }
@@ -37,9 +38,9 @@ export class TriageController {
   })
   @ApiParam({
     name: 'alertId',
-    type: 'string',
-    description: 'UUID of the alert to triage',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'ID of the alert to triage',
+    example: 123,
   })
   @ApiBody({ type: ManualAlertUpdateDTO })
   @ApiResponse({

@@ -24,18 +24,18 @@ export class CaseRepository extends BaseRepository {
         });
     }
 
-    async updateAlertByAlertId(dto, priorityScore, createdCase, priority, tx?: Prisma.TransactionClient) {
-        const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
-        return await this.prisma.alert.update({
-            where: { alert_id: dto.alertId },
-            data: {
-                priority,
-                alert_type: dto.alertType,
-                priority_score: priorityScore,
-                case_id: createdCase.case_id,
-            },
-        });
-    }
+  async updateAlertByAlertId(dto, priorityScore, createdCase, priority, tx?: Prisma.TransactionClient) {
+    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    return await this.prisma.alert.update({
+      where: { alert_id: dto.alertId },
+      data: {
+        priority,
+        alert_type: dto.alertType,
+        priority_score: priorityScore,
+        case_id: createdCase.case_id,
+      },
+    });
+  }
 
     async findCaseWithApprovalTask(caseId: number, tenantId: string, tx?: Prisma.TransactionClient) {
         const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
@@ -255,27 +255,28 @@ export class CaseRepository extends BaseRepository {
             include: { alert: true, tasks: true },
         });
 
-        if (!caseData) {
-            throw new NotFoundException('Case Not Found');
-        }
-
-        return caseData;
+    if (!caseData) {
+      throw new NotFoundException('Case Not Found');
     }
 
-    async updateCase(caseId: number, data: Prisma.CaseUpdateInput) {
-        return await this.prisma.case.update({
-            where: { case_id: caseId },
-            data,
-        });
-    }
+    return caseData;
+  }
 
-    async executeTransaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-        return await this.prisma.$transaction(fn);
-    }
+  async updateCase(caseId: number, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient) {
+    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    return await client.case.update({
+      where: { case_id: caseId },
+      data,
+    });
+  }
 
-    getTransactionClient() {
-        return this.prisma;
-    }
+  async executeTransaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return await this.prisma.$transaction(fn);
+  }
+
+  getTransactionClient() {
+    return this.prisma;
+  }
 
     async findUnassignedAndInProgressTasksByUser(userId: string, tenantId: string) {
         return this.prisma.task.findMany({
@@ -473,51 +474,51 @@ export class CaseRepository extends BaseRepository {
         });
     }
 
-    async createCase(caseDetail: any, tx?: Prisma.TransactionClient) {
-        const prisma = tx || this.prisma;
-        return await prisma.case.create({
-            data: {
-                tenant_id: caseDetail.tenantId,
-                case_creator_user_id: caseDetail.caseCreatorUserId,
-                case_owner_user_id: caseDetail.caseOwnerUserId,
-                status: caseDetail.status,
-                priority: caseDetail.priority,
-                case_type: caseDetail.caseType,
-                case_creation_type: caseDetail.caseCreationType,
-                parent_id: caseDetail.parentId,
-            },
-        });
-    }
+  async createCase(caseDetail: any, tx?: Prisma.TransactionClient) {
+    const prisma = tx || this.prisma;
+    return await prisma.case.create({
+      data: {
+        tenant_id: caseDetail.tenantId,
+        case_creator_user_id: caseDetail.caseCreatorUserId,
+        case_owner_user_id: caseDetail.caseOwnerUserId,
+        status: caseDetail.status,
+        priority: caseDetail.priority,
+        case_type: caseDetail.caseType,
+        case_creation_type: caseDetail.caseCreationType,
+        parent_id: caseDetail.parentId,
+      },
+    });
+  }
 
-    async createDraftCase(caseDetail: any, dto: any, priorityScore: number, priority: any) {
-        return await this.prisma.$transaction(async (prisma) => {
-            // Create case in PostgreSQL only (no BPMN workflow)
-            const createdCase = await prisma.case.create({
-                data: {
-                    tenant_id: caseDetail.tenantId,
-                    case_creator_user_id: caseDetail.caseCreatorUserId,
-                    case_owner_user_id: caseDetail.caseOwnerUserId,
-                    status: caseDetail.status,
-                    priority: caseDetail.priority,
-                    case_type: caseDetail.caseType,
-                    case_creation_type: caseDetail.caseCreationType,
-                },
-            });
+  async createDraftCase(caseDetail: any, dto: any, priorityScore: number, priority: any) {
+    return await this.prisma.$transaction(async (prisma) => {
+      // Create case in PostgreSQL only (no BPMN workflow)
+      const createdCase = await prisma.case.create({
+        data: {
+          tenant_id: caseDetail.tenantId,
+          case_creator_user_id: caseDetail.caseCreatorUserId,
+          case_owner_user_id: caseDetail.caseOwnerUserId,
+          status: caseDetail.status,
+          priority: caseDetail.priority,
+          case_type: caseDetail.caseType,
+          case_creation_type: caseDetail.caseCreationType,
+        },
+      });
 
-            // Update alert within the same transaction
-            const updatedAlert = await prisma.alert.update({
-                where: { alert_id: dto.alertId },
-                data: {
-                    priority,
-                    alert_type: dto.alertType,
-                    priority_score: priorityScore,
-                    case_id: createdCase.case_id,
-                },
-            });
+      // Update alert within the same transaction
+      const updatedAlert = await prisma.alert.update({
+        where: { alert_id: dto.alertId },
+        data: {
+          priority,
+          alert_type: dto.alertType,
+          priority_score: priorityScore,
+          case_id: createdCase.case_id,
+        },
+      });
 
-            return { case: createdCase, alert: updatedAlert };
-        });
-    }
+      return { case: createdCase, alert: updatedAlert };
+    });
+  }
 
   async updateCaseStatusAndCompleteTask(
     caseId: number,
@@ -629,29 +630,29 @@ export class CaseRepository extends BaseRepository {
               throw new Error(`Task ${taskId} does not belong to tenant ${tenantId}`);
             }
 
-            const completedTask = await tx.task.update({
-                where: { task_id: taskId },
-                data: {
-                    status: TaskStatus.STATUS_30_COMPLETED,
-                    assigned_user_id: supervisorId,
-                    updated_at: new Date(),
-                },
-            });
+      const completedTask = await tx.task.update({
+        where: { task_id: taskId },
+        data: {
+          status: TaskStatus.STATUS_30_COMPLETED,
+          assigned_user_id: supervisorId,
+          updated_at: new Date(),
+        },
+      });
 
-            await tx.comment.create({
-                data: {
-                    user_id: supervisorId,
-                    tenant_id: tenantId,
-                    task_id: taskId,
-                    note: comments
-                        ? `Supervisor Approval:\n${comments}\n\nFinal Outcome: ${status}`
-                        : `Case closure approved with outcome: ${status}`,
-                },
-            });
+      await tx.comment.create({
+        data: {
+          user_id: supervisorId,
+          tenant_id: tenantId,
+          task_id: taskId,
+          note: comments
+            ? `Supervisor Approval:\n${comments}\n\nFinal Outcome: ${status}`
+            : `Case closure approved with outcome: ${status}`,
+        },
+      });
 
-            return { updatedCase, completedTask };
-        });
-    }
+      return { updatedCase, completedTask };
+    });
+  }
 
   async rejectClosureTask(
     caseId: number,
@@ -659,7 +660,7 @@ export class CaseRepository extends BaseRepository {
     originalInvestigatorId: string,
     comments: string,
     taskNames: { APPROVE_CASE_CLOSURE: string; APPROVE_CASE_CLOSURE_LOWER: string; INVESTIGATE_CASE: string },
-     tenantId: string,
+    tenantId: string,
   ) {
     return await this.prisma.$transaction(async (tx) => {
       // Find approval task first
@@ -674,9 +675,9 @@ export class CaseRepository extends BaseRepository {
         },
       });
 
-            if (!approvalTask) {
-                throw new NotFoundException(`"Approve case closure" task not found for case ${caseId}`);
-            }
+      if (!approvalTask) {
+        throw new NotFoundException(`"Approve case closure" task not found for case ${caseId}`);
+      }
 
       // Complete the approval task
       const completedTask = await tx.task.update({
@@ -713,16 +714,16 @@ export class CaseRepository extends BaseRepository {
         tx,
       );
 
-            // Update case status LAST to prevent BPMN from overriding it
-            const updatedCase = await tx.case.update({
-                where: { case_id: caseId },
-                data: {
-                    status: CaseStatus.STATUS_20_IN_PROGRESS,
-                    updated_at: new Date(),
-                },
-            });
+      // Update case status LAST to prevent BPMN from overriding it
+      const updatedCase = await tx.case.update({
+        where: { case_id: caseId },
+        data: {
+          status: CaseStatus.STATUS_20_IN_PROGRESS,
+          updated_at: new Date(),
+        },
+      });
 
-            return { updatedCase, completedTask, newInvestigationTask };
-        });
-    }
+      return { updatedCase, completedTask, newInvestigationTask };
+    });
   }
+}

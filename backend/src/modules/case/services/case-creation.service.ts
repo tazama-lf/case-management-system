@@ -66,7 +66,9 @@ export class CaseCreationService {
         message: 'Child case created, BPMN will create investigation task',
       };
     } catch (error) {
-      this.logger.error(`Failed to create ${alertType} case. Error: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to create ${alertType} case. Error: ${errorMessage}`, errorStack);
       throw new InternalServerErrorException(`Failed to create ${alertType} case`);
     }
   }

@@ -38,7 +38,7 @@ export class CaseService {
     private readonly caseRepository: CaseRepository,
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any, role: string) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
@@ -78,7 +78,6 @@ export class CaseService {
           });
 
           if (updatedCase.status === CaseStatus.STATUS_21_SUSPENDED && subCase?.status === CaseStatus.STATUS_21_SUSPENDED) {
-
             await prisma.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_21_SUSPENDED, updated_at: new Date() },
@@ -137,7 +136,7 @@ export class CaseService {
           );
         }
       } catch (notificationError) {
-        this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError.message}`);
+        this.logger.warn(`Failed to send suspension notification for case ${caseId}: ${notificationError}`);
       }
       return { success: true, ...result };
     } catch (err) {
@@ -149,7 +148,7 @@ export class CaseService {
         outcome: Outcome.FAILURE,
       });
       this.logger.error('suspendCase failed', { error: err, caseId, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to suspend case: ${err.message}`);
+      throw new InternalServerErrorException(`Failed to suspend case: ${err}`);
     }
   }
 
@@ -174,9 +173,6 @@ export class CaseService {
     this.logger.error(`investigateTask: ${JSON.stringify(investigateTask)}`);
     if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
 
-    // if (investigateTask.status !== TaskStatus.STATUS_21_BLOCKED)
-    //   throw new BadRequestException(`Cannot resume as Investigate case task ${investigateTask.task_id} is not blocked`);
-
     try {
       this.flowableService.handleCaseStatusChanged({
         caseId,
@@ -198,7 +194,6 @@ export class CaseService {
           });
 
           if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && subCase?.status === CaseStatus.STATUS_21_SUSPENDED) {
-
             await prisma.case.update({
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
@@ -251,7 +246,7 @@ export class CaseService {
           );
         }
       } catch (notificationError) {
-        this.logger.warn(`Failed to send resumption notification for case ${caseId}: ${notificationError.message}`);
+        this.logger.warn(`Failed to send resumption notification for case ${caseId}: ${notificationError}`);
       }
 
       return { success: true, ...result };
@@ -265,7 +260,7 @@ export class CaseService {
       });
 
       this.logger.error('resumeCase failed', { error: err, caseId, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to resume case: ${err.message}`);
+      throw new InternalServerErrorException(`Failed to resume case: ${err}`);
     }
   }
 
@@ -317,7 +312,7 @@ export class CaseService {
       return { success: true, ...result };
     } catch (err) {
       this.logger.error('abandonCase failed', { error: err, caseId, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to abandon case : ${err.message}`);
+      throw new InternalServerErrorException(`Failed to abandon case : ${err}`);
     }
   }
 
@@ -452,7 +447,6 @@ export class CaseService {
             autoCloseEligible: targetStatus === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT ? false : true,
             caseType: updateData.caseType || existingCase.case_type!,
             casePriority: updateData.priority || existingCase.priority!,
-            readyForAssignment: targetStatus === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT ? true : false,
           },
         });
 
@@ -565,11 +559,11 @@ export class CaseService {
         userId,
         operation: 'completeCaseCreation',
         entityName: CaseService.name,
-        actionPerformed: `Failed to complete draft case ${caseId}: ${err.message}`,
+        actionPerformed: `Failed to complete draft case ${caseId}: ${err}`,
         outcome: Outcome.FAILURE,
       });
 
-      throw new InternalServerErrorException(`Failed to complete case creation: ${err.message}`);
+      throw new InternalServerErrorException(`Failed to complete case creation: ${err}`);
     }
   }
 

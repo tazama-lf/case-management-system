@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "CaseStatus" ADD VALUE 'STATUS_84_COMPLETED';

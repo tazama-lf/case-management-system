@@ -140,7 +140,9 @@ export class CaseQueryService {
         },
       };
     } catch (error) {
-      this.logger.error(`Failed to get user cases: ${error.message}`, error.stack, CaseQueryService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get user cases: ${errorMessage}`, errorStack, CaseQueryService.name);
       throw error;
     }
   }
@@ -540,7 +542,9 @@ export class CaseQueryService {
         },
       };
     } catch (error) {
-      this.logger.error(`Failed to get all cases: ${error.message}`, error.stack, CaseQueryService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get all cases: ${errorMessage}`, errorStack, CaseQueryService.name);
       throw error;
     }
   }
@@ -618,7 +622,9 @@ export class CaseQueryService {
         })),
       };
     } catch (error) {
-      this.logger.error(`Failed to get workload stats: ${error.message}`, error.stack, CaseQueryService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get workload stats: ${errorMessage}`, errorStack, CaseQueryService.name);
       throw error;
     }
   }
@@ -670,7 +676,9 @@ export class CaseQueryService {
 
       return updatedCase;
     } catch (error) {
-      this.logger.error(`Error updating case: ${error.message}`, error.stack, CaseQueryService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error updating case: ${errorMessage}`, errorStack, CaseQueryService.name);
       throw error;
     }
   }

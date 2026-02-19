@@ -5,7 +5,13 @@ import { Outcome } from '../../../utils/types/outcome';
 import { CaseStatus, Task, TaskStatus } from '@prisma/client-cms';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { TaskService } from 'src/modules/task/task.service';
-import { TASK_NAMES, CANDIDATE_GROUPS, CASE_CLOSURE_OUTCOMES, VALIDATION_LENGTHS, CLOSED_CASE_STATUSES } from '../../../constants/case.constants';
+import {
+  TASK_NAMES,
+  CANDIDATE_GROUPS,
+  CASE_CLOSURE_OUTCOMES,
+  VALIDATION_LENGTHS,
+  CLOSED_CASE_STATUSES,
+} from '../../../constants/case.constants';
 import { CloseCaseDto } from '../dto';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { validateClosureData } from 'src/utils/helperFunction';
@@ -59,9 +65,11 @@ export class CaseClosureApprovalService {
         CaseClosureApprovalService.name,
       );
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
-        `Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`,
-        error.stack,
+        `Failed to create SAR_STR_FILING task for case ${caseId}: ${errorMessage}`,
+        errorStack,
         CaseClosureApprovalService.name,
       );
 
@@ -69,7 +77,7 @@ export class CaseClosureApprovalService {
         userId,
         operation: 'createSARTask',
         entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to create SAR_STR_FILING task for case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
       });
     }
@@ -108,30 +116,24 @@ export class CaseClosureApprovalService {
           });
 
           if (subCase && subCase.length > 0) {
-            const areSubCasesClosable = subCase.every(c =>
-
-              CLOSED_CASE_STATUSES.includes(c.status)
-            );
-            this.logger.log(`areSubCasesClosable: ${areSubCasesClosable}`)
+            const areSubCasesClosable = subCase.every((c) => CLOSED_CASE_STATUSES.includes(c.status));
+            this.logger.log(`areSubCasesClosable: ${areSubCasesClosable}`);
             if (!areSubCasesClosable) {
-
               throw new ConflictException({
                 message: 'Either of the Sub Case is not in closable state for parent case closure',
                 caseId: caseId,
               });
-
             }
           } else {
             throw new BadRequestException({
               message: 'Sub Cases does not exist for this FRAUD_AND_AML Case',
-              caseId
+              caseId,
             });
           }
-
         } else {
           throw new BadRequestException({
             message: 'Only a Supervisor can close FRAUD_AND_AML Case',
-            caseId
+            caseId,
           });
         }
       } else {
@@ -205,9 +207,9 @@ export class CaseClosureApprovalService {
           userId,
           dto.finalNotes
             ? {
-              note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
-              tenantId: tenantId,
-            }
+                note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
+                tenantId: tenantId,
+              }
             : undefined,
         );
         if (!isFraudAndAmlCase) {
@@ -243,9 +245,11 @@ export class CaseClosureApprovalService {
             await this.createSARFilingTask(caseId, tenantId, userId);
             this.logger.log(`Auto-generated SAR_STR_FILING task for confirmed case ${caseId}`, CaseClosureApprovalService.name);
           } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
             this.logger.error(
-              `Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`,
-              error.stack,
+              `Failed to create SAR_STR_FILING task for case ${caseId}: ${errorMessage}`,
+              errorStack,
               CaseClosureApprovalService.name,
             );
             await this.loggingOrchestrationService.logActions({
@@ -289,10 +293,10 @@ export class CaseClosureApprovalService {
         userId,
         dto.finalNotes
           ? {
-            note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
-            taskId: approvalTask.task_id,
-            tenantId: tenantId,
-          }
+              note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
+              taskId: approvalTask.task_id,
+              tenantId: tenantId,
+            }
           : undefined,
       );
 
@@ -338,13 +342,15 @@ export class CaseClosureApprovalService {
         },
       };
     } catch (error) {
-      this.logger.error(`Case closure failed: ${error.message}`, error.stack, CaseClosureApprovalService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Case closure failed: ${errorMessage}`, errorStack, CaseClosureApprovalService.name);
 
       await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'closeCase',
         entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Failed to close case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to close case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
       });
 
@@ -355,8 +361,7 @@ export class CaseClosureApprovalService {
       throw new InternalServerErrorException({
         message: 'System error occurred during case closure',
         caseId,
-        error: error.message,
-        stack: error.stack,
+        error: errorMessage,
       });
     }
   }
@@ -443,9 +448,11 @@ export class CaseClosureApprovalService {
           await this.createSARFilingTask(caseId, caseDetails.tenant_id, supervisorId);
           this.logger.log(`Auto-generated SAR_STR_FILING task for confirmed case ${caseId}`, CaseClosureApprovalService.name);
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorStack = error instanceof Error ? error.stack : undefined;
           this.logger.error(
-            `Failed to create SAR_STR_FILING task for case ${caseId}: ${error.message}`,
-            error.stack,
+            `Failed to create SAR_STR_FILING task for case ${caseId}: ${errorMessage}`,
+            errorStack,
             CaseClosureApprovalService.name,
           );
         }
@@ -470,7 +477,9 @@ export class CaseClosureApprovalService {
             },
           });
         } catch (notificationError) {
-          this.logger.warn(`Failed to send investigator notification: ${notificationError.message}`, CaseClosureApprovalService.name);
+          const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
+          const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
+          this.logger.warn(`Failed to send investigator notification: ${errorMessage}`, errorStack, CaseClosureApprovalService.name);
         }
       }
 
@@ -504,11 +513,12 @@ export class CaseClosureApprovalService {
         },
       };
     } catch (error) {
-      const errorMessage = error.message || 'Unknown error occurred';
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
 
       this.logger.error(
         `[ApproveCaseClosure] Case closure approval failed for case ${caseId}: ${errorMessage}`,
-        error.stack,
+        errorStack,
         CaseClosureApprovalService.name,
       );
 
@@ -558,7 +568,14 @@ export class CaseClosureApprovalService {
         throw new BadRequestException('Cannot determine original investigator for case reassignment');
       }
 
-      const result = await this.caseRepository.rejectClosureTask(caseId, supervisorId, originalInvestigatorId, comments, TASK_NAMES, caseDetails.tenant_id);
+      const result = await this.caseRepository.rejectClosureTask(
+        caseId,
+        supervisorId,
+        originalInvestigatorId,
+        comments,
+        TASK_NAMES,
+        caseDetails.tenant_id,
+      );
 
       // Notify Flowable about case status change FIRST to set the BPMN state
       this.flowableService.handleCaseStatusChanged({
@@ -593,7 +610,9 @@ export class CaseClosureApprovalService {
           },
         });
       } catch (notificationError) {
-        this.logger.warn(`Failed to send notification to requesting user: ${notificationError.message}`, CaseClosureApprovalService.name);
+        const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
+        const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
+        this.logger.warn(`Failed to send notification to requesting user: ${errorMessage}`, errorStack, CaseClosureApprovalService.name);
       }
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -632,13 +651,15 @@ export class CaseClosureApprovalService {
         },
       };
     } catch (error) {
-      this.logger.error(`Failed to reject case closure: ${error.message}`, error.stack, CaseClosureApprovalService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to reject case closure: ${errorMessage}`, errorStack, CaseClosureApprovalService.name);
 
       await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
         operation: 'rejectCaseClosure',
         entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Failed to reject case ${caseId}: ${error.message}`,
+        actionPerformed: `Failed to reject case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
       });
 
@@ -713,12 +734,14 @@ export class CaseClosureApprovalService {
         case: { case_id: result.updatedCase.case_id, status: result.updatedCase.status, updated_at: result.updatedCase.updated_at },
       };
     } catch (error) {
-      this.logger.error(`Failed to return case for review: ${error.message}`, error.stack, CaseClosureApprovalService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to return case for review: ${errorMessage}`, errorStack, CaseClosureApprovalService.name);
       await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
         operation: 'returnCaseForReview',
         entityName: CaseClosureApprovalService.name,
-        actionPerformed: `Failed to return case ${caseId} for review: ${error.message}`,
+        actionPerformed: `Failed to return case ${caseId} for review: ${errorMessage}`,
         outcome: Outcome.FAILURE,
       });
       throw error;

@@ -21,25 +21,32 @@ export class TaskRepository extends BaseRepository {
   }
 
   async findTaskWithCase(taskId: number, tenantId: string, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
-    return client.task.findUnique({
-      where: { 
+    try {
+      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const task = await client.task.findUnique({
+        where: { 
         task_id: taskId,
         tenant_id: tenantId 
       },
-      include: {
-        case: {
-          select: {
-            case_id: true,
-            status: true,
-            case_owner_user_id: true,
-            priority: true,
-            created_at: true,
+        include: {
+          case: {
+            select: {
+              case_id: true,
+              status: true,
+              case_owner_user_id: true,
+              priority: true,
+              created_at: true,
+            },
           },
+          comments: { orderBy: { created_at: 'desc' } },
         },
-        comments: { orderBy: { created_at: 'desc' } },
-      },
-    });
+      });
+
+      if (!task) throw new NotFoundException(`Task ${taskId} not found`);
+      return task;
+    } catch (error) {
+      throw error;
+    }
   }
 
   async findTasks(where: Prisma.TaskWhereInput, tenantId: string, includeCase: boolean, skip?: number, take?: number, tx?: Prisma.TransactionClient) {
@@ -97,14 +104,19 @@ export class TaskRepository extends BaseRepository {
   }
 
   async findCaseStatus(caseId: number, tenantId: string, tx?: Prisma.TransactionClient) {
+    try {
     const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
-    return client.case.findUnique({ 
+    const caseRecord = await client.case.findUnique({ 
       where: { 
         case_id: caseId,
         tenant_id: tenantId 
       }, 
       select: { status: true, case_owner_user_id: true } 
-    });
+    });  
+    return caseRecord;
+    } catch (error) {
+      throw error;
+    }
   }
 
   async updateCase(caseId: number, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient) {

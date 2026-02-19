@@ -53,9 +53,7 @@ interface AuthenticatedRequest extends Request {
 export class TaskController {
   constructor(
     private readonly taskService: TaskService,
-    private readonly auditLogService: AuditLogService,
     private readonly loggerService: LoggerService,
-    private readonly flowableService: FlowableService,
   ) {}
 
   @Post()
@@ -631,178 +629,177 @@ export class TaskController {
     return this.taskService.getTasksByCaseId(caseId, tenantId, userId, userClaims);
   }
 
-  @Get('work-queues/:candidateGroup')
-  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  @ApiOperation({
-    summary: 'Get work queue for a candidate group',
-    description:
-      'Retrieves active tasks for a specific candidate group from Flowable. Since Flowable and domain tables are in sync, candidate groups are better managed in Flowable for consistent workflow management.',
-  })
-  @ApiParam({
-    name: 'candidateGroup',
-    type: 'string',
-    description: 'Candidate group identifier',
-    example: 'investigations',
-    enum: ['supervisors', 'investigations', 'analysts'],
-  })
-  @ApiQuery({
-    name: 'unassignedOnly',
-    required: false,
-    type: Boolean,
-    description: 'Filter for unassigned tasks only',
-    example: false,
-  })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    type: Number,
-    description: 'Page number for pagination',
-    example: 1,
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    type: Number,
-    description: 'Number of items per page',
-    example: 20,
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'List of tasks in the work queue from Flowable',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean', example: true },
-        data: {
-          type: 'object',
-          properties: {
-            tasks: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  name: { type: 'string' },
-                  description: { type: 'string' },
-                  assignee: { type: 'string', nullable: true },
-                  candidateGroups: { type: 'array', items: { type: 'string' } },
-                  created: { type: 'string', format: 'date-time' },
-                  processInstanceId: { type: 'string' },
-                  taskDefinitionKey: { type: 'string' },
-                },
-              },
-            },
-            total: { type: 'number', example: 50 },
-            page: { type: 'number', example: 1 },
-            limit: { type: 'number', example: 20 },
-            totalPages: { type: 'number', example: 3 },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden - User lacks INVESTIGATOR or SUPERVISOR role',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Not Found - Invalid candidate group',
-  })
-  @ApiResponse({
-    status: 503,
-    description: 'Service Unavailable - Flowable service unavailable, falling back to domain tables',
-  })
-  async getTasksByCandidateGroup(
-    @Param('candidateGroup') candidateGroup: string,
-    @Req() req: AuthenticatedRequest,
-    @Query('unassignedOnly') unassignedOnly?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    try {
-      const userId = req.user.token.clientId;
-      const tenantId = req.user.token.tenantId;
-      const userClaims = req.user.token.backendClaims || [];
+  // @Get('work-queues/:candidateGroup')
+  // @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  // @ApiOperation({
+  //   summary: 'Get work queue for a candidate group',
+  //   description:
+  //     'Retrieves active tasks for a specific candidate group from Flowable. Since Flowable and domain tables are in sync, candidate groups are better managed in Flowable for consistent workflow management.',
+  // })
+  // @ApiParam({
+  //   name: 'candidateGroup',
+  //   type: 'string',
+  //   description: 'Candidate group identifier',
+  //   example: 'investigations',
+  //   enum: ['supervisors', 'investigations', 'analysts'],
+  // })
+  // @ApiQuery({
+  //   name: 'unassignedOnly',
+  //   required: false,
+  //   type: Boolean,
+  //   description: 'Filter for unassigned tasks only',
+  //   example: false,
+  // })
+  // @ApiQuery({
+  //   name: 'page',
+  //   required: false,
+  //   type: Number,
+  //   description: 'Page number for pagination',
+  //   example: 1,
+  // })
+  // @ApiQuery({
+  //   name: 'limit',
+  //   required: false,
+  //   type: Number,
+  //   description: 'Number of items per page',
+  //   example: 20,
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'List of tasks in the work queue from Flowable',
+  //   schema: {
+  //     type: 'object',
+  //     properties: {
+  //       success: { type: 'boolean', example: true },
+  //       data: {
+  //         type: 'object',
+  //         properties: {
+  //           tasks: {
+  //             type: 'array',
+  //             items: {
+  //               type: 'object',
+  //               properties: {
+  //                 id: { type: 'string' },
+  //                 name: { type: 'string' },
+  //                 description: { type: 'string' },
+  //                 assignee: { type: 'string', nullable: true },
+  //                 candidateGroups: { type: 'array', items: { type: 'string' } },
+  //                 created: { type: 'string', format: 'date-time' },
+  //                 processInstanceId: { type: 'string' },
+  //                 taskDefinitionKey: { type: 'string' },
+  //               },
+  //             },
+  //           },
+  //           total: { type: 'number', example: 50 },
+  //           page: { type: 'number', example: 1 },
+  //           limit: { type: 'number', example: 20 },
+  //           totalPages: { type: 'number', example: 3 },
+  //         },
+  //       },
+  //     },
+  //   },
+  // })
+  // @ApiResponse({
+  //   status: 403,
+  //   description: 'Forbidden - User lacks INVESTIGATOR or SUPERVISOR role',
+  // })
+  // @ApiResponse({
+  //   status: 404,
+  //   description: 'Not Found - Invalid candidate group',
+  // })
+  // @ApiResponse({
+  //   status: 503,
+  //   description: 'Service Unavailable - Flowable service unavailable, falling back to domain tables',
+  // })
+  // async getTasksByCandidateGroup(
+  //   @Param('candidateGroup') candidateGroup: string,
+  //   @Req() req: AuthenticatedRequest,
+  //   @Query('unassignedOnly') unassignedOnly?: string,
+  //   @Query('page') page?: string,
+  //   @Query('limit') limit?: string,
+  // ) {
+  //   try {
+  //     const userId = req.user.token.clientId;
+  //     const tenantId = req.user.token.tenantId;
+  //     const userClaims = req.user.token.backendClaims || [];
 
-      if (!userId) {
-        throw new BadRequestException('User not authenticated or missing client ID');
-      }
+  //     if (!userId) {
+  //       throw new BadRequestException('User not authenticated or missing client ID');
+  //     }
 
-      // Check if user is investigator (not supervisor or admin)
-      const isInvestigator =
-        userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+  //     // Check if user is investigator (not supervisor or admin)
+  //     const isInvestigator =
+  //       userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
 
-      // Restrict investigators to only see investigations and investigators queues
-      const allowedQueues = ['investigations', 'investigators'];
-      if (isInvestigator && !allowedQueues.includes(candidateGroup)) {
-        throw new ForbiddenException('Investigators can only access the investigations and investigators queues');
-      }
+  //     // Restrict investigators to only see investigations and investigators queues
+  //     const allowedQueues = ['investigations', 'investigators'];
+  //     if (isInvestigator && !allowedQueues.includes(candidateGroup)) {
+  //       throw new ForbiddenException('Investigators can only access the investigations and investigators queues');
+  //     }
 
-      const pageNum = parseInt(page || '1');
-      const limitNum = parseInt(limit || '20');
+  //     const pageNum = parseInt(page || '1');
+  //     const limitNum = parseInt(limit || '20');
 
-      try {
-        const flowableTasks = await this.flowableService.getCandidateGroupTasks(candidateGroup, true);
+  //     try {
+  //       const flowableTasks = await this.flowableService.getCandidateGroupTasks(candidateGroup, true);
 
-        let filteredTasks = flowableTasks;
-        if (unassignedOnly === 'true') {
-          filteredTasks = flowableTasks.filter((task: any) => !task.assignee);
-        }
+  //       let filteredTasks = flowableTasks;
+  //       if (unassignedOnly === 'true') {
+  //         filteredTasks = flowableTasks.filter((task: any) => !task.assignee);
+  //       }
 
-        const startIndex = (pageNum - 1) * limitNum;
-        const paginatedTasks = filteredTasks.slice(startIndex, startIndex + limitNum);
+  //       const startIndex = (pageNum - 1) * limitNum;
+  //       const paginatedTasks = filteredTasks.slice(startIndex, startIndex + limitNum);
 
-        return {
-          success: true,
-          data: {
-            tasks: paginatedTasks,
-            total: filteredTasks.length,
-            page: pageNum,
-            limit: limitNum,
-            totalPages: Math.ceil(filteredTasks.length / limitNum),
-          },
-          source: 'flowable',
-        };
-      } catch (flowableError) {
-        this.loggerService.warn(
-          `Flowable service unavailable for candidate group ${candidateGroup}, falling back to domain tables: ${flowableError.message}`,
-          TaskController.name,
-        );
+  //       return {
+  //         success: true,
+  //         data: {
+  //           tasks: paginatedTasks,
+  //           total: filteredTasks.length,
+  //           page: pageNum,
+  //           limit: limitNum,
+  //           totalPages: Math.ceil(filteredTasks.length / limitNum),
+  //         },
+  //         source: 'flowable',
+  //       };
+  //     } catch (flowableError) {
+  //       this.loggerService.warn(
+  //         `Flowable service unavailable for candidate group ${candidateGroup}, falling back to domain tables: ${flowableError.message}`,
+  //         TaskController.name,
+  //       );
 
-        const tenantId = req.user.token.tenantId;
-        const domainTasks = await this.taskService.getTasksByCandidateGroup(candidateGroup, userId, tenantId);
+  //       const domainTasks = await this.taskService.getTasksByCandidateGroup(candidateGroup, userId);
 
-        let filteredTasks = domainTasks;
-        if (unassignedOnly === 'true') {
-          filteredTasks = domainTasks.filter((t: any) => !t.assigned_user_id);
-        }
+  //       let filteredTasks = domainTasks;
+  //       if (unassignedOnly === 'true') {
+  //         filteredTasks = domainTasks.filter((t: any) => !t.assigned_user_id);
+  //       }
 
-        const startIndex = (pageNum - 1) * limitNum;
-        const paginatedTasks = filteredTasks.slice(startIndex, startIndex + limitNum);
+  //       const startIndex = (pageNum - 1) * limitNum;
+  //       const paginatedTasks = filteredTasks.slice(startIndex, startIndex + limitNum);
 
-        return {
-          success: true,
-          data: {
-            tasks: paginatedTasks,
-            total: filteredTasks.length,
-            page: pageNum,
-            limit: limitNum,
-            totalPages: Math.ceil(filteredTasks.length / limitNum),
-          },
-          source: 'domain_tables',
-          warning: 'Flowable service unavailable, using domain tables as fallback',
-        };
-      }
-    } catch (error) {
-      this.loggerService.error(
-        `Failed to get tasks for candidate group ${candidateGroup}: ${error.message}`,
-        error.stack,
-        TaskController.name,
-      );
-      throw error;
-    }
-  }
+  //       return {
+  //         success: true,
+  //         data: {
+  //           tasks: paginatedTasks,
+  //           total: filteredTasks.length,
+  //           page: pageNum,
+  //           limit: limitNum,
+  //           totalPages: Math.ceil(filteredTasks.length / limitNum),
+  //         },
+  //         source: 'domain_tables',
+  //         warning: 'Flowable service unavailable, using domain tables as fallback',
+  //       };
+  //     }
+  //   } catch (error) {
+  //     this.loggerService.error(
+  //       `Failed to get tasks for candidate group ${candidateGroup}: ${error.message}`,
+  //       error.stack,
+  //       TaskController.name,
+  //     );
+  //     throw error;
+  //   }
+  // }
 
   @Get(':taskId')
   @RequireInvestigatorRole()
@@ -905,7 +902,9 @@ export class TaskController {
         data: statistics,
       };
     } catch (error) {
-      this.loggerService.error(`Failed to get work queue statistics: ${error.message}`, error.stack, TaskController.name);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.loggerService.error(`Failed to get work queue statistics: ${errorMessage}`, errorStack, TaskController.name);
       throw error;
     }
   }
