@@ -1,26 +1,36 @@
-# =============================================================================
-# Docker Compose for Development Environment
-# =============================================================================
-
 services:
-  # PostgreSQL Database
-  database:
+  postgres:
     image: postgres:15-alpine
     container_name: tazama-cms-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: tazama_cms
-      POSTGRES_USER: tazama_user
-      POSTGRES_PASSWORD: tazama_password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
-      - tazama-network
+      - tazama_default
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tazama-cms-migrate
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - postgres
+    networks:
+      - tazama_default
+    command: >
+      sh -c "
+      npx prisma migrate dev --schema=prismaDWH/schema.dwh.prisma --name init
+      "
 
-  # Redis for caching and sessions
   redis:
     image: redis:7-alpine
     container_name: tazama-cms-redis
@@ -30,9 +40,46 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - tazama-network
-
-  # Backend API
+      - tazama_default
+  nats:
+    image: nats:2.10-alpine
+    container_name: tazama-cms-nats
+    restart: unless-stopped
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: ["--jetstream", "--http_port", "8222"]
+    networks:
+      - tazama_default
+  couchdb:
+    image: couchdb:3.3
+    container_name: tazama-cms-couchdb
+    restart: unless-stopped
+    environment:
+      COUCHDB_USER: simon
+      COUCHDB_PASSWORD: "1234"
+    ports:
+      - "5984:5984"
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+      - ./docker/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
+    networks:
+      - tazama_default
+  flowable:
+    image: flowable/flowable-rest:latest
+    container_name: tazama-cms-flowable
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_DRIVER: org.postgresql.Driver
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/flowable
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - tazama_default
   backend:
     build:
       context: ./backend
@@ -40,17 +87,15 @@ services:
     container_name: tazama-cms-backend
     restart: unless-stopped
     depends_on:
-      - database
+      - postgres
       - redis
+      - flowable
     ports:
       - "3000:3000"
     volumes:
       - ./backend:/app
-      - /app/node_modules
     networks:
-      - tazama-network
-
-  # Frontend React App
+      - tazama_default
   frontend:
     build:
       context: ./frontend
@@ -61,46 +106,14 @@ services:
       - "5173:5173"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
     networks:
-      - tazama-network
-
-  # NATS Messaging (if needed for microservices)
-  nats:
-    image: nats:2.10-alpine
-    container_name: tazama-cms-nats
-    restart: unless-stopped
-    ports:
-      - "4222:4222"
-      - "8222:8222"
-    command: ["--jetstream", "--http_port", "8222"]
-    networks:
-      - tazama-network
-
-        # CouchDB for evidence storage
-  couchdb:
-    image: couchdb:3.3
-    container_name: tazama-cms-couchdb
-    restart: unless-stopped
-    environment:
-      COUCHDB_USER: simon
-      COUCHDB_PASSWORD: '1234'
-    ports:
-      - '5984:5984'
-    volumes:
-      - couchdb_data:/opt/couchdb/data
-      - ./docker/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
-    networks:
-      - tazama-network
+      - tazama_default
 
 volumes:
   postgres_data:
-    driver: local
   redis_data:
-    driver: local
   couchdb_data:
-    driver: local
 
 networks:
-  tazama-network:
+  tazama_default:
     driver: bridge
