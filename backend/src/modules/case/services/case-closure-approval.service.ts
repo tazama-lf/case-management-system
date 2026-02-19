@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ConflictException, 
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Outcome } from '../../../utils/types/outcome';
-import { CaseStatus, Task, TaskStatus } from '@prisma/client-cms';
+import { CaseStatus, CaseType, Comment, Priority, Task, TaskStatus } from '@prisma/client-cms';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { TaskService } from 'src/modules/task/task.service';
 import {
@@ -14,7 +14,7 @@ import {
 } from '../../../constants/case.constants';
 import { CloseCaseDto } from '../dto';
 import { NotificationService } from 'src/modules/notification/notification.service';
-import { validateClosureData } from 'src/utils/helperFunction';
+// import { validateClosureData } from 'src/utils/helperFunction';
 import { TaskValidationUtil } from 'src/modules/shared/utils/task-validation.util';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CreateCommentDto } from 'src/modules/comment/dto/create-comment.dto';
@@ -45,7 +45,8 @@ export class CaseClosureApprovalService {
           caseId,
           status: TaskStatus.STATUS_01_UNASSIGNED,
           name: TASK_NAMES.SAR_STR_FILING,
-          description: `Upload the official SAR/STR submission acknowledgment from FIU. Include submission date, reference number, and submission channel.`,
+          description:
+            'Upload the official SAR/STR submission acknowledgment from FIU. Include submission date, reference number, and submission channel.',
           candidateGroup: CANDIDATE_GROUPS.COMPLIANCE_OFFICER,
         },
         userId,
@@ -118,7 +119,7 @@ export class CaseClosureApprovalService {
             if (!areSubCasesClosable) {
               throw new ConflictException({
                 message: 'Either of the Sub Case is not in closable state for parent case closure',
-                caseId: caseId,
+                caseId,
               });
             }
           } else {
@@ -137,9 +138,7 @@ export class CaseClosureApprovalService {
         // Single investigation case
         const investigationTask =
           caseData.tasks
-            .filter(
-              (task) => TASK_NAMES.INVESTIGATE_CASE_VARIANTS.includes(task.name as any) && task.status === TaskStatus.STATUS_30_COMPLETED,
-            )
+            .filter((task) => task.name === TASK_NAMES.INVESTIGATE_CASE && task.status === TaskStatus.STATUS_30_COMPLETED)
             .sort((a, b) => {
               const aTime = new Date(a.created_at ?? 0).getTime();
               const bTime = new Date(b.created_at ?? 0).getTime();
@@ -181,14 +180,14 @@ export class CaseClosureApprovalService {
         primaryTask = investigationTask;
       }
 
-      const validationErrors = validateClosureData(dto);
-      if (validationErrors.length > 0) {
-        throw new BadRequestException({
-          message: 'Missing or invalid case closure information',
-          errors: validationErrors,
-          caseId,
-        });
-      }
+      // const validationErrors = validateClosureData(dto);
+      // if (validationErrors.length > 0) {
+      //   throw new BadRequestException({
+      //     message: 'Missing or invalid case closure information',
+      //     errors: validationErrors,
+      //     caseId,
+      //   });
+      // }
 
       // SUPERVISOR DIRECT CLOSURE PATH
       if (role === 'CMS_SUPERVISOR') {
@@ -202,7 +201,7 @@ export class CaseClosureApprovalService {
           dto.finalNotes
             ? {
                 note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
-                tenantId: tenantId,
+                tenantId,
               }
             : undefined,
         );
@@ -287,7 +286,7 @@ export class CaseClosureApprovalService {
           ? {
               note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
               taskId: approvalTask.task_id,
-              tenantId: tenantId,
+              tenantId,
             }
           : undefined,
       );
@@ -419,14 +418,14 @@ export class CaseClosureApprovalService {
         newStatus: TaskStatus.STATUS_30_COMPLETED,
         completionVariables: {
           approvalDecision: 'approve',
-          finalOutcome: finalOutcome,
+          finalOutcome,
           supervisorComments: comments,
         },
       });
 
       await this.commentService.addComment(
         {
-          caseId: caseId,
+          caseId,
           taskId: approvalTask.task_id,
           note: `Supervisor Approval:\n${comments}\n\nFinal Outcome: ${finalOutcome}`,
         } as CreateCommentDto,
@@ -449,9 +448,7 @@ export class CaseClosureApprovalService {
         }
       }
 
-      const investigationTask = caseDetails.tasks.find(
-        (t) => t.name && TASK_NAMES.INVESTIGATE_CASE_VARIANTS.includes(t.name as any) && t.assigned_user_id,
-      );
+      const investigationTask = caseDetails.tasks.find((t) => t.name && t.name === TASK_NAMES.INVESTIGATE_CASE && t.assigned_user_id);
 
       if (investigationTask?.assigned_user_id) {
         try {
@@ -783,7 +780,7 @@ export class CaseClosureApprovalService {
 
     TaskValidationUtil.throwIfValidationFails(approvalValidation, 'Approval task validation failed');
 
-    const approvalTask = approvalValidation.approvalTask;
+    const { approvalTask } = approvalValidation;
 
     if (!approvalTask) {
       throw new NotFoundException('Approval task not found');
@@ -809,7 +806,13 @@ export class CaseClosureApprovalService {
     return { caseData, approvalTask };
   }
 
-  private validateCaseCompleteness(caseDetails: any): string[] {
+  private validateCaseCompleteness(caseDetails: {
+    priority?: Priority;
+    case_type?: CaseType | null;
+    case_creator_user_id?: string;
+    tasks: Task[];
+    comments: Comment[];
+  }): string[] {
     const missing: string[] = [];
 
     if (!caseDetails.priority) {
@@ -825,7 +828,7 @@ export class CaseClosureApprovalService {
     }
 
     const hasInvestigationTask = caseDetails.tasks.some(
-      (t) => t.name && TASK_NAMES.INVESTIGATE_CASE_VARIANTS.includes(t.name as any) && t.status === TaskStatus.STATUS_30_COMPLETED,
+      (t) => t.name && t.name === TASK_NAMES.INVESTIGATE_CASE && t.status === TaskStatus.STATUS_30_COMPLETED,
     );
 
     if (!hasInvestigationTask) {

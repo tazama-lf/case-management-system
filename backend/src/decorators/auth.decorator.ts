@@ -56,7 +56,8 @@ export const RequireAlertTriageRole = () => RequireAnyClaims(TazamaClaims.ALERT_
 export const RequireInvestigatorRole = () => RequireAnyClaims(TazamaClaims.CMS_INVESTIGATOR);
 export const RequireSupervisorRole = () => RequireAnyClaims(TazamaClaims.CMS_SUPERVISOR);
 export const RequireInvestigatorOrSupervisorRole = () => RequireAnyClaims(TazamaClaims.CMS_INVESTIGATOR, TazamaClaims.CMS_SUPERVISOR);
-export const RequireInvestigatorOrSupervisorRoleOrComplianceRole = () => RequireAnyClaims(TazamaClaims.CMS_INVESTIGATOR, TazamaClaims.CMS_SUPERVISOR, TazamaClaims.CMS_COMPLIANCE_OFFICER);
+export const RequireInvestigatorOrSupervisorRoleOrComplianceRole = () =>
+  RequireAnyClaims(TazamaClaims.CMS_INVESTIGATOR, TazamaClaims.CMS_SUPERVISOR, TazamaClaims.CMS_COMPLIANCE_OFFICER);
 
 export const RequireCMSComplianceOfficerRole = () => RequireAnyClaims(TazamaClaims.CMS_COMPLIANCE_OFFICER);
 

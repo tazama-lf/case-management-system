@@ -94,9 +94,9 @@ export class ApproveCaseClosureDto {
     required: false,
   })
   @IsString()
- @IsNotEmpty()
- @MinLength(4)
- @MaxLength(500)
+  @IsNotEmpty()
+  @MinLength(4)
+  @MaxLength(500)
   supervisorComments: string;
 }
 

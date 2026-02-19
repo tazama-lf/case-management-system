@@ -5,13 +5,11 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { Outcome } from '../../utils/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus, Task, Prisma, CaseStatus, Case } from '@prisma/client-cms';
-import { TaskHistoryService } from '../task_history/taskHistory.service';
 import { TaskAssignedEvent } from '../events/domain-events';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { AuthService } from '../auth/auth.service';
-import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 
 export interface TaskWithCase extends Task {
@@ -33,7 +31,7 @@ export class TaskService {
     private readonly flowableService: FlowableService,
     private readonly authService: AuthService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   async createTask(taskDTO: CreateTaskDto, userId: string) {
     this.logger.log('Start - createTask', TaskService.name);
@@ -88,7 +86,7 @@ export class TaskService {
   }
 
   async reassignTask(taskId: number, userId: string, tenantId: string, assignedUserId: string, notes: string) {
-    return this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId, notes);
+    return await this.lifecycle.reassignTask(taskId, userId, tenantId, assignedUserId, notes);
   }
 
   async updateTask(taskId: number, updateData: Partial<UpdateTaskDto>, userId: string) {
@@ -145,7 +143,7 @@ export class TaskService {
         return { updatedTask };
       });
 
-      this.logger.log(`End - updateTask`, TaskService.name);
+      this.logger.log('End - updateTask', TaskService.name);
       return txResult.updatedTask;
     } catch (error) {
       this.logger.error(`Error updating task ${taskId}`, error, TaskService.name);
@@ -166,7 +164,7 @@ export class TaskService {
     try {
       const dbTasks = (await this.taskRepository.findTasks(
         {
-          candidateGroup: candidateGroup,
+          candidateGroup,
           status: { in: [TaskStatus.STATUS_01_UNASSIGNED, TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] },
         },
         true,
@@ -289,11 +287,11 @@ export class TaskService {
   }
 
   async assignTaskToInvestigator(taskId: number, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
-    return this.lifecycle.assignTaskToInvestigator(taskId, assignedUserId, supervisorId, tenantId, note);
+    return await this.lifecycle.assignTaskToInvestigator(taskId, assignedUserId, supervisorId, tenantId, note);
   }
 
   async selfAssignTask(taskId: number, investigatorUserId: string, tenantId: string) {
-    return this.lifecycle.selfAssignTask(taskId, investigatorUserId, tenantId);
+    return await this.lifecycle.selfAssignTask(taskId, investigatorUserId, tenantId);
   }
 
   async getTasks(status?: string) {
@@ -458,22 +456,22 @@ export class TaskService {
   }
 
   async unassignTask(taskId: number, userId: string, tenantId: string, reason?: string) {
-    return this.lifecycle.unassignTask(taskId, userId, tenantId, reason || '');
+    return await this.lifecycle.unassignTask(taskId, userId, tenantId, reason || '');
   }
 
   async completeTask(taskId: number, userId: string) {
-    return this.lifecycle.completeTask(taskId, userId);
+    return await this.lifecycle.completeTask(taskId, userId);
   }
 
-  async getUserTasks(userId: string, includeCompleted: boolean = false) {
+  async getUserTasks(userId: string, includeCompleted = false) {
     try {
       const statusFilter = includeCompleted
         ? {}
         : {
-          status: {
-            not: TaskStatus.STATUS_30_COMPLETED,
-          },
-        };
+            status: {
+              not: TaskStatus.STATUS_30_COMPLETED,
+            },
+          };
 
       return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, true);
     } catch (error) {
@@ -523,7 +521,7 @@ export class TaskService {
     }
   }
 
-  private promoteParentCaseToInProgress = async (parentId: number, updatedCase: Case, tx: Prisma.TransactionClient) => {
+  private readonly promoteParentCaseToInProgress = async (parentId: number, updatedCase: Case, tx: Prisma.TransactionClient) => {
     try {
       const subCase = await tx.case.findFirst({
         where: {
@@ -534,7 +532,10 @@ export class TaskService {
         },
       });
 
-      if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && (subCase?.status === CaseStatus.STATUS_20_IN_PROGRESS || subCase?.status === CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL)) {
+      if (
+        updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS &&
+        (subCase?.status === CaseStatus.STATUS_20_IN_PROGRESS || subCase?.status === CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL)
+      ) {
         await tx.case.update({
           where: { case_id: parentId },
           data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },

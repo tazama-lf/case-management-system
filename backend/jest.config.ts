@@ -18,7 +18,23 @@ const config: Config.InitialOptions = {
   // Output directory for coverage reports (from reference)
   coverageDirectory: '<rootDir>/coverage/',
   // Files/folders to ignore for coverage (from reference, adjusted for project)
-  coveragePathIgnorePatterns: ['/node_modules/', '/dist/', '/test', '.module.ts', './jest.config.ts'],
+  // coveragePathIgnorePatterns: ['/node_modules/', '/dist/', '/test', '.module.ts', './jest.config.ts'],
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/test/',
+    '.mock.ts',
+    '.module.ts',
+    '.*utils.*',
+    '.*types.*',
+    '.*controller.*',
+    '.*repository.*',
+    '.*dto.*',
+    '.*interfaces.*',
+    '.*enum.*',
+    '/services/',
+    '/database/',
+  ],
   // Use V8 for coverage instrumentation (from reference)
   coverageProvider: 'v8',
   // Coverage reporters
@@ -40,6 +56,7 @@ const config: Config.InitialOptions = {
   },
   // Ignore node_modules and dist for test paths (from reference, adjusted)
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
+
   // Enable verbose output (from reference)
   verbose: true,
   moduleNameMapper: {

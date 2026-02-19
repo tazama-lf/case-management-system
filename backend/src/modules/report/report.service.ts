@@ -11,7 +11,7 @@ import { CouchdbService } from 'src/modules/couchdb/couchdb.service';
 import { EvidenceService } from '../evidence/evidence.service';
 import { EventLogService } from '../event_log/eventLog.service';
 import { UploadReportDto } from './dto/upload-report.dto';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 
 @Injectable()
 export class ReportsService {
@@ -340,7 +340,7 @@ export class ReportsService {
         const casesInStatus = await this.prisma.case.findMany({
           where: {
             ...whereClause,
-            status: status,
+            status,
           },
           select: {
             created_at: true,
@@ -517,7 +517,7 @@ export class ReportsService {
             : 0;
 
         return {
-          name: `${case_owner_user_id}`,
+          name: case_owner_user_id,
           avgDays: Math.round(avgResolutionDays),
         };
       }),
@@ -556,7 +556,7 @@ export class ReportsService {
         ]);
 
         return {
-          name: `${case_owner_user_id}`,
+          name: case_owner_user_id,
           confirmed,
           refuted,
           inconclusive,
@@ -660,7 +660,7 @@ export class ReportsService {
       }),
     );
 
-    const volumeTrend: Array<{ month: string; investigators: { [key: string]: number } }> = [];
+    const volumeTrend: Array<{ month: string; investigators: Record<string, number> }> = [];
     const now = new Date();
 
     for (let i = 5; i >= 0; i--) {
@@ -683,7 +683,7 @@ export class ReportsService {
           },
         });
 
-        monthData.investigators[`${case_owner_user_id}`] = caseCount;
+        monthData.investigators[case_owner_user_id] = caseCount;
       }
 
       volumeTrend.push(monthData);
@@ -709,7 +709,7 @@ export class ReportsService {
         caseClosureRate: Math.round(avgCaseClosureRate),
       },
       workloadData: validWorkloadData,
-      volumeTrend: volumeTrend,
+      volumeTrend,
       efficiencyData: efficiencyData.filter(Boolean),
       outcomeData: outcomeData.filter(Boolean),
       performanceData: performanceData.filter(Boolean),
@@ -735,28 +735,26 @@ export class ReportsService {
       (log) => log.outcome && (log.outcome.includes('WARNING') || log.outcome.includes('ERROR')),
     ).length;
 
-    const formattedLogs = filteredLogs.map((log) => {
-      return {
-        audit_log_id: log.audit_log_id ? log.audit_log_id.toString() : '',
-        user_id: log.user_id ? log.user_id.toString() : '',
-        operation: log.operation ? log.operation.toString() : '',
-        entity_name: log.entity_name ? log.entity_name.toString() : '',
-        action_performed: log.action_performed ? log.action_performed.toString() : '',
-        outcome: log.outcome ? log.outcome.toString() : '',
-        performed_at: log.performed_at
-          ? log.performed_at.toLocaleString('en-US', {
-              month: '2-digit',
-              day: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true,
-            })
-          : '',
-        type: this.getAuditLogType(log.outcome || ''),
-      };
-    });
+    const formattedLogs = filteredLogs.map((log) => ({
+      audit_log_id: log.audit_log_id ? log.audit_log_id.toString() : '',
+      user_id: log.user_id ? log.user_id.toString() : '',
+      operation: log.operation ? log.operation.toString() : '',
+      entity_name: log.entity_name ? log.entity_name.toString() : '',
+      action_performed: log.action_performed ? log.action_performed.toString() : '',
+      outcome: log.outcome ? log.outcome.toString() : '',
+      performed_at: log.performed_at
+        ? log.performed_at.toLocaleString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+          })
+        : '',
+      type: this.getAuditLogType(log.outcome || ''),
+    }));
 
     return {
       stats: {
@@ -780,28 +778,26 @@ export class ReportsService {
       (log) => log.entity_name === 'Case' || (log.action_performed && log.action_performed.includes('Case')),
     ).length;
 
-    const formattedLogs = filteredLogs.map((log) => {
-      return {
-        event_log_id: log.event_log_id ? log.event_log_id.toString() : '',
-        user_id: log.user_id ? log.user_id.toString() : '',
-        operation: log.operation ? log.operation.toString() : '',
-        entity_name: log.entity_name ? log.entity_name.toString() : '',
-        action_performed: log.action_performed ? log.action_performed.toString() : '',
-        outcome: log.outcome ? log.outcome.toString() : '',
-        performed_at: log.performed_at
-          ? log.performed_at.toLocaleString('en-US', {
-              month: '2-digit',
-              day: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true,
-            })
-          : '',
-        type: this.getAuditLogType(log.outcome || ''),
-      };
-    });
+    const formattedLogs = filteredLogs.map((log) => ({
+      event_log_id: log.event_log_id ? log.event_log_id.toString() : '',
+      user_id: log.user_id ? log.user_id.toString() : '',
+      operation: log.operation ? log.operation.toString() : '',
+      entity_name: log.entity_name ? log.entity_name.toString() : '',
+      action_performed: log.action_performed ? log.action_performed.toString() : '',
+      outcome: log.outcome ? log.outcome.toString() : '',
+      performed_at: log.performed_at
+        ? log.performed_at.toLocaleString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+          })
+        : '',
+      type: this.getAuditLogType(log.outcome || ''),
+    }));
 
     return {
       stats: {
@@ -857,14 +853,11 @@ export class ReportsService {
     const casesOver30Days = casesWithAge.filter((c) => c.ageDays >= 30).length;
 
     const ageingByStatus: any[] = [];
-    const statusGroups = casesWithAge.reduce(
-      (acc, case_) => {
-        if (!acc[case_.status]) acc[case_.status] = [];
-        acc[case_.status].push(case_);
-        return acc;
-      },
-      {} as Record<string, typeof casesWithAge>,
-    );
+    const statusGroups = casesWithAge.reduce<Record<string, typeof casesWithAge>>((acc, case_) => {
+      if (!acc[case_.status]) acc[case_.status] = [];
+      acc[case_.status].push(case_);
+      return acc;
+    }, {});
 
     Object.entries(statusGroups).forEach(([status, cases]) => {
       ageingByStatus.push({
@@ -1134,7 +1127,7 @@ export class ReportsService {
     const existingReports = (existingReportsResult.docs as FraudReport[]) || [];
     const nextVersion = existingReports.length > 0 ? Math.max(...existingReports.map((r) => r.version ?? 1)) + 1 : 1;
     const reportId = `${dto.caseId}-InvestigationReport-v${nextVersion}`;
-    file.originalname = reportId + '.pdf';
+    file.originalname = `${reportId}.pdf`;
     const evidenceResult = await this.evidenceService.getEvidenceByCaseId(
       Number(dto.caseId),
       userId ?? '',
@@ -1144,9 +1137,9 @@ export class ReportsService {
     const evidenceSummary = evidenceResult.evidence;
 
     const report: any = {
-      userId: userId,
-      tenantId: tenantId,
-      role: role,
+      userId,
+      tenantId,
+      role,
       reportId,
       caseId: dto.caseId,
       reportType: 'INVESTIGATION_REPORT',
@@ -1199,7 +1192,7 @@ export class ReportsService {
     });
 
     await this.auditLogService.logAction({
-      userId: userId,
+      userId,
       operation: 'APPROVE',
       entityName: 'FraudReport',
       actionPerformed: 'Fraud report approved',

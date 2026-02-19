@@ -56,10 +56,15 @@ export class ProfileResponseDto {
   @IsString()
   visualization?: string;
 
-  @ApiProperty({ description: 'Detected anomalies and flagged patterns', type: [DetectedAnomalyDto], required: false, example: [
-    { date: '2025-11-01', type: 'Transfer', amount: 8000, description: 'Large cross-border transfer flagged', risk: 'High' },
-    { date: '2025-09-15', type: 'Transfer', amount: 5000, description: 'Unusual peer comparison', risk: 'Medium' }
-  ] })
+  @ApiProperty({
+    description: 'Detected anomalies and flagged patterns',
+    type: [DetectedAnomalyDto],
+    required: false,
+    example: [
+      { date: '2025-11-01', type: 'Transfer', amount: 8000, description: 'Large cross-border transfer flagged', risk: 'High' },
+      { date: '2025-09-15', type: 'Transfer', amount: 5000, description: 'Unusual peer comparison', risk: 'Medium' },
+    ],
+  })
   @IsOptional()
   @IsArray()
   detectedAnomalies?: DetectedAnomalyDto[];
@@ -70,15 +75,15 @@ export class ProfileResponseDto {
     type: [Object],
     example: [
       {
-        Date: '2025-09-01',
+        'Date': '2025-09-01',
         'Transaction ID': 'TX10001',
-        Type: 'TRANSFER',
-        Account: 'A1001',
-        Counterparty: 'A1002',
-        Role: 'Debtor',
-        Amount: '1000.00',
-      }
-    ]
+        'Type': 'TRANSFER',
+        'Account': 'A1001',
+        'Counterparty': 'A1002',
+        'Role': 'Debtor',
+        'Amount': '1000.00',
+      },
+    ],
   })
   @IsOptional()
   @IsArray()

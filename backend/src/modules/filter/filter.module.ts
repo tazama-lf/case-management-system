@@ -11,4 +11,4 @@ import { RepositoryModule } from '../repository/repository.module';
   exports: [FilterService],
   controllers: [FilterController],
 })
-export class FilterModule { }
+export class FilterModule {}

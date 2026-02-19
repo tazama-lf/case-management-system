@@ -30,4 +30,4 @@ import { TaskHistoryModule } from '../task_history/taskHistory.module';
   providers: [EvidenceService],
   exports: [EvidenceService],
 })
-export class EvidenceModule { }
+export class EvidenceModule {}

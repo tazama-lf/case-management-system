@@ -10,7 +10,7 @@ import { ReferenceIdDetailsDto } from './dto/GetReferenceIdsQueryDto';
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) { }
+  constructor(private readonly adminService: AdminService) {}
 
   @Post('reference-id')
   @RequireAdminRole()

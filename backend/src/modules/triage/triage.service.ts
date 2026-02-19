@@ -16,8 +16,7 @@ import { CaseRepository } from '../repository/case.repository';
 import { AlertRepository } from '../repository/alert.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { Outcome } from '../../utils/types/outcome';
-import { ManualAlertUpdateDTO, IngestAlertDto } from '../alert/dto';
-import { UpdateAlertDTO } from '../alert/dto';
+import { ManualAlertUpdateDTO, IngestAlertDto, UpdateAlertDTO } from '../alert/dto';
 import { CaseCreationService } from '../case/services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { TaskRepository } from '../repository/task.repository';
@@ -40,8 +39,8 @@ export class TriageService {
     private readonly flowableService: FlowableService,
     private readonly alertService: AlertService,
     private readonly caseCreationService: CaseCreationApprovalService,
-    private taskService: TaskService,
-    private configService: ConfigService,
+    private readonly taskService: TaskService,
+    private readonly configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly featureExtractionService: FeatureExtractionService,
@@ -68,7 +67,7 @@ export class TriageService {
         const existingCase = await this.caseRepository.findCaseById(alert.case_id, tx);
         const completeNewCaseTask = existingCase.tasks.find((t) => t.name === 'Complete New Case');
         if (!completeNewCaseTask || completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
-          throw new BadRequestException(`Triage Already Complete`);
+          throw new BadRequestException('Triage Already Complete');
         }
 
         await this.taskRepository.updateTask(
@@ -82,7 +81,7 @@ export class TriageService {
           {
             caseId: alert.case_id,
             taskId: completeNewCaseTask?.task_id,
-            tenantId: tenantId,
+            tenantId,
             note: updateAlertDto.note,
           } as CreateCommentDto,
           tx,
@@ -116,27 +115,22 @@ export class TriageService {
             },
           });
 
-          await this.caseCreationService.updateCaseStatus(
-            alert.case_id,
-            updateAlertDto.status,
-            userId,
-            priority,
-            updateAlertDto.alertType as CaseType,
-          );
+          await this.caseCreationService.updateCaseStatus(alert.case_id, updateAlertDto.status, userId, priority, updateAlertDto.alertType);
 
           this.logger.log(
             `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Closed as ${updateAlertDto.status}`,
             TriageService.name,
           );
         } else {
-          if (alert.alert_type)
+          if (alert.alert_type) {
             await this.caseCreationService.updateCaseStatus(
               alert.case_id,
               CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
               userId,
               priority,
-              updateAlertDto.alertType as CaseType,
+              updateAlertDto.alertType,
             );
+          }
 
           if (alert.alert_type === CaseType.FRAUD_AND_AML) {
             await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, alert.case_id, priority);
@@ -157,7 +151,7 @@ export class TriageService {
         return { alert };
       });
 
-      this.logger.log(`End - handleManualTriage`, TriageService.name);
+      this.logger.log('End - handleManualTriage', TriageService.name);
       return transactionResult.alert;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -172,7 +166,7 @@ export class TriageService {
     try {
       const triageTask = await this.taskService.createTask(
         {
-          caseId: caseId,
+          caseId,
           assignedUserId: userId,
           status: TaskStatus.STATUS_10_ASSIGNED,
           name: 'Complete New Case',
@@ -231,7 +225,7 @@ export class TriageService {
 
       if (predictedConfidence < confidenceThreshold) {
         await this.flowableService.handleTaskCompleted({
-          caseId: caseId,
+          caseId,
           taskName: triageTask.name!,
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
@@ -252,7 +246,7 @@ export class TriageService {
 
       if (predictedConfidence >= confidenceThreshold && !predictedTruePositive) {
         await this.flowableService.handleTaskCompleted({
-          caseId: caseId,
+          caseId,
           taskName: triageTask.name!,
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
@@ -282,7 +276,7 @@ export class TriageService {
             userId,
           );
           await this.flowableService.handleTaskCompleted({
-            caseId: caseId,
+            caseId,
             taskName: triageTask.name!,
             newStatus: TaskStatus.STATUS_30_COMPLETED,
             completionVariables: {
@@ -307,7 +301,7 @@ export class TriageService {
 
         if (predictedAlertType === CaseType.AML) {
           await this.flowableService.handleTaskCompleted({
-            caseId: caseId,
+            caseId,
             taskName: triageTask.name!,
             newStatus: TaskStatus.STATUS_30_COMPLETED,
             completionVariables: {
@@ -329,7 +323,7 @@ export class TriageService {
         if (predictedAlertType === CaseType.FRAUD) {
           if (!transactionOccurred) {
             await this.flowableService.handleTaskCompleted({
-              caseId: caseId,
+              caseId,
               taskName: triageTask.name!,
               newStatus: TaskStatus.STATUS_30_COMPLETED,
               completionVariables: {
@@ -349,7 +343,7 @@ export class TriageService {
           }
 
           await this.flowableService.handleTaskCompleted({
-            caseId: caseId,
+            caseId,
             taskName: triageTask.name!,
             newStatus: TaskStatus.STATUS_30_COMPLETED,
             completionVariables: {
@@ -449,9 +443,6 @@ export class TriageService {
     try {
       this.logger.log(`Start - AI triage completed for case ${caseId}`, TriageService.name);
       const existingCase = await this.caseRepository.findCaseById(caseId);
-      if (!existingCase) {
-        throw new NotFoundException(`Case ${caseId} not found`);
-      }
 
       await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, userId);
 
@@ -460,7 +451,7 @@ export class TriageService {
         CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         userId,
         priority,
-        alertType as CaseType,
+        alertType,
       );
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -544,7 +535,7 @@ export class TriageService {
   }
 
   private async predictAlert(alert: IngestAlertDto): Promise<Prediction> {
-    this.logger.log(`Start - AI Prediction`, TriageService.name);
+    this.logger.log('Start - AI Prediction', TriageService.name);
     try {
       const extractedFeatures = await this.featureExtractionService.extractFeatures(alert);
       const predictedResult = await axios.post<AIPrediction>(this.configService.get<string>('AI_MODEL_ENDPOINT')!, extractedFeatures);

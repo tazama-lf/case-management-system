@@ -12,7 +12,7 @@ export class TransactionDataRespository extends BaseRepository {
   async getTransactionalData(endToEndId: string) {
     const client: Prisma.TransactionClient | PrismaService = this.prisma;
     const transactionalData = await client.transactionData.findMany({
-      where: { endToEndId: endToEndId },
+      where: { endToEndId },
     });
 
     if (!transactionalData) {

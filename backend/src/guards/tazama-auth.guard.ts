@@ -3,13 +3,13 @@ import { Reflector } from '@nestjs/core';
 import { TazamaToken, validateTokenAndClaims } from '@tazama-lf/auth-lib';
 import type { AuthenticatedUser, ClaimValidationResult, CMSToken } from '../utils/types/auth.types';
 import { CLAIMS_KEY, IS_PUBLIC_KEY, ANY_CLAIMS_KEY, AUTHENTICATED_ONLY_KEY } from '../decorators/auth.decorator';
-import { decode } from 'punycode';
+import { decode } from 'node:punycode';
 
 @Injectable()
 export class TazamaAuthGuard implements CanActivate {
   private readonly logger = new Logger(TazamaAuthGuard.name);
 
-  constructor(private reflector: Reflector) {}
+  constructor(private readonly reflector: Reflector) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const logContext = 'TazamaAuthGuard.canActivate()';
@@ -70,8 +70,8 @@ export class TazamaAuthGuard implements CanActivate {
       let invalidClaims: string[] = [];
 
       if (requiredClaims && requiredClaims.length > 0) {
-        const hasAllClaims = requiredClaims.every((claim) => validated[claim] === true);
-        validClaims = requiredClaims.filter((claim) => validated[claim] === true);
+        const hasAllClaims = requiredClaims.every((claim) => validated[claim]);
+        validClaims = requiredClaims.filter((claim) => validated[claim]);
         invalidClaims = requiredClaims.filter((claim) => !validated[claim]);
         hasValidAccess = hasAllClaims;
 
@@ -82,8 +82,8 @@ export class TazamaAuthGuard implements CanActivate {
           );
         }
       } else if (anyRequiredClaims && anyRequiredClaims.length > 0) {
-        const hasAnyClaim = anyRequiredClaims.some((claim) => validated[claim] === true);
-        validClaims = anyRequiredClaims.filter((claim) => validated[claim] === true);
+        const hasAnyClaim = anyRequiredClaims.some((claim) => validated[claim]);
+        validClaims = anyRequiredClaims.filter((claim) => validated[claim]);
         invalidClaims = anyRequiredClaims.filter((claim) => !validated[claim]);
         hasValidAccess = hasAnyClaim;
 
@@ -108,7 +108,7 @@ export class TazamaAuthGuard implements CanActivate {
 
       request.user = authenticatedUser;
 
-      this.logger.log(`Authentication Successful`, logContext);
+      this.logger.log('Authentication Successful', logContext);
       return true;
     } catch (error) {
       const err = error as Error;
@@ -136,7 +136,7 @@ export class TazamaAuthGuard implements CanActivate {
         throw new Error('Token missing details');
       }
 
-      const tenantName = this.extractTenantName(nestedDecoded?.['tenant_details'] as string[]);
+      const tenantName = this.extractTenantName(nestedDecoded?.tenant_details as string[]);
 
       return {
         ...decoded,
@@ -144,7 +144,7 @@ export class TazamaAuthGuard implements CanActivate {
         firstName: nestedDecoded.firstName ? nestedDecoded.firstName : undefined,
         lastName: nestedDecoded.lastName,
         fullName: nestedDecoded.name,
-        tenantName: tenantName,
+        tenantName,
       };
     } catch (error) {
       const err = error as Error;

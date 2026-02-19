@@ -40,8 +40,7 @@ export class FlowableProcessService {
       this.logger.log(`End - Start Process Instance With BusinessKey: ${businessKey}`, FlowableProcessService.name);
       return response.data;
     } catch (error) {
-      this.logger.error(`Failed to start process instance: ${error.message}`, error.stack, FlowableProcessService.name);
-      throw new HttpException('Failed to start process instance', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw error;
     }
   }
 
@@ -53,10 +52,7 @@ export class FlowableProcessService {
       const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId));
       return response.data;
     } catch (error) {
-      if (error.response?.status === 404) {
-        return null;
-      }
-      throw new HttpException('Failed to get process instance', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw error;
     }
   }
 
@@ -72,8 +68,7 @@ export class FlowableProcessService {
       });
       return response.data.data?.[0] || null;
     } catch (error) {
-      this.logger.error(`Failed to get process by business key: ${error.message}`, error.stack, FlowableProcessService.name);
-      return null;
+      throw error;
     }
   }
 
@@ -90,8 +85,7 @@ export class FlowableProcessService {
 
       this.logger.log(`Updated '${variableName}' for process ${processInstanceId}`, FlowableProcessService.name);
     } catch (error) {
-      this.logger.error(`Failed to update variable '${variableName}': ${error.message}`, error.stack, FlowableProcessService.name);
-      throw new HttpException(`Failed to update process variable: ${variableName}`, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw error;
     }
   }
 
@@ -110,32 +104,9 @@ export class FlowableProcessService {
       this.logger.log(`Variables updated successfully for process ${processInstanceId}`, FlowableProcessService.name);
       return response.data;
     } catch (error) {
-      this.logger.error(`Failed to set process variables: ${error.message}`, error.stack, FlowableProcessService.name);
-
-      if (error.response) {
-        this.logger.error(`Flowable API error response: ${JSON.stringify(error.response.data)}`, FlowableProcessService.name);
-        this.logger.error(`Status code: ${error.response.status}`, FlowableProcessService.name);
-      }
-
-      if (error.response?.status === 409) {
-        this.logger.warn('Conflict detected, attempting to update variables individually', FlowableProcessService.name);
-
-        try {
-          for (const [name, value] of Object.entries(variables)) {
-            await this.updateProcessVariable(processInstanceId, name, value);
-          }
-          this.logger.log(`Successfully updated all variables individually for process ${processInstanceId}`, FlowableProcessService.name);
-          return;
-        } catch (retryError) {
-          this.logger.error(
-            `Failed to update variables individually: ${retryError.message}`,
-            retryError.stack,
-            FlowableProcessService.name,
-          );
-          throw new HttpException('Failed to set process variables', HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-      }
-
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to set process variables: ${errorMessage}`, errorStack, FlowableProcessService.name);
       throw new HttpException('Failed to set process variables', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -157,8 +128,7 @@ export class FlowableProcessService {
       this.logger.log(`Process instance terminated: ${processInstanceId}`, FlowableProcessService.name);
       return response.data;
     } catch (error) {
-      this.logger.error(`Failed to terminate process instance: ${error.message}`, error.stack, FlowableProcessService.name);
-      throw new HttpException('Failed to terminate process instance', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw error;
     }
   }
 
@@ -176,8 +146,7 @@ export class FlowableProcessService {
       this.logger.log(`Process instance suspended: ${processInstanceId}`, FlowableProcessService.name);
       return response.data;
     } catch (error) {
-      this.logger.error(`Failed to suspend process instance: ${error.message}`, error.stack, FlowableProcessService.name);
-      throw new HttpException('Failed to suspend process instance', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw error;
     }
   }
 
@@ -195,8 +164,7 @@ export class FlowableProcessService {
       this.logger.log(`Process instance activated: ${processInstanceId}`, FlowableProcessService.name);
       return response.data;
     } catch (error) {
-      this.logger.error(`Failed to activate process instance: ${error.message}`, error.stack, FlowableProcessService.name);
-      throw new HttpException('Failed to activate process instance', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw error;
     }
   }
 
@@ -216,8 +184,7 @@ export class FlowableProcessService {
       });
       return response.data.data || [];
     } catch (error) {
-      this.logger.error(`Failed to get process definitions: ${error.message}`, error.stack, FlowableProcessService.name);
-      return [];
+      throw error;
     }
   }
 

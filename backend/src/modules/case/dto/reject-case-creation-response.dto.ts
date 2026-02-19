@@ -10,7 +10,7 @@ export class CaseDetails {
   @ApiProperty({ type: 'string', format: 'date-time' })
   updated_at: string;
 }
-  
+
 export class CompletedTask {
   @ApiProperty({ type: 'string', format: 'uuid' })
   task_id: string;

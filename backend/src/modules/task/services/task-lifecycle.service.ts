@@ -90,9 +90,9 @@ export class TaskLifecycleService {
           assignedUserId,
           {
             caseId: existingTask.case_id,
-            taskId: taskId,
-            note: note,
-            tenantId: tenantId,
+            taskId,
+            note,
+            tenantId,
           },
           tx,
         );
@@ -192,9 +192,9 @@ export class TaskLifecycleService {
         actorUserId,
         {
           caseId: existingTask.case_id,
-          taskId: taskId,
-          note: note,
-          tenantId: tenantId,
+          taskId,
+          note,
+          tenantId,
         },
         tx,
       );
@@ -227,8 +227,9 @@ export class TaskLifecycleService {
   async selfAssignTask(taskId: number, investigatorUserId: string, tenantId: string) {
     const existingTask = await this.getTaskOrThrow(taskId);
     if (existingTask.assigned_user_id) throw new BadRequestException(`Task ${taskId} is already assigned.`);
-    if (existingTask.status !== TaskStatus.STATUS_01_UNASSIGNED)
+    if (existingTask.status !== TaskStatus.STATUS_01_UNASSIGNED) {
       throw new BadRequestException(`Task ${taskId} must be unassigned to self-assign.`);
+    }
     const existingCase = await this.getCaseOrThrow(existingTask.case_id);
     const previousCaseStatus = existingCase.status;
 
@@ -309,10 +310,11 @@ export class TaskLifecycleService {
   }
 
   async unassignTask(taskId: number, actorUserId: string, tenantId: string, reason: string) {
-    if (!reason || !reason.trim()) throw new BadRequestException('Reason for unassigning task is required');
+    if (!reason?.trim()) throw new BadRequestException('Reason for unassigning task is required');
     const existingTask = await this.getTaskOrThrow(taskId);
-    if (existingTask.status === TaskStatus.STATUS_30_COMPLETED)
+    if (existingTask.status === TaskStatus.STATUS_30_COMPLETED) {
       throw new BadRequestException(`Cannot unassign a completed task (${taskId})`);
+    }
     if (!existingTask.assigned_user_id) throw new BadRequestException(`Task ${taskId} is already unassigned`);
 
     const existingCase = await this.getCaseOrThrow(existingTask.case_id);
@@ -368,9 +370,9 @@ export class TaskLifecycleService {
         actorUserId,
         {
           caseId: existingTask.case_id,
-          taskId: taskId,
+          taskId,
           note: reason,
-          tenantId: tenantId,
+          tenantId,
         },
         tx,
       );

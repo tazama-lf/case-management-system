@@ -13,9 +13,6 @@ import { ConfigService } from '@nestjs/config';
 import { TaskRepository } from 'src/modules/repository/task.repository';
 import { AlertRepository } from 'src/modules/repository/alert.repository';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
-import { EventLogService } from 'src/modules/event_log/eventLog.service';
-import { CaseHistoryService } from 'src/modules/case_history/caseHistory.service';
-import { TaskHistoryService } from 'src/modules/task_history/taskHistory.service';
 import { CaseCreationService } from './case-creation.service';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 
@@ -44,15 +41,15 @@ export class CaseCreationApprovalService {
   }
 
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
-    this.logger.log(`Start - Manual Case Creation`, CaseCreationApprovalService.name);
+    this.logger.log('Start - Manual Case Creation', CaseCreationApprovalService.name);
 
     const existingAlert = await this.caseRepository.findAlert(dto.alertId);
 
     if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string })?.status !== 'NALT') {
-      throw new BadRequestException(`Case Already Exists`);
+      throw new BadRequestException('Case Already Exists');
     }
 
-    const priorityScore = dto.priorityScore;
+    const { priorityScore } = dto;
     const priority = this.casePriorityUtil.determinePriority(priorityScore);
     const caseType = dto.alertType;
 
@@ -82,7 +79,6 @@ export class CaseCreationApprovalService {
           tenantId,
           caseStatus,
           creationType: CaseCreationType.MANUAL,
-          isTriageAlert: false,
           creatorRole: role,
         });
 
@@ -90,7 +86,7 @@ export class CaseCreationApprovalService {
           dto.alertId,
           {
             caseId: createdCase.case_id,
-            priority: priority,
+            priority,
             priority_score: priorityScore,
             alertType: dto.alertType,
           },
@@ -121,45 +117,43 @@ export class CaseCreationApprovalService {
           },
           userId,
         );
+      } else if (caseType === CaseType.FRAUD_AND_AML) {
+        await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, result.case.case_id, priority);
+        await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, result.case.case_id, priority);
+
+        // await this.taskService.createTask(
+        //   {
+        //     caseId: result.case.case_id,
+        //     status: TaskStatus.STATUS_01_UNASSIGNED,
+        //     name: 'Investigate Fraud',
+        //     description: `Fraud Investigation task for manually created case ${result.case.case_id}`,
+        //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+        //   },
+        //   userId,
+        // );
+        // await this.taskService.createTask(
+        //   {
+        //     caseId: result.case.case_id,
+        //     status: TaskStatus.STATUS_01_UNASSIGNED,
+        //     name: 'Investigate AML',
+        //     description: `AML Investigation task for manually created case ${result.case.case_id}`,
+        //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+        //   },
+        //   userId,
+        // );
+
+        // Flowable here
       } else {
-        if (caseType === CaseType.FRAUD_AND_AML) {
-          await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, result.case.case_id, priority);
-          await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, result.case.case_id, priority);
-
-          // await this.taskService.createTask(
-          //   {
-          //     caseId: result.case.case_id,
-          //     status: TaskStatus.STATUS_01_UNASSIGNED,
-          //     name: 'Investigate Fraud',
-          //     description: `Fraud Investigation task for manually created case ${result.case.case_id}`,
-          //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-          //   },
-          //   userId,
-          // );
-          // await this.taskService.createTask(
-          //   {
-          //     caseId: result.case.case_id,
-          //     status: TaskStatus.STATUS_01_UNASSIGNED,
-          //     name: 'Investigate AML',
-          //     description: `AML Investigation task for manually created case ${result.case.case_id}`,
-          //     candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-          //   },
-          //   userId,
-          // );
-
-          // Flowable here
-        } else {
-          await this.taskService.createTask(
-            {
-              caseId: result.case.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Investigate Case',
-              description: `Investigation task for manually created case ${result.case.case_id}`,
-              candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-            },
-            userId,
-          );
-        }
+        await this.taskService.createTask(
+          {
+            caseId: result.case.case_id,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: 'Investigate Case',
+            description: `Investigation task for manually created case ${result.case.case_id}`,
+            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+          },
+          userId,
+        );
       }
 
       this.logger.log(
@@ -205,7 +199,7 @@ export class CaseCreationApprovalService {
    * @throws BadRequestException if alert already has a case or is not NALT status
    */
   async saveCaseAsDraft(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
-    this.logger.log(`Start - Save As Draft`, CaseCreationApprovalService.name);
+    this.logger.log('Start - Save As Draft', CaseCreationApprovalService.name);
 
     const existingAlert = await this.caseRepository.findAlert(dto.alertId);
 
@@ -219,7 +213,7 @@ export class CaseCreationApprovalService {
       );
     }
 
-    const priorityScore = dto.priorityScore;
+    const { priorityScore } = dto;
     const priority = this.casePriorityUtil.determinePriority(priorityScore);
     const caseType = (CaseType as Record<string, CaseType>)[dto.alertType] ?? null;
 
@@ -240,7 +234,6 @@ export class CaseCreationApprovalService {
         tenantId,
         caseStatus: CaseStatus.STATUS_00_DRAFT,
         creationType: CaseCreationType.MANUAL,
-        isTriageAlert: false,
         creatorRole: role,
       });
 
@@ -275,29 +268,6 @@ export class CaseCreationApprovalService {
         },
         result.case.case_id,
       );
-      // await this.auditLogService.logAction({
-      //   userId,
-      //   operation: 'saveCaseAsDraft',
-      //   entityName: 'CaseCreation',
-      //   actionPerformed: `Draft case ${result.case.case_id} created`,
-      //   outcome: Outcome.SUCCESS,
-      // });
-
-      // await this.eventLogService.logEventAction({
-      //   userId,
-      //   operation: 'saveCaseAsDraft',
-      //   entityName: 'CaseCreation',
-      //   actionPerformed: `Draft case ${result.case.case_id} created`,
-      //   outcome: Outcome.SUCCESS,
-      // });
-
-      // await this.caseHistoryService.logCaseHistoryAction({
-      //   userId,
-      //   operation: 'saveCaseAsDraft',
-      //   entityName: 'CaseCreation',
-      //   actionPerformed: `Draft case ${result.case.case_id} created`,
-      //   case_id: result.case.case_id,
-      // });
 
       this.logger.log(`Draft saved: case ${result.case.case_id}`, CaseCreationApprovalService.name);
 
@@ -457,7 +427,7 @@ export class CaseCreationApprovalService {
           status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         });
         await this.flowableService.handleCaseStatusChanged({
-          caseId: caseId,
+          caseId,
           newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
           reason: 'Case creation approved by supervisor',
         });
@@ -471,7 +441,7 @@ export class CaseCreationApprovalService {
           },
         });
         await this.flowableService.handleTaskCompleted({
-          caseId: caseId,
+          caseId,
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           taskName: 'Approve Case Creation',
           completionVariables: {
@@ -505,46 +475,9 @@ export class CaseCreationApprovalService {
           result.case.priority,
         );
       } else {
-        //   // Create two separate tasks for FRAUD_AND_AML cases
-        //   const fraudTask = await this.taskService.createTask(
-        //     {
-        //       caseId: caseId,
-        //       status: TaskStatus.STATUS_01_UNASSIGNED,
-        //       name: 'Investigate Fraud',
-        //       description: `Fraud Investigation task for case ${caseId}`,
-        //       candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-        //     },
-        //     supervisorId,
-        //   );
-
-        //   const amlTask = await this.taskService.createTask(
-        //     {
-        //       caseId: caseId,
-        //       status: TaskStatus.STATUS_01_UNASSIGNED,
-        //       name: 'Investigate AML',
-        //       description: `AML Investigation task for case ${caseId}`,
-        //       candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-        //     },
-        //     supervisorId,
-        //   );
-
-        //   this.logger.log(
-        //     `[ApproveCaseCreation] Two investigation tasks created for FRAUD_AND_AML case ${caseId}: Fraud task ${fraudTask.task_id}, AML task ${amlTask.task_id}`,
-        //     CaseCreationApprovalService.name,
-        //   );
-
-        //   await this.auditLogService.logAction({
-        //     userId: supervisorId,
-        //     operation: 'approveCaseCreation',
-        //     entityName: CaseCreationApprovalService.name,
-        //     actionPerformed: `Approved case creation for case ${caseId}. Investigation tasks created: Fraud task ${fraudTask.task_id}, AML task ${amlTask.task_id}.`,
-        //     outcome: Outcome.SUCCESS,
-        //   });
-        // } else {
-        // Create single investigation task for FRAUD or AML cases
         const investigationTask = await this.taskService.createTask(
           {
-            caseId: caseId,
+            caseId,
             status: TaskStatus.STATUS_01_UNASSIGNED,
             name: TASK_NAMES.INVESTIGATE_CASE,
             description: `Investigate case: ${caseId}`,
@@ -557,14 +490,6 @@ export class CaseCreationApprovalService {
           `[ApproveCaseCreation] Investigation task ${investigationTask.task_id} created for case ${caseId}`,
           CaseCreationApprovalService.name,
         );
-
-        // await this.loggingOrchestrationService.logActions({
-        //   userId: supervisorId,
-        //   operation: 'approveCaseCreation',
-        //   entityName: CaseCreationApprovalService.name,
-        //   actionPerformed: `Approved case creation for case ${caseId}. Investigation task ${investigationTask.task_id} created.`,
-        //   outcome: Outcome.SUCCESS,
-        // });
       }
 
       // Use appropriate message based on case type
@@ -674,10 +599,10 @@ export class CaseCreationApprovalService {
       );
 
       await this.commentRepository.createComment(supervisorId, {
-        caseId: caseId,
+        caseId,
         taskId: completeNewCaseTask.task_id,
         note: `Case creation rejected. Reason: ${reason}`,
-        tenantId: tenantId,
+        tenantId,
       });
 
       this.flowableService.handleCaseStatusChanged({
@@ -769,7 +694,7 @@ export class CaseCreationApprovalService {
           completionVariables: {
             autoCloseEligible: false,
             CaseType: updatedCase.case_type,
-            casePriority: existingCase.priority!,
+            casePriority: existingCase.priority,
           },
         });
         return { case: updatedCase, completedTask: updatedTask };
@@ -797,79 +722,12 @@ export class CaseCreationApprovalService {
         caseId,
       );
 
-      // await this.eventLogService.logEventAction({
-      //   userId,
-      //   operation: 'completeCase',
-      //   entityName: CaseCreationApprovalService.name,
-      //   actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
-      //   outcome: Outcome.SUCCESS,
-      // });
-
-      // await this.caseHistoryService.logCaseHistoryAction({
-      //   userId,
-      //   operation: 'completeCase',
-      //   entityName: CaseCreationApprovalService.name,
-      //   actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
-      //   case_id: caseId,
-      // });
-
       return { success: true, case: result.case, completedTask: result.completedTask, newTask: investigateTask };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       const errorStack = err instanceof Error ? err.stack : undefined;
       this.logger.error('completeCase failed', { error: errorMessage, stack: errorStack, caseId, userId, tenantId });
       throw new InternalServerErrorException(`Failed to complete case: ${errorMessage}`);
-    }
-  }
-
-  async createCase(createCaseDTO: CreateCaseDto, userId: string) {
-    try {
-      this.logger.log(`Start - Create Case`, CaseCreationApprovalService.name);
-      const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
-      const isTriageAlert = triageType === 'DISABLED' ? false : true;
-
-      const createdCase = await this.caseRepository.createCase({
-        tenantId: createCaseDTO.tenantId,
-        caseCreatorUserId: createCaseDTO.caseCreatorUserId,
-        caseOwnerUserId: createCaseDTO.caseOwnerUserId,
-        status: createCaseDTO.status,
-        priority: createCaseDTO.priority,
-        parentId: createCaseDTO.parentId ?? null,
-        caseType: createCaseDTO.caseType,
-        caseCreationType: createCaseDTO.caseCreationType,
-      });
-
-      this.flowableService.handleCaseCreated({
-        caseId: createdCase.case_id,
-        tenantId: createdCase.tenant_id,
-        caseStatus: createdCase.status,
-        creationType: createCaseDTO.caseCreationType,
-        isTriageAlert,
-        creatorRole: 'SYSTEM',
-      });
-
-      this.logger.log(
-        `[CaseWorkflow] Case ${createdCase.case_id} created with status ${createdCase.status}, emitting case.created event`,
-        CaseCreationApprovalService.name,
-      );
-
-      await this.loggingOrchestrationService.logActionsWithHistory(
-        {
-          userId,
-          operation: 'createCase',
-          entityName: 'CaseCreationApprovalService',
-          actionPerformed: `Case ${createdCase.case_id} created successfully`,
-          outcome: Outcome.SUCCESS,
-        },
-        createdCase.case_id,
-      );
-
-      return createdCase;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`[CaseWorkflow] Error creating case: ${errorMessage}`, errorStack, CaseCreationApprovalService.name);
-      throw error;
     }
   }
 

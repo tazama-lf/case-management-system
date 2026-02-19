@@ -14,37 +14,36 @@ export class CommentController {
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async addComment(@Body() createCommentDto: CreateCommentDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
-    
+
     createCommentDto.tenantId = tenantId;
-    return this.commentService.addComment(createCommentDto, userId);
+    return await this.commentService.addComment(createCommentDto, userId);
   }
 
   @Get(':commentId')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async getComment(@Param('commentId') commentId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.commentService.getComment(commentId, userId);
+    return await this.commentService.getComment(commentId, userId);
   }
 
   @Get()
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async getCommentsByCaseOrTask(@Req() req: AuthenticatedRequest, @Query('caseId') caseId?: number, @Query('taskId') taskId?: number) {
     const userId = req?.user.token.clientId;
-    return this.commentService.getCommentsByCaseOrTask(caseId, taskId, userId);
+    return await this.commentService.getCommentsByCaseOrTask(caseId, taskId, userId);
   }
 
- @Get('/case/:caseId/comment')
- @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  async getCommentsByCaseId(@Param('caseId') caseId: number , @Req() req: AuthenticatedRequest) {
-    return this.commentService.getCommentsByCaseId(caseId);
+  @Get('/case/:caseId/comment')
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  async getCommentsByCaseId(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
+    return await this.commentService.getCommentsByCaseId(caseId);
   }
 
   @Get('/task/:taskId/comment')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  async getCommentsByTaskId(@Param('taskId') taskId: number , @Req() req: AuthenticatedRequest) {
-    return this.commentService.getCommentsByTaskId(taskId);
+  async getCommentsByTaskId(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest) {
+    return await this.commentService.getCommentsByTaskId(taskId);
   }
-
 }

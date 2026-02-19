@@ -9,7 +9,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { AuditLogService } from '../audit/auditLog.service';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType, CreateEvidenceDto } from './dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { CouchdbService } from '../couchdb/couchdb.service';
@@ -23,11 +23,11 @@ export class EvidenceService {
   private readonly logger = new Logger(EvidenceService.name);
 
   constructor(
-    private prisma: PrismaService,
-    private couchdb: CouchdbService,
-    private auditLog: AuditLogService,
-    private evidenceRepository: EvidenceRepository,
-    private taskRepository: TaskRepository,
+    private readonly prisma: PrismaService,
+    private readonly couchdb: CouchdbService,
+    private readonly auditLog: AuditLogService,
+    private readonly evidenceRepository: EvidenceRepository,
+    private readonly taskRepository: TaskRepository,
     private readonly eventLogSerice: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
   ) {}
@@ -149,7 +149,7 @@ export class EvidenceService {
     };
 
     const maxSize = 50 * 1024 * 1024; // 50MB
-    const sectionKey = dto.evidenceType.toUpperCase() as keyof typeof maxFilesPerSection;
+    const sectionKey = dto.evidenceType.toUpperCase();
 
     // Check if the number of files in this upload exceeds max allowed
     if (files.length > maxFilesPerSection[sectionKey]) {
@@ -237,14 +237,14 @@ export class EvidenceService {
         description: dto.description,
         evidenceType: dto.evidenceType,
         file_path: attachmentResult.filePath,
-        hash: hash,
+        hash,
         fileSize: file.size,
         mimeType: file.mimetype,
         uploadedAt: metadata.uploadedAt,
         uploadedBy: userId,
         caseId: task.case_id,
         tenant_id: tenantId,
-        metadata: metadata,
+        metadata,
       } as CreateEvidenceDto);
     }
     await this.couchdb.updateDocument(evidenceId, metadata);
@@ -328,7 +328,7 @@ export class EvidenceService {
   async getEvidenceById(evidenceId: string, userId: string, tenantId: string, userRole: string): Promise<EvidenceResponseDto> {
     this.logger.log(`Fetching evidence ${evidenceId}`);
 
-    let query: any = {
+    const query: any = {
       tenantId,
       evidenceId,
       archive: false,
@@ -383,15 +383,16 @@ export class EvidenceService {
     tenantId: string,
     role: string,
     attachmentName?: string,
-  ): Promise<{ files: { file: Buffer; attachmentMeta: any }[]; metadata: EvidenceResponseDto }> {
+  ): Promise<{ files: Array<{ file: Buffer; attachmentMeta: any }>; metadata: EvidenceResponseDto }> {
     this.logger.log(`Downloading evidence ${evidenceId}`);
     let query: any = { tenantId, evidenceId, archive: false, page: 1, limit: 1 };
     if (evidenceId.includes('InvestigationReport')) {
       query = { tenantId, reportId: evidenceId, page: 1, limit: 1 };
     }
     // if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role))
+    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) {
       throw new UnauthorizedException('Invalid role');
+    }
     const result = await this.couchdb.queryDocuments(query);
 
     const evidenceDoc = result.data?.[0];
@@ -404,7 +405,7 @@ export class EvidenceService {
 
     if (!targets.length) throw new NotFoundException('Requested attachment not found');
 
-    const files: { file: Buffer; attachmentMeta: any }[] = [];
+    const files: Array<{ file: Buffer; attachmentMeta: any }> = [];
 
     try {
       for (const att of targets) {
@@ -539,7 +540,7 @@ export class EvidenceService {
           verified: true,
           reason: 'ok',
           expectedEncryptedHash: att.hash,
-          encryptedHash: encryptedHash,
+          encryptedHash,
         });
       }
 
@@ -610,7 +611,7 @@ export class EvidenceService {
   async getEvidenceByCaseId(caseId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
     const allDocs: any[] = [];
 
-    const query: any = { caseId: caseId, page: 1, limit: 100 };
+    const query: any = { caseId, page: 1, limit: 100 };
 
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {

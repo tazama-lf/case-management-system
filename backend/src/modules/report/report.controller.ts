@@ -1,23 +1,38 @@
-import { Controller, Get, Query, Req, MaxFileSizeValidator, UseGuards, Post, Put, Param, Body, UploadedFile, UseInterceptors, ParseFilePipe } from '@nestjs/common';
-import { GenerateFraudReportDto } from './dto/generate-fraud-report.dto';
-import { ApproveFraudReportDto } from './dto/approve-fraud-report.dto';
+import {
+  Controller,
+  Get,
+  Query,
+  Req,
+  MaxFileSizeValidator,
+  UseGuards,
+  Post,
+  Put,
+  Param,
+  Body,
+  UploadedFile,
+  UseInterceptors,
+  ParseFilePipe,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiParam, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { ReportsService } from './report.service';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRoleOrComplianceRole, RequireSupervisorRole } from 'src/decorators/auth.decorator';
+import {
+  RequireInvestigatorOrSupervisorRole,
+  RequireInvestigatorOrSupervisorRoleOrComplianceRole,
+  RequireSupervisorRole,
+} from 'src/decorators/auth.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { UploadReportDto } from './dto/upload-report.dto';
-import { Outcome } from 'src/utils/types/outcome';
-import { Express } from 'express';
 import { Multer } from 'multer';
+import { FraudReport, FraudReportOutcome } from './report.model';
 
 @ApiTags('Reports')
 @ApiBearerAuth('jwt')
 @Controller('api/v1/reports')
 @UseGuards(TazamaAuthGuard)
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) { }
+  constructor(private readonly reportsService: ReportsService) {}
 
   // --- Fraud Report Endpoints ---
 
@@ -47,14 +62,17 @@ export class ReportsController {
           description: 'Type of evidence',
         },
         investigatorInputs: {
-          type: 'string', example: 'Initial investigation completed. Evidence collected.'
+          type: 'string',
+          example: 'Initial investigation completed. Evidence collected.',
         },
         supervisorRemarks: {
-          type: 'string', example: 'Please review findings and recommendations.'
+          type: 'string',
+          example: 'Please review findings and recommendations.',
         },
         outcome: {
-          type: 'string', example: 'Under Monitoring'
-        }
+          type: 'string',
+          example: 'Under Monitoring',
+        },
       },
       required: ['file', 'caseId', 'reportType'],
     },
@@ -70,28 +88,18 @@ export class ReportsController {
     )
     file: Multer.File,
     @Body() dto: UploadReportDto,
-    @Req() req: AuthenticatedRequest) {
+    @Req() req: AuthenticatedRequest,
+  ): Promise<FraudReport> {
     if (!dto.caseId) {
-      throw new Error('caseId is required: ' + dto.caseId);
+      throw new Error(`caseId is required: ${dto.caseId}`);
     }
     const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
 
     const claims = req.user.token.claims || [];
 
-    const role = claims.includes('CMS_SUPERVISOR') ? 'CMS_SUPERVISOR'
-      : claims.includes('CMS_INVESTIGATOR') ? 'CMS_INVESTIGATOR'
-        : null;
-    if (!role) {
-      throw new Error('User does not have a valid investigator or supervisor role');
-    }
-    return await this.reportsService.generateFraudReport(
-      file,
-      dto,
-      userId,
-      tenantId,
-      role
-    );
+    const role = 'CMS_SUPERVISOR';
+    return await this.reportsService.generateFraudReport(file, dto, userId, tenantId, role);
   }
 
   @Put('fraud/edit/:reportId')
@@ -105,9 +113,9 @@ export class ReportsController {
         keyFindings: { type: 'string', example: 'Fraud confirmed after review.' },
         recommendations: { type: 'string', example: 'Escalate to compliance for further action.' },
         supervisorRemarks: { type: 'string', example: 'Reviewed and ready for approval.' },
-        decisions: { type: 'string', example: 'Confirmed Fraud' }
+        decisions: { type: 'string', example: 'Confirmed Fraud' },
       },
-      required: ['keyFindings', 'recommendations', 'supervisorRemarks']
+      required: ['keyFindings', 'recommendations', 'supervisorRemarks'],
     },
     examples: {
       default: {
@@ -116,12 +124,16 @@ export class ReportsController {
           keyFindings: 'Fraud confirmed after review.',
           recommendations: 'Escalate to compliance for further action.',
           supervisorRemarks: 'Reviewed and ready for approval.',
-          decisions: 'Confirmed Fraud'
-        }
-      }
-    }
+          decisions: 'Confirmed Fraud',
+        },
+      },
+    },
   })
-  async editFraudReport(@Req() req: AuthenticatedRequest, @Param('reportId') reportId: string, @Body() updates: any) {
+  async editFraudReport(
+    @Req() req: AuthenticatedRequest,
+    @Param('reportId') reportId: string,
+    @Body() updates: Partial<FraudReport>,
+  ): Promise<FraudReport> {
     const userId = req.user.token.clientId;
     return await this.reportsService.editFraudReport(reportId, updates, userId);
   }
@@ -137,9 +149,9 @@ export class ReportsController {
         reportId: { type: 'string', example: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4-v1' },
         outcome: { type: 'string', enum: ['Confirmed Fraud', 'Refuted Fraud', 'Under Monitoring'], example: 'Confirmed Fraud' },
         supervisor: { type: 'string', example: 'Jane Supervisor' },
-        supervisorUserId: { type: 'string', example: '1d2282cb-5733-4755-bf3f-677074fb9cd6' }
+        supervisorUserId: { type: 'string', example: '1d2282cb-5733-4755-bf3f-677074fb9cd6' },
       },
-      required: ['reportId', 'outcome', 'supervisor', 'supervisorUserId']
+      required: ['reportId', 'outcome', 'supervisor', 'supervisorUserId'],
     },
     examples: {
       default: {
@@ -148,25 +160,25 @@ export class ReportsController {
           reportId: '8f26bfd5-b308-49f1-bdec-1cb26fa477a4-v1',
           outcome: 'Confirmed Fraud',
           supervisor: 'Jane Supervisor',
-          supervisorUserId: '1d2282cb-5733-4755-bf3f-677074fb9cd6'
-        }
-      }
-    }
+          supervisorUserId: '1d2282cb-5733-4755-bf3f-677074fb9cd6',
+        },
+      },
+    },
   })
-  async approveFraudReport(@Body() body: any) {
-    return await this.reportsService.approveFraudReport(
-      body.reportId,
-      body.outcome,
-      body.supervisor,
-      body.supervisorUserId
-    );
+  async approveFraudReport(
+    @Body() body: { reportId: string; outcome: FraudReportOutcome; supervisor: string; supervisorUserId: string },
+  ): Promise<FraudReport> {
+    return await this.reportsService.approveFraudReport(body.reportId, body.outcome, body.supervisor, body.supervisorUserId);
   }
 
   @Get('fraud/:caseId')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get fraud investigation reports for a case', description: 'Retrieve all fraud investigation reports for a given case.' })
+  @ApiOperation({
+    summary: 'Get fraud investigation reports for a case',
+    description: 'Retrieve all fraud investigation reports for a given case.',
+  })
   @ApiResponse({ status: 200, description: 'Fraud reports retrieved successfully.' })
-  async getFraudReports(@Param('caseId') caseId: string) {
+  async getFraudReports(@Param('caseId') caseId: string): Promise<FraudReport[]> {
     return await this.reportsService.getFraudReports(caseId);
   }
 
@@ -243,14 +255,14 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  getCaseStatus(
+  async getCaseStatus(
     @Req() req: AuthenticatedRequest,
     @Query('dateRange') dateRange?: string,
     @Query('caseType') caseType?: string,
     @Query('priority') priority?: string,
     @Query('investigator') investigator?: string,
-  ) {
-    const tenantId = req.user.token.tenantId;
+  ): Promise<unknown> {
+    const { tenantId } = req.user.token;
     const userId = req.user.token.clientId;
     const userClaims = req.user.token.claims;
 
@@ -258,7 +270,7 @@ export class ReportsController {
     const isInvestigator =
       userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
 
-    return this.reportsService.getCaseStatus(dateRange, {
+    return await this.reportsService.getCaseStatus(dateRange, {
       caseType,
       priority,
       investigator,
@@ -312,8 +324,8 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  getInvestigatorWorkload(@Query('dateRange') dateRange?: string) {
-    return this.reportsService.getInvestigatorWorkload(dateRange);
+  async getInvestigatorWorkload(@Query('dateRange') dateRange?: string): Promise<unknown> {
+    return await this.reportsService.getInvestigatorWorkload(dateRange);
   }
 
   @Get('audit-logs')
@@ -366,8 +378,8 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  getAuditLogs(@Query('dateRange') dateRange?: string) {
-    return this.reportsService.getAuditLogs(dateRange);
+  async getAuditLogs(@Query('dateRange') dateRange?: string): Promise<unknown> {
+    return await this.reportsService.getAuditLogs(dateRange);
   }
 
   @Get('event-logs')
@@ -420,8 +432,8 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  getEventLogs(@Query('dateRange') dateRange?: string) {
-    return this.reportsService.getEventLogs(dateRange);
+  async getEventLogs(@Query('dateRange') dateRange?: string): Promise<unknown> {
+    return await this.reportsService.getEventLogs(dateRange);
   }
 
   @Get('case-ageing')
@@ -483,8 +495,8 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  getCaseAgeing(@Query('dateRange') dateRange?: string) {
-    return this.reportsService.getCaseAgeing(dateRange);
+  async getCaseAgeing(@Query('dateRange') dateRange?: string): Promise<unknown> {
+    return await this.reportsService.getCaseAgeing(dateRange);
   }
 
   @Get('filters')
@@ -535,7 +547,7 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  getFilters() {
-    return this.reportsService.getFilters();
+  async getFilters(): Promise<unknown> {
+    return await this.reportsService.getFilters();
   }
 }

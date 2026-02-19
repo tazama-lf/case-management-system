@@ -1,43 +1,43 @@
 export const EMAIL_TEMPLATES = {
-    taskAssigned: (data: Record<string, any>): string => {
-        const reason = data.reason ? `<li><strong>Reason:</strong> ${data.reason}</li>` : '';
-        const extra = data.reassignedBy && `<li><strong>Reassigned By:</strong> ${data.reassignedBy}</li>`;
+  taskAssigned: (data: Record<string, any>): string => {
+    const reason = data.reason ? `<li><strong>Reason:</strong> ${data.reason}</li>` : '';
+    const extra = data.reassignedBy && `<li><strong>Reassigned By:</strong> ${data.reassignedBy}</li>`;
 
-        return `
+    return `
       <p>Hello,</p>
       <p>Task <strong>${data.taskTitle}</strong> (ID: ${data.taskId}) has been assigned.</p>
       <ul>${reason}${extra || ''}</ul>
       <p>Please check the Case Management System tFo take action.</p>
       <p>Regards,<br/>CMS Team</p>
     `;
-    },
+  },
 
-    taskUnassigned: (data: Record<string, any>): string => {
-        const reason = data.reason ? `<li><strong>Reason:</strong> ${data.reason}</li>` : '';
+  taskUnassigned: (data: Record<string, any>): string => {
+    const reason = data.reason ? `<li><strong>Reason:</strong> ${data.reason}</li>` : '';
 
-        return `
+    return `
       <p>Hello,</p>
       <p>Task <strong>${data.taskTitle}</strong> (ID: ${data.taskId}) has been unassigned.</p>
       <ul>${reason}</ul>
       <p>Please check the Case Management System to take action.</p>
       <p>Regards,<br/>CMS Team</p>
     `;
-    },
+  },
 
-    taskReassigned: (data: Record<string, any>): string => {
-        const reason = data.reason ? `<li><strong>Reason:</strong> ${data.reason}</li>` : '';
-        const extra = data.reassignedBy && `<li><strong>Reassigned By:</strong> ${data.reassignedBy}</li>`;
+  taskReassigned: (data: Record<string, any>): string => {
+    const reason = data.reason ? `<li><strong>Reason:</strong> ${data.reason}</li>` : '';
+    const extra = data.reassignedBy && `<li><strong>Reassigned By:</strong> ${data.reassignedBy}</li>`;
 
-        return `
+    return `
       <p>Hello,</p>
       <p>Task <strong>${data.taskTitle}</strong> (ID: ${data.taskId}) has been reassigned.</p>
       <ul>${reason}${extra || ''}</ul>
       <p>Please check the Case Management System to take action.</p>
       <p>Regards,<br/>CMS Team</p>
     `;
-    },
+  },
 
-    workQueue: (data: Record<string, any>): string => `
+  workQueue: (data: Record<string, any>): string => `
     <p>Hello,</p>
     <p>A new task is available in the <strong>${data.candidateGroup}</strong> work queue:</p>
     <ul>
@@ -48,7 +48,7 @@ export const EMAIL_TEMPLATES = {
     <p>Regards,<br/>CMS Team</p>
   `,
 
-    caseSuspended: (data: Record<string, any>): string => `
+  caseSuspended: (data: Record<string, any>): string => `
     <p>Hello,</p>
     <p>Your case <strong>${data.caseId}</strong> has been suspended.</p>
     <ul>
@@ -59,7 +59,7 @@ export const EMAIL_TEMPLATES = {
     <p>Regards,<br/>CMS Team</p>
   `,
 
-    caseResumed: (data: Record<string, any>): string => `
+  caseResumed: (data: Record<string, any>): string => `
     <p>Hello,</p>
     <p>Your case <strong>${data.caseId}</strong> has been resumed.</p>
     <ul>
@@ -70,7 +70,7 @@ export const EMAIL_TEMPLATES = {
     <p>Regards,<br/>CMS Team</p>
   `,
 
-    caseClosurePending: (data: Record<string, any>): string => `
+  caseClosurePending: (data: Record<string, any>): string => `
     <p>Hello Supervisor,</p>
     <p>Case <strong>${data.caseId}</strong> has been submitted for closure approval.</p>
     <ul>
@@ -82,7 +82,7 @@ export const EMAIL_TEMPLATES = {
     <p>Regards,<br/>CMS Team</p>
   `,
 
-    caseClosureApproved: (data: Record<string, any>): string => `
+  caseClosureApproved: (data: Record<string, any>): string => `
     <p>Hello,</p>
     <p>Your case closure for case <strong>${data.caseId}</strong> has been approved.</p>
     <ul>
@@ -94,7 +94,7 @@ export const EMAIL_TEMPLATES = {
     <p>Regards,<br/>CMS Team</p>
   `,
 
-    caseClosureRejected: (data: Record<string, any>): string => `
+  caseClosureRejected: (data: Record<string, any>): string => `
     <p>Hello,</p>
     <p>Your case closure request for case <strong>${data.caseId}</strong> has been rejected.</p>
     <h3>Supervisor Feedback:</h3>
@@ -112,7 +112,7 @@ export const EMAIL_TEMPLATES = {
     <p>Regards,<br/>CMS Team</p>
   `,
 
-    caseReopened: (data: Record<string, any>): string => `
+  caseReopened: (data: Record<string, any>): string => `
     <p>Hello,</p>
     <p>Case <strong>${data.caseId}</strong> has been reopened and assigned to you.</p>
     <ul>
@@ -124,7 +124,7 @@ export const EMAIL_TEMPLATES = {
     <p>Regards,<br/>CMS Team</p>
   `,
 
-    caseReopenedAvailable: (data: Record<string, any>): string => `
+  caseReopenedAvailable: (data: Record<string, any>): string => `
     <p>Hello,</p>
     <p>Case <strong>${data.caseId}</strong> has been reopened and is now available in the investigations work queue.</p>
     <ul>
@@ -135,7 +135,7 @@ export const EMAIL_TEMPLATES = {
     <p>Regards,<br/>CMS Team</p>
   `,
 
-    caseReopeningRejected: (data: Record<string, any>): string => `
+  caseReopeningRejected: (data: Record<string, any>): string => `
     <p>Hello,</p>
     <p>Your case reopening request for case <strong>${data.caseId}</strong> has been rejected.</p>
     <h3>Rejection Reason:</h3>
@@ -147,10 +147,10 @@ export const EMAIL_TEMPLATES = {
     <p>Regards,<br/>CMS Team</p>
   `,
 
-    slaWarning: (data: Record<string, any>): string => {
-        const timeRemaining = data.timeUntilDeadline ? `${Math.abs(data.timeUntilDeadline)} minutes` : 'Unknown';
+  slaWarning: (data: Record<string, any>): string => {
+    const timeRemaining = data.timeUntilDeadline ? `${Math.abs(data.timeUntilDeadline)} minutes` : 'Unknown';
 
-        return `
+    return `
       <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 10px 0;">
         <h2 style="color: #856404; margin-top: 0;">SLA Warning</h2>
         <p>A task in your work queue is approaching its SLA deadline and requires attention.</p>
@@ -195,21 +195,21 @@ export const EMAIL_TEMPLATES = {
         <p>Regards,<br/>CMS Team</p>
       </div>
     `;
-    },
+  },
 
-    slaBreach: (data: Record<string, any>): string => {
-        const breachDuration = data.breachDuration ? `${Math.abs(data.breachDuration)} minutes` : 'Unknown';
+  slaBreach: (data: Record<string, any>): string => {
+    const breachDuration = data.breachDuration ? `${Math.abs(data.breachDuration)} minutes` : 'Unknown';
 
-        const severityColor =
-            {
-                CRITICAL: '#dc3545',
-                HIGH: '#fd7e14',
-                MEDIUM: '#ffc107',
-                LOW: '#6c757d',
-                INFO: '#17a2b8',
-            }[data.severity] || '#dc3545';
+    const severityColor =
+      {
+        CRITICAL: '#dc3545',
+        HIGH: '#fd7e14',
+        MEDIUM: '#ffc107',
+        LOW: '#6c757d',
+        INFO: '#17a2b8',
+      }[data.severity] || '#dc3545';
 
-        return `
+    return `
       <div style="background-color: #f8d7da; border-left: 4px solid ${severityColor}; padding: 20px; margin: 10px 0;">
         <h2 style="color: #721c24; margin-top: 0;">SLA BREACH ALERT</h2>
         <p style="color: #721c24; font-size: 16px;"><strong>A task has breached its SLA deadline and requires immediate action!</strong></p>
@@ -266,12 +266,12 @@ export const EMAIL_TEMPLATES = {
         <p>Regards,<br/>CMS Team</p>
       </div>
     `;
-    },
+  },
 
-    taskOverdue: (data: Record<string, any>): string => {
-        const hoursSinceCreation = data.hoursSinceCreation || 'Unknown';
+  taskOverdue: (data: Record<string, any>): string => {
+    const hoursSinceCreation = data.hoursSinceCreation || 'Unknown';
 
-        return `
+    return `
       <div style="background-color: #e2e3e5; border-left: 4px solid #6c757d; padding: 20px; margin: 10px 0;">
         <h2 style="color: #383d41; margin-top: 0;">Overdue Task Alert</h2>
         <p>A task has been open for an extended period and may require attention or escalation.</p>
@@ -325,23 +325,23 @@ export const EMAIL_TEMPLATES = {
         <p>Regards,<br/>CMS Team</p>
       </div>
     `;
-    },
+  },
 
-    generic: (data: Record<string, any>): string => `<p>${data.message}</p>`,
+  generic: (data: Record<string, any>): string => `<p>${data.message}</p>`,
 };
 
 /**
  * Helper function to get consistent priority colors
  */
 export function getPriorityColor(priority?: string): string {
-    switch (priority?.toUpperCase()) {
-        case 'HIGH':
-            return '#dc3545';
-        case 'MEDIUM':
-            return '#ffc107';
-        case 'LOW':
-        case 'NORMAL':
-        default:
-            return '#28a745';
-    }
+  switch (priority?.toUpperCase()) {
+    case 'HIGH':
+      return '#dc3545';
+    case 'MEDIUM':
+      return '#ffc107';
+    case 'LOW':
+    case 'NORMAL':
+    default:
+      return '#28a745';
+  }
 }

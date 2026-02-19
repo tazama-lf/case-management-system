@@ -46,4 +46,3 @@ export class ReportResponseDto {
   @ApiProperty()
   couchdbRev?: string;
 }
-

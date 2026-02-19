@@ -25,30 +25,29 @@ export class TazamaDwhService {
   }
 
   async generateProfile(dto: GenerateProfileDto, userId: string): Promise<ProfileResponseDto> {
-    
     const now = new Date();
     const dateTo = now.toISOString().slice(0, 10);
     const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const filter: any = {
       cre_dt_tm: { gte: dateFrom, lte: dateTo },
     };
-    
+
     if (dto.filters?.creditorId) {
       filter.destination = dto.filters.creditorId;
     }
     if (dto.filters?.debtorId) {
       filter.source = dto.filters.debtorId;
     }
-    
+
     if (dto.filters?.type) filter.tx_tp = dto.filters.type;
     if (dto.filters?.account) filter.OR = [{ source: dto.filters.account }, { destination: dto.filters.account }];
     if (dto.filters?.role) filter.role = dto.filters.role;
-    
+
     const transactions = await this.prismaDwh.transaction.findMany({
       where: filter,
     });
     const transactionTable = transactions.map(this.formatTransactionForTable);
-    
+
     const peerTransactions = await this.prismaDwh.transaction.findMany({
       where: {
         cre_dt_tm: { gte: dateFrom, lte: dateTo },
@@ -107,10 +106,7 @@ export class TazamaDwhService {
     };
   }
 
-  async getTransactionsByDebtorId(
-    tenantId: string,
-    debtorId: string,
-  ) {
+  async getTransactionsByDebtorId(tenantId: string, debtorId: string) {
     const now = new Date();
     const dateTo = now.toISOString().slice(0, 10);
     const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -128,19 +124,16 @@ export class TazamaDwhService {
         throw new NotFoundException(`No transactions found for debtorId=${debtorId}`);
       }
       return transactions;
-      } catch (err) {
-        if (err instanceof NotFoundException) {
-          throw err;
-        }
-        this.logger.error(`Failed to fetch transactions from DWH: ${err}`);
-        throw new InternalServerErrorException('Failed to fetch transactions from DWH');
+    } catch (err) {
+      if (err instanceof NotFoundException) {
+        throw err;
+      }
+      this.logger.error(`Failed to fetch transactions from DWH: ${err}`);
+      throw new InternalServerErrorException('Failed to fetch transactions from DWH');
     }
   }
 
-  async getTransactionsByCreditorId(
-    tenantId: string,
-    creditorId: string,
-  ) {
+  async getTransactionsByCreditorId(tenantId: string, creditorId: string) {
     const now = new Date();
     const dateTo = now.toISOString().slice(0, 10);
     const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -158,18 +151,17 @@ export class TazamaDwhService {
         throw new NotFoundException(`No transactions found for creditorId=${creditorId}`);
       }
       return transactions;
-      } catch (err) {
-        if (err instanceof NotFoundException) {
-          throw err;
-        }
-        this.logger.error(`Failed to fetch transactions from DWH: ${err}`);
-        throw new InternalServerErrorException('Failed to fetch transactions from DWH');
+    } catch (err) {
+      if (err instanceof NotFoundException) {
+        throw err;
+      }
+      this.logger.error(`Failed to fetch transactions from DWH: ${err}`);
+      throw new InternalServerErrorException('Failed to fetch transactions from DWH');
     }
   }
 
   async getCustomerProfileByTransaction(transactionId: string) {
     try {
-     
       const transaction = await this.prismaDwh.transaction.findFirst({
         where: { end_to_end_id: transactionId },
       });
@@ -178,13 +170,11 @@ export class TazamaDwhService {
         throw new NotFoundException(`Transaction not found: ${transactionId}`);
       }
 
-     
       const senderAccount = await this.prismaDwh.account.findFirst({
         where: { id: transaction.source },
         include: { customer: true },
       });
 
-     
       const receiverAccount = await this.prismaDwh.account.findFirst({
         where: { id: transaction.destination },
         include: { customer: true },
@@ -197,7 +187,6 @@ export class TazamaDwhService {
       const senderCustomer = senderAccount.customer;
       const receiverCustomer = receiverAccount.customer;
 
-      
       const senderAddress = senderCustomer?.address as Record<string, string> | null;
       const sender = {
         id: senderAccount.id,
@@ -209,7 +198,6 @@ export class TazamaDwhService {
         currency: transaction.ccy || undefined,
       };
 
-      
       const receiverAddress = receiverCustomer?.address as Record<string, string> | null;
       const receiver = {
         id: receiverAccount.id,
@@ -221,23 +209,28 @@ export class TazamaDwhService {
         currency: transaction.ccy || undefined,
       };
 
-      
       return {
-        customerDetails: [{
-          customerId: senderCustomer?.id || transaction.source,
-          tenantId: transaction.tenant_id,
-          name: senderCustomer?.name || undefined,
-          dateOfBirth: senderCustomer?.date_of_birth || undefined,
-          email: senderCustomer?.email || undefined,
-          phone: senderCustomer?.phone || undefined,
-        }],
-        address: senderAddress ? [{
-          street: senderAddress.street,
-          city: senderAddress.city,
-          state: senderAddress.state,
-          postalCode: senderAddress.postalCode,
-          country: senderAddress.country,
-        }] : [],
+        customerDetails: [
+          {
+            customerId: senderCustomer?.id || transaction.source,
+            tenantId: transaction.tenant_id,
+            name: senderCustomer?.name || undefined,
+            dateOfBirth: senderCustomer?.date_of_birth || undefined,
+            email: senderCustomer?.email || undefined,
+            phone: senderCustomer?.phone || undefined,
+          },
+        ],
+        address: senderAddress
+          ? [
+              {
+                street: senderAddress.street,
+                city: senderAddress.city,
+                state: senderAddress.state,
+                postalCode: senderAddress.postalCode,
+                country: senderAddress.country,
+              },
+            ]
+          : [],
         accountDetails: {
           sender: [sender],
           receiver: [receiver],
@@ -254,35 +247,35 @@ export class TazamaDwhService {
 
   async getCustomerProfileById(id: string) {
     try {
-      
       const customer = await this.prismaDwh.customer.findFirst({
         where: { id },
         include: { accounts: true },
       });
 
       if (customer) {
-        
         const accountsWithRoles = await Promise.all(
           customer.accounts.map(async (acc) => {
             const transactions = await this.prismaDwh.transaction.findMany({
               where: {
-                OR: [
-                  { source: acc.id },
-                  { destination: acc.id },
-                ],
+                OR: [{ source: acc.id }, { destination: acc.id }],
               },
             });
 
             let debtorCount = 0;
             let creditorCount = 0;
-            transactions.forEach(tx => {
+            transactions.forEach((tx) => {
               if (tx.source === acc.id) debtorCount++;
               if (tx.destination === acc.id) creditorCount++;
             });
 
-            const role = debtorCount > creditorCount ? 'Debtor (Sender/Payer)' : 
-                         creditorCount > debtorCount ? 'Creditor (Receiver/Payee)' : 
-                         debtorCount === creditorCount && debtorCount > 0 ? 'Both (Sender & Receiver)' : undefined;
+            const role =
+              debtorCount > creditorCount
+                ? 'Debtor (Sender/Payer)'
+                : creditorCount > debtorCount
+                  ? 'Creditor (Receiver/Payee)'
+                  : debtorCount === creditorCount && debtorCount > 0
+                    ? 'Both (Sender & Receiver)'
+                    : undefined;
 
             return {
               id: acc.id,
@@ -292,7 +285,7 @@ export class TazamaDwhService {
               riskRating: acc.risk_rating || undefined,
               role,
             };
-          })
+          }),
         );
 
         const addressData = customer.address as Record<string, string> | null;
@@ -304,18 +297,19 @@ export class TazamaDwhService {
           dateOfBirth: customer.date_of_birth || undefined,
           email: customer.email || undefined,
           phone: customer.phone || undefined,
-          address: addressData ? {
-            street: addressData.street,
-            city: addressData.city,
-            state: addressData.state,
-            postalCode: addressData.postalCode,
-            country: addressData.country,
-          } : undefined,
+          address: addressData
+            ? {
+                street: addressData.street,
+                city: addressData.city,
+                state: addressData.state,
+                postalCode: addressData.postalCode,
+                country: addressData.country,
+              }
+            : undefined,
           accounts: accountsWithRoles,
         };
       }
 
-      
       return this.getCustomerByAccountId(id);
     } catch (err) {
       if (err instanceof NotFoundException) {
@@ -328,8 +322,7 @@ export class TazamaDwhService {
 
   async getCustomerProfile(customerId: string, tenantId?: string) {
     try {
-     
-      const customer = tenantId 
+      const customer = tenantId
         ? await this.prismaDwh.customer.findUnique({
             where: {
               id_tenant_id: {
@@ -363,13 +356,15 @@ export class TazamaDwhService {
         dateOfBirth: customer.date_of_birth || undefined,
         email: customer.email || undefined,
         phone: customer.phone || undefined,
-        address: addressData ? {
-          street: addressData.street,
-          city: addressData.city,
-          state: addressData.state,
-          postalCode: addressData.postalCode,
-          country: addressData.country,
-        } : undefined,
+        address: addressData
+          ? {
+              street: addressData.street,
+              city: addressData.city,
+              state: addressData.state,
+              postalCode: addressData.postalCode,
+              country: addressData.country,
+            }
+          : undefined,
         accounts: customer.accounts.map((acc) => ({
           id: acc.id,
           accountType: acc.account_type || undefined,
@@ -389,7 +384,6 @@ export class TazamaDwhService {
 
   async getCustomerByAccountId(accountId: string) {
     try {
-      
       const account = await this.prismaDwh.account.findFirst({
         where: {
           id: accountId,
@@ -403,32 +397,28 @@ export class TazamaDwhService {
         throw new NotFoundException(`Account not found: ${accountId}`);
       }
 
-     
       const dwhTenantId = account.tenant_id;
 
-      
       const transactions = await this.prismaDwh.transaction.findMany({
         where: {
-          OR: [
-            { source: accountId },
-            { destination: accountId },
-          ],
+          OR: [{ source: accountId }, { destination: accountId }],
         },
       });
 
-      
       let debtorCount = 0;
       let creditorCount = 0;
-      transactions.forEach(tx => {
+      transactions.forEach((tx) => {
         if (tx.source === accountId) debtorCount++;
         if (tx.destination === accountId) creditorCount++;
       });
 
-      const role = debtorCount > creditorCount ? 'Debtor (Sender/Payer)' : 
-                   creditorCount > debtorCount ? 'Creditor (Receiver/Payee)' : 
-                   'Both (Sender & Receiver)';
+      const role =
+        debtorCount > creditorCount
+          ? 'Debtor (Sender/Payer)'
+          : creditorCount > debtorCount
+            ? 'Creditor (Receiver/Payee)'
+            : 'Both (Sender & Receiver)';
 
-      
       const extendedAccount = account as typeof account & {
         customer?: { id: string } | null;
         customer_id?: string | null;
@@ -439,7 +429,6 @@ export class TazamaDwhService {
       };
 
       if (!extendedAccount.customer) {
-        
         return {
           customerId: extendedAccount.customer_id || accountId,
           tenantId: dwhTenantId,
@@ -448,27 +437,25 @@ export class TazamaDwhService {
           email: undefined,
           phone: undefined,
           address: undefined,
-          accounts: [{
-            id: account.id,
-            accountType: extendedAccount.account_type || undefined,
-            openedDate: extendedAccount.opened_date || undefined,
-            balance: extendedAccount.balance?.toNumber() || undefined,
-            riskRating: extendedAccount.risk_rating || undefined,
-            role: role,
-          }],
+          accounts: [
+            {
+              id: account.id,
+              accountType: extendedAccount.account_type || undefined,
+              openedDate: extendedAccount.opened_date || undefined,
+              balance: extendedAccount.balance?.toNumber() || undefined,
+              riskRating: extendedAccount.risk_rating || undefined,
+              role,
+            },
+          ],
         };
       }
 
-      
       const customerProfile = await this.getCustomerProfile(extendedAccount.customer_id!, dwhTenantId);
-      
-    
+
       if (role && customerProfile.accounts) {
-        customerProfile.accounts = customerProfile.accounts.map(acc => 
-          acc.id === accountId ? { ...acc, role } : acc
-        );
+        customerProfile.accounts = customerProfile.accounts.map((acc) => (acc.id === accountId ? { ...acc, role } : acc));
       }
-      
+
       return customerProfile;
     } catch (err) {
       if (err instanceof NotFoundException) {

@@ -3,35 +3,35 @@ import { AsyncTaskService } from './async-task.service';
 
 @Controller('async-tasks')
 export class AsyncTaskController {
-    private readonly logger = new Logger(AsyncTaskController.name);
+  private readonly logger = new Logger(AsyncTaskController.name);
 
-    constructor(private readonly asyncTaskService: AsyncTaskService) { }
+  constructor(private readonly asyncTaskService: AsyncTaskService) {}
 
-    /**
-     * Get task by ID
-     */
-    @Get(':taskId')
-    async getTask(@Param('taskId') taskId: number) {
-        return this.asyncTaskService.getTaskById(taskId);
-    }
+  /**
+   * Get task by ID
+   */
+  @Get(':taskId')
+  async getTask(@Param('taskId') taskId: number) {
+    return await this.asyncTaskService.getTaskById(taskId);
+  }
 
-    /**
-     * Get failed tasks
-     */
-    @Get('failed/list')
-    async getFailedTasks() {
-        return this.asyncTaskService.getFailedTasks(50);
-    }
+  /**
+   * Get failed tasks
+   */
+  @Get('failed/list')
+  async getFailedTasks() {
+    return await this.asyncTaskService.getFailedTasks(50);
+  }
 
-    /**
-     * Retry a failed task
-     */
-    @Post(':taskId/retry')
-    async retryTask(@Param('taskId') taskId: number) {
-        await this.asyncTaskService.retryFailedTask(taskId);
-        return {
-            success: true,
-            message: `Task ${taskId} scheduled for retry`,
-        };
-    }
+  /**
+   * Retry a failed task
+   */
+  @Post(':taskId/retry')
+  async retryTask(@Param('taskId') taskId: number) {
+    await this.asyncTaskService.retryFailedTask(taskId);
+    return {
+      success: true,
+      message: `Task ${taskId} scheduled for retry`,
+    };
+  }
 }

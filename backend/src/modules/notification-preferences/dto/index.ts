@@ -5,9 +5,9 @@ import { NotificationHistoryDto } from './notification-history.dto';
 import { NotificationHistoryQueryDto } from './notification-history-query.dto';
 
 export {
-    CreateNotificationPreferenceDto,
-    NotificationPreferenceResponseDto,
-    UpdateNotificationPreferenceDto,
-    NotificationHistoryDto,
-    NotificationHistoryQueryDto,
+  CreateNotificationPreferenceDto,
+  NotificationPreferenceResponseDto,
+  UpdateNotificationPreferenceDto,
+  NotificationHistoryDto,
+  NotificationHistoryQueryDto,
 };

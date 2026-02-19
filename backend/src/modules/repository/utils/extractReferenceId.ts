@@ -1,11 +1,6 @@
-import { JsonValue } from './types/JsonValue';
+import type { JsonValue } from './types/JsonValue';
 
-export function extractReferenceId(
-  obj: JsonValue,
-  maxDepth: number = 10,
-  currentDepth: number = 0,
-  referenceIdName: string,
-): string | null {
+export function extractReferenceId(obj: JsonValue, maxDepth = 10, currentDepth = 0, referenceIdName: string): string | null {
   if (!obj || typeof obj !== 'object' || currentDepth >= maxDepth) {
     return null;
   }

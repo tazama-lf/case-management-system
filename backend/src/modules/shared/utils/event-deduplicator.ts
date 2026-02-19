@@ -1,5 +1,5 @@
-import { EventEmitter2 } from 'eventemitter2';
-import { createHash } from 'crypto';
+import type { EventEmitter2 } from 'eventemitter2';
+import { createHash } from 'node:crypto';
 
 /**
  * Utility class to prevent duplicate events from being emitted
@@ -9,7 +9,7 @@ export class EventDeduplicator {
   private readonly recentEvents = new Map<string, number>();
   private readonly dedupWindowMs: number;
 
-  constructor(dedupWindowMs: number = 5000) {
+  constructor(dedupWindowMs = 5000) {
     this.dedupWindowMs = dedupWindowMs;
   }
 
@@ -42,10 +42,10 @@ export class EventDeduplicator {
       if (typeof value === 'object' && value !== null) {
         return Object.keys(value)
           .sort()
-          .reduce((sorted, k) => {
+          .reduce<any>((sorted, k) => {
             sorted[k] = value[k];
             return sorted;
-          }, {} as any);
+          }, {});
       }
       return value;
     });

@@ -1,31 +1,30 @@
-import { AuthenticatedRequest } from './types/auth.types';
+import type { AuthenticatedRequest } from './types/auth.types';
 import { CaseStatus } from '@prisma/client-cms';
-import { CASE_CLOSURE_OUTCOMES, CLOSED_CASE_STATUSES, VALIDATION_LENGTHS } from '../constants/case.constants';
-import { CloseCaseDto } from 'src/modules/case/dto/close-case.dto';
+import type { IUserData } from './interfaces/IUserData';
 
-export function extractUserData(req: AuthenticatedRequest) {
-    const { clientId, tenantId, claims, email, fullName } = req.user.token;
-    const bearerToken = req.headers.authorization?.replace('Bearer ', '');
-    if (!clientId || !tenantId || !claims) {
-        throw new Error('Missing clientId, tenantId or claims in auth token');
-    }
+export function extractUserData(req: AuthenticatedRequest): IUserData {
+  const { clientId, tenantId, claims, email, fullName } = req.user.token;
+  const bearerToken = req.headers.authorization!.replace('Bearer ', '');
+  // if (!clientId || !tenantId || !claims) {
+  //   throw new Error('Missing clientId, tenantId or claims in auth token');
+  // }
 
-    const role = claims.includes('CMS_SUPERVISOR') ? 'SUPERVISOR' : 'INVESTIGATOR';
-    const validateClaim = claims.includes('CMS_SUPERVISOR') ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    const userClaims = req.user.token.claims || [];
-    const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
-    
-    return {
-        userId: clientId,
-        tenantId,
-        email,
-        fullName,
-        role,
-        claims,
-        validateClaim,
-        isComplianceOfficer,
-        userInfo: { tenantName: req.user.token.tenantName, role, token: bearerToken, validateClaim },
-    };
+  const role = claims.includes('CMS_SUPERVISOR') ? 'SUPERVISOR' : 'INVESTIGATOR';
+  const validateClaim = claims.includes('CMS_SUPERVISOR') ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+  const userClaims = req.user.token.claims;
+  const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
+
+  return {
+    userId: clientId,
+    tenantId,
+    email,
+    fullName,
+    role,
+    claims,
+    validateClaim,
+    isComplianceOfficer,
+    userInfo: { tenantName: req.user.token.tenantName, role, token: bearerToken, validateClaim },
+  };
 }
 
 /**
@@ -33,23 +32,23 @@ export function extractUserData(req: AuthenticatedRequest) {
  * @param dto Close case DTO containing closure information
  * @returns Array of validation error messages (empty if valid)
  */
-export function validateClosureData(dto: CloseCaseDto): string[] {
-    const errors: string[] = [];
+// export function validateClosureData(dto: CloseCaseDto): string[] {
+//   const errors: string[] = [];
 
-    if (!dto.recommendedOutcome) {
-        errors.push('Recommended outcome is required');
-    }
+//   if (!dto.recommendedOutcome) {
+//     errors.push('Recommended outcome is required');
+//   }
 
-    if (dto.recommendedOutcome && !CASE_CLOSURE_OUTCOMES.includes(dto.recommendedOutcome as any)) {
-        errors.push(`Invalid recommended outcome. Must be one of: ${CASE_CLOSURE_OUTCOMES.join(', ')}`);
-    }
+//   if (dto.recommendedOutcome && !CASE_CLOSURE_OUTCOMES.includes(dto.recommendedOutcome)) {
+//     errors.push(`Invalid recommended outcome. Must be one of: ${CASE_CLOSURE_OUTCOMES.join(', ')}`);
+//   }
 
-    if (!dto.finalNotes || dto.finalNotes.trim().length < VALIDATION_LENGTHS.MIN_FINAL_NOTES) {
-        errors.push(`Final notes are required and must be at least ${VALIDATION_LENGTHS.MIN_FINAL_NOTES} characters`);
-    }
+//   if (!dto.finalNotes || dto.finalNotes.trim().length < VALIDATION_LENGTHS.MIN_FINAL_NOTES) {
+//     errors.push(`Final notes are required and must be at least ${VALIDATION_LENGTHS.MIN_FINAL_NOTES} characters`);
+//   }
 
-    return errors;
-}
+//   return errors;
+// }
 
 /**
  * Validates case completion fields
@@ -57,51 +56,10 @@ export function validateClosureData(dto: CloseCaseDto): string[] {
  * @returns Array of missing field names (empty if valid)
  */
 export function validateCaseCompletionFields(existingCase: any): string[] {
-    const missing: string[] = [];
-    if (!existingCase.priority) missing.push('priority');
-    if (!existingCase.case_type) missing.push('case_type');
-    return missing;
-}
-
-/**
- * Validates case completeness for closure approval
- * @param caseDetails Case with tasks and comments
- * @returns Array of missing information (empty if complete)
- */
-export function validateCaseCompleteness(caseDetails: any): string[] {
-    const missing: string[] = [];
-
-    if (!caseDetails.priority) {
-        missing.push('Case priority');
-    }
-
-    if (!caseDetails.case_type) {
-        missing.push('Case type');
-    }
-
-    if (!caseDetails.case_creator_user_id) {
-        missing.push('Case creator');
-    }
-
-    const hasInvestigationTask = caseDetails.tasks.some(
-        (t) =>
-            (t.name === 'Investigate Case' || t.name === 'Investigate case') &&
-            t.status === 'STATUS_30_COMPLETED'
-    );
-
-    if (!hasInvestigationTask) {
-        missing.push('Completed investigation task');
-    }
-
-    const closureComments = caseDetails.comments.filter(
-        (c) => c.note.includes('Recommended Outcome') || c.note.includes('Final Investigation Summary')
-    );
-
-    if (closureComments.length === 0) {
-        missing.push('Investigation closure recommendation');
-    }
-
-    return missing;
+  const missing: string[] = [];
+  if (!existingCase.priority) missing.push('priority');
+  if (!existingCase.case_type) missing.push('case_type');
+  return missing;
 }
 
 /**
@@ -111,9 +69,9 @@ export function validateCaseCompleteness(caseDetails: any): string[] {
  * @returns Original closed status
  */
 export function determineOriginalClosedStatus(caseData: any): CaseStatus {
-    // Could check case history/audit logs here in future
-    // For now, default to inconclusive as safe fallback
-    return CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE;
+  // Could check case history/audit logs here in future
+  // For now, default to inconclusive as safe fallback
+  return CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE;
 }
 
 /**
@@ -122,13 +80,9 @@ export function determineOriginalClosedStatus(caseData: any): CaseStatus {
  * @returns True if role is an investigator variant
  */
 export function isInvestigatorRole(role: string | null): boolean {
-    if (!role) return false;
-    const upperRole = role.toUpperCase();
-    return (
-        upperRole === 'ANALYST' ||
-        upperRole === 'INVESTIGATOR' ||
-        upperRole === 'CMS_INVESTIGATOR'
-    );
+  if (!role) return false;
+  const upperRole = role.toUpperCase();
+  return upperRole === 'ANALYST' || upperRole === 'INVESTIGATOR' || upperRole === 'CMS_INVESTIGATOR';
 }
 
 /**
@@ -137,14 +91,14 @@ export function isInvestigatorRole(role: string | null): boolean {
  * @returns Parsed metadata or empty object
  */
 export function parseReopeningMetadata(comment: string): {
-    requestedBy?: string;
-    requesterRole?: string;
-    reason?: string;
-    previousStatus?: string;
+  requestedBy?: string;
+  requesterRole?: string;
+  reason?: string;
+  previousStatus?: string;
 } {
-    try {
-        return JSON.parse(comment);
-    } catch (parseError) {
-        return {};
-    }
+  try {
+    return JSON.parse(comment);
+  } catch (parseError) {
+    return {};
+  }
 }

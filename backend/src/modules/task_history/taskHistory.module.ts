@@ -7,6 +7,6 @@ import { TaskHistoryController } from './taskHistory.controller';
   imports: [PrismaModule],
   providers: [TaskHistoryService],
   exports: [TaskHistoryService],
-  controllers: [TaskHistoryController]
+  controllers: [TaskHistoryController],
 })
-export class TaskHistoryModule { }
+export class TaskHistoryModule {}

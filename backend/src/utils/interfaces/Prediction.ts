@@ -1,4 +1,4 @@
-import { CaseType } from '@prisma/client-cms';
+import type { CaseType } from '@prisma/client-cms';
 
 export interface AIPrediction {
   priority: number;

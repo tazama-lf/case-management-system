@@ -16,4 +16,4 @@ import { EventLogModule } from '../event_log/eventLog.module';
   providers: [ReportsService],
   exports: [ReportsService],
 })
-export class ReportsModule { }
+export class ReportsModule {}

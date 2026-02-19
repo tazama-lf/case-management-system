@@ -4,7 +4,7 @@ class CaseDetails {
   @ApiProperty({ type: 'string', format: 'uuid' })
   case_id: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     type: 'string',
     enum: [
       'STATUS_81_CLOSED_REFUTED',
@@ -13,7 +13,7 @@ class CaseDetails {
       'STATUS_71_AUTOCLOSED_CONFIRMED',
       'STATUS_72_AUTOCLOSED_REFUTED',
     ],
-    example: 'STATUS_82_CLOSED_CONFIRMED'
+    example: 'STATUS_82_CLOSED_CONFIRMED',
   })
   status: string;
 

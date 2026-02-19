@@ -7,8 +7,8 @@ import { PrismaModule } from '../../../prisma/prisma.module';
 import { TriageModule } from '../triage/triage.module';
 
 @Module({
-    imports: [ConfigModule, ScheduleModule.forRoot(), PrismaModule, TriageModule],
-    providers: [AlertPriorityService, AlertPriorityTask],
-    exports: [AlertPriorityService],
+  imports: [ConfigModule, ScheduleModule.forRoot(), PrismaModule, TriageModule],
+  providers: [AlertPriorityService, AlertPriorityTask],
+  exports: [AlertPriorityService],
 })
-export class AlertPriorityModule { }
+export class AlertPriorityModule {}

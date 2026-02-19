@@ -5,7 +5,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class ManualCreateCaseDto {
   @ApiProperty({
     description: 'Alert ID to create case from',
-    example: 123
+    example: 123,
   })
   alertId: number;
 

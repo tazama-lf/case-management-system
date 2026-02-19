@@ -53,9 +53,9 @@ export class TriageController {
   @ApiResponse({ status: 404, description: 'Alert not found' })
   async manualTriage(@Param('alertId') alertId: number, @Body() dto: ManualAlertUpdateDTO, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
     if (!userId) throw new BadRequestException('Missing userId');
-    return this.triageService.handleManualTriage(alertId, dto, userId, tenantId);
+    return await this.triageService.handleManualTriage(alertId, dto, userId, tenantId);
   }
 }

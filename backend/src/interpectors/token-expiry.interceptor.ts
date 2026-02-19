@@ -12,7 +12,7 @@ export class TokenExpiryInterceptor implements NestInterceptor {
     const token = this.extractTokenFromHeader(request);
 
     if (token) {
-      const isExpired = (this.authService as any)['isTokenExpired'](token);
+      const isExpired = (this.authService as any).isTokenExpired(token);
       if (isExpired) {
         throw new UnauthorizedException('Token has expired. Please log in again.');
       }
@@ -21,7 +21,7 @@ export class TokenExpiryInterceptor implements NestInterceptor {
     return next.handle().pipe(
       catchError((error) => {
         if (error.status === 401 && token) {
-          const isExpired = (this.authService as any)['isTokenExpired'](token);
+          const isExpired = (this.authService as any).isTokenExpired(token);
           if (isExpired) {
             return throwError(() => new UnauthorizedException('Token has expired. Please log in again.'));
           }

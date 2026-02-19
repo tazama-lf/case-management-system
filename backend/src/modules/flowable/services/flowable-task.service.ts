@@ -229,7 +229,7 @@ export class FlowableTaskService {
   /**
    * Get tasks for a candidate group
    */
-  async getCandidateGroupTasks(candidateGroup: string, includeVariables: boolean = true) {
+  async getCandidateGroupTasks(candidateGroup: string, includeVariables = true) {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.TASKS, {
         params: {
@@ -267,7 +267,7 @@ export class FlowableTaskService {
   /**
    * Get tasks assigned to a specific user
    */
-  async getUserTasks(assignee: string, includeVariables: boolean = true) {
+  async getUserTasks(assignee: string, includeVariables = true) {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.TASKS, {
         params: {
@@ -405,7 +405,7 @@ export class FlowableTaskService {
       if (typeof value === 'boolean') {
         return {
           name,
-          value: value,
+          value,
           type: 'boolean',
         };
       }

@@ -47,4 +47,3 @@ export class SystemCaseCreationDto {
   @IsString()
   txtp?: string;
 }
-

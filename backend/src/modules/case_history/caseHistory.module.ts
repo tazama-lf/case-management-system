@@ -8,6 +8,6 @@ import { CaseHistoryController } from './caseHistory.controller';
   imports: [PrismaModule, LoggerModule],
   providers: [CaseHistoryService],
   exports: [CaseHistoryService],
-  controllers: [CaseHistoryController]
+  controllers: [CaseHistoryController],
 })
-export class CaseHistoryModule { }
+export class CaseHistoryModule {}

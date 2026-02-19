@@ -23,8 +23,8 @@ export class ProcessAlertController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async processIncomingAlert(@Body() dto: CreateAlertDTO, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
     if (!tenantId || !userId) throw new BadRequestException('Missing tenantId or userId');
-    return await this.processAlertService.processIncomingAlert(dto, 'REST API', userId, tenantId);
+    await this.processAlertService.processIncomingAlert(dto, 'REST API', userId, tenantId);
   }
 }

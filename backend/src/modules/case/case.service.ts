@@ -49,8 +49,9 @@ export class CaseService {
       }
     }
 
-    if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS)
+    if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS) {
       throw new BadRequestException('Only cases in "IN PROGRESS" status can be suspended');
+    }
 
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id)) ?? [];
@@ -83,7 +84,9 @@ export class CaseService {
 
         // const updatedTask = await this.taskService.updateTask(investigateTask.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId);
         const updatedTask = await Promise.all(
-          investigateTask.map((task) => this.taskService.updateTask(task.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId)),
+          investigateTask.map(
+            async (task) => await this.taskService.updateTask(task.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId),
+          ),
         );
         const createCommentDto = new CreateCommentDto();
         //  createCommentDto.taskId = updatedTask.task_id;
@@ -108,7 +111,7 @@ export class CaseService {
       await new Promise((res) => setTimeout(res, 1000));
 
       this.flowableService.handleCaseStatusChanged({
-        caseId: caseId,
+        caseId,
         newStatus: CaseStatus.STATUS_21_SUSPENDED,
         reason: `Case suspended: ${reason}`,
       });
@@ -119,8 +122,8 @@ export class CaseService {
         if (caseAssignee) {
           const suspendedBy = await this.cacheService.getUserFromCache(userId);
           await Promise.all(
-            caseAssignee.map((id) =>
-              this.notificationService.sendNotification({
+            caseAssignee.map(async (id) => {
+              await this.notificationService.sendNotification({
                 userId: id,
                 type: 'CASE_SUSPENDED',
                 message: `Case ${caseId} has been suspended by ${caseAssignee}`,
@@ -129,8 +132,8 @@ export class CaseService {
                   actionBy: suspendedBy?.username || suspendedBy?.fullName,
                   reason,
                 },
-              }),
-            ),
+              });
+            }),
           );
         }
       } catch (notificationError) {
@@ -208,7 +211,9 @@ export class CaseService {
         }
 
         const updatedTask = await Promise.all(
-          investigateTask.map((t) => this.taskService.updateTask(t.task_id, { status: TaskStatus.STATUS_20_IN_PROGRESS }, userId)),
+          investigateTask.map(
+            async (t) => await this.taskService.updateTask(t.task_id, { status: TaskStatus.STATUS_20_IN_PROGRESS }, userId),
+          ),
         );
         const createCommentDto = new CreateCommentDto();
         createCommentDto.caseId = caseId;
@@ -236,8 +241,8 @@ export class CaseService {
         if (caseAssignee) {
           const resumedBy = await this.cacheService.getUserFromCache(userId);
           await Promise.all(
-            caseAssignee.map((id) =>
-              this.notificationService.sendNotification({
+            caseAssignee.map(async (id) => {
+              await this.notificationService.sendNotification({
                 userId: id,
                 type: 'CASE_RESUMED',
                 message: `Case ${caseId} has been resumed by ${caseAssignee}`,
@@ -246,8 +251,8 @@ export class CaseService {
                   actionBy: resumedBy?.username || resumedBy?.email,
                   reason,
                 },
-              }),
-            ),
+              });
+            }),
           );
         }
       } catch (notificationError) {
@@ -320,66 +325,66 @@ export class CaseService {
   }
 
   async saveCaseAsDraft(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
-    return this.caseCreationApprovalService.saveCaseAsDraft(dto, userId, tenantId, role);
+    return await this.caseCreationApprovalService.saveCaseAsDraft(dto, userId, tenantId, role);
   }
 
   async reopenCase(caseId: number, reason: string, userId: string, tenantId: string, role: string) {
-    return this.caseReopeningService.reopenCase(caseId, reason, userId, tenantId, role);
+    return await this.caseReopeningService.reopenCase(caseId, reason, userId, tenantId, role);
   }
 
   async approveCaseReopening(caseId: number, supervisorId: string, tenantId: string) {
-    return this.caseReopeningService.approveCaseReopening(caseId, supervisorId, tenantId);
+    return await this.caseReopeningService.approveCaseReopening(caseId, supervisorId, tenantId);
   }
 
   async rejectCaseReopening(caseId: number, rejectionReason: string, supervisorId: string, tenantId: string) {
-    return this.caseReopeningService.rejectCaseReopening(caseId, rejectionReason, supervisorId, tenantId);
+    return await this.caseReopeningService.rejectCaseReopening(caseId, rejectionReason, supervisorId, tenantId);
   }
 
   async closeCase(caseId: number, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
-    return this.caseClosureApprovalService.closeCase(caseId, dto, userId, tenantId, role);
+    return await this.caseClosureApprovalService.closeCase(caseId, dto, userId, tenantId, role);
   }
 
   async approveCaseClosure(caseId: number, finalOutcome: string, comments: string, supervisorId: string) {
-    return this.caseClosureApprovalService.approveCaseClosure(caseId, finalOutcome, comments, supervisorId);
+    return await this.caseClosureApprovalService.approveCaseClosure(caseId, finalOutcome, comments, supervisorId);
   }
 
   async rejectCaseClosure(caseId: number, comments: string, supervisorId: string) {
-    return this.caseClosureApprovalService.rejectCaseClosure(caseId, comments, supervisorId);
+    return await this.caseClosureApprovalService.rejectCaseClosure(caseId, comments, supervisorId);
   }
 
   async returnCaseForReview(caseId: number, comments: string, supervisorId: string) {
-    return this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId);
+    return await this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId);
   }
 
   async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
-    return this.caseCreationApprovalService.manualCaseCreate(dto, userId, tenantId, role);
+    return await this.caseCreationApprovalService.manualCaseCreate(dto, userId, tenantId, role);
   }
   async approveCaseCreation(caseId: number, supervisorId: string, tenantId: string) {
-    return this.caseCreationApprovalService.approveCaseCreation(caseId, supervisorId, tenantId);
+    return await this.caseCreationApprovalService.approveCaseCreation(caseId, supervisorId, tenantId);
   }
 
   async rejectCaseCreation(caseId: number, supervisorId: string, tenantId: string, reason: string) {
-    return this.caseCreationApprovalService.rejectCaseCreation(caseId, supervisorId, tenantId, reason);
+    return await this.caseCreationApprovalService.rejectCaseCreation(caseId, supervisorId, tenantId, reason);
   }
 
   async completeCase(caseId: number, userId: string, tenantId: string) {
-    return this.caseCreationApprovalService.completeCase(caseId, userId, tenantId);
+    return await this.caseCreationApprovalService.completeCase(caseId, userId, tenantId);
   }
 
   async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string, isComplianceOfficer?: boolean) {
-    return this.caseQueryService.getAllCases(query, tenantId, investigatorUserId, isComplianceOfficer);
+    return await this.caseQueryService.getAllCases(query, tenantId, investigatorUserId, isComplianceOfficer);
   }
 
   async getUserCases(userId: string, query: GetUserCasesQueryDto, isComplianceOfficer?: boolean) {
-    return this.caseQueryService.getUserCases(userId, query, isComplianceOfficer);
+    return await this.caseQueryService.getUserCases(userId, query, isComplianceOfficer);
   }
 
   async getUserWorkloadStats(userId: string, isComplianceOfficer?: boolean) {
-    return this.caseQueryService.getUserWorkloadStats(userId, isComplianceOfficer);
+    return await this.caseQueryService.getUserWorkloadStats(userId, isComplianceOfficer);
   }
 
   async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string) {
-    return this.caseQueryService.updateCase(caseId, updateData, userId);
+    return await this.caseQueryService.updateCase(caseId, updateData, userId);
   }
 
   async completeCaseCreation(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string, role: string) {
@@ -448,12 +453,12 @@ export class CaseService {
           completionVariables: {
             autoCloseEligible: targetStatus === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT ? false : true,
             caseType: updateData.caseType || existingCase.case_type!,
-            casePriority: updateData.priority || existingCase.priority!,
+            casePriority: updateData.priority || existingCase.priority,
           },
         });
 
         await this.commentService.addComment(
-          { caseId: caseId, taskId: completeNewCaseTask.task_id, note: updateData.note } as CreateCommentDto,
+          { caseId, taskId: completeNewCaseTask.task_id, note: updateData.note } as CreateCommentDto,
           userId,
         );
         return { case: updatedCase, completedTask };
@@ -567,10 +572,10 @@ export class CaseService {
   }
 
   async retrieveCase(caseId: number, isComplianceOfficer?: boolean) {
-    return this.caseQueryService.retrieveCase(caseId, isComplianceOfficer);
+    return await this.caseQueryService.retrieveCase(caseId, isComplianceOfficer);
   }
 
   async getSubCasesDetails(caseId: number) {
-    return this.caseQueryService.getSubCasesDetails(caseId);
+    return await this.caseQueryService.getSubCasesDetails(caseId);
   }
 }

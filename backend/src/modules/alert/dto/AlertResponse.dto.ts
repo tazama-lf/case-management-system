@@ -7,7 +7,7 @@ export class AlertDto {
   @ApiProperty({
     description: 'Unique alert identifier',
     format: 'uuid',
-    example: '123e4567-e89b-12d3-a456-426614174000'
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   alert_id: string;
 
@@ -15,40 +15,40 @@ export class AlertDto {
     description: 'Alert priority level',
     example: 'URGENT',
     enum: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
-    nullable: true
+    nullable: true,
   })
   priority: string | null;
 
   @ApiProperty({
     description: 'Type of alert',
     example: 'FRAUD',
-    nullable: true
+    nullable: true,
   })
   alert_type: string | null;
 
   @ApiProperty({
     description: 'Alert source',
     example: 'TMS',
-    nullable: true
+    nullable: true,
   })
   source: string | null;
 
   @ApiProperty({
     description: 'Transaction type',
     example: 'pacs.008.001.10',
-    nullable: true
+    nullable: true,
   })
   txtp: string | null;
 
   @ApiProperty({
     description: 'Alert data as JSON',
-    example: { status: 'active', details: 'High risk transaction' }
+    example: { status: 'active', details: 'High risk transaction' },
   })
   alert_data: any;
 
   @ApiProperty({
     description: 'Transaction data as JSON',
-    example: { amount: 1000, currency: 'USD' }
+    example: { amount: 1000, currency: 'USD' },
   })
   transaction: any;
 
@@ -56,14 +56,14 @@ export class AlertDto {
     description: 'Confidence percentage (0-100)',
     minimum: 0,
     maximum: 100,
-    example: 85
+    example: 85,
   })
   confidence_per: number;
 
   @ApiProperty({
     description: 'Alert creation timestamp',
     format: 'date-time',
-    example: '2023-12-01T10:30:00Z'
+    example: '2023-12-01T10:30:00Z',
   })
   created_at: Date;
 }
@@ -74,25 +74,25 @@ export class AlertDto {
 export class PaginationDto {
   @ApiProperty({
     description: 'Total number of alerts',
-    example: 150
+    example: 150,
   })
   total: number;
 
   @ApiProperty({
     description: 'Current page number',
-    example: 1
+    example: 1,
   })
   page: number;
 
   @ApiProperty({
     description: 'Number of items per page',
-    example: 10
+    example: 10,
   })
   limit: number;
 
   @ApiProperty({
     description: 'Total number of pages',
-    example: 15
+    example: 15,
   })
   totalPages: number;
 }
@@ -104,31 +104,31 @@ export class PaginationDto {
 export class AlertServiceResponseDto {
   @ApiProperty({
     description: 'Array of alert objects',
-    type: [AlertDto]
+    type: [AlertDto],
   })
   data: AlertDto[];
 
   @ApiProperty({
     description: 'Current page number',
-    example: 1
+    example: 1,
   })
   page: number;
 
   @ApiProperty({
     description: 'Number of items per page',
-    example: 10
+    example: 10,
   })
   limit: number;
 
   @ApiProperty({
     description: 'Total number of alerts',
-    example: 150
+    example: 150,
   })
   total: number;
 
   @ApiProperty({
     description: 'Total number of pages',
-    example: 15
+    example: 15,
   })
   totalPages: number;
 }
@@ -140,13 +140,13 @@ export class AlertServiceResponseDto {
 export class AlertResponseDto {
   @ApiProperty({
     description: 'Array of alert objects',
-    type: [AlertDto]
+    type: [AlertDto],
   })
   alerts: AlertDto[];
 
   @ApiProperty({
     description: 'Pagination information',
-    type: PaginationDto
+    type: PaginationDto,
   })
   pagination: PaginationDto;
 }

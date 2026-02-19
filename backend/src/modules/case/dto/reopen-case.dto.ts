@@ -4,7 +4,8 @@ import { IsString, IsNotEmpty, MinLength, Min, Max, MaxLength } from 'class-vali
 export class RejectCaseReopeningDto {
   @ApiProperty({
     description: 'Detailed reason for rejecting the case reopening request (minimum 4 characters)',
-    example: 'The new evidence provided does not warrant reopening this case. The information was already considered during the original investigation.',
+    example:
+      'The new evidence provided does not warrant reopening this case. The information was already considered during the original investigation.',
     minLength: 4,
   })
   @IsString()

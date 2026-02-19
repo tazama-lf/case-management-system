@@ -1,36 +1,36 @@
 export interface AuthUser {
-    id: string;
-    username: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    roles: string[];
+  id: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  roles: string[];
 }
 
 export interface AuthServiceUserResponse {
-    id: string;
-    username?: string;
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    roles?: string[];
+  id: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  roles?: string[];
 }
 
 export interface KeycloakGroup {
-    id: string;
-    name: string;
+  id: string;
+  name: string;
 }
 
 export interface KeycloakSubGroup extends KeycloakGroup {
-    realmRoles?: string[];
+  realmRoles?: string[];
 }
 
 export interface KeycloakGroupMember {
-    id: string;
-    username?: string;
-    firstName?: string;
-    lastName?: string;
-    email?: string;
+  id: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
 }
 
 export interface AuthLoginResponse {

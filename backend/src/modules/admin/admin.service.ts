@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client-cms';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly adminRepository: AdminRepository) { }
+  constructor(private readonly adminRepository: AdminRepository) {}
 
   async registerReferenceId(idData: Prisma.ReferenceIdCreateInput) {
     try {

@@ -4,11 +4,11 @@ export class CloseCaseValidationErrorResponseDto {
   @ApiProperty({ type: 'string', description: 'Error message' })
   message: string;
 
-  @ApiProperty({ 
-    type: 'array', 
+  @ApiProperty({
+    type: 'array',
     items: { type: 'string' },
     example: ['Final notes are required and must be at least 20 characters'],
-    description: 'List of validation errors'
+    description: 'List of validation errors',
   })
   errors: string[];
 

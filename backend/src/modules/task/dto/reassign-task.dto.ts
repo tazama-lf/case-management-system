@@ -28,12 +28,12 @@ export class ReassignTaskDto {
   reason?: string;
 
   @ApiProperty({
-      description: 'Update note explaining the changes',
-      example: 'Updated priority based on additional investigation',
-      type: 'string',
-      maxLength: 500,
-    })
-    @IsString()
-    @MaxLength(500)
-    note: string;
+    description: 'Update note explaining the changes',
+    example: 'Updated priority based on additional investigation',
+    type: 'string',
+    maxLength: 500,
+  })
+  @IsString()
+  @MaxLength(500)
+  note: string;
 }

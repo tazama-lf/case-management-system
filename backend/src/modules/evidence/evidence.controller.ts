@@ -22,7 +22,11 @@ import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth
 import { Response } from 'express';
 import { EvidenceService } from './evidence.service';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
-import { RequireInvestigatorOrSupervisorRoleOrComplianceRole, TazamaClaims, RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
+import {
+  RequireInvestigatorOrSupervisorRoleOrComplianceRole,
+  TazamaClaims,
+  RequireInvestigatorOrSupervisorRole,
+} from 'src/decorators/auth.decorator';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 
@@ -31,7 +35,7 @@ import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class EvidenceController {
-  constructor(private evidenceService: EvidenceService) { }
+  constructor(private readonly evidenceService: EvidenceService) {}
 
   @Post('upload')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
@@ -88,7 +92,7 @@ export class EvidenceController {
     }
 
     const { clientId, tenantId, claims } = req.user.token;
-    return this.evidenceService.uploadEvidence(files, dto, clientId, tenantId);
+    return await this.evidenceService.uploadEvidence(files, dto, clientId, tenantId);
   }
 
   @Get('task/:taskId')
@@ -108,7 +112,7 @@ export class EvidenceController {
       : claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER)
         ? 'CMS_COMPLIANCE_OFFICER'
         : 'CMS_INVESTIGATOR';
-    return this.evidenceService.getEvidenceByTaskId(taskId, clientId, tenantId, role);
+    return await this.evidenceService.getEvidenceByTaskId(taskId, clientId, tenantId, role);
   }
 
   @Get('evidenceType/:evidenceType')
@@ -127,7 +131,7 @@ export class EvidenceController {
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    return this.evidenceService.getEvidenceByType(evidenceType, clientId, tenantId, role);
+    return await this.evidenceService.getEvidenceByType(evidenceType, clientId, tenantId, role);
   }
 
   @Get('case/:caseId')
@@ -141,8 +145,12 @@ export class EvidenceController {
   async getEvidenceByCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<EvidenceListResponseDto> {
     const { clientId, tenantId, claims } = req.user.token;
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
-    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER) ? 'CMS_COMPLIANCE_OFFICER' : 'CMS_INVESTIGATOR';
-    return this.evidenceService.getEvidenceByCaseId(caseId, clientId, tenantId, role);
+    const role = claims.includes(TazamaClaims.CMS_SUPERVISOR)
+      ? 'CMS_SUPERVISOR'
+      : claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER)
+        ? 'CMS_COMPLIANCE_OFFICER'
+        : 'CMS_INVESTIGATOR';
+    return await this.evidenceService.getEvidenceByCaseId(caseId, clientId, tenantId, role);
   }
 
   @Get(':id')
@@ -158,22 +166,30 @@ export class EvidenceController {
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    return this.evidenceService.getEvidenceById(id, clientId, tenantId, role);
+    return await this.evidenceService.getEvidenceById(id, clientId, tenantId, role);
   }
 
   @Get(':id/download')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  async downloadEvidence(@Param('id') id: string, @Res() res: Response, @Query('attachmentName') attachmentName: string, @Req() req: AuthenticatedRequest) {
+  async downloadEvidence(
+    @Param('id') id: string,
+    @Res() res: Response,
+    @Query('attachmentName') attachmentName: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
     const { clientId, tenantId, claims } = req.user.token;
-    const role = (claims.includes(TazamaClaims.CMS_SUPERVISOR) || claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER)) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
+    const role =
+      claims.includes(TazamaClaims.CMS_SUPERVISOR) || claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER)
+        ? 'CMS_SUPERVISOR'
+        : 'CMS_INVESTIGATOR';
     const { files, metadata } = await this.evidenceService.downloadEvidence(id, clientId, tenantId, role, attachmentName);
 
     if (!files.length) throw new NotFoundException('No files found');
 
     const file = files[0];
     const buffer = file.file;
-    const fileName = file.attachmentMeta.fileName;
-    const mimeType = file.attachmentMeta.mimeType;
+    const { fileName } = file.attachmentMeta;
+    const { mimeType } = file.attachmentMeta;
 
     res.set({
       'Content-Type': mimeType,
@@ -200,7 +216,7 @@ export class EvidenceController {
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    return this.evidenceService.deleteEvidence(id, attachmentName, clientId);
+    return await this.evidenceService.deleteEvidence(id, attachmentName, clientId);
   }
 
   @Get(':id/verify')
@@ -220,6 +236,6 @@ export class EvidenceController {
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    return this.evidenceService.verifyEvidence(id, clientId, tenantId, role, attachmentName);
+    return await this.evidenceService.verifyEvidence(id, clientId, tenantId, role, attachmentName);
   }
 }

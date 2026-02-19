@@ -3,7 +3,12 @@ import { CaseStatus } from '@prisma/client-cms';
 /**
  * Valid case closure outcomes
  */
-export const CASE_CLOSURE_OUTCOMES = ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE', 'STATUS_84_COMPLETED'] as const;
+export const CASE_CLOSURE_OUTCOMES = [
+  'STATUS_81_CLOSED_REFUTED',
+  'STATUS_82_CLOSED_CONFIRMED',
+  'STATUS_83_CLOSED_INCONCLUSIVE',
+  'STATUS_84_COMPLETED',
+] as const;
 
 /**
  * Closed case statuses (final states)
@@ -43,7 +48,6 @@ export const INACTIVE_CASE_STATUSES: CaseStatus[] = [
 export const TASK_NAMES = {
   INVESTIGATE_CASE: 'Investigate Case',
   INVESTIGATE_CASE_LOWER: 'Investigate case',
-  INVESTIGATE_CASE_VARIANTS: ['Investigate Case', 'Investigate Fraud', 'Investigate AML'],
   INVESTIGATE_FRAUD: 'Investigate Fraud',
   INVESTIGATE_AML: 'Investigate AML',
   APPROVE_CASE_CREATION: 'Approve Case Creation',
@@ -52,7 +56,7 @@ export const TASK_NAMES = {
   APPROVE_CASE_CLOSURE_VARIANTS: ['Approve Case Closure', 'Approve case closure', 'approve case closure'],
   APPROVE_CASE_REOPENING: 'Approve Case Reopening',
   COMPLETE_NEW_CASE: 'Complete New Case',
-  SAR_STR_FILING: 'SAR/STR Filing'
+  SAR_STR_FILING: 'SAR/STR Filing',
 } as const;
 
 /**
@@ -61,7 +65,7 @@ export const TASK_NAMES = {
 export const CANDIDATE_GROUPS = {
   INVESTIGATIONS: 'investigations',
   SUPERVISORS: 'supervisors',
-  COMPLIANCE_OFFICER: 'compliance'
+  COMPLIANCE_OFFICER: 'compliance',
 } as const;
 
 /**

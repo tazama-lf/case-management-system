@@ -3,7 +3,6 @@ import { IsString, IsNotEmpty, IsEnum, IsOptional, MaxLength, IsDateString, IsAr
 import { Transform, Type } from 'class-transformer';
 
 export class UploadReportDto {
-
   @ApiProperty({ description: 'Case ID this evidence belongs to' })
   @Type(() => Number)
   @IsNumber()

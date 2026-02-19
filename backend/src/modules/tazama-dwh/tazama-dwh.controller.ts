@@ -17,12 +17,9 @@ export class TazamaDWHController {
 
   @Get('transactions/:creditorId')
   @RequireInvestigatorOrSupervisorRole()
-  async getTransactionsByCreditor(
-    @Req() req: AuthenticatedRequest,
-    @Param('creditorId') creditorId: string,
-  ) {
-    const tenantId = req.user.token.tenantId;
-    return this.tazamaDwhService.getTransactionsByCreditorId(tenantId, creditorId);
+  async getTransactionsByCreditor(@Req() req: AuthenticatedRequest, @Param('creditorId') creditorId: string) {
+    const { tenantId } = req.user.token;
+    return await this.tazamaDwhService.getTransactionsByCreditorId(tenantId, creditorId);
   }
 
   @Post('profile/generate')
@@ -50,8 +47,8 @@ export class TazamaDWHController {
   })
   @ApiResponse({ status: 201, description: 'Profile generated', type: ProfileResponseDto })
   async generateProfile(@Body() dto: GenerateProfileDto, @Req() req: AuthenticatedRequest): Promise<ProfileResponseDto> {
-    const userId = req.user?.token?.clientId ;
-    return this.tazamaDwhService.generateProfile(dto, userId);
+    const userId = req.user?.token?.clientId;
+    return await this.tazamaDwhService.generateProfile(dto, userId);
   }
 
   @Get('customer/profile/:id')
@@ -60,12 +57,8 @@ export class TazamaDWHController {
   @ApiParam({ name: 'id', description: 'Transaction ID (e.g., TXN-001-01) to fetch both sender and receiver profiles' })
   @ApiResponse({ status: 200, description: 'Customer profiles retrieved for sender and receiver', type: CustomerProfileResponseDto })
   @ApiResponse({ status: 404, description: 'Transaction not found' })
-  async getCustomerProfile(
-    @Req() req: AuthenticatedRequest,
-    @Param('id') id: string,
-  ): Promise<CustomerProfileResponseDto> {
+  async getCustomerProfile(@Req() req: AuthenticatedRequest, @Param('id') id: string): Promise<CustomerProfileResponseDto> {
     // Query DWH to get transaction details and associated customer profiles
-    return this.tazamaDwhService.getCustomerProfileByTransaction(id);
+    return await this.tazamaDwhService.getCustomerProfileByTransaction(id);
   }
-
 }

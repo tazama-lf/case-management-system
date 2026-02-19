@@ -6,9 +6,9 @@ import { AsyncTaskController } from './async-task.controller';
 import { RepositoryModule } from '../repository/repository.module';
 
 @Module({
-    imports: [ScheduleModule.forRoot(), RepositoryModule],
-    controllers: [AsyncTaskController],
-    providers: [AsyncTaskService, EmailWorkerService],
-    exports: [AsyncTaskService],
+  imports: [ScheduleModule.forRoot(), RepositoryModule],
+  controllers: [AsyncTaskController],
+  providers: [AsyncTaskService, EmailWorkerService],
+  exports: [AsyncTaskService],
 })
-export class AsyncTaskModule { }
+export class AsyncTaskModule {}

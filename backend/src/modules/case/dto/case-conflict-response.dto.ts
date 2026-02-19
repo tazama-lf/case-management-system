@@ -24,10 +24,10 @@ export class CaseConflictResponseDto {
   @ApiProperty({ type: 'string', description: 'Case ID' })
   caseId: string;
 
-  @ApiProperty({ 
-    type: [IncompletTaskDto], 
+  @ApiProperty({
+    type: [IncompletTaskDto],
     required: false,
-    description: 'List of incomplete tasks (if applicable)'
+    description: 'List of incomplete tasks (if applicable)',
   })
   incompleteTasks?: IncompletTaskDto[];
 }

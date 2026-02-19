@@ -1,5 +1,5 @@
-import { Request } from 'express';
-import { TazamaToken, ClaimValidationResult } from '@tazama-lf/auth-lib';
+import type { Request } from 'express';
+import type { TazamaToken, ClaimValidationResult } from '@tazama-lf/auth-lib';
 
 export interface CMSToken extends TazamaToken {
   email: string;
@@ -19,4 +19,4 @@ export interface AuthenticatedRequest extends Request {
   [key: string]: unknown;
 }
 
-export { ClaimValidationResult };
+export type { ClaimValidationResult };

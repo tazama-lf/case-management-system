@@ -11,7 +11,7 @@ import { CreateTaskDto } from 'src/modules/task/dto/create-task.dto';
  */
 @Injectable()
 export class FlowableUtilitiesService {
-  private recentlyProcessedEvents = new Map<string, number>();
+  private readonly recentlyProcessedEvents = new Map<string, number>();
   private readonly EVENT_DEBOUNCE_MS = FlowableDefaults.EVENT_DEBOUNCE_MS;
   private readonly MAX_CACHE_SIZE = FlowableDefaults.MAX_CACHE_SIZE;
   private readonly flowableClient: AxiosInstance;

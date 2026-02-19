@@ -30,5 +30,4 @@ export class AssignTaskDto {
   @IsOptional()
   @MaxLength(500)
   note?: string;
-
 }

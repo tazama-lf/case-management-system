@@ -109,7 +109,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async abandonCase(@Param('caseId') caseId: number, @Body() body: RequestAbandonCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId } = extractUserData(req);
-    return this.caseService.abandonCase(caseId, body.reason, userId, tenantId);
+    return await this.caseService.abandonCase(caseId, body.reason, userId, tenantId);
   }
 
   @Put(':caseId/reopen')
@@ -127,7 +127,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async reopenCase(@Param('caseId') caseId: number, @Body() body: RequestReopenCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, validateClaim } = extractUserData(req);
-    return this.caseService.reopenCase(caseId, body.reason, userId, tenantId, validateClaim);
+    return await this.caseService.reopenCase(caseId, body.reason, userId, tenantId, validateClaim);
   }
 
   @Put(':caseId/suspend')
@@ -145,7 +145,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async suspendCase(@Param('caseId') caseId: number, @Body() body: RequestSuspendCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, userInfo, role } = extractUserData(req);
-    return this.caseService.suspendCase(caseId, body.reason, body.taskIds, userId, tenantId, userInfo, role);
+    return await this.caseService.suspendCase(caseId, body.reason, body.taskIds, userId, tenantId, userInfo, role);
   }
 
   @Put(':caseId/resume')
@@ -163,7 +163,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   async resumeCase(@Param('caseId') caseId: number, @Body() body: RequestResumeCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, userInfo } = extractUserData(req);
-    return this.caseService.resumeCase(caseId, body.reason, userId, tenantId, userInfo);
+    return await this.caseService.resumeCase(caseId, body.reason, userId, tenantId, userInfo);
   }
 
   @Put(':caseId/complete')
@@ -181,7 +181,7 @@ export class CaseController {
   @ApiResponse({ status: 409, description: 'Conflict - Case is not in DRAFT state' })
   async completeCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId } = extractUserData(req);
-    return this.caseService.completeCase(caseId, userId, tenantId);
+    return await this.caseService.completeCase(caseId, userId, tenantId);
   }
 
   @Post('manual')
@@ -202,7 +202,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Alert not found' })
   async createCaseManually(@Body() dto: ManualCreateCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, role } = extractUserData(req);
-    return this.caseService.manualCaseCreate(dto, userId, tenantId, role);
+    return await this.caseService.manualCaseCreate(dto, userId, tenantId, role);
   }
 
   @Put(':caseId/close')
@@ -255,7 +255,7 @@ export class CaseController {
   })
   async closeCase(@Param('caseId') caseId: number, @Body() dto: CloseCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, validateClaim } = extractUserData(req);
-    return this.caseService.closeCase(caseId, dto, userId, tenantId, validateClaim);
+    return await this.caseService.closeCase(caseId, dto, userId, tenantId, validateClaim);
   }
 
   @Get('all')
@@ -283,7 +283,7 @@ export class CaseController {
       !claims.includes('CMS_COMPLIANCE_OFFICER');
     const isComplianceOfficer = claims.includes('CMS_COMPLIANCE_OFFICER');
 
-    return this.caseService.getAllCases(query, tenantId, isInvestigator ? userId : undefined, isComplianceOfficer);
+    return await this.caseService.getAllCases(query, tenantId, isInvestigator ? userId : undefined, isComplianceOfficer);
   }
 
   @Get('user/assigned')
@@ -301,7 +301,7 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUserCases(@Query() query: GetUserCasesQueryDto, @Req() req: AuthenticatedRequest) {
     const { userId, isComplianceOfficer } = extractUserData(req);
-    return this.caseService.getUserCases(userId, query, isComplianceOfficer);
+    return await this.caseService.getUserCases(userId, query, isComplianceOfficer);
   }
 
   @Get('user/:userId/assigned')
@@ -334,16 +334,16 @@ export class CaseController {
       /* empty */
     }
 
-    return this.caseService.getUserCases(targetUserId, query);
+    return await this.caseService.getUserCases(targetUserId, query);
   }
 
   @Get('user/workload')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  @ApiOperation({ summary: 'Get case workload statistics', description: "Get summary statistics of user's case workload" })
+  @ApiOperation({ summary: 'Get case workload statistics', description: 'Get summary statistics of user\'s case workload' })
   @ApiResponse({ status: 200, description: 'Workload statistics retrieved successfully', type: UserWorkloadResponseDto })
   async getUserWorkload(@Req() req: AuthenticatedRequest) {
     const { userId, isComplianceOfficer } = extractUserData(req);
-    return this.caseService.getUserWorkloadStats(userId, isComplianceOfficer);
+    return await this.caseService.getUserWorkloadStats(userId, isComplianceOfficer);
   }
 
   @Get(':caseId')
@@ -354,20 +354,21 @@ export class CaseController {
   @ApiResponse({ status: 403, description: 'Forbidden - Compliance officers can only access confirmed closed cases' })
   async getCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const { isComplianceOfficer } = extractUserData(req);
-    return this.caseService.retrieveCase(caseId, isComplianceOfficer);
+    return await this.caseService.retrieveCase(caseId, isComplianceOfficer);
   }
 
   @Get('parentId/:caseId')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  @ApiOperation({ summary: 'Retrieve sub case by parent ID', description: 'Get detailed information about sub cases associated with a parent case' })
+  @ApiOperation({
+    summary: 'Retrieve sub case by parent ID',
+    description: 'Get detailed information about sub cases associated with a parent case',
+  })
   @ApiResponse({ status: 200, description: 'Case retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Case not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - only relevant users can only access cases information' })
   async getSubCasesDetails(@Param('caseId') caseId: number) {
-    return this.caseService.getSubCasesDetails(caseId);
+    return await this.caseService.getSubCasesDetails(caseId);
   }
-
-
 
   @Put(':caseId')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
@@ -383,7 +384,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Case not found' })
   async updateCase(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId } = extractUserData(req);
-    return this.caseService.updateCase(caseId, dto, userId);
+    return await this.caseService.updateCase(caseId, dto, userId);
   }
 
   @Post(':caseId/complete-case-creation')
@@ -400,7 +401,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Case not found' })
   async completeCaseCreation(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, role } = extractUserData(req);
-    return this.caseService.completeCaseCreation(caseId, dto, userId, role);
+    return await this.caseService.completeCaseCreation(caseId, dto, userId, role);
   }
 
   @Put(':caseId/approve')
@@ -477,7 +478,7 @@ export class CaseController {
   @ApiResponse({ status: 500, description: 'Internal Server Error - System error during approval', type: CaseErrorResponseDto })
   async approveCaseClosure(@Param('caseId') caseId: number, @Body() dto: ApproveCaseClosureDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId } = extractUserData(req);
-    return this.caseService.approveCaseClosure(caseId, dto.finalOutcome, dto.supervisorComments, supervisorId);
+    return await this.caseService.approveCaseClosure(caseId, dto.finalOutcome, dto.supervisorComments, supervisorId);
   }
 
   @Put(':caseId/reject')
@@ -542,7 +543,7 @@ export class CaseController {
   })
   async rejectCaseClosure(@Param('caseId') caseId: number, @Body() dto: RejectCaseClosureDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId } = extractUserData(req);
-    return this.caseService.rejectCaseClosure(caseId, dto.rejectionReason, supervisorId);
+    return await this.caseService.rejectCaseClosure(caseId, dto.rejectionReason, supervisorId);
   }
 
   @Put(':caseId/approve-creation')
@@ -583,7 +584,7 @@ export class CaseController {
   async approveCaseCreation(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
 
-    return this.caseService.approveCaseCreation(caseId, supervisorId, tenantId);
+    return await this.caseService.approveCaseCreation(caseId, supervisorId, tenantId);
   }
 
   @Put(':caseId/reject-creation')
@@ -623,7 +624,7 @@ export class CaseController {
   })
   async rejectCaseCreation(@Param('caseId') caseId: number, @Body() body: RejectCaseCreationBodyDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
-    return this.caseService.rejectCaseCreation(caseId, supervisorId, tenantId, body.reason);
+    return await this.caseService.rejectCaseCreation(caseId, supervisorId, tenantId, body.reason);
   }
 
   @Put(':caseId/approve-reopening')
@@ -672,7 +673,7 @@ export class CaseController {
   })
   async approveCaseReopening(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
-    return this.caseService.approveCaseReopening(caseId, supervisorId, tenantId);
+    return await this.caseService.approveCaseReopening(caseId, supervisorId, tenantId);
   }
 
   @Put(':caseId/reject-reopening')
@@ -742,7 +743,7 @@ export class CaseController {
       throw new BadRequestException('Rejection reason is required and must be at least 20 characters');
     }
 
-    return this.caseService.rejectCaseReopening(caseId, dto.rejectionReason, supervisorId, tenantId);
+    return await this.caseService.rejectCaseReopening(caseId, dto.rejectionReason, supervisorId, tenantId);
   }
 
   @Put(':caseId/return-for-review')
@@ -778,7 +779,7 @@ export class CaseController {
   })
   async returnCaseForReview(@Param('caseId') caseId: number, @Body() dto: ReturnCaseForReviewDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId } = extractUserData(req);
-    return this.caseService.returnCaseForReview(caseId, dto.reviewComments, supervisorId);
+    return await this.caseService.returnCaseForReview(caseId, dto.reviewComments, supervisorId);
   }
 
   @Post('save-as-draft')
@@ -799,6 +800,6 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Alert not found' })
   async saveCaseAsDraft(@Body() dto: ManualCreateCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, role } = extractUserData(req);
-    return this.caseService.saveCaseAsDraft(dto, userId, tenantId, role);
+    return await this.caseService.saveCaseAsDraft(dto, userId, tenantId, role);
   }
 }

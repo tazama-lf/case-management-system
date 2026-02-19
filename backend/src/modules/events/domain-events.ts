@@ -3,7 +3,6 @@ export class CaseCreatedEvent {
     public readonly caseId: number,
     public readonly tenantId: string,
     public readonly caseStatus: string,
-    public readonly isTriageAlert: boolean = false,
     public readonly creationType: string,
     public readonly creatorRole: string,
   ) {}

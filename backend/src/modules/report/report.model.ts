@@ -24,8 +24,6 @@ export interface FraudReport {
       iv: string;
       authTag: string;
     },
-
-
   ];
   keyFindings: string;
   evidenceSummary: any[];

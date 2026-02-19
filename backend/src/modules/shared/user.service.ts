@@ -83,7 +83,7 @@ export class UserService {
    * @returns
    */
   async userExists(userId: string): Promise<boolean> {
-    return this.authService.userExists(userId);
+    return await this.authService.userExists(userId);
   }
 
   /**

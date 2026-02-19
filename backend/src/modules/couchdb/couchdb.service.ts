@@ -6,11 +6,11 @@ import * as nano from 'nano';
 @Injectable()
 export class CouchdbService implements OnModuleInit {
   private readonly logger = new Logger(CouchdbService.name);
-  private nanoInstance: nano.ServerScope;
+  private readonly nanoInstance: nano.ServerScope;
   private db: nano.DocumentScope<any>;
   private readonly dbName: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {
     const url = this.configService.get<string>('COUCHDB_URL') || 'http://10.10.80.16:5984';
     const username = this.configService.get<string>('COUCHDB_USERNAME') || 'simon';
     const password = this.configService.get<string>('COUCHDB_PASSWORD') || '1234';
@@ -43,17 +43,15 @@ export class CouchdbService implements OnModuleInit {
   }
 
   async insertDocument(docId: string, metadata: any) {
-    return this.db.insert(metadata, docId);
+    return await this.db.insert(metadata, docId);
   }
 
   async deleteEvidence(evidenceId: string, fileName: string, rev: string): Promise<nano.DocumentDestroyResponse> {
-
     try {
       await this.db.destroy(evidenceId, rev);
       this.logger.log(`Evidence document "${evidenceId}" deleted successfully`);
 
       return { ok: true, id: evidenceId, rev: '' };
-
     } catch (error) {
       this.logger.error(`Failed to delete document: ${error.message}`, error.stack);
       throw new Error(error.message || 'Failed to delete attachment');
@@ -173,13 +171,13 @@ export class CouchdbService implements OnModuleInit {
       _rev: existing._rev,
     };
 
-    return this.db.insert(updated);
+    return await this.db.insert(updated);
   }
 
   async getAttachment(docId: string, attachmentName: string): Promise<Buffer> {
     try {
       const attachment = await this.db.attachment.get(docId, attachmentName);
-      return attachment as Buffer;
+      return attachment;
     } catch (error) {
       this.logger.error(`Failed to get attachment: ${error.message}`, error.stack);
       throw error;
@@ -208,7 +206,7 @@ export class CouchdbService implements OnModuleInit {
     try {
       return await this.db.createIndex({
         index: {
-          fields: fields,
+          fields,
         },
       });
     } catch (error) {
@@ -228,7 +226,7 @@ export class CouchdbService implements OnModuleInit {
       });
 
       for (const row of result.rows) {
-        const doc = row.doc;
+        const { doc } = row;
 
         if (!doc.archiveFlag) {
           doc.archive = true;

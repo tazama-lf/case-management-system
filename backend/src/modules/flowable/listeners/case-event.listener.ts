@@ -16,52 +16,7 @@ export class CaseEventListener {
   ) {}
 
   @OnEvent('case.created')
-  async handleCaseCreated(event: CaseCreatedEvent) {
-    try {
-      this.logger.log(`Start - Process CaseID: ${event.caseId}`, CaseEventListener.name);
-
-      const processInstance = await this.flowableProcessService.startProcessInstance(
-        'caseManagementProcess',
-        {
-          caseId: event.caseId,
-          tenantId: event.tenantId,
-          creationType: event.creationType,
-          caseStatus: event.caseStatus,
-          isTriageAlert: String(event.isTriageAlert),
-          creatorRole: event.creatorRole,
-          // Required BPMN variables with safe defaults
-          caseType: (event as any).caseType || 'FRAUD',
-          casePriority: (event as any).priority || 'NEW', 
-          autoCloseEligible: String((event as any).autoCloseEligible || false),
-          readyForAssignment: 'true',
-          // Investigation action variables with defaults
-          investigationAction: 'pending',
-          fraudInvestigationAction: 'pending',
-          amlInvestigationAction: 'pending',
-          // Additional required variables
-          investigationNotes: '',
-          fraudInvestigationNotes: '',
-          amlInvestigationNotes: '',
-          recommendedOutcome: 'PENDING_INVESTIGATION',
-          fraudRecommendedOutcome: 'PENDING_INVESTIGATION',
-          amlRecommendedOutcome: 'PENDING_INVESTIGATION'
-        },
-        event.caseId,
-        event.tenantId,
-      );
-
-      this.logger.log(
-        `[CaseEventListener] Successfully started process ${processInstance.id} for case ${event.caseId}`,
-        CaseEventListener.name,
-      );
-    } catch (error) {
-      this.logger.error(
-        `[CaseEventListener] Failed to start process for case ${event.caseId}: ${error.message}`,
-        error.stack,
-        CaseEventListener.name,
-      );
-    }
-  }
+  async handleCaseCreated(event: CaseCreatedEvent) {}
 
   @OnEvent('case.status.changed')
   async handleCaseStatusChanged(event: CaseStatusChangedEvent) {
@@ -77,7 +32,7 @@ export class CaseEventListener {
       await this.flowableProcessService.updateProcessVariable(processInstance.id as string, 'caseStatus', event.newStatus);
       this.logger.log(`Updated Case Status To ${event.newStatus} For Process ${processInstance.id}`, CaseEventListener.name);
     } catch (error) {
-      this.logger.error(`Failed To Update Case Status: ${error.message}`, error.stack, CaseEventListener.name);
+      throw error;
     }
   }
 
@@ -98,11 +53,7 @@ export class CaseEventListener {
         this.logger.warn(`[CaseEventListener] No Flowable process found for abandoned case ${event.caseId}`, CaseEventListener.name);
       }
     } catch (error) {
-      this.logger.error(
-        `[CaseEventListener] Failed to terminate Flowable process for case ${event.caseId}: ${error.message}`,
-        error.stack,
-        CaseEventListener.name,
-      );
+      throw error;
     }
   }
 

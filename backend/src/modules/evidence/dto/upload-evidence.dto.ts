@@ -54,7 +54,7 @@ export class UploadEvidenceDto {
   @IsOptional()
   @Transform(({ value }) => {
     if (Array.isArray(value)) return value;
-    if (typeof value === 'string') return value.split(',').map(k => k.trim());
+    if (typeof value === 'string') return value.split(',').map((k) => k.trim());
     return value;
   })
   @IsArray()

@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, ForbiddenException, NotFoundException 
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 import { Outcome } from '../../utils/types/outcome';
 
 @Injectable()
@@ -30,7 +30,7 @@ export class ConfigManagementService {
       let encrypted = cipher.update(text, 'utf8', 'hex');
       encrypted += cipher.final('hex');
 
-      return iv.toString('hex') + ':' + encrypted;
+      return `${iv.toString('hex')}:${encrypted}`;
     } catch (error) {
       this.logger.error(`Encryption failed: ${error.message}`);
       throw new Error('Failed to encrypt sensitive data');
@@ -60,11 +60,11 @@ export class ConfigManagementService {
     }
   }
 
-    async configureRole(roleName: string, permissions: string[], description: string, userId: string, require2FA = true) {
-        try {
-            if (!roleName || roleName.trim().length < 3) {
-                throw new BadRequestException('Role name must be at least 3 characters');
-            }
+  async configureRole(roleName: string, permissions: string[], description: string, userId: string, require2FA = true) {
+    try {
+      if (!roleName || roleName.trim().length < 3) {
+        throw new BadRequestException('Role name must be at least 3 characters');
+      }
 
       if (!permissions || permissions.length === 0) {
         throw new BadRequestException('At least one permission is required');
@@ -78,19 +78,19 @@ export class ConfigManagementService {
         throw new ForbiddenException('Cannot modify system roles');
       }
 
-            const changeLog = await this.prisma.configurationChangeLog.create({
-                data: {
-                    config_id: existingRole?.id as number,
-                    config_key: `role:${roleName}`,
-                    old_value: existingRole ? (existingRole.permissions as any) : undefined,
-                    new_value: permissions as any,
-                    change_type: existingRole ? 'UPDATE' : 'CREATE',
-                    changed_by: userId,
-                    requires_2fa: require2FA,
-                    change_status: require2FA ? 'PENDING' : 'APPLIED',
-                    change_reason: description,
-                },
-            });
+      const changeLog = await this.prisma.configurationChangeLog.create({
+        data: {
+          config_id: existingRole?.id!,
+          config_key: `role:${roleName}`,
+          old_value: existingRole ? (existingRole.permissions as any) : undefined,
+          new_value: permissions as any,
+          change_type: existingRole ? 'UPDATE' : 'CREATE',
+          changed_by: userId,
+          requires_2fa: require2FA,
+          change_status: require2FA ? 'PENDING' : 'APPLIED',
+          change_reason: description,
+        },
+      });
 
       if (require2FA) {
         return {
@@ -153,7 +153,7 @@ export class ConfigManagementService {
   }
 
   async listAllRoles() {
-    return this.prisma.rolePermission.findMany({
+    return await this.prisma.rolePermission.findMany({
       where: { is_active: true },
       orderBy: { role_name: 'asc' },
       select: {
@@ -215,22 +215,22 @@ export class ConfigManagementService {
     return { message: `Role ${roleName} deleted successfully` };
   }
 
-    async configureIntegration(
-        systemName: string,
-        config: {
-            endpoint_url?: string;
-            api_key?: string;
-            api_secret?: string;
-            auth_type?: string;
-            config_data?: any;
-        },
-        userId: string,
-    ) {
-        try {
-            const validSystems = ['ALERT_TRIAGE', 'API_PORTAL', 'FLOWABLE', 'KEYCLOAK'];
-            if (!validSystems.includes(systemName)) {
-                throw new BadRequestException(`Invalid system name. Must be one of: ${validSystems.join(', ')}`);
-            }
+  async configureIntegration(
+    systemName: string,
+    config: {
+      endpoint_url?: string;
+      api_key?: string;
+      api_secret?: string;
+      auth_type?: string;
+      config_data?: any;
+    },
+    userId: string,
+  ) {
+    try {
+      const validSystems = ['ALERT_TRIAGE', 'API_PORTAL', 'FLOWABLE', 'KEYCLOAK'];
+      if (!validSystems.includes(systemName)) {
+        throw new BadRequestException(`Invalid system name. Must be one of: ${validSystems.join(', ')}`);
+      }
 
       const encryptedConfig = {
         ...config,
@@ -242,26 +242,26 @@ export class ConfigManagementService {
         where: { system_name: systemName },
       });
 
-            await this.prisma.configurationChangeLog.create({
-                data: {
-                    config_id: existingConfig?.id as number,
-                    config_key: `integration:${systemName}`,
-                    old_value: existingConfig
-                        ? ({
-                            endpoint_url: existingConfig.endpoint_url,
-                            auth_type: existingConfig.auth_type,
-                            is_enabled: existingConfig.is_enabled,
-                        } as any)
-                        : undefined,
-                    new_value: {
-                        endpoint_url: config.endpoint_url,
-                        auth_type: config.auth_type,
-                    } as any,
-                    change_type: existingConfig ? 'UPDATE' : 'CREATE',
-                    changed_by: userId,
-                    change_status: 'APPLIED',
-                },
-            });
+      await this.prisma.configurationChangeLog.create({
+        data: {
+          config_id: existingConfig?.id!,
+          config_key: `integration:${systemName}`,
+          old_value: existingConfig
+            ? ({
+                endpoint_url: existingConfig.endpoint_url,
+                auth_type: existingConfig.auth_type,
+                is_enabled: existingConfig.is_enabled,
+              } as any)
+            : undefined,
+          new_value: {
+            endpoint_url: config.endpoint_url,
+            auth_type: config.auth_type,
+          } as any,
+          change_type: existingConfig ? 'UPDATE' : 'CREATE',
+          changed_by: userId,
+          change_status: 'APPLIED',
+        },
+      });
 
       const integrationConfig = await this.prisma.integrationConfig.upsert({
         where: { system_name: systemName },
@@ -328,12 +328,12 @@ export class ConfigManagementService {
       orderBy: { system_name: 'asc' },
     });
 
-        return configs.map((config) => ({
-            ...config,
-            api_key: config.api_key ? '***ENCRYPTED***' : null,
-            api_secret: config.api_secret ? '***ENCRYPTED***' : null,
-        }));
-    }
+    return configs.map((config) => ({
+      ...config,
+      api_key: config.api_key ? '***ENCRYPTED***' : null,
+      api_secret: config.api_secret ? '***ENCRYPTED***' : null,
+    }));
+  }
 
   async toggleIntegration(systemName: string, enabled: boolean, userId: string) {
     const config = await this.prisma.integrationConfig.findUnique({
@@ -426,13 +426,13 @@ export class ConfigManagementService {
     // Implement actual integration testing based on system type
     switch (systemName) {
       case 'ALERT_TRIAGE':
-        return this.testAlertTriageConnection(config);
+        return await this.testAlertTriageConnection(config);
       case 'API_PORTAL':
-        return this.testApiPortalConnection(config);
+        return await this.testApiPortalConnection(config);
       case 'FLOWABLE':
-        return this.testFlowableConnection(config);
+        return await this.testFlowableConnection(config);
       case 'KEYCLOAK':
-        return this.testKeycloakConnection(config);
+        return await this.testKeycloakConnection(config);
       default:
         this.logger.warn(`No test implementation for ${systemName}`);
         return true;
@@ -491,10 +491,10 @@ export class ConfigManagementService {
     }
   }
 
-    async verify2FAAndApplyChange(changeId: number, twoFactorCode: string, userId: string) {
-        const changeLog = await this.prisma.configurationChangeLog.findUnique({
-            where: { id: changeId },
-        });
+  async verify2FAAndApplyChange(changeId: number, twoFactorCode: string, userId: string) {
+    const changeLog = await this.prisma.configurationChangeLog.findUnique({
+      where: { id: changeId },
+    });
 
     if (!changeLog) {
       throw new NotFoundException('Configuration change not found');
@@ -557,18 +557,18 @@ export class ConfigManagementService {
     };
   }
 
-    async getConfigurationChangeLogs(filters?: {
-        startDate?: Date;
-        endDate?: Date;
-        changedBy?: string;
-        configType?: string;
-        page?: number;
-        limit?: number;
-    }) {
-        const where: any = {};
-        const page = filters?.page || 1;
-        const limit = filters?.limit || 50;
-        const skip = (page - 1) * limit;
+  async getConfigurationChangeLogs(filters?: {
+    startDate?: Date;
+    endDate?: Date;
+    changedBy?: string;
+    configType?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const where: any = {};
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 50;
+    const skip = (page - 1) * limit;
 
     if (filters?.startDate) {
       where.created_at = { gte: filters.startDate };
@@ -619,20 +619,20 @@ export class ConfigManagementService {
       return 'No configuration changes found';
     }
 
-        const headers = ['ID', 'Config Key', 'Change Type', 'Changed By', 'Change Status', 'Created At', 'Approved By', 'Approval Date'];
+    const headers = ['ID', 'Config Key', 'Change Type', 'Changed By', 'Change Status', 'Created At', 'Approved By', 'Approval Date'];
 
-        const rows = logs.map((log) => [
-            log.id,
-            log.config_key,
-            log.change_type,
-            log.changed_by,
-            log.change_status,
-            log.created_at,
-            log.approved_by || '',
-            log.approval_date || '',
-        ]);
+    const rows = logs.map((log) => [
+      log.id,
+      log.config_key,
+      log.change_type,
+      log.changed_by,
+      log.change_status,
+      log.created_at,
+      log.approved_by || '',
+      log.approval_date || '',
+    ]);
 
-        const csvContent = [headers.join(','), ...rows.map((row) => row.map((cell) => `"${cell}"`).join(','))].join('\n');
+    const csvContent = [headers.join(','), ...rows.map((row) => row.map((cell) => `"${cell}"`).join(','))].join('\n');
 
     return csvContent;
   }
@@ -649,24 +649,24 @@ export class ConfigManagementService {
     return config;
   }
 
-    async updateSystemConfiguration(configKey: string, configValue: any, userId: string, description?: string) {
-        const existingConfig = await this.prisma.systemConfiguration.findUnique({
-            where: { config_key: configKey },
-        });
+  async updateSystemConfiguration(configKey: string, configValue: any, userId: string, description?: string) {
+    const existingConfig = await this.prisma.systemConfiguration.findUnique({
+      where: { config_key: configKey },
+    });
 
-        // Log the change
-        await this.prisma.configurationChangeLog.create({
-            data: {
-                config_id: existingConfig?.id as number,
-                config_key: `system:${configKey}`,
-                old_value: existingConfig?.config_value as any,
-                new_value: configValue,
-                change_type: existingConfig ? 'UPDATE' : 'CREATE',
-                changed_by: userId,
-                change_status: 'APPLIED',
-                change_reason: description,
-            },
-        });
+    // Log the change
+    await this.prisma.configurationChangeLog.create({
+      data: {
+        config_id: existingConfig?.id!,
+        config_key: `system:${configKey}`,
+        old_value: existingConfig?.config_value as any,
+        new_value: configValue,
+        change_type: existingConfig ? 'UPDATE' : 'CREATE',
+        changed_by: userId,
+        change_status: 'APPLIED',
+        change_reason: description,
+      },
+    });
 
     const config = await this.prisma.systemConfiguration.upsert({
       where: { config_key: configKey },
@@ -697,4 +697,3 @@ export class ConfigManagementService {
     return config;
   }
 }
-

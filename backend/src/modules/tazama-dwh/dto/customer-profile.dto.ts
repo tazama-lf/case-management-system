@@ -54,7 +54,7 @@ export class AccountDetailsDto {
 }
 
 export class TransactionAccountDetailsDto extends AccountDetailsDto {
-  @ApiProperty({ description: 'Transaction amount', example: 1500.50 })
+  @ApiProperty({ description: 'Transaction amount', example: 1500.5 })
   @IsOptional()
   amount?: number;
 

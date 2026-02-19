@@ -2,8 +2,8 @@ import { Injectable, HttpException, HttpStatus, OnModuleInit } from '@nestjs/com
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import axios, { AxiosInstance } from 'axios';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import FormData = require('form-data');
 import { FlowableApiEndpoints, FlowableDefaults } from '../../constants/flowable-api.constants';
 import { CreateFlowableTaskDto } from './dto/flowable.dto';
@@ -29,7 +29,7 @@ import {
 
 @Injectable()
 export class FlowableService implements OnModuleInit {
-  private flowableClient: AxiosInstance;
+  private readonly flowableClient: AxiosInstance;
   private readonly flowableUrl: string;
   // private readonly tenantId: string;
   private readonly maxRetries = FlowableDefaults.MAX_RETRIES;
@@ -37,9 +37,9 @@ export class FlowableService implements OnModuleInit {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly logger: LoggerService,
+    private readonly loggerService: LoggerService,
     private readonly clientFactory: FlowableClientFactory,
-    private readonly processService: FlowableProcessService,
+    private readonly flowableProcessService: FlowableProcessService,
     private readonly taskService: FlowableTaskService,
     private readonly identityService: FlowableIdentityService,
     private readonly utilitiesService: FlowableUtilitiesService,
@@ -55,25 +55,25 @@ export class FlowableService implements OnModuleInit {
     const flowableEnabled = this.configService.get<boolean>('FLOWABLE_ENABLED', true);
 
     if (!flowableEnabled) {
-      this.logger.log('Flowable is disabled via configuration, skipping initialization', FlowableService.name);
+      this.loggerService.log('Flowable is disabled via configuration, skipping initialization', FlowableService.name);
       return;
     }
 
-    this.logger.log(`Attempting to connect to Flowable at: ${this.flowableUrl}`, FlowableService.name);
+    this.loggerService.log(`Attempting to connect to Flowable at: ${this.flowableUrl}`, FlowableService.name);
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        this.logger.log(`Initializing Flowable (attempt ${attempt}/${this.maxRetries})`, FlowableService.name);
+        this.loggerService.log(`Initializing Flowable (attempt ${attempt}/${this.maxRetries})`, FlowableService.name);
 
         await this.healthCheck();
         await this.deployBpmnProcess();
 
-        this.logger.log('Flowable initialized successfully', FlowableService.name);
+        this.loggerService.log('Flowable initialized successfully', FlowableService.name);
         return;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         const errorStack = error instanceof Error ? error.stack : undefined;
-        this.logger.error(
+        this.loggerService.error(
           `Failed to initialize Flowable (attempt ${attempt}/${this.maxRetries}): ${errorMessage}`,
           errorStack,
           FlowableService.name,
@@ -84,18 +84,18 @@ export class FlowableService implements OnModuleInit {
           const skipOnFailure = this.configService.get<boolean>('FLOWABLE_SKIP_ON_FAILURE', false);
 
           if (skipOnFailure) {
-            this.logger.warn(
+            this.loggerService.warn(
               `Flowable initialization failed after ${this.maxRetries} attempts. Continuing without Flowable as FLOWABLE_SKIP_ON_FAILURE=true`,
               FlowableService.name,
             );
             return;
           } else {
-            this.logger.error('Max retry attempts reached. CMS cannot start without Flowable.', errorStack, FlowableService.name);
+            this.loggerService.error('Max retry attempts reached. CMS cannot start without Flowable.', errorStack, FlowableService.name);
             throw new Error(`Flowable initialization failed after ${this.maxRetries} attempts: ${errorMessage}`);
           }
         }
 
-        this.logger.log(`Retrying Flowable initialization in ${this.retryDelayMs / 1000} seconds...`, FlowableService.name);
+        this.loggerService.log(`Retrying Flowable initialization in ${this.retryDelayMs / 1000} seconds...`, FlowableService.name);
         await this.sleep(this.retryDelayMs);
       }
     }
@@ -105,7 +105,7 @@ export class FlowableService implements OnModuleInit {
     const bpmnFilePath = path.join(process.cwd(), 'src', 'modules', 'bpmn', 'cms.bpmn20.xml');
 
     try {
-      this.logger.log('Deploying BPMN process', FlowableService.name);
+      this.loggerService.log('Deploying BPMN process', FlowableService.name);
 
       const bpmnXml = await fs.readFile(bpmnFilePath, 'utf-8');
       const formData = new FormData();
@@ -122,7 +122,7 @@ export class FlowableService implements OnModuleInit {
         headers,
       });
 
-      this.logger.log(`BPMN process deployed successfully: ${response.data.id}`, FlowableService.name);
+      this.loggerService.log(`BPMN process deployed successfully: ${response.data.id}`, FlowableService.name);
       return response.data;
     } catch (error) {
       const errorCode = (error as unknown as { code?: string }).code;
@@ -130,7 +130,7 @@ export class FlowableService implements OnModuleInit {
       const errorStack = error instanceof Error ? error.stack : undefined;
 
       if (errorCode === 'ENOENT') {
-        this.logger.error(
+        this.loggerService.error(
           `BPMN file not found at ${bpmnFilePath}. Cannot start CMS without BPMN process.`,
           errorStack,
           FlowableService.name,
@@ -138,7 +138,7 @@ export class FlowableService implements OnModuleInit {
         throw new Error(`Critical: BPMN file not found at ${bpmnFilePath}`);
       }
 
-      this.logger.error(`Failed to deploy BPMN process: ${errorMessage}`, errorStack, FlowableService.name);
+      this.loggerService.error(`Failed to deploy BPMN process: ${errorMessage}`, errorStack, FlowableService.name);
       throw new HttpException('Failed to deploy BPMN process', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -147,82 +147,82 @@ export class FlowableService implements OnModuleInit {
    * Ensure a user is a member of a Flowable identity group
    */
   async addUserToGroup(groupId: string, userId: string) {
-    return this.identityService.addUserToGroup(groupId, userId);
+    return await this.identityService.addUserToGroup(groupId, userId);
   }
 
   /**
    * Remove a user from a Flowable identity group
    */
   async removeUserFromGroup(groupId: string, userId: string) {
-    return this.identityService.removeUserFromGroup(groupId, userId);
+    await this.identityService.removeUserFromGroup(groupId, userId);
   }
 
   async createGroup(groupData: { id: string; name: string; type: string }) {
-    return this.identityService.createGroup(groupData);
+    return await this.identityService.createGroup(groupData);
   }
 
   async getGroup(groupId: string) {
-    return this.identityService.getGroup(groupId);
+    return await this.identityService.getGroup(groupId);
   }
 
   async startProcessInstance(processDefinitionKey: string, variables: Record<string, string>, businessKey: number, tenantId?: string) {
-    return this.processService.startProcessInstance(processDefinitionKey, variables, businessKey, tenantId);
+    return await this.flowableProcessService.startProcessInstance(processDefinitionKey, variables, businessKey, tenantId);
   }
 
   async getProcessInstance(processInstanceId: string) {
-    return this.processService.getProcessInstance(processInstanceId);
+    return await this.flowableProcessService.getProcessInstance(processInstanceId);
   }
 
   async getProcessInstanceByBusinessKey(businessKey: number) {
-    return this.processService.getProcessInstanceByBusinessKey(businessKey);
+    return await this.flowableProcessService.getProcessInstanceByBusinessKey(businessKey);
   }
 
   async getProcessTasks(processInstanceId: string) {
-    return this.taskService.getProcessTasks(processInstanceId);
+    return await this.taskService.getProcessTasks(processInstanceId);
   }
 
   async createTask(taskData: CreateFlowableTaskDto) {
-    return this.taskService.createTask(taskData);
+    return await this.taskService.createTask(taskData);
   }
 
   async completeTask(taskId: number, variables?: Record<string, string>) {
-    return this.taskService.completeTask(taskId, variables);
+    return await this.taskService.completeTask(taskId, variables);
   }
 
   async claimTask(taskId: number, userId: string): Promise<void> {
-    return this.taskService.claimTask(taskId, userId);
+    await this.taskService.claimTask(taskId, userId);
   }
 
   async unclaimTask(taskId: number): Promise<void> {
-    return this.taskService.unclaimTask(taskId);
+    await this.taskService.unclaimTask(taskId);
   }
 
   async delegateTask(taskId: number, userId: string): Promise<void> {
-    return this.taskService.delegateTask(taskId, userId);
+    await this.taskService.delegateTask(taskId, userId);
   }
 
   async assignTaskToCandidateGroup(taskId: number, group: string) {
-    return this.taskService.assignTaskToCandidateGroup(taskId, group);
+    return await this.taskService.assignTaskToCandidateGroup(taskId, group);
   }
 
   async getTaskIdentityLinks(taskId: number) {
-    return this.taskService.getTaskIdentityLinks(taskId);
+    return await this.taskService.getTaskIdentityLinks(taskId);
   }
 
-  async getCandidateGroupTasks(candidateGroup: string, includeVariables: boolean = true) {
-    return this.taskService.getCandidateGroupTasks(candidateGroup, includeVariables);
+  async getCandidateGroupTasks(candidateGroup: string, includeVariables = true) {
+    return await this.taskService.getCandidateGroupTasks(candidateGroup, includeVariables);
   }
 
-  async getUserTasks(assignee: string, includeVariables: boolean = true) {
-    return this.taskService.getUserTasks(assignee, includeVariables);
+  async getUserTasks(assignee: string, includeVariables = true) {
+    return await this.taskService.getUserTasks(assignee, includeVariables);
   }
 
   async updateProcessVariable(processInstanceId: string, variableName: string, value: any): Promise<void> {
-    return this.processService.updateProcessVariable(processInstanceId, variableName, value);
+    await this.flowableProcessService.updateProcessVariable(processInstanceId, variableName, value);
   }
 
   async setProcessVariables(processInstanceId: string, variables: Record<string, string>) {
-    return this.processService.setProcessVariables(processInstanceId, variables);
+    return await this.flowableProcessService.setProcessVariables(processInstanceId, variables);
   }
 
   // async getTenantTasks(
@@ -237,58 +237,58 @@ export class FlowableService implements OnModuleInit {
   // }
 
   async getTask(taskId: number) {
-    return this.taskService.getTask(taskId);
+    return await this.taskService.getTask(taskId);
   }
 
   async setTaskVariables(taskId: number, variables: Record<string, string>) {
-    return this.taskService.setTaskVariables(taskId, variables);
+    return await this.taskService.setTaskVariables(taskId, variables);
   }
 
   async getTaskVariables(taskId: number): Promise<Record<string, unknown>> {
-    return this.utilitiesService.getTaskVariables(taskId);
+    return await this.utilitiesService.getTaskVariables(taskId);
   }
 
   async updateTaskVariable(taskId: number, variableName: string, value: string) {
-    return this.taskService.updateTaskVariable(taskId, variableName, value);
+    return await this.taskService.updateTaskVariable(taskId, variableName, value);
   }
 
   async deleteTaskVariable(taskId: number, variableName: string) {
-    return this.taskService.deleteTaskVariable(taskId, variableName);
+    await this.taskService.deleteTaskVariable(taskId, variableName);
   }
 
   async terminateProcessInstance(processInstanceId: string, reason?: string) {
-    return this.processService.terminateProcessInstance(processInstanceId, reason);
+    return await this.flowableProcessService.terminateProcessInstance(processInstanceId, reason);
   }
 
   async suspendProcessInstance(processInstanceId: string) {
-    return this.processService.suspendProcessInstance(processInstanceId);
+    return await this.flowableProcessService.suspendProcessInstance(processInstanceId);
   }
 
   async activateProcessInstance(processInstanceId: string) {
-    return this.processService.activateProcessInstance(processInstanceId);
+    return await this.flowableProcessService.activateProcessInstance(processInstanceId);
   }
 
   async getWorkQueueStatistics(candidateGroup?: string) {
-    return this.identityService.getWorkQueueStatistics(
+    return await this.identityService.getWorkQueueStatistics(
       this.flowableClient,
-      (group: string, includeVariables: boolean) => this.getCandidateGroupTasks(group, includeVariables),
+      async (group: string, includeVariables: boolean) => await this.getCandidateGroupTasks(group, includeVariables),
       candidateGroup,
     );
   }
 
   async getAllCandidateGroups(size?: number, start?: number) {
-    return this.identityService.getAllCandidateGroups(size, start);
+    return await this.identityService.getAllCandidateGroups(size, start);
   }
 
   async healthCheck(): Promise<{ status: string; message?: string }> {
     try {
-      this.logger.log(`Testing connection to: ${this.flowableUrl}`, FlowableService.name);
+      this.loggerService.log(`Testing connection to: ${this.flowableUrl}`, FlowableService.name);
 
       const response = await this.flowableClient.get(FlowableApiEndpoints.DEPLOYMENTS, {
         params: { size: 1 },
       });
 
-      this.logger.log('Flowable health check passed', FlowableService.name);
+      this.loggerService.log('Flowable health check passed', FlowableService.name);
       return { status: 'healthy' };
     } catch (error) {
       let errorMessage = error instanceof Error ? error.message : String(error);
@@ -300,43 +300,78 @@ export class FlowableService implements OnModuleInit {
       } else if (errorCode === 'ECONNRESET') {
         errorMessage = `Connection reset by Flowable server at ${this.flowableUrl} - check server status and credentials`;
       }
-      this.logger.error(`Health check failed: ${errorMessage}`, errorStack, FlowableService.name);
+      this.loggerService.error(`Health check failed: ${errorMessage}`, errorStack, FlowableService.name);
       throw new Error(errorMessage);
     }
   }
 
   async getProcessDefinitions(processDefinitionKey?: string) {
-    return this.processService.getProcessDefinitions(processDefinitionKey);
+    return await this.flowableProcessService.getProcessDefinitions(processDefinitionKey);
   }
 
   async listProcessDefinitions(): Promise<string> {
-    return this.processService.listProcessDefinitions();
+    return await this.flowableProcessService.listProcessDefinitions();
   }
 
   /* Event Handlers to delegate to listeners */
 
   async handleCaseCreated(event: CaseCreatedEvent) {
-    return this.caseEventListener.handleCaseCreated(event);
+    try {
+      this.loggerService.log(`Start - Process CaseID: ${event.caseId}`, CaseEventListener.name);
+
+      const processInstance = await this.flowableProcessService.startProcessInstance(
+        'caseManagementProcess',
+        {
+          caseId: event.caseId,
+          tenantId: event.tenantId,
+          creationType: event.creationType,
+          caseStatus: event.caseStatus,
+          creatorRole: event.creatorRole,
+          // Required BPMN variables with safe defaults
+          caseType: (event as any).caseType || 'FRAUD',
+          casePriority: (event as any).priority || 'NEW',
+          autoCloseEligible: String((event as any).autoCloseEligible || false),
+          readyForAssignment: 'true',
+          // Investigation action variables with defaults
+          investigationAction: 'pending',
+          fraudInvestigationAction: 'pending',
+          amlInvestigationAction: 'pending',
+          // Additional required variables
+          investigationNotes: '',
+          fraudInvestigationNotes: '',
+          amlInvestigationNotes: '',
+          recommendedOutcome: 'PENDING_INVESTIGATION',
+          fraudRecommendedOutcome: 'PENDING_INVESTIGATION',
+          amlRecommendedOutcome: 'PENDING_INVESTIGATION',
+        },
+        event.caseId,
+        event.tenantId,
+      );
+
+      this.loggerService.log(`End - Started process ${processInstance.id} for case ${event.caseId}`, CaseEventListener.name);
+    } catch (error) {
+      throw error;
+    }
   }
 
   async handleCaseStatusChanged(event: CaseStatusChangedEvent) {
-    return this.caseEventListener.handleCaseStatusChanged(event);
+    await this.caseEventListener.handleCaseStatusChanged(event);
   }
 
   async handleCaseAbandoned(event: CaseAbandonedEvent) {
-    return this.caseEventListener.handleCaseAbandoned(event);
+    await this.caseEventListener.handleCaseAbandoned(event);
   }
 
   async handleTaskCompleted(event: TaskCompletedEvent) {
-    return this.taskEventListener.handleTaskCompleted(event);
+    await this.taskEventListener.handleTaskCompleted(event);
   }
 
   async handleTaskAssigned(event: TaskAssignedEvent) {
-    return this.taskEventListener.handleTaskAssigned(event);
+    await this.taskEventListener.handleTaskAssigned(event);
   }
 
   async handleTaskUnassigned(event: TaskUnassignedEvent) {
-    return this.taskEventListener.handleTaskUnassigned(event);
+    await this.taskEventListener.handleTaskUnassigned(event);
   }
 
   async handleSuspendCase(event: CaseSuspendedEvent) {
@@ -344,10 +379,10 @@ export class FlowableService implements OnModuleInit {
   }
 
   async handleGetTasksByAssignee(assignee: string) {
-    return this.identityService.getTasksAssignedToUser(assignee);
+    return await this.identityService.getTasksAssignedToUser(assignee);
   }
 
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  private async sleep(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

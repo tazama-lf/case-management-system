@@ -8,21 +8,18 @@ import { RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRol
 @Controller('api/v1/filter')
 @UseGuards(TazamaAuthGuard)
 export class FilterController {
-  constructor(private readonly filterService: FilterService) { }
+  constructor(private readonly filterService: FilterService) {}
 
   @Post('create')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  async createFilter(
-    @Body() createFilterDto: createFilterDto,
-    @Req() req: AuthenticatedRequest
-  ) {
+  async createFilter(@Body() createFilterDto: createFilterDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.filterService.createFilter(createFilterDto, userId);
+    return await this.filterService.createFilter(createFilterDto, userId);
   }
 
   @Get('user/:userId/filterType/:filterType')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async getFiltersByUser(@Param('userId') userId: string, @Param('filterType') filterType: string) {
-    return this.filterService.getFiltersByUserAndType(userId, filterType);
+    return await this.filterService.getFiltersByUserAndType(userId, filterType);
   }
 }

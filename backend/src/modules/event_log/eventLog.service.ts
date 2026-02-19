@@ -1,11 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { v4 as uuidv4 } from 'uuid';
-import { validate as isUuid } from 'uuid';
+import { v4 as uuidv4, validate as isUuid } from 'uuid';
 
 @Injectable()
 export class EventLogService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async logEventAction(data: {
     userId?: string;
@@ -16,7 +15,7 @@ export class EventLogService {
     performedAt?: Date;
   }) {
     const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
-    return this.prisma.eventLog.create({
+    return await this.prisma.eventLog.create({
       data: {
         user_id,
         operation: data.operation,
@@ -29,7 +28,7 @@ export class EventLogService {
   }
 
   async logPermissionDenied(user: any, entityName: string, action: string, _details?: any) {
-    return this.logEventAction({
+    return await this.logEventAction({
       userId: user?.sub || 'unknown',
       operation: 'permission_denied',
       entityName,
@@ -39,7 +38,7 @@ export class EventLogService {
   }
 
   async getLogs(limit = 50, offset = 0) {
-    return this.prisma.eventLog.findMany({
+    return await this.prisma.eventLog.findMany({
       orderBy: { performed_at: 'desc' },
       take: limit,
       skip: offset,
@@ -58,7 +57,7 @@ export class EventLogService {
   }
 
   async getActionHistoryForCase(caseId: number) {
-    return this.prisma.eventLog.findMany({
+    return await this.prisma.eventLog.findMany({
       where: {
         OR: [
           { action_performed: { contains: caseId.toString() } },

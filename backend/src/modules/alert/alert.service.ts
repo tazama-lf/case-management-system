@@ -21,7 +21,7 @@ export class AlertService {
     private readonly loggerService: LoggerService,
     private readonly configService: ConfigService,
     private readonly alertRepository: AlertRepository,
-    private readonly caseCreationService: CaseCreationApprovalService,
+    private readonly caseCreationService: CaseCreationService,
     private readonly transactionDataRespository: TransactionDataRespository,
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
@@ -29,7 +29,7 @@ export class AlertService {
   ) {}
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number) {
-    this.loggerService.log(`Start - Alert Creation`, AlertService.name);
+    this.loggerService.log('Start - Alert Creation', AlertService.name);
     const txtp = alert.transaction.TxTp;
     alert.message = alert.message ?? 'Suspicious activity detected';
     try {
@@ -37,14 +37,14 @@ export class AlertService {
       const newAlert = await this.alertRepository.createAlert({
         tenantId,
         priority: Priority.NEW,
-        source: source,
-        txtp: txtp,
+        source,
+        txtp,
         message: alert.message,
         report: alert.report,
         transaction: alert.transaction,
         networkMap: alert.networkMap,
         confidencePer: 0,
-        caseId: caseId,
+        caseId,
       });
 
       this.loggerService.log(`End - Alert Creation - ${newAlert.alert_id}`, AlertService.name);
@@ -119,7 +119,7 @@ export class AlertService {
   async getAlertTransactionalData(alertId: number) {
     this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
     if (alertId == null || alertId == undefined) {
-      throw new BadRequestException(`AlertID is missing`);
+      throw new BadRequestException('AlertID is missing');
     }
 
     const alert = await this.alertRepository.getAlertById(alertId);

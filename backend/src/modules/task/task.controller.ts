@@ -121,7 +121,7 @@ export class TaskController {
   })
   async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.createTask(createTaskDto, userId);
+    return await this.taskService.createTask(createTaskDto, userId);
   }
 
   @Patch(':taskId/reassign')
@@ -195,9 +195,9 @@ export class TaskController {
   })
   async reassignTask(@Param('taskId') taskId: number, @Body() reassignTaskDto: ReassignTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
 
-    return this.taskService.reassignTask(taskId, userId, tenantId, reassignTaskDto.assignedUserId, reassignTaskDto.note);
+    return await this.taskService.reassignTask(taskId, userId, tenantId, reassignTaskDto.assignedUserId, reassignTaskDto.note);
   }
 
   @Patch(':taskId/unassign')
@@ -282,7 +282,7 @@ export class TaskController {
   })
   async unassignTask(@Param('taskId') taskId: number, @Body() unassignDto: UnassignTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
 
     if (!userId || !tenantId) {
       throw new BadRequestException('Missing user ID or tenant ID in auth token');
@@ -292,7 +292,7 @@ export class TaskController {
       throw new BadRequestException('Reason for unassigning task is required');
     }
 
-    return this.taskService.unassignTask(taskId, userId, tenantId, unassignDto.reason);
+    return await this.taskService.unassignTask(taskId, userId, tenantId, unassignDto.reason);
   }
 
   @Patch(':taskId/assign')
@@ -364,7 +364,7 @@ export class TaskController {
   })
   async assignTaskToInvestigator(@Param('taskId') taskId: number, @Body() assignTaskDto: AssignTaskDto, @Req() req: AuthenticatedRequest) {
     const supervisorId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
 
     const result = await this.taskService.assignTaskToInvestigator(
       taskId,
@@ -433,7 +433,7 @@ export class TaskController {
   })
   async selfAssignTask(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
 
     const result = await this.taskService.selfAssignTask(taskId, userId, tenantId);
 
@@ -517,7 +517,7 @@ export class TaskController {
   })
   async updateTask(@Param('taskId') taskId: number, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
-    return this.taskService.updateTask(taskId, dto, userId);
+    return await this.taskService.updateTask(taskId, dto, userId);
   }
 
   @Get()
@@ -568,7 +568,7 @@ export class TaskController {
     description: 'Unauthorized - Invalid or missing authentication',
   })
   async getTasks(@Query('status') status?: string) {
-    return this.taskService.getTasks(status);
+    return await this.taskService.getTasks(status);
   }
 
   @Get('case/:caseId')
@@ -622,7 +622,7 @@ export class TaskController {
   async getTasksByCaseId(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const userClaims = req.user.token.claims || [];
-    return this.taskService.getTasksByCaseId(caseId, userId, userClaims);
+    return await this.taskService.getTasksByCaseId(caseId, userId, userClaims);
   }
 
   // @Get('work-queues/:candidateGroup')
@@ -849,7 +849,7 @@ export class TaskController {
     description: 'Not Found - Task does not exist',
   })
   async getTaskById(@Param('taskId') taskId: number) {
-    return this.taskService.getTaskById(taskId);
+    return await this.taskService.getTaskById(taskId);
   }
 
   @Get('statistics')

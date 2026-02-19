@@ -156,5 +156,4 @@ export class CreateEvidenceDto {
     description: 'Associated case ID',
   })
   caseId: number;
-
 }

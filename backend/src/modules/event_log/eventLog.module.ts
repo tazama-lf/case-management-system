@@ -7,4 +7,4 @@ import { PrismaModule } from '../../../prisma/prisma.module';
   providers: [EventLogService],
   exports: [EventLogService],
 })
-export class EventLogModule { }
+export class EventLogModule {}

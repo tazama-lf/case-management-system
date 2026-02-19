@@ -161,7 +161,7 @@ export class CaseReopeningService {
         await this.commentRepository.createComment(
           userId,
           {
-            caseId: caseId,
+            caseId,
             note: JSON.stringify({
               requestedBy: userId,
               requesterRole: role || 'UNKNOWN',
@@ -169,7 +169,7 @@ export class CaseReopeningService {
               previousStatus: existingCase.status,
               requestedAt: new Date().toISOString(),
             }),
-            tenantId: tenantId,
+            tenantId,
           },
           tx,
         );
@@ -320,9 +320,9 @@ export class CaseReopeningService {
         await this.commentRepository.createComment(
           supervisorId,
           {
-            caseId: caseId,
+            caseId,
             note: `Case reopening approved by supervisor. Previous status: ${caseData.status}. Reason: ${reopeningMetadata.reason || 'Not specified'}`,
-            tenantId: tenantId,
+            tenantId,
           },
           tx,
         );
@@ -345,7 +345,7 @@ export class CaseReopeningService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: newCaseStatus,
-        reason: `Case reopening approved`,
+        reason: 'Case reopening approved',
       });
 
       if (assignedUserId) {
@@ -497,9 +497,9 @@ export class CaseReopeningService {
         await this.commentRepository.createComment(
           supervisorId,
           {
-            caseId: caseId,
+            caseId,
             note: `Case reopening rejected by supervisor.\n\nReason: ${rejectionReason}\n\nCase restored to status: ${originalClosedStatus}`,
-            tenantId: tenantId,
+            tenantId,
           },
           tx,
         );

@@ -113,21 +113,15 @@ export class CaseQueryService {
         this.prismaService.case.groupBy({ by: ['priority'], where: { OR: whereConditions }, _count: { case_id: true } }),
       ]);
 
-      const statusCounts = casesByStatus.reduce(
-        (acc, item) => {
-          acc[item.status] = item._count.case_id;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
+      const statusCounts = casesByStatus.reduce<Record<string, number>>((acc, item) => {
+        acc[item.status] = item._count.case_id;
+        return acc;
+      }, {});
 
-      const priorityCounts = casesByPriority.reduce(
-        (acc, item) => {
-          acc[item.priority] = item._count.case_id;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
+      const priorityCounts = casesByPriority.reduce<Record<string, number>>((acc, item) => {
+        acc[item.priority] = item._count.case_id;
+        return acc;
+      }, {});
 
       return {
         cases: processedCases,
@@ -493,27 +487,18 @@ export class CaseQueryService {
         this.prismaService.case.groupBy({ by: ['case_type'], where: whereClause, _count: { case_id: true } }),
         this.prismaService.case.count({ where: { case_owner_user_id: null } }),
       ]);
-      const casesByStatus = statusStats.reduce(
-        (acc, item) => {
-          acc[item.status] = item._count.case_id;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
-      const casesByPriority = priorityStats.reduce(
-        (acc, item) => {
-          acc[item.priority] = item._count.case_id;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
-      const casesByType = typeStats.reduce(
-        (acc, item) => {
-          if (item.case_type) acc[item.case_type] = item._count.case_id;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
+      const casesByStatus = statusStats.reduce<Record<string, number>>((acc, item) => {
+        acc[item.status] = item._count.case_id;
+        return acc;
+      }, {});
+      const casesByPriority = priorityStats.reduce<Record<string, number>>((acc, item) => {
+        acc[item.priority] = item._count.case_id;
+        return acc;
+      }, {});
+      const casesByType = typeStats.reduce<Record<string, number>>((acc, item) => {
+        if (item.case_type) acc[item.case_type] = item._count.case_id;
+        return acc;
+      }, {});
       const totalTasks = cases.reduce((sum, c) => sum + c.tasks.length, 0);
       const averageTasksPerCase = cases.length > 0 ? Math.round((totalTasks / cases.length) * 10) / 10 : 0;
       let oldestUnassignedCase: { case_id: number; created_at: Date; days_old: number } | undefined;

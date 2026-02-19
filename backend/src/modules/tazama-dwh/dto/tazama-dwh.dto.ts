@@ -12,7 +12,6 @@ export class TransactionDto {
   currency: string | null; // ccy
 }
 
-
 export class DWHAccountTransactionsResponseDto {
   accountId: string;
   tenantId: string;

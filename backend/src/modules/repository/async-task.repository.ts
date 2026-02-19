@@ -37,7 +37,7 @@ export class AsyncTaskRepository extends BaseRepository {
    * Get task by ID
    */
   async getTaskById(taskId: number) {
-    return this.prisma.asyncTask.findUnique({
+    return await this.prisma.asyncTask.findUnique({
       where: { task_id: taskId },
     });
   }
@@ -46,7 +46,7 @@ export class AsyncTaskRepository extends BaseRepository {
    * Get all failed tasks
    */
   async getFailedTasks(limit = 100) {
-    return this.prisma.asyncTask.findMany({
+    return await this.prisma.asyncTask.findMany({
       where: { status: AsyncTaskStatus.FAILED },
       orderBy: { created_at: 'desc' },
       take: limit,
@@ -126,9 +126,9 @@ export class AsyncTaskRepository extends BaseRepository {
   /**
    * Get pending tasks ready for processing
    */
-  async getPendingTasksForProcessing(limit: number = 10) {
+  async getPendingTasksForProcessing(limit = 10) {
     // Using raw query with FOR UPDATE SKIP LOCKED for safe concurrent processing
-    return this.prisma.$queryRaw<any[]>`
+    return await this.prisma.$queryRaw<any[]>`
             SELECT * FROM async_tasks
             WHERE status = 'PENDING'
             AND task_type = 'EMAIL'

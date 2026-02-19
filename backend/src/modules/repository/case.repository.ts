@@ -74,7 +74,7 @@ export class CaseRepository extends BaseRepository {
       where: {
         case_id: caseId,
         name: taskName,
-        status: status,
+        status,
       },
     });
   }
@@ -85,7 +85,7 @@ export class CaseRepository extends BaseRepository {
       where: {
         case_id: caseId,
         name: { in: names },
-        status: status,
+        status,
       },
     });
   }
@@ -109,11 +109,11 @@ export class CaseRepository extends BaseRepository {
   }
 
   async findUnassignedTaskForReopening(caseId: number, tx?: Prisma.TransactionClient) {
-    return this.findReopeningTaskWithComments(caseId, tx);
+    return await this.findReopeningTaskWithComments(caseId, tx);
   }
 
   async findReopeningTaskForRejection(caseId: number, tx?: Prisma.TransactionClient) {
-    return this.findReopeningTaskWithComments(caseId, tx);
+    return await this.findReopeningTaskWithComments(caseId, tx);
   }
 
   async findCaseWithPermissionCheck(caseId: number, userId: string, tx?: Prisma.TransactionClient) {
@@ -231,7 +231,7 @@ export class CaseRepository extends BaseRepository {
   }
 
   async findUnassignedAndInProgressTasksByUser(userId: string) {
-    return this.prisma.task.findMany({
+    return await this.prisma.task.findMany({
       where: { assigned_user_id: userId, status: { in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] } },
       select: { task_id: true, name: true, case_id: true, created_at: true },
       orderBy: { created_at: 'asc' },
@@ -240,7 +240,7 @@ export class CaseRepository extends BaseRepository {
   }
 
   async findOldestUnassignedCase() {
-    return this.prisma.case.findFirst({
+    return await this.prisma.case.findFirst({
       where: { case_owner_user_id: null },
       orderBy: { created_at: 'asc' },
       select: { case_id: true, created_at: true },
@@ -295,15 +295,15 @@ export class CaseRepository extends BaseRepository {
 
   // Specialized count methods for common queries
   async countOwnedCases(userId: string) {
-    return this.countCases({ case_owner_user_id: userId });
+    return await this.countCases({ case_owner_user_id: userId });
   }
 
   async countCasesWithTaskAssignments(userId: string) {
-    return this.countCases({ tasks: { some: { assigned_user_id: userId } } });
+    return await this.countCases({ tasks: { some: { assigned_user_id: userId } } });
   }
 
   async countUnassignedCases() {
-    return this.countCases({ case_owner_user_id: null });
+    return await this.countCases({ case_owner_user_id: null });
   }
 
   // Generic groupBy method
@@ -318,15 +318,15 @@ export class CaseRepository extends BaseRepository {
 
   // Convenience methods using generic groupBy
   async groupCasesByStatus(whereConditions: Prisma.CaseWhereInput[]) {
-    return this.groupCasesBy('status', whereConditions);
+    return await this.groupCasesBy('status', whereConditions);
   }
 
   async groupCasesByPriority(whereConditions: Prisma.CaseWhereInput[]) {
-    return this.groupCasesBy('priority', whereConditions);
+    return await this.groupCasesBy('priority', whereConditions);
   }
 
   async groupCasesByType(whereClause: Prisma.CaseWhereInput) {
-    return this.groupCasesBy('case_type', whereClause);
+    return await this.groupCasesBy('case_type', whereClause);
   }
 
   async findCaseWithCompletedInvestigation(caseId: number) {
@@ -454,7 +454,7 @@ export class CaseRepository extends BaseRepository {
         await this.commentRepository.createComment(
           userId,
           {
-            caseId: caseId,
+            caseId,
             taskId: comment.taskId,
             note: comment.note,
             tenantId: comment.tenantId,
@@ -549,10 +549,10 @@ export class CaseRepository extends BaseRepository {
       await this.commentRepository.createComment(
         supervisorId,
         {
-          caseId: caseId,
+          caseId,
           taskId: newInvestigationTask.task_id,
           note: `Supervisor Feedback:\n${comments}\n\nAction Required: Address the concerns raised and resubmit for closure approval.`,
-          tenantId: tenantId,
+          tenantId,
         },
         tx,
       );
