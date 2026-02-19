@@ -97,9 +97,9 @@ export class GetUserCasesQueryDto {
 export class UserTaskDto {
   @ApiProperty({
     description: 'Task ID',
-    example: 'task-123e4567-e89b-12d3-a456-426614174000',
+    example: 124,
   })
-  task_id: string;
+  task_id: number;
 
   @ApiProperty({
     description: 'Task name',
@@ -123,9 +123,9 @@ export class UserTaskDto {
 export class AlertInfoDto {
   @ApiProperty({
     description: 'Alert ID',
-    example: 'alert-123e4567-e89b-12d3-a456-426614174000',
+    example: 123,
   })
-  alert_id: string;
+  alert_id: number;
 
   @ApiProperty({
     description: 'Alert message',
@@ -143,9 +143,9 @@ export class AlertInfoDto {
 export class CaseWithTasksDto {
   @ApiProperty({
     description: 'Case ID',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    example: 123,
   })
-  case_id: string;
+  case_id: number;
 
   @ApiProperty({
     description: 'Case status',

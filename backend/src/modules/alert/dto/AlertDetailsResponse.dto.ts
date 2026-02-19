@@ -41,13 +41,12 @@ export class AlertDetailsResponseDTO {
 
   @ApiProperty({
     description: 'Associated case ID if case was created',
-    example: '987e6543-e89b-12d3-a456-426614174003',
-    format: 'uuid',
+    example: 987,
     nullable: true,
     required: false,
   })
-  @IsString()
-  case_id?: string;
+  @IsNumber()
+  case_id?: number;
 
   @ApiProperty({
     description: 'Alert-specific data and metadata',

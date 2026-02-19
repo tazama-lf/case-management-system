@@ -4,20 +4,20 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateTaskDto {
   @ApiProperty({
-    description: 'UUID of the case to create the task for',
+    description: 'CaseId of the case to create the task for',
     example: 12345,
   })
   @IsNumber()
   caseId: number;
 
-    @ApiProperty({
-      description: 'Investigation notes for the task',
-      example: 'Detailed investigation notes entered by investigator.',
-      required: false,
-    })
-    @IsString()
-    @IsOptional()
-    investigationNotes?: string;
+  @ApiProperty({
+    description: 'Investigation notes for the task',
+    example: 'Detailed investigation notes entered by investigator.',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  investigationNotes?: string;
   @ApiProperty({
     description: 'Initial status of the task',
     enum: TaskStatus,

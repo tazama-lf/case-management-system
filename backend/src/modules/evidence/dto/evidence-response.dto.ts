@@ -6,7 +6,7 @@ export class EvidenceResponseDto {
   id: string;
 
   @ApiProperty()
-  taskId: string;
+  taskId: number;
 
   @ApiProperty()
   fileName: string;

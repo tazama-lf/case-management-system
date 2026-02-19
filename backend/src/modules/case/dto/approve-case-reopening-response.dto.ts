@@ -4,7 +4,7 @@ class CaseDetails {
   @ApiProperty({ type: 'string', format: 'uuid' })
   case_id: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     type: 'string',
     enum: ['STATUS_10_ASSIGNED', 'STATUS_02_READY_FOR_ASSIGNMENT'],
     example: 'STATUS_10_ASSIGNED'
@@ -19,27 +19,27 @@ class CaseDetails {
 }
 
 class CompletedApprovalTask {
-  @ApiProperty({ type: 'string', format: 'uuid' })
-  task_id: string;
+  @ApiProperty({ type: 'number', example: 1234 })
+  task_id: number;
 
   @ApiProperty({ type: 'string', example: 'STATUS_30_COMPLETED' })
   status: string;
 }
 
 class InvestigationTask {
-  @ApiProperty({ type: 'string', format: 'uuid' })
-  task_id: string;
+  @ApiProperty({ type: 'number', example: 1234 })
+  task_id: number;
 
   @ApiProperty({ type: 'string', example: 'Investigate Case' })
   name: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     type: 'string',
     enum: ['STATUS_10_ASSIGNED', 'STATUS_01_UNASSIGNED']
   })
   status: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     type: 'string',
     description: 'User ID or candidate group name'
   })

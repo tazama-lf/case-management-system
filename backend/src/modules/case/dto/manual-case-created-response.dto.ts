@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 class CaseDetails {
-  @ApiProperty({ type: 'number' })
+  @ApiProperty({ type: 'number', example: 124 })
   case_id: number;
 
   @ApiProperty({ type: 'string' })
@@ -15,10 +15,10 @@ class CaseDetails {
 }
 
 class AlertDetails {
-  @ApiProperty({ type: 'number' })
+  @ApiProperty({ type: 'number', example: 124 })
   alert_id: number;
 
-  @ApiProperty({ type: 'number' })
+  @ApiProperty({ type: 'number', example: 124 })
   case_id: number;
 }
 

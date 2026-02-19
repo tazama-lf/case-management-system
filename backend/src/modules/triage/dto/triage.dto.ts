@@ -12,11 +12,10 @@ export class HealthCheckResponseDTO {
 
 export class AlertTriageResponseDTO {
   @ApiProperty({
-    description: 'Alert unique identifier',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    format: 'uuid',
+    description: 'Alert Id',
+    example: 123,
   })
-  alert_id: string;
+  alert_id: number;
 
   @ApiProperty({
     description: 'Alert status after triage',

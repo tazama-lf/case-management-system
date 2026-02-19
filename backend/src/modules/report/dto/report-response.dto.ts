@@ -5,7 +5,7 @@ export class ReportResponseDto {
   id: string;
 
   @ApiProperty()
-  taskId: string;
+  taskId: number;
 
   @ApiProperty()
   fileName: string;

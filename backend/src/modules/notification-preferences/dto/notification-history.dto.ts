@@ -16,17 +16,17 @@ export class NotificationHistoryDto {
 
   @ApiProperty({
     description: 'Task ID related to the notification',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    example: 1234,
     nullable: true,
   })
-  task_id: string | null;
+  task_id: number | null;
 
   @ApiProperty({
     description: 'Case ID related to the notification',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    example: 1234,
     nullable: true,
   })
-  case_id: string | null;
+  case_id: number | null;
 
   @ApiProperty({
     description: 'Type of notification',
