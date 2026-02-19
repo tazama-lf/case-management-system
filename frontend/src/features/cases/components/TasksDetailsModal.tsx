@@ -1,5 +1,5 @@
 import React from 'react';
-import { XMarkIcon} from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
 import CollaboratePanel from './view/CollaboratePanel';
 import TaskEvidenceTab from './view/TaskEvidenceTab';
@@ -7,9 +7,10 @@ import LinkedItemsTab from './view/LinkedItemsTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import InvestigationSummaryTab from './view/InvestigationsSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
+import VisualizationsTab from './view/VisualizationsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
 
-type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary';
+type ViewTabKey = 'details' | 'evidence' | 'visualizations' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary';
 
 interface TaskDetailsModalProps {
   selectedTask: any;
@@ -36,6 +37,46 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const uploadEvidenceRef = React.useRef<(() => Promise<void>) | null>(null);
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
+  //const [noEvidenceError, setNoEvidenceError] = React.useState(false);
+
+  //Extract transaction ID from transaction data
+  const transactionId = React.useMemo(() => {
+
+    if (!row?.transaction) {
+      return undefined;
+    }
+
+    let transactionData = row.transaction;
+
+    // Check if transaction is a string that needs parsing
+    if (typeof transactionData === 'string') {
+      try {
+        transactionData = JSON.parse(transactionData);
+      } catch (e) {
+        return undefined;
+      }
+    }
+
+    const transaction = transactionData as Record<string, unknown>;
+
+    const fiToFIPmtSts = transaction?.FIToFIPmtSts as Record<string, unknown> | undefined;
+    const txInfAndSts = fiToFIPmtSts?.TxInfAndSts as Record<string, unknown> | undefined;
+
+
+    // Try multiple possible field locations
+    const extractedId = (
+      txInfAndSts?.OrgnlEndToEndId ||
+      txInfAndSts?.EndToEndId ||
+      transaction?.transaction_id ||
+      transaction?.transactionId
+    );
+
+    if (extractedId && typeof extractedId === 'string') {
+      return extractedId;
+    }
+
+    return undefined;
+  }, [row]);
 
   React.useEffect(() => {
     if (open) {
@@ -92,6 +133,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 { key: 'details', label: 'Task Details' },
                 { key: 'linked', label: 'Linked Items' },
                 { key: 'evidence', label: 'Evidence' },
+                { key: 'visualizations', label: 'Visualizations' },
                 { key: 'notes', label: 'Investigation Notes' },
                 { key: 'summary', label: 'Investigation Summary' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
@@ -123,10 +165,17 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
                 <TaskEvidenceTab
                   task={tasks.filter(t => t.task_id === selectedTask?.id)[0]}
+                  caseId={row.id}
+                  // onSaveRequest={(uploadFn) => {
+                  //   uploadEvidenceRef.current = uploadFn;
+                  // }}
                   onUploadComplete={() => {
                     setSummaryRefreshKey(prev => prev + 1);
                   }}
                 />
+              </div>
+              <div style={{ display: tab === 'visualizations' ? 'block' : 'none' }}>
+                <VisualizationsTab alertId={row?.alertId} caseId={row?.id} transactionId={transactionId} />
               </div>
               <div style={{ display: tab === 'linked' ? 'block' : 'none' }}>
                 {row?.id && <LinkedItemsTab caseId={row.id} />}

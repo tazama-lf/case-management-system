@@ -15,7 +15,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({ transactionId }
   React.useEffect(() => {
     console.log('=== CustomerProfileTab Effect ===');
     console.log('Received transactionId:', transactionId);
-    
+
     if (!transactionId) {
       console.log('No transactionId, clearing profile');
       setProfile(null);

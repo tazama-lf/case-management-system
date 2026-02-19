@@ -10,7 +10,7 @@ import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { UploadReportDto } from './dto/upload-report.dto';
 import { Outcome } from 'src/utils/types/outcome';
 import { Express } from 'express';
-import { Multer } from 'multer';
+import { Multer } from 'Multer';
 
 @ApiTags('Reports')
 @ApiBearerAuth('jwt')
@@ -68,7 +68,7 @@ export class ReportsController {
         fileIsRequired: true,
       }),
     )
-    file: Multer.File,
+    file: Express.Multer.File,
     @Body() dto: UploadReportDto,
     @Req() req: AuthenticatedRequest) {
     if (!dto.caseId) {

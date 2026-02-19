@@ -104,6 +104,8 @@ model Alert {
   transaction        Json
   network_map        Json
   confidence_per     Int
+  block_status       String?            @db.VarChar(50)
+  block_reason       String?            @db.Text
   created_at         DateTime           @default(now()) @db.Timestamp(6)
   case_id            Int?               @unique
   case               Case?              @relation(fields: [case_id], references: [case_id])
@@ -323,6 +325,13 @@ enum UserRole {
   ANALYST
 }
 
+enum AssignmentRuleType {
+  PRIORITY_BASED
+  CASE_TYPE_BASED
+  ROUND_ROBIN
+  LOAD_BALANCED
+  MANUAL
+}
 enum AssignmentType {
   MANUAL
   AUTOMATIC

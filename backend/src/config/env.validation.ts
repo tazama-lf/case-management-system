@@ -112,6 +112,18 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   COUCHDB_DATABASE?: string;
+
+  @IsOptional()
+  @IsString()
+  VOILA_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  GOLD_LAKEHOUSE_API_URL?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  GOLD_LAKEHOUSE_TIMEOUT?: string;
 }
 
 export const validate = (config: Record<string, unknown>) => {
