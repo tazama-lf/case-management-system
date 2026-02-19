@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserMinusIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
+import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 
 interface UnassignTaskModalProps {

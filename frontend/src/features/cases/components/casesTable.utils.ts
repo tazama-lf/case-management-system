@@ -16,7 +16,7 @@ export type CaseRow = {
   priority: string;
   userRole: 'owner' | 'task_assignee' | 'both' | 'none';
   totalTasks: number;
-  alertId?: number;
+  alertId: number;
   alertMessage?: string;
   confidencePercent?: number;
   transaction?: unknown;
