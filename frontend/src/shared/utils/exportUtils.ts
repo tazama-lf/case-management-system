@@ -318,9 +318,9 @@ export const formatDataForExport = (data: any[], reportType: string): ExportData
               'Supporting Evidence': ev.fileName ?? '',
               'Comments': [
                 ev.id,
-                ev.description,
                 ev.evidenceType,
                 ev.uploadedByName,
+                ev.description,
               ]
                 .filter(Boolean)
                 .join(' | '),
