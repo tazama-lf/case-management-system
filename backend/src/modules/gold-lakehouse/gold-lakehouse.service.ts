@@ -378,18 +378,18 @@ export class GoldLakehouseService {
     };
     amountAndCurrency: Array<
       | {
-          originalAmount: number;
-          exchangeRate: number;
-          convertedAmount: number;
-        }
+        originalAmount: number;
+        exchangeRate: number;
+        convertedAmount: number;
+      }
       | {
-          senderCharges: never[];
-          intermediaryCharges: never[];
-          receiverCharges: never[];
-        }
+        senderCharges: never[];
+        intermediaryCharges: never[];
+        receiverCharges: never[];
+      }
       | {
-          totalCharges: number;
-        }
+        totalCharges: number;
+      }
     >;
     settlementDetails: {
       settlementDate: string;

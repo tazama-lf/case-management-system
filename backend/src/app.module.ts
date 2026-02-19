@@ -70,6 +70,8 @@ import { JupyterModule } from './modules/jupyter/jupyter.module';
     FeatureExtractionModule,
     CouchdbModule,
     EvidenceModule,
+    GoldLakehouseModule,
+    JupyterModule,
     TazamaDwhModule,
     FilterModule,
     CaseHistoryModule,
@@ -87,4 +89,4 @@ import { JupyterModule } from './modules/jupyter/jupyter.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

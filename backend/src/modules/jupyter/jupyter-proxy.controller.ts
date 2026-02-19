@@ -7,7 +7,7 @@ import { Alerts, Edge, Node } from '../gold-lakehouse/types/gold-lakehouse.types
 @Controller('api/v1/jupyter/proxy')
 @ApiTags('Jupyter Proxy')
 export class JupyterProxyController {
-  constructor(private readonly proxyService: JupyterProxyService) {}
+  constructor(private readonly proxyService: JupyterProxyService) { }
 
   private validateSecret(headers: Record<string, any>): void {
     const required = process.env.JUPYTER_SHARED_SECRET;
