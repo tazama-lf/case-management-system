@@ -4,8 +4,8 @@ export class CaseErrorResponseDto {
   @ApiProperty({ type: 'string', example: 'System error occurred during case closure' })
   message: string;
 
-  @ApiProperty({ type: 'string', description: 'Case ID' })
-  caseId: string;
+  @ApiProperty({ type: 'number', example: 123, description: 'Case ID' })
+  caseId: number;
 
   @ApiProperty({ type: 'string', description: 'Error details' })
   error: string;

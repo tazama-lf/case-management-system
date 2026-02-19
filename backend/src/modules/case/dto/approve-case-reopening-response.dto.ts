@@ -19,16 +19,16 @@ class CaseDetails {
 }
 
 class CompletedApprovalTask {
-  @ApiProperty({ type: 'string', format: 'uuid' })
-  task_id: string;
+  @ApiProperty({ type: 'number', example: 1234 })
+  task_id: number;
 
   @ApiProperty({ type: 'string', example: 'STATUS_30_COMPLETED' })
   status: string;
 }
 
 class InvestigationTask {
-  @ApiProperty({ type: 'string', format: 'uuid' })
-  task_id: string;
+  @ApiProperty({ type: 'number', example: 1234 })
+  task_id: number;
 
   @ApiProperty({ type: 'string', example: 'Investigate Case' })
   name: string;

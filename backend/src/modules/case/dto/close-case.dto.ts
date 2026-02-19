@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, IsBoolean, MinLength, MaxLength, Max } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, IsBoolean, MinLength, MaxLength, Max, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { CaseClosureOutcome } from '../../../utils/enums/case-enum';
 
@@ -26,17 +26,17 @@ export class CloseCaseDto {
 export class ApproveCaseClosureTaskDto {
   @ApiProperty({
     description: 'Task ID for the approval task',
-    example: 'task-123e4567-e89b-12d3-a456-426614174000',
+    example: 123,
   })
-  @IsUUID()
-  task_id: string;
+  @IsNumber()
+  task_id: number;
 
   @ApiProperty({
     description: 'Case ID being closed',
-    example: 'case-123e4567-e89b-12d3-a456-426614174000',
+    example: 123,
   })
-  @IsUUID()
-  case_id: string;
+  @IsNumber()
+  case_id: number;
 
   @ApiProperty({
     description: 'Name of the approval task',

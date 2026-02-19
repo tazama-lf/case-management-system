@@ -1,13 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { CaseCreationType, CaseStatus, CaseType, Priority } from '@prisma/client-cms';
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateCaseDto {
   @ApiProperty({
     description: 'Optional parent case ID if this case is a sub-case',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    example: 123,
   })
-  @IsUUID()
+  @IsNumber()
   @IsOptional()
   parentId?: number;
 

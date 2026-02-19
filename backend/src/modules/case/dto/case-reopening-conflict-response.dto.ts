@@ -10,6 +10,6 @@ export class CaseReopeningConflictResponseDto {
   @ApiProperty({ type: 'string', example: 'STATUS_31_REOPENED' })
   requiredStatus: string;
 
-  @ApiProperty({ type: 'string', format: 'uuid' })
-  caseId: string;
+  @ApiProperty({ type: 'number', example: 123 })
+  caseId: number;
 }

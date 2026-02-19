@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 class CaseDetails {
-  @ApiProperty({ type: 'string', format: 'uuid' })
-  case_id: string;
+  @ApiProperty({ type: 'number', example: 123 })
+  case_id: number;
 
   @ApiProperty({ type: 'string', example: 'STATUS_02_READY_FOR_ASSIGNMENT' })
   status: string;
@@ -18,8 +18,8 @@ class CaseDetails {
 }
 
 class ApprovedTask {
-  @ApiProperty({ type: 'string', format: 'uuid' })
-  task_id: string;
+  @ApiProperty({ type: 'number', example: 1234 })
+  task_id: number;
 
   @ApiProperty({ type: 'string', example: 'Approve Case Creation' })
   name: string;
@@ -32,8 +32,8 @@ class ApprovedTask {
 }
 
 class NewTask {
-  @ApiProperty({ type: 'string', format: 'uuid' })
-  task_id: string;
+  @ApiProperty({ type: 'number', example: 1234 })
+  task_id: number;
 
   @ApiProperty({ type: 'string', example: 'Investigate case' })
   name: string;

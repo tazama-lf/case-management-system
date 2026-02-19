@@ -4,8 +4,8 @@ import type { ApiErrorResponse } from '../../alerts/types/triage.types';
 export interface Comment {
   comment_id: string;
   user_id: string;
-  case_id?: string;
-  task_id?: string;
+  case_id?: number;
+  task_id?: number;
   note: string;
   created_at: string;
   updated_at: string;
@@ -18,8 +18,8 @@ export interface TaskComment {
   note: string;
   created_at: string;
   updated_at: string;
-  case_id: string;
-  task_id: string;
+  case_id: number;
+  task_id: number;
 }
 
 export interface CommentsByCaseId extends TaskComment {
@@ -28,8 +28,8 @@ export interface CommentsByCaseId extends TaskComment {
 
 export interface CreateCommentDto {
   note: string;
-  caseId?: string;
-  taskId?: string;
+  caseId?: number;
+  taskId?: number;
 }
 
 export class CommentService {

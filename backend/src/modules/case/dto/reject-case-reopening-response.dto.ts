@@ -22,8 +22,8 @@ class CaseDetails {
 }
 
 class CompletedTask {
-  @ApiProperty({ type: 'string', format: 'uuid' })
-  task_id: string;
+  @ApiProperty({ type: 'number', example: 1234 })
+  task_id: number;
 
   @ApiProperty({ type: 'string', example: 'STATUS_30_COMPLETED' })
   status: string;

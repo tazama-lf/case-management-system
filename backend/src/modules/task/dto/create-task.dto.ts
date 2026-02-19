@@ -4,7 +4,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateTaskDto {
   @ApiProperty({
-    description: 'UUID of the case to create the task for',
+    description: 'CaseId of the case to create the task for',
     example: 12345,
   })
   @IsNumber()

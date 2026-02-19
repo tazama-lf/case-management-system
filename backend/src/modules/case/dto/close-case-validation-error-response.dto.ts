@@ -12,6 +12,6 @@ export class CloseCaseValidationErrorResponseDto {
   })
   errors: string[];
 
-  @ApiProperty({ type: 'string', description: 'Case ID' })
-  caseId: string;
+  @ApiProperty({ type: 'number', example: 124, description: 'Case ID' })
+  caseId: number;
 }

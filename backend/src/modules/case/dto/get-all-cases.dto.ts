@@ -191,9 +191,9 @@ export class PaginationDto {
 export class CaseDetailsDto {
   @ApiProperty({
     description: 'Case ID',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    example: 123,
   })
-  case_id: string;
+  case_id: number;
 
   @ApiProperty({
     description: 'Tenant ID',
@@ -270,7 +270,7 @@ export class CaseDetailsDto {
     required: false,
   })
   alert?: {
-    alert_id: string;
+    alert_id: number;
     message: string;
     confidence_per: number;
     alert_type: string;
