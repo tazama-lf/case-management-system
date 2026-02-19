@@ -49,7 +49,7 @@ export interface CaseWithTasksDto {
   user_role: 'owner' | 'task_assignee' | 'both';
   user_tasks: UserTaskDto[];
   total_tasks: number;
-  alert?: AlertInfoDto;
+  alert: AlertInfoDto;
   assigned_to?: {
     user_id: string;
     task_count: number;

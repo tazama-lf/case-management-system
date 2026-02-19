@@ -614,8 +614,8 @@ export class CaseQueryService {
     }
   }
 
-  async retrieveCase(caseId: number, isComplianceOfficer?: boolean) {
-    const retrievedCase = await this.caseRepository.findCaseById(caseId);
+  async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean) {
+    const retrievedCase = await this.caseRepository.findCaseById(caseId, tenantId);
     if (!retrievedCase) throw new NotFoundException(`Case not found: ${caseId}`);
 
     // Compliance officers can only access STATUS_82_CLOSED_CONFIRMED cases
@@ -656,6 +656,7 @@ export class CaseQueryService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        updatedCase.tenant_id,
       );
 
       return updatedCase;

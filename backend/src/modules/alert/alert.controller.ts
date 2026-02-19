@@ -15,7 +15,7 @@ export class AlertController {
   constructor(
     private readonly alertStatisticsService: AlertStatisticsService,
     private readonly alertService: AlertService,
-  ) {}
+  ) { }
 
   @Get()
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
@@ -153,9 +153,9 @@ export class AlertController {
   })
   @ApiParam({
     name: 'alertId',
-    type: 'string',
-    description: 'UUID of the alert',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'number',
+    description: 'alert Id',
+    example: '1',
   })
   @ApiResponse({
     status: 200,

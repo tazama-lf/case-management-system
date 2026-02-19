@@ -10,16 +10,24 @@ export class TaskRepository extends BaseRepository {
   }
 
   /* ------------------------------ Task Queries ------------------------------ */
-  async findTaskById(taskId: number, tx?: Prisma.TransactionClient) {
+  async findTaskById(taskId: number, tenantId: string, tx?: Prisma.TransactionClient) {
     const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
-    return await client.task.findUnique({ where: { task_id: taskId } });
+    return await client.task.findUnique({
+      where: {
+        task_id: taskId,
+        tenant_id: tenantId,
+      },
+    });
   }
 
-  async findTaskWithCase(taskId: number, tx?: Prisma.TransactionClient) {
+  async findTaskWithCase(taskId: number, tenantId: string, tx?: Prisma.TransactionClient) {
     try {
       const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
       const task = await client.task.findUnique({
-        where: { task_id: taskId },
+        where: {
+          task_id: taskId,
+          tenant_id: tenantId,
+        },
         include: {
           case: {
             select: {
@@ -41,10 +49,20 @@ export class TaskRepository extends BaseRepository {
     }
   }
 
-  async findTasks(where: Prisma.TaskWhereInput, includeCase: boolean, skip?: number, take?: number, tx?: Prisma.TransactionClient) {
+  async findTasks(
+    where: Prisma.TaskWhereInput,
+    tenantId: string,
+    includeCase: boolean,
+    skip?: number,
+    take?: number,
+    tx?: Prisma.TransactionClient,
+  ) {
     const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
     return await client.task.findMany({
-      where,
+      where: {
+        ...where,
+        tenant_id: tenantId,
+      },
       include: includeCase
         ? {
             case: {
@@ -58,9 +76,14 @@ export class TaskRepository extends BaseRepository {
     });
   }
 
-  async countTasks(where: Prisma.TaskWhereInput, tx?: Prisma.TransactionClient) {
+  async countTasks(where: Prisma.TaskWhereInput, tenantId: string, tx?: Prisma.TransactionClient) {
     const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
-    return await client.task.count({ where });
+    return await client.task.count({
+      where: {
+        ...where,
+        tenant_id: tenantId,
+      },
+    });
   }
 
   async createTask(data: Prisma.TaskCreateInput, tx?: Prisma.TransactionClient) {
@@ -76,20 +99,28 @@ export class TaskRepository extends BaseRepository {
   }
 
   /* ------------------------------ Case Queries ------------------------------ */
-  async findCaseBasic(caseId: number, tx?: Prisma.TransactionClient) {
+  async findCaseBasic(caseId: number, tenantId: string, tx?: Prisma.TransactionClient) {
     const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
     return await client.case.findUnique({
-      where: { case_id: caseId },
+      where: {
+        case_id: caseId,
+        tenant_id: tenantId,
+      },
       select: { tenant_id: true, priority: true, status: true },
     });
   }
 
-  async findCaseStatus(caseId: number, tx?: Prisma.TransactionClient) {
+  async findCaseStatus(caseId: number, tenantId: string, tx?: Prisma.TransactionClient) {
     try {
       const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
-      const caseStatus = await client.case.findUnique({ where: { case_id: caseId }, select: { status: true, case_owner_user_id: true } });
-      if (!caseStatus) throw new NotFoundException(`Case ${caseId} not found`);
-      return caseStatus;
+      const caseRecord = await client.case.findUnique({
+        where: {
+          case_id: caseId,
+          tenant_id: tenantId,
+        },
+        select: { status: true, case_owner_user_id: true },
+      });
+      return caseRecord;
     } catch (error) {
       throw error;
     }
@@ -100,48 +131,12 @@ export class TaskRepository extends BaseRepository {
     return await client.case.update({ where: { case_id: caseId }, data });
   }
 
-  /* --------------------------- Work Queue / Groups -------------------------- */
-  // async findMatchingWorkQueue(tenantId: string, candidateGroup: string, tx?: Prisma.TransactionClient) {
-  //   const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
-  //   return client.workQueue.findFirst({
-  //     where: {
-  //       tenant_id: tenantId,
-  //       is_active: true,
-  //       OR: [
-  //         { name: { contains: candidateGroup, mode: 'insensitive' } },
-  //         {
-  //           roles: {
-  //             some: {
-  //               role: candidateGroup.toUpperCase() as any,
-  //             },
-  //           },
-  //         },
-  //       ],
-  //     },
-  //   });
-  // }
-
-  // async findWorkQueue(queueId: number, tx?: Prisma.TransactionClient) {
-  //   const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
-  //   return client.workQueue.findUnique({
-  //     where: { work_queue_id: queueId },
-  //     select: { work_queue_id: true, name: true, tenant_id: true, is_active: true },
-  //   });
-  // }
-
-  // async findWorkQueueMember(workQueueId: number, userId: string, tx?: Prisma.TransactionClient) {
-  //   const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
-  //   return client.workQueueMember.findUnique({
-  //     where: { work_queue_id_user_id: { work_queue_id: workQueueId, user_id: userId } },
-  //   });
-  // }
-
   /* -------------------------- Lifecycle Transactions ------------------------ */
-  async assignTaskAndUpdateCase(taskId: number, assignedUserId: string) {
+  async assignTaskAndUpdateCase(taskId: number, tenantId: string, assignedUserId: string) {
     return await this.transaction(async (tx) => {
-      const task = await this.findTaskById(taskId, tx);
+      const task = await this.findTaskById(taskId, tenantId, tx);
       if (!task) throw new NotFoundException(`Task ${taskId} not found`);
-      const caseRecord = await this.findCaseStatus(task.case_id, tx);
+      const caseRecord = await this.findCaseStatus(task.case_id, tenantId, tx);
       if (!caseRecord) throw new NotFoundException(`Case ${task.case_id} not found`);
       const updatedTask = await this.updateTask(
         taskId,
@@ -157,13 +152,13 @@ export class TaskRepository extends BaseRepository {
     });
   }
 
-  async unassignTaskAndUpdateCase(taskId: number) {
+  async unassignTaskAndUpdateCase(taskId: number, tenantId: string) {
     return await this.transaction(async (tx) => {
-      const task = await this.findTaskById(taskId);
+      const task = await this.findTaskById(taskId, tenantId, tx);
       if (!task) throw new NotFoundException(`Task ${taskId} not found`);
       if (task.status === TaskStatus.STATUS_30_COMPLETED) throw new BadRequestException(`Cannot unassign completed task ${taskId}`);
       if (!task.assigned_user_id) throw new BadRequestException(`Task ${taskId} already unassigned`);
-      const caseRecord = await this.findCaseStatus(task.case_id, tx);
+      const caseRecord = await this.findCaseStatus(task.case_id, tenantId, tx);
       if (!caseRecord) throw new NotFoundException(`Case ${task.case_id} not found`);
       const updatedTask = await this.updateTask(taskId, { assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED }, tx);
       await this.updateCase(
@@ -175,14 +170,14 @@ export class TaskRepository extends BaseRepository {
     });
   }
 
-  async releaseTask(taskId: number) {
-    const task = await this.findTaskById(taskId);
+  async releaseTask(taskId: number, tenantId: string) {
+    const task = await this.findTaskById(taskId, tenantId);
     if (!task) throw new NotFoundException(`Task ${taskId} not found`);
     return await this.updateTask(taskId, { assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED }, undefined, true);
   }
 
-  async completeTask(taskId: number) {
-    const task = await this.findTaskById(taskId);
+  async completeTask(taskId: number, tenantId: string) {
+    const task = await this.findTaskById(taskId, tenantId);
     if (!task) throw new NotFoundException(`Task ${taskId} not found`);
     return await this.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, undefined, true);
   }

@@ -1,4 +1,4 @@
-import { Controller, Get, Injectable, Query, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, Injectable, Query, UseGuards, Param, Req } from '@nestjs/common';
 import {
   ApiOperation,
   ApiQuery,
@@ -12,6 +12,7 @@ import {
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { CaseHistoryService } from './caseHistory.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { RequireInvestigatorOrSupervisorRoleOrComplianceRole } from 'src/decorators/auth.decorator';
 
 @ApiTags('CaseHistory')
@@ -24,6 +25,26 @@ export class CaseHistoryController {
     private readonly loggerService: LoggerService,
   ) {}
 
+  @Get()
+  @ApiOperation({ summary: 'Fetch case History', description: 'Returns event logs with pagination support.' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Maximum number of event log entries to return.',
+    schema: { type: 'integer', default: 50 },
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    description: 'Number of entries to skip before collecting results.',
+    schema: { type: 'integer', default: 0 },
+  })
+  @ApiOkResponse({ description: 'Event log entries returned successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
+  async getLogs(@Query('limit') limit = 50, @Query('offset') offset = 0, @Req() req: AuthenticatedRequest) {
+    const tenantId = req.user.token.tenantId;
+    return this.caseHistoryService.getLogs(tenantId, Number(limit), Number(offset));
+  }
   @Get()
   @ApiOperation({ summary: 'Fetch case History', description: 'Returns event logs with pagination support.' })
   @ApiQuery({
@@ -61,8 +82,9 @@ export class CaseHistoryController {
     description: 'Action history retrieved successfully',
   })
   @ApiResponse({ status: 404, description: 'Case History not found' })
-  async getCaseHistory(@Param('caseId') caseId: number) {
+  async getCaseHistory(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     this.loggerService.log(`Cases are: ${caseId}`);
-    return await this.caseHistoryService.getCaseHistory(caseId);
+    const tenantId = req.user.token.tenantId;
+    return await this.caseHistoryService.getCaseHistory(caseId, tenantId);
   }
 }

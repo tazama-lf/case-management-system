@@ -216,7 +216,7 @@ export class EvidenceController {
     if (!clientId || !tenantId || !claims) throw new BadRequestException('Missing clientId, tenantId or claims in auth token');
 
     const role = claims.includes(TazamaClaims.CMS_SUPERVISOR) ? 'CMS_SUPERVISOR' : 'CMS_INVESTIGATOR';
-    return await this.evidenceService.deleteEvidence(id, attachmentName, clientId);
+    return await this.evidenceService.deleteEvidence(id, attachmentName, clientId, tenantId);
   }
 
   @Get(':id/verify')

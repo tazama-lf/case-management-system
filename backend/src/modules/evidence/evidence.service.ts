@@ -61,13 +61,6 @@ export class EvidenceService {
 
   async uploadEvidence(files: any[], dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
     const kycEddTypes = ['KYC', 'EDD'];
-    // const allowedMimeTypes = [
-    //   'application/pdf',
-    //   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    //   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    //   'image/png',
-    //   'image/jpeg'
-    // ];
     const allowedMimeTypes: Record<string, string[]> = {
       KYC: [
         'application/pdf',
@@ -176,7 +169,7 @@ export class EvidenceService {
     const task = await this.prisma.task.findUnique({ where: { task_id: dto.taskId } });
     if (!task) throw new NotFoundException(`Task ${dto.taskId} not found`);
 
-    const taskWithCase = await this.taskRepository.findTaskWithCase(dto.taskId);
+    const taskWithCase = await this.taskRepository.findTaskWithCase(dto.taskId, tenantId);
     this.logger.log(`Uploading evidence for task ${dto.taskId} taskWithCase ${JSON.stringify(taskWithCase)}`);
 
     const evidenceId = `ev_${dto.taskId}_${Date.now()}`;
@@ -272,12 +265,13 @@ export class EvidenceService {
       actionPerformed: `EVIDENCE_UPLOADED for Case ${task.case_id} and Task ${Number(dto.taskId)}`,
       case_id: task.case_id,
       task_id: dto.taskId,
+      tenant_id: tenantId,
     });
 
     return metadata;
   }
 
-  async deleteEvidence(evidenceId: string, fileName: string, userId: string): Promise<EvidenceResponseDto> {
+  async deleteEvidence(evidenceId: string, fileName: string, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
     if (
       evidenceId === null ||
       evidenceId === undefined ||
@@ -305,13 +299,9 @@ export class EvidenceService {
       const deleteResult = await this.couchdb.deleteEvidence(doc._id, decodeURIComponent(fileName), doc._rev);
       this.logger.log(`Attachment deletion result: ${JSON.stringify(deleteResult)}`);
 
-      this.evidenceRepository.deleteEvidenceById(evidenceId);
+      this.evidenceRepository.deleteEvidenceById(evidenceId, tenantId);
+
     } catch (error) {
-      // if (error.status === 409) {
-      //   throw new ConflictException(
-      //     'Document was updated. Please retry.'
-      //   );
-      // }
       throw error;
     }
 

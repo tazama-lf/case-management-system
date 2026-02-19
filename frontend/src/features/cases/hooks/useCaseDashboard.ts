@@ -66,6 +66,7 @@ export const useCaseDashboard = () => {
 
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isUpdateAlertOpen, setIsUpdateAlertOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isCloseCaseOpen, setIsCloseCaseOpen] = useState(false);
   const [isReopenOpen, setIsReopenOpen] = useState(false);
@@ -192,10 +193,16 @@ export const useCaseDashboard = () => {
 
     handleComplete: (row: CaseRow) => {
       setSelectedRow(row);
-      setCreateModalMode('edit');
-      setEditingCaseId(row.id);
-      setIsCreateOpen(true);
+      if (row.type === null) {
+        setIsUpdateAlertOpen(true);
+      } else {
+        setCreateModalMode('edit');
+        setEditingCaseId(row.id);
+        setIsCreateOpen(true);
+      }
     },
+
+
 
     handleCloseCase: (row: CaseRow) => {
       setSelectedRow(row);
@@ -272,6 +279,7 @@ export const useCaseDashboard = () => {
 
   const modalState: CaseModalState = {
     isCreateOpen,
+    isUpdateAlertOpen,
     isViewOpen,
     isCloseCaseOpen,
     isReopenOpen,
@@ -292,6 +300,7 @@ export const useCaseDashboard = () => {
 
   const modalActions: CaseModalActions = {
     setIsCreateOpen,
+    setIsUpdateAlertOpen,
     setIsViewOpen,
     setIsCloseCaseOpen,
     setIsReopenOpen,

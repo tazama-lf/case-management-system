@@ -10,7 +10,9 @@ import type { CaseRow } from '@/features/cases/components/casesTable.utils';
 import type { Priority, AlertType, CaseStatus, PredictionOutcome } from '@/features/cases/components/CreateCaseModal';
 import { useToast } from '@/shared/providers/ToastProvider';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
-
+import { convertToTriageAlert, ManualTriageModal, transformBackendAlertToUI, triageService, type Alert } from '@/features/alerts';
+import type { ManualTriageDto } from '@/features/alerts/types/triage.types';
+import { useAlertOperations } from '@/features/alerts/hooks/useAlertsQuery';
 // Dynamic imports for modals
 const CloseCaseModal = lazy(() => import('@/features/cases/components/CloseCaseModal'));
 const ApproveCaseReopenModal = lazy(() => import('@/features/cases/components/ApproveCaseReopenModal'));
@@ -26,6 +28,7 @@ const CaseClosureDecisionModal = lazy(() => import('@/features/cases/components/
 
 export interface CaseModalState {
   isCreateOpen: boolean;
+  isUpdateAlertOpen: boolean;
   isViewOpen: boolean;
   isCloseCaseOpen: boolean;
   isReopenOpen: boolean;
@@ -46,6 +49,7 @@ export interface CaseModalState {
 
 export interface CaseModalActions {
   setIsCreateOpen: (open: boolean) => void;
+  setIsUpdateAlertOpen: (open: boolean) => void;
   setIsViewOpen: (open: boolean) => void;
   setIsCloseCaseOpen: (open: boolean) => void;
   setIsReopenOpen: (open: boolean) => void;
@@ -92,6 +96,8 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
   permissions,
   caseActions
 }) => {
+  const [selectedAlert, setSelectedAlert] = React.useState<Alert | null>(null);
+  const { performManualTriage } = useAlertOperations();
   const { success, error } = useToast();
   const { params, navigate } = useDynamicRoute();
   const closeViewCaseModal = () => {
@@ -103,6 +109,30 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     }
   };
   const [subCasesDetails, setSubCasesDetails] = React.useState<CaseRow[]>();
+
+  const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
+    try {
+      await performManualTriage({
+        alertId: alert.alert_id,
+        data: triageData,
+      });
+      // Close modal immediately
+      setSelectedAlert(null);
+      modalActions.setIsUpdateAlertOpen(false);
+      success('Manual Triage Completed', 'The alert has been triaged successfully.');
+      // Brief delay to ensure backend has processed the triage and created new tasks
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Refresh tasks to show updated "Complete New Case" status and new "Investigate" task
+      if (onRefreshCases) {
+        await onRefreshCases();
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to perform triage. Please try again.';
+      error('Triage Failed', errorMessage);
+      throw error;
+    }
+  };
 
   const handleCreate = async (payload: {
     alertId?: number;
@@ -339,6 +369,23 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     }
   };
 
+  const openTriageModal = async () => {
+    try {
+      if (!modalState.selectedRow || !modalState.selectedRow.alertId) return;
+
+      const alertDetails = await triageService.getAlertById(modalState.selectedRow.alertId);
+      const transformed = transformBackendAlertToUI(alertDetails);
+      setSelectedAlert(transformed);
+
+    } catch (error) {
+      console.error(
+        'Failed to load alert for triage:',
+        error
+      );
+      modalActions.setIsUpdateAlertOpen(false);
+    }
+  };
+
   const handleRejectReopenSubmit = async (caseId: number, reason: string) => {
     try {
       const resp = await caseService.rejectCaseReopening(caseId, reason);
@@ -391,6 +438,20 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         } : undefined}
       />
 
+      <Suspense fallback={<div>Loading modal...</div>}>
+        {selectedAlert && (
+          <ManualTriageModal
+            isOpen={modalState.isUpdateAlertOpen}
+            alert={convertToTriageAlert(selectedAlert)}
+            onClose={() => {
+              modalActions.setIsUpdateAlertOpen(false);
+              setSelectedAlert(null);
+            }}
+            onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
+          />
+        )}
+      </Suspense>
+
       <ViewCaseModal
         open={modalState.isViewOpen}
         onClose={closeViewCaseModal}
@@ -401,10 +462,17 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         setSubCasesDetails={setSubCasesDetails}
         onComplete={(row) => {
           modalActions.setSelectedRow(row);
-          modalActions.setIsCreateOpen(true);
-          modalActions.setCreateModalMode('edit');
-          modalActions.setEditingCaseId(row.id);
-          modalActions.setIsViewOpen(false);
+          if (row.type === null) {
+            modalActions.setIsUpdateAlertOpen(true);
+            openTriageModal();
+            modalActions.setIsViewOpen(false);
+          } else {
+            modalActions.setIsCreateOpen(true);
+            modalActions.setCreateModalMode('edit');
+            modalActions.setEditingCaseId(row.id);
+            modalActions.setIsViewOpen(false);
+          }
+
         }}
         onCloseCase={(row) => {
           modalActions.setSelectedRow(row);

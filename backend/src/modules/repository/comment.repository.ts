@@ -28,29 +28,36 @@ export class CommentRepository extends BaseRepository {
     }
   }
 
-  async getCommentsByCommentId(commentId: number, tx?: Prisma.TransactionClient) {
+  async getCommentsByCommentId(commentId: number, tenantId: string, tx?: Prisma.TransactionClient) {
     const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
     return await client.comment.findUnique({
       where: {
         comment_id: commentId,
+        tenant_id: tenantId,
       },
     });
   }
 
-  async getCommentsByCaseId(caseId?: number, tx?: Prisma.TransactionClient) {
+  async getCommentsByCaseId(caseId?: number, tenantId?: string, tx?: Prisma.TransactionClient) {
     const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
     return await client.comment.findMany({
-      where: { case_id: caseId },
+      where: { 
+        case_id: caseId,
+        tenant_id: tenantId 
+      },
       orderBy: {
         created_at: 'desc',
       },
     });
   }
 
-  async getCommentsByTaskId(taskId?: number, tx?: Prisma.TransactionClient) {
+  async getCommentsByTaskId(taskId?: number, tenantId?: string, tx?: Prisma.TransactionClient) {
     const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
     return await client.comment.findMany({
-      where: { task_id: taskId },
+      where: { 
+        task_id: taskId,
+        tenant_id: tenantId 
+      },
       orderBy: {
         created_at: 'desc',
       },

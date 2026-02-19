@@ -17,12 +17,14 @@ export class CaseHistoryService {
     entityName: string;
     actionPerformed: string;
     case_id: number;
+    tenant_id: string;
     performedAt?: Date;
   }) {
     const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
     return await this.prisma.caseHistory.create({
       data: {
         user_id,
+        tenant_id: data.tenant_id,
         operation: data.operation,
         entity_name: data.entityName,
         action_performed: data.actionPerformed,
@@ -32,16 +34,20 @@ export class CaseHistoryService {
     });
   }
 
-  async getLogs(limit = 50, offset = 0) {
-    return await this.prisma.caseHistory.findMany({
+  async getLogs(tenantId: string, limit = 50, offset = 0) {
+    return this.prisma.caseHistory.findMany({
+      where: { tenant_id: tenantId },
       orderBy: { performed_at: 'desc' },
       take: limit,
       skip: offset,
     });
   }
-  async getCaseHistory(caseId: number) {
-    return await this.prisma.caseHistory.findMany({
-      where: { case_id: caseId },
+  async getCaseHistory(caseId: number, tenantId: string) {
+    return this.prisma.caseHistory.findMany({
+      where: {
+        case_id: caseId,
+        tenant_id: tenantId,
+      },
     });
   }
 }

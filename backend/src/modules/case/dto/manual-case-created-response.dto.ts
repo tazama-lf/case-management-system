@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 class CaseDetails {
-  @ApiProperty({ type: 'string', format: 'uuid' })
-  case_id: string;
+  @ApiProperty({ type: 'number' })
+  case_id: number;
 
   @ApiProperty({ type: 'string' })
   status: string;
@@ -15,11 +15,11 @@ class CaseDetails {
 }
 
 class AlertDetails {
-  @ApiProperty({ type: 'string', format: 'uuid' })
-  alert_id: string;
+  @ApiProperty({ type: 'number' })
+  alert_id: number;
 
-  @ApiProperty({ type: 'string', format: 'uuid' })
-  case_id: string;
+  @ApiProperty({ type: 'number' })
+  case_id: number;
 }
 
 export class ManualCaseCreatedResponseDto {

@@ -64,16 +64,19 @@ export class TriageService {
           throw new InternalServerErrorException('Alert case_id is missing.');
         }
 
-        const existingCase = await this.caseRepository.findCaseById(alert.case_id, tx);
+        const existingCase = await this.caseRepository.findCaseById(alert.case_id, tenantId);
+
         const completeNewCaseTask = existingCase.tasks.find((t) => t.name === 'Complete New Case');
+
         if (!completeNewCaseTask || completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
           throw new BadRequestException('Triage Already Complete');
         }
 
-        await this.taskRepository.updateTask(
+        await this.taskService.updateTask(
           completeNewCaseTask.task_id,
-          { assigned_user_id: userId, status: TaskStatus.STATUS_30_COMPLETED },
-          tx,
+          { assignedUserId: userId, status: TaskStatus.STATUS_30_COMPLETED },
+          userId,
+          tenantId,
         );
 
         await this.commentRepository.createComment(
@@ -92,7 +95,7 @@ export class TriageService {
         }
 
         if (updateAlertDto?.status && this.closableStatuses.includes(updateAlertDto.status)) {
-          await this.caseCreationService.updateCaseStatus(alert.case_id, updateAlertDto.status, userId);
+          await this.caseCreationService.updateCaseStatus(alert.case_id, updateAlertDto.status, userId, tenantId);
 
           await this.flowableService.handleTaskCompleted({
             caseId: existingCase.case_id,
@@ -115,7 +118,14 @@ export class TriageService {
             },
           });
 
-          await this.caseCreationService.updateCaseStatus(alert.case_id, updateAlertDto.status, userId, priority, updateAlertDto.alertType);
+          await this.caseCreationService.updateCaseStatus(
+            alert.case_id,
+            updateAlertDto.status,
+            userId,
+            tenantId,
+            priority,
+            updateAlertDto.alertType as CaseType,
+          );
 
           this.logger.log(
             `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Closed as ${updateAlertDto.status}`,
@@ -127,6 +137,7 @@ export class TriageService {
               alert.case_id,
               CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
               userId,
+              tenantId,
               priority,
               updateAlertDto.alertType,
             );
@@ -174,6 +185,7 @@ export class TriageService {
           candidateGroup: 'investigator',
         },
         userId,
+        tenantId,
       );
 
       const triageTaskId = triageTask.task_id;
@@ -221,6 +233,7 @@ export class TriageService {
         priority,
         predictedTruePositive,
         userId,
+        tenantId,
       );
 
       if (predictedConfidence < confidenceThreshold) {
@@ -240,6 +253,7 @@ export class TriageService {
           triageTaskId,
           'Triage complete - confidence percentage below threshold manual investigation needed',
           priority,
+          tenantId,
           predictedAlertType,
         );
       }
@@ -260,6 +274,7 @@ export class TriageService {
           CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
           userId,
           triageTaskId,
+          tenantId,
           predictedAlertType,
           'Triage complete - false positive (case auto-closed refuted)',
         );
@@ -274,6 +289,7 @@ export class TriageService {
               status: TaskStatus.STATUS_30_COMPLETED,
             },
             userId,
+            tenantId,
           );
           await this.flowableService.handleTaskCompleted({
             caseId,
@@ -290,6 +306,7 @@ export class TriageService {
             caseId,
             CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
             userId,
+            tenantId,
             priority,
             predictedAlertType,
           );
@@ -316,6 +333,7 @@ export class TriageService {
             triageTaskId,
             'Triage complete - confidence percentage above threshold and true positive with case type aml',
             priority,
+            tenantId,
             predictedAlertType,
           );
         }
@@ -337,6 +355,7 @@ export class TriageService {
               CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
               userId,
               triageTaskId,
+              tenantId,
               predictedAlertType,
               'Triage complete - true positive (case auto-closed confirmed)',
             );
@@ -358,6 +377,7 @@ export class TriageService {
             triageTaskId,
             'Triage complete - confidence percentage above threshold and true positive with case type fraud and transaction occured',
             priority,
+            tenantId,
             predictedAlertType,
           );
         }
@@ -382,11 +402,12 @@ export class TriageService {
     status: CaseStatus,
     userId: string,
     taskId: number,
+    tenantId: string,
     caseType?: CaseType,
     customDescription?: string,
   ) {
     try {
-      const existingCase = await this.caseRepository.findCaseById(caseId);
+      const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
 
       if (!existingCase) {
         throw new NotFoundException(`Case ${caseId} not found`);
@@ -398,9 +419,10 @@ export class TriageService {
           status: TaskStatus.STATUS_30_COMPLETED,
         },
         userId,
+        tenantId,
       );
 
-      const updatedCase = await this.caseCreationService.updateCaseStatus(caseId, status, userId, undefined, caseType);
+      const updatedCase = await this.caseCreationService.updateCaseStatus(caseId, status, userId, tenantId, undefined, caseType);
 
       this.eventEmitter.emit(
         'case.status.changed',
@@ -416,6 +438,7 @@ export class TriageService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        existingCase.tenant_id,
       );
 
       return { updatedCase, updatedTask };
@@ -438,18 +461,23 @@ export class TriageService {
     taskId: number,
     triageTaskDesc: string,
     priority: Priority,
+    tenantId: string,
     alertType?: CaseType,
   ): Promise<unknown> {
     try {
       this.logger.log(`Start - AI triage completed for case ${caseId}`, TriageService.name);
-      const existingCase = await this.caseRepository.findCaseById(caseId);
+      const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
+      if (!existingCase) {
+        throw new NotFoundException(`Case ${caseId} not found`);
+      }
 
-      await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, userId);
+      await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, userId, tenantId);
 
       const updatedCase = await this.caseCreationService.updateCaseStatus(
         caseId,
         CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         userId,
+        tenantId,
         priority,
         alertType,
       );
@@ -463,6 +491,7 @@ export class TriageService {
           outcome: Outcome.SUCCESS,
         },
         caseId,
+        existingCase.tenant_id,
         taskId,
       );
 
@@ -496,6 +525,7 @@ export class TriageService {
     priority: Priority,
     predictedTruePositive: boolean,
     userId: string,
+    tenantId: string,
   ): Promise<void> {
     try {
       this.logger.log(`Start - Updating alert ${alertId} and triage task ${taskId} with prediction`, TriageService.name);
@@ -508,6 +538,16 @@ export class TriageService {
       updateDto.priority_score = predictedPriorityScore;
 
       const alert = await this.alertService.updateAlert(alertId, userId, updateDto);
+      // this.commentService.addComment({ note: updateDto.note } as CreateCommentDto, userId);
+
+      const task = await this.taskService.updateTask(
+        taskId,
+        {
+          investigationNotes: `Prediction applied: Type=${predictedAlertType}, Confidence=${predictedConfidence}`,
+        },
+        userId,
+        tenantId,
+      );
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
@@ -517,7 +557,8 @@ export class TriageService {
           actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with prediction`,
           outcome: Outcome.SUCCESS,
         },
-        alert.case_id!,
+        task.case_id,
+        tenantId,
         taskId,
       );
 
