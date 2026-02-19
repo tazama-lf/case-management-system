@@ -46,9 +46,9 @@ export interface TransactionProfile {
   detectedAnomalies?: DetectedAnomaly[];
 }
 
-export interface GenerateProfileResponse extends TransactionProfile {}
+export interface GenerateProfileResponse extends TransactionProfile { }
 
-export interface GetProfileResponse extends TransactionProfile {}
+export interface GetProfileResponse extends TransactionProfile { }
 
 export class ProfileService {
   private readonly baseUrl = '/api/v1/dwh/profile';
@@ -62,10 +62,8 @@ export class ProfileService {
       if (user) {
         try {
           const userData = JSON.parse(user);
-          tenantId = userData.tenantId ?? request.tenantId;
-        } catch {
-          // Ignore JSON parse errors and use the default tenantId
-        }
+          tenantId = userData.tenantId || request.tenantId;
+        } catch { }
       }
       const response = await apiClient.post<GenerateProfileResponse>(
         `${this.baseUrl}/generate`,
@@ -77,7 +75,7 @@ export class ProfileService {
     }
   }
 
-  async getProfile(caseId: string): Promise<GetProfileResponse> {
+  async getProfile(caseId: number): Promise<GetProfileResponse> {
     try {
       const response = await apiClient.get<GetProfileResponse>(
         `${this.baseUrl}/${caseId}`,

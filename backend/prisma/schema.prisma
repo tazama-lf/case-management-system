@@ -326,6 +326,13 @@ enum UserRole {
   ANALYST
 }
 
+enum AssignmentRuleType {
+  PRIORITY_BASED
+  CASE_TYPE_BASED
+  ROUND_ROBIN
+  LOAD_BALANCED
+  MANUAL
+}
 enum AssignmentType {
   MANUAL
   AUTOMATIC

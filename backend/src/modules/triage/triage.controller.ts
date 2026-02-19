@@ -15,7 +15,7 @@ import { TransactionDetailDto } from './dto/transaction-detail.dto';
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class TriageController {
-  constructor(private readonly triageService: TriageService) {}
+  constructor(private readonly triageService: TriageService) { }
 
   @Get('test')
   @ApiOperation({

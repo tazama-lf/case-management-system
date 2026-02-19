@@ -20,7 +20,7 @@ import {
 interface GenerateTransactionProfileModalProps {
   open: boolean;
   onClose: () => void;
-  caseId?: string;
+  caseId?: number;
   onSaveProfile?: (profileData: {
     generatedAt: string;
     totalVolume: string;
@@ -37,6 +37,7 @@ interface GenerateTransactionProfileModalProps {
   } | null;
 }
 
+//Error Handling is missing, add that. Hard Coded Data should not be shown to the user.
 const volumeTrendData = [
   { date: 'Week 1', volume: 25000 },
   { date: 'Week 2', volume: 28000 },
@@ -158,10 +159,8 @@ const GenerateTransactionProfileModal: React.FC<
       if (user) {
         try {
           const userData = JSON.parse(user);
-          tenantId = userData.tenantId ?? '';
-        } catch {
-          // Ignore JSON parse errors and use default tenantId
-        }
+          tenantId = userData.tenantId || '';
+        } catch { }
       }
 
       if (!tenantId) {
@@ -366,7 +365,7 @@ const GenerateTransactionProfileModal: React.FC<
                   </span>
                 </div>
               </div>
-              <div className="flex items-center justify-center gap-4 mt-4">
+              {/* <div className="flex items-center justify-center gap-4 mt-4">
                 <button
                   type="button"
                   onClick={onClose}
@@ -382,7 +381,7 @@ const GenerateTransactionProfileModal: React.FC<
                 >
                   {saving ? 'Generating...' : 'Generate Profile'}
                 </button>
-              </div>
+              </div> */}
             </div>
           ) : (
             <div className="space-y-6">
@@ -441,30 +440,21 @@ const GenerateTransactionProfileModal: React.FC<
 
               {/* Transaction Volume Trend Chart */}
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <h3 className="mb-4 text-sm font-semibold text-gray-900">
-                  Transaction Volume Trend (90 Days)
-                </h3>
+                <h3 className="mb-4 text-sm font-semibold text-gray-900">Transaction Volume Trend (90 Days)</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={volumeTrendData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
                     <Tooltip />
-                    <Area
-                      type="monotone"
-                      dataKey="volume"
-                      stroke="#3b82f6"
-                      fill="#93c5fd"
-                    />
+                    <Area type="monotone" dataKey="volume" stroke="#3b82f6" fill="#93c5fd" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
 
               {/* Daily Transaction Count Chart */}
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <h3 className="mb-4 text-sm font-semibold text-gray-900">
-                  Daily Transaction Count
-                </h3>
+                <h3 className="mb-4 text-sm font-semibold text-gray-900">Daily Transaction Count</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={transactionCountData}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -478,9 +468,7 @@ const GenerateTransactionProfileModal: React.FC<
 
               {/* Detected Anomalies Table */}
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <h3 className="mb-4 text-sm font-semibold text-gray-900">
-                  Detected Anomalies &amp; Flagged Patterns
-                </h3>
+                <h3 className="mb-4 text-sm font-semibold text-gray-900">Detected Anomalies &amp; Flagged Patterns</h3>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -503,40 +491,28 @@ const GenerateTransactionProfileModal: React.FC<
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {(displayData.detectedAnomalies || []).map(
-                        (anomaly, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                              {anomaly.date}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                              {anomaly.type}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                              $
-                              {typeof anomaly.amount === 'number'
-                                ? anomaly.amount.toLocaleString()
-                                : anomaly.amount}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {anomaly.description}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-sm">
-                              <span
-                                className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                                  anomaly.risk === 'High'
-                                    ? 'bg-red-100 text-red-800'
-                                    : anomaly.risk === 'Medium'
-                                      ? 'bg-orange-100 text-orange-800'
-                                      : 'bg-yellow-100 text-yellow-800'
+                      {(displayData.detectedAnomalies || []).map((anomaly, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{anomaly.date}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{anomaly.type}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
+                            ${typeof anomaly.amount === 'number' ? anomaly.amount.toLocaleString() : anomaly.amount}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{anomaly.description}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${anomaly.risk === 'High'
+                                ? 'bg-red-100 text-red-800'
+                                : anomaly.risk === 'Medium'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : 'bg-yellow-100 text-yellow-800'
                                 }`}
-                              >
-                                {anomaly.risk}
-                              </span>
-                            </td>
-                          </tr>
-                        ),
-                      )}
+                            >
+                              {anomaly.risk}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -544,26 +520,16 @@ const GenerateTransactionProfileModal: React.FC<
 
               {/* Investigator Analysis & Notes */}
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <h3 className="mb-3 text-sm font-semibold text-gray-900">
-                  Investigator Analysis &amp; Notes
-                </h3>
+                <h3 className="mb-3 text-sm font-semibold text-gray-900">Investigator Analysis &amp; Notes</h3>
                 {isViewMode ? (
                   <div className="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 rounded p-3 border border-gray-100 min-h-[80px]">
-                    {notes ? (
-                      notes
-                    ) : (
-                      <span className="italic text-gray-400">
-                        No notes provided.
-                      </span>
-                    )}
+                    {notes ? notes : <span className="italic text-gray-400">No notes provided.</span>}
                   </div>
                 ) : (
                   <textarea
                     rows={6}
                     value={notes}
-                    onChange={(e) => {
-                      setNotes(e.target.value);
-                    }}
+                    onChange={e => setNotes(e.target.value)}
                     placeholder="Add your analysis, observations, and notes about the transaction profile..."
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
@@ -605,6 +571,7 @@ const GenerateTransactionProfileModal: React.FC<
               </svg>
               {saving ? 'Generating...' : 'Generate Profile'}
             </button>
+
           )}
           {isViewMode && (
             <button
