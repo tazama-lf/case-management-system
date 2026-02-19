@@ -21,7 +21,7 @@ export class CaseCreationService {
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
-  async createCase(createCaseDTO: CreateCaseDto, userId: string) {
+  async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string) {
     try {
       this.loggerService.log('Start - Create Case', CaseCreationService.name);
 
@@ -53,6 +53,7 @@ export class CaseCreationService {
           outcome: Outcome.SUCCESS,
         },
         createdCase.case_id,
+        tenantId,
       );
 
       this.loggerService.log('End - Create Case', CaseCreationService.name);

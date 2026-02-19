@@ -93,7 +93,7 @@ export class AlertService {
         priority: Priority.NEW,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       };
-      const createdCase = await this.caseCreationService.createCase(caseDetail, userId);
+      const createdCase = await this.caseCreationService.createCase(caseDetail, userId, tenantId);
       this.loggerService.log(`handle AlertOrNALT CaseType: ${caseDetail.caseType}`);
       if (caseDetail.caseType === CaseType.FRAUD_AND_AML) {
         await this.caseCreateService.createCaseWithInvestigationTask(

@@ -22,8 +22,9 @@ export class LoggingOrchestrationService {
       await this.auditLogService.logAction({ ...logData, performedAt });
       await this.eventLogService.logEventAction({ ...logData, performedAt });
     } catch (error) {
-      this.loggerService.error('LoggingOrchestrationService', error, LoggingOrchestrationService.name);
-      throw new InternalServerErrorException('Failed to log actions', error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.loggerService.error(`LoggingOrchestrationService - ${errorMessage}`, error, LoggingOrchestrationService.name);
+      throw new InternalServerErrorException('Failed to log actions', errorMessage);
     }
   }
 
@@ -61,8 +62,9 @@ export class LoggingOrchestrationService {
         ]);
       }
     } catch (error) {
-      this.loggerService.error('LoggingOrchestrationService', error, LoggingOrchestrationService.name);
-      throw new InternalServerErrorException('Failed to log actions with history', error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.loggerService.error(`LoggingOrchestrationService - ${errorMessage}`, error, LoggingOrchestrationService.name);
+      throw new InternalServerErrorException('Failed to log actions with history', errorMessage);
     }
   }
 }

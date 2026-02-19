@@ -23,22 +23,22 @@ export class TaskLifecycleService {
   ) {}
 
   private async getTaskOrThrow(taskId: number, tenantId: string) {
-    const task = await this.prisma.task.findUnique({ 
-      where: { 
+    const task = await this.prisma.task.findUnique({
+      where: {
         task_id: taskId,
-        tenant_id: tenantId 
-      } 
+        tenant_id: tenantId,
+      },
     });
     if (!task) throw new NotFoundException(`Task ${taskId} not found`);
     return task;
   }
 
   private async getCaseOrThrow(caseId: number, tenantId: string) {
-    const c = await this.prisma.case.findUnique({ 
-      where: { 
+    const c = await this.prisma.case.findUnique({
+      where: {
         case_id: caseId,
-        tenant_id: tenantId 
-      } 
+        tenant_id: tenantId,
+      },
     });
     if (!c) throw new NotFoundException(`Case ${caseId} not found`);
     return c;
@@ -110,7 +110,6 @@ export class TaskLifecycleService {
 
       return { updatedTask, updatedCase };
     });
-
 
     await this.loggingOrchestrationService.logActionsWithHistory(
       {
@@ -224,6 +223,7 @@ export class TaskLifecycleService {
     if (existingTask.assigned_user_id) throw new BadRequestException(`Task ${taskId} is already assigned.`);
     if (existingTask.status !== TaskStatus.STATUS_01_UNASSIGNED) {
       throw new BadRequestException(`Task ${taskId} must be unassigned to self-assign.`);
+    }
     const existingCase = await this.getCaseOrThrow(existingTask.case_id, tenantId);
     const previousCaseStatus = existingCase.status;
 
@@ -297,13 +297,16 @@ export class TaskLifecycleService {
   }
 
   async unassignTask(taskId: number, actorUserId: string, tenantId: string, reason: string) {
-    if (!reason || !reason.trim()) throw new BadRequestException('Reason for unassigning task is required');
+    if (!reason || !reason.trim()) {
+      throw new BadRequestException('Reason for unassigning task is required');
+    }
     const existingTask = await this.getTaskOrThrow(taskId, tenantId);
-    if (existingTask.status === TaskStatus.STATUS_30_COMPLETED)
+    if (existingTask.status === TaskStatus.STATUS_30_COMPLETED) {
       throw new BadRequestException(`Cannot unassign a completed task (${taskId})`);
     }
-    if (!existingTask.assigned_user_id) throw new BadRequestException(`Task ${taskId} is already unassigned`);
-
+    if (!existingTask.assigned_user_id) {
+      throw new BadRequestException(`Task ${taskId} is already unassigned`);
+    }
     const existingCase = await this.getCaseOrThrow(existingTask.case_id, tenantId);
     const previousCaseStatus = existingCase.status;
 
@@ -400,7 +403,6 @@ export class TaskLifecycleService {
       unassignmentReason: reason,
     };
   }
-
 
   async completeTask(taskId: number, actorUserId: string, tenantId: string) {
     const existingTask = await this.getTaskOrThrow(taskId, tenantId);

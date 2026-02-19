@@ -45,25 +45,6 @@ export class CaseHistoryController {
     const tenantId = req.user.token.tenantId;
     return this.caseHistoryService.getLogs(tenantId, Number(limit), Number(offset));
   }
-  @Get()
-  @ApiOperation({ summary: 'Fetch case History', description: 'Returns event logs with pagination support.' })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Maximum number of event log entries to return.',
-    schema: { type: 'integer', default: 50 },
-  })
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Number of entries to skip before collecting results.',
-    schema: { type: 'integer', default: 0 },
-  })
-  @ApiOkResponse({ description: 'Event log entries returned successfully.' })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
-  async getLogs(@Query('limit') limit = 50, @Query('offset') offset = 0) {
-    return await this.caseHistoryService.getLogs(Number(limit), Number(offset));
-  }
 
   @Get(':caseId')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()

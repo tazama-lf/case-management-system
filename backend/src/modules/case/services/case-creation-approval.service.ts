@@ -745,7 +745,6 @@ export class CaseCreationApprovalService {
         tenantId: createdCase.tenant_id,
         caseStatus: createdCase.status,
         creationType: createCaseDTO.caseCreationType,
-        isTriageAlert,
         creatorRole: 'SYSTEM',
       });
 
