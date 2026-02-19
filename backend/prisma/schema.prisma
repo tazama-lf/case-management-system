@@ -445,6 +445,7 @@ model EventLog {
 model TaskHistory {
   task_history_id     Int   @id @default(autoincrement())
   user_id          String   @db.Uuid
+  tenant_id        String
   operation        String   @db.VarChar(50)
   entity_name      String   @db.VarChar(50)
   action_performed String   @db.VarChar(1000)
@@ -458,6 +459,7 @@ model TaskHistory {
 model CaseHistory {
   case_history_id     Int      @id @default(autoincrement())
   user_id          String   @db.Uuid
+  tenant_id        String
   operation        String   @db.VarChar(50)
   entity_name      String   @db.VarChar(50)
   action_performed String   @db.VarChar(1000)
