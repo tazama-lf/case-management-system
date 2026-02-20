@@ -178,7 +178,7 @@ export class NotificationPreferencesService {
       select: { phone_number: true, sms_enabled: true },
     });
 
-    if (preferences?.sms_enabled && preferences?.phone_number) {
+    if (preferences && preferences.sms_enabled && preferences.phone_number) {
       return preferences.phone_number;
     }
 
@@ -211,7 +211,7 @@ export class NotificationPreferencesService {
     sms_enabled?: boolean;
     dashboard_enabled?: boolean;
   }): void {
-    const hasEnabledChannel = channels.email_enabled || channels.in_app_enabled || channels.sms_enabled || channels.dashboard_enabled;
+    const hasEnabledChannel = channels.email_enabled ?? channels.in_app_enabled ?? channels.sms_enabled ?? channels.dashboard_enabled;
 
     if (!hasEnabledChannel) {
       throw new BadRequestException('At least one notification channel must be enabled');

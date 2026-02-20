@@ -1,4 +1,4 @@
-import { IsDate, IsOptional, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 import { Outcome } from 'src/utils/types/outcome';
 
 export class LogDataDTO {
