@@ -11,7 +11,7 @@ export class TazamaDwhService {
     private readonly prismaDwh: PrismaDWHService,
     private readonly logger: LoggerService,
     private readonly auditLog: AuditLogService,
-  ) {}
+  ) { }
   private formatTransactionForTable(tx: any) {
     return {
       date: tx.cre_dt_tm,
@@ -20,7 +20,7 @@ export class TazamaDwhService {
       account: tx.source,
       counterparty: tx.destination,
       role: tx.role,
-      amount: tx.amt?.toNumber() || 0,
+      amount: tx.amt?.toNumber() ?? 0,
     };
   }
 
@@ -53,7 +53,7 @@ export class TazamaDwhService {
         cre_dt_tm: { gte: dateFrom, lte: dateTo },
       },
     });
-    const getGeography = (tx: any) => tx.geography || tx.transaction?.geography || tx.transaction?.TxTp || '';
+    const getGeography = (tx: any) => tx.geography ?? tx.transaction?.geography ?? tx.transaction?.TxTp ?? '';
     const peerBaseline = {
       avgVolume: peerTransactions.length,
       avgValue: peerTransactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() || 0), 0) / (peerTransactions.length || 1),
@@ -61,14 +61,14 @@ export class TazamaDwhService {
     };
     const metrics = {
       totalVolume: transactions.length,
-      totalValue: transactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() || 0), 0),
-      avgTicketSize: transactions.length ? transactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() || 0), 0) / transactions.length : 0,
+      totalValue: transactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() ?? 0), 0),
+      avgTicketSize: transactions.length ? transactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() ?? 0), 0) / transactions.length : 0,
       crossBorderCount: transactions.filter((tx) => getGeography(tx) === 'Cross-border').length,
     };
     const outliers = transactions.filter(
       (tx) =>
-        (tx.amt?.toNumber() || 0) > peerBaseline.avgValue ||
-        (getGeography(tx) === 'Cross-border' && (tx.amt?.toNumber() || 0) > peerBaseline.avgCrossBorder),
+        (tx.amt?.toNumber() ?? 0) > peerBaseline.avgValue ||
+        (getGeography(tx) === 'Cross-border' && (tx.amt?.toNumber() ?? 0) > peerBaseline.avgCrossBorder),
     );
     const summaryTable = {
       totalVolume: metrics.totalVolume,
@@ -78,11 +78,11 @@ export class TazamaDwhService {
     };
     const visualization = 'trend-chart-placeholder';
     const detectedAnomalies = outliers.map((tx) => ({
-      date: tx.cre_dt_tm || '',
+      date: tx.cre_dt_tm ?? '',
       type: tx.tx_tp,
-      amount: tx.amt?.toNumber() || 0,
-      description: (tx.amt?.toNumber() || 0) > peerBaseline.avgValue ? 'Large transaction flagged' : 'Cross-border anomaly',
-      risk: (tx.amt?.toNumber() || 0) > 5000 ? 'High' : (tx.amt?.toNumber() || 0) > 2000 ? 'Medium' : 'Low',
+      amount: tx.amt?.toNumber() ?? 0,
+      description: (tx.amt?.toNumber() ?? 0) > peerBaseline.avgValue ? 'Large transaction flagged' : 'Cross-border anomaly',
+      risk: (tx.amt?.toNumber() ?? 0) > 5000 ? 'High' : (tx.amt?.toNumber() ?? 0) > 2000 ? 'Medium' : 'Low',
     }));
     if (this.auditLog) {
       await this.auditLog.logAction({
@@ -190,46 +190,46 @@ export class TazamaDwhService {
       const senderAddress = senderCustomer?.address as Record<string, string> | null;
       const sender = {
         id: senderAccount.id,
-        accountType: senderAccount.account_type || undefined,
-        openedDate: senderAccount.opened_date || undefined,
-        balance: senderAccount.balance?.toNumber() || undefined,
-        riskRating: senderAccount.risk_rating || undefined,
-        amount: transaction.amt?.toNumber() || undefined,
-        currency: transaction.ccy || undefined,
+        accountType: senderAccount.account_type ?? undefined,
+        openedDate: senderAccount.opened_date ?? undefined,
+        balance: senderAccount.balance?.toNumber() ?? undefined,
+        riskRating: senderAccount.risk_rating ?? undefined,
+        amount: transaction.amt?.toNumber() ?? undefined,
+        currency: transaction.ccy ?? undefined,
       };
 
       const receiverAddress = receiverCustomer?.address as Record<string, string> | null;
       const receiver = {
         id: receiverAccount.id,
-        accountType: receiverAccount.account_type || undefined,
-        openedDate: receiverAccount.opened_date || undefined,
-        balance: receiverAccount.balance?.toNumber() || undefined,
-        riskRating: receiverAccount.risk_rating || undefined,
-        amount: transaction.amt?.toNumber() || undefined,
-        currency: transaction.ccy || undefined,
+        accountType: receiverAccount.account_type ?? undefined,
+        openedDate: receiverAccount.opened_date ?? undefined,
+        balance: receiverAccount.balance?.toNumber() ?? undefined,
+        riskRating: receiverAccount.risk_rating ?? undefined,
+        amount: transaction.amt?.toNumber() ?? undefined,
+        currency: transaction.ccy ?? undefined,
       };
 
       return {
         customerDetails: [
           {
-            customerId: senderCustomer?.id || transaction.source,
+            customerId: senderCustomer?.id ?? transaction.source,
             tenantId: transaction.tenant_id,
-            name: senderCustomer?.name || undefined,
-            dateOfBirth: senderCustomer?.date_of_birth || undefined,
-            email: senderCustomer?.email || undefined,
-            phone: senderCustomer?.phone || undefined,
+            name: senderCustomer?.name ?? undefined,
+            dateOfBirth: senderCustomer?.date_of_birth ?? undefined,
+            email: senderCustomer?.email ?? undefined,
+            phone: senderCustomer?.phone ?? undefined,
           },
         ],
         address: senderAddress
           ? [
-              {
-                street: senderAddress.street,
-                city: senderAddress.city,
-                state: senderAddress.state,
-                postalCode: senderAddress.postalCode,
-                country: senderAddress.country,
-              },
-            ]
+            {
+              street: senderAddress.street,
+              city: senderAddress.city,
+              state: senderAddress.state,
+              postalCode: senderAddress.postalCode,
+              country: senderAddress.country,
+            },
+          ]
           : [],
         accountDetails: {
           sender: [sender],
@@ -279,10 +279,10 @@ export class TazamaDwhService {
 
             return {
               id: acc.id,
-              accountType: acc.account_type || undefined,
-              openedDate: acc.opened_date || undefined,
-              balance: acc.balance?.toNumber() || undefined,
-              riskRating: acc.risk_rating || undefined,
+              accountType: acc.account_type ?? undefined,
+              openedDate: acc.opened_date ?? undefined,
+              balance: acc.balance?.toNumber() ?? undefined,
+              riskRating: acc.risk_rating ?? undefined,
               role,
             };
           }),
@@ -293,18 +293,18 @@ export class TazamaDwhService {
         return {
           customerId: customer.id,
           tenantId: customer.tenant_id,
-          name: customer.name || undefined,
-          dateOfBirth: customer.date_of_birth || undefined,
-          email: customer.email || undefined,
-          phone: customer.phone || undefined,
+          name: customer.name ?? undefined,
+          dateOfBirth: customer.date_of_birth ?? undefined,
+          email: customer.email ?? undefined,
+          phone: customer.phone ?? undefined,
           address: addressData
             ? {
-                street: addressData.street,
-                city: addressData.city,
-                state: addressData.state,
-                postalCode: addressData.postalCode,
-                country: addressData.country,
-              }
+              street: addressData.street,
+              city: addressData.city,
+              state: addressData.state,
+              postalCode: addressData.postalCode,
+              country: addressData.country,
+            }
             : undefined,
           accounts: accountsWithRoles,
         };
@@ -324,24 +324,24 @@ export class TazamaDwhService {
     try {
       const customer = tenantId
         ? await this.prismaDwh.customer.findUnique({
-            where: {
-              id_tenant_id: {
-                id: customerId,
-                tenant_id: tenantId,
-              },
-            },
-            include: {
-              accounts: true,
-            },
-          })
-        : await this.prismaDwh.customer.findFirst({
-            where: {
+          where: {
+            id_tenant_id: {
               id: customerId,
+              tenant_id: tenantId,
             },
-            include: {
-              accounts: true,
-            },
-          });
+          },
+          include: {
+            accounts: true,
+          },
+        })
+        : await this.prismaDwh.customer.findFirst({
+          where: {
+            id: customerId,
+          },
+          include: {
+            accounts: true,
+          },
+        });
 
       if (!customer) {
         throw new NotFoundException(`Customer not found: ${customerId}`);
@@ -352,25 +352,25 @@ export class TazamaDwhService {
       return {
         customerId: customer.id,
         tenantId: customer.tenant_id,
-        name: customer.name || undefined,
-        dateOfBirth: customer.date_of_birth || undefined,
-        email: customer.email || undefined,
-        phone: customer.phone || undefined,
+        name: customer.name ?? undefined,
+        dateOfBirth: customer.date_of_birth ?? undefined,
+        email: customer.email ?? undefined,
+        phone: customer.phone ?? undefined,
         address: addressData
           ? {
-              street: addressData.street,
-              city: addressData.city,
-              state: addressData.state,
-              postalCode: addressData.postalCode,
-              country: addressData.country,
-            }
+            street: addressData.street,
+            city: addressData.city,
+            state: addressData.state,
+            postalCode: addressData.postalCode,
+            country: addressData.country,
+          }
           : undefined,
         accounts: customer.accounts.map((acc) => ({
           id: acc.id,
-          accountType: acc.account_type || undefined,
-          openedDate: acc.opened_date || undefined,
-          balance: acc.balance?.toNumber() || undefined,
-          riskRating: acc.risk_rating || undefined,
+          accountType: acc.account_type ?? undefined,
+          openedDate: acc.opened_date ?? undefined,
+          balance: acc.balance?.toNumber() ?? undefined,
+          riskRating: acc.risk_rating ?? undefined,
         })),
       };
     } catch (err) {
@@ -430,7 +430,7 @@ export class TazamaDwhService {
 
       if (!extendedAccount.customer) {
         return {
-          customerId: extendedAccount.customer_id || accountId,
+          customerId: extendedAccount.customer_id ?? accountId,
           tenantId: dwhTenantId,
           name: undefined,
           dateOfBirth: undefined,
@@ -440,10 +440,10 @@ export class TazamaDwhService {
           accounts: [
             {
               id: account.id,
-              accountType: extendedAccount.account_type || undefined,
-              openedDate: extendedAccount.opened_date || undefined,
-              balance: extendedAccount.balance?.toNumber() || undefined,
-              riskRating: extendedAccount.risk_rating || undefined,
+              accountType: extendedAccount.account_type ?? undefined,
+              openedDate: extendedAccount.opened_date ?? undefined,
+              balance: extendedAccount.balance?.toNumber() ?? undefined,
+              riskRating: extendedAccount.risk_rating ?? undefined,
               role,
             },
           ],

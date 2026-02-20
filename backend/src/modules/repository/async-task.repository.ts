@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { AsyncTaskStatus } from '@prisma/client-cms';
+import { AsyncTaskStatus, AsyncTask } from '@prisma/client-cms';
 import { BaseRepository } from './base.repository';
 
 @Injectable()
@@ -26,7 +26,7 @@ export class AsyncTaskRepository extends BaseRepository {
         max_retries: 5,
         retry_count: 0,
         next_retry_at: new Date(), // Send immediately
-        created_by: metadata?.userId || 'SYSTEM',
+        created_by: metadata?.userId ?? 'SYSTEM',
       },
     });
 

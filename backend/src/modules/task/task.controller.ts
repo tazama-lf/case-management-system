@@ -9,7 +9,6 @@ import {
   Query,
   UseGuards,
   BadRequestException,
-  ForbiddenException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -24,14 +23,10 @@ import { UnassignTaskDto } from './dto/unassign-task-dto';
 import {
   RequireAlertTriageRole,
   RequireAnyValidRole,
-  RequireSupervisorRole,
   RequireInvestigatorRole,
-  RequireInvestigatorOrSupervisorRole,
   RequireInvestigatorOrSupervisorRoleOrComplianceRole,
 } from '../../decorators/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
-import { AuditLogService } from 'src/modules/audit/auditLog.service';
-import { FlowableService } from '../flowable/flowable.service';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 interface AuthenticatedRequest extends Request {
@@ -625,7 +620,7 @@ export class TaskController {
   async getTasksByCaseId(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
-    const userClaims = req.user.token.claims || [];
+    const userClaims = req.user.token.claims ?? [];
     return await this.taskService.getTasksByCaseId(caseId, tenantId, userId, userClaims);
   }
 
