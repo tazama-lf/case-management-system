@@ -1,11 +1,10 @@
-import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { CreateCommentDto } from '../comment/dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from '../task/task.service';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
-import { Priority, CaseStatus, CaseType, Prisma, TaskStatus, CaseCreationType } from '@prisma/client-cms';
+import { Priority, CaseStatus, CaseType, TaskStatus, Alert, Case, Task } from '@prisma/client-cms';
 import { AIPrediction, Prediction } from '../../utils/interfaces/Prediction';
 import { CaseStatusChangedEvent } from '../events/domain-events';
 import { FeatureExtractionService } from 'src/modules/feature-extraction/feature-extraction.service';
@@ -19,7 +18,6 @@ import { Outcome } from '../../utils/types/outcome';
 import { ManualAlertUpdateDTO, IngestAlertDto, UpdateAlertDTO } from '../alert/dto';
 import { CaseCreationService } from '../case/services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
-import { TaskRepository } from '../repository/task.repository';
 import { CommentRepository } from '../repository/comment.repository';
 
 @Injectable()
@@ -33,7 +31,6 @@ export class TriageService {
   constructor(
     private readonly logger: LoggerService,
     private readonly alertRepository: AlertRepository,
-    private readonly taskRepository: TaskRepository,
     private readonly commentRepository: CommentRepository,
     private readonly caseRepository: CaseRepository,
     private readonly flowableService: FlowableService,
@@ -48,18 +45,19 @@ export class TriageService {
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
-  async handleManualTriage(alertId: number, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string) {
+  async handleManualTriage(alertId: number, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string): Promise<Alert> {
     const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
     if (triageType !== 'MANUAL') {
       throw new BadRequestException(`Cannot update alert ${alertId} when triageType is not MANUAL`);
     }
 
     try {
+      const updateAlertData = updateAlertDto;
       const priorityScore = updateAlertDto.priorityScore ?? 0.33;
       const priority = this.casePriorityUtil.determinePriority(priorityScore);
-      updateAlertDto.priority = priority;
+      updateAlertData.priority = priority;
       const transactionResult = await this.alertRepository.transaction(async (tx) => {
-        const alert = await this.alertService.updateAlert(alertId, userId, updateAlertDto, tx);
+        const alert = await this.alertService.updateAlert(alertId, userId, updateAlertData, tx);
         if (!alert.case_id) {
           throw new InternalServerErrorException('Alert case_id is missing.');
         }
@@ -83,10 +81,10 @@ export class TriageService {
           userId,
           {
             caseId: alert.case_id,
-            taskId: completeNewCaseTask?.task_id,
+            taskId: completeNewCaseTask.task_id,
             tenantId,
             note: updateAlertDto.note,
-          } as CreateCommentDto,
+          },
           tx,
         );
 
@@ -94,7 +92,7 @@ export class TriageService {
           throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
         }
 
-        if (updateAlertDto?.status && this.closableStatuses.includes(updateAlertDto.status)) {
+        if (updateAlertDto.status && this.closableStatuses.includes(updateAlertDto.status)) {
           await this.caseCreationService.updateCaseStatus(alert.case_id, updateAlertDto.status, userId, tenantId);
 
           await this.flowableService.handleTaskCompleted({
@@ -124,7 +122,7 @@ export class TriageService {
             userId,
             tenantId,
             priority,
-            updateAlertDto.alertType as CaseType,
+            updateAlertDto.alertType,
           );
 
           this.logger.log(
@@ -172,7 +170,7 @@ export class TriageService {
     }
   }
 
-  async handleAITriage(alertId: number, caseId: number, dto: IngestAlertDto, userId: string, tenantId: string) {
+  async handleAITriage(alertId: number, caseId: number, dto: IngestAlertDto, userId: string, tenantId: string): Promise<unknown> {
     this.logger.log(`Start - AI Triage for alert ${alertId}`, TriageService.name);
     try {
       const triageTask = await this.taskService.createTask(
@@ -190,22 +188,22 @@ export class TriageService {
 
       const triageTaskId = triageTask.task_id;
       const confidenceThreshold = this.configService.get<number>('CONFIDENCE_THRESHOLD', 100);
-      const interdictionEnabled = this.configService.get<string>('CLIENT_SYSTEM_INTERDICTION_ENABLED', 'true').toLowerCase() === 'true';
+      const interdictionEnabled = this.configService.get<boolean>('CLIENT_SYSTEM_INTERDICTION_ENABLED', true);
       let transactionOccurred = true;
 
       if (interdictionEnabled) {
-        const tadpResult = dto?.report?.tadpResult;
+        const { tadpResult } = dto.report;
 
         if (
           typeof tadpResult === 'object' &&
-          tadpResult !== null &&
           'typologyResult' in tadpResult &&
-          Array.isArray((tadpResult as any).typologyResult)
+          Array.isArray(tadpResult.typologyResult) &&
+          tadpResult.typologyResult.length > 0
         ) {
-          const typology = (tadpResult as any).typologyResult[0];
-          const result = typeof typology?.result === 'number' ? typology.result : undefined;
-          const interdictionThreshold =
-            typeof typology?.workflow?.interdictionThreshold === 'number' ? typology.workflow.interdictionThreshold : undefined;
+          const [typology] = tadpResult.typologyResult;
+          const result = typeof typology.result === 'number' ? typology.result : undefined;
+          const { workflow } = typology;
+          const { interdictionThreshold } = workflow;
 
           if (result !== undefined && interdictionThreshold !== undefined && result > interdictionThreshold) {
             transactionOccurred = false;
@@ -221,15 +219,14 @@ export class TriageService {
         priorityScore: predictedPriorityScore,
       } = prediction;
 
-      const finalPriorityScore = predictedPriorityScore ?? 0.5;
-      const priority = this.casePriorityUtil.determinePriority(finalPriorityScore);
+      const priority = this.casePriorityUtil.determinePriority(predictedPriorityScore);
 
       await this.updateAlertAndUpdateTriageTask(
         alertId,
         triageTaskId,
         predictedAlertType,
         predictedConfidence,
-        finalPriorityScore,
+        predictedPriorityScore,
         priority,
         predictedTruePositive,
         userId,
@@ -336,9 +333,7 @@ export class TriageService {
             tenantId,
             predictedAlertType,
           );
-        }
-
-        if (predictedAlertType === CaseType.FRAUD) {
+        } else {
           if (!transactionOccurred) {
             await this.flowableService.handleTaskCompleted({
               caseId,
@@ -405,13 +400,9 @@ export class TriageService {
     tenantId: string,
     caseType?: CaseType,
     customDescription?: string,
-  ) {
+  ): Promise<{ updatedCase: Case; updatedTask: Task }> {
     try {
       const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
-
-      if (!existingCase) {
-        throw new NotFoundException(`Case ${caseId} not found`);
-      }
 
       const updatedTask = await this.taskService.updateTask(
         taskId,
@@ -426,7 +417,7 @@ export class TriageService {
 
       this.eventEmitter.emit(
         'case.status.changed',
-        new CaseStatusChangedEvent(caseId, status, customDescription || `Case automatically closed with status ${status}`),
+        new CaseStatusChangedEvent(caseId, status, customDescription ?? `Case automatically closed with status ${status}`),
       );
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -467,9 +458,6 @@ export class TriageService {
     try {
       this.logger.log(`Start - AI triage completed for case ${caseId}`, TriageService.name);
       const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
-      if (!existingCase) {
-        throw new NotFoundException(`Case ${caseId} not found`);
-      }
 
       await this.taskService.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, userId, tenantId);
 
@@ -537,7 +525,7 @@ export class TriageService {
       updateDto.confidencePer = predictedConfidence;
       updateDto.priority_score = predictedPriorityScore;
 
-      const alert = await this.alertService.updateAlert(alertId, userId, updateDto);
+      await this.alertService.updateAlert(alertId, userId, updateDto);
       // this.commentService.addComment({ note: updateDto.note } as CreateCommentDto, userId);
 
       const task = await this.taskService.updateTask(
