@@ -14,8 +14,8 @@ export class CaseRepository extends BaseRepository {
     super(prisma);
   }
 
-  async findAlert(alertId: number, tenantId: string, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+  async findAlert(alertId: number, tenantId: string, tx?: Prisma.TransactionClient): Promise<Alert | null> {
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.alert.findUnique({
       where: {
         alert_id: alertId,
@@ -24,8 +24,8 @@ export class CaseRepository extends BaseRepository {
     });
   }
 
-  async updateAlertByAlertId(dto, priorityScore, createdCase, priority, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+  async updateAlertByAlertId(dto, priorityScore, createdCase, priority, tx?: Prisma.TransactionClient): Promise<Alert> {
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await this.prisma.alert.update({
       where: { alert_id: dto.alertId },
       data: {
@@ -38,7 +38,7 @@ export class CaseRepository extends BaseRepository {
   }
 
   async findCaseWithApprovalTask(caseId: number, tenantId: string, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.case.findUnique({
       where: {
         case_id: caseId,
@@ -61,7 +61,7 @@ export class CaseRepository extends BaseRepository {
   }
 
   async findCaseBasicInfo(caseId: number, tenantId: string, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.case.findUnique({
       where: {
         case_id: caseId,
@@ -79,7 +79,7 @@ export class CaseRepository extends BaseRepository {
 
   // Task finder methods - using specific implementations for type safety
   async findTaskByNameAndStatus(caseId: number, tenantId: string, taskName: string, status: TaskStatus, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.task.findFirst({
       where: {
         case_id: caseId,
@@ -91,7 +91,7 @@ export class CaseRepository extends BaseRepository {
   }
 
   async findTaskByNames(caseId: number, tenantId: string, names: string[], status: TaskStatus, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.task.findFirst({
       where: {
         case_id: caseId,
@@ -104,7 +104,7 @@ export class CaseRepository extends BaseRepository {
 
   // Reopening task queries - all return task with comments
   async findReopeningTaskWithComments(caseId: number, tenantId: string, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.task.findFirst({
       where: {
         case_id: caseId,
@@ -130,7 +130,7 @@ export class CaseRepository extends BaseRepository {
   }
 
   async findCaseWithPermissionCheck(caseId: number, tenantId: string, userId: string, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
 
     // Check if userId is a valid UUID
     const isValidUuid = isUuid(userId);
@@ -259,7 +259,7 @@ export class CaseRepository extends BaseRepository {
   }
 
   async updateCase(caseId: number, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.case.update({
       where: { case_id: caseId },
       data,
@@ -386,7 +386,7 @@ export class CaseRepository extends BaseRepository {
     tenantId: string,
     whereClause?: Prisma.CaseWhereInput | Prisma.CaseWhereInput[],
   ) {
-    const baseWhere = Array.isArray(whereClause) ? { OR: whereClause } : whereClause || {};
+    const baseWhere = Array.isArray(whereClause) ? { OR: whereClause } : (whereClause ?? {});
     return await this.prisma.case.groupBy({
       by: [field],
       where: {
@@ -474,8 +474,8 @@ export class CaseRepository extends BaseRepository {
     });
   }
 
-  async createCase(caseDetail: any, tx?: Prisma.TransactionClient) {
-    const prisma = tx || this.prisma;
+  async createCase(caseDetail: any, tx?: Prisma.TransactionClient): Promise<Case> {
+    const prisma = tx ?? this.prisma;
     return await prisma.case.create({
       data: {
         tenant_id: caseDetail.tenantId,

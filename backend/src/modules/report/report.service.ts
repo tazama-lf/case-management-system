@@ -1,11 +1,8 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { CaseService } from '../case/case.service';
-import { TaskService } from '../task/task.service';
 import { AuditLogService } from '../audit/auditLog.service';
 import { CaseStatus, TaskStatus, CaseType } from '@prisma/client-cms';
 import { FraudReport, FraudReportOutcome } from './report.model';
-import { UpdateCaseDto } from '../case/dto/update-case.dto';
 import { NotificationService } from '../notification/notification.service';
 import { CouchdbService } from 'src/modules/couchdb/couchdb.service';
 import { EvidenceService } from '../evidence/evidence.service';
@@ -17,8 +14,6 @@ import * as crypto from 'node:crypto';
 export class ReportsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly caseService: CaseService,
-    private readonly taskService: TaskService,
     private readonly auditLogService: AuditLogService,
     private readonly evidenceService: EvidenceService,
     private readonly couchdbService: CouchdbService,

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { CreateEvidenceDto, EvidenceResponseDto } from '../evidence/dto/evidence-response.dto';
+import { CreateEvidenceDto } from '../evidence/dto/evidence-response.dto';
 import { BaseRepository } from './base.repository';
-import { Prisma } from '@prisma/client-cms';
+import { Prisma, Evidence } from '@prisma/client-cms';
 
 @Injectable()
 export class EvidenceRepository extends BaseRepository {
@@ -10,8 +10,8 @@ export class EvidenceRepository extends BaseRepository {
     super(prisma);
   }
 
-  async createEvidence(userId: string, createEvidenceDto: CreateEvidenceDto, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+  async createEvidence(userId: string, createEvidenceDto: CreateEvidenceDto, tx?: Prisma.TransactionClient): Promise<Evidence> {
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.evidence.create({
       data: {
         uploader_user_id: userId,
@@ -32,7 +32,7 @@ export class EvidenceRepository extends BaseRepository {
     });
   }
 
-  async deleteEvidenceById(evidenceId: string, tenantId: string) {
+  async deleteEvidenceById(evidenceId: string, tenantId: string): Promise<Evidence> {
     return await this.prisma.evidence.delete({
       where: {
         evidence_id: evidenceId,

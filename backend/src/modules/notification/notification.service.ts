@@ -102,7 +102,7 @@ export class NotificationService {
   async sendNotification(payload: NotificationPayload): Promise<void> {
     this.logger.log(`Dispatching ${payload.type} notification for user ${payload.userId}`);
     const email = await this.resolveUserEmail(payload.userId);
-    await this.dispatchNotification(email, payload.type, payload.metadata || {}, {
+    await this.dispatchNotification(email, payload.type, payload.metadata ?? {}, {
       notificationType: payload.type,
       userId: payload.userId,
     });
@@ -128,9 +128,9 @@ export class NotificationService {
   }
   async sendGroupNotification(payload: GroupNotificationPayload): Promise<void> {
     this.logger.log(`Dispatching ${payload.type} group notification for ${payload.candidateGroup}`);
-    const groupEmails: string[] = payload.metadata?.groupEmails || [];
+    const groupEmails: string[] = payload.metadata?.groupEmails ?? [];
 
-    await this.dispatchNotificationToMultiple(groupEmails, payload.type, payload.metadata || {}, {
+    await this.dispatchNotificationToMultiple(groupEmails, payload.type, payload.metadata ?? {}, {
       notificationType: payload.type,
       candidateGroup: payload.candidateGroup,
     });
@@ -224,9 +224,9 @@ export class NotificationService {
         taskType: payload.taskType,
         caseNumber: payload.caseNumber,
         priority: payload.casePriority,
-        deadline: payload.slaDeadline || 'Not set',
+        deadline: payload.slaDeadline ?? 'Not set',
         workQueue: payload.workQueueName,
-        assignedBy: payload.assignedBy || 'System',
+        assignedBy: payload.assignedBy ?? 'System',
       },
       payload,
     );
@@ -247,10 +247,10 @@ export class NotificationService {
       taskType: payload.taskType,
       caseNumber: payload.caseNumber,
       priority: payload.casePriority,
-      deadline: payload.slaDeadline || 'Not set',
+      deadline: payload.slaDeadline ?? 'Not set',
       workQueue: payload.workQueueName,
-      reassignedBy: payload.reassignedBy || 'System',
-      reason: payload.reason || 'No reason provided',
+      reassignedBy: payload.reassignedBy ?? 'System',
+      reason: payload.reason ?? 'No reason provided',
     };
 
     // Notify new assignee
@@ -264,7 +264,7 @@ export class NotificationService {
       'TASK_UNASSIGNED',
       {
         taskTitle: payload.taskName,
-        reason: payload.reason || 'Task was reassigned to another user',
+        reason: payload.reason ?? 'Task was reassigned to another user',
       },
       payload,
     );
@@ -276,7 +276,7 @@ export class NotificationService {
   private async resolveUserEmail(userId: string): Promise<string> {
     try {
       const userEmail = await this.cacheService.getUserEmailFromCache(userId);
-      return userEmail || `user-${userId}@example.com`;
+      return userEmail ?? `user-${userId}@example.com`;
     } catch (error) {
       this.logger.warn(`Failed to resolve email for user ${userId}: ${error.message}`);
       return `user-${userId}@example.com`;
@@ -342,7 +342,7 @@ export class NotificationService {
    * Get email template for notification type
    */
   private getTemplate(type: NotificationType, data: Record<string, any> = {}): EmailTemplate {
-    const builder = this.templateMap[type] ?? this.templateMap.GENERIC;
+    const builder = this.templateMap[type];
     return builder(data);
   }
 }

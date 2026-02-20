@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { v4 as uuidv4, validate as isUuid } from 'uuid';
+import { TaskHistory } from '@prisma/client-cms';
 
 @Injectable()
 export class TaskHistoryService {
@@ -15,11 +16,11 @@ export class TaskHistoryService {
     task_id: number;
     tenant_id: string;
     performedAt?: Date;
-  }) {
-    const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
+  }): Promise<TaskHistory> {
+    const userId = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
     return await this.prisma.taskHistory.create({
       data: {
-        user_id,
+        user_id: userId,
         tenant_id: data.tenant_id,
         operation: data.operation,
         entity_name: data.entityName,
@@ -31,16 +32,16 @@ export class TaskHistoryService {
     });
   }
 
-  async getLogs(tenantId: string, limit = 50, offset = 0) {
-    return this.prisma.taskHistory.findMany({
+  async getLogs(tenantId: string, limit = 50, offset = 0): Promise<TaskHistory[]> {
+    return await this.prisma.taskHistory.findMany({
       where: { tenant_id: tenantId },
       orderBy: { performed_at: 'desc' },
       take: limit,
       skip: offset,
     });
   }
-  async getTaskHistory(caseId: number, tenantId: string) {
-    return this.prisma.taskHistory.findMany({
+  async getTaskHistory(caseId: number, tenantId: string): Promise<TaskHistory[]> {
+    return await this.prisma.taskHistory.findMany({
       where: {
         case_id: caseId,
         tenant_id: tenantId,
