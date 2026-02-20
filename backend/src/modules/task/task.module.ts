@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { PrismaModule } from '../../../prisma/prisma.module';

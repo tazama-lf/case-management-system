@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { createFilterDto } from '../filter/dto/create-filter.dto';
 import { BaseRepository } from './base.repository';
-import { Prisma } from '@prisma/client-cms';
+import { Prisma, filters } from '@prisma/client-cms';
 
 @Injectable()
 export class FilterRepository extends BaseRepository {
@@ -10,8 +10,8 @@ export class FilterRepository extends BaseRepository {
     super(prisma);
   }
 
-  async createFilter(userId: string, createFilterDto: createFilterDto, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+  async createFilter(userId: string, createFilterDto: createFilterDto, tx?: Prisma.TransactionClient): Promise<filters> {
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.filters.create({
       data: {
         user_Id: userId,
@@ -21,8 +21,8 @@ export class FilterRepository extends BaseRepository {
     });
   }
 
-  async getFiltersByUserAndType(userId: string, filterType: string, tx?: Prisma.TransactionClient) {
-    const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+  async getFiltersByUserAndType(userId: string, filterType: string, tx?: Prisma.TransactionClient): Promise<filters[]> {
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.filters.findMany({
       where: {
         user_Id: userId,

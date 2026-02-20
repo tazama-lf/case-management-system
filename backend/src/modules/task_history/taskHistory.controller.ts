@@ -1,4 +1,4 @@
-import { Controller, Get, Injectable, Query, UseGuards, Param, Req } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Param, Req, ParseIntPipe } from '@nestjs/common';
 import {
   ApiOperation,
   ApiQuery,
@@ -13,6 +13,7 @@ import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { TaskHistoryService } from './taskHistory.service';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { RequireInvestigatorOrSupervisorRoleOrComplianceRole } from 'src/decorators/auth.decorator';
+import { TaskHistory } from '@prisma/client-cms';
 
 @ApiTags('Task History')
 @Controller('api/v1/task-history')
@@ -37,9 +38,17 @@ export class TaskHistoryController {
   })
   @ApiOkResponse({ description: 'Event log entries returned successfully.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
-  async getLogs(@Query('limit') limit = 50, @Query('offset') offset = 0, @Req() req: AuthenticatedRequest) {
-    const tenantId = req.user.token.tenantId;
-    return await this.taskHistoryService.getLogs(tenantId, Number(limit), Number(offset));
+  async getLogs(
+    @Query('limit', ParseIntPipe) limit = 50,
+    @Query('offset', ParseIntPipe) offset = 0,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<TaskHistory[]> {
+    const {
+      user: {
+        token: { tenantId },
+      },
+    } = req;
+    return await this.taskHistoryService.getLogs(tenantId, limit, offset);
   }
 
   @Get(':caseId')
@@ -72,8 +81,12 @@ export class TaskHistoryController {
     },
   })
   @ApiResponse({ status: 404, description: 'Task History not found' })
-  async getCaseHistory(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
-    const tenantId = req.user.token.tenantId;
+  async getCaseHistory(@Param('caseId', ParseIntPipe) caseId: number, @Req() req: AuthenticatedRequest): Promise<TaskHistory[]> {
+    const {
+      user: {
+        token: { tenantId },
+      },
+    } = req;
     return await this.taskHistoryService.getTaskHistory(caseId, tenantId);
   }
 }
