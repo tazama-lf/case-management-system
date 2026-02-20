@@ -14,7 +14,7 @@ export class LoggingOrchestrationService {
     private readonly loggerService: LoggerService,
     private readonly caseHistoryService: CaseHistoryService,
     private readonly taskHistoryService: TaskHistoryService,
-  ) {}
+  ) { }
 
   async logActions(logData: LogDataDTO): Promise<void> {
     try {
@@ -22,7 +22,7 @@ export class LoggingOrchestrationService {
       await this.auditLogService.logAction({
         userId: logData.userId,
         operation: logData.operation,
-        entityName: logData.actionPerformed,
+        entityName: logData.entityName,
         actionPerformed: logData.actionPerformed,
         outcome: logData.outcome,
         performedAt,
@@ -31,7 +31,7 @@ export class LoggingOrchestrationService {
       await this.eventLogService.logEventAction({
         userId: logData.userId,
         operation: logData.operation,
-        entityName: logData.actionPerformed,
+        entityName: logData.entityName,
         actionPerformed: logData.actionPerformed,
         outcome: logData.outcome,
         performedAt,
