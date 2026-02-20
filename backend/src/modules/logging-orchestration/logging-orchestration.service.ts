@@ -25,7 +25,7 @@ export class LoggingOrchestrationService {
         entityName: logData.actionPerformed,
         actionPerformed: logData.actionPerformed,
         outcome: logData.outcome,
-        performedAt: performedAt,
+        performedAt,
       });
 
       await this.eventLogService.logEventAction({
@@ -34,7 +34,7 @@ export class LoggingOrchestrationService {
         entityName: logData.actionPerformed,
         actionPerformed: logData.actionPerformed,
         outcome: logData.outcome,
-        performedAt: performedAt,
+        performedAt,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

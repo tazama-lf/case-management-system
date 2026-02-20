@@ -222,11 +222,6 @@ export class TaskService {
 
     try {
       const tasks = await this.taskRepository.findTasks({ case_id: caseId }, tenantId, true);
-
-      const isInvestigator = userClaims.includes('CMS_INVESTIGATOR');
-      const isSupervisor = userClaims.includes('CMS_SUPERVISOR');
-      const isComplianceOfficer = userClaims.includes('CMS_COMPLIANCE_OFFICER');
-
       const enrichedTasks = await Promise.all(
         tasks.map(async (task) => {
           let assignedUser: { user_id: string; username: string; role?: string } | null = null;
@@ -236,7 +231,7 @@ export class TaskService {
               const userInfo = await this.authService.getUserDetailsFromAuthService(task.assigned_user_id);
               assignedUser = {
                 user_id: task.assigned_user_id,
-                username: userInfo.username || userInfo.email || task.assigned_user_id,
+                username: userInfo.username ?? userInfo.email ?? task.assigned_user_id,
                 role: userInfo.roles[0],
               };
             } catch (error: any) {
@@ -404,8 +399,8 @@ export class TaskService {
         userStats: {
           totalAssigned: userTasks.length,
           byStatus: userTasks.reduce((acc: any, task) => {
-            const status = task.status || 'unknown';
-            acc[status] = (acc[status] || 0) + 1;
+            const status = task.status ?? 'unknown';
+            acc[status] = (acc[status] ?? 0) + 1;
             return acc;
           }, {}),
         },
@@ -434,7 +429,7 @@ export class TaskService {
 
       this.eventEmitter.emit(
         'task.assigned',
-        new TaskAssignedEvent(taskId, updatedTask.case_id, userId, previousAssignedUserId || undefined),
+        new TaskAssignedEvent(taskId, updatedTask.case_id, userId, previousAssignedUserId ?? undefined),
       );
 
       this.loggingOrchestrationService.logActionsWithHistory(
@@ -458,7 +453,7 @@ export class TaskService {
   }
 
   async unassignTask(taskId: number, userId: string, tenantId: string, reason?: string) {
-    return await this.lifecycle.unassignTask(taskId, userId, tenantId, reason || '');
+    return await this.lifecycle.unassignTask(taskId, userId, tenantId, reason ?? '');
   }
 
   async completeTask(taskId: number, userId: string, tenantId: string, auditLogService?: AuditLogService) {
@@ -500,7 +495,7 @@ export class TaskService {
       const taskRecord = await this.taskRepository.updateTask(taskId, updateInput, tx);
       const caseRecord = await this.taskRepository.findCaseStatus(taskRecord.case_id, tenantId, tx);
 
-      const assigneeId = taskRecord.assigned_user_id || existingTask.assigned_user_id || null;
+      const assigneeId = taskRecord.assigned_user_id ?? existingTask.assigned_user_id ?? null;
       const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
       if (assigneeId && caseRecord!.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
       const updatedCase = await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
@@ -511,7 +506,7 @@ export class TaskService {
       await this.flowableService.handleTaskAssigned({
         taskId: taskRecord.task_id,
         caseId: taskRecord.case_id,
-        assignedUserId: taskRecord.assigned_user_id || existingTask.assigned_user_id!,
+        assignedUserId: taskRecord.assigned_user_id ?? existingTask.assigned_user_id!,
         taskName: existingTask.name!,
       });
 

@@ -26,7 +26,7 @@ export class CaseRepository extends BaseRepository {
 
   async updateAlertByAlertId(dto, priorityScore, createdCase, priority, tx?: Prisma.TransactionClient): Promise<Alert> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
-    return await this.prisma.alert.update({
+    return await client.alert.update({
       where: { alert_id: dto.alertId },
       data: {
         priority,
