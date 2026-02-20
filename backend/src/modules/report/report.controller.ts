@@ -86,7 +86,7 @@ export class ReportsController {
         fileIsRequired: true,
       }),
     )
-    file: Express.Multer.File,
+    file: Multer.File,
     @Body() dto: UploadReportDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<FraudReport> {
