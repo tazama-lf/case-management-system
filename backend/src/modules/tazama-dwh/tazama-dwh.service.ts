@@ -11,7 +11,7 @@ export class TazamaDwhService {
     private readonly prismaDwh: PrismaDWHService,
     private readonly logger: LoggerService,
     private readonly auditLog: AuditLogService,
-  ) { }
+  ) {}
   private formatTransactionForTable(tx: any) {
     return {
       date: tx.cre_dt_tm,
@@ -222,14 +222,14 @@ export class TazamaDwhService {
         ],
         address: senderAddress
           ? [
-            {
-              street: senderAddress.street,
-              city: senderAddress.city,
-              state: senderAddress.state,
-              postalCode: senderAddress.postalCode,
-              country: senderAddress.country,
-            },
-          ]
+              {
+                street: senderAddress.street,
+                city: senderAddress.city,
+                state: senderAddress.state,
+                postalCode: senderAddress.postalCode,
+                country: senderAddress.country,
+              },
+            ]
           : [],
         accountDetails: {
           sender: [sender],
@@ -299,12 +299,12 @@ export class TazamaDwhService {
           phone: customer.phone ?? undefined,
           address: addressData
             ? {
-              street: addressData.street,
-              city: addressData.city,
-              state: addressData.state,
-              postalCode: addressData.postalCode,
-              country: addressData.country,
-            }
+                street: addressData.street,
+                city: addressData.city,
+                state: addressData.state,
+                postalCode: addressData.postalCode,
+                country: addressData.country,
+              }
             : undefined,
           accounts: accountsWithRoles,
         };
@@ -324,24 +324,24 @@ export class TazamaDwhService {
     try {
       const customer = tenantId
         ? await this.prismaDwh.customer.findUnique({
-          where: {
-            id_tenant_id: {
-              id: customerId,
-              tenant_id: tenantId,
+            where: {
+              id_tenant_id: {
+                id: customerId,
+                tenant_id: tenantId,
+              },
             },
-          },
-          include: {
-            accounts: true,
-          },
-        })
+            include: {
+              accounts: true,
+            },
+          })
         : await this.prismaDwh.customer.findFirst({
-          where: {
-            id: customerId,
-          },
-          include: {
-            accounts: true,
-          },
-        });
+            where: {
+              id: customerId,
+            },
+            include: {
+              accounts: true,
+            },
+          });
 
       if (!customer) {
         throw new NotFoundException(`Customer not found: ${customerId}`);
@@ -358,12 +358,12 @@ export class TazamaDwhService {
         phone: customer.phone ?? undefined,
         address: addressData
           ? {
-            street: addressData.street,
-            city: addressData.city,
-            state: addressData.state,
-            postalCode: addressData.postalCode,
-            country: addressData.country,
-          }
+              street: addressData.street,
+              city: addressData.city,
+              state: addressData.state,
+              postalCode: addressData.postalCode,
+              country: addressData.country,
+            }
           : undefined,
         accounts: customer.accounts.map((acc) => ({
           id: acc.id,

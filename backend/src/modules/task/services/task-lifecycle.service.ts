@@ -1,10 +1,8 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { NotificationService } from 'src/modules/notification/notification.service';
-import { CaseStatus, TaskStatus } from '@prisma/client-cms';
-import { TaskAssignedEvent, CaseStatusChangedEvent } from '../../events/domain-events';
+import { Case, CaseStatus, TaskStatus, Task } from '@prisma/client-cms';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
@@ -17,12 +15,11 @@ export class TaskLifecycleService {
     private readonly commentRepository: CommentRepository,
     private readonly logger: LoggerService,
     private readonly flowableService: FlowableService,
-    private readonly eventEmitter: EventEmitter2,
     private readonly notificationService: NotificationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
-  private async getTaskOrThrow(taskId: number, tenantId: string) {
+  private async getTaskOrThrow(taskId: number, tenantId: string): Promise<Task> {
     const task = await this.prisma.task.findUnique({
       where: {
         task_id: taskId,
@@ -33,7 +30,7 @@ export class TaskLifecycleService {
     return task;
   }
 
-  private async getCaseOrThrow(caseId: number, tenantId: string) {
+  private async getCaseOrThrow(caseId: number, tenantId: string): Promise<Case> {
     const c = await this.prisma.case.findUnique({
       where: {
         case_id: caseId,
@@ -44,12 +41,18 @@ export class TaskLifecycleService {
     return c;
   }
 
-  async assignTaskToInvestigator(taskId: number, assignedUserId: string, supervisorId: string, tenantId: string, note?: string) {
+  async assignTaskToInvestigator(
+    taskId: number,
+    assignedUserId: string,
+    supervisorId: string,
+    tenantId: string,
+    note?: string,
+  ): Promise<Task> {
     const existingTask = await this.getTaskOrThrow(taskId, tenantId);
     const existingCase = await this.getCaseOrThrow(existingTask.case_id, tenantId);
     // Define investigation task names that should update case status
     const investigationTasks = ['Investigate Case', 'Investigate Fraud', 'Investigate AML'];
-    const isInvestigationTask = investigationTasks.includes(existingTask.name || '');
+    const isInvestigationTask = investigationTasks.includes(existingTask.name ?? '');
 
     const result = await this.prisma.$transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -129,20 +132,20 @@ export class TaskLifecycleService {
     await this.notificationService.sendNotification({
       userId: assignedUserId,
       type: 'TASK_ASSIGNED',
-      message: `You have been assigned to task "${existingTask.name || taskId}"`,
+      message: `You have been assigned to task "${existingTask.name ?? taskId}"`,
       metadata: { taskId, caseId: existingTask.case_id, assignedBy: supervisorId || assignedUserId, taskTitle: existingTask.name },
     });
 
     return result.updatedTask;
   }
 
-  async reassignTask(taskId: number, actorUserId: string, tenantId: string, assignedUserId: string, note: string) {
+  async reassignTask(taskId: number, actorUserId: string, tenantId: string, assignedUserId: string, note: string): Promise<Task> {
     const existingTask = await this.getTaskOrThrow(taskId, tenantId);
     const existingCase = await this.getCaseOrThrow(existingTask.case_id, tenantId);
 
     // Define investigation task names that should update case status
     const investigationTasks = ['Investigate Case', 'Investigate Fraud', 'Investigate AML'];
-    const isInvestigationTask = investigationTasks.includes(existingTask.name || '');
+    const isInvestigationTask = investigationTasks.includes(existingTask.name ?? '');
 
     const result = await this.prisma.$transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -218,18 +221,17 @@ export class TaskLifecycleService {
     return result.updatedTask;
   }
 
-  async selfAssignTask(taskId: number, investigatorUserId: string, tenantId: string) {
+  async selfAssignTask(taskId: number, investigatorUserId: string, tenantId: string): Promise<Task> {
     const existingTask = await this.getTaskOrThrow(taskId, tenantId);
     if (existingTask.assigned_user_id) throw new BadRequestException(`Task ${taskId} is already assigned.`);
     if (existingTask.status !== TaskStatus.STATUS_01_UNASSIGNED) {
       throw new BadRequestException(`Task ${taskId} must be unassigned to self-assign.`);
     }
     const existingCase = await this.getCaseOrThrow(existingTask.case_id, tenantId);
-    const previousCaseStatus = existingCase.status;
 
     // Define investigation task names that should update case status
     const investigationTasks = ['Investigate Case', 'Investigate Fraud', 'Investigate AML'];
-    const isInvestigationTask = investigationTasks.includes(existingTask.name || '');
+    const isInvestigationTask = investigationTasks.includes(existingTask.name ?? '');
 
     const result = await this.prisma.$transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -296,8 +298,13 @@ export class TaskLifecycleService {
     return result.updatedTask;
   }
 
-  async unassignTask(taskId: number, actorUserId: string, tenantId: string, reason: string) {
-    if (!reason || !reason.trim()) {
+  async unassignTask(
+    taskId: number,
+    actorUserId: string,
+    tenantId: string,
+    reason: string,
+  ): Promise<Task & { unassignmentReason: string }> {
+    if (!reason?.trim()) {
       throw new BadRequestException('Reason for unassigning task is required');
     }
     const existingTask = await this.getTaskOrThrow(taskId, tenantId);
@@ -307,8 +314,6 @@ export class TaskLifecycleService {
     if (!existingTask.assigned_user_id) {
       throw new BadRequestException(`Task ${taskId} is already unassigned`);
     }
-    const existingCase = await this.getCaseOrThrow(existingTask.case_id, tenantId);
-    const previousCaseStatus = existingCase.status;
 
     const result = await this.prisma.$transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -375,7 +380,7 @@ export class TaskLifecycleService {
         await this.notificationService.sendNotification({
           userId: existingTask.assigned_user_id,
           type: 'TASK_UNASSIGNED',
-          message: `Task "${existingTask.name || taskId}" has been unassigned. Reason: ${reason}`,
+          message: `Task "${existingTask.name ?? taskId}" has been unassigned. Reason: ${reason}`,
           metadata: { taskId, caseId: existingTask.case_id, unassignedBy: actorUserId, reason, taskTitle: existingTask.name },
         });
       }
@@ -404,7 +409,7 @@ export class TaskLifecycleService {
     };
   }
 
-  async completeTask(taskId: number, actorUserId: string, tenantId: string) {
+  async completeTask(taskId: number, actorUserId: string, tenantId: string): Promise<Task> {
     const existingTask = await this.getTaskOrThrow(taskId, tenantId);
     const updatedTask = await this.prisma.task.update({
       where: { task_id: taskId },
@@ -425,13 +430,5 @@ export class TaskLifecycleService {
     );
 
     return updatedTask;
-  }
-
-  private emitAssignment(taskId: number, caseId: number, assignedUserId: string, previousAssignedUserId?: string) {
-    this.eventEmitter.emit('task.assigned', new TaskAssignedEvent(taskId, caseId, assignedUserId, previousAssignedUserId || undefined));
-  }
-
-  private emitCaseStatusChange(caseId: number, prev: CaseStatus, next: CaseStatus, reason: string) {
-    this.eventEmitter.emit('case.status.changed', new CaseStatusChangedEvent(caseId, next, reason));
   }
 }
