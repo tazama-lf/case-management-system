@@ -304,7 +304,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({ isOpen, alert, on
                     disabled={loading || isStatusLocked}
                   >
                     <option value="STATUS_02_READY_FOR_ASSIGNMENT">Ready for Assignment (Investigation)</option>
-                    <option value="STATUS_82_CLOSED_CONFIRMED">Closed - Confirmed</option>
+                    <option value="STATUS_71_AUTOCLOSED_CONFIRMED">Closed - Confirmed</option>
                     <option value="STATUS_81_CLOSED_REFUTED">Closed - Refuted</option>
                     <option value="STATUS_83_CLOSED_INCONCLUSIVE">Closed - Inconclusive</option>
                   </select>
