@@ -26,9 +26,9 @@ import {
   RequireInvestigatorRole,
   RequireInvestigatorOrSupervisorRoleOrComplianceRole,
 } from '../../decorators/auth.decorator';
-import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
+import { Task } from '@prisma/client-cms';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -50,7 +50,6 @@ export class TaskController {
   constructor(
     private readonly taskService: TaskService,
     private readonly taskLifecycleService: TaskLifecycleService,
-    private readonly loggerService: LoggerService,
   ) {}
 
   @Post()
@@ -116,7 +115,7 @@ export class TaskController {
     status: 403,
     description: 'Forbidden - User lacks ALERT_TRIAGE role',
   })
-  async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest) {
+  async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest): Promise<Task> {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     return await this.taskService.createTask(createTaskDto, userId, tenantId);
@@ -191,7 +190,11 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async reassignTask(@Param('taskId') taskId: number, @Body() reassignTaskDto: ReassignTaskDto, @Req() req: AuthenticatedRequest) {
+  async reassignTask(
+    @Param('taskId') taskId: number,
+    @Body() reassignTaskDto: ReassignTaskDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<Task> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
 
@@ -278,7 +281,11 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async unassignTask(@Param('taskId') taskId: number, @Body() unassignDto: UnassignTaskDto, @Req() req: AuthenticatedRequest) {
+  async unassignTask(
+    @Param('taskId') taskId: number,
+    @Body() unassignDto: UnassignTaskDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<Task> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
 
@@ -360,7 +367,15 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task or investigator does not exist',
   })
-  async assignTaskToInvestigator(@Param('taskId') taskId: number, @Body() assignTaskDto: AssignTaskDto, @Req() req: AuthenticatedRequest) {
+  async assignTaskToInvestigator(
+    @Param('taskId') taskId: number,
+    @Body() assignTaskDto: AssignTaskDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: { taskId: number; assignedUserId: string | null; status: string; assignedAt: string };
+  }> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
 
@@ -450,7 +465,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async updateTask(@Param('taskId') taskId: number, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest) {
+  async updateTask(@Param('taskId') taskId: number, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest): Promise<Task> {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     return await this.taskService.updateTask(taskId, dto, userId, tenantId);
@@ -503,7 +518,7 @@ export class TaskController {
     status: 401,
     description: 'Unauthorized - Invalid or missing authentication',
   })
-  async getTasks(@Req() req: AuthenticatedRequest, @Query('status') status?: string) {
+  async getTasks(@Req() req: AuthenticatedRequest, @Query('status') status?: string): Promise<Task[]> {
     const tenantId = req.user.token.tenantId;
     return await this.taskService.getTasks(tenantId, status);
   }
@@ -556,7 +571,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Case does not exist',
   })
-  async getTasksByCaseId(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
+  async getTasksByCaseId(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<Task[]> {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     const userClaims = req.user.token.claims ?? [];
@@ -614,7 +629,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async getTaskById(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest) {
+  async getTaskById(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest): Promise<Task | null> {
     const tenantId = req.user.token.tenantId;
     return await this.taskService.getTaskById(taskId, tenantId);
   }

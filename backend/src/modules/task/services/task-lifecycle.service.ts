@@ -89,7 +89,7 @@ export class TaskLifecycleService {
 
     await this.loggingOrchestrationService.logActionsWithHistory(
       {
-        userId: userId,
+        userId,
         actionPerformed: isInvestigationTask
           ? `Assigned task ${taskId} to investigator ${assignedUserId} and updated case ${existingTask.case_id} to ASSIGNED`
           : `Assigned task ${taskId} to user ${assignedUserId}`,
@@ -202,9 +202,6 @@ export class TaskLifecycleService {
     tenantId: string,
     reason: string,
   ): Promise<Task & { unassignmentReason: string }> {
-    if (!reason?.trim()) {
-      throw new BadRequestException('Reason for unassigning task is required');
-    }
     const existingTask = await this.taskRepository.findTaskById(taskId, tenantId);
     if (!existingTask) {
       throw new NotFoundException(`Task ${taskId} not found`);
@@ -345,9 +342,6 @@ export class TaskLifecycleService {
       throw new NotFoundException(`Task ${taskId} not found`);
     }
     const existingCase = await this.caseRepository.findCaseById(existingTask.case_id, tenantId);
-    if (!existingCase) {
-      throw new NotFoundException(`Case ${existingTask.case_id} not found`);
-    }
     const isInvestigationTask = existingTask.name === TASK_NAMES.INVESTIGATE_CASE;
     return { existingTask, existingCase, isInvestigationTask };
   }

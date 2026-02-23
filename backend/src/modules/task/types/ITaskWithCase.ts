@@ -1,4 +1,4 @@
-import { Task } from '@prisma/client-cms';
+import type { Task } from '@prisma/client-cms';
 
 export interface TaskWithCase extends Task {
   case: {

@@ -8,7 +8,6 @@ import { TaskStatus, Task, Prisma, CaseStatus, Case } from '@prisma/client-cms';
 import { TaskAssignedEvent } from '../events/domain-events';
 import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
-import { AuthService } from '../auth/auth.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { CLOSED_CASE_STATUSES } from 'src/constants/case.constants';
 
@@ -19,11 +18,10 @@ export class TaskService {
     private readonly logger: LoggerService,
     private readonly eventEmitter: EventEmitter2,
     private readonly flowableService: FlowableService,
-    private readonly authService: AuthService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
-  async createTask(taskDTO: CreateTaskDto, userId: string, tenantId: string) {
+  async createTask(taskDTO: CreateTaskDto, userId: string, tenantId: string): Promise<Task> {
     this.logger.log('Start - createTask', TaskService.name);
     try {
       const caseRecord = await this.taskRepository.findCaseBasic(taskDTO.caseId, tenantId);
@@ -59,7 +57,7 @@ export class TaskService {
         createdTask.task_id,
       );
 
-      return { ...createdTask, candidateGroup: taskDTO.candidateGroup };
+      return createdTask;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
@@ -75,21 +73,17 @@ export class TaskService {
     }
   }
 
-  async updateTask(taskId: number, updateData: Partial<UpdateTaskDto>, userId: string, tenantId: string) {
+  async updateTask(taskId: number, updateData: Partial<UpdateTaskDto>, userId: string, tenantId: string): Promise<Task> {
     this.logger.log(`Start - Update Task: ${taskId}`, TaskService.name);
     try {
       const txResult = await this.taskRepository.transaction(async (tx) => {
         let updatedTask: Task;
         const existingTask = await this.taskRepository.findTaskWithCase(taskId, tenantId, tx);
 
-        if (!existingTask) {
-          throw new NotFoundException(`Task ${taskId} not found`);
-        }
-
         const updateInput: Prisma.TaskUpdateInput = {
           status: updateData.status,
           assigned_user_id:
-            updateData.assignedUserId != existingTask.assigned_user_id ? updateData.assignedUserId : existingTask.assigned_user_id,
+            updateData.assignedUserId === existingTask.assigned_user_id ? existingTask.assigned_user_id : updateData.assignedUserId,
           investigationNotes: updateData.investigationNotes,
         };
 
@@ -102,12 +96,20 @@ export class TaskService {
           await this.flowableService.handleTaskAssigned({
             taskId: updatedTask.task_id,
             caseId: updatedTask.case_id,
-            assignedUserId: updateData.assignedUserId || existingTask.assigned_user_id!,
+            assignedUserId: updateData.assignedUserId ?? existingTask.assigned_user_id!,
             taskName: existingTask.name!,
           });
         }
 
-        if (existingTask.status !== updatedTask.status) {
+        if (existingTask.status === updatedTask.status) {
+          await this.loggingOrchestrationService.logActions({
+            userId,
+            actionPerformed: `Updated task ${taskId}`,
+            entityName: TaskService.name,
+            operation: 'updateTask',
+            outcome: Outcome.SUCCESS,
+          });
+        } else {
           await this.loggingOrchestrationService.logActionsWithHistory(
             {
               userId,
@@ -120,14 +122,6 @@ export class TaskService {
             updatedTask.tenant_id,
             updatedTask.task_id,
           );
-        } else {
-          await this.loggingOrchestrationService.logActions({
-            userId,
-            actionPerformed: `Updated task ${taskId}`,
-            entityName: TaskService.name,
-            operation: 'updateTask',
-            outcome: Outcome.SUCCESS,
-          });
         }
 
         return { updatedTask };
@@ -148,39 +142,18 @@ export class TaskService {
     }
   }
 
-  async getTasksByCaseId(caseId: number, tenantId: string, userId?: string, userClaims: string[] = []) {
+  async getTasksByCaseId(caseId: number, tenantId: string, userId?: string, userClaims: string[] = []): Promise<Task[]> {
     this.logger.log('Retrieving tasks by case', TaskService.name);
 
     try {
       const tasks = await this.taskRepository.findTasks({ case_id: caseId }, tenantId, true);
-      const enrichedTasks = await Promise.all(
-        tasks.map(async (task) => {
-          let assignedUser: { user_id: string; username: string; role?: string } | null = null;
-
-          if (task.assigned_user_id) {
-            try {
-              const userInfo = await this.authService.getUserDetailsFromAuthService(task.assigned_user_id);
-              assignedUser = {
-                user_id: task.assigned_user_id,
-                username: userInfo.username ?? userInfo.email ?? task.assigned_user_id,
-                role: userInfo.roles[0],
-              };
-            } catch (error: any) {
-              this.logger.warn(`Could not fetch user info for ${task.assigned_user_id}: ${error.message}`, TaskService.name);
-              // Fallback to just the user ID
-              assignedUser = {
-                user_id: task.assigned_user_id,
-                username: task.assigned_user_id.substring(0, 8),
-              };
-            }
-          }
-
-          return {
-            ...task,
-            assignedUser,
-          };
-        }),
-      );
+      const enrichedTasks = tasks.map((task) => {
+        const assignedUser: string | null = task.assigned_user_id;
+        return {
+          ...task,
+          assignedUser,
+        };
+      });
 
       if (userId) {
         await this.loggingOrchestrationService.logActions({
@@ -208,7 +181,7 @@ export class TaskService {
     }
   }
 
-  async getTasks(tenantId: string, status?: string) {
+  async getTasks(tenantId: string, status?: string): Promise<Task[]> {
     try {
       const where = status ? { status: status as TaskStatus } : {};
       return await this.taskRepository.findTasks(where, tenantId, true);
@@ -218,7 +191,7 @@ export class TaskService {
     }
   }
 
-  async getTaskById(taskId: number, tenantId: string) {
+  async getTaskById(taskId: number, tenantId: string): Promise<Task | null> {
     try {
       return await this.taskRepository.findTaskWithCase(taskId, tenantId);
     } catch (error) {
@@ -227,7 +200,7 @@ export class TaskService {
     }
   }
 
-  async claimTask(taskId: number, userId: string, tenantId: string) {
+  async claimTask(taskId: number, userId: string, tenantId: string): Promise<Task> {
     this.logger.log(`User ${userId} claiming task ${taskId}`, TaskService.name);
 
     try {
@@ -268,7 +241,7 @@ export class TaskService {
     }
   }
 
-  async getUserTasks(userId: string, tenantId: string, includeCompleted = false) {
+  async getUserTasks(userId: string, tenantId: string, includeCompleted = false): Promise<Task[]> {
     try {
       const statusFilter = includeCompleted
         ? {}
@@ -298,7 +271,7 @@ export class TaskService {
     existingTask: Task,
     tenantId: string,
     tx: Prisma.TransactionClient,
-  ) {
+  ): Promise<Task> {
     try {
       const taskRecord = await this.taskRepository.updateTask(taskId, updateInput, tx);
       const caseRecord = await this.taskRepository.findCaseStatus(taskRecord.case_id, tenantId, tx);
@@ -308,7 +281,7 @@ export class TaskService {
       if (assigneeId && caseRecord!.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
       const updatedCase = await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
       if (updatedCase.parent_id) {
-        this.promoteParentCaseToInProgress(updatedCase.parent_id, updatedCase, tx);
+        await this.promoteParentCaseToInProgress(updatedCase.parent_id, updatedCase, tx);
       }
 
       await this.flowableService.handleTaskAssigned({
@@ -327,7 +300,11 @@ export class TaskService {
     }
   }
 
-  private readonly promoteParentCaseToInProgress = async (parentId: number, updatedCase: Case, tx: Prisma.TransactionClient) => {
+  private readonly promoteParentCaseToInProgress = async (
+    parentId: number,
+    updatedCase: Case,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> => {
     try {
       const subCase = await tx.case.findFirst({
         where: {
