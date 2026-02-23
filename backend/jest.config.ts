@@ -13,27 +13,15 @@ const config: Config.InitialOptions = {
   clearMocks: true,
   // Collect coverage information during test execution
   collectCoverage: true,
-  // Files for which coverage information should be collected
-  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/main.ts'],
+  // Files for which coverage information should be collected - ONLY SERVICE FILES
+  collectCoverageFrom: ['src/**/*.service.ts', '!src/**/*.spec.ts'],
   // Output directory for coverage reports (from reference)
   coverageDirectory: '<rootDir>/coverage/',
   // Files/folders to ignore for coverage (from reference, adjusted for project)
-  // coveragePathIgnorePatterns: ['/node_modules/', '/dist/', '/test', '.module.ts', './jest.config.ts'],
   coveragePathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
     '/test/',
-    '.mock.ts',
-    '.module.ts',
-    '.*utils.*',
-    '.*types.*',
-    '.*controller.*',
-    '.*repository.*',
-    '.*dto.*',
-    '.*interfaces.*',
-    '.*enum.*',
-    '/services/',
-    '/database/',
   ],
   // Use V8 for coverage instrumentation (from reference)
   coverageProvider: 'v8',

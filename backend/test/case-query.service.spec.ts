@@ -1,0 +1,955 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { CaseQueryService } from '../src/modules/case/services/case-query.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { CaseRepository } from '../src/modules/repository/case.repository';
+import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
+import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { CaseStatus, TaskStatus, CaseType, Priority } from '@prisma/client-cms';
+import { GetUserCasesQueryDto } from '../src/modules/case/dto/get-user-cases.dto';
+import { GetAllCasesQueryDto } from '../src/modules/case/dto/get-all-cases.dto';
+
+describe('CaseQueryService', () => {
+  let service: CaseQueryService;
+  let prismaService: any;
+  let logger: any;
+  let caseRepository: any;
+  let loggingOrchestrationService: any;
+
+  const mockCase = {
+    case_id: 1,
+    tenant_id: 'tenant-123',
+    case_creator_user_id: 'user-creator',
+    case_owner_user_id: 'user-123',
+    status: CaseStatus.STATUS_20_IN_PROGRESS,
+    case_type: CaseType.FRAUD,
+    priority: Priority.CRITICAL,
+    parent_id: null,
+    created_at: new Date('2024-01-01'),
+    updated_at: new Date('2024-01-02'),
+    tasks: [
+      {
+        task_id: 1,
+        case_id: 1,
+        name: 'Investigate Case',
+        status: TaskStatus.STATUS_10_ASSIGNED,
+        assigned_user_id: 'user-123',
+        tenant_id: 'tenant-123',
+        created_at: new Date('2024-01-01'),
+      },
+    ],
+    alert: {
+      alert_id: 1,
+      message: 'Suspicious transaction',
+      confidence_per: 85,
+      priority: Priority.CRITICAL,
+      alert_type: 'FRAUD',
+      transaction: { id: 'txn-123' },
+    },
+    comments: [
+      {
+        comment_id: 1,
+        created_at: new Date('2024-01-02'),
+      },
+    ],
+  };
+
+  beforeEach(async () => {
+    const mockPrismaService = {
+      case: {
+        count: jest.fn() as any,
+        findMany: jest.fn() as any,
+        findFirst: jest.fn() as any,
+        groupBy: jest.fn() as any,
+      },
+      task: {
+        count: jest.fn() as any,
+        findMany: jest.fn() as any,
+      },
+    } as any;
+
+    const mockLogger = {
+      log: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+    } as any;
+
+    const mockCaseRepository = {
+      findCaseById: jest.fn(),
+      updateCase: jest.fn(),
+      createCase: jest.fn(),
+    } as any;
+
+    const mockLoggingOrchestrationService = {
+      logActionsWithHistory: jest.fn(),
+    } as any;
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CaseQueryService,
+        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: LoggerService, useValue: mockLogger },
+        { provide: CaseRepository, useValue: mockCaseRepository },
+        { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
+      ],
+    }).compile();
+
+    service = module.get<CaseQueryService>(CaseQueryService);
+    prismaService = module.get(PrismaService);
+    logger = module.get(LoggerService);
+    caseRepository = module.get(CaseRepository);
+    loggingOrchestrationService = module.get(LoggingOrchestrationService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('getUserCases', () => {
+    const userId = 'user-123';
+    const query: GetUserCasesQueryDto = {
+      page: 1,
+      limit: 20,
+      sortBy: 'created_at',
+      sortOrder: 'desc',
+    };
+
+    it('should return empty result when no conditions are met', async () => {
+      const result = await service.getUserCases(userId, {});
+
+      expect(result).toEqual({
+        cases: [],
+        pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
+        summary: { totalOwnedCases: 0, totalTaskAssignments: 0, casesByStatus: {}, casesByPriority: {} },
+      });
+    });
+
+    it('should get user cases with owned cases only', async () => {
+      const queryWithOwned: GetUserCasesQueryDto = { ...query, includeOwnedCases: true };
+      const caseWithoutTaskAssignment = {
+        ...mockCase,
+        tasks: [
+          {
+            ...mockCase.tasks[0],
+            assigned_user_id: 'other-user',
+          },
+        ],
+      };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([caseWithoutTaskAssignment]);
+      prismaService.case.count
+        .mockResolvedValueOnce(1) // ownedCasesCount
+        .mockResolvedValueOnce(0); // taskAssignmentCasesCount
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
+
+      const result = await service.getUserCases(userId, queryWithOwned);
+
+      expect(result.cases).toHaveLength(1);
+      expect(result.cases[0].case_id).toBe(1);
+      expect(result.cases[0].user_role).toBe('owner');
+      expect(result.summary.totalOwnedCases).toBe(1);
+      expect(result.summary.totalTaskAssignments).toBe(0);
+    });
+
+    it('should get user cases with task assignments only', async () => {
+      const queryWithTasks: GetUserCasesQueryDto = { ...query, includeTaskAssignments: true };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([
+        {
+          ...mockCase,
+          case_owner_user_id: 'other-user',
+        },
+      ]);
+      prismaService.case.count
+        .mockResolvedValueOnce(0) // ownedCasesCount
+        .mockResolvedValueOnce(1); // taskAssignmentCasesCount
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
+
+      const result = await service.getUserCases(userId, queryWithTasks);
+
+      expect(result.cases).toHaveLength(1);
+      expect(result.cases[0].user_role).toBe('task_assignee');
+    });
+
+    it('should get user cases with both owned and task assignments', async () => {
+      const queryWithBoth: GetUserCasesQueryDto = {
+        ...query,
+        includeOwnedCases: true,
+        includeTaskAssignments: true,
+      };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.count
+        .mockResolvedValueOnce(1) // ownedCasesCount
+        .mockResolvedValueOnce(1); // taskAssignmentCasesCount
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
+
+      const result = await service.getUserCases(userId, queryWithBoth);
+
+      expect(result.cases).toHaveLength(1);
+      expect(result.cases[0].user_role).toBe('both');
+    });
+
+    it('should filter by status', async () => {
+      const queryWithStatus: GetUserCasesQueryDto = {
+        ...query,
+        includeOwnedCases: true,
+        status: CaseStatus.STATUS_20_IN_PROGRESS,
+      };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.count
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(0);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
+
+      const result = await service.getUserCases(userId, queryWithStatus);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should filter by priority', async () => {
+      const queryWithPriority: GetUserCasesQueryDto = {
+        ...query,
+        includeOwnedCases: true,
+        priority: Priority.CRITICAL,
+      };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.count
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(0);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
+
+      const result = await service.getUserCases(userId, queryWithPriority);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should handle compliance officer filtering', async () => {
+      const queryWithOwned: GetUserCasesQueryDto = { ...query, includeOwnedCases: true };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([
+        { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
+      ]);
+      prismaService.case.count
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(0);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
+
+      const result = await service.getUserCases(userId, queryWithOwned, true);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should handle pagination', async () => {
+      const queryWithPage: GetUserCasesQueryDto = { ...query, includeOwnedCases: true, page: 2, limit: 10 };
+
+      prismaService.case.count.mockResolvedValueOnce(15);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.count
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(0);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
+
+      const result = await service.getUserCases(userId, queryWithPage);
+
+      expect(result.pagination.page).toBe(2);
+      expect(result.pagination.limit).toBe(10);
+      expect(result.pagination.totalPages).toBe(2);
+    });
+
+    it('should handle errors', async () => {
+      const queryWithOwned: GetUserCasesQueryDto = { ...query, includeOwnedCases: true };
+      prismaService.case.count.mockRejectedValueOnce(new Error('Database error'));
+
+      await expect(service.getUserCases(userId, queryWithOwned)).rejects.toThrow('Database error');
+      expect(logger.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('getAllCases', () => {
+    const tenantId = 'tenant-123';
+    const query: GetAllCasesQueryDto = {
+      page: 1,
+      limit: 20,
+      sortBy: 'created_at',
+      sortOrder: 'desc',
+    };
+
+    it('should get all cases with basic filters', async () => {
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+      prismaService.case.findFirst.mockResolvedValueOnce(null);
+
+      const result = await service.getAllCases(query, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+      expect(result.statistics.totalCases).toBe(1);
+      expect(logger.log).toHaveBeenCalled();
+    });
+
+    it('should filter by status', async () => {
+      const queryWithStatus: GetAllCasesQueryDto = { ...query, status: CaseStatus.STATUS_20_IN_PROGRESS };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithStatus, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should filter by priority', async () => {
+      const queryWithPriority: GetAllCasesQueryDto = { ...query, priority: Priority.CRITICAL };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithPriority, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should filter by case type', async () => {
+      const queryWithType: GetAllCasesQueryDto = { ...query, caseType: CaseType.FRAUD };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithType, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should filter by owner id', async () => {
+      const queryWithOwner: GetAllCasesQueryDto = { ...query, ownerId: 'user-123' };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithOwner, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should filter unassigned cases only', async () => {
+      const queryUnassigned: GetAllCasesQueryDto = { ...query, unassignedOnly: true };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([{ ...mockCase, case_owner_user_id: null }]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findFirst.mockResolvedValueOnce({
+        case_id: 1,
+        created_at: new Date('2024-01-01'),
+      });
+
+      const result = await service.getAllCases(queryUnassigned, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+      expect(result.statistics.oldestUnassignedCase).toBeDefined();
+    });
+
+    it('should filter by date range', async () => {
+      const queryWithDates: GetAllCasesQueryDto = {
+        ...query,
+        createdAfter: '2024-01-01',
+        createdBefore: '2024-01-31',
+      };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithDates, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should exclude draft cases', async () => {
+      const queryExcludeDraft: GetAllCasesQueryDto = { ...query, excludeDraft: true };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryExcludeDraft, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should exclude closed cases', async () => {
+      const queryExcludeClosed: GetAllCasesQueryDto = { ...query, excludeClosed: true };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryExcludeClosed, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should show closed cases only', async () => {
+      const queryClosedOnly: GetAllCasesQueryDto = { ...query, closedOnly: true };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([
+        { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
+      ]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryClosedOnly, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should filter by SAR/STR status', async () => {
+      const queryWithSarStr: GetAllCasesQueryDto = { ...query, sarStrStatus: TaskStatus.STATUS_30_COMPLETED };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSarStr, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should filter by SAR/STR status N/A', async () => {
+      const queryWithSarStrNA: GetAllCasesQueryDto = { ...query, sarStrStatus: 'N/A' as any };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSarStrNA, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should search by case id', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: '1' };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSearch, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+      expect(logger.log).toHaveBeenCalled();
+    });
+
+    it('should search by case type partial match', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'fr' };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSearch, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should search by status partial match', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'pending' };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSearch, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should search by alert message', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'suspicious' };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSearch, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should search by confidence score', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: '85' };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSearch, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should search for N/A cases', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'N/A' };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSearch, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('N/A search filter created'),
+        'CaseQueryService',
+      );
+    });
+
+    it('should search with whitespace handling', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: '  suspicious  ' };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSearch, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should handle compliance officer filtering', async () => {
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([
+        { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
+      ]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(query, tenantId, undefined, true);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should handle compliance officer with SAR/STR search', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'assigned' };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([
+        { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
+      ]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSearch, tenantId, undefined, true);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should handle investigator filtering', async () => {
+      const investigatorId = 'investigator-123';
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(query, tenantId, investigatorId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should handle investigator filtering with search', async () => {
+      const investigatorId = 'investigator-123';
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'fraud' };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSearch, tenantId, investigatorId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should handle investigator filtering with SAR/STR status', async () => {
+      const investigatorId = 'investigator-123';
+      const queryWithSarStr: GetAllCasesQueryDto = { ...query, sarStrStatus: TaskStatus.STATUS_30_COMPLETED };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSarStr, tenantId, investigatorId);
+
+      expect(result.cases).toHaveLength(1);
+    });
+
+    it('should calculate average tasks per case', async () => {
+      prismaService.case.count.mockResolvedValueOnce(2);
+      prismaService.case.findMany.mockResolvedValueOnce([
+        mockCase,
+        { ...mockCase, case_id: 2, tasks: [mockCase.tasks[0], mockCase.tasks[0]] },
+      ]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 2 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 2 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 2 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(query, tenantId);
+
+      expect(result.statistics.averageTasksPerCase).toBeGreaterThan(0);
+    });
+
+    it('should handle no search conditions', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'xyz123abc' };
+
+      prismaService.case.count.mockResolvedValueOnce(0);
+      prismaService.case.findMany.mockResolvedValueOnce([]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSearch, tenantId);
+
+      expect(result.cases).toHaveLength(0);
+      expect(logger.log).toHaveBeenCalled();
+    });
+
+    it('should handle compliance officer with SAR/STR filter', async () => {
+      const queryWithSarStr: GetAllCasesQueryDto = { ...query, sarStrStatus: TaskStatus.STATUS_30_COMPLETED };
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.case.findMany.mockResolvedValueOnce([
+        { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
+      ]);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+
+      const result = await service.getAllCases(queryWithSarStr, tenantId, undefined, true);
+
+      expect(result.cases).toHaveLength(1);
+      expect(logger.log).toHaveBeenCalled();
+    });
+
+    it('should handle errors', async () => {
+      prismaService.case.count.mockRejectedValueOnce(new Error('Database error'));
+
+      await expect(service.getAllCases(query, tenantId)).rejects.toThrow('Database error');
+      expect(logger.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('getUserWorkloadStats', () => {
+    const userId = 'user-123';
+
+    it('should get user workload statistics', async () => {
+      const mockActiveCases = [
+        {
+          case_id: 1,
+          status: CaseStatus.STATUS_20_IN_PROGRESS,
+          priority: Priority.CRITICAL,
+          created_at: new Date('2024-01-01'),
+        },
+      ];
+      const mockTasks = [
+        {
+          task_id: 1,
+          name: 'Task 1',
+          case_id: 1,
+          created_at: new Date('2024-01-01'),
+        },
+      ];
+
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.task.count.mockResolvedValueOnce(2);
+      prismaService.case.findMany.mockResolvedValueOnce(mockActiveCases);
+      prismaService.task.findMany.mockResolvedValueOnce(mockTasks);
+
+      const result = await service.getUserWorkloadStats(userId);
+
+      expect(result.totalActiveCases).toBe(1);
+      expect(result.totalPendingTasks).toBe(2);
+      expect(result.casesByStatus).toBeDefined();
+      expect(result.casesByPriority).toBeDefined();
+      expect(result.oldestCase).toBeDefined();
+      expect(result.averageCaseAge).toBeGreaterThan(0);
+      expect(result.upcomingTasks).toHaveLength(1);
+    });
+
+    it('should handle compliance officer filtering', async () => {
+      prismaService.case.count.mockResolvedValueOnce(1);
+      prismaService.task.count.mockResolvedValueOnce(0);
+      prismaService.case.findMany.mockResolvedValueOnce([]);
+      prismaService.task.findMany.mockResolvedValueOnce([]);
+
+      const result = await service.getUserWorkloadStats(userId, true);
+
+      expect(result.totalActiveCases).toBe(1);
+      expect(result.totalPendingTasks).toBe(0);
+    });
+
+    it('should handle no cases', async () => {
+      prismaService.case.count.mockResolvedValueOnce(0);
+      prismaService.task.count.mockResolvedValueOnce(0);
+      prismaService.case.findMany.mockResolvedValueOnce([]);
+      prismaService.task.findMany.mockResolvedValueOnce([]);
+
+      const result = await service.getUserWorkloadStats(userId);
+
+      expect(result.totalActiveCases).toBe(0);
+      expect(result.totalPendingTasks).toBe(0);
+      expect(result.oldestCase).toBeNull();
+      expect(result.averageCaseAge).toBe(0);
+    });
+
+    it('should handle errors', async () => {
+      prismaService.case.count.mockRejectedValueOnce(new Error('Database error'));
+
+      await expect(service.getUserWorkloadStats(userId)).rejects.toThrow('Database error');
+      expect(logger.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('retrieveCase', () => {
+    const caseId = 1;
+    const tenantId = 'tenant-123';
+
+    it('should retrieve a case successfully', async () => {
+      caseRepository.findCaseById.mockResolvedValueOnce(mockCase as any);
+
+      const result = await service.retrieveCase(caseId, tenantId);
+
+      expect(result).toEqual(mockCase);
+      expect(caseRepository.findCaseById).toHaveBeenCalledWith(caseId, tenantId);
+    });
+
+    it('should throw NotFoundException when case not found', async () => {
+      caseRepository.findCaseById.mockResolvedValueOnce(null);
+
+      await expect(service.retrieveCase(caseId, tenantId)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should allow compliance officer to access STATUS_82_CLOSED_CONFIRMED case', async () => {
+      const closedCase = { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED };
+      caseRepository.findCaseById.mockResolvedValueOnce(closedCase as any);
+
+      const result = await service.retrieveCase(caseId, tenantId, true);
+
+      expect(result).toEqual(closedCase);
+    });
+
+    it('should throw ForbiddenException when compliance officer tries to access non-closed case', async () => {
+      caseRepository.findCaseById.mockResolvedValueOnce(mockCase as any);
+
+      await expect(service.retrieveCase(caseId, tenantId, true)).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('getSubCasesDetails', () => {
+    const caseId = 1;
+
+    it('should get sub-cases for a parent case', async () => {
+      const mockSubCases = [
+        { ...mockCase, case_id: 2, parent_id: caseId },
+        { ...mockCase, case_id: 3, parent_id: caseId },
+      ];
+
+      prismaService.case.findMany.mockResolvedValueOnce(mockSubCases as any);
+
+      const result = await service.getSubCasesDetails(caseId);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].parent_id).toBe(caseId);
+    });
+
+    it('should throw BadRequestException when no sub-cases exist', async () => {
+      prismaService.case.findMany.mockResolvedValueOnce(null);
+
+      await expect(service.getSubCasesDetails(caseId)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should return empty array when no sub-cases found', async () => {
+      prismaService.case.findMany.mockResolvedValueOnce([]);
+
+      const result = await service.getSubCasesDetails(caseId);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('updateCase', () => {
+    const caseId = 1;
+    const userId = 'user-123';
+    const updateData = {
+      caseType: CaseType.FRAUD,
+      priority: Priority.URGENT,
+      status: CaseStatus.STATUS_20_IN_PROGRESS,
+      caseOwnerUserId: 'user-456',
+    };
+
+    it('should update a case successfully', async () => {
+      caseRepository.updateCase.mockResolvedValueOnce(mockCase as any);
+
+      const result = await service.updateCase(caseId, updateData, userId);
+
+      expect(result).toEqual(mockCase);
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(caseId, {
+        case_type: updateData.caseType,
+        priority: updateData.priority,
+        status: updateData.status,
+        case_owner_user_id: updateData.caseOwnerUserId,
+      });
+      expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
+    });
+
+    it('should update case with partial data', async () => {
+      const partialUpdate = { priority: Priority.NEW };
+      caseRepository.updateCase.mockResolvedValueOnce(mockCase as any);
+
+      const result = await service.updateCase(caseId, partialUpdate, userId);
+
+      expect(result).toEqual(mockCase);
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(caseId, {
+        case_type: undefined,
+        priority: Priority.NEW,
+        status: undefined,
+        case_owner_user_id: undefined,
+      });
+    });
+
+    it('should handle errors during update', async () => {
+      caseRepository.updateCase.mockRejectedValueOnce(new Error('Update failed'));
+
+      await expect(service.updateCase(caseId, updateData, userId)).rejects.toThrow('Update failed');
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Error updating case'),
+        expect.any(String),
+        'CaseQueryService',
+      );
+    });
+  });
+});
