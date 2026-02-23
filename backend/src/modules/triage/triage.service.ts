@@ -26,6 +26,7 @@ export class TriageService {
     CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     CaseStatus.STATUS_81_CLOSED_REFUTED,
     CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+    CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
   ];
 
   constructor(
@@ -43,7 +44,7 @@ export class TriageService {
     private readonly featureExtractionService: FeatureExtractionService,
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+  ) { }
 
   async handleManualTriage(alertId: number, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string): Promise<Alert> {
     const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
