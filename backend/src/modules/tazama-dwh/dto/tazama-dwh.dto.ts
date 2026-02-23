@@ -1,6 +1,3 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsObject, IsArray } from 'class-validator';
-
 export class TransactionDto {
   date: string | null; // creDtTm
   transactionId: string; // endToEndId

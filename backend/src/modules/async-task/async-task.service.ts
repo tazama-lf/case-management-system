@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AsyncTaskRepository } from '../repository/async-task.repository';
+import { AsyncTask } from '@prisma/client-cms';
 
 @Injectable()
 export class AsyncTaskService {
@@ -14,11 +15,11 @@ export class AsyncTaskService {
     return task.id;
   }
 
-  async getTaskById(taskId: number) {
+  async getTaskById(taskId: number): Promise<AsyncTask | null> {
     return await this.asyncTaskRepository.getTaskById(taskId);
   }
 
-  async getFailedTasks(limit = 100) {
+  async getFailedTasks(limit = 100): Promise<AsyncTask[]> {
     return await this.asyncTaskRepository.getFailedTasks(limit);
   }
 

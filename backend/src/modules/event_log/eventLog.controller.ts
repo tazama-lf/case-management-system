@@ -1,7 +1,8 @@
-import { Controller, Get, Injectable, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiOkResponse, ApiUnauthorizedResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { EventLogService } from './eventLog.service';
+import { EventLog } from '@prisma/client-cms';
 
 @ApiTags('Event Logs')
 @ApiBearerAuth('jwt')
@@ -26,7 +27,7 @@ export class EventLogController {
   })
   @ApiOkResponse({ description: 'Event log entries returned successfully.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
-  async getEventLogs(@Query('limit') limit = 50, @Query('offset') offset = 0) {
-    return await this.eventLogService.getLogs(Number(limit), Number(offset));
+  async getEventLogs(@Query('limit') limit = 50, @Query('offset') offset = 0): Promise<EventLog[]> {
+    return await this.eventLogService.getLogs(limit, offset);
   }
 }

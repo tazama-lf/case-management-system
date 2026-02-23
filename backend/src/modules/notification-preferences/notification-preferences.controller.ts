@@ -91,7 +91,7 @@ export class NotificationPreferencesController {
 
     return {
       message: 'Test notification sent successfully',
-      channels: channels.map((c) => c.toString()),
+      channels: channels.map((c) => c),
     };
   }
 }

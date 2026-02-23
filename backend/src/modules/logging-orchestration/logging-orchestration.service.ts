@@ -14,13 +14,28 @@ export class LoggingOrchestrationService {
     private readonly loggerService: LoggerService,
     private readonly caseHistoryService: CaseHistoryService,
     private readonly taskHistoryService: TaskHistoryService,
-  ) {}
+  ) { }
 
   async logActions(logData: LogDataDTO): Promise<void> {
     try {
       const performedAt = new Date();
-      await this.auditLogService.logAction({ ...logData, performedAt });
-      await this.eventLogService.logEventAction({ ...logData, performedAt });
+      await this.auditLogService.logAction({
+        userId: logData.userId,
+        operation: logData.operation,
+        entityName: logData.entityName,
+        actionPerformed: logData.actionPerformed,
+        outcome: logData.outcome,
+        performedAt,
+      });
+
+      await this.eventLogService.logEventAction({
+        userId: logData.userId,
+        operation: logData.operation,
+        entityName: logData.entityName,
+        actionPerformed: logData.actionPerformed,
+        outcome: logData.outcome,
+        performedAt,
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.loggerService.error(`LoggingOrchestrationService - ${errorMessage}`, error, LoggingOrchestrationService.name);
@@ -28,25 +43,12 @@ export class LoggingOrchestrationService {
     }
   }
 
-  async logActionsWithHistory(logData: LogDataDTO, case_id: number, tenant_id: string, task_id?: number): Promise<void> {
+  async logActionsWithHistory(logData: LogDataDTO, caseId: number, tenantId: string, taskId?: number): Promise<void> {
     try {
       const performedAt = new Date();
       await this.auditLogService.logAction(logData);
 
-      if (!task_id) {
-        await Promise.all([
-          this.eventLogService.logEventAction(logData),
-          this.caseHistoryService.logCaseHistoryAction({
-            userId: logData.userId,
-            operation: logData.operation,
-            entityName: logData.entityName,
-            actionPerformed: logData.actionPerformed,
-            case_id,
-            tenant_id,
-            performedAt,
-          }),
-        ]);
-      } else {
+      if (taskId) {
         await Promise.all([
           this.eventLogService.logEventAction(logData),
           this.taskHistoryService.logTaskHistoryAction({
@@ -54,13 +56,26 @@ export class LoggingOrchestrationService {
             operation: logData.operation,
             entityName: logData.entityName,
             actionPerformed: logData.actionPerformed,
-            case_id,
-            task_id,
-            tenant_id,
+            case_id: caseId,
+            task_id: taskId,
+            tenant_id: tenantId,
             performedAt,
           }),
         ]);
+        return;
       }
+      await Promise.all([
+        this.eventLogService.logEventAction(logData),
+        this.caseHistoryService.logCaseHistoryAction({
+          userId: logData.userId,
+          operation: logData.operation,
+          entityName: logData.entityName,
+          actionPerformed: logData.actionPerformed,
+          case_id: caseId,
+          tenant_id: tenantId,
+          performedAt,
+        }),
+      ]);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.loggerService.error(`LoggingOrchestrationService - ${errorMessage}`, error, LoggingOrchestrationService.name);

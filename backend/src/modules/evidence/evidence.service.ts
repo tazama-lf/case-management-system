@@ -6,7 +6,6 @@ import {
   InternalServerErrorException,
   ForbiddenException,
   UnauthorizedException,
-  ConflictException,
 } from '@nestjs/common';
 import { AuditLogService } from '../audit/auditLog.service';
 import * as crypto from 'node:crypto';
@@ -60,7 +59,6 @@ export class EvidenceService {
   }
 
   async uploadEvidence(files: any[], dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
-    const kycEddTypes = ['KYC', 'EDD'];
     const allowedMimeTypes: Record<string, string[]> = {
       KYC: [
         'application/pdf',
@@ -300,7 +298,6 @@ export class EvidenceService {
       this.logger.log(`Attachment deletion result: ${JSON.stringify(deleteResult)}`);
 
       this.evidenceRepository.deleteEvidenceById(evidenceId, tenantId);
-
     } catch (error) {
       throw error;
     }
@@ -562,8 +559,6 @@ export class EvidenceService {
 
   async getEvidenceByTaskId(taskId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
     const query: any = { taskId, archive: false, page: 1, limit: 100 };
-    // if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    // else
     if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);

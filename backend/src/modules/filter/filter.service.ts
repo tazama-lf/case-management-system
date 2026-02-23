@@ -4,6 +4,7 @@ import { createFilterDto } from './dto/create-filter.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Outcome } from '../../utils/types/outcome';
 import { FilterRepository } from '../repository/filter.repository';
+import { filters } from '@prisma/client-cms';
 
 @Injectable()
 export class FilterService {
@@ -13,7 +14,7 @@ export class FilterService {
     private readonly filterRepository: FilterRepository,
   ) {}
 
-  async createFilter(createFilterDto: createFilterDto, userId: string) {
+  async createFilter(createFilterDto: createFilterDto, userId: string): Promise<filters> {
     this.logger.log(`Adding user filter : ${userId}`, FilterService.name);
     try {
       if (!createFilterDto.filterType && !createFilterDto.userFilters && !createFilterDto.user_id) {
@@ -57,7 +58,7 @@ export class FilterService {
     }
   }
 
-  async getFiltersByUserAndType(userId: string, filterType: string) {
+  async getFiltersByUserAndType(userId: string, filterType: string): Promise<filters[] | null> {
     this.logger.log('Retrieving comment', FilterService.name);
     try {
       const filter = await this.filterRepository.getFiltersByUserAndType(userId, filterType);

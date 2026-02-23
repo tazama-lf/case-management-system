@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { v4 as uuidv4, validate as isUuid } from 'uuid';
+import { EventLog } from '@prisma/client-cms';
 
 @Injectable()
 export class EventLogService {
@@ -13,11 +14,11 @@ export class EventLogService {
     actionPerformed: string;
     outcome: string;
     performedAt?: Date;
-  }) {
-    const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
+  }): Promise<EventLog> {
+    const userId = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
     return await this.prisma.eventLog.create({
       data: {
-        user_id,
+        user_id: userId,
         operation: data.operation,
         entity_name: data.entityName,
         action_performed: data.actionPerformed,
@@ -27,9 +28,9 @@ export class EventLogService {
     });
   }
 
-  async logPermissionDenied(user: any, entityName: string, action: string, _details?: any) {
+  async logPermissionDenied(user: any, entityName: string, action: string, _details?: any): Promise<EventLog> {
     return await this.logEventAction({
-      userId: user?.sub || 'unknown',
+      userId: user?.sub ?? 'unknown',
       operation: 'permission_denied',
       entityName,
       actionPerformed: action,
@@ -37,7 +38,7 @@ export class EventLogService {
     });
   }
 
-  async getLogs(limit = 50, offset = 0) {
+  async getLogs(limit = 50, offset = 0): Promise<EventLog[]> {
     return await this.prisma.eventLog.findMany({
       orderBy: { performed_at: 'desc' },
       take: limit,
@@ -45,8 +46,8 @@ export class EventLogService {
     });
   }
 
-  async getActionHistoryForAlert(alertId: number) {
-    return await this.prisma.eventLog.findMany({
+  async getActionHistoryForAlert(alertId: number): Promise<EventLog | null> {
+    return await this.prisma.eventLog.findFirst({
       where: {
         operation: 'ALERT_UPDATED',
         action_performed: { contains: `${alertId}` },
@@ -56,7 +57,7 @@ export class EventLogService {
     });
   }
 
-  async getActionHistoryForCase(caseId: number) {
+  async getActionHistoryForCase(caseId: number): Promise<EventLog[]> {
     return await this.prisma.eventLog.findMany({
       where: {
         OR: [

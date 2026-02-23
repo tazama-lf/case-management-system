@@ -12,7 +12,10 @@ import type {
 import type { Alert as LegacyAlert } from '../types/alertsdashboard.types';
 import triageService from '../services/triageservice';
 import userService from '../../cases/services/userService';
-import { taskService, type TaskForSupervisor } from '../../cases/services/taskService';
+import {
+  taskService,
+  type TaskForSupervisor,
+} from '../../cases/services/taskService';
 import { useCase, canActOnCase } from '../../cases/hooks/useCase';
 import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
 import { formatDate } from '@/shared/utils/dateUtils';
@@ -206,7 +209,9 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
   useEffect(() => {
     const fetchUsername = async () => {
       try {
-        const userDetails = await userService.getUserDetailsById(action.user_id);
+        const userDetails = await userService.getUserDetailsById(
+          action.user_id,
+        );
         if (userDetails) {
           const userName = userService.formatUserName(userDetails);
           setUsername(userName);
@@ -219,29 +224,24 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
     fetchUsername();
   }, [action.user_id]);
 
-  const displayText = username && action.action_performed.includes(action.user_id)
-    ? action.action_performed.replace(action.user_id, username)
-    : action.action_performed;
+  const displayText =
+    username && action.action_performed.includes(action.user_id)
+      ? action.action_performed.replace(action.user_id, username)
+      : action.action_performed;
 
   const userDisplayName = username || action.user_id;
 
   return (
     <>
       <p className="text-sm text-gray-900">
-        <span className="font-medium">
-          {displayText}
-        </span>
+        <span className="font-medium">{displayText}</span>
       </p>
       <div className="flex items-center space-x-2 text-xs text-gray-500">
-        <span>
-          {formatDate(action.performed_at)}
-        </span>
+        <span>{formatDate(action.performed_at)}</span>
         {action.user_id && (
           <>
             <span>•</span>
-            <span className="font-medium">
-              User: {userDisplayName}
-            </span>
+            <span className="font-medium">User: {userDisplayName}</span>
           </>
         )}
       </div>
@@ -264,9 +264,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
 
-  const [actionHistory, setActionHistory] = useState<ActionHistory[]>([]);
+  const [actionHistory, setActionHistory] = useState<ActionHistory>();
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [isCompleteNewCaseCompleted, setIsCompleteNewCaseCompleted] = useState(false);
+  const [isCompleteNewCaseCompleted, setIsCompleteNewCaseCompleted] =
+    useState(false);
 
   const { data: caseDetails, refetch: refetchCase } = useCase(alert?.case_id);
 
@@ -287,7 +288,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         setAlert(alertDetails);
 
         if (alertDetails.case_id) {
-          queryClient.invalidateQueries({ queryKey: ['case', alertDetails.case_id] });
+          queryClient.invalidateQueries({
+            queryKey: ['case', alertDetails.case_id],
+          });
         }
 
         setLoadingHistory(true);
@@ -295,7 +298,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           const history = await triageService.getAlertActionHistory(alertId);
           setActionHistory(history);
         } catch {
-          setActionHistory([]);
+          setActionHistory({} as ActionHistory);
         } finally {
           setLoadingHistory(false);
         }
@@ -322,12 +325,12 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       try {
         const tasks = await taskService.getTasksByCaseId(alert.case_id);
         const completeNewCaseTask = tasks.find(
-          (task: TaskForSupervisor) => task.name === 'Complete New Case'
+          (task: TaskForSupervisor) => task.name === 'Complete New Case',
         );
 
         if (completeNewCaseTask) {
           setIsCompleteNewCaseCompleted(
-            completeNewCaseTask.status === 'STATUS_30_COMPLETED'
+            completeNewCaseTask.status === 'STATUS_30_COMPLETED',
           );
         } else {
           setIsCompleteNewCaseCompleted(false);
@@ -422,12 +425,14 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
-        { }
+        {}
         <div
           className="fixed inset-0 bg-gray-900 opacity-60 transition-opacity"
           onClick={() => {
             if (alert?.case_id) {
-              queryClient.invalidateQueries({ queryKey: ['case', alert.case_id] });
+              queryClient.invalidateQueries({
+                queryKey: ['case', alert.case_id],
+              });
             }
             onAlertUpdated?.();
             onClose();
@@ -435,14 +440,16 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           aria-hidden="true"
         ></div>
 
-        { }
+        {}
         <div className="relative inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-5xl sm:w-full">
-          { }
+          {}
           <div className="absolute top-0 right-0 pt-4 pr-4 z-10">
             <button
               onClick={() => {
                 if (alert?.case_id) {
-                  queryClient.invalidateQueries({ queryKey: ['case', alert.case_id] });
+                  queryClient.invalidateQueries({
+                    queryKey: ['case', alert.case_id],
+                  });
                 }
                 onAlertUpdated?.();
                 onClose();
@@ -454,10 +461,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
             </button>
           </div>
 
-          { }
+          {}
           <div className="bg-white px-4 pt-4 pb-4 max-h-[85vh] overflow-y-auto">
             <div className="max-w-4xl mx-auto">
-              { }
+              {}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
@@ -470,14 +477,12 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       {alert.priority}
                     </span>
 
-                    { }
+                    {}
                     <div className="flex items-center space-x-2 ml-4">
-                      { }
+                      {}
                       {(() => {
-                        const triageCompleted = actionHistory.some(
-                          (action) => action.operation === 'ALERT_UPDATED',
-                        );
-
+                        const triageCompleted =
+                          actionHistory?.operation.includes('ALERT_UPDATED');
                         const showButton =
                           canPerformActions &&
                           onManualTriage &&
@@ -503,7 +508,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                         ) : null;
                       })()}
 
-                      { }
+                      {}
                       {isAIMode && (
                         <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md border border-blue-200">
                           AI Processed
@@ -520,10 +525,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              { }
+              {}
               <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-                  { }
+                  {}
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Alert Summary
@@ -564,7 +569,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     </div>
                   </div>
 
-                  { }
+                  {}
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Transaction Data
@@ -587,10 +592,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              { }
+              {}
               <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-                  { }
+                  {}
                   <div className="w-full bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Action History
@@ -603,28 +608,29 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           Loading...
                         </span>
                       </div>
-                    ) : actionHistory.length > 0 ? (
+                    ) : actionHistory ? (
                       <div className="space-y-3 max-h-64 overflow-y-auto">
-                        {actionHistory.map((action) => (
+                        {/* {actionHistory.map((action) => ( */}
+                        <div
+                          key={actionHistory.audit_log_id}
+                          className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
+                        >
                           <div
-                            key={action.audit_log_id}
-                            className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
-                          >
-                            <div
-                              className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${action.outcome === 'SUCCESS'
+                            className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
+                              actionHistory.outcome === 'SUCCESS'
                                 ? 'bg-green-100 text-green-600'
-                                : action.outcome === 'FAILURE'
+                                : actionHistory.outcome === 'FAILURE'
                                   ? 'bg-red-100 text-red-600'
                                   : 'bg-blue-100 text-blue-600'
-                                }`}
-                            >
-                              <ClockIcon className="w-4 h-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <ActionHistoryItem action={action} />
-                            </div>
+                            }`}
+                          >
+                            <ClockIcon className="w-4 h-4" />
                           </div>
-                        ))}
+                          <div className="flex-1 min-w-0">
+                            <ActionHistoryItem action={actionHistory} />
+                          </div>
+                        </div>
+                        {/* ))} */}
                       </div>
                     ) : (
                       <div className="text-center py-4">
@@ -637,7 +643,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              { }
+              {}
               <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
@@ -672,7 +678,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                   </div>
                 </div>
 
-                { }
+                {}
                 <div
                   className={`overflow-hidden transition-all duration-300 ${showRules ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
                 >

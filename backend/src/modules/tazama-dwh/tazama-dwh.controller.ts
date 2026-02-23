@@ -1,5 +1,5 @@
-import { Controller, Post, Get, Body, Param, Req, UseGuards, Query, Headers } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse, ApiParam, ApiHeader } from '@nestjs/swagger';
+import { Controller, Post, Get, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { TazamaDwhService } from './tazama-dwh.service';
 import { GenerateProfileDto } from './dto/generate-profile.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
@@ -7,6 +7,7 @@ import { CustomerProfileResponseDto } from './dto/customer-profile.dto';
 import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
+import { transaction } from '@prisma/client-dwh';
 
 @ApiTags('Tazama DWH')
 @Controller('api/v1/dwh')
@@ -17,7 +18,7 @@ export class TazamaDWHController {
 
   @Get('transactions/:creditorId')
   @RequireInvestigatorOrSupervisorRole()
-  async getTransactionsByCreditor(@Req() req: AuthenticatedRequest, @Param('creditorId') creditorId: string) {
+  async getTransactionsByCreditor(@Req() req: AuthenticatedRequest, @Param('creditorId') creditorId: string): Promise<transaction[]> {
     const { tenantId } = req.user.token;
     return await this.tazamaDwhService.getTransactionsByCreditorId(tenantId, creditorId);
   }
@@ -47,7 +48,7 @@ export class TazamaDWHController {
   })
   @ApiResponse({ status: 201, description: 'Profile generated', type: ProfileResponseDto })
   async generateProfile(@Body() dto: GenerateProfileDto, @Req() req: AuthenticatedRequest): Promise<ProfileResponseDto> {
-    const userId = req.user?.token?.clientId;
+    const userId = req.user.token.clientId;
     return await this.tazamaDwhService.generateProfile(dto, userId);
   }
 

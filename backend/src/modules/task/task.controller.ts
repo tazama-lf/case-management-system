@@ -9,7 +9,6 @@ import {
   Query,
   UseGuards,
   BadRequestException,
-  ForbiddenException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -24,15 +23,12 @@ import { UnassignTaskDto } from './dto/unassign-task-dto';
 import {
   RequireAlertTriageRole,
   RequireAnyValidRole,
-  RequireSupervisorRole,
   RequireInvestigatorRole,
-  RequireInvestigatorOrSupervisorRole,
   RequireInvestigatorOrSupervisorRoleOrComplianceRole,
 } from '../../decorators/auth.decorator';
-import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
-import { AuditLogService } from 'src/modules/audit/auditLog.service';
-import { FlowableService } from '../flowable/flowable.service';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { TaskLifecycleService } from './services/task-lifecycle.service';
+import { Task } from '@prisma/client-cms';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -53,7 +49,7 @@ interface AuthenticatedRequest extends Request {
 export class TaskController {
   constructor(
     private readonly taskService: TaskService,
-    private readonly loggerService: LoggerService,
+    private readonly taskLifecycleService: TaskLifecycleService,
   ) {}
 
   @Post()
@@ -119,7 +115,7 @@ export class TaskController {
     status: 403,
     description: 'Forbidden - User lacks ALERT_TRIAGE role',
   })
-  async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest) {
+  async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest): Promise<Task> {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     return await this.taskService.createTask(createTaskDto, userId, tenantId);
@@ -194,11 +190,15 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async reassignTask(@Param('taskId') taskId: number, @Body() reassignTaskDto: ReassignTaskDto, @Req() req: AuthenticatedRequest) {
+  async reassignTask(
+    @Param('taskId') taskId: number,
+    @Body() reassignTaskDto: ReassignTaskDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<Task> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
 
-    return await this.taskService.reassignTask(taskId, userId, tenantId, reassignTaskDto.assignedUserId, reassignTaskDto.note);
+    return await this.taskLifecycleService.reassignTask(taskId, userId, tenantId, reassignTaskDto.assignedUserId, reassignTaskDto.note);
   }
 
   @Patch(':taskId/unassign')
@@ -281,7 +281,11 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async unassignTask(@Param('taskId') taskId: number, @Body() unassignDto: UnassignTaskDto, @Req() req: AuthenticatedRequest) {
+  async unassignTask(
+    @Param('taskId') taskId: number,
+    @Body() unassignDto: UnassignTaskDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<Task> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
 
@@ -293,7 +297,7 @@ export class TaskController {
       throw new BadRequestException('Reason for unassigning task is required');
     }
 
-    return await this.taskService.unassignTask(taskId, userId, tenantId, unassignDto.reason);
+    return await this.taskLifecycleService.unassignTask(taskId, userId, tenantId, unassignDto.reason);
   }
 
   @Patch(':taskId/assign')
@@ -363,14 +367,22 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task or investigator does not exist',
   })
-  async assignTaskToInvestigator(@Param('taskId') taskId: number, @Body() assignTaskDto: AssignTaskDto, @Req() req: AuthenticatedRequest) {
-    const supervisorId = req.user.token.clientId;
+  async assignTaskToInvestigator(
+    @Param('taskId') taskId: number,
+    @Body() assignTaskDto: AssignTaskDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: { taskId: number; assignedUserId: string | null; status: string; assignedAt: string };
+  }> {
+    const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
 
-    const result = await this.taskService.assignTaskToInvestigator(
+    const result = await this.taskLifecycleService.assignTaskToInvestigator(
       taskId,
       assignTaskDto.assignedUserId,
-      supervisorId,
+      userId,
       tenantId,
       assignTaskDto.note,
     );
@@ -378,69 +390,6 @@ export class TaskController {
     return {
       success: true,
       message: `Task ${taskId} successfully assigned to investigator ${assignTaskDto.assignedUserId}`,
-      data: {
-        taskId: result.task_id,
-        assignedUserId: result.assigned_user_id,
-        status: result.status,
-        assignedAt: new Date().toISOString(),
-      },
-    };
-  }
-
-  @Patch(':taskId/self-assign')
-  @RequireInvestigatorRole()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Self-assign a task (Investigator)',
-    description: 'Allows an investigator to assign an unassigned task to themselves. Only works on unassigned tasks.',
-  })
-  @ApiParam({
-    name: 'taskId',
-    type: 'number',
-    description: 'CaseId of the task to self-assigns',
-    example: 123,
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Task successfully self-assigned',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        message: { type: 'string' },
-        data: {
-          type: 'object',
-          properties: {
-            taskId: { type: 'string', format: 'uuid' },
-            assignedUserId: { type: 'string', format: 'uuid' },
-            status: { type: 'string' },
-            assignedAt: { type: 'string', format: 'date-time' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Bad Request - Task is already assigned',
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden - User lacks INVESTIGATOR role',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Not Found - Task does not exist',
-  })
-  async selfAssignTask(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest) {
-    const userId = req.user.token.clientId;
-    const { tenantId } = req.user.token;
-
-    const result = await this.taskService.selfAssignTask(taskId, userId, tenantId);
-
-    return {
-      success: true,
-      message: `Task ${taskId} successfully self-assigned`,
       data: {
         taskId: result.task_id,
         assignedUserId: result.assigned_user_id,
@@ -516,7 +465,7 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async updateTask(@Param('taskId') taskId: number, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest) {
+  async updateTask(@Param('taskId') taskId: number, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest): Promise<Task> {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
     return await this.taskService.updateTask(taskId, dto, userId, tenantId);
@@ -569,7 +518,7 @@ export class TaskController {
     status: 401,
     description: 'Unauthorized - Invalid or missing authentication',
   })
-  async getTasks(@Req() req: AuthenticatedRequest, @Query('status') status?: string) {
+  async getTasks(@Req() req: AuthenticatedRequest, @Query('status') status?: string): Promise<Task[]> {
     const tenantId = req.user.token.tenantId;
     return await this.taskService.getTasks(tenantId, status);
   }
@@ -622,184 +571,12 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Case does not exist',
   })
-  async getTasksByCaseId(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
+  async getTasksByCaseId(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<Task[]> {
     const userId = req.user.token.clientId;
     const tenantId = req.user.token.tenantId;
-    const userClaims = req.user.token.claims || [];
+    const userClaims = req.user.token.claims ?? [];
     return await this.taskService.getTasksByCaseId(caseId, tenantId, userId, userClaims);
   }
-
-  // @Get('work-queues/:candidateGroup')
-  // @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  // @ApiOperation({
-  //   summary: 'Get work queue for a candidate group',
-  //   description:
-  //     'Retrieves active tasks for a specific candidate group from Flowable. Since Flowable and domain tables are in sync, candidate groups are better managed in Flowable for consistent workflow management.',
-  // })
-  // @ApiParam({
-  //   name: 'candidateGroup',
-  //   type: 'string',
-  //   description: 'Candidate group identifier',
-  //   example: 'investigations',
-  //   enum: ['supervisors', 'investigations', 'analysts'],
-  // })
-  // @ApiQuery({
-  //   name: 'unassignedOnly',
-  //   required: false,
-  //   type: Boolean,
-  //   description: 'Filter for unassigned tasks only',
-  //   example: false,
-  // })
-  // @ApiQuery({
-  //   name: 'page',
-  //   required: false,
-  //   type: Number,
-  //   description: 'Page number for pagination',
-  //   example: 1,
-  // })
-  // @ApiQuery({
-  //   name: 'limit',
-  //   required: false,
-  //   type: Number,
-  //   description: 'Number of items per page',
-  //   example: 20,
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'List of tasks in the work queue from Flowable',
-  //   schema: {
-  //     type: 'object',
-  //     properties: {
-  //       success: { type: 'boolean', example: true },
-  //       data: {
-  //         type: 'object',
-  //         properties: {
-  //           tasks: {
-  //             type: 'array',
-  //             items: {
-  //               type: 'object',
-  //               properties: {
-  //                 id: { type: 'string' },
-  //                 name: { type: 'string' },
-  //                 description: { type: 'string' },
-  //                 assignee: { type: 'string', nullable: true },
-  //                 candidateGroups: { type: 'array', items: { type: 'string' } },
-  //                 created: { type: 'string', format: 'date-time' },
-  //                 processInstanceId: { type: 'string' },
-  //                 taskDefinitionKey: { type: 'string' },
-  //               },
-  //             },
-  //           },
-  //           total: { type: 'number', example: 50 },
-  //           page: { type: 'number', example: 1 },
-  //           limit: { type: 'number', example: 20 },
-  //           totalPages: { type: 'number', example: 3 },
-  //         },
-  //       },
-  //     },
-  //   },
-  // })
-  // @ApiResponse({
-  //   status: 403,
-  //   description: 'Forbidden - User lacks INVESTIGATOR or SUPERVISOR role',
-  // })
-  // @ApiResponse({
-  //   status: 404,
-  //   description: 'Not Found - Invalid candidate group',
-  // })
-  // @ApiResponse({
-  //   status: 503,
-  //   description: 'Service Unavailable - Flowable service unavailable, falling back to domain tables',
-  // })
-  // async getTasksByCandidateGroup(
-  //   @Param('candidateGroup') candidateGroup: string,
-  //   @Req() req: AuthenticatedRequest,
-  //   @Query('unassignedOnly') unassignedOnly?: string,
-  //   @Query('page') page?: string,
-  //   @Query('limit') limit?: string,
-  // ) {
-  //   try {
-  //     const userId = req.user.token.clientId;
-  //     const tenantId = req.user.token.tenantId;
-  //     const userClaims = req.user.token.backendClaims || [];
-
-  //     if (!userId) {
-  //       throw new BadRequestException('User not authenticated or missing client ID');
-  //     }
-
-  //     // Check if user is investigator (not supervisor or admin)
-  //     const isInvestigator =
-  //       userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
-
-  //     // Restrict investigators to only see investigations and investigators queues
-  //     const allowedQueues = ['investigations', 'investigators'];
-  //     if (isInvestigator && !allowedQueues.includes(candidateGroup)) {
-  //       throw new ForbiddenException('Investigators can only access the investigations and investigators queues');
-  //     }
-
-  //     const pageNum = parseInt(page || '1');
-  //     const limitNum = parseInt(limit || '20');
-
-  //     try {
-  //       const flowableTasks = await this.flowableService.getCandidateGroupTasks(candidateGroup, true);
-
-  //       let filteredTasks = flowableTasks;
-  //       if (unassignedOnly === 'true') {
-  //         filteredTasks = flowableTasks.filter((task: any) => !task.assignee);
-  //       }
-
-  //       const startIndex = (pageNum - 1) * limitNum;
-  //       const paginatedTasks = filteredTasks.slice(startIndex, startIndex + limitNum);
-
-  //       return {
-  //         success: true,
-  //         data: {
-  //           tasks: paginatedTasks,
-  //           total: filteredTasks.length,
-  //           page: pageNum,
-  //           limit: limitNum,
-  //           totalPages: Math.ceil(filteredTasks.length / limitNum),
-  //         },
-  //         source: 'flowable',
-  //       };
-  //     } catch (flowableError) {
-  //       this.loggerService.warn(
-  //         `Flowable service unavailable for candidate group ${candidateGroup}, falling back to domain tables: ${flowableError.message}`,
-  //         TaskController.name,
-  //       );
-
-  //       const domainTasks = await this.taskService.getTasksByCandidateGroup(candidateGroup, userId);
-
-  //       let filteredTasks = domainTasks;
-  //       if (unassignedOnly === 'true') {
-  //         filteredTasks = domainTasks.filter((t: any) => !t.assigned_user_id);
-  //       }
-
-  //       const startIndex = (pageNum - 1) * limitNum;
-  //       const paginatedTasks = filteredTasks.slice(startIndex, startIndex + limitNum);
-
-  //       return {
-  //         success: true,
-  //         data: {
-  //           tasks: paginatedTasks,
-  //           total: filteredTasks.length,
-  //           page: pageNum,
-  //           limit: limitNum,
-  //           totalPages: Math.ceil(filteredTasks.length / limitNum),
-  //         },
-  //         source: 'domain_tables',
-  //         warning: 'Flowable service unavailable, using domain tables as fallback',
-  //       };
-  //     }
-  //   } catch (error) {
-  //     this.loggerService.error(
-  //       `Failed to get tasks for candidate group ${candidateGroup}: ${error.message}`,
-  //       error.stack,
-  //       TaskController.name,
-  //     );
-  //     throw error;
-  //   }
-  // }
 
   @Get(':taskId')
   @RequireInvestigatorRole()
@@ -852,60 +629,8 @@ export class TaskController {
     status: 404,
     description: 'Not Found - Task does not exist',
   })
-  async getTaskById(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest) {
+  async getTaskById(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest): Promise<Task | null> {
     const tenantId = req.user.token.tenantId;
     return await this.taskService.getTaskById(taskId, tenantId);
-  }
-
-  @Get('statistics')
-  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  @ApiOperation({
-    summary: 'Get work queue statistics',
-    description: 'Retrieves task statistics for work queues accessible to the authenticated user.',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Work queue statistics retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean', example: true },
-        data: {
-          type: 'object',
-          properties: {
-            totalTasks: { type: 'number', example: 50 },
-            pendingTasks: { type: 'number', example: 15 },
-            inProgressTasks: { type: 'number', example: 20 },
-            completedTasks: { type: 'number', example: 12 },
-            unassignedTasks: { type: 'number', example: 8 },
-            overdueTasks: { type: 'number', example: 3 },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - Invalid or missing authentication',
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden - User lacks INVESTIGATOR or SUPERVISOR role',
-  })
-  async getWorkQueueStatistics(@Req() req: AuthenticatedRequest) {
-    try {
-      const userId = req.user.token.clientId;
-      const tenantId = req.user.token.tenantId;
-      const statistics = await this.taskService.getWorkQueueStatistics(userId, tenantId);
-      return {
-        success: true,
-        data: statistics,
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.loggerService.error(`Failed to get work queue statistics: ${errorMessage}`, errorStack, TaskController.name);
-      throw error;
-    }
   }
 }

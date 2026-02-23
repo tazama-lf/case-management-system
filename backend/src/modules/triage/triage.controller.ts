@@ -6,6 +6,7 @@ import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { RequireAnyClaims, RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
+import { Alert } from '@prisma/client-cms';
 
 @ApiTags('Alert Triage')
 @Controller('api/v1/triage/alerts')
@@ -25,7 +26,7 @@ export class TriageController {
     type: HealthCheckResponseDTO,
   })
   @RequireAnyClaims()
-  getTest() {
+  getTest(): { status: string } {
     return { status: 'ok' };
   }
 
@@ -51,7 +52,11 @@ export class TriageController {
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid data' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
-  async manualTriage(@Param('alertId') alertId: number, @Body() dto: ManualAlertUpdateDTO, @Req() req: AuthenticatedRequest) {
+  async manualTriage(
+    @Param('alertId') alertId: number,
+    @Body() dto: ManualAlertUpdateDTO,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<Alert> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');

@@ -1,5 +1,6 @@
 import { Controller, Post, Get, Body, Param, Logger } from '@nestjs/common';
 import { AsyncTaskService } from './async-task.service';
+import { AsyncTask } from '@prisma/client-cms';
 
 @Controller('async-tasks')
 export class AsyncTaskController {
@@ -11,7 +12,7 @@ export class AsyncTaskController {
    * Get task by ID
    */
   @Get(':taskId')
-  async getTask(@Param('taskId') taskId: number) {
+  async getTask(@Param('taskId') taskId: number): Promise<AsyncTask | null> {
     return await this.asyncTaskService.getTaskById(taskId);
   }
 
@@ -19,7 +20,7 @@ export class AsyncTaskController {
    * Get failed tasks
    */
   @Get('failed/list')
-  async getFailedTasks() {
+  async getFailedTasks(): Promise<AsyncTask[]> {
     return await this.asyncTaskService.getFailedTasks(50);
   }
 
@@ -27,7 +28,7 @@ export class AsyncTaskController {
    * Retry a failed task
    */
   @Post(':taskId/retry')
-  async retryTask(@Param('taskId') taskId: number) {
+  async retryTask(@Param('taskId') taskId: number): Promise<{ success: boolean; message: string }> {
     await this.asyncTaskService.retryFailedTask(taskId);
     return {
       success: true,

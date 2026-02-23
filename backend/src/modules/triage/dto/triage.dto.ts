@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsObject, IsString } from 'class-validator';
+import { IsNumber, IsString } from 'class-validator';
 
 export class HealthCheckResponseDTO {
   @ApiProperty({
@@ -15,6 +15,7 @@ export class AlertTriageResponseDTO {
     description: 'Alert Id',
     example: 123,
   })
+  @IsNumber()
   alert_id: number;
 
   @ApiProperty({
@@ -22,6 +23,7 @@ export class AlertTriageResponseDTO {
     example: 'TRIAGED',
     type: 'string',
   })
+  @IsString()
   status: string;
 
   @ApiProperty({
@@ -29,6 +31,7 @@ export class AlertTriageResponseDTO {
     example: 'URGENT',
     type: 'string',
   })
+  @IsString()
   priority: string;
 
   @ApiProperty({
@@ -37,6 +40,7 @@ export class AlertTriageResponseDTO {
     type: 'number',
     minimum: 0,
   })
+  @IsNumber()
   confidence_per: number;
 
   @ApiProperty({
@@ -44,5 +48,6 @@ export class AlertTriageResponseDTO {
     example: '2024-12-03T10:30:00Z',
     format: 'date-time',
   })
+  @IsString()
   updated_at: string;
 }

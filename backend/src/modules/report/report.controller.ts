@@ -95,9 +95,6 @@ export class ReportsController {
     }
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
-
-    const claims = req.user.token.claims || [];
-
     const role = 'CMS_SUPERVISOR';
     return await this.reportsService.generateFraudReport(file, dto, userId, tenantId, role);
   }

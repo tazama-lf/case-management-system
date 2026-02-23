@@ -1,7 +1,7 @@
 import { Injectable, HttpException, HttpStatus, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import axios, { AxiosInstance } from 'axios';
+import { AxiosInstance } from 'axios';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import FormData = require('form-data');
@@ -16,10 +16,7 @@ import { CaseEventListener } from './listeners/case-event.listener';
 import { TaskEventListener } from './listeners/task-event.listener';
 import {
   TaskAssignedEvent,
-  TaskCreatedEvent,
-  TaskStatusChangedEvent,
   TaskUnassignedEvent,
-  BpmnTaskCreatedEvent,
   CaseAbandonedEvent,
   CaseCreatedEvent,
   CaseStatusChangedEvent,
@@ -328,9 +325,9 @@ export class FlowableService implements OnModuleInit {
           caseStatus: event.caseStatus,
           creatorRole: event.creatorRole,
           // Required BPMN variables with safe defaults
-          caseType: (event as any).caseType || 'FRAUD',
-          casePriority: (event as any).priority || 'NEW',
-          autoCloseEligible: String((event as any).autoCloseEligible || false),
+          caseType: (event as any).caseType ?? 'FRAUD',
+          casePriority: (event as any).priority ?? 'NEW',
+          autoCloseEligible: String((event as any).autoCloseEligible ?? false),
           readyForAssignment: 'true',
           // Investigation action variables with defaults
           investigationAction: 'pending',

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { Alert, Priority, Prisma } from '@prisma/client-cms';
+import { Alert, Priority, Prisma, TransactionData } from '@prisma/client-cms';
 import { CreateAlertDTO, UpdateAlertDTO } from '../alert/dto';
 import { extractReferenceId } from './utils/extractReferenceId';
 import { TransactionDTO } from 'src/dtos/Transaction.dto';
@@ -13,40 +13,35 @@ export class AlertRepository extends BaseRepository {
     super(prisma);
   }
 
-  async createAlert(alertData: CreateAlertDTO, tx?: Prisma.TransactionClient) {
-    try {
-      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
-      const alert_data = JSON.parse(JSON.stringify(alertData.report));
-      const transaction = JSON.parse(JSON.stringify(alertData.transaction));
-      const network_map = JSON.parse(JSON.stringify(alertData.networkMap));
-      const createdAlert = await client.alert.create({
-        data: {
-          tenant_id: alertData.tenantId,
-          priority: Priority.NEW,
-          source: alertData.source,
-          txtp: alertData.txtp,
-          confidence_per: alertData.confidencePer,
-          message: alertData.message,
-          alert_data,
-          transaction,
-          network_map,
-          case_id: !alertData.caseId ? null : alertData.caseId,
-        },
-      });
+  async createAlert(alertData: CreateAlertDTO, tx?: Prisma.TransactionClient): Promise<Alert> {
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
+    const AlertData = JSON.parse(JSON.stringify(alertData.report));
+    const transaction = JSON.parse(JSON.stringify(alertData.transaction));
+    const networkMap = JSON.parse(JSON.stringify(alertData.networkMap));
+    const createdAlert = await client.alert.create({
+      data: {
+        tenant_id: alertData.tenantId,
+        priority: Priority.NEW,
+        source: alertData.source,
+        txtp: alertData.txtp,
+        confidence_per: alertData.confidencePer,
+        message: alertData.message,
+        alert_data: AlertData,
+        transaction,
+        network_map: networkMap,
+        case_id: !alertData.caseId ? null : alertData.caseId,
+      },
+    });
 
-      if (!createdAlert) {
-        throw new Error('Failed to create alert');
-      }
-
-      return createdAlert;
-    } catch (error) {
-      throw error;
+    if (!createdAlert) {
+      throw new Error('Failed to create alert');
     }
+    return createdAlert;
   }
 
-  async createTransaction(tenantId: string, transactionData: TransactionDTO, tx?: Prisma.TransactionClient) {
+  async createTransaction(tenantId: string, transactionData: TransactionDTO, tx?: Prisma.TransactionClient): Promise<TransactionData> {
     try {
-      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
       if (!transactionData || typeof transactionData !== 'object') {
         throw new Error('Invalid transaction data');
       }
@@ -76,9 +71,9 @@ export class AlertRepository extends BaseRepository {
     }
   }
 
-  async getAlertById(alertId: number, tx?: Prisma.TransactionClient) {
+  async getAlertById(alertId: number, tx?: Prisma.TransactionClient): Promise<Alert> {
     try {
-      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
       const alert = await client.alert.findUnique({
         where: { alert_id: alertId },
       });
@@ -93,9 +88,9 @@ export class AlertRepository extends BaseRepository {
     }
   }
 
-  async getAlertByCaseId(caseId: number, tx?: Prisma.TransactionClient) {
+  async getAlertByCaseId(caseId: number, tx?: Prisma.TransactionClient): Promise<number> {
     try {
-      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
       const alert = await client.alert.findUnique({
         where: { case_id: caseId },
       });
@@ -112,7 +107,7 @@ export class AlertRepository extends BaseRepository {
 
   async updateAlert(alertId: number, updateData: UpdateAlertDTO, tx?: Prisma.TransactionClient): Promise<Alert> {
     try {
-      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
       const updatedAlert = await client.alert.update({
         where: { alert_id: alertId },
         data: {
@@ -147,7 +142,7 @@ export class AlertRepository extends BaseRepository {
     tx?: Prisma.TransactionClient,
   ) {
     try {
-      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
       const { where: whereClause = {}, sortBy = 'created_at', sortOrder = 'desc', page = 1, limit = 10 } = options;
 
       const alerts = await client.alert.findMany({
@@ -174,9 +169,9 @@ export class AlertRepository extends BaseRepository {
     }
   }
 
-  async count(options: { where?: Prisma.AlertWhereInput }, tx?: Prisma.TransactionClient) {
+  async count(options: { where?: Prisma.AlertWhereInput }, tx?: Prisma.TransactionClient): Promise<number> {
     try {
-      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
       const { where: whereClause = {} } = options;
       const totalCount = await client.alert.count({ where: whereClause });
       return totalCount;
@@ -185,9 +180,9 @@ export class AlertRepository extends BaseRepository {
     }
   }
 
-  async getReferenceId(txTp: string, tx?: Prisma.TransactionClient) {
+  async getReferenceId(txTp: string, tx?: Prisma.TransactionClient): Promise<{ referenceIdName: string }> {
     try {
-      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
       const referenceId = await client.referenceId.findUnique({
         where: {
           txTp,
