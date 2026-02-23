@@ -4,6 +4,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Outcome } from '../../utils/types/outcome';
 import { CommentRepository } from '../repository/comment.repository';
+import { Comment } from '@prisma/client-cms';
 
 @Injectable()
 export class CommentService {
@@ -49,7 +50,7 @@ export class CommentService {
     }
   }
 
-  async getComment(commentId: number, userId: string, tenantId: string) {
+  async getComment(commentId: number, userId: string, tenantId: string): Promise<Comment> {
     this.logger.log('Retrieving comment', CommentService.name);
     try {
       const comment = await this.commentRepository.getCommentsByCommentId(commentId, tenantId);
@@ -82,7 +83,7 @@ export class CommentService {
     }
   }
 
-  async getCommentsByCaseOrTask(caseId?: number, taskId?: number, userId?: string) {
+  async getCommentsByCaseOrTask(caseId?: number, taskId?: number, userId?: string): Promise<Comment[]> {
     this.logger.log('Retrieving comments by case or task', CommentService.name);
     try {
       if (!caseId && !taskId) {
@@ -102,7 +103,7 @@ export class CommentService {
           userId,
           operation: 'getCommentsByCaseOrTask',
           entityName: CommentService.name,
-          actionPerformed: `Successfully retrieved comments for ${caseId ? 'case' : 'task'} ID: ${caseId || taskId}`,
+          actionPerformed: `Successfully retrieved comments for ${caseId ? 'case' : 'task'} ID: ${caseId ?? taskId}`,
           outcome: Outcome.SUCCESS,
           performedAt: new Date(),
         });
@@ -116,7 +117,7 @@ export class CommentService {
           userId,
           operation: 'getCommentsByCaseOrTask',
           entityName: CommentService.name,
-          actionPerformed: `Error retrieving comments for ${caseId ? 'case' : 'task'} ID: ${caseId || taskId}`,
+          actionPerformed: `Error retrieving comments for ${caseId ? 'case' : 'task'} ID: ${caseId ?? taskId}`,
           outcome: Outcome.FAILURE,
           performedAt: new Date(),
         });
@@ -125,7 +126,7 @@ export class CommentService {
     }
   }
 
-  async getCommentsByCaseId(caseId: number, userId?: string) {
+  async getCommentsByCaseId(caseId: number, userId?: string): Promise<Comment[]> {
     this.logger.log('Retrieving comments by caseId: ', CommentService.name);
 
     try {
@@ -159,7 +160,7 @@ export class CommentService {
     }
   }
 
-  async getCommentsByTaskId(taskId: number, userId?: string) {
+  async getCommentsByTaskId(taskId: number, userId?: string): Promise<Comment[]> {
     this.logger.log('Retrieving comments by taskId: ', CommentService.name);
 
     try {

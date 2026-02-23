@@ -7,8 +7,8 @@ import { TaskService } from 'src/modules/task/task.service';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 import { Outcome } from 'src/utils/types/outcome';
 import { CreateCaseDto } from '../dto';
-import { ConfigService } from '@nestjs/config';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
+import { Case } from '@prisma/client-cms';
 
 @Injectable()
 export class CaseCreationService {
@@ -16,12 +16,11 @@ export class CaseCreationService {
     private readonly loggerService: LoggerService,
     private readonly caseRepository: CaseRepository,
     private readonly taskService: TaskService,
-    private readonly configService: ConfigService,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
-  async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string) {
+  async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string): Promise<Case> {
     try {
       this.loggerService.log('Start - Create Case', CaseCreationService.name);
 

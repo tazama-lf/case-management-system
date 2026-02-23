@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, IsBoolean, MinLength, MaxLength, Max, IsNumber } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, MinLength, MaxLength, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { CaseClosureOutcome } from '../../../utils/enums/case-enum';
 

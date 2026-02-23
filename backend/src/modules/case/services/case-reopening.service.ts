@@ -13,13 +13,11 @@ import { Outcome } from '../../../utils/types/outcome';
 import { FlowableService } from '../../flowable/flowable.service';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
-import { AuditLogService } from 'src/modules/audit/auditLog.service';
 @Injectable()
 export class CaseReopeningService {
   constructor(
     private readonly caseRepository: CaseRepository,
     private readonly commentRepository: CommentRepository,
-    private readonly auditLogService: AuditLogService,
     private readonly notificationService: NotificationService,
     private readonly prismaService: PrismaService,
     private readonly taskService: TaskService,
@@ -27,7 +25,7 @@ export class CaseReopeningService {
     private readonly caseQueryService: CaseQueryService,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   private determineOriginalClosedStatus(caseData: any): CaseStatus {
     return determineOriginalClosedStatus(caseData);
@@ -66,7 +64,6 @@ export class CaseReopeningService {
               where: { case_id: updatedCase.parent_id },
               data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
             });
-
           }
 
           return { case: updatedCase };
@@ -249,7 +246,7 @@ export class CaseReopeningService {
         candidateGroup = CANDIDATE_GROUPS.INVESTIGATIONS;
 
         this.logger.log(
-          `Reopening approved - assigning to investigations queue (requester role: ${requesterRole || 'unknown'})`,
+          `Reopening approved - assigning to investigations queue (requester role: ${requesterRole ?? 'unknown'})`,
           CaseReopeningService.name,
         );
       }
@@ -260,7 +257,7 @@ export class CaseReopeningService {
           where: { case_id: caseId },
           data: {
             status: newCaseStatus,
-            case_owner_user_id: assignedUserId || null,
+            case_owner_user_id: assignedUserId ?? null,
             updated_at: new Date(),
           },
         });
@@ -301,7 +298,7 @@ export class CaseReopeningService {
           supervisorId,
           {
             caseId,
-            note: `Case reopening approved by supervisor. Previous status: ${caseData.status}. Reason: ${reopeningMetadata.reason || 'Not specified'}`,
+            note: `Case reopening approved by supervisor. Previous status: ${caseData.status}. Reason: ${reopeningMetadata.reason ?? 'Not specified'}`,
             tenantId,
           },
           tx,
@@ -316,7 +313,7 @@ export class CaseReopeningService {
           status: newTaskStatus,
           assignedUserId,
           name: TASK_NAMES.INVESTIGATE_CASE,
-          description: `Case reopened for additional investigation. ${reopeningMetadata.reason || ''}`,
+          description: `Case reopened for additional investigation. ${reopeningMetadata.reason ?? ''}`,
           candidateGroup,
         },
         supervisorId,
@@ -398,7 +395,7 @@ export class CaseReopeningService {
           task_id: investigationTask.task_id,
           name: investigationTask.name,
           status: investigationTask.status,
-          assigned_to: assignedUserId || candidateGroup,
+          assigned_to: assignedUserId ?? candidateGroup,
           candidateGroup,
         },
       };

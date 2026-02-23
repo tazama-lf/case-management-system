@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { v4 as uuidv4, validate as isUuid } from 'uuid';
+import { AuditLog } from '@prisma/client-cms';
 
 @Injectable()
 export class AuditLogService {
@@ -13,7 +14,7 @@ export class AuditLogService {
     actionPerformed: string;
     outcome: string;
     performedAt?: Date;
-  }) {
+  }): Promise<AuditLog> {
     const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
     return await this.prisma.auditLog.create({
       data: {
@@ -27,7 +28,7 @@ export class AuditLogService {
     });
   }
 
-  async logPermissionDenied(user: any, entityName: string, action: string, _details?: any) {
+  async logPermissionDenied(user: any, entityName: string, action: string, _details?: any): Promise<AuditLog> {
     return await this.logAction({
       userId: user?.sub || 'unknown',
       operation: 'permission_denied',
@@ -37,7 +38,7 @@ export class AuditLogService {
     });
   }
 
-  async getLogs(limit = 50, offset = 0) {
+  async getLogs(limit = 50, offset = 0): Promise<AuditLog[]> {
     return await this.prisma.auditLog.findMany({
       orderBy: { performed_at: 'desc' },
       take: limit,
@@ -45,7 +46,7 @@ export class AuditLogService {
     });
   }
 
-  async getActionHistoryForAlert(alertId: number) {
+  async getActionHistoryForAlert(alertId: number): Promise<AuditLog[]> {
     return await this.prisma.auditLog.findMany({
       where: {
         operation: 'ALERT_UPDATED',
@@ -56,7 +57,7 @@ export class AuditLogService {
     });
   }
 
-  async getActionHistoryForCase(caseId: number) {
+  async getActionHistoryForCase(caseId: number): Promise<AuditLog[]> {
     return await this.prisma.auditLog.findMany({
       where: {
         OR: [

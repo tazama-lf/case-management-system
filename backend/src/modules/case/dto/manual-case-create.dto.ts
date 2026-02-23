@@ -1,5 +1,5 @@
 import { CaseType } from '@prisma/client-cms';
-import { IsEnum, IsNumber, IsUUID } from 'class-validator';
+import { IsEnum, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ManualCreateCaseDto {
