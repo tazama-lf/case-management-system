@@ -1,7 +1,8 @@
-import { Controller, Get, Injectable, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiOkResponse, ApiUnauthorizedResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { AuditLogService } from './auditLog.service';
+import { AuditLog } from '@prisma/client-cms';
 
 @ApiTags('Audit Logs')
 @ApiBearerAuth('jwt')
@@ -26,7 +27,7 @@ export class AuditLogController {
   })
   @ApiOkResponse({ description: 'Audit log entries returned successfully.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
-  async getAuditLogs(@Query('limit') limit = 50, @Query('offset') offset = 0) {
+  async getAuditLogs(@Query('limit') limit = 50, @Query('offset') offset = 0): Promise<AuditLog[]> {
     return await this.auditLogService.getLogs(Number(limit), Number(offset));
   }
 }
