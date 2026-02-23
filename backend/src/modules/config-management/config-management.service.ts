@@ -534,7 +534,7 @@ export class ConfigManagementService {
         create: {
           role_name: roleName,
           permissions: newPermissions,
-          description: changeLog.change_reason || '',
+          description: changeLog.change_reason ?? '',
           created_by: userId,
           updated_by: userId,
         },
@@ -566,8 +566,8 @@ export class ConfigManagementService {
     limit?: number;
   }) {
     const where: any = {};
-    const page = filters?.page || 1;
-    const limit = filters?.limit || 50;
+    const page = filters?.page ?? 1;
+    const limit = filters?.limit ?? 50;
     const skip = (page - 1) * limit;
 
     if (filters?.startDate) {
@@ -628,8 +628,8 @@ export class ConfigManagementService {
       log.changed_by,
       log.change_status,
       log.created_at,
-      log.approved_by || '',
-      log.approval_date || '',
+      log.approved_by ?? '',
+      log.approval_date ?? '',
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((row) => row.map((cell) => `"${cell}"`).join(','))].join('\n');

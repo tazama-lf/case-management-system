@@ -29,7 +29,7 @@ export class NotificationPreferencesController {
     type: NotificationPreferenceResponseDto,
   })
   async getUserPreferences(@User() user: JwtUser): Promise<NotificationPreferenceResponseDto> {
-    return this.notificationPreferencesService.getUserPreferences(user.sub, user.tenantId);
+    return await this.notificationPreferencesService.getUserPreferences(user.sub, user.tenantId);
   }
 
   @Put()
@@ -52,7 +52,7 @@ export class NotificationPreferencesController {
     @User() user: JwtUser,
     @Body() dto: UpdateNotificationPreferenceDto,
   ): Promise<NotificationPreferenceResponseDto> {
-    return this.notificationPreferencesService.updatePreferences(user.sub, dto);
+    return await this.notificationPreferencesService.updatePreferences(user.sub, dto);
   }
 
   @Get('history')
@@ -91,7 +91,7 @@ export class NotificationPreferencesController {
 
     return {
       message: 'Test notification sent successfully',
-      channels: channels.map((c) => c.toString()),
+      channels: channels.map((c) => c),
     };
   }
 }
