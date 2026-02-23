@@ -57,7 +57,12 @@ export class TriageService {
       const priority = this.casePriorityUtil.determinePriority(priorityScore);
       updateAlertData.priority = priority;
       const transactionResult = await this.alertRepository.transaction(async (tx) => {
-        const alert = await this.alertService.updateAlert(alertId, userId, updateAlertData, tx);
+        const alert = await this.alertService.updateAlert(
+          alertId,
+          userId,
+          { confidencePer: updateAlertData.confidence_per, priority_score: updateAlertData.priorityScore, ...updateAlertData },
+          tx,
+        );
         if (!alert.case_id) {
           throw new InternalServerErrorException('Alert case_id is missing.');
         }
