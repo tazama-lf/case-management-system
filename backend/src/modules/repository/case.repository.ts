@@ -242,20 +242,27 @@ export class CaseRepository extends BaseRepository {
     });
   }
 
-  async findCaseById(caseId: number, tenantId: string): Promise<{ alert: Alert | null; tasks: Task[] } & Case> {
-    const caseData = await this.prisma.case.findUnique({
-      where: {
-        case_id: caseId,
-        tenant_id: tenantId,
-      },
-      include: { alert: true, tasks: true },
-    });
-
-    if (!caseData) {
-      throw new NotFoundException('Case Not Found');
+  async findCaseById(
+    caseId: number,
+    tenantId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{ alert: Alert | null; tasks: Task[] } & Case> {
+    try {
+      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
+      const caseData = await client.case.findUnique({
+        where: {
+          case_id: caseId,
+          tenant_id: tenantId,
+        },
+        include: { alert: true, tasks: true },
+      });
+      if (!caseData) {
+        throw new NotFoundException('Case Not Found');
+      }
+      return caseData;
+    } catch (error) {
+      throw error;
     }
-
-    return caseData;
   }
 
   async updateCase(caseId: number, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient) {
