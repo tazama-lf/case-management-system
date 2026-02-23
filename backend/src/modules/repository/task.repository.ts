@@ -11,13 +11,18 @@ export class TaskRepository extends BaseRepository {
 
   /* ------------------------------ Task Queries ------------------------------ */
   async findTaskById(taskId: number, tenantId: string, tx?: Prisma.TransactionClient): Promise<Task | null> {
-    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
-    return await client.task.findUnique({
-      where: {
-        task_id: taskId,
-        tenant_id: tenantId,
-      },
-    });
+    try {
+      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
+      const task = await client.task.findUnique({
+        where: {
+          task_id: taskId,
+          tenant_id: tenantId,
+        },
+      });
+      return task;
+    } catch (error) {
+      throw error;
+    }
   }
 
   async findTaskWithCase(taskId: number, tenantId: string, tx?: Prisma.TransactionClient) {
