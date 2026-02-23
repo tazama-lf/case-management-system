@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus } from '@prisma/client-cms';
+import { CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus, Case } from '@prisma/client-cms';
 import { CANDIDATE_GROUPS } from 'src/constants/case.constants';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { TaskService } from 'src/modules/task/task.service';
@@ -8,7 +8,6 @@ import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/l
 import { Outcome } from 'src/utils/types/outcome';
 import { CreateCaseDto } from '../dto';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
-import { Case } from '@prisma/client-cms';
 
 @Injectable()
 export class CaseCreationService {
@@ -116,7 +115,7 @@ export class CaseCreationService {
       );
 
       await this.loggingOrchestrationService.logActions({
-        userId: userId.toString(),
+        userId: userId,
         operation: 'ADDITIONAL_CASE_CREATED',
         entityName: 'CaseCreationService',
         actionPerformed: `Created ${alertType} child case ${newCase.case_id} linked to parent ${parentCaseId}. BPMN will create investigation task.`,

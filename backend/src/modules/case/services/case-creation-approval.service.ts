@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Outcome } from '../../../utils/types/outcome';
-import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, Alert } from '@prisma/client-cms';
 import { ManualCreateCaseDto, CreateCaseDto } from '../dto';
 import { TaskService } from 'src/modules/task/task.service';
 import { TASK_NAMES, CANDIDATE_GROUPS, VALIDATION_LENGTHS } from '../../../constants/case.constants';
@@ -9,7 +9,6 @@ import { CaseRepository } from 'src/modules/repository/case.repository';
 import { CasePriorityUtil } from '../../shared/utils/case-priority.util';
 import { CaseQueryService } from './case-query.service';
 import { FlowableService } from '../..//flowable/flowable.service';
-import { ConfigService } from '@nestjs/config';
 import { TaskRepository } from 'src/modules/repository/task.repository';
 import { AlertRepository } from 'src/modules/repository/alert.repository';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
@@ -20,7 +19,6 @@ import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/l
 export class CaseCreationApprovalService {
   constructor(
     private readonly logger: LoggerService,
-    private readonly configService: ConfigService,
     private readonly taskService: TaskService,
     private readonly alertRepository: AlertRepository,
     private readonly taskRepository: TaskRepository,
@@ -40,7 +38,12 @@ export class CaseCreationApprovalService {
     return missing;
   }
 
-  async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
+  async manualCaseCreate(
+    dto: ManualCreateCaseDto,
+    userId: string,
+    tenantId: string,
+    role: string,
+  ): Promise<{ success: boolean; case?: Case; alert?: Alert; message?: string }> {
     this.logger.log('Start - Manual Case Creation', CaseCreationApprovalService.name);
 
     const existingAlert = await this.caseRepository.findAlert(dto.alertId, tenantId);
@@ -74,7 +77,7 @@ export class CaseCreationApprovalService {
         };
 
         const createdCase = await this.caseRepository.createCase(caseDetail, tx);
-        const resultFlowable = await this.flowableService.handleCaseCreated({
+        await this.flowableService.handleCaseCreated({
           caseId: createdCase.case_id,
           tenantId,
           caseStatus,
@@ -180,7 +183,12 @@ export class CaseCreationApprovalService {
    * @throws NotFoundException if alert doesn't exist
    * @throws BadRequestException if alert already has a case or is not NALT status
    */
-  async saveCaseAsDraft(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
+  async saveCaseAsDraft(
+    dto: ManualCreateCaseDto,
+    userId: string,
+    tenantId: string,
+    role: string,
+  ): Promise<{ success: boolean; case?: Case; alert?: Alert; message: string }> {
     this.logger.log('Start - Save As Draft', CaseCreationApprovalService.name);
 
     const existingAlert = await this.caseRepository.findAlert(dto.alertId, tenantId);
@@ -319,7 +327,11 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async approveCaseCreation(caseId: number, supervisorId: string, tenantId: string) {
+  async approveCaseCreation(
+    caseId: number,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{ success: boolean; case: Case; message: string }> {
     try {
       this.logger.log(
         `[ApproveCaseCreation] Supervisor ${supervisorId} approving case creation for case ${caseId}`,
@@ -541,9 +553,7 @@ export class CaseCreationApprovalService {
           `Rejection reason is required and must be at least ${VALIDATION_LENGTHS.MIN_REOPENING_REASON} characters`,
         );
       }
-
       const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
-
       const result = await this.caseRepository.executeTransaction(async (tx) => {
         const updatedCase = await this.caseRepository.updateCase(caseId, {
           status: CaseStatus.STATUS_00_DRAFT,
@@ -610,23 +620,6 @@ export class CaseCreationApprovalService {
         caseId,
         tenantId,
       );
-
-      // await this.eventLogService.logEventAction({
-      //   userId: supervisorId,
-      //   operation: 'rejectCaseCreation',
-      //   entityName: CaseCreationApprovalService.name,
-      //   actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${completeNewCaseTask.task_id}. Reason: ${reason}`,
-      //   outcome: Outcome.SUCCESS,
-      // });
-
-      // await this.caseHistoryService.logCaseHistoryAction({
-      //   userId: supervisorId,
-      //   operation: 'rejectCaseCreation',
-      //   entityName: CaseCreationApprovalService.name,
-      //   actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${completeNewCaseTask.task_id}. Reason: ${reason}`,
-      //   case_id: caseId,
-      // });
-
       return { success: true, case: result.case, completedTask: result.completedTask, newTask: completeNewCaseTask };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -723,12 +716,9 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async createCase(createCaseDTO: CreateCaseDto, userId: string) {
+  async createCase(createCaseDTO: CreateCaseDto, userId: string): Promise<Case> {
     try {
       this.logger.log(`Start - Create Case`, CaseCreationApprovalService.name);
-      const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
-      const isTriageAlert = triageType === 'DISABLED' ? false : true;
-
       const createdCase = await this.caseRepository.createCase({
         tenantId: createCaseDTO.tenantId,
         caseCreatorUserId: createCaseDTO.caseCreatorUserId,

@@ -85,7 +85,13 @@ export class CaseClosureApprovalService {
     }
   }
 
-  async closeCase(caseId: number, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
+  async closeCase(
+    caseId: number,
+    dto: CloseCaseDto,
+    userId: string,
+    tenantId: string,
+    role: string,
+  ): Promise<{ message: string; closed_case: { case_id: number; status: string; updated_at: Date }; supervisor_closure?: boolean }> {
     try {
       const caseData = await this.caseRepository.findCaseWithPermissionCheck(caseId, tenantId, userId);
 
@@ -103,8 +109,6 @@ export class CaseClosureApprovalService {
 
       // Check case type for FRAUD_AND_AML parallel investigation logic
       const isFraudAndAmlCase = caseData.case_type === 'FRAUD_AND_AML';
-
-      let investigationTasks: Task[] = [];
       let primaryTask: Task | null = null;
 
       if (isFraudAndAmlCase) {
@@ -184,19 +188,8 @@ export class CaseClosureApprovalService {
             taskId: investigationTask.task_id,
           });
         }
-
-        investigationTasks = [investigationTask];
         primaryTask = investigationTask;
       }
-
-      // const validationErrors = validateClosureData(dto);
-      // if (validationErrors.length > 0) {
-      //   throw new BadRequestException({
-      //     message: 'Missing or invalid case closure information',
-      //     errors: validationErrors,
-      //     caseId,
-      //   });
-      // }
 
       // SUPERVISOR DIRECT CLOSURE PATH
       if (role === 'CMS_SUPERVISOR') {
@@ -368,7 +361,17 @@ export class CaseClosureApprovalService {
     }
   }
 
-  async approveCaseClosure(caseId: number, finalOutcome: string, comments: string, supervisorId: string, tenantId: string) {
+  async approveCaseClosure(
+    caseId: number,
+    finalOutcome: string,
+    comments: string,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{
+    message: string;
+    case: { case_id: number; status: string; updated_at: Date };
+    completed_task: { task_id: number; status: string };
+  }> {
     try {
       if (!finalOutcome || !CASE_CLOSURE_OUTCOMES.includes(finalOutcome as any)) {
         throw new BadRequestException({
@@ -544,7 +547,17 @@ export class CaseClosureApprovalService {
     }
   }
 
-  async rejectCaseClosure(caseId: number, comments: string, supervisorId: string, tenantId: string) {
+  async rejectCaseClosure(
+    caseId: number,
+    comments: string,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{
+    message: string;
+    case: { case_id: number; status: string; updated_at: Date };
+    completed_approval_task: { task_id: number; status: string };
+    investigation_task: { task_id: number; name: string | null; assigned_to: string; status: string };
+  }> {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case closure for ${caseId}`, CaseClosureApprovalService.name);
 
@@ -667,7 +680,12 @@ export class CaseClosureApprovalService {
     }
   }
 
-  async returnCaseForReview(caseId: number, comments: string, supervisorId: string, tenantId: string) {
+  async returnCaseForReview(
+    caseId: number,
+    comments: string,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{ message: string; case: { case_id: number; status: string; updated_at: Date } }> {
     try {
       await this.validateApprovalPreconditions(caseId, tenantId, supervisorId, { autoClaimApprovalTask: true });
 
