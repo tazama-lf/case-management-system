@@ -1,0 +1,74 @@
+services:
+  migrate:
+    build:
+      context: ./backend
+      target: migrate
+    container_name: tazama-cms-migrate
+    networks:
+      - tazama_default
+    env_file:
+      - ./backend/.env
+    command: sh /home/app/migrate.sh
+
+  couchdb:
+    image: couchdb:3.3
+    container_name: tazama-cms-couchdb
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    ports:
+      - "5984:5984"
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+      - ./docker/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
+    networks:
+      - tazama_default
+
+  flowable:
+    image: flowable/flowable-rest:latest
+    container_name: tazama-cms-flowable
+    restart: unless-stopped
+    depends_on:
+      - migrate
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8081:8080"
+    networks:
+      - tazama_default
+
+  backend:
+    build:
+      context: ./backend
+      target: run-env
+    container_name: tazama-cms-backend
+    restart: unless-stopped
+    depends_on:
+      - migrate
+      - flowable
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/public.pem:/home/app/public.pem:ro
+    ports:
+      - "3090:3090"
+    networks:
+      - tazama_default
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tazama-cms-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    networks:
+      - tazama_default
+
+volumes:
+  couchdb_data:
+
+networks:
+  tazama_default:
+    external: true
