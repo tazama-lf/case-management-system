@@ -9,6 +9,7 @@ import { RepositoryModule } from '../repository/repository.module';
 import { EventLogModule } from '../event_log/eventLog.module';
 import { CaseHistoryModule } from '../case_history/caseHistory.module';
 import { TaskHistoryModule } from '../task_history/taskHistory.module';
+import * as multer from 'multer';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { TaskHistoryModule } from '../task_history/taskHistory.module';
       limits: {
         fileSize: 100 * 1024 * 1024,
       },
-      storage: require('multer').memoryStorage(),
+      storage: multer.memoryStorage(),
     }),
   ],
   controllers: [EvidenceController],

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { AsyncTaskStatus, AsyncTask } from '@prisma/client-cms';
+import { AsyncTask, AsyncTaskStatus } from '@prisma/client-cms';
 import { BaseRepository } from './base.repository';
 
 @Injectable()
@@ -36,7 +36,7 @@ export class AsyncTaskRepository extends BaseRepository {
   /**
    * Get task by ID
    */
-  async getTaskById(taskId: number) {
+  async getTaskById(taskId: number): Promise<AsyncTask | null> {
     return await this.prisma.asyncTask.findUnique({
       where: { task_id: taskId },
     });
@@ -45,7 +45,7 @@ export class AsyncTaskRepository extends BaseRepository {
   /**
    * Get all failed tasks
    */
-  async getFailedTasks(limit = 100) {
+  async getFailedTasks(limit = 100): Promise<AsyncTask[]> {
     return await this.prisma.asyncTask.findMany({
       where: { status: AsyncTaskStatus.FAILED },
       orderBy: { created_at: 'desc' },
@@ -126,7 +126,7 @@ export class AsyncTaskRepository extends BaseRepository {
   /**
    * Get pending tasks ready for processing
    */
-  async getPendingTasksForProcessing(limit = 10) {
+  async getPendingTasksForProcessing(limit = 10): Promise<AsyncTask[]> {
     // Using raw query with FOR UPDATE SKIP LOCKED for safe concurrent processing
     return await this.prisma.$queryRaw<any[]>`
             SELECT * FROM async_tasks

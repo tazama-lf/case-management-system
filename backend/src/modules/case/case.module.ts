@@ -20,6 +20,7 @@ import { CaseHistoryModule } from '../case_history/caseHistory.module';
 import { TaskHistoryModule } from '../task_history/taskHistory.module';
 import { CaseCreationService } from './services/case-creation.service';
 import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orchestration.module';
+import { TaskValidationUtil } from '../shared/utils/task-validation.util';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orc
     CaseCreationApprovalService,
     CaseReopeningService,
     CaseCreationService,
+    TaskValidationUtil,
   ],
   exports: [
     CaseService,

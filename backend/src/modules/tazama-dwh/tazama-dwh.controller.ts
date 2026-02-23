@@ -7,6 +7,7 @@ import { CustomerProfileResponseDto } from './dto/customer-profile.dto';
 import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
+import { transaction } from '@prisma/client-dwh';
 
 @ApiTags('Tazama DWH')
 @Controller('api/v1/dwh')
@@ -17,7 +18,7 @@ export class TazamaDWHController {
 
   @Get('transactions/:creditorId')
   @RequireInvestigatorOrSupervisorRole()
-  async getTransactionsByCreditor(@Req() req: AuthenticatedRequest, @Param('creditorId') creditorId: string) {
+  async getTransactionsByCreditor(@Req() req: AuthenticatedRequest, @Param('creditorId') creditorId: string): Promise<transaction[]> {
     const { tenantId } = req.user.token;
     return await this.tazamaDwhService.getTransactionsByCreditorId(tenantId, creditorId);
   }

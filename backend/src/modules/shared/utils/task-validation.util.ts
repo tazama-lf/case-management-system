@@ -1,5 +1,6 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { TaskStatus } from '@prisma/client-cms';
+import { TASK_NAMES } from 'src/constants/case.constants';
 
 interface Task {
   task_id: number;
@@ -26,17 +27,13 @@ export interface TaskFilterOptions {
   excludeStatuses?: TaskStatus[];
 }
 
+@Injectable()
 export class TaskValidationUtil {
-  static readonly TASK_NAMES = {
-    INVESTIGATE_CASE: ['Investigate Case', 'Investigate case'],
-    APPROVE_CASE_CLOSURE: 'approve case closure',
-  } as const;
-
-  static findApprovalTask(tasks: Task[]): Task | undefined {
-    return tasks.find((task) => task.name?.toLowerCase() === TaskValidationUtil.TASK_NAMES.APPROVE_CASE_CLOSURE);
+  findApprovalTask(tasks: Task[]): Task | undefined {
+    return tasks.find((task) => task.name?.toLowerCase() === TASK_NAMES.APPROVE_CASE_CLOSURE);
   }
 
-  static filterTasks(tasks: Task[], options: TaskFilterOptions = {}): Task[] {
+  filterTasks(tasks: Task[], options: TaskFilterOptions = {}): Task[] {
     let filteredTasks = [...tasks];
 
     if (options.excludeTaskIds?.length) {
@@ -50,20 +47,18 @@ export class TaskValidationUtil {
     return filteredTasks;
   }
 
-  static getUserAssignedTasks(tasks: Task[], userId: string): Task[] {
+  getUserAssignedTasks(tasks: Task[], userId: string): Task[] {
     return tasks.filter((task) => task.assigned_user_id === userId);
   }
 
-  static validateApprovalTaskForClosure(
+  validateApprovalTaskForClosure(
     tasks: Task[],
     options: ApprovalTaskValidationOptions = {},
   ): TaskValidationResult & { approvalTask?: Task } {
     const errors: string[] = [];
-    const approvalTask = TaskValidationUtil.findApprovalTask(tasks);
+    const approvalTask = this.findApprovalTask(tasks);
 
-    if (!approvalTask) {
-      errors.push('Approval task not found');
-    } else {
+    if (approvalTask) {
       const allowedStatuses: TaskStatus[] = [
         TaskStatus.STATUS_01_UNASSIGNED,
         TaskStatus.STATUS_10_ASSIGNED,
@@ -85,6 +80,8 @@ export class TaskValidationUtil {
           errors.push('Approval task is claimed by a different supervisor');
         }
       }
+    } else {
+      errors.push('Approval task not found');
     }
 
     return {
@@ -94,9 +91,9 @@ export class TaskValidationUtil {
     };
   }
 
-  static validateOtherTasksCompleted(tasks: Task[], excludeTaskIds: number[] = []): TaskValidationResult {
+  validateOtherTasksCompleted(tasks: Task[], excludeTaskIds: number[] = []): TaskValidationResult {
     const errors: string[] = [];
-    const incompleteTasks = TaskValidationUtil.filterTasks(tasks, {
+    const incompleteTasks = this.filterTasks(tasks, {
       excludeTaskIds,
       excludeStatuses: [TaskStatus.STATUS_30_COMPLETED],
     });
@@ -111,7 +108,7 @@ export class TaskValidationUtil {
     };
   }
 
-  static getTaskStatusCounts(tasks: Task[]) {
+  getTaskStatusCounts(tasks: Task[]): { completed: number; pending: number; total: number } {
     const completed = tasks.filter((t) => t.status === TaskStatus.STATUS_30_COMPLETED).length;
     const pending = tasks.filter((t) => t.status !== TaskStatus.STATUS_30_COMPLETED).length;
 
@@ -122,7 +119,7 @@ export class TaskValidationUtil {
     };
   }
 
-  static throwIfValidationFails(validationResult: TaskValidationResult, baseMessage = 'Task validation failed'): void {
+  throwIfValidationFails(validationResult: TaskValidationResult, baseMessage = 'Task validation failed'): void {
     if (!validationResult.isValid) {
       throw new BadRequestException({
         message: baseMessage,

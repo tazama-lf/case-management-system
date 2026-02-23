@@ -17,6 +17,7 @@ export class CaseQueryService {
     private readonly logger: LoggerService,
     private readonly caseRepository: CaseRepository,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly taskValidationUtil: TaskValidationUtil,
   ) {}
 
   async getUserCases(userId: string, query: GetUserCasesQueryDto, isComplianceOfficer?: boolean) {
@@ -75,7 +76,7 @@ export class CaseQueryService {
 
       const processedCases = cases.map((caseItem) => {
         const isOwner = caseItem.case_owner_user_id === userId;
-        const userTasks = TaskValidationUtil.getUserAssignedTasks(caseItem.tasks, userId);
+        const userTasks = this.taskValidationUtil.getUserAssignedTasks(caseItem.tasks, userId);
         const hasTaskAssignment = userTasks.length > 0;
         const userRole: 'owner' | 'task_assignee' | 'both' = isOwner && hasTaskAssignment ? 'both' : isOwner ? 'owner' : 'task_assignee';
 
@@ -457,7 +458,7 @@ export class CaseQueryService {
         orderBy: { [sortBy]: sortOrder },
       });
       const processedCases = cases.map((caseItem) => {
-        const taskCounts = TaskValidationUtil.getTaskStatusCounts(caseItem.tasks);
+        const taskCounts = this.taskValidationUtil.getTaskStatusCounts(caseItem.tasks);
         const assignedUsers = [...new Set(caseItem.tasks.map((t) => t.assigned_user_id).filter(Boolean))];
         return {
           case_id: caseItem.case_id,
