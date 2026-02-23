@@ -44,7 +44,7 @@ export class TriageService {
     private readonly featureExtractionService: FeatureExtractionService,
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   async handleManualTriage(alertId: number, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string): Promise<Alert> {
     const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
@@ -546,7 +546,7 @@ export class TriageService {
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
           userId,
-          operation: 'TRIAGE_ALERT_UPDATED',
+          operation: 'ALERT_UPDATED',
           entityName: 'Alert & Task',
           actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with prediction`,
           outcome: Outcome.SUCCESS,
