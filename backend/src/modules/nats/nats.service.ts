@@ -22,7 +22,6 @@ export class NatsStartupService implements OnModuleInit {
       this.logger.log('NATS Relay Plugin initialized', NatsStartupService.name);
       await this.startupService.init(this.handleMessage.bind(this), this.logger);
     } catch (error) {
-      this.logger.error(`Failed to initialize NATS Relay Plugin : ${error.message}`, NatsStartupService.name);
       throw error as Error;
     }
   }
