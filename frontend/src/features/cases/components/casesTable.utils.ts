@@ -37,6 +37,7 @@ export const getStatusColor = (status: string): string => {
     STATUS_82_CLOSED_CONFIRMED: 'bg-green-50 text-green-700',
     STATUS_83_CLOSED_INCONCLUSIVE: 'bg-gray-50 text-gray-700',
     STATUS_84_COMPLETED: 'bg-green-50 text-green-700',
+    STATUS_71_AUTOCLOSED_CONFIRMED: 'bg-green-50 text-green-700',
   };
   return statusColors[status] || 'bg-gray-100 text-gray-700';
 };
