@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { FlowableService } from './flowable.service';
 import { FlowableWorkQueueListener } from './listeners/work-queue.listener';
 import { CaseEventListener } from './listeners/case-event.listener';

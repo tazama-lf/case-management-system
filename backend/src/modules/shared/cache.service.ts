@@ -85,11 +85,11 @@ export class CacheService implements OnModuleInit {
           this.logger.log(`Fetching users with role: ${role}`, CacheService.name);
 
           // Get admin token for API calls
-          const adminUsername = this.configService.get<string>('TAZAMA_AUTH_ADMIN_USERNAME') || '';
-          const adminPassword = this.configService.get<string>('TAZAMA_AUTH_ADMIN_PASSWORD') || '';
+          const adminUsername = this.configService.get<string>('TAZAMA_AUTH_ADMIN_USERNAME') ?? '';
+          const adminPassword = this.configService.get<string>('TAZAMA_AUTH_ADMIN_PASSWORD') ?? '';
           const adminData = await this.authService.login(adminUsername, adminPassword);
 
-          const users = await this.getUsersByRole(adminData.token, role, this.configService.get<string>('KEYCLOAK_GROUP_NAME') || '');
+          const users = await this.getUsersByRole(adminData.token, role, this.configService.get<string>('KEYCLOAK_GROUP_NAME') ?? '');
 
           for (const user of users) {
             const userDetails: UserDetails = {
@@ -184,7 +184,7 @@ export class CacheService implements OnModuleInit {
    */
   async getUserEmailFromCache(userId: string): Promise<string | null> {
     const user = await this.getUserFromCache(userId);
-    return user?.email || null;
+    return user?.email ?? null;
   }
 
   /**
