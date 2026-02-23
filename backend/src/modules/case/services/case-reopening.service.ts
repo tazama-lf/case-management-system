@@ -43,13 +43,6 @@ export class CaseReopeningService {
         throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
       }
 
-      if (existingCase.parent_id) {
-        const parentCase = await this.caseQueryService.retrieveCase(existingCase.parent_id, tenantId);
-        if (!REOPENABLE_CASE_STATUSES.includes(parentCase.status)) {
-          throw new BadRequestException(`SubCase ${caseId} cannot be reopened as the parent Case ${parentCase.case_id} is not in a valid closed state for reopening`);
-        }
-      }
-
       if (!reason || reason.trim().length < VALIDATION_LENGTHS.MIN_REOPENING_REASON) {
         throw new BadRequestException(
           `Reason for reopening case is required and must be at least ${VALIDATION_LENGTHS.MIN_REOPENING_REASON} characters`,
