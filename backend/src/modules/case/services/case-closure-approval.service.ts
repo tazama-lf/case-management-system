@@ -34,6 +34,7 @@ export class CaseClosureApprovalService {
     private readonly flowableService: FlowableService,
     private readonly commentService: CommentService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly taskValidationUtil: TaskValidationUtil,
   ) {}
 
   private async createSARFilingTask(caseId: number, tenantId: string, userId: string): Promise<void> {
@@ -768,7 +769,7 @@ export class CaseClosureApprovalService {
       });
     }
 
-    let approvalValidation = TaskValidationUtil.validateApprovalTaskForClosure(caseData.tasks, {
+    let approvalValidation = this.taskValidationUtil.validateApprovalTaskForClosure(caseData.tasks, {
       requireClaim: Boolean(supervisorId),
       expectedAssignee: supervisorId,
     });
@@ -791,13 +792,13 @@ export class CaseClosureApprovalService {
         caseData.tasks[taskIndex].status = TaskStatus.STATUS_10_ASSIGNED;
       }
 
-      approvalValidation = TaskValidationUtil.validateApprovalTaskForClosure(caseData.tasks, {
+      approvalValidation = this.taskValidationUtil.validateApprovalTaskForClosure(caseData.tasks, {
         requireClaim: Boolean(supervisorId),
         expectedAssignee: supervisorId,
       });
     }
 
-    TaskValidationUtil.throwIfValidationFails(approvalValidation, 'Approval task validation failed');
+    this.taskValidationUtil.throwIfValidationFails(approvalValidation, 'Approval task validation failed');
 
     const { approvalTask } = approvalValidation;
 
@@ -805,19 +806,21 @@ export class CaseClosureApprovalService {
       throw new NotFoundException('Approval task not found');
     }
 
-    const otherTasksValidation = TaskValidationUtil.validateOtherTasksCompleted(caseData.tasks, [approvalTask.task_id]);
+    const otherTasksValidation = this.taskValidationUtil.validateOtherTasksCompleted(caseData.tasks, [approvalTask.task_id]);
 
     if (!otherTasksValidation.isValid) {
       throw new BadRequestException({
         message: 'All other tasks must be completed before approval',
-        incompleteTasks: TaskValidationUtil.filterTasks(caseData.tasks, {
-          excludeTaskIds: [approvalTask.task_id],
-          excludeStatuses: [TaskStatus.STATUS_30_COMPLETED],
-        }).map((task) => ({
-          taskId: task.task_id,
-          name: task.name,
-          status: task.status,
-        })),
+        incompleteTasks: this.taskValidationUtil
+          .filterTasks(caseData.tasks, {
+            excludeTaskIds: [approvalTask.task_id],
+            excludeStatuses: [TaskStatus.STATUS_30_COMPLETED],
+          })
+          .map((task) => ({
+            taskId: task.task_id,
+            name: task.name,
+            status: task.status,
+          })),
         caseId,
       });
     }
