@@ -46,8 +46,8 @@ export class EventLogService {
     });
   }
 
-  async getActionHistoryForAlert(alertId: number): Promise<EventLog[]> {
-    return await this.prisma.eventLog.findMany({
+  async getActionHistoryForAlert(alertId: number): Promise<EventLog | null> {
+    return await this.prisma.eventLog.findFirst({
       where: {
         operation: 'ALERT_UPDATED',
         action_performed: { contains: `${alertId}` },
