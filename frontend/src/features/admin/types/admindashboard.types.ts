@@ -43,7 +43,7 @@ export interface CandidateGroupData {
 }
 
 export interface ReferenceIdsData {
-  id: Number;
+  id: number;
   txTp: string;
   referenceIdName: string;
   createdAt: string;
