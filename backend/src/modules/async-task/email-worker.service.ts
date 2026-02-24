@@ -27,7 +27,7 @@ export class EmailWorkerService {
     }
 
     this.transporter = nodemailer.createTransport({
-      host: smtpHost || 'localhost',
+      host: smtpHost ?? 'localhost',
       port: parseInt(smtpPort),
       secure: false,
       auth: smtpUser
@@ -38,7 +38,7 @@ export class EmailWorkerService {
         : undefined,
     });
 
-    this.logger.log(`Email Worker Service initialized - SMTP: ${smtpHost || 'NOT CONFIGURED'}:${smtpPort}`);
+    this.logger.log(`Email Worker Service initialized - SMTP: ${smtpHost ?? 'NOT CONFIGURED'}:${smtpPort}`);
   }
 
   /**

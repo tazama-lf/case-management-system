@@ -1,11 +1,9 @@
-import { Controller, Post, Get, Body, Param, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Param } from '@nestjs/common';
 import { AsyncTaskService } from './async-task.service';
 import { AsyncTask } from '@prisma/client-cms';
 
 @Controller('async-tasks')
 export class AsyncTaskController {
-  private readonly logger = new Logger(AsyncTaskController.name);
-
   constructor(private readonly asyncTaskService: AsyncTaskService) {}
 
   /**

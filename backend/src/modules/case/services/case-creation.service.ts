@@ -115,7 +115,7 @@ export class CaseCreationService {
       );
 
       await this.loggingOrchestrationService.logActions({
-        userId: userId,
+        userId,
         operation: 'ADDITIONAL_CASE_CREATED',
         entityName: 'CaseCreationService',
         actionPerformed: `Created ${alertType} child case ${newCase.case_id} linked to parent ${parentCaseId}. BPMN will create investigation task.`,

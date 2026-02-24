@@ -30,6 +30,9 @@ export class ProcessAlertService {
     };
 
     const alert = await this.alertService.handleAlertOrNALT(submitAlertDto, userId, tenantId, source);
+    if (!alert) {
+      throw new Error('Failed to process alert');
+    }
     if (submitAlertDto.report.status === 'NALT' || !alert.case_id) return;
 
     const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();

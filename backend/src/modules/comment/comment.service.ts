@@ -14,7 +14,7 @@ export class CommentService {
     private readonly commentRepository: CommentRepository,
   ) {}
 
-  async addComment(createCommentDto: CreateCommentDto, userId: string) {
+  async addComment(createCommentDto: CreateCommentDto, userId: string): Promise<Comment | void> {
     this.logger.log(`Adding comment : ${userId}`, CommentService.name);
     try {
       if (!createCommentDto.caseId && !createCommentDto.taskId) {

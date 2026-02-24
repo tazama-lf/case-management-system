@@ -35,7 +35,6 @@ export class CaseService {
     private readonly caseCreationApprovalService: CaseCreationApprovalService,
     private readonly flowableService: FlowableService,
     private readonly alertRepository: AlertRepository,
-    private readonly caseRepository: CaseRepository,
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}

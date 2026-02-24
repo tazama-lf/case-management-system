@@ -44,11 +44,11 @@ export class FeatureExtractionService {
 
   constructor(private readonly logger: LoggerService) {}
 
-  async extractFeatures(alert: IngestAlertDto): Promise<ExtractedFeatures> {
+  extractFeatures(alert: IngestAlertDto): ExtractedFeatures {
     try {
       const features: number[] = new Array(this.RULE_SEQUENCE.length).fill(0);
 
-      if (!alert.report?.tadpResult?.typologyResult?.[0]) {
+      if (!alert.report?.tadpResult?.typologyResult?.length) {
         this.logger.warn('No typology results found in alert');
         return { features };
       }
