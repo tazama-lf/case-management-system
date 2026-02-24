@@ -15,10 +15,10 @@ export class AuditLogService {
     outcome: string;
     performedAt?: Date;
   }): Promise<AuditLog> {
-    const user_id = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
+    const userId = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
     return await this.prisma.auditLog.create({
       data: {
-        user_id,
+        user_id: userId,
         operation: data.operation,
         entity_name: data.entityName,
         action_performed: data.actionPerformed,
@@ -30,7 +30,7 @@ export class AuditLogService {
 
   async logPermissionDenied(user: any, entityName: string, action: string, _details?: any): Promise<AuditLog> {
     return await this.logAction({
-      userId: user?.sub || 'unknown',
+      userId: user?.sub ?? 'unknown',
       operation: 'permission_denied',
       entityName,
       actionPerformed: action,

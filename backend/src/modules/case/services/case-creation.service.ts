@@ -83,7 +83,7 @@ export class CaseCreationService {
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       });
 
-      this.flowableService.handleCaseCreated({
+      await this.flowableService.handleCaseCreated({
         caseId: newCase.case_id,
         tenantId: newCase.tenant_id,
         caseStatus: newCase.status,
@@ -115,7 +115,7 @@ export class CaseCreationService {
       );
 
       await this.loggingOrchestrationService.logActions({
-        userId: userId,
+        userId,
         operation: 'ADDITIONAL_CASE_CREATED',
         entityName: 'CaseCreationService',
         actionPerformed: `Created ${alertType} child case ${newCase.case_id} linked to parent ${parentCaseId}. BPMN will create investigation task.`,

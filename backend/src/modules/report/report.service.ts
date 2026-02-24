@@ -227,7 +227,7 @@ export class ReportsService {
     });
 
     const caseTypes = typeCounts.map(({ case_type, _count }) => ({
-      name: case_type || 'NONE',
+      name: case_type ?? 'NONE',
       count: _count.case_id,
       color: this.getCaseTypeColor(case_type),
     }));
@@ -686,14 +686,14 @@ export class ReportsService {
 
     const totalInvestigators = validWorkloadData.length;
     const avgCasesPerInvestigator =
-      totalInvestigators > 0 ? validWorkloadData.reduce((sum, w) => sum + (w?.activeCases || 0), 0) / totalInvestigators : 0;
+      totalInvestigators > 0 ? validWorkloadData.reduce((sum, w) => sum + (w?.activeCases ?? 0), 0) / totalInvestigators : 0;
 
     const validPerformanceData = performanceData.filter(Boolean);
-    const totalResolutionTime = validPerformanceData.reduce((sum, w) => sum + (w?.avgResolutionTime || 0), 0);
-    const investigatorsWithClosedCases = validPerformanceData.filter((w) => (w?.avgResolutionTime || 0) > 0).length;
+    const totalResolutionTime = validPerformanceData.reduce((sum, w) => sum + (w?.avgResolutionTime ?? 0), 0);
+    const investigatorsWithClosedCases = validPerformanceData.filter((w) => (w?.avgResolutionTime ?? 0) > 0).length;
     const avgResolutionTime = investigatorsWithClosedCases > 0 ? totalResolutionTime / investigatorsWithClosedCases : 0;
 
-    const totalClosureRate = validPerformanceData.reduce((sum, w) => sum + (w?.caseClosureRate || 0), 0);
+    const totalClosureRate = validPerformanceData.reduce((sum, w) => sum + (w?.caseClosureRate ?? 0), 0);
     const avgCaseClosureRate = validPerformanceData.length > 0 ? totalClosureRate / validPerformanceData.length : 0;
 
     return {
@@ -731,12 +731,12 @@ export class ReportsService {
     ).length;
 
     const formattedLogs = filteredLogs.map((log) => ({
-      audit_log_id: log.audit_log_id ? log.audit_log_id.toString() : '',
-      user_id: log.user_id ? log.user_id.toString() : '',
-      operation: log.operation ? log.operation.toString() : '',
-      entity_name: log.entity_name ? log.entity_name.toString() : '',
-      action_performed: log.action_performed ? log.action_performed.toString() : '',
-      outcome: log.outcome ? log.outcome.toString() : '',
+      audit_log_id: log.audit_log_id ? log.audit_log_id : '',
+      user_id: log.user_id ? log.user_id : '',
+      operation: log.operation ? log.operation : '',
+      entity_name: log.entity_name ? log.entity_name : '',
+      action_performed: log.action_performed ? log.action_performed : '',
+      outcome: log.outcome ? log.outcome : '',
       performed_at: log.performed_at
         ? log.performed_at.toLocaleString('en-US', {
             month: '2-digit',
@@ -774,12 +774,12 @@ export class ReportsService {
     ).length;
 
     const formattedLogs = filteredLogs.map((log) => ({
-      event_log_id: log.event_log_id ? log.event_log_id.toString() : '',
-      user_id: log.user_id ? log.user_id.toString() : '',
-      operation: log.operation ? log.operation.toString() : '',
-      entity_name: log.entity_name ? log.entity_name.toString() : '',
-      action_performed: log.action_performed ? log.action_performed.toString() : '',
-      outcome: log.outcome ? log.outcome.toString() : '',
+      event_log_id: log.event_log_id ? log.event_log_id : '',
+      user_id: log.user_id ? log.user_id : '',
+      operation: log.operation ? log.operation : '',
+      entity_name: log.entity_name ? log.entity_name : '',
+      action_performed: log.action_performed ? log.action_performed : '',
+      outcome: log.outcome ? log.outcome : '',
       performed_at: log.performed_at
         ? log.performed_at.toLocaleString('en-US', {
             month: '2-digit',
@@ -804,8 +804,6 @@ export class ReportsService {
   }
 
   async getCaseAgeing(dateRange?: string) {
-    const { startDate, endDate } = this.getDateRange(dateRange);
-
     const cases = await this.prisma.case.findMany({
       select: {
         case_id: true,
@@ -995,42 +993,8 @@ export class ReportsService {
     }
   }
 
-  private getTaskStatusColor(status: TaskStatus): string {
-    switch (status) {
-      case TaskStatus.STATUS_30_COMPLETED:
-        return '#10b981';
-      case TaskStatus.STATUS_20_IN_PROGRESS:
-        return '#3b82f6';
-      case TaskStatus.STATUS_01_UNASSIGNED:
-        return '#6b7280';
-      case TaskStatus.STATUS_21_BLOCKED:
-        return '#f59e0b';
-      case TaskStatus.STATUS_10_ASSIGNED:
-        return '#8b5cf6';
-      default:
-        return '#6b7280';
-    }
-  }
-
   private formatStatusName(status: CaseStatus): string {
     return status.replace('STATUS_', '').replace(/_/g, ' ');
-  }
-
-  private formatTaskStatusName(status: TaskStatus): string {
-    switch (status) {
-      case TaskStatus.STATUS_30_COMPLETED:
-        return 'Completed';
-      case TaskStatus.STATUS_20_IN_PROGRESS:
-        return 'In Progress';
-      case TaskStatus.STATUS_01_UNASSIGNED:
-        return 'Unassigned';
-      case TaskStatus.STATUS_21_BLOCKED:
-        return 'Blocked';
-      case TaskStatus.STATUS_10_ASSIGNED:
-        return 'Assigned';
-      default:
-        return 'Unknown';
-    }
   }
 
   private getAuditLogType(outcome: string | null | undefined): 'Info' | 'Success' | 'Warning' | 'Error' {
@@ -1061,15 +1025,15 @@ export class ReportsService {
 
     return {
       caseTypes: caseTypes.map((ct) => ({
-        value: ct.case_type || 'NONE',
-        label: ct.case_type || 'None',
+        value: ct.case_type ?? 'NONE',
+        label: ct.case_type ?? 'None',
       })),
       priorities: priorities.map((p) => ({
-        value: p.priority || 'NONE',
-        label: p.priority || 'None',
+        value: p.priority ?? 'NONE',
+        label: p.priority ?? 'None',
       })),
       investigators: investigators.map((i) => ({
-        value: i.case_owner_user_id || '',
+        value: i.case_owner_user_id ?? '',
         label: i.case_owner_user_id ? `User ${i.case_owner_user_id.slice(0, 8)}` : 'Unassigned',
       })),
     };
@@ -1204,79 +1168,6 @@ export class ReportsService {
 
     return report;
   }
-
-  // async generateFraudReport(
-  //   caseId: number,
-  //   investigatorInputs: string,
-  //   supervisorRemarks: string,
-  //   userId?: string,
-  //   tenantId?: string,
-  //   role?: string,
-  // ): Promise<FraudReport> {
-  //   if (role === 'CMS_SUPERVISOR') {
-  //     const caseTasks = await this.prisma.task.findMany({
-  //       where: { case_id: caseId },
-  //     });
-
-  //     const investigationTasks = caseTasks.filter(task =>
-  //       task.name && task.name.toLowerCase().includes('investigate')
-  //     );
-
-  //     const incompleteTasks = investigationTasks.filter(
-  //       task => task.status !== TaskStatus.STATUS_30_COMPLETED
-  //     );
-
-  //     if (incompleteTasks.length > 0) {
-  //       const taskNames = incompleteTasks.map(t => t.name).join(', ');
-  //       throw new BadRequestException(
-  //         `Cannot generate report: The following investigation tasks must be completed first: ${taskNames}`
-  //       );
-  //     }
-  //   }
-  //   const caseData = await this.prisma.case.findUnique({ where: { case_id: caseId } });
-  //   if (!caseData) throw new Error('Case not found');
-  //   const db = this.couchdbService.getDatabase();
-  //   const existingReportsResult = await db.find({ selector: { caseId, category: 'report' } });
-  //   const existingReports = (existingReportsResult.docs as FraudReport[]) || [];
-  //   const nextVersion = existingReports.length > 0
-  //     ? Math.max(...existingReports.map(r => r.version ?? 1)) + 1
-  //     : 1;
-  //   const reportId = `${caseId}-InvestigationReport-v${nextVersion}`;
-  //   const evidenceResult = await this.evidenceService.getEvidenceByCaseId(caseId, userId ?? '', tenantId ?? '', role ?? 'CMS_SUPERVISOR');
-  //   const evidenceSummary = evidenceResult.evidence;
-  //   const report: FraudReport = {
-  //     reportId,
-  //     caseId,
-  //     reportType: 'INVESTIGATION_REPORT',
-  //     metadata: {
-  //       caseType: caseData.case_type ?? '',
-  //       investigator: caseData.case_owner_user_id ?? '',
-  //       supervisor: '',
-  //       submittedAt: new Date().toISOString(),
-  //     },
-  //     keyFindings: '',
-  //     evidenceSummary,
-  //     decisions: FraudReportOutcome.UNDER_MONITORING,
-  //     investigatorInputs,
-  //     supervisorRemarks,
-  //     recommendations: '',
-  //     archived: false,
-  //     version: nextVersion,
-  //     history: [],
-  //     category: 'report',
-  //   };
-  //   const attachmentResult = await this.couchdbService.insertDocument(reportId, report);
-
-  //   await this.auditLogService.logAction({
-  //     userId: userId ?? '',
-  //     operation: 'CREATE',
-  //     entityName: 'FraudReport',
-  //     actionPerformed: `Fraud report generated (v${nextVersion})`,
-  //     outcome: 'SUCCESS',
-  //     performedAt: new Date(),
-  //   });
-  //   return report;
-  // }
 
   async editFraudReport(reportId: string, updates: Partial<FraudReport>, userId?: string): Promise<FraudReport> {
     const existing = await this.couchdbService.getDocument(reportId);

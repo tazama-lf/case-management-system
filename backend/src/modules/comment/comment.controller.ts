@@ -13,7 +13,7 @@ export class CommentController {
 
   @Post()
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  async addComment(@Body() createCommentDto: CreateCommentDto, @Req() req: AuthenticatedRequest) {
+  async addComment(@Body() createCommentDto: CreateCommentDto, @Req() req: AuthenticatedRequest): Promise<Comment | void> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
@@ -35,7 +35,7 @@ export class CommentController {
     @Query('caseId') caseId?: number,
     @Query('taskId') taskId?: number,
   ): Promise<Comment[]> {
-    const userId = req?.user.token.clientId;
+    const userId = req.user.token.clientId;
     return await this.commentService.getCommentsByCaseOrTask(caseId, taskId, userId);
   }
 

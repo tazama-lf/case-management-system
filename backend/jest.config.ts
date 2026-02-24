@@ -18,11 +18,7 @@ const config: Config.InitialOptions = {
   // Output directory for coverage reports (from reference)
   coverageDirectory: '<rootDir>/coverage/',
   // Files/folders to ignore for coverage (from reference, adjusted for project)
-  coveragePathIgnorePatterns: [
-    '/node_modules/',
-    '/dist/',
-    '/test/',
-  ],
+  coveragePathIgnorePatterns: ['/node_modules/', '/dist/', '/test/'],
   // Use V8 for coverage instrumentation (from reference)
   coverageProvider: 'v8',
   // Coverage reporters

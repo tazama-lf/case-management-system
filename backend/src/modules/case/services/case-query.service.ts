@@ -18,7 +18,7 @@ export class CaseQueryService {
     private readonly caseRepository: CaseRepository,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly taskValidationUtil: TaskValidationUtil,
-  ) { }
+  ) {}
 
   async getUserCases(userId: string, query: GetUserCasesQueryDto, isComplianceOfficer?: boolean) {
     try {
@@ -97,11 +97,11 @@ export class CaseQueryService {
           total_tasks: caseItem.tasks.length,
           alert: caseItem.alert
             ? {
-              alert_id: caseItem.alert.alert_id,
-              message: caseItem.alert.message,
-              confidence_per: caseItem.alert.confidence_per,
-              transaction: caseItem.alert.transaction,
-            }
+                alert_id: caseItem.alert.alert_id,
+                message: caseItem.alert.message,
+                confidence_per: caseItem.alert.confidence_per,
+                transaction: caseItem.alert.transaction,
+              }
             : undefined,
           latest_comment_date: caseItem.comments[0]?.created_at,
         };
@@ -169,7 +169,13 @@ export class CaseQueryService {
       if (closedOnly) {
         // Show only closed cases
         baseFilters.status = {
-          in: ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE', 'STATUS_71_AUTOCLOSED_CONFIRMED', 'STATUS_72_AUTOCLOSED_REFUTED'],
+          in: [
+            'STATUS_81_CLOSED_REFUTED',
+            'STATUS_82_CLOSED_CONFIRMED',
+            'STATUS_83_CLOSED_INCONCLUSIVE',
+            'STATUS_71_AUTOCLOSED_CONFIRMED',
+            'STATUS_72_AUTOCLOSED_REFUTED',
+          ],
         };
       } else if (status) {
         // Single status filter takes precedence
@@ -181,7 +187,13 @@ export class CaseQueryService {
           excludedStatuses.push('STATUS_00_DRAFT');
         }
         if (excludeClosed) {
-          excludedStatuses.push('STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE', 'STATUS_71_AUTOCLOSED_CONFIRMED', 'STATUS_72_AUTOCLOSED_REFUTED');
+          excludedStatuses.push(
+            'STATUS_81_CLOSED_REFUTED',
+            'STATUS_82_CLOSED_CONFIRMED',
+            'STATUS_83_CLOSED_INCONCLUSIVE',
+            'STATUS_71_AUTOCLOSED_CONFIRMED',
+            'STATUS_72_AUTOCLOSED_REFUTED',
+          );
         }
         if (excludedStatuses.length > 0) {
           baseFilters.status = {
@@ -541,15 +553,15 @@ export class CaseQueryService {
       const statusFilter = isComplianceOfficer
         ? { status: CaseStatus.STATUS_82_CLOSED_CONFIRMED }
         : {
-          status: {
-            notIn: [
-              CaseStatus.STATUS_81_CLOSED_REFUTED,
-              CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-              CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-              CaseStatus.STATUS_99_ABANDONED,
-            ],
-          },
-        };
+            status: {
+              notIn: [
+                CaseStatus.STATUS_81_CLOSED_REFUTED,
+                CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+                CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+                CaseStatus.STATUS_99_ABANDONED,
+              ],
+            },
+          };
       const [activeCases, pendingTasks, allUserCases] = await Promise.all([
         this.prismaService.case.count({
           where: {

@@ -28,6 +28,6 @@ export class AuditLogController {
   @ApiOkResponse({ description: 'Audit log entries returned successfully.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
   async getAuditLogs(@Query('limit') limit = 50, @Query('offset') offset = 0): Promise<AuditLog[]> {
-    return await this.auditLogService.getLogs(Number(limit), Number(offset));
+    return await this.auditLogService.getLogs(limit, offset);
   }
 }

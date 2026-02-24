@@ -203,13 +203,12 @@ export class CaseReopeningService {
       throw error;
     }
   }
-
+  c;
   async approveCaseReopening(caseId: number, supervisorId: string, tenantId: string) {
     try {
       this.logger.log(`Supervisor ${supervisorId} approving case reopening for ${caseId}`, CaseReopeningService.name);
 
       const caseData = await this.validateReopeningPreconditions(caseId, tenantId);
-
       // Step 2: Find the reopening approval task
       const reopeningTask = await this.caseRepository.findUnassignedTaskForReopening(caseId, tenantId);
 

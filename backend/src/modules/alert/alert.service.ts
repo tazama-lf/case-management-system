@@ -5,7 +5,6 @@ import { IngestAlertDto } from './dto/IngestAlert.dto';
 import { Alert, CaseCreationType, CaseStatus, CaseType, Priority, Prisma, TaskStatus } from '@prisma/client-cms';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { ConfigService } from '@nestjs/config';
-import { CaseCreationApprovalService } from '../case/services/case-creation-approval.service';
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
 import { TransactionDataRespository } from '../repository/transactionalData.respository';
 import { extractReferenceId } from '../repository/utils/extractReferenceId';
@@ -28,7 +27,7 @@ export class AlertService {
     private readonly eventLogService: EventLogService,
   ) {}
 
-  async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number): Promise<Alert> {
+  async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number): Promise<Alert | null> {
     this.loggerService.log('Start - Alert Creation', AlertService.name);
     const txtp = alert.transaction.TxTp;
     alert.message = alert.message ?? 'Suspicious activity detected';
@@ -46,6 +45,10 @@ export class AlertService {
         confidencePer: 0,
         caseId,
       });
+
+      if (!newAlert) {
+        throw new Error('Failed to create alert');
+      }
 
       this.loggerService.log(`End - Alert Creation - ${newAlert.alert_id}`, AlertService.name);
       return newAlert;
@@ -80,9 +83,12 @@ export class AlertService {
     }
   }
 
-  async handleAlertOrNALT(data: IngestAlertDto, userId: string, tenantId: string, source: string): Promise<Alert> {
+  async handleAlertOrNALT(data: IngestAlertDto, userId: string, tenantId: string, source: string): Promise<Alert | null> {
     if (data.report.status === 'NALT') {
       const createdNALT = await this.createNewAlert(data, tenantId, source, 0);
+      if (!createdNALT) {
+        throw new Error('Failed to create NALT alert');
+      }
       return createdNALT;
     } else {
       const systemUUID = this.configService.get<string>('SYSTEM_UUID', userId);

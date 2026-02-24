@@ -37,7 +37,11 @@ export class CaseRepository extends BaseRepository {
     });
   }
 
-  async findCaseWithApprovalTask(caseId: number, tenantId: string, tx?: Prisma.TransactionClient) {
+  async findCaseWithApprovalTask(
+    caseId: number,
+    tenantId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<(Case & { tasks: Task[] }) | null> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.case.findUnique({
       where: {
@@ -60,7 +64,11 @@ export class CaseRepository extends BaseRepository {
     });
   }
 
-  async findCaseBasicInfo(caseId: number, tenantId: string, tx?: Prisma.TransactionClient) {
+  async findCaseBasicInfo(
+    caseId: number,
+    tenantId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{ case_id: number; status: CaseStatus; case_creator_user_id: string; priority: string; case_type: string | null } | null> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.case.findUnique({
       where: {
@@ -91,7 +99,7 @@ export class CaseRepository extends BaseRepository {
         case_id: caseId,
         tenant_id: tenantId,
         name: taskName,
-        status: status,
+        status,
       },
     });
   }
@@ -109,7 +117,7 @@ export class CaseRepository extends BaseRepository {
         case_id: caseId,
         tenant_id: tenantId,
         name: { in: names },
-        status: status,
+        status,
       },
     });
   }
@@ -119,7 +127,7 @@ export class CaseRepository extends BaseRepository {
     caseId: number,
     tenantId: string,
     tx?: Prisma.TransactionClient,
-  ): Promise<(Task & { comments: { comment_id: number; note: string; created_at: Date }[] }) | null> {
+  ): Promise<(Task & { comments: Array<{ comment_id: number; note: string; created_at: Date }> }) | null> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.task.findFirst({
       where: {
@@ -141,19 +149,26 @@ export class CaseRepository extends BaseRepository {
     caseId: number,
     tenantId: string,
     tx?: Prisma.TransactionClient,
-  ): Promise<(Task & { comments: { comment_id: number; note: string; created_at: Date }[] }) | null> {
-    return this.findReopeningTaskWithComments(caseId, tenantId, tx);
+  ): Promise<(Task & { comments: Array<{ comment_id: number; note: string; created_at: Date }> }) | null> {
+    return await this.findReopeningTaskWithComments(caseId, tenantId, tx);
   }
 
   async findReopeningTaskForRejection(
     caseId: number,
     tenantId: string,
     tx?: Prisma.TransactionClient,
-  ): Promise<(Task & { comments: { comment_id: number; note: string; created_at: Date }[] }) | null> {
-    return this.findReopeningTaskWithComments(caseId, tenantId, tx);
+  ): Promise<(Task & { comments: Array<{ comment_id: number; note: string; created_at: Date }> }) | null> {
+    return await this.findReopeningTaskWithComments(caseId, tenantId, tx);
   }
 
-  async findCaseWithPermissionCheck(caseId: number, tenantId: string, userId: string, tx?: Prisma.TransactionClient) {
+  async findCaseWithPermissionCheck(
+    caseId: number,
+    tenantId: string,
+    userId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<
+    (Case & { tasks: Task[]; alert: Alert | null; comments: Array<{ comment_id: number; note: string; created_at: Date }> }) | null
+  > {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
 
     // Check if userId is a valid UUID
@@ -268,22 +283,18 @@ export class CaseRepository extends BaseRepository {
     tenantId: string,
     tx?: Prisma.TransactionClient,
   ): Promise<{ alert: Alert | null; tasks: Task[] } & Case> {
-    try {
-      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
-      const caseData = await client.case.findUnique({
-        where: {
-          case_id: caseId,
-          tenant_id: tenantId,
-        },
-        include: { alert: true, tasks: true },
-      });
-      if (!caseData) {
-        throw new NotFoundException('Case Not Found');
-      }
-      return caseData;
-    } catch (error) {
-      throw error;
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
+    const caseData = await client.case.findUnique({
+      where: {
+        case_id: caseId,
+        tenant_id: tenantId,
+      },
+      include: { alert: true, tasks: true },
+    });
+    if (!caseData) {
+      throw new NotFoundException('Case Not Found');
     }
+    return caseData;
   }
 
   async updateCase(caseId: number, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient): Promise<Case> {
@@ -298,21 +309,8 @@ export class CaseRepository extends BaseRepository {
     return await this.prisma.$transaction(fn);
   }
 
-  getTransactionClient() {
+  getTransactionClient(): PrismaService {
     return this.prisma;
-  }
-
-  async findUnassignedAndInProgressTasksByUser(userId: string, tenantId: string) {
-    return await this.prisma.task.findMany({
-      where: {
-        assigned_user_id: userId,
-        tenant_id: tenantId,
-        status: { in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS] },
-      },
-      select: { task_id: true, name: true, case_id: true, created_at: true },
-      orderBy: { created_at: 'asc' },
-      take: 5,
-    });
   }
 
   async findOldestUnassignedCase(tenantId: string): Promise<{ case_id: number; created_at: Date } | null> {
@@ -408,36 +406,6 @@ export class CaseRepository extends BaseRepository {
     return await this.countCases({ case_owner_user_id: null }, tenantId);
   }
 
-  // Generic groupBy method
-  async groupCasesBy(
-    field: 'status' | 'priority' | 'case_type',
-    tenantId: string,
-    whereClause?: Prisma.CaseWhereInput | Prisma.CaseWhereInput[],
-  ) {
-    const baseWhere = Array.isArray(whereClause) ? { OR: whereClause } : (whereClause ?? {});
-    return await this.prisma.case.groupBy({
-      by: [field],
-      where: {
-        ...baseWhere,
-        tenant_id: tenantId,
-      },
-      _count: { case_id: true },
-    });
-  }
-
-  // Convenience methods using generic groupBy
-  async groupCasesByStatus(whereConditions: Prisma.CaseWhereInput[], tenantId: string) {
-    return await this.groupCasesBy('status', tenantId, whereConditions);
-  }
-
-  async groupCasesByPriority(whereConditions: Prisma.CaseWhereInput[], tenantId: string) {
-    return await this.groupCasesBy('priority', tenantId, whereConditions);
-  }
-
-  async groupCasesByType(whereClause: Prisma.CaseWhereInput, tenantId: string) {
-    return await this.groupCasesBy('case_type', tenantId, whereClause);
-  }
-
   async findCaseWithCompletedInvestigation(caseId: number, tenantId: string): Promise<(Case & { tasks: Task[] }) | null> {
     return await this.prisma.case.findUnique({
       where: {
@@ -486,7 +454,7 @@ export class CaseRepository extends BaseRepository {
   async findAllUserActiveCases(
     userId: string,
     tenantId: string,
-  ): Promise<{ case_id: number; status: CaseStatus; priority: string; created_at: Date }[]> {
+  ): Promise<Array<{ case_id: number; status: CaseStatus; priority: string; created_at: Date }>> {
     return await this.prisma.case.findMany({
       where: {
         tenant_id: tenantId,
@@ -570,7 +538,7 @@ export class CaseRepository extends BaseRepository {
       }
 
       // Verify tenant_id matches if comment has tenantId
-      if (comment && comment.tenantId && existingCase.tenant_id !== comment.tenantId) {
+      if (comment && existingCase.tenant_id !== comment?.tenantId) {
         throw new Error(`Tenant mismatch for case ${caseId}: expected ${existingCase.tenant_id}, got ${comment.tenantId}`);
       }
 
