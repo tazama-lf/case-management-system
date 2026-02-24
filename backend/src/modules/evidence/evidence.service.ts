@@ -188,14 +188,14 @@ export class EvidenceService {
       metadata: [],
     };
 
-    if (dto.evidenceType === 'ADVERSE_MEDIA') {
+    if (dto.evidenceType === EvidenceType.ADVERSE_MEDIA) {
       metadata.aggregator = dto.aggregator;
       metadata.dateSearched = dto.dateSearched;
       metadata.keywords = dto.keywords;
       metadata.findings = dto.findings;
     }
 
-    if (dto.evidenceType === 'SANCTIONS') {
+    if (dto.evidenceType === EvidenceType.SANCTIONS) {
       metadata.screeningDate = dto.screeningDate;
       metadata.tool = dto.tool;
       metadata.summaryDisposition = dto.summaryDisposition;
@@ -252,7 +252,7 @@ export class EvidenceService {
       userId,
       operation: 'upload',
       entityName: 'Evidence',
-      actionPerformed: `EVIDENCE_UPLOADED for Case ${task.case_id} and Task ${Number(dto.taskId)}`,
+      actionPerformed: `EVIDENCE_UPLOADED for Case ${task.case_id} and Task ${dto.taskId}`,
       outcome: 'SUCCESS',
     });
 
@@ -260,7 +260,7 @@ export class EvidenceService {
       userId,
       operation: 'upload Evidence',
       entityName: 'Evidence',
-      actionPerformed: `EVIDENCE_UPLOADED for Case ${task.case_id} and Task ${Number(dto.taskId)}`,
+      actionPerformed: `EVIDENCE_UPLOADED for Case ${task.case_id} and Task ${dto.taskId}`,
       case_id: task.case_id,
       task_id: dto.taskId,
       tenant_id: tenantId,
@@ -284,7 +284,7 @@ export class EvidenceService {
     }
     this.logger.log(`Deleting evidence ${evidenceId}`);
 
-    const doc = await this.couchdb.getDocument(evidenceId.toString());
+    const doc = await this.couchdb.getDocument(evidenceId);
     this.logger.log(`Fetched document for evidence ${evidenceId}: ${JSON.stringify(doc)}`);
 
     if (!doc) {
@@ -292,15 +292,10 @@ export class EvidenceService {
       throw new NotFoundException(`Evidence ${evidenceId} not found`);
     }
 
-    try {
-      this.logger.log(`Deleting attachment ${fileName} from evidence ${doc._id} and revision ${doc._rev}`);
-      const deleteResult = await this.couchdb.deleteEvidence(doc._id, decodeURIComponent(fileName), doc._rev);
-      this.logger.log(`Attachment deletion result: ${JSON.stringify(deleteResult)}`);
-
-      this.evidenceRepository.deleteEvidenceById(evidenceId, tenantId);
-    } catch (error) {
-      throw error;
-    }
+    this.logger.log(`Deleting attachment ${fileName} from evidence ${doc._id} and revision ${doc._rev}`);
+    const deleteResult = await this.couchdb.deleteEvidence(doc._id, decodeURIComponent(fileName), doc._rev);
+    this.logger.log(`Attachment deletion result: ${JSON.stringify(deleteResult)}`);
+    this.evidenceRepository.deleteEvidenceById(evidenceId, tenantId);
 
     await this.auditLog.logAction({
       userId,
@@ -313,8 +308,6 @@ export class EvidenceService {
   }
 
   async getEvidenceById(evidenceId: string, userId: string, tenantId: string, userRole: string): Promise<EvidenceResponseDto> {
-    this.logger.log(`Fetching evidence ${evidenceId}`);
-
     const query: any = {
       tenantId,
       evidenceId,
@@ -332,7 +325,6 @@ export class EvidenceService {
 
     const result = await this.couchdb.queryDocuments(query);
     const evidenceDoc = result.data?.[0];
-    console.log('evidenceDoc: ', evidenceDoc);
 
     if (!evidenceDoc) {
       throw new ForbiddenException('Access denied or evidence not found');
@@ -385,7 +377,7 @@ export class EvidenceService {
     const evidenceDoc = result.data?.[0];
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
-    const attachments = evidenceDoc.metadata || [];
+    const attachments = evidenceDoc.metadata ?? [];
     if (!attachments.length) throw new NotFoundException('No attachments found for this evidence');
 
     const targets = attachmentName ? attachments.filter((a) => a.fileName === attachmentName) : attachments;
@@ -477,7 +469,7 @@ export class EvidenceService {
     const evidenceDoc = result.data?.[0];
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
-    const attachments = evidenceDoc.metadata || [];
+    const attachments = evidenceDoc.metadata ?? [];
     if (!attachments.length) throw new NotFoundException('No attachments found for this evidence');
 
     const targets = attachmentName ? attachments.filter((a) => a.fileName === attachmentName) : attachments;

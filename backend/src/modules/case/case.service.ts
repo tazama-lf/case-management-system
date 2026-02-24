@@ -16,7 +16,6 @@ import { FlowableService } from '../../../src/modules/flowable/flowable.service'
 import { AlertRepository } from '../repository/alert.repository';
 import { CloseCaseDto, ManualCreateCaseDto, GetAllCasesQueryDto, GetUserCasesQueryDto, UpdateCaseDto } from './dto';
 import { CacheService } from '../shared/cache.service';
-import { CaseRepository } from '../repository/case.repository';
 import { CaseCreationService } from './services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 

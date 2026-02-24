@@ -15,7 +15,7 @@ export class NatsStartupService implements OnModuleInit {
     private readonly processAlertService: ProcessAlertService,
   ) {}
 
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     try {
       const { StartupFactory } = await import('@tazama-lf/frms-coe-startup-lib');
       this.startupService = new StartupFactory();
@@ -26,7 +26,7 @@ export class NatsStartupService implements OnModuleInit {
     }
   }
 
-  async handleMessage(req: IngestAlertDto) {
+  async handleMessage(req: IngestAlertDto): Promise<void> {
     const tenantId = req.transaction.TenantId || 'DEFAULT';
     const systemId = this.configService.get<string>('SYSTEM_UUID');
     this.logger.log(`Request: ${JSON.stringify(req)}`, NatsStartupService.name);
