@@ -94,16 +94,16 @@ export class AlertService {
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       };
       const createdCase = await this.caseCreationService.createCase(caseDetail, userId, tenantId);
-      this.loggerService.log(`handle AlertOrNALT CaseType: ${caseDetail.caseType}`);
-      if (caseDetail.caseType === CaseType.FRAUD_AND_AML) {
-        await this.caseCreateService.createCaseWithInvestigationTask(
+      this.loggerService.log(`handle AlertOrNALT CaseType: ${createdCase.case_type}`);
+      if (createdCase.case_type === CaseType.FRAUD_AND_AML) {
+        await this.caseCreationService.createCaseWithInvestigationTask(
           CaseType.FRAUD,
           userId,
           tenantId,
           createdCase.case_id,
           createdCase.priority,
         );
-        await this.caseCreateService.createCaseWithInvestigationTask(
+        await this.caseCreationService.createCaseWithInvestigationTask(
           CaseType.AML,
           userId,
           tenantId,
@@ -124,8 +124,8 @@ export class AlertService {
 
     const alert = await this.alertRepository.getAlertById(alertId);
     this.loggerService.log(`alert:  ${JSON.stringify(alert)}`, AlertService.name);
-    this.loggerService.log(`Alert txtp:  ${alert.txtp}`, AlertService.name);
     if (alert) {
+      this.loggerService.log(`Alert txtp:  ${alert.txtp}`, AlertService.name);
       const referenceIdData = await this.alertRepository.getReferenceId(alert.txtp);
       this.loggerService.log(`ReferenceId:  ${referenceIdData.referenceIdName}`, AlertService.name);
       const referenceId = extractReferenceId(alert.transaction as unknown as JsonValue, 10, 0, referenceIdData.referenceIdName);

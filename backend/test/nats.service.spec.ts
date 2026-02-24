@@ -188,12 +188,15 @@ describe('NatsStartupService', () => {
       );
     });
 
-    it('should use DEFAULT tenant when TenantId is not provided', async () => {
+    it.each([
+      ['undefined', undefined],
+      ['null', null],
+    ])('should use DEFAULT tenant when TenantId is %s', async (_description, tenantIdValue) => {
       const dtoWithoutTenant = {
         ...mockIngestAlertDto,
         transaction: {
           ...mockIngestAlertDto.transaction,
-          TenantId: undefined,
+          TenantId: tenantIdValue,
         } as any,
       };
 
@@ -201,25 +204,6 @@ describe('NatsStartupService', () => {
 
       expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
         dtoWithoutTenant,
-        'NATS',
-        'test-system-uuid',
-        'DEFAULT',
-      );
-    });
-
-    it('should use DEFAULT tenant when TenantId is null', async () => {
-      const dtoWithNullTenant = {
-        ...mockIngestAlertDto,
-        transaction: {
-          ...mockIngestAlertDto.transaction,
-          TenantId: null,
-        } as any,
-      };
-
-      await service.handleMessage(dtoWithNullTenant);
-
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        dtoWithNullTenant,
         'NATS',
         'test-system-uuid',
         'DEFAULT',
@@ -240,34 +224,12 @@ describe('NatsStartupService', () => {
       );
     });
 
-    it('should use default UUID when config returns null', async () => {
-      configService.get.mockReturnValue(null);
-
-      await service.handleMessage(mockIngestAlertDto);
-
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        mockIngestAlertDto,
-        'NATS',
-        'f62edd31-3d72-4ec7-a0b7-cf2f0b0747a9',
-        'tenant-001',
-      );
-    });
-
-    it('should use default UUID when config returns undefined', async () => {
-      configService.get.mockReturnValue(undefined);
-
-      await service.handleMessage(mockIngestAlertDto);
-
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        mockIngestAlertDto,
-        'NATS',
-        'f62edd31-3d72-4ec7-a0b7-cf2f0b0747a9',
-        'tenant-001',
-      );
-    });
-
-    it('should use default UUID when config returns empty string', async () => {
-      configService.get.mockReturnValue('');
+    it.each([
+      ['null', null],
+      ['undefined', undefined],
+      ['empty string', ''],
+    ])('should use default UUID when config returns %s', async (_description, configValue) => {
+      configService.get.mockReturnValue(configValue);
 
       await service.handleMessage(mockIngestAlertDto);
 

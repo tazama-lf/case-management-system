@@ -9,6 +9,7 @@ import { NotificationService } from '../src/modules/notification/notification.se
 import { FlowableService } from '../src/modules/flowable/flowable.service';
 import { CommentService } from '../src/modules/comment/comment.service';
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
+import { TaskValidationUtil } from '../src/modules/shared/utils/task-validation.util';
 import {
   NotFoundException,
   BadRequestException,
@@ -28,6 +29,7 @@ describe('CaseClosureApprovalService', () => {
   let commentService: jest.Mocked<CommentService>;
   let loggingOrchestrationService: jest.Mocked<LoggingOrchestrationService>;
   let logger: jest.Mocked<LoggerService>;
+  let taskValidationUtil: any;
 
   const mockCase = {
     case_id: 1,
@@ -120,6 +122,25 @@ describe('CaseClosureApprovalService', () => {
       debug: jest.fn(),
     };
 
+    const mockTaskValidationUtil = {
+      findApprovalTask: jest.fn(),
+      filterTasks: jest.fn().mockReturnValue([]),
+      getUserAssignedTasks: jest.fn(),
+      validateTask: jest.fn(),
+      validateApprovalTask: jest.fn(),
+      validateApprovalTaskForClosure: jest.fn().mockReturnValue({ 
+        isValid: true, 
+        approvalTask: {
+          task_id: 2,
+          name: 'Approve Case Closure',
+          assigned_user_id: 'supervisor-123',
+          status: TaskStatus.STATUS_10_ASSIGNED,
+        }
+      }),
+      throwIfValidationFails: jest.fn(),
+      validateOtherTasksCompleted: jest.fn().mockReturnValue({ isValid: true }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CaseClosureApprovalService,
@@ -132,6 +153,7 @@ describe('CaseClosureApprovalService', () => {
         { provide: FlowableService, useValue: mockFlowableService },
         { provide: CommentService, useValue: mockCommentService },
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
+        { provide: TaskValidationUtil, useValue: mockTaskValidationUtil },
       ],
     }).compile();
 
@@ -145,6 +167,7 @@ describe('CaseClosureApprovalService', () => {
     commentService = module.get(CommentService);
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
     logger = module.get(LoggerService);
+    taskValidationUtil = module.get(TaskValidationUtil);
   });
 
   describe('closeCase', () => {
@@ -783,6 +806,21 @@ describe('CaseClosureApprovalService', () => {
           { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, assigned_user_id: null, task_id: 2 },
         ],
       };
+      
+      // Mock first call to return unassigned task with error
+      const unassignedTask = { task_id: 2, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, assigned_user_id: null };
+      (taskValidationUtil.validateApprovalTaskForClosure as jest.Mock)
+        .mockReturnValueOnce({ 
+          isValid: false, 
+          errors: ['Approval task must be claimed'],
+          approvalTask: unassignedTask
+        })
+        // After claiming, return valid
+        .mockReturnValueOnce({ 
+          isValid: true, 
+          approvalTask: { ...unassignedTask, assigned_user_id: 'supervisor-123', status: TaskStatus.STATUS_10_ASSIGNED }
+        });
+        
       caseRepository.findCaseForReview.mockResolvedValueOnce(pendingCase as any);
       taskService.claimTask.mockResolvedValue({} as any);
       
@@ -866,6 +904,11 @@ describe('CaseClosureApprovalService', () => {
         ],
       };
       caseRepository.findCaseForReview.mockResolvedValue(pendingCase as any);
+      caseRepository.findCaseWithCompletedInvestigation.mockResolvedValue(pendingCase as any);
+      
+      // Mock to return that other tasks are incomplete
+      (taskValidationUtil.validateOtherTasksCompleted as jest.Mock)
+        .mockReturnValueOnce({ isValid: false, incompleteTasks: [{ task_id: 3, name: 'Some Other Task' }] });
 
       await expect(
         service.rejectCaseClosure(1, 'Need more evidence', 'supervisor-123', 'tenant-123')

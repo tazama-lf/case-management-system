@@ -43,6 +43,7 @@ describe('EventLogService', () => {
       eventLog: {
         create: jest.fn(),
         findMany: jest.fn(),
+        findFirst: jest.fn(),
       },
     };
 
@@ -484,34 +485,23 @@ describe('EventLogService', () => {
 
   describe('getActionHistoryForAlert', () => {
     const alertId = 123;
-    const mockAlertHistory = [
-      {
-        id: 1,
-        user_id: '550e8400-e29b-41d4-a716-446655440000',
-        operation: 'ALERT_UPDATED',
-        entity_name: 'AlertService',
-        action_performed: 'Updated alert 123',
-        outcome: 'success',
-        performed_at: new Date('2026-02-20T10:00:00Z'),
-      },
-      {
-        id: 2,
-        user_id: '550e8400-e29b-41d4-a716-446655440000',
-        operation: 'ALERT_UPDATED',
-        entity_name: 'AlertService',
-        action_performed: 'Alert 123 priority changed',
-        outcome: 'success',
-        performed_at: new Date('2026-02-20T11:00:00Z'),
-      },
-    ];
+    const mockAlertHistory = {
+      id: 1,
+      user_id: '550e8400-e29b-41d4-a716-446655440000',
+      operation: 'ALERT_UPDATED',
+      entity_name: 'AlertService',
+      action_performed: 'Updated alert 123',
+      outcome: 'success',
+      performed_at: new Date('2026-02-20T10:00:00Z'),
+    };
 
     it('should retrieve action history for an alert', async () => {
-      prismaService.eventLog.findMany.mockResolvedValue(mockAlertHistory);
+      prismaService.eventLog.findFirst.mockResolvedValue(mockAlertHistory);
 
       const result = await service.getActionHistoryForAlert(alertId);
 
       expect(result).toEqual(mockAlertHistory);
-      expect(prismaService.eventLog.findMany).toHaveBeenCalledWith({
+      expect(prismaService.eventLog.findFirst).toHaveBeenCalledWith({
         where: {
           operation: 'ALERT_UPDATED',
           action_performed: { contains: '123' },
@@ -522,75 +512,74 @@ describe('EventLogService', () => {
     });
 
     it('should filter by operation ALERT_UPDATED', async () => {
-      prismaService.eventLog.findMany.mockResolvedValue(mockAlertHistory);
+      prismaService.eventLog.findFirst.mockResolvedValue(mockAlertHistory);
 
       await service.getActionHistoryForAlert(alertId);
 
-      const callArgs = prismaService.eventLog.findMany.mock.calls[0][0];
+      const callArgs = prismaService.eventLog.findFirst.mock.calls[0][0];
       expect(callArgs.where.operation).toBe('ALERT_UPDATED');
     });
 
     it('should filter by entity_name AlertService', async () => {
-      prismaService.eventLog.findMany.mockResolvedValue(mockAlertHistory);
+      prismaService.eventLog.findFirst.mockResolvedValue(mockAlertHistory);
 
       await service.getActionHistoryForAlert(alertId);
 
-      const callArgs = prismaService.eventLog.findMany.mock.calls[0][0];
+      const callArgs = prismaService.eventLog.findFirst.mock.calls[0][0];
       expect(callArgs.where.entity_name).toBe('AlertService');
     });
 
     it('should filter by action_performed containing alertId', async () => {
-      prismaService.eventLog.findMany.mockResolvedValue(mockAlertHistory);
+      prismaService.eventLog.findFirst.mockResolvedValue(mockAlertHistory);
 
       await service.getActionHistoryForAlert(456);
 
-      const callArgs = prismaService.eventLog.findMany.mock.calls[0][0];
+      const callArgs = prismaService.eventLog.findFirst.mock.calls[0][0];
       expect(callArgs.where.action_performed).toEqual({ contains: '456' });
     });
 
     it('should order results by performed_at in ascending order', async () => {
-      prismaService.eventLog.findMany.mockResolvedValue(mockAlertHistory);
+      prismaService.eventLog.findFirst.mockResolvedValue(mockAlertHistory);
 
       await service.getActionHistoryForAlert(alertId);
 
-      const callArgs = prismaService.eventLog.findMany.mock.calls[0][0];
+      const callArgs = prismaService.eventLog.findFirst.mock.calls[0][0];
       expect(callArgs.orderBy).toEqual({ performed_at: 'asc' });
     });
 
-    it('should return empty array when no history found', async () => {
-      prismaService.eventLog.findMany.mockResolvedValue([]);
+    it('should return null when no history found', async () => {
+      prismaService.eventLog.findFirst.mockResolvedValue(null);
 
       const result = await service.getActionHistoryForAlert(999);
 
-      expect(result).toEqual([]);
-      expect(result).toHaveLength(0);
+      expect(result).toBeNull();
     });
 
     it('should handle different alert IDs', async () => {
-      prismaService.eventLog.findMany.mockResolvedValue(mockAlertHistory);
+      prismaService.eventLog.findFirst.mockResolvedValue(mockAlertHistory);
 
       const alertIds = [1, 100, 999, 12345];
       
       for (const id of alertIds) {
         await service.getActionHistoryForAlert(id);
         
-        const callArgs = prismaService.eventLog.findMany.mock.calls[prismaService.eventLog.findMany.mock.calls.length - 1][0];
+        const callArgs = prismaService.eventLog.findFirst.mock.calls[prismaService.eventLog.findFirst.mock.calls.length - 1][0];
         expect(callArgs.where.action_performed).toEqual({ contains: `${id}` });
       }
     });
 
     it('should handle alert ID 0', async () => {
-      prismaService.eventLog.findMany.mockResolvedValue([]);
+      prismaService.eventLog.findFirst.mockResolvedValue(null);
 
       await service.getActionHistoryForAlert(0);
 
-      const callArgs = prismaService.eventLog.findMany.mock.calls[0][0];
+      const callArgs = prismaService.eventLog.findFirst.mock.calls[0][0];
       expect(callArgs.where.action_performed).toEqual({ contains: '0' });
     });
 
     it('should handle database error and throw', async () => {
       const error = new Error('Database query failed');
-      prismaService.eventLog.findMany.mockRejectedValue(error);
+      prismaService.eventLog.findFirst.mockRejectedValue(error);
 
       await expect(service.getActionHistoryForAlert(alertId)).rejects.toThrow('Database query failed');
     });

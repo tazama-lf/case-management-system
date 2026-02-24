@@ -116,6 +116,7 @@ describe('TaskService', () => {
         case_id: 1,
         name: 'Test Task',
         tenant_id: 'tenant1',
+        candidateGroup: 'Investigators',
       };
 
       mockTaskRepository.findCaseBasic.mockResolvedValue(caseRecord);

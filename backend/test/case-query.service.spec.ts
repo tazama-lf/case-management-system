@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CaseRepository } from '../src/modules/repository/case.repository';
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
+import { TaskValidationUtil } from '../src/modules/shared/utils/task-validation.util';
 import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CaseStatus, TaskStatus, CaseType, Priority } from '@prisma/client-cms';
 import { GetUserCasesQueryDto } from '../src/modules/case/dto/get-user-cases.dto';
@@ -15,6 +16,7 @@ describe('CaseQueryService', () => {
   let logger: any;
   let caseRepository: any;
   let loggingOrchestrationService: any;
+  let taskValidationUtil: any;
 
   const mockCase = {
     case_id: 1,
@@ -85,6 +87,15 @@ describe('CaseQueryService', () => {
       logActionsWithHistory: jest.fn(),
     } as any;
 
+    const mockTaskValidationUtil = {
+      findApprovalTask: jest.fn(),
+      filterTasks: jest.fn(),
+      getUserAssignedTasks: jest.fn().mockReturnValue([]),
+      validateTask: jest.fn(),
+      validateApprovalTask: jest.fn(),
+      getTaskStatusCounts: jest.fn().mockReturnValue({ total: 0, completed: 0, in_progress: 0, unassigned: 0 }),
+    } as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CaseQueryService,
@@ -92,6 +103,7 @@ describe('CaseQueryService', () => {
         { provide: LoggerService, useValue: mockLogger },
         { provide: CaseRepository, useValue: mockCaseRepository },
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
+        { provide: TaskValidationUtil, useValue: mockTaskValidationUtil },
       ],
     }).compile();
 
@@ -100,6 +112,7 @@ describe('CaseQueryService', () => {
     logger = module.get(LoggerService);
     caseRepository = module.get(CaseRepository);
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
+    taskValidationUtil = module.get(TaskValidationUtil);
   });
 
   afterEach(() => {
@@ -158,6 +171,9 @@ describe('CaseQueryService', () => {
     it('should get user cases with task assignments only', async () => {
       const queryWithTasks: GetUserCasesQueryDto = { ...query, includeTaskAssignments: true };
 
+      // Mock to return tasks for user
+      taskValidationUtil.getUserAssignedTasks.mockReturnValueOnce([{ task_id: 1, assigned_user_id: userId }]);
+
       prismaService.case.count.mockResolvedValueOnce(1);
       prismaService.case.findMany.mockResolvedValueOnce([
         {
@@ -184,6 +200,9 @@ describe('CaseQueryService', () => {
         includeOwnedCases: true,
         includeTaskAssignments: true,
       };
+
+      // Mock to return tasks for user
+      taskValidationUtil.getUserAssignedTasks.mockReturnValueOnce([{ task_id: 1, assigned_user_id: userId }]);
 
       prismaService.case.count.mockResolvedValueOnce(1);
       prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
