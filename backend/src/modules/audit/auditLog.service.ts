@@ -1,41 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { v4 as uuidv4, validate as isUuid } from 'uuid';
 import { AuditLog } from '@prisma/client-cms';
+import { AuditLogInput, IAuditService } from '@tazama-lf/audit-lib';
+import { AuditLogResult } from '@tazama-lf/audit-lib/lib/utils/interfaces/audit';
 
 @Injectable()
 export class AuditLogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject('AUDIT_LOGGER') private readonly logger: IAuditService,
+  ) { }
 
-  async logAction(data: {
-    userId?: string;
-    operation: string;
-    entityName: string;
-    actionPerformed: string;
-    outcome: string;
-    performedAt?: Date;
-  }): Promise<AuditLog> {
-    const userId = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
-    return await this.prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        operation: data.operation,
-        entity_name: data.entityName,
-        action_performed: data.actionPerformed,
-        outcome: data.outcome,
-        performed_at: data.performedAt ?? new Date(),
-      },
-    });
-  }
-
-  async logPermissionDenied(user: any, entityName: string, action: string, _details?: any): Promise<AuditLog> {
-    return await this.logAction({
-      userId: user?.sub ?? 'unknown',
-      operation: 'permission_denied',
-      entityName,
-      actionPerformed: action,
-      outcome: 'denied',
-    });
+  async logAction(data: AuditLogInput): Promise<AuditLogResult> {
+    return await this.logger.log(data);
   }
 
   async getLogs(limit = 50, offset = 0): Promise<AuditLog[]> {
