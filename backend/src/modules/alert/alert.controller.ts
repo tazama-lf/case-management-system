@@ -15,7 +15,7 @@ export class AlertController {
   constructor(
     private readonly alertStatisticsService: AlertStatisticsService,
     private readonly alertService: AlertService,
-  ) { }
+  ) {}
 
   @Get()
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()

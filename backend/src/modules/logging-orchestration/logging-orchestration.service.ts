@@ -14,7 +14,7 @@ export class LoggingOrchestrationService {
     private readonly loggerService: LoggerService,
     private readonly caseHistoryService: CaseHistoryService,
     private readonly taskHistoryService: TaskHistoryService,
-  ) { }
+  ) {}
 
   async logActions(logData: LogDataDTO): Promise<void> {
     try {

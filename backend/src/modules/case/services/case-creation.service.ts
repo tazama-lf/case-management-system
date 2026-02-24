@@ -83,7 +83,7 @@ export class CaseCreationService {
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       });
 
-      this.flowableService.handleCaseCreated({
+      await this.flowableService.handleCaseCreated({
         caseId: newCase.case_id,
         tenantId: newCase.tenant_id,
         caseStatus: newCase.status,

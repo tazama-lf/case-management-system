@@ -50,7 +50,7 @@ export class EventLogService {
     return await this.prisma.eventLog.findFirst({
       where: {
         operation: 'ALERT_UPDATED',
-        action_performed: { contains: `${alertId}` },
+        action_performed: { startsWith: `${alertId} -` },
         entity_name: 'AlertService',
       },
       orderBy: { performed_at: 'asc' },

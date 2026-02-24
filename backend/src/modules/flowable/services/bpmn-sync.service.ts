@@ -61,7 +61,9 @@ export class BpmnSyncService {
       if (taskVariables.postgres_task_id) {
         // Need to get tenantId from case first
         const tempCase = await this.caseRepository.findCaseById(caseId, 'temp');
-        const dbTask = tempCase ? await this.taskRepository.findTaskById(taskVariables.postgres_task_id as number, tempCase.tenant_id) : null;
+        const dbTask = tempCase
+          ? await this.taskRepository.findTaskById(taskVariables.postgres_task_id as number, tempCase.tenant_id)
+          : null;
 
         if (dbTask) {
           this.logger.debug(`[BPMN-Sync] Task ${taskId} already synced with database task ${dbTask.task_id}`, BpmnSyncService.name);

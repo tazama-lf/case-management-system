@@ -58,6 +58,15 @@ export class TriageService {
       const priority = this.casePriorityUtil.determinePriority(priorityScore);
       updateAlertData.priority = priority;
       const transactionResult = await this.alertRepository.transaction(async (tx) => {
+        const existingAlert = await this.alertRepository.getAlertById(alertId, tx);
+        const existingCase = await this.caseRepository.findCaseById(existingAlert.case_id!, tenantId);
+
+        const completeNewCaseTask = existingCase.tasks.find((t) => t.name === 'Complete New Case');
+
+        if (!completeNewCaseTask || completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
+          throw new BadRequestException('Triage Already Complete');
+        }
+
         const alert = await this.alertService.updateAlert(
           alertId,
           userId,
@@ -66,14 +75,6 @@ export class TriageService {
         );
         if (!alert.case_id) {
           throw new InternalServerErrorException('Alert case_id is missing.');
-        }
-
-        const existingCase = await this.caseRepository.findCaseById(alert.case_id, tenantId);
-
-        const completeNewCaseTask = existingCase.tasks.find((t) => t.name === 'Complete New Case');
-
-        if (!completeNewCaseTask || completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
-          throw new BadRequestException('Triage Already Complete');
         }
 
         await this.taskService.updateTask(
