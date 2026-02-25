@@ -7,7 +7,7 @@ export class CloseCaseValidationErrorResponseDto {
   @ApiProperty({
     type: 'array',
     items: { type: 'string' },
-    example: ['Final notes are required and must be at least 20 characters'],
+    example: ['Final notes are required and must be at least 4 characters'],
     description: 'List of validation errors',
   })
   errors: string[];
