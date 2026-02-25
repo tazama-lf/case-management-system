@@ -45,7 +45,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const { success, error: toastError } = useToast();
   const [caseDetails, setCaseDetails] = useState<Case | null>(null);
   const [evidenceCategories, setEvidenceCategories] = useState<EvidenceCategory[]>([]);
-  const [caseComments, setCaseComments] = useState<TaskComment[]>([]);
   const [supervisorComments, setSupervisorComments] = useState<TaskComment[]>([]);
   const [investigatorName, setInvestigatorName] = useState<string>('N/A');
   const [loading, setLoading] = useState(true);
@@ -56,6 +55,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [isSupervisor, setIsSupervisor] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  const [submittedDate, setSubmittedDate] = useState<string>('N/A');
 
   const mapToUnifiedWorkQueueTask = (task: any, caseDetails: Case | null): UnifiedWorkQueueTask => {
     return {
@@ -246,21 +246,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         setLoading(true);
         const details = await caseService.getCaseDetails(caseId);
         setCaseDetails(details);
-        const comments = await commentService.getCommentsByCase(caseId);
-        setCaseComments(comments || []);
-
-
-        if (comments && comments.length > 0 && comments[0].user_id) {
-          try {
-            const userDetails = await userService.getUserDetailsById(comments[0].user_id);
-            if (userDetails) {
-              const fullName = userService.formatUserName(userDetails);
-              setInvestigatorName(fullName);
-            }
-          } catch (error) {
-            console.error('Failed to fetch investigator name:', error);
-          }
-        }
 
         try {
           const tasks = await taskService.getTasksByCaseId(caseId);
@@ -286,6 +271,15 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             if (investigationTask.investigationNotes) {
               setInvestigationNotes(investigationTask.investigationNotes);
             }
+            if (investigationTask.updated_at) {
+              setSubmittedDate(investigationTask.updated_at ? formatDate(investigationTask.updated_at) : 'N/A');
+            }
+            if (investigationTask.assigned_user_id) {
+              const userDetails = await userService.getUserDetailsById(investigationTask.assigned_user_id);
+              if (userDetails) {
+                setInvestigatorName(userService.formatUserName(userDetails));
+              }
+            }
           }
 
         } catch (error) {
@@ -294,7 +288,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       } catch (error) {
         console.error('Failed to fetch case details, evidence, or comments:', error);
         setEvidenceCategories([]);
-        setCaseComments([]);
         setSupervisorComments([]);
       } finally {
         setLoading(false);
@@ -338,9 +331,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               <div>
                 <p className="text-xs text-gray-600 font-medium mb-1">Submitted</p>
                 <p className="text-sm font-semibold text-gray-900">
-                  {caseComments?.[0]?.created_at
-                    ? formatDate(caseComments[0].created_at)
-                    : 'N/A'}
+                  {submittedDate}
                 </p>
               </div>
             </div>
