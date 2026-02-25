@@ -19,8 +19,8 @@ describe('NotificationPreferencesService', () => {
     phone_number: null,
     suppression_settings: null,
     default_channel: NotificationChannel.EMAIL,
-    created_at: new Date('2024-01-01'),
-    updated_at: new Date('2024-01-01'),
+    created_at: new Date(),
+    updated_at: new Date(),
   };
 
   const mockPrismaService = {
@@ -196,6 +196,39 @@ describe('NotificationPreferencesService', () => {
       expect(createCall.data.sms_enabled).toBe(false); // default
       expect(createCall.data.dashboard_enabled).toBe(true); // default
       expect(createCall.data.default_channel).toBe(NotificationChannel.EMAIL); // default
+    });
+
+    it('should handle empty suppression_settings array', async () => {
+      const dto = {
+        email_enabled: true,
+        in_app_enabled: true,
+        sms_enabled: false,
+        dashboard_enabled: true,
+        suppression_settings: [],
+      };
+      (prisma.userNotificationPreference.create as jest.Mock).mockResolvedValue(mockPreference);
+
+      await service.createPreferences('user-123', 'tenant-123', dto);
+
+      const createCall = (prisma.userNotificationPreference.create as jest.Mock).mock.calls[0][0];
+      expect(createCall.data.suppression_settings).toBeDefined();
+      expect(JSON.parse(createCall.data.suppression_settings)).toEqual([]);
+    });
+
+    it('should enforce tenant isolation in preferences creation', async () => {
+      const dto = {
+        email_enabled: true,
+        in_app_enabled: true,
+        sms_enabled: false,
+        dashboard_enabled: true,
+      };
+      (prisma.userNotificationPreference.create as jest.Mock).mockResolvedValue(mockPreference);
+
+      await service.createPreferences('user-123', 'tenant-123', dto);
+
+      const createCall = (prisma.userNotificationPreference.create as jest.Mock).mock.calls[0][0];
+      expect(createCall.data.tenant_id).toBe('tenant-123');
+      expect(createCall.data.user_id).toBe('user-123');
     });
 
     it('should handle database errors gracefully', async () => {

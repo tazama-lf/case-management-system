@@ -211,7 +211,11 @@ export class NotificationPreferencesService {
     sms_enabled?: boolean;
     dashboard_enabled?: boolean;
   }): void {
-    const hasEnabledChannel = channels.email_enabled ?? channels.in_app_enabled ?? channels.sms_enabled ?? channels.dashboard_enabled;
+    const hasEnabledChannel = 
+      channels.email_enabled === true ||
+      channels.in_app_enabled === true ||
+      channels.sms_enabled === true ||
+      channels.dashboard_enabled === true;
 
     if (!hasEnabledChannel) {
       throw new BadRequestException('At least one notification channel must be enabled');

@@ -2,7 +2,7 @@ import { Injectable, InternalServerErrorException, BadRequestException, NotFound
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { IngestAlertDto } from './dto/IngestAlert.dto';
-import { Alert, CaseCreationType, CaseStatus, CaseType, Priority, Prisma, TaskStatus } from '@prisma/client-cms';
+import { Alert, CaseCreationType, CaseStatus, CaseType, Priority, Prisma } from '@prisma/client-cms';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { ConfigService } from '@nestjs/config';
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
@@ -100,16 +100,16 @@ export class AlertService {
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       };
       const createdCase = await this.caseCreationService.createCase(caseDetail, userId, tenantId);
-      this.loggerService.log(`handle AlertOrNALT CaseType: ${caseDetail.caseType}`);
-      if (caseDetail.caseType === CaseType.FRAUD_AND_AML) {
-        await this.caseCreateService.createCaseWithInvestigationTask(
+      this.loggerService.log(`handle AlertOrNALT CaseType: ${createdCase.case_type}`);
+      if (createdCase.case_type === CaseType.FRAUD_AND_AML) {
+        await this.caseCreationService.createCaseWithInvestigationTask(
           CaseType.FRAUD,
           userId,
           tenantId,
           createdCase.case_id,
           createdCase.priority,
         );
-        await this.caseCreateService.createCaseWithInvestigationTask(
+        await this.caseCreationService.createCaseWithInvestigationTask(
           CaseType.AML,
           userId,
           tenantId,
@@ -122,16 +122,18 @@ export class AlertService {
     }
   }
 
-  async getAlertTransactionalData(alertId: number) {
+  async getAlertTransactionalData(
+    alertId: number,
+  ): Promise<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }[]> {
     this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
-    if (alertId == null || alertId == undefined) {
+    if (alertId === null) {
       throw new BadRequestException('AlertID is missing');
     }
 
     const alert = await this.alertRepository.getAlertById(alertId);
     this.loggerService.log(`alert:  ${JSON.stringify(alert)}`, AlertService.name);
-    this.loggerService.log(`Alert txtp:  ${alert.txtp}`, AlertService.name);
     if (alert) {
+      this.loggerService.log(`Alert txtp:  ${alert.txtp}`, AlertService.name);
       const referenceIdData = await this.alertRepository.getReferenceId(alert.txtp);
       this.loggerService.log(`ReferenceId:  ${referenceIdData.referenceIdName}`, AlertService.name);
       const referenceId = extractReferenceId(alert.transaction as unknown as JsonValue, 10, 0, referenceIdData.referenceIdName);

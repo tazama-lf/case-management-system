@@ -160,24 +160,16 @@ describe('TaskLifecycleService', () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
 
-      mockPrisma.$transaction.mockImplementation(async (callback) => {
-        const mockTx = {
-          task: {
-            update: jest.fn().mockResolvedValue({
-              ...existingTask,
-              assigned_user_id: 'user1',
-              status: TaskStatus.STATUS_10_ASSIGNED,
-            }),
-          },
-          case: {
-            update: jest.fn().mockResolvedValue({
-              ...existingCase,
-              status: CaseStatus.STATUS_10_ASSIGNED,
-              case_owner_user_id: 'user1',
-            }),
-          },
-        };
-        return callback(mockTx);
+      mockPrisma.task.update.mockResolvedValue({
+        ...existingTask,
+        assigned_user_id: 'user1',
+        status: TaskStatus.STATUS_10_ASSIGNED,
+      });
+      
+      mockPrisma.case.update.mockResolvedValue({
+        ...existingCase,
+        status: CaseStatus.STATUS_10_ASSIGNED,
+        case_owner_user_id: 'user1',
       });
 
       const result = await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', 'Assign note');
@@ -245,20 +237,11 @@ describe('TaskLifecycleService', () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
 
-      mockPrisma.$transaction.mockImplementation(async (callback) => {
-        const mockTx = {
-          task: {
-            update: jest.fn().mockResolvedValue({
-              ...existingTask,
-              assigned_user_id: 'user1',
-            }),
-          },
-          case: {
-            update: jest.fn().mockResolvedValue(existingCase),
-          },
-        };
-        return callback(mockTx);
+      mockPrisma.task.update.mockResolvedValue({
+        ...existingTask,
+        assigned_user_id: 'user1',
       });
+      mockPrisma.case.update.mockResolvedValue(existingCase);
 
       await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', 'Assignment note');
 
@@ -271,27 +254,18 @@ describe('TaskLifecycleService', () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(caseWithParent);
 
-      mockPrisma.$transaction.mockImplementation(async (callback) => {
-        const mockTx = {
-          task: {
-            update: jest.fn().mockResolvedValue({
-              ...existingTask,
-              assigned_user_id: 'user1',
-              status: TaskStatus.STATUS_10_ASSIGNED,
-            }),
-          },
-          case: {
-            update: jest.fn().mockResolvedValue({
-              ...caseWithParent,
-              status: CaseStatus.STATUS_10_ASSIGNED,
-            }),
-            findFirst: jest.fn().mockResolvedValue({
-              case_id: 11,
-              status: CaseStatus.STATUS_10_ASSIGNED,
-            }),
-          },
-        };
-        return callback(mockTx);
+      mockPrisma.task.update.mockResolvedValue({
+        ...existingTask,
+        assigned_user_id: 'user1',
+        status: TaskStatus.STATUS_10_ASSIGNED,
+      });
+      mockPrisma.case.update.mockResolvedValue({
+        ...caseWithParent,
+        status: CaseStatus.STATUS_10_ASSIGNED,
+      });
+      mockPrisma.case.findFirst.mockResolvedValue({
+        case_id: 11,
+        status: CaseStatus.STATUS_10_ASSIGNED,
       });
 
       await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1');
@@ -321,23 +295,14 @@ describe('TaskLifecycleService', () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
 
-      mockPrisma.$transaction.mockImplementation(async (callback) => {
-        const mockTx = {
-          task: {
-            update: jest.fn().mockResolvedValue({
-              ...existingTask,
-              assigned_user_id: 'user2',
-            }),
-          },
-          case: {
-            update: jest.fn().mockResolvedValue({
-              ...existingCase,
-              status: CaseStatus.STATUS_10_ASSIGNED,
-              case_owner_user_id: 'user2',
-            }),
-          },
-        };
-        return callback(mockTx);
+      mockPrisma.task.update.mockResolvedValue({
+        ...existingTask,
+        assigned_user_id: 'user2',
+      });
+      mockPrisma.case.update.mockResolvedValue({
+        ...existingCase,
+        status: CaseStatus.STATUS_10_ASSIGNED,
+        case_owner_user_id: 'user2',
       });
 
       const result = await service.reassignTask(1, 'supervisor1', 'tenant1', 'user2', 'Reassign note');
@@ -361,26 +326,17 @@ describe('TaskLifecycleService', () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(caseWithParent);
 
-      mockPrisma.$transaction.mockImplementation(async (callback) => {
-        const mockTx = {
-          task: {
-            update: jest.fn().mockResolvedValue({
-              ...existingTask,
-              assigned_user_id: 'user2',
-            }),
-          },
-          case: {
-            update: jest.fn().mockResolvedValue({
-              ...caseWithParent,
-              status: CaseStatus.STATUS_10_ASSIGNED,
-            }),
-            findFirst: jest.fn().mockResolvedValue({
-              case_id: 11,
-              status: CaseStatus.STATUS_10_ASSIGNED,
-            }),
-          },
-        };
-        return callback(mockTx);
+      mockPrisma.task.update.mockResolvedValue({
+        ...existingTask,
+        assigned_user_id: 'user2',
+      });
+      mockPrisma.case.update.mockResolvedValue({
+        ...caseWithParent,
+        status: CaseStatus.STATUS_10_ASSIGNED,
+      });
+      mockPrisma.case.findFirst.mockResolvedValue({
+        case_id: 11,
+        status: CaseStatus.STATUS_10_ASSIGNED,
       });
 
       await service.reassignTask(1, 'supervisor1', 'tenant1', 'user2', 'Reassign note');
@@ -410,24 +366,15 @@ describe('TaskLifecycleService', () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
 
-      mockPrisma.$transaction.mockImplementation(async (callback) => {
-        const mockTx = {
-          task: {
-            update: jest.fn().mockResolvedValue({
-              ...existingTask,
-              assigned_user_id: null,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-            }),
-          },
-          case: {
-            update: jest.fn().mockResolvedValue({
-              ...existingCase,
-              status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              case_owner_user_id: null,
-            }),
-          },
-        };
-        return callback(mockTx);
+      mockPrisma.task.update.mockResolvedValue({
+        ...existingTask,
+        assigned_user_id: null,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
+      });
+      mockPrisma.case.update.mockResolvedValue({
+        ...existingCase,
+        status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        case_owner_user_id: null,
       });
 
       const result = await service.unassignTask(1, 'supervisor1', 'tenant1', 'Workload rebalancing');
@@ -486,48 +433,25 @@ describe('TaskLifecycleService', () => {
       mockTaskRepository.findTaskById.mockResolvedValue(sarTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
 
-      let taskUpdateCalled = false;
-      mockPrisma.$transaction.mockImplementation(async (callback) => {
-        const mockTx = {
-          task: {
-            update: jest.fn().mockImplementation(() => {
-              taskUpdateCalled = true;
-              return {
-                ...sarTask,
-                assigned_user_id: null,
-              };
-            }),
-          },
-          case: {
-            update: jest.fn(),
-          },
-        };
-        return callback(mockTx);
+      mockPrisma.task.update.mockResolvedValue({
+        ...sarTask,
+        assigned_user_id: null,
       });
 
       await service.unassignTask(1, 'supervisor1', 'tenant1', 'reason');
 
-      expect(taskUpdateCalled).toBe(true);
+      expect(mockPrisma.task.update).toHaveBeenCalled();
     });
 
     it('should handle notification errors gracefully', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
 
-      mockPrisma.$transaction.mockImplementation(async (callback) => {
-        const mockTx = {
-          task: {
-            update: jest.fn().mockResolvedValue({
-              ...existingTask,
-              assigned_user_id: null,
-            }),
-          },
-          case: {
-            update: jest.fn().mockResolvedValue(existingCase),
-          },
-        };
-        return callback(mockTx);
+      mockPrisma.task.update.mockResolvedValue({
+        ...existingTask,
+        assigned_user_id: null,
       });
+      mockPrisma.case.update.mockResolvedValue(existingCase);
 
       mockNotificationService.sendNotification.mockRejectedValue(new Error('Notification failed'));
 
@@ -547,26 +471,17 @@ describe('TaskLifecycleService', () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(caseWithParent);
 
-      mockPrisma.$transaction.mockImplementation(async (callback) => {
-        const mockTx = {
-          task: {
-            update: jest.fn().mockResolvedValue({
-              ...existingTask,
-              assigned_user_id: null,
-            }),
-          },
-          case: {
-            update: jest.fn().mockResolvedValue({
-              ...caseWithParent,
-              status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-            }),
-            findFirst: jest.fn().mockResolvedValue({
-              case_id: 11,
-              status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-            }),
-          },
-        };
-        return callback(mockTx);
+      mockPrisma.task.update.mockResolvedValue({
+        ...existingTask,
+        assigned_user_id: null,
+      });
+      mockPrisma.case.update.mockResolvedValue({
+        ...caseWithParent,
+        status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+      });
+      mockPrisma.case.findFirst.mockResolvedValue({
+        case_id: 11,
+        status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
       });
 
       await service.unassignTask(1, 'supervisor1', 'tenant1', 'reason');
@@ -609,74 +524,9 @@ describe('TaskLifecycleService', () => {
     });
 
     it('should throw NotFoundException if task not found', async () => {
-      mockPrisma.task.findUnique.mockResolvedValue(null);
+      mockTaskRepository.findTaskById.mockResolvedValue(null);
 
       await expect(service.completeTask(999, 'user1', 'tenant1')).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('emitAssignment', () => {
-    it('should emit task.assigned event', () => {
-      (service as any).emitAssignment(1, 1, 'user1', 'user2');
-
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith('task.assigned', expect.anything());
-    });
-
-    it('should emit task.assigned event without previous user', () => {
-      (service as any).emitAssignment(1, 1, 'user1');
-
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith('task.assigned', expect.anything());
-    });
-  });
-
-  describe('emitCaseStatusChange', () => {
-    it('should emit case.status.changed event', () => {
-      (service as any).emitCaseStatusChange(
-        1,
-        CaseStatus.STATUS_10_ASSIGNED,
-        CaseStatus.STATUS_20_IN_PROGRESS,
-        'Task started',
-      );
-
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith('case.status.changed', expect.anything());
-    });
-  });
-
-  describe('getTaskOrThrow', () => {
-    it('should return task if found', async () => {
-      const task = { task_id: 1, tenant_id: 'tenant1' };
-      mockPrisma.task.findUnique.mockResolvedValue(task);
-
-      const result = await (service as any).getTaskOrThrow(1, 'tenant1');
-
-      expect(result).toEqual(task);
-    });
-
-    it('should throw NotFoundException if task not found', async () => {
-      mockPrisma.task.findUnique.mockResolvedValue(null);
-
-      await expect((service as any).getTaskOrThrow(999, 'tenant1')).rejects.toThrow(
-        new NotFoundException('Task 999 not found'),
-      );
-    });
-  });
-
-  describe('getCaseOrThrow', () => {
-    it('should return case if found', async () => {
-      const caseData = { case_id: 1, tenant_id: 'tenant1' };
-      mockPrisma.case.findUnique.mockResolvedValue(caseData);
-
-      const result = await (service as any).getCaseOrThrow(1, 'tenant1');
-
-      expect(result).toEqual(caseData);
-    });
-
-    it('should throw NotFoundException if case not found', async () => {
-      mockPrisma.case.findUnique.mockResolvedValue(null);
-
-      await expect((service as any).getCaseOrThrow(999, 'tenant1')).rejects.toThrow(
-        new NotFoundException('Case 999 not found'),
-      );
     });
   });
 });

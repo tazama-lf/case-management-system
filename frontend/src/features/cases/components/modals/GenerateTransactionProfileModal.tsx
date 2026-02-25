@@ -142,7 +142,9 @@ const GenerateTransactionProfileModal: React.FC<GenerateTransactionProfileModalP
         try {
           const userData = JSON.parse(user);
           tenantId = userData.tenantId || '';
-        } catch {}
+        } catch {
+          // Ignore JSON parse errors and use default tenantId
+        }
       }
 
       if (!tenantId) {

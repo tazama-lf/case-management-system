@@ -184,7 +184,7 @@ export class CacheService implements OnModuleInit {
    */
   async getUserEmailFromCache(userId: string): Promise<string | null> {
     const user = await this.getUserFromCache(userId);
-    return user?.email ?? null;
+    return user?.email || null;
   }
 
   /**

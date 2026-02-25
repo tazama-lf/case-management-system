@@ -124,7 +124,9 @@ const getUserRole = () => {
         if (claims.includes('CMS_INVESTIGATOR')) return 'CMS_INVESTIGATOR';
       }
     }
-  } catch { }
+  } catch {
+    // Ignore JWTdecoding errors
+  }
   return 'CMS_SUPERVISOR';
 };
 
@@ -632,6 +634,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               investigationNotes: investigationNotes,
             });
           } catch {
+            // Ignore task update errors
           }
         }
 

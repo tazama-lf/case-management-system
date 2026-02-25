@@ -26,7 +26,7 @@ export class AuthService {
       );
       const { data } = response;
 
-      if (data == null) {
+      if (data === null || data === undefined) {
         throw new ServiceUnavailableException('Authentication service unavailable');
       }
       let token: string | undefined;
@@ -203,7 +203,7 @@ export class AuthService {
       errorMessage = errorData;
       statusText = errorData;
     } else if (errorData && typeof errorData === 'object') {
-      errorMessage = errorData.message || errorData.error || JSON.stringify(errorData);
+      errorMessage = errorData.message ?? errorData.error ?? JSON.stringify(errorData);
       statusText = errorMessage;
     } else {
       statusText = axiosError?.response?.statusText ?? axiosError?.message ?? 'Unknown error';

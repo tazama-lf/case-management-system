@@ -322,7 +322,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             {/* Case ID Row */}
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-700">Case ID:</span>
-              <span className="text-sm font-semibold text-gray-900 font-mono">{`CASE-${caseDetails?.case_id}` || 'N/A'}</span>
+              <span className="text-sm font-semibold text-gray-900 font-mono">{caseDetails?.case_id ? `CASE-${caseDetails.case_id}` : 'N/A'}</span>
             </div>
 
             {/* Other Details Row */}
@@ -523,7 +523,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="font-medium text-gray-700">Case ID:</span>
-              <span className="ml-2 text-gray-900">{`CASE-${caseDetails?.case_id}` || 'N/A'}</span>
+              <span className="ml-2 text-gray-900">{caseDetails?.case_id ? `CASE-${caseDetails.case_id}` : 'N/A'}</span>
             </div>
             <div>
               <span className="font-medium text-gray-700">Priority:</span>

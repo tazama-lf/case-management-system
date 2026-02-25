@@ -35,8 +35,8 @@ describe('AlertService', () => {
     networkMap: {},
     confidence_per: 0,
     case_id: 1,
-    created_at: new Date('2026-01-01'),
-    updated_at: new Date('2026-01-01'),
+    created_at: new Date(),
+    updated_at: new Date(),
   };
 
   const mockIngestAlertDto: any = {
@@ -54,8 +54,8 @@ describe('AlertService', () => {
     priority: Priority.NEW,
     case_creation_type: CaseCreationType.AUTOMATIC_SYSTEM,
     case_type: null,
-    created_at: new Date('2026-01-01'),
-    updated_at: new Date('2026-01-01'),
+    created_at: new Date(),
+    updated_at: new Date(),
   };
 
   beforeEach(async () => {
