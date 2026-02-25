@@ -108,27 +108,6 @@ export class TriageService {
             priority,
             updateAlertDto.alertType,
           );
-
-          await this.flowableService.handleTaskCompleted({
-            caseId: existingCase.case_id,
-            newStatus: TaskStatus.STATUS_30_COMPLETED,
-            taskName: completeNewCaseTask.name!,
-            completionVariables: {
-              autoCloseEligible: true,
-              caseType: updateAlertDto.alertType,
-              casePriority: alert.priority,
-            },
-          });
-
-          await this.flowableService.handleTaskCompleted({
-            caseId: existingCase.case_id,
-            newStatus: TaskStatus.STATUS_30_COMPLETED,
-            taskName: 'Auto Close',
-            completionVariables: {
-              autoCloseType: updateAlertDto.status,
-              autoCloseReason: updateAlertDto.note,
-            },
-          });
         } else {
           if (alert.alert_type) {
             await this.caseCreationService.updateCaseStatus(
@@ -144,20 +123,16 @@ export class TriageService {
               await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, alert.case_id, priority);
             }
           }
-
-          await this.flowableService.handleTaskCompleted({
-            caseId: existingCase.case_id,
-            newStatus: TaskStatus.STATUS_30_COMPLETED,
-            taskName: completeNewCaseTask.name!,
-            completionVariables: {
-              autoCloseEligible: false,
-              caseType: updateAlertDto.alertType,
-              casePriority: alert.priority,
-            },
-          });
         }
-        return { alert };
+        return { alert, completeNewCaseTask, existingCase };
       });
+
+      await this.executeFlowableOperations(
+        updateAlertData,
+        transactionResult.completeNewCaseTask,
+        transactionResult.existingCase,
+        transactionResult.alert,
+      );
 
       this.logger.log('End - handleManualTriage', TriageService.name);
       return transactionResult.alert;
@@ -166,6 +141,62 @@ export class TriageService {
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Manual triage failed for alert ${alertId}: ${errorMessage}`, errorStack, TriageService.name);
       throw error;
+    }
+  }
+
+  private async executeFlowableOperations(
+    updateAlertDto: ManualAlertUpdateDTO,
+    completeNewCaseTask: Task,
+    existingCase: Case,
+    alert: Alert,
+    maxRetries = 3,
+  ): Promise<void> {
+    const flowableOperations = async () => {
+      if (updateAlertDto.status && this.closableStatuses.includes(updateAlertDto.status)) {
+        await this.flowableService.handleTaskCompleted({
+          caseId: existingCase.case_id,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: completeNewCaseTask.name!,
+          completionVariables: {
+            autoCloseEligible: true,
+            caseType: updateAlertDto.alertType,
+            casePriority: alert.priority,
+          },
+        });
+
+        await this.flowableService.handleTaskCompleted({
+          caseId: existingCase.case_id,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: 'Auto Close',
+          completionVariables: {
+            autoCloseType: updateAlertDto.status,
+            autoCloseReason: updateAlertDto.note,
+          },
+        });
+      } else {
+        await this.flowableService.handleTaskCompleted({
+          caseId: existingCase.case_id,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: completeNewCaseTask.name!,
+          completionVariables: {
+            autoCloseEligible: false,
+            caseType: updateAlertDto.alertType,
+            casePriority: alert.priority,
+          },
+        });
+      }
+    };
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await flowableOperations();
+        return;
+      } catch (error) {
+        if (attempt === maxRetries) {
+          throw error;
+        }
+        await this.delay(1000 * attempt); // Exponential backoff
+      }
     }
   }
 
@@ -565,7 +596,7 @@ export class TriageService {
   private async predictAlert(alert: IngestAlertDto): Promise<Prediction> {
     this.logger.log('Start - AI Prediction', TriageService.name);
     try {
-      const extractedFeatures = await this.featureExtractionService.extractFeatures(alert);
+      const extractedFeatures = this.featureExtractionService.extractFeatures(alert);
       const predictedResult = await axios.post<AIPrediction>(this.configService.get<string>('AI_MODEL_ENDPOINT')!, extractedFeatures);
       const confidence = predictedResult.data.confidence * 100;
 
@@ -581,5 +612,9 @@ export class TriageService {
       this.logger.error(`AI prediction failed: ${errorMessage}`, errorStack, TriageService.name);
       throw new InternalServerErrorException('AI prediction failed');
     }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
