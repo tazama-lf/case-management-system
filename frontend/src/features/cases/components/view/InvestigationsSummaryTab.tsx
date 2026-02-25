@@ -1,9 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import {
-  DocumentTextIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-} from '@heroicons/react/24/outline';
+import { DocumentTextIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { marked } from 'marked';
 import type { CaseRow } from '../casesTable.utils';
 import { caseService } from '../../services/caseService';
@@ -19,14 +15,8 @@ import authService from '@/features/auth/services/authService';
 import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import type { TaskForSupervisor } from '../../services/taskService';
 import { formatDate } from '@/shared/utils/dateUtils';
-import {
-  loadEvidence,
-  fetchCasesAndEvidence,
-} from '../../utils/investigationUtils';
 
-const CompleteTaskModal = lazy(
-  async () => await import('../modals/CompleteTaskModal'),
-);
+const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 
 marked.setOptions({
   breaks: true,
@@ -48,58 +38,47 @@ interface EvidenceCategory {
   evidence: Evidence[];
 }
 
-const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
-  caseId,
-  onTaskUpdate,
-  refreshKey,
-  task,
-}) => {
+
+const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseId, onTaskUpdate, refreshKey, task }) => {
   const [currentTaskId, setCurrentTaskId] = useState<number | null>(null);
   const { success, error: toastError } = useToast();
   const [caseDetails, setCaseDetails] = useState<Case | null>(null);
-  const [evidenceCategories, setEvidenceCategories] = useState<
-    EvidenceCategory[]
-  >([]);
-  const [caseComments, setCaseComments] = useState<TaskComment[]>([]);
-  const [supervisorComments, setSupervisorComments] = useState<TaskComment[]>(
-    [],
-  );
+  const [evidenceCategories, setEvidenceCategories] = useState<EvidenceCategory[]>([]);
+  const [supervisorComments, setSupervisorComments] = useState<TaskComment[]>([]);
   const [investigatorName, setInvestigatorName] = useState<string>('N/A');
   const [loading, setLoading] = useState(true);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(),
-  );
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
   const [investigationTask, setInvestigationTask] = useState<any>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [isSupervisor, setIsSupervisor] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | undefined>(
-    undefined,
-  );
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  const [submittedDate, setSubmittedDate] = useState<string>('N/A');
 
-  const mapToUnifiedWorkQueueTask = (
-    task: any,
-    caseDetails: Case | null,
-  ): UnifiedWorkQueueTask => ({
-    id: task.task_id,
-    taskId: task.task_id,
-    name: task.name || 'Unnamed Task',
-    description: task.description,
-    assignee: task.assigned_user_id,
-    assigneeName: task.assignedUser?.username || task.assigned_user_id,
-    candidateGroup: task.candidateGroup || 'investigations',
-    status: task.status,
-    priority: caseDetails?.priority || 'NEW',
-    created: task.created_at,
-    dueDate: task.sla_deadline || undefined,
-    caseId: task.case_id,
-  });
+  const mapToUnifiedWorkQueueTask = (task: any, caseDetails: Case | null): UnifiedWorkQueueTask => {
+    return {
+      id: task.task_id,
+      taskId: task.task_id,
+      name: task.name || 'Unnamed Task',
+      description: task.description,
+      assignee: task.assigned_user_id,
+      assigneeName: task.assignedUser?.username || task.assigned_user_id,
+      candidateGroup: task.candidateGroup || 'investigations',
+      status: task.status,
+      priority: caseDetails?.priority || 'NEW',
+      created: task.created_at,
+      dueDate: task.sla_deadline || undefined,
+      caseId: task.case_id,
+
+    };
+
+  };
 
   const loadEvidence = React.useCallback(async () => {
     if (!currentTaskId) return;
-    const evidenceResponse =
-      await evidenceService.getTaskEvidence(currentTaskId);
+    const evidenceResponse = await evidenceService.getTaskEvidence(currentTaskId);
+
 
     const groupedByType = new Map<string, Evidence[]>();
 
@@ -138,7 +117,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
     ];
     const categories: EvidenceCategory[] = [];
 
-    ORDERED_TYPES.forEach((type) => {
+    ORDERED_TYPES.forEach(type => {
       const items = groupedByType.get(type);
       if (!items) return;
 
@@ -194,10 +173,10 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
       await taskService.updateTaskForSupervisor(taskIdToComplete, {
         status: TaskStatus.STATUS_30_COMPLETED,
       });
-      setShowCompleteModal(false);
+      setShowCompleteModal(false)
       const tasks = await taskService.getTasksByCaseId(caseId);
       const updatedInvestigationTask = tasks.find(
-        (t) => t.task_id === currentTaskId,
+        (t) => t.task_id === currentTaskId
       );
       if (updatedInvestigationTask) {
         setInvestigationTask(updatedInvestigationTask);
@@ -205,7 +184,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
 
       success(
         'Task Completed Successfully',
-        'Investigation task has been completed successfully.',
+        `Investigation task has been completed successfully.`,
       );
 
       if (onTaskUpdate) {
@@ -219,13 +198,11 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
     }
   };
 
-  const handleDownloadEvidence = async (
-    evidenceId: string,
-    fileName: string,
-  ) => {
+  const handleDownloadEvidence = async (evidenceId: string, fileName: string) => {
     try {
       setDownloadingId(evidenceId.toString());
       const blob = await evidenceService.downloadEvidence(evidenceId);
+
 
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -237,9 +214,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to download evidence:', error);
-      alert(
-        `Failed to download evidence: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      alert('Failed to download evidence: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setDownloadingId(null);
     }
@@ -270,39 +245,24 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
         setLoading(true);
         const details = await caseService.getCaseDetails(caseId);
         setCaseDetails(details);
-        const comments = await commentService.getCommentsByCase(caseId);
-        setCaseComments(comments || []);
-
-        if (comments && comments.length > 0 && comments[0].user_id) {
-          try {
-            const userDetails = await userService.getUserDetailsById(
-              comments[0].user_id,
-            );
-            if (userDetails) {
-              const fullName = userService.formatUserName(userDetails);
-              setInvestigatorName(fullName);
-            }
-          } catch (error) {
-            console.error('Failed to fetch investigator name:', error);
-          }
-        }
 
         try {
           const tasks = await taskService.getTasksByCaseId(caseId);
 
-          const approvalTask = tasks.find((t) =>
-            t.name?.toLowerCase().includes('approve'),
+          const approvalTask = tasks.find(
+            (t) => t.name && t.name.toLowerCase().includes('approve')
           );
 
           if (approvalTask) {
-            const supervisorTaskComments =
-              await commentService.getCommentsByTask(approvalTask.task_id);
+            const supervisorTaskComments = await commentService.getCommentsByTask(
+              approvalTask.task_id
+            );
             setSupervisorComments(supervisorTaskComments || []);
             console.log('Fetched supervisor comments:', supervisorTaskComments);
           }
 
           const investigationTask = tasks.find(
-            (t) => t.task_id === currentTaskId,
+            (t) => t.task_id === currentTaskId
           );
 
           if (investigationTask) {
@@ -310,20 +270,23 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
             if (investigationTask.investigationNotes) {
               setInvestigationNotes(investigationTask.investigationNotes);
             }
+            if (investigationTask.updated_at) {
+              setSubmittedDate(investigationTask.updated_at ? formatDate(investigationTask.updated_at) : 'N/A');
+            }
+            if (investigationTask.assigned_user_id) {
+              const userDetails = await userService.getUserDetailsById(investigationTask.assigned_user_id);
+              if (userDetails) {
+                setInvestigatorName(userService.formatUserName(userDetails));
+              }
+            }
           }
+
         } catch (error) {
-          console.error(
-            'Failed to fetch supervisor comments or investigation notes:',
-            error,
-          );
+          console.error('Failed to fetch supervisor comments or investigation notes:', error);
         }
       } catch (error) {
-        console.error(
-          'Failed to fetch case details, evidence, or comments:',
-          error,
-        );
+        console.error('Failed to fetch case details, evidence, or comments:', error);
         setEvidenceCategories([]);
-        setCaseComments([]);
         setSupervisorComments([]);
       } finally {
         setLoading(false);
@@ -332,6 +295,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
 
     fetchCaseAndEvidence();
   }, [caseId, refreshKey, currentTaskId]);
+
 
   if (loading) {
     return (
@@ -349,69 +313,41 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
           <div className="space-y-4 flex-1">
             {/* Case ID Row */}
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">
-                Case ID:
-              </span>
-              <span className="text-sm font-semibold text-gray-900 font-mono">
-                {caseDetails?.case_id ? `CASE-${caseDetails.case_id}` : 'N/A'}
-              </span>
+              <span className="text-sm font-medium text-gray-700">Case ID:</span>
+              <span className="text-sm font-semibold text-gray-900 font-mono">{caseDetails?.case_id ? `CASE-${caseDetails.case_id}` : 'N/A'}</span>
             </div>
 
             {/* Other Details Row */}
             <div className="grid grid-cols-3 gap-6">
               <div>
                 <p className="text-xs text-gray-600 font-medium mb-1">Type</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {caseDetails?.case_type || 'N/A'}
-                </p>
+                <p className="text-sm font-semibold text-gray-900">{caseDetails?.case_type || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600 font-medium mb-1">
-                  Investigator
-                </p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {investigatorName}
-                </p>
+                <p className="text-xs text-gray-600 font-medium mb-1">Investigator</p>
+                <p className="text-sm font-semibold text-gray-900">{investigatorName}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600 font-medium mb-1">
-                  Submitted
-                </p>
+                <p className="text-xs text-gray-600 font-medium mb-1">Submitted</p>
                 <p className="text-sm font-semibold text-gray-900">
-                  {caseComments?.[0]?.created_at
-                    ? formatDate(caseComments[0].created_at)
-                    : 'N/A'}
+                  {submittedDate}
                 </p>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2 ml-6">
-            {investigationTask &&
-              investigationTask.status !== 'STATUS_30_COMPLETED' &&
-              investigationTask.assigned_user_id === currentUserId && (
-                <button
-                  hidden={task.status === 'STATUS_21_BLOCKED'}
-                  onClick={() => {
-                    setShowCompleteModal(true);
-                  }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 shadow-sm transition-all"
-                >
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Complete Investigation
-                </button>
-              )}
+            {investigationTask && investigationTask.status !== 'STATUS_30_COMPLETED' && investigationTask.assigned_user_id === currentUserId && (
+              <button
+                hidden={task.status === 'STATUS_21_BLOCKED'}
+                onClick={() => setShowCompleteModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 shadow-sm transition-all"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Complete Investigation
+              </button>
+            )}
           </div>
         </div>
 
@@ -419,17 +355,16 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
         <div className="border-t border-gray-200"></div>
 
         {/* Recommended Outcome Section - Only show when case is closed */}
-        {caseDetails?.status &&
-          (caseDetails.status === 'STATUS_81_CLOSED_REFUTED' ||
-            caseDetails.status === 'STATUS_82_CLOSED_CONFIRMED' ||
-            caseDetails.status === 'STATUS_83_CLOSED_INCONCLUSIVE') && (
+        {caseDetails?.status && (
+          caseDetails.status === 'STATUS_81_CLOSED_REFUTED' ||
+          caseDetails.status === 'STATUS_82_CLOSED_CONFIRMED' ||
+          caseDetails.status === 'STATUS_83_CLOSED_INCONCLUSIVE'
+        ) && (
             <div className="rounded-lg border border-gray-200 bg-blue-50 p-6">
               <h3 className="text-sm font-semibold text-gray-700 mb-3">
                 Recommended Outcome
               </h3>
-              <div
-                className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium ${getOutcomeColor(caseDetails?.status || '')}`}
-              >
+              <div className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium ${getOutcomeColor(caseDetails?.status || '')}`}>
                 {getOutcomeLabel(caseDetails?.status || '')}
               </div>
             </div>
@@ -446,7 +381,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
               dangerouslySetInnerHTML={{
                 __html: (marked(investigationNotes) as string)
                   .replace(/(<\/p>\s*<ol>)/g, '</p><br><ol>')
-                  .replace(/(<\/p>\s*<ul>)/g, '</p><br><ul>'),
+                  .replace(/(<\/p>\s*<ul>)/g, '</p><br><ul>')
               }}
             />
           ) : (
@@ -465,23 +400,20 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
             <div className="space-y-4">
               {/* Only show the most recent supervisor comment */}
               {(() => {
-                const latestComment =
-                  supervisorComments[supervisorComments.length - 1];
+                const latestComment = supervisorComments[supervisorComments.length - 1];
                 return (
                   <div key={latestComment.comment_id}>
                     {/* Notes */}
                     <div
                       className="markdown-content text-sm text-gray-700 mb-4"
                       dangerouslySetInnerHTML={{
-                        __html: marked(latestComment.note) as string,
+                        __html: marked(latestComment.note) as string
                       }}
                     />
 
                     {/* Supervisor outcome only */}
                     <div className="p-3 bg-green-50 border border-green-200 rounded">
-                      <p className="text-xs text-green-600 font-medium mb-1">
-                        Supervisor Final Outcome
-                      </p>
+                      <p className="text-xs text-green-600 font-medium mb-1">Supervisor Final Outcome</p>
                       <p className="text-sm font-semibold text-green-900">
                         {caseDetails?.status || 'N/A'}
                       </p>
@@ -501,15 +433,10 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
           <div className="space-y-2">
             {evidenceCategories.length > 0 ? (
               evidenceCategories.map((category, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-200 rounded-lg overflow-hidden"
-                >
+                <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
                   {/* Category Header */}
                   <button
-                    onClick={() => {
-                      toggleCategory(category.type);
-                    }}
+                    onClick={() => toggleCategory(category.type)}
                     className="w-full flex items-center justify-between gap-3 p-4 hover:bg-gray-50 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3 flex-1">
@@ -520,9 +447,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
                       )}
                       <DocumentTextIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
                       <div className="flex-1">
-                        <span className="text-sm font-medium text-gray-900">
-                          {category.type}
-                        </span>
+                        <span className="text-sm font-medium text-gray-900">{category.type}</span>
                         <span className="text-sm text-gray-500 ml-1">
                           ({category.count} {category.description})
                         </span>
@@ -545,17 +470,15 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
                                 {doc.fileName || 'Untitled Document'}
                               </p>
                               <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                                <span>
-                                  {evidenceService.formatFileSize(
-                                    doc.fileSize || 0,
-                                  )}
-                                </span>
+                                <span>{evidenceService.formatFileSize(doc.fileSize || 0)}</span>
                                 <span>•</span>
                                 <span>{doc.evidenceType}</span>
                                 {doc.uploadedAt && (
                                   <>
                                     <span>•</span>
-                                    <span>{formatDate(doc.uploadedAt)}</span>
+                                    <span>
+                                      {formatDate(doc.uploadedAt)}
+                                    </span>
                                   </>
                                 )}
                               </div>
@@ -567,18 +490,11 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
                             </div>
                           </div>
                           <button
-                            onClick={async () => {
-                              await handleDownloadEvidence(
-                                doc.id,
-                                doc.fileName || 'document',
-                              );
-                            }}
+                            onClick={() => handleDownloadEvidence(doc.id, doc.fileName || 'document')}
                             disabled={downloadingId === doc.id.toString()}
                             className="ml-4 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                           >
-                            {downloadingId === doc.id.toString()
-                              ? 'Downloading...'
-                              : 'Download'}
+                            {downloadingId === doc.id.toString() ? 'Downloading...' : 'Download'}
                           </button>
                         </div>
                       ))}
@@ -587,9 +503,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
                 </div>
               ))
             ) : (
-              <p className="text-sm text-gray-500 italic">
-                No evidence uploaded yet for this case
-              </p>
+              <p className="text-sm text-gray-500 italic">No evidence uploaded yet for this case</p>
             )}
           </div>
         </div>
@@ -599,42 +513,34 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="font-medium text-gray-700">Case ID:</span>
-              <span className="ml-2 text-gray-900">
-                {caseDetails?.case_id ? `CASE-${caseDetails.case_id}` : 'N/A'}
-              </span>
+              <span className="ml-2 text-gray-900">{caseDetails?.case_id ? `CASE-${caseDetails.case_id}` : 'N/A'}</span>
             </div>
             <div>
               <span className="font-medium text-gray-700">Priority:</span>
-              <span className="ml-2 text-gray-900">
-                {caseDetails?.priority || 'N/A'}
-              </span>
+              <span className="ml-2 text-gray-900">{caseDetails?.priority || 'N/A'}</span>
             </div>
             <div>
               <span className="font-medium text-gray-700">Case Type:</span>
-              <span className="ml-2 text-gray-900">
-                {caseDetails?.case_type || 'N/A'}
-              </span>
+              <span className="ml-2 text-gray-900">{caseDetails?.case_type || 'N/A'}</span>
             </div>
             <div>
               <span className="font-medium text-gray-700">Created:</span>
               <span className="ml-2 text-gray-900">
-                {caseDetails?.created_at
-                  ? formatDate(caseDetails.created_at)
-                  : 'N/A'}
+                {caseDetails?.created_at ? formatDate(caseDetails.created_at) : 'N/A'}
               </span>
             </div>
           </div>
         </div>
       </div>
 
+
+
       {/* Complete Investigation Task Modal */}
       {showCompleteModal && investigationTask && (
         <Suspense fallback={<div>Loading...</div>}>
           <CompleteTaskModal
             open={showCompleteModal}
-            onClose={() => {
-              setShowCompleteModal(false);
-            }}
+            onClose={() => setShowCompleteModal(false)}
             onCompleteTask={handleCompleteTask}
             task={mapToUnifiedWorkQueueTask(investigationTask, caseDetails)}
           />

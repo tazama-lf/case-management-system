@@ -2,7 +2,7 @@ import { Injectable, InternalServerErrorException, BadRequestException, NotFound
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { IngestAlertDto } from './dto/IngestAlert.dto';
-import { Alert, CaseCreationType, CaseStatus, CaseType, Priority, Prisma, TaskStatus } from '@prisma/client-cms';
+import { Alert, CaseCreationType, CaseStatus, CaseType, Priority, Prisma } from '@prisma/client-cms';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { ConfigService } from '@nestjs/config';
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
@@ -122,9 +122,11 @@ export class AlertService {
     }
   }
 
-  async getAlertTransactionalData(alertId: number) {
+  async getAlertTransactionalData(
+    alertId: number,
+  ): Promise<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }[]> {
     this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
-    if (alertId == null || alertId == undefined) {
+    if (alertId === null) {
       throw new BadRequestException('AlertID is missing');
     }
 

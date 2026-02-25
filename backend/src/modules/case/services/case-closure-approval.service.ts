@@ -35,7 +35,7 @@ export class CaseClosureApprovalService {
     private readonly commentService: CommentService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly taskValidationUtil: TaskValidationUtil,
-  ) {}
+  ) { }
 
   private async createSARFilingTask(caseId: number, tenantId: string, userId: string): Promise<void> {
     this.logger.log(`Start - Creating SAR_STR_FILING task for case ${caseId}`, CaseClosureApprovalService.name);
@@ -202,9 +202,9 @@ export class CaseClosureApprovalService {
           userId,
           dto.finalNotes
             ? {
-                note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
-                tenantId,
-              }
+              note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
+              tenantId,
+            }
             : undefined,
         );
         if (!isFraudAndAmlCase) {
@@ -214,10 +214,9 @@ export class CaseClosureApprovalService {
             newStatus: TaskStatus.STATUS_30_COMPLETED,
             completionVariables: {
               investigationAction: 'complete',
-              fraudInvestigationAction: 'complete',
-              amlInvestigationAction: 'complete',
-              recommendedOutcome: dto.recommendedOutcome,
+              finalOutcome: dto.recommendedOutcome,
               investigationNotes: dto.finalNotes,
+              userRole: role,
             },
           });
         }
@@ -288,10 +287,10 @@ export class CaseClosureApprovalService {
         userId,
         dto.finalNotes
           ? {
-              note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
-              taskId: approvalTask.task_id,
-              tenantId,
-            }
+            note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
+            taskId: approvalTask.task_id,
+            tenantId,
+          }
           : undefined,
       );
 
@@ -302,10 +301,9 @@ export class CaseClosureApprovalService {
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
             investigationAction: 'requestClosure',
-            fraudInvestigationAction: 'requestClosure',
-            amlInvestigationAction: 'requestClosure',
-            recommendedOutcome: dto.recommendedOutcome,
+            finalOutcome: dto.recommendedOutcome,
             investigationNotes: dto.finalNotes,
+            userRole: role,
           },
         });
       }
@@ -313,7 +311,6 @@ export class CaseClosureApprovalService {
       await this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        reason: `Case closure requested with outcome: ${dto.recommendedOutcome}`,
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -443,6 +440,7 @@ export class CaseClosureApprovalService {
           caseId,
           taskId: approvalTask.task_id,
           note: `Supervisor Approval:\n${comments}\n\nFinal Outcome: ${finalOutcome}`,
+          tenantId,
         } as CreateCommentDto,
         supervisorId,
       );
@@ -594,7 +592,6 @@ export class CaseClosureApprovalService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
-        reason: `Case closure rejected and returned to investigator: ${comments}`,
       });
 
       // Then complete the approval task in BPMN
@@ -732,7 +729,6 @@ export class CaseClosureApprovalService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
-        reason: `Case returned for review by supervisor: ${comments}`,
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(

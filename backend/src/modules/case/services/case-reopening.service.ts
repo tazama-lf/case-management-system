@@ -95,7 +95,6 @@ export class CaseReopeningService {
         this.flowableService.handleCaseStatusChanged({
           caseId,
           newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          reason: `Case reopening requested: ${reason}`,
         });
 
         await this.loggingOrchestrationService.logActionsWithHistory(
@@ -166,7 +165,6 @@ export class CaseReopeningService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
-        reason: `Case reopening requested: ${reason}`,
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -332,7 +330,6 @@ export class CaseReopeningService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: newCaseStatus,
-        reason: 'Case reopening approved',
       });
 
       if (assignedUserId) {
@@ -498,7 +495,6 @@ export class CaseReopeningService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: originalClosedStatus,
-        reason: `Case reopening rejected: ${rejectionReason}`,
       });
 
       if (requesterId) {
