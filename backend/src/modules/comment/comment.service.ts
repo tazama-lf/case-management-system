@@ -16,15 +16,16 @@ export class CommentService {
 
   async addComment(createCommentDto: CreateCommentDto, userId: string): Promise<Comment | void> {
     this.logger.log(`Adding comment : ${userId}`, CommentService.name);
+    
+    if (!createCommentDto.caseId && !createCommentDto.taskId) {
+      throw new BadRequestException('Either caseId or taskId must be provided');
+    }
+
+    if (!createCommentDto.tenantId) {
+      throw new BadRequestException('tenantId is required');
+    }
+
     try {
-      if (!createCommentDto.caseId && !createCommentDto.taskId) {
-        throw new BadRequestException('Either caseId or taskId must be provided');
-      }
-
-      if (!createCommentDto.tenantId) {
-        throw new BadRequestException('tenantId is required');
-      }
-
       const comment = await this.commentRepository.createComment(userId, createCommentDto);
 
       this.auditLogService.logAction({

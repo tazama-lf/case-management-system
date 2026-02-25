@@ -47,6 +47,16 @@ export class CaseReopeningService {
         );
       }
 
+      // If this is a child case, validate parent case is also reopenable
+      if (existingCase.parent_id) {
+        const parentCase = await this.caseQueryService.retrieveCase(existingCase.parent_id, tenantId);
+        if (!REOPENABLE_CASE_STATUSES.includes(parentCase.status)) {
+          throw new BadRequestException(
+            `Cannot reopen child case ${caseId} because parent case ${existingCase.parent_id} is not in a valid reopenable state`,
+          );
+        }
+      }
+
       const isSupervisor = role === 'CMS_SUPERVISOR';
 
       if (isSupervisor) {

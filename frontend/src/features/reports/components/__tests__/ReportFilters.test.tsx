@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -7,7 +8,6 @@ import { server } from '../../../../test/mocks/server';
 
 // Mock FiltersPanel BEFORE importing ReportFilters
 vi.mock('../FiltersPanel', () => {
-  const React = require('react');
   return {
     default: ({
       caseType,

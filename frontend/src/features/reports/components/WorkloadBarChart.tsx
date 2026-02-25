@@ -10,6 +10,15 @@ interface WorkloadBarChartProps {
 }
 
 const WorkloadBarChart: React.FC<WorkloadBarChartProps> = ({ data, title, height = 350 }) => {
+  const { fetchInvestigatorsList, investigators, supervisors, fetchSupervisorsList } = useInvestigatorSupervisorList();
+
+  React.useEffect(() => {
+    if (investigators.length === 0)
+      fetchInvestigatorsList();
+    if (supervisors.length === 0)
+      fetchSupervisorsList();
+  }, [investigators.length, supervisors.length, fetchInvestigatorsList, fetchSupervisorsList]);
+
   if (!data || data.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 sm:p-6">
@@ -20,19 +29,6 @@ const WorkloadBarChart: React.FC<WorkloadBarChartProps> = ({ data, title, height
       </div>
     );
   }
-
-
-
-
-  const { fetchInvestigatorsList, investigators, supervisors, fetchSupervisorsList } = useInvestigatorSupervisorList();
-
-
-  React.useEffect(() => {
-    if (investigators.length === 0)
-      fetchInvestigatorsList();
-    if (supervisors.length === 0)
-      fetchSupervisorsList();
-  }, []);
 
   const getUserNameById = (userId: string) => {
 

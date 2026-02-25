@@ -307,7 +307,7 @@ class ReportsService {
       let confirmedCount = 0;
       let refutedCount = 0;
       let inconclusiveCount = 0;
-      let inprogressCount = 0;
+      const inprogressCount = 0;
 
       // For each case, fetch all evidence by case ID (the backend should handle finding evidence with any taskId)
       for (const caseItem of cases) {

@@ -63,15 +63,6 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     fetchData();
   }, [fetchTasks]);
 
-  const hasCompletedStrTask = tasks
-    .filter(task => task.name === 'SAR/STR Filing')
-    .sort((a, b) => (b.task_id ?? 0) - (a.task_id ?? 0))[0] || null;
-
-  // Compliance officers cannot perform any case actions
-  if (hasComplianceOfficerRole()) {
-    return null;
-  }
-
   // Fetch case details to get case_owner_user_id
   useEffect(() => {
     const fetchCaseDetails = async () => {
@@ -83,10 +74,17 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
       }
     };
 
-    if (caseData.id) {
-      fetchCaseDetails();
-    }
+    fetchCaseDetails();
   }, [caseData.id]);
+
+  const hasCompletedStrTask = tasks
+    .filter(task => task.name === 'SAR/STR Filing')
+    .sort((a, b) => (b.task_id ?? 0) - (a.task_id ?? 0))[0] || null;
+
+  // Compliance officers cannot perform any case actions
+  if (hasComplianceOfficerRole()) {
+    return null;
+  }
 
   // Check if the logged-in user is the case owner
   const isUserCaseOwner = (): boolean => {

@@ -132,7 +132,7 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
               paginatedData.map((row, index) => (
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <div className="break-all font-mono text-sm" title={row.caseId || ''}>
+                    <div className="break-all font-mono text-sm" title={String(row.caseId) || ''}>
                       {row.caseId}
                     </div>
                   </td>

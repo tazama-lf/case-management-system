@@ -61,7 +61,9 @@ export class ProfileService {
         try {
           const userData = JSON.parse(user);
           tenantId = userData.tenantId || request.tenantId;
-        } catch {}
+        } catch {
+          // Ignore JSON parse errors and use the default tenantId
+        }
       }
       const response = await apiClient.post<GenerateProfileResponse>(
          `${this.baseUrl}/generate`,

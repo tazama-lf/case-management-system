@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ReportsTable from '../ReportsTable';
@@ -6,7 +7,6 @@ import type { CaseStatusDetail } from '../../types/reports.types';
 
 // Mock usePagination hook
 vi.mock('../../../shared/hooks/usePagination', () => {
-  const React = require('react');
   return {
     usePagination: ({ data, defaultItemsPerPage }: any) => {
       const [currentPage, setCurrentPage] = React.useState(1);
@@ -34,7 +34,6 @@ vi.mock('../../../shared/hooks/usePagination', () => {
 
 // Mock PaginationControls
 vi.mock('../../../shared/components/PaginationControls', () => {
-  const React = require('react');
   return {
     default: ({
       currentPage,

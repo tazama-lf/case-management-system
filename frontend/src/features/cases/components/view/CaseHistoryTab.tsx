@@ -223,7 +223,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
 
           caseHistory.forEach((log) => {
             let action = formatOperation(log.operation);
-            let details = log.action_performed || 'Action performed';
+            const details = log.action_performed || 'Action performed';
 
             const operationLower = log.operation.toLowerCase().replace(/\s|_/g, '');
 
@@ -303,7 +303,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
 
           taskHistory.forEach((log) => {
             let action = formatOperation(log.operation);
-            let details = log.action_performed || 'Action performed';
+            const details = log.action_performed || 'Action performed';
 
             const operationLower = log.operation.toLowerCase().replace(/\s|_/g, '');
             const actionLower = (log.action_performed || '').toLowerCase();
@@ -354,7 +354,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
               action = 'Triage alert updated';
             }
             else {
-
+              // Keep the default action
             }
 
             events.push({
