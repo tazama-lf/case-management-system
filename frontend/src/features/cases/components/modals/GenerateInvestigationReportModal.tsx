@@ -48,7 +48,7 @@ interface GenerateInvestigationReportModalProps {
 }
 
 marked.setOptions({
-  breaks: true, 
+  breaks: true,
   gfm: true,
 });
 
@@ -154,7 +154,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [incompleteTasks, setIncompleteTasks] = useState<string[]>([]);
   const [checkingTasks, setCheckingTasks] = useState(false);
   const [evidenceCategories, setEvidenceCategories] = useState<EvidenceCategory[]>([]);
-  const [caseComments, setCaseComments] = useState<TaskComment[]>([]);
   const [supervisorComments, setSupervisorComments] = useState<TaskComment[]>([]);
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
   const [finalOutcome, setFinalOutcome] = useState<FinalOutcomeType | ''>((selectedOutcome as FinalOutcomeType) || '');
@@ -162,6 +161,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [evidenceLoaded, setEvidenceLoaded] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [notesLoaded, setNotesLoaded] = useState(false);
+  const [submittedDate, setSubmittedDate] = useState<string>('N/A');
 
   useEffect(() => {
     hasFetchedRef.current = false;
@@ -202,16 +202,14 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
     try {
       const {
-
-        caseComments,
         supervisorComments,
         investigatorName,
         investigationNotes,
+        submittedDate,
       } = await fetchCasesAndEvidence(caseId, latestInvestigateTask.task_id);
-
-      setCaseComments(caseComments);
       setSupervisorComments(supervisorComments);
       setInvestigatorName(investigatorName);
+      setSubmittedDate(submittedDate);
       setInvestigationNotes(investigationNotes);
     } catch (err) {
       console.error('Failed to fetch case data:', err);
@@ -237,16 +235,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       setFinalOutcome(selectedOutcome as FinalOutcomeType);
     }
   }, [selectedOutcome]);
-
-  useEffect(() => {
-    if (open && caseComments?.[0]?.user_id) {
-      userService.getUserDetailsById(caseComments[0].user_id).then((userDetails) => {
-        if (userDetails) {
-          setInvestigatorName(userService.formatUserName(userDetails));
-        }
-      }).catch(() => { });
-    }
-  }, [open, caseComments]);
 
   useEffect(() => {
     const checkTaskCompletion = async () => {
@@ -331,19 +319,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     ],
   }));
 
-  const timestamp = new Date().toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
-
-  const submittedDate = caseComments?.[0]?.created_at
-    ? formatDate(caseComments[0].created_at)
-    : 'N/A';
-
   const docDefinition: any = {
     pageSize: 'A4',
     pageOrientation: 'portrait',
@@ -405,7 +380,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         ? convertMarkdownToPdfMake(executiveSummary)
         : [convertMarkdownToPdfMake(executiveSummary)]
       ),
-      { text: '', margin: [0, 0, 0, 12] }, 
+      { text: '', margin: [0, 0, 0, 12] },
 
       {
         text: 'KEY FINDINGS',
@@ -417,12 +392,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           ? convertMarkdownToPdfMake(investigationNotes)
           : [convertMarkdownToPdfMake(investigationNotes)])
         : [{
-            text: 'No investigation notes added.',
-            fontSize: 9,
-            color: '#6b7280',
-            italics: true,
-            margin: [0, 0, 0, 0],
-          }]
+          text: 'No investigation notes added.',
+          fontSize: 9,
+          color: '#6b7280',
+          italics: true,
+          margin: [0, 0, 0, 0],
+        }]
       ),
       { text: '', margin: [0, 0, 0, 12] },
 
@@ -436,7 +411,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           ? convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || '')
           : [convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || '')]
         ),
-        { text: '', margin: [0, 0, 0, 12] }, 
+        { text: '', margin: [0, 0, 0, 12] },
       ] : []),
 
       {
@@ -446,17 +421,17 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       },
       ...(evidenceList && evidenceList.length > 0
         ? [{
-            ul: evidenceList,
-            style: 'body',
-            margin: [0, 0, 0, 12],
-          }]
+          ul: evidenceList,
+          style: 'body',
+          margin: [0, 0, 0, 12],
+        }]
         : [{
-            text: 'No evidence summary attached.',
-            fontSize: 9,
-            color: '#6b7280',
-            italics: true,
-            margin: [0, 0, 0, 0],
-          }]
+          text: 'No evidence summary attached.',
+          fontSize: 9,
+          color: '#6b7280',
+          italics: true,
+          margin: [0, 0, 0, 0],
+        }]
       ),
       { text: '', margin: [0, 0, 0, 12] },
 
@@ -579,19 +554,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       }
     });
   };
-
-  // const handleGenerateReport = async () => {
-  //   if (isGenerating) return;
-
-  //   setIsGenerating(true);
-
-  //   try {
-  //     await new Promise((resolve) => setTimeout(resolve, 1000));
-  //     setStep('generated');
-  //   } finally {
-  //     setIsGenerating(false);
-  //   }
-  // };
 
   const handleGenerateReport = () => {
     if (!isReportReady) return;
@@ -860,9 +822,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-700">Submitted:</span>
                     <span className="text-gray-900">
-                      {caseComments?.[0]?.created_at
-                        ? formatDate(caseComments[0].created_at)
-                        : 'N/A'}
+                      {submittedDate}
                     </span>
                   </div>
                 </div>
