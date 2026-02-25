@@ -1,12 +1,10 @@
 import { Injectable, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from '../task/task.service';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { Priority, CaseStatus, CaseType, TaskStatus, Alert, Case, Task } from '@prisma/client-cms';
 import { AIPrediction, Prediction } from '../../utils/interfaces/Prediction';
-import { CaseStatusChangedEvent } from '../events/domain-events';
 import { FeatureExtractionService } from 'src/modules/feature-extraction/feature-extraction.service';
 import axios from 'axios';
 import { AlertService } from '../alert/alert.service';
@@ -39,7 +37,6 @@ export class TriageService {
     private readonly caseCreationService: CaseCreationApprovalService,
     private readonly taskService: TaskService,
     private readonly configService: ConfigService,
-    private readonly eventEmitter: EventEmitter2,
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly featureExtractionService: FeatureExtractionService,
     private readonly caseCreateService: CaseCreationService,
@@ -47,30 +44,37 @@ export class TriageService {
   ) {}
 
   async handleManualTriage(alertId: number, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string): Promise<Alert> {
+    this.logger.log('Start - handleManualTriage', TriageService.name);
     const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
     if (triageType !== 'MANUAL') {
       throw new BadRequestException(`Cannot update alert ${alertId} when triageType is not MANUAL`);
     }
+    const updateAlertData = updateAlertDto;
+    const priorityScore = updateAlertDto.priorityScore ?? 0.33;
+    const priority = this.casePriorityUtil.determinePriority(priorityScore);
+    updateAlertData.priority = priority;
 
     try {
-      const updateAlertData = updateAlertDto;
-      const priorityScore = updateAlertDto.priorityScore ?? 0.33;
-      const priority = this.casePriorityUtil.determinePriority(priorityScore);
-      updateAlertData.priority = priority;
       const transactionResult = await this.alertRepository.transaction(async (tx) => {
         const existingAlert = await this.alertRepository.getAlertById(alertId, tx);
         const existingCase = await this.caseRepository.findCaseById(existingAlert.case_id!, tenantId);
-
         const completeNewCaseTask = existingCase.tasks.find((t) => t.name === 'Complete New Case');
 
         if (!completeNewCaseTask || completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
           throw new BadRequestException('Triage Already Complete');
         }
+        if (this.closableStatuses.includes(existingCase.status)) {
+          throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
+        }
 
         const alert = await this.alertService.updateAlert(
           alertId,
           userId,
-          { confidencePer: updateAlertData.confidence_per, priority_score: updateAlertData.priorityScore, ...updateAlertData },
+          {
+            confidencePer: updateAlertData.confidence_per,
+            priority_score: updateAlertData.priorityScore,
+            ...JSON.parse(JSON.stringify(updateAlertData)),
+          },
           tx,
         );
         if (!alert.case_id) {
@@ -95,12 +99,15 @@ export class TriageService {
           tx,
         );
 
-        if (this.closableStatuses.includes(existingCase.status)) {
-          throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
-        }
-
         if (updateAlertDto.status && this.closableStatuses.includes(updateAlertDto.status)) {
-          await this.caseCreationService.updateCaseStatus(alert.case_id, updateAlertDto.status, userId, tenantId);
+          await this.caseCreationService.updateCaseStatus(
+            alert.case_id,
+            updateAlertDto.status,
+            userId,
+            tenantId,
+            priority,
+            updateAlertDto.alertType,
+          );
 
           await this.flowableService.handleTaskCompleted({
             caseId: existingCase.case_id,
@@ -122,20 +129,6 @@ export class TriageService {
               autoCloseReason: updateAlertDto.note,
             },
           });
-
-          await this.caseCreationService.updateCaseStatus(
-            alert.case_id,
-            updateAlertDto.status,
-            userId,
-            tenantId,
-            priority,
-            updateAlertDto.alertType,
-          );
-
-          this.logger.log(
-            `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Closed as ${updateAlertDto.status}`,
-            TriageService.name,
-          );
         } else {
           if (alert.alert_type) {
             await this.caseCreationService.updateCaseStatus(
@@ -146,11 +139,10 @@ export class TriageService {
               priority,
               updateAlertDto.alertType,
             );
-          }
-
-          if (alert.alert_type === CaseType.FRAUD_AND_AML) {
-            await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, alert.case_id, priority);
-            await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, alert.case_id, priority);
+            if (alert.alert_type === CaseType.FRAUD_AND_AML) {
+              await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, alert.case_id, priority);
+              await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, alert.case_id, priority);
+            }
           }
 
           await this.flowableService.handleTaskCompleted({
@@ -178,7 +170,11 @@ export class TriageService {
   }
 
   async handleAITriage(alertId: number, caseId: number, dto: IngestAlertDto, userId: string, tenantId: string): Promise<unknown> {
-    this.logger.log(`Start - AI Triage for alert ${alertId}`, TriageService.name);
+    this.logger.log('Start - handleAITriage', TriageService.name);
+    const confidenceThreshold = this.configService.get<number>('CONFIDENCE_THRESHOLD', 100);
+    const interdictionEnabled = this.configService.get<boolean>('CLIENT_SYSTEM_INTERDICTION_ENABLED', true);
+    let transactionOccurred = true;
+    const { tadpResult } = dto.report;
     try {
       const triageTask = await this.taskService.createTask(
         {
@@ -194,13 +190,8 @@ export class TriageService {
       );
 
       const triageTaskId = triageTask.task_id;
-      const confidenceThreshold = this.configService.get<number>('CONFIDENCE_THRESHOLD', 100);
-      const interdictionEnabled = this.configService.get<boolean>('CLIENT_SYSTEM_INTERDICTION_ENABLED', true);
-      let transactionOccurred = true;
 
       if (interdictionEnabled) {
-        const { tadpResult } = dto.report;
-
         if (
           typeof tadpResult === 'object' &&
           'typologyResult' in tadpResult &&
@@ -422,10 +413,11 @@ export class TriageService {
 
       const updatedCase = await this.caseCreationService.updateCaseStatus(caseId, status, userId, tenantId, undefined, caseType);
 
-      this.eventEmitter.emit(
-        'case.status.changed',
-        new CaseStatusChangedEvent(caseId, status, customDescription ?? `Case automatically closed with status ${status}`),
-      );
+      this.flowableService.handleCaseStatusChanged({
+        caseId,
+        newStatus: status,
+      });
+      // this.eventEmitter.emit('case.status.changed', new CaseStatusChangedEvent(caseId, status));
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
