@@ -12,7 +12,6 @@ export class CaseStatusChangedEvent {
   constructor(
     public readonly caseId: number,
     public readonly newStatus: string,
-    public readonly reason?: string,
   ) {}
 }
 
