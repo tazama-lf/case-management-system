@@ -70,9 +70,8 @@ const EvidenceRegistryPage: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleString();
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
@@ -97,12 +96,16 @@ const EvidenceRegistryPage: React.FC = () => {
               type="text"
               placeholder="Search by filename, description, tags, case ID..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+              }}
               className="input pl-10 w-full"
             />
           </div>
           <button
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={() => {
+              setShowFilters(!showFilters);
+            }}
             className={`btn-outline flex items-center gap-2 ${showFilters ? 'bg-blue-50' : ''}`}
           >
             <FunnelIcon className="h-4 w-4" />
@@ -119,13 +122,13 @@ const EvidenceRegistryPage: React.FC = () => {
               <select
                 className="input"
                 value={filters.evidence_type || ''}
-                onChange={(e) =>
+                onChange={(e) => {
                   setFilters({
                     ...filters,
                     evidence_type:
                       (e.target.value as EvidenceType) || undefined,
-                  })
-                }
+                  });
+                }}
               >
                 <option value="">All Types</option>
                 <option value="DOCUMENT">Document</option>
@@ -148,15 +151,15 @@ const EvidenceRegistryPage: React.FC = () => {
                     ? ''
                     : filters.verified.toString()
                 }
-                onChange={(e) =>
+                onChange={(e) => {
                   setFilters({
                     ...filters,
                     verified:
                       e.target.value === ''
                         ? undefined
                         : e.target.value === 'true',
-                  })
-                }
+                  });
+                }}
               >
                 <option value="">All</option>
                 <option value="true">Verified</option>
@@ -171,9 +174,9 @@ const EvidenceRegistryPage: React.FC = () => {
                 type="date"
                 className="input"
                 value={filters.date_from || ''}
-                onChange={(e) =>
-                  setFilters({ ...filters, date_from: e.target.value })
-                }
+                onChange={(e) => {
+                  setFilters({ ...filters, date_from: e.target.value });
+                }}
               />
             </div>
             <div>
@@ -184,9 +187,9 @@ const EvidenceRegistryPage: React.FC = () => {
                 type="date"
                 className="input"
                 value={filters.date_to || ''}
-                onChange={(e) =>
-                  setFilters({ ...filters, date_to: e.target.value })
-                }
+                onChange={(e) => {
+                  setFilters({ ...filters, date_to: e.target.value });
+                }}
               />
             </div>
           </div>
@@ -212,7 +215,9 @@ const EvidenceRegistryPage: React.FC = () => {
             <div
               key={item.evidence_id}
               className="card hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => setSelectedEvidence(item)}
+              onClick={() => {
+                setSelectedEvidence(item);
+              }}
             >
               <div className="flex items-start gap-4">
                 <div className="text-4xl">
@@ -318,7 +323,9 @@ const EvidenceRegistryPage: React.FC = () => {
           </p>
           <div className="flex gap-2">
             <button
-              onClick={() => setPage(page - 1)}
+              onClick={() => {
+                setPage(page - 1);
+              }}
               className="btn-outline"
               disabled={pagination.page === 1}
             >
@@ -328,7 +335,9 @@ const EvidenceRegistryPage: React.FC = () => {
               Page {pagination.page} of {pagination.totalPages}
             </span>
             <button
-              onClick={() => setPage(page + 1)}
+              onClick={() => {
+                setPage(page + 1);
+              }}
               className="btn-outline"
               disabled={pagination.page === pagination.totalPages}
             >
@@ -342,9 +351,15 @@ const EvidenceRegistryPage: React.FC = () => {
       {selectedEvidence && (
         <EvidenceDetailsModal
           evidence={selectedEvidence}
-          onClose={() => setSelectedEvidence(null)}
-          onVerify={() => handleVerify(selectedEvidence)}
-          onDownload={() => handleDownload(selectedEvidence.evidence_id)}
+          onClose={() => {
+            setSelectedEvidence(null);
+          }}
+          onVerify={() => {
+            handleVerify(selectedEvidence);
+          }}
+          onDownload={() => {
+            handleDownload(selectedEvidence.evidence_id);
+          }}
         />
       )}
     </div>
@@ -364,176 +379,165 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
   onClose,
   onVerify,
   onDownload,
-}) => {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 space-y-4">
-          <div className="flex items-start justify-between">
-            <h3 className="text-xl font-semibold text-gray-900">
-              Evidence Details
-            </h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl"
-            >
-              ×
-            </button>
+}) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="p-6 space-y-4">
+        <div className="flex items-start justify-between">
+          <h3 className="text-xl font-semibold text-gray-900">
+            Evidence Details
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-2xl"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-500">File Name</p>
+              <p className="text-gray-900">{evidence.file_name}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Case ID</p>
+              <p className="text-gray-900 font-mono">{evidence.case_id}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Evidence Type</p>
+              <p className="text-gray-900">{evidence.evidence_type}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">File Size</p>
+              <p className="text-gray-900">
+                {evidenceService.formatFileSize(evidence.file_size)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Uploaded By</p>
+              <p className="text-gray-900">
+                {evidence.uploader_name || evidence.uploader_id}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Upload Date</p>
+              <p className="text-gray-900">
+                {new Date(evidence.uploaded_at).toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Access Level</p>
+              <span
+                className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                  evidence.access_level === 'PUBLIC'
+                    ? 'bg-green-100 text-green-800'
+                    : evidence.access_level === 'CONFIDENTIAL'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
+                }`}
+              >
+                {evidence.access_level}
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium text-gray-500">File Name</p>
-                <p className="text-gray-900">{evidence.file_name}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Case ID</p>
-                <p className="text-gray-900 font-mono">{evidence.case_id}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">
-                  Evidence Type
-                </p>
-                <p className="text-gray-900">{evidence.evidence_type}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">File Size</p>
-                <p className="text-gray-900">
-                  {evidenceService.formatFileSize(evidence.file_size)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Uploaded By</p>
-                <p className="text-gray-900">
-                  {evidence.uploader_name || evidence.uploader_id}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Upload Date</p>
-                <p className="text-gray-900">
-                  {new Date(evidence.uploaded_at).toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">
-                  Access Level
-                </p>
-                <span
-                  className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                    evidence.access_level === 'PUBLIC'
-                      ? 'bg-green-100 text-green-800'
-                      : evidence.access_level === 'CONFIDENTIAL'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
-                  }`}
-                >
-                  {evidence.access_level}
-                </span>
-              </div>
-            </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500 mb-1">
+              Description
+            </p>
+            <p className="text-gray-900">
+              {evidence.description || 'No description provided'}
+            </p>
+          </div>
 
-            <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">
-                Description
-              </p>
-              <p className="text-gray-900">
-                {evidence.description || 'No description provided'}
-              </p>
+          <div>
+            <p className="text-sm font-medium text-gray-500 mb-2">Tags</p>
+            <div className="flex flex-wrap gap-2">
+              {evidence.tags.length > 0 ? (
+                evidence.tags.map((tag: string) => (
+                  <span
+                    key={tag}
+                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                  >
+                    {tag}
+                  </span>
+                ))
+              ) : (
+                <span className="text-gray-500 text-sm">No tags</span>
+              )}
             </div>
+          </div>
 
-            <div>
-              <p className="text-sm font-medium text-gray-500 mb-2">Tags</p>
-              <div className="flex flex-wrap gap-2">
-                {evidence.tags.length > 0 ? (
-                  evidence.tags.map((tag: string) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                    >
-                      {tag}
-                    </span>
-                  ))
+          <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+            <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <ShieldCheckIcon className="h-5 w-5" />
+              Integrity Information
+            </p>
+            <div className="space-y-2">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">SHA-256 Hash</p>
+                <p className="text-xs font-mono text-gray-900 break-all bg-white p-2 rounded border">
+                  {evidence.file_hash}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {evidence.verified ? (
+                  <div className="flex items-center gap-2 text-green-600 text-sm">
+                    <CheckCircleIcon className="h-5 w-5" />
+                    <div>
+                      <p className="font-medium">Verified</p>
+                      <p className="text-xs text-gray-600">
+                        {new Date(evidence.verification_date).toLocaleString()}
+                        {evidence.verified_by && ` by ${evidence.verified_by}`}
+                      </p>
+                    </div>
+                  </div>
                 ) : (
-                  <span className="text-gray-500 text-sm">No tags</span>
+                  <div className="flex items-center gap-2 text-yellow-600 text-sm">
+                    <ExclamationTriangleIcon className="h-5 w-5" />
+                    <p className="font-medium">Not yet verified</p>
+                  </div>
                 )}
               </div>
             </div>
+          </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-              <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <ShieldCheckIcon className="h-5 w-5" />
-                Integrity Information
-              </p>
-              <div className="space-y-2">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">SHA-256 Hash</p>
-                  <p className="text-xs font-mono text-gray-900 break-all bg-white p-2 rounded border">
-                    {evidence.file_hash}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {evidence.verified ? (
-                    <div className="flex items-center gap-2 text-green-600 text-sm">
-                      <CheckCircleIcon className="h-5 w-5" />
-                      <div>
-                        <p className="font-medium">Verified</p>
-                        <p className="text-xs text-gray-600">
-                          {new Date(
-                            evidence.verification_date!,
-                          ).toLocaleString()}
-                          {evidence.verified_by &&
-                            ` by ${evidence.verified_by}`}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-yellow-600 text-sm">
-                      <ExclamationTriangleIcon className="h-5 w-5" />
-                      <p className="font-medium">Not yet verified</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+          {evidence.metadata && (
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="text-sm font-medium text-blue-900 mb-2">Metadata</p>
+              <dl className="grid grid-cols-2 gap-2 text-sm">
+                {Object.entries(evidence.metadata).map(([key, value]) => (
+                  <div key={key}>
+                    <dt className="text-blue-700 font-medium">{key}:</dt>
+                    <dd className="text-blue-900">{String(value)}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
+          )}
+        </div>
 
-            {evidence.metadata && (
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm font-medium text-blue-900 mb-2">
-                  Metadata
-                </p>
-                <dl className="grid grid-cols-2 gap-2 text-sm">
-                  {Object.entries(evidence.metadata).map(([key, value]) => (
-                    <div key={key}>
-                      <dt className="text-blue-700 font-medium">{key}:</dt>
-                      <dd className="text-blue-900">{String(value)}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button
-              onClick={onVerify}
-              className="btn-outline flex items-center gap-2"
-            >
-              <ShieldCheckIcon className="h-4 w-4" />
-              Verify Integrity
-            </button>
-            <button
-              onClick={onDownload}
-              className="btn-primary flex items-center gap-2"
-            >
-              <ArrowDownTrayIcon className="h-4 w-4" />
-              Download
-            </button>
-          </div>
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <button
+            onClick={onVerify}
+            className="btn-outline flex items-center gap-2"
+          >
+            <ShieldCheckIcon className="h-4 w-4" />
+            Verify Integrity
+          </button>
+          <button
+            onClick={onDownload}
+            className="btn-primary flex items-center gap-2"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" />
+            Download
+          </button>
         </div>
       </div>
     </div>
-  );
-};
+  </div>
+);
 
 export default EvidenceRegistryPage;

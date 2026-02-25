@@ -25,12 +25,12 @@ describe('EditWorkQueueForm', () => {
         queue={mockWorkQueue}
         onSave={() => {}}
         onCancel={() => {}}
-      />
+      />,
     );
 
     expect(screen.getByLabelText('Queue Name')).toHaveValue(mockWorkQueue.name);
     expect(screen.getByLabelText('Description')).toHaveValue(
-      mockWorkQueue.description
+      mockWorkQueue.description,
     );
     expect(screen.getByLabelText('Status')).toHaveValue(mockWorkQueue.status);
   });
@@ -42,7 +42,7 @@ describe('EditWorkQueueForm', () => {
         queue={mockWorkQueue}
         onSave={handleSave}
         onCancel={() => {}}
-      />
+      />,
     );
 
     fireEvent.change(screen.getByLabelText('Queue Name'), {
@@ -61,5 +61,3 @@ describe('EditWorkQueueForm', () => {
     });
   });
 });
-
-

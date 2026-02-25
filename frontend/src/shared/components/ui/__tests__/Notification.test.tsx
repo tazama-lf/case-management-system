@@ -1,10 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  Notification,
-  NotificationContainer,
-} from '../Notification';
+import { Notification, NotificationContainer } from '../Notification';
 
 describe('Notification', () => {
   beforeEach(() => {
@@ -21,7 +18,7 @@ describe('Notification', () => {
         type="success"
         title="Success"
         message="Operation completed"
-      />
+      />,
     );
 
     expect(screen.getByText('Success')).toBeInTheDocument();
@@ -34,7 +31,7 @@ describe('Notification', () => {
         type="error"
         title="Error"
         message="Something went wrong"
-      />
+      />,
     );
 
     expect(screen.getByText('Error')).toBeInTheDocument();
@@ -47,7 +44,7 @@ describe('Notification', () => {
         type="warning"
         title="Warning"
         message="Please be careful"
-      />
+      />,
     );
 
     expect(screen.getByText('Warning')).toBeInTheDocument();
@@ -60,7 +57,7 @@ describe('Notification', () => {
         type="info"
         title="Info"
         message="Here is some information"
-      />
+      />,
     );
 
     expect(screen.getByText('Info')).toBeInTheDocument();
@@ -76,11 +73,7 @@ describe('Notification', () => {
   it('calls onClose when close button is clicked', () => {
     const onClose = vi.fn();
     const { container } = render(
-      <Notification
-        type="success"
-        title="Success"
-        onClose={onClose}
-      />
+      <Notification type="success" title="Success" onClose={onClose} />,
     );
 
     const closeButton = container.querySelector('button[type="button"]');
@@ -98,7 +91,7 @@ describe('Notification', () => {
         type="success"
         title="Success"
         action={{ label: 'Retry', onClick: actionOnClick }}
-      />
+      />,
     );
 
     const actionButton = screen.getByText('Retry');
@@ -116,7 +109,7 @@ describe('Notification', () => {
         autoClose={true}
         duration={1000}
         onClose={onClose}
-      />
+      />,
     );
 
     expect(onClose).not.toHaveBeenCalled();
@@ -137,7 +130,7 @@ describe('Notification', () => {
         autoClose={false}
         duration={1000}
         onClose={onClose}
-      />
+      />,
     );
 
     vi.advanceTimersByTime(2000);
@@ -149,7 +142,7 @@ describe('Notification', () => {
 describe('NotificationContainer', () => {
   it('returns null when notifications array is empty', () => {
     const { container } = render(
-      <NotificationContainer notifications={[]} onRemove={vi.fn()} />
+      <NotificationContainer notifications={[]} onRemove={vi.fn()} />,
     );
 
     expect(container.firstChild).toBeNull();
@@ -173,7 +166,7 @@ describe('NotificationContainer', () => {
       <NotificationContainer
         notifications={notifications}
         onRemove={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getByText('Success 1')).toBeInTheDocument();
@@ -194,7 +187,7 @@ describe('NotificationContainer', () => {
       <NotificationContainer
         notifications={notifications}
         onRemove={onRemove}
-      />
+      />,
     );
 
     const closeButton = container.querySelector('button[type="button"]');
@@ -229,11 +222,10 @@ describe('NotificationContainer', () => {
           notifications={notifications}
           onRemove={vi.fn()}
           position={position}
-        />
+        />,
       );
 
       expect(container.firstChild).toBeInTheDocument();
     });
   });
 });
-

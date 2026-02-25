@@ -12,22 +12,18 @@ interface ReportsTableProps {
   onExportPDF?: () => void;
 }
 
-const ReportsTable: React.FC<ReportsTableProps> = ({ 
-  data, 
-  title, 
-  onExportExcel, 
-  onExportCSV, 
-  onExportPDF 
+const ReportsTable: React.FC<ReportsTableProps> = ({
+  data,
+  title,
+  onExportExcel,
+  onExportCSV,
+  onExportPDF,
 }) => {
-  const {
-    currentPage,
-    totalPages,
-    paginatedData,
-    setCurrentPage,
-  } = usePagination({
-    data,
-    defaultItemsPerPage: 10,
-  });
+  const { currentPage, totalPages, paginatedData, setCurrentPage } =
+    usePagination({
+      data,
+      defaultItemsPerPage: 10,
+    });
 
   // Create pagination object for TablePagination
   const pagination: TablePaginationInfo = {
@@ -35,14 +31,14 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
     pageSize: 10, // Fixed page size
     totalItems: data.length,
     totalPages,
-    onPageChange: setCurrentPage
+    onPageChange: setCurrentPage,
   };
 
   const exportActions = [
     { label: 'Export as Excel', onClick: onExportExcel, key: 'excel' },
     { label: 'Export as CSV', onClick: onExportCSV, key: 'csv' },
     { label: 'Export as PDF', onClick: onExportPDF, key: 'pdf' },
-  ].filter(action => action.onClick);
+  ].filter((action) => action.onClick);
 
   const tableHeaders = [
     { label: 'Status', width: 'w-40', key: 'status' },
@@ -87,7 +83,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
           <thead className="bg-gray-50">
             <tr>
               {tableHeaders.map((header) => (
-                <th 
+                <th
                   key={header.key}
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
@@ -99,20 +95,26 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={tableHeaders.length} className="px-6 py-12 text-center">
+                <td
+                  colSpan={tableHeaders.length}
+                  className="px-6 py-12 text-center"
+                >
                   <div className="text-gray-500">
                     <p className="text-lg font-medium">No data available</p>
-                    <p className="mt-1">There are no case status records to display.</p>
+                    <p className="mt-1">
+                      There are no case status records to display.
+                    </p>
                   </div>
                 </td>
               </tr>
             ) : (
               paginatedData.map((row) => (
-                <tr key={`${row.status}-${row.count}`} className="hover:bg-gray-50">
+                <tr
+                  key={`${row.status}-${row.count}`}
+                  className="hover:bg-gray-50"
+                >
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    <div className="break-words">
-                      {row.status}
-                    </div>
+                    <div className="break-words">{row.status}</div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
                     {row.count}
@@ -121,14 +123,12 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
                     {row.percentage}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    <div className="break-words">
-                      {row.avgTimeInStatus}
-                    </div>
+                    <div className="break-words">{row.avgTimeInStatus}</div>
                   </td>
-                  <td className={`px-4 py-3 text-sm font-medium ${getTrendColor(row.currentTrendPeriod)}`}>
-                    <div className="break-words">
-                      {row.currentTrendPeriod}
-                    </div>
+                  <td
+                    className={`px-4 py-3 text-sm font-medium ${getTrendColor(row.currentTrendPeriod)}`}
+                  >
+                    <div className="break-words">{row.currentTrendPeriod}</div>
                   </td>
                 </tr>
               ))
@@ -137,7 +137,10 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
         </table>
       </div>
 
-      <TablePagination pagination={pagination} itemLabel="case status records" />
+      <TablePagination
+        pagination={pagination}
+        itemLabel="case status records"
+      />
     </div>
   );
 };

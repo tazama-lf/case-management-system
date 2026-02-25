@@ -33,7 +33,6 @@ export interface Evidence {
   downloadUrl?: string;
   attachments?: EvidenceAttachment[]; // CouchDB attachments array
 
-
   // Sanctions specific fields
   screeningDate?: string;
   tool?: string;
@@ -57,7 +56,7 @@ export type EvidenceType =
   | 'OTHER'
   | 'SAR_STR_FILING'
   | 'KYC'
-  | 'EDD'
+  | 'EDD';
 
 export interface EvidenceMetadata {
   screeningDate?: string;
@@ -75,7 +74,7 @@ export interface Attachment {
   fileSize: number | null;
   filePath: string;
   mimeType: string;
-  hash: string;                // unique identifier for the file
+  hash: string; // unique identifier for the file
   encryption?: {
     key: string;
     iv: string;
@@ -85,8 +84,8 @@ export interface Attachment {
   investigator?: string;
   supervisor?: string;
   description?: string;
-  submittedAt: string;         // ISO string
-  [key: string]: any;          // allow extra fields if needed
+  submittedAt: string; // ISO string
+  [key: string]: any; // allow extra fields if needed
 }
 
 export interface UploadEvidenceDto {

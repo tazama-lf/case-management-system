@@ -108,7 +108,9 @@ describe('EvidenceDocumentsTab', () => {
     fireEvent.click(uploadButtons[0]);
 
     // Modal should open with heading
-    expect(screen.getByRole('heading', { name: 'Upload Evidence' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Upload Evidence' }),
+    ).toBeInTheDocument();
   });
 
   it('allows searching evidence', () => {
@@ -201,7 +203,8 @@ describe('EvidenceDocumentsTab', () => {
     }
 
     // Modal should open with heading
-    expect(screen.getByRole('heading', { name: 'Evidence Details' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Evidence Details' }),
+    ).toBeInTheDocument();
   });
 });
-

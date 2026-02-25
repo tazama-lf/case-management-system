@@ -80,13 +80,28 @@ describe('useReports', () => {
     });
 
     expect(result.current.data).toEqual(mockData);
-    expect(reportsService.getReportsData).toHaveBeenCalledWith(undefined, undefined);
+    expect(reportsService.getReportsData).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+    );
   });
 
   it('fetches reports data with dateRange and filters', async () => {
     const mockData = {
-      stats: { totalCases: 0, closedCases: 0, openCases: 0, avgResolutionTime: 0 },
-      statusDistribution: { assigned: 0, inProgress: 0, draft: 0, suspended: 0, pendingApproval: 0, closed: 0 },
+      stats: {
+        totalCases: 0,
+        closedCases: 0,
+        openCases: 0,
+        avgResolutionTime: 0,
+      },
+      statusDistribution: {
+        assigned: 0,
+        inProgress: 0,
+        draft: 0,
+        suspended: 0,
+        pendingApproval: 0,
+        closed: 0,
+      },
       caseTypes: [],
       outcomes: { resolved: 0, confirmed: 0, inconclusive: 0, pending: 0 },
       monthlyTrend: [],
@@ -95,7 +110,11 @@ describe('useReports', () => {
 
     vi.mocked(reportsService.getReportsData).mockResolvedValue(mockData);
 
-    const filters = { caseType: 'FRAUD', priority: 'HIGH', investigator: 'user-1' };
+    const filters = {
+      caseType: 'FRAUD',
+      priority: 'HIGH',
+      investigator: 'user-1',
+    };
     const { result } = renderHook(() => useReports('last30', filters), {
       wrapper: createWrapper(),
     });
@@ -104,11 +123,16 @@ describe('useReports', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(reportsService.getReportsData).toHaveBeenCalledWith('last30', filters);
+    expect(reportsService.getReportsData).toHaveBeenCalledWith(
+      'last30',
+      filters,
+    );
   });
 
   it('handles error when fetching reports', async () => {
-    vi.mocked(reportsService.getReportsData).mockRejectedValue(new Error('Failed to fetch'));
+    vi.mocked(reportsService.getReportsData).mockRejectedValue(
+      new Error('Failed to fetch'),
+    );
 
     const { result } = renderHook(() => useReports(), {
       wrapper: createWrapper(),
@@ -125,8 +149,20 @@ describe('useReports', () => {
 describe('useCaseStatusStats', () => {
   it('fetches case status stats', async () => {
     const mockData = {
-      stats: { totalCases: 100, closedCases: 60, openCases: 40, avgResolutionTime: 12.5 },
-      statusDistribution: { assigned: 0, inProgress: 0, draft: 0, suspended: 0, pendingApproval: 0, closed: 0 },
+      stats: {
+        totalCases: 100,
+        closedCases: 60,
+        openCases: 40,
+        avgResolutionTime: 12.5,
+      },
+      statusDistribution: {
+        assigned: 0,
+        inProgress: 0,
+        draft: 0,
+        suspended: 0,
+        pendingApproval: 0,
+        closed: 0,
+      },
       caseTypes: [],
       outcomes: { resolved: 0, confirmed: 0, inconclusive: 0, pending: 0 },
       monthlyTrend: [],
@@ -163,7 +199,9 @@ describe('useInvestigatorWorkload', () => {
       performanceData: [],
     };
 
-    vi.mocked(reportsService.getInvestigatorWorkloadData).mockResolvedValue(mockData);
+    vi.mocked(reportsService.getInvestigatorWorkloadData).mockResolvedValue(
+      mockData,
+    );
 
     const { result } = renderHook(() => useInvestigatorWorkload('last30'), {
       wrapper: createWrapper(),
@@ -174,7 +212,9 @@ describe('useInvestigatorWorkload', () => {
     });
 
     expect(result.current.data).toEqual(mockData);
-    expect(reportsService.getInvestigatorWorkloadData).toHaveBeenCalledWith('last30');
+    expect(reportsService.getInvestigatorWorkloadData).toHaveBeenCalledWith(
+      'last30',
+    );
   });
 });
 
@@ -262,7 +302,9 @@ describe('useEvidenceFindings', () => {
       evidenceItemsList: [],
     };
 
-    vi.mocked(reportsService.getEvidenceFindingsData).mockResolvedValue(mockData);
+    vi.mocked(reportsService.getEvidenceFindingsData).mockResolvedValue(
+      mockData,
+    );
 
     const { result } = renderHook(() => useEvidenceFindings('last30'), {
       wrapper: createWrapper(),
@@ -273,7 +315,8 @@ describe('useEvidenceFindings', () => {
     });
 
     expect(result.current.data).toEqual(mockData);
-    expect(reportsService.getEvidenceFindingsData).toHaveBeenCalledWith('last30');
+    expect(reportsService.getEvidenceFindingsData).toHaveBeenCalledWith(
+      'last30',
+    );
   });
 });
-

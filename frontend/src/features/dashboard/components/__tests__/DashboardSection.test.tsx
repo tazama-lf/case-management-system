@@ -8,7 +8,7 @@ describe('DashboardSection', () => {
     render(
       <DashboardSection title="Test Title" subtitle="Test Subtitle">
         <div>Test Content</div>
-      </DashboardSection>
+      </DashboardSection>,
     );
 
     expect(screen.getByText('Test Title')).toBeInTheDocument();
@@ -24,7 +24,7 @@ describe('DashboardSection', () => {
         viewAllHref="/test"
       >
         <div>Test Content</div>
-      </DashboardSection>
+      </DashboardSection>,
     );
 
     const viewAllLink = screen.getByText('View all');
@@ -36,7 +36,7 @@ describe('DashboardSection', () => {
     render(
       <DashboardSection title="Test Title" subtitle="Test Subtitle">
         <div>Test Content</div>
-      </DashboardSection>
+      </DashboardSection>,
     );
 
     expect(screen.queryByText('View all')).not.toBeInTheDocument();
@@ -47,11 +47,10 @@ describe('DashboardSection', () => {
       <DashboardSection title="Test Title" subtitle="Test Subtitle">
         <div data-testid="child-1">Child 1</div>
         <div data-testid="child-2">Child 2</div>
-      </DashboardSection>
+      </DashboardSection>,
     );
 
     expect(screen.getByTestId('child-1')).toBeInTheDocument();
     expect(screen.getByTestId('child-2')).toBeInTheDocument();
   });
 });
-

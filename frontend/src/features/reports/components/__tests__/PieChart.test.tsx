@@ -105,4 +105,3 @@ describe('PieChart', () => {
     expect(screen.getByTestId('legend')).toBeInTheDocument();
   });
 });
-

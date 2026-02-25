@@ -53,14 +53,26 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
   ];
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      UNASSIGNED: { color: 'bg-gray-100 text-gray-800', label: 'STATUS_01_UNASSIGNED' },
-      ASSIGNED: { color: 'bg-blue-100 text-blue-800', label: 'STATUS_10_ASSIGNED' },
+      UNASSIGNED: {
+        color: 'bg-gray-100 text-gray-800',
+        label: 'STATUS_01_UNASSIGNED',
+      },
+      ASSIGNED: {
+        color: 'bg-blue-100 text-blue-800',
+        label: 'STATUS_10_ASSIGNED',
+      },
       IN_PROGRESS: {
         color: 'bg-yellow-100 text-yellow-800',
         label: 'STATUS_20_IN_PROGRESS',
       },
-      COMPLETED: { color: 'bg-green-100 text-green-800', label: 'STATUS_30_COMPLETED' },
-      SUSPENDED: { color: 'bg-red-100 text-red-800', label: 'STATUS_21_BLOCKED' },
+      COMPLETED: {
+        color: 'bg-green-100 text-green-800',
+        label: 'STATUS_30_COMPLETED',
+      },
+      SUSPENDED: {
+        color: 'bg-red-100 text-red-800',
+        label: 'STATUS_21_BLOCKED',
+      },
     };
 
     const config =
@@ -85,8 +97,10 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
 
     if (task.status === 'IN_PROGRESS') {
       // Don't show complete button for investigation tasks (they're completed in Investigation Summary tab)
-      const isInvestigationTask = task.name && task.name.toLowerCase().includes('investigat');
-      
+      const isInvestigationTask = task.name
+        ?.toLowerCase()
+        .includes('investigat');
+
       if (task.assignee && onComplete && !isInvestigationTask) {
         actions.push(
           <button
@@ -214,69 +228,73 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {tasks.map((task, index) => {
-              const isInvestigationTask = task.name && task.name.toLowerCase().includes('investigate');
+              const isInvestigationTask = task.name
+                ?.toLowerCase()
+                .includes('investigate');
               const isClickable = onTaskClick && isInvestigationTask;
-              
+
               return (
                 <tr
                   key={task.id || `task-${index}`}
                   className={`hover:bg-gray-50 ${isClickable ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2' : ''}`}
                 >
-                <td className="px-4 py-3"  onClick={() => isClickable && onTaskClick(task)} tabIndex={isClickable ? 0 : undefined}>
-                  <div className="flex flex-col">
-                    <div
-                      className="text-xs font-medium text-gray-900 font-mono truncate max-w-[10rem]">
-                      {task.id || 'No ID'}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div
-                    className={`text-xs break-words mt-1 ${isClickable ? 'text-blue-600 hover:underline' : 'text-gray-900'}`}
-                    title={task.name || 'View task details'}
+                  <td
+                    className="px-4 py-3"
+                    onClick={() => isClickable && onTaskClick(task)}
+                    tabIndex={isClickable ? 0 : undefined}
                   >
-                    {task.name || 'Unnamed Task'}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div
-                    className="text-xs text-gray-900 font-mono truncate max-w-[10rem]">
-                    {task.caseId || ''}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="text-sm text-gray-900 break-words">
-                    {task.candidateGroup || '-'}
-                  </div>
-                </td>
-                <td className="px-4 py-3">{getStatusBadge(task.status)}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center text-sm text-gray-500">
-                    <ClockIcon className="h-4 w-4 mr-1" />
-                    {formatDate(task.createdAt)}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="text-sm text-gray-900">
-                    {task.assignee ? (
-                      <span
-                        className="text-blue-600 truncate max-w-[10rem] inline-block align-middle"
-                        title={task.assigneeName || task.assignee}
-                      >
-                        {task.assigneeName || task.assignee}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">Unassigned</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right text-sm font-medium">
-                  <div className="flex justify-end space-x-2">
-                    {getAvailableActions(task)}
-                  </div>
-                </td>
-              </tr>
-            );
+                    <div className="flex flex-col">
+                      <div className="text-xs font-medium text-gray-900 font-mono truncate max-w-[10rem]">
+                        {task.id || 'No ID'}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div
+                      className={`text-xs break-words mt-1 ${isClickable ? 'text-blue-600 hover:underline' : 'text-gray-900'}`}
+                      title={task.name || 'View task details'}
+                    >
+                      {task.name || 'Unnamed Task'}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-xs text-gray-900 font-mono truncate max-w-[10rem]">
+                      {task.caseId || ''}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-sm text-gray-900 break-words">
+                      {task.candidateGroup || '-'}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">{getStatusBadge(task.status)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center text-sm text-gray-500">
+                      <ClockIcon className="h-4 w-4 mr-1" />
+                      {formatDate(task.createdAt)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-sm text-gray-900">
+                      {task.assignee ? (
+                        <span
+                          className="text-blue-600 truncate max-w-[10rem] inline-block align-middle"
+                          title={task.assigneeName || task.assignee}
+                        >
+                          {task.assigneeName || task.assignee}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">Unassigned</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm font-medium">
+                    <div className="flex justify-end space-x-2">
+                      {getAvailableActions(task)}
+                    </div>
+                  </td>
+                </tr>
+              );
             })}
           </tbody>
         </table>
@@ -320,11 +338,11 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                 aria-label="Pagination"
               >
                 <button
-                  onClick={() =>
+                  onClick={() => {
                     pagination.onPageChange(
                       Math.max(1, pagination.currentPage - 1),
-                    )
-                  }
+                    );
+                  }}
                   disabled={pagination.currentPage <= 1}
                   className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -333,7 +351,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                 {}
                 {(() => {
                   const { currentPage, totalPages } = pagination;
-                  const pages: (number | 'ellipsis')[] = [];
+                  const pages: Array<number | 'ellipsis'> = [];
                   const windowSize = 5;
                   const half = Math.floor(windowSize / 2);
 
@@ -364,7 +382,9 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                     ) : (
                       <button
                         key={p}
-                        onClick={() => pagination.onPageChange(p)}
+                        onClick={() => {
+                          pagination.onPageChange(p);
+                        }}
                         className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                           pagination.currentPage === p
                             ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
@@ -380,14 +400,14 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                   );
                 })()}
                 <button
-                  onClick={() =>
+                  onClick={() => {
                     pagination.onPageChange(
                       Math.min(
                         pagination.totalPages,
                         pagination.currentPage + 1,
                       ),
-                    )
-                  }
+                    );
+                  }}
                   disabled={pagination.currentPage >= pagination.totalPages}
                   className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

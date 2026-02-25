@@ -148,9 +148,7 @@ describe('useCaseDashboard', () => {
     authMocks.hasSupervisorRole.mockReturnValue(true);
     routeMock.params = { caseId: 'CASE-777' };
 
-    (
-      caseService.getAllCases as unknown as vi.Mock
-    ).mockResolvedValueOnce({
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValueOnce({
       cases: [createBackendCase({ case_id: 'CASE-777' })],
     });
 
@@ -196,4 +194,3 @@ describe('useCaseDashboard', () => {
     expect(result.current.dashboardState.cases).toHaveLength(0);
   });
 });
-

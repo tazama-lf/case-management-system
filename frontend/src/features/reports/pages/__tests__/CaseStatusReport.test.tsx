@@ -19,15 +19,31 @@ vi.mock('../../hooks/useReports', () => ({
 
 // Mock components
 vi.mock('../../components/ReportStatsCards', () => ({
-  default: ({ stats }: any) => <div data-testid="report-stats-cards">{JSON.stringify(stats)}</div>,
+  default: ({ stats }: any) => (
+    <div data-testid="report-stats-cards">{JSON.stringify(stats)}</div>
+  ),
 }));
 
 vi.mock('../../components/ReportFilters', () => ({
-  default: ({ reportType, dateRange, onChangeReportType, onChangeDateRange, onApplyFilters }: any) => (
+  default: ({
+    reportType,
+    dateRange,
+    onChangeReportType,
+    onChangeDateRange,
+    onApplyFilters,
+  }: any) => (
     <div data-testid="report-filters">
-      <button onClick={() => onChangeReportType('AUDIT_LOGS')}>Change Report Type</button>
-      <button onClick={() => onChangeDateRange('last7')}>Change Date Range</button>
-      <button onClick={() => onApplyFilters({ caseType: 'FRAUD', priority: '', investigator: '' })}>
+      <button onClick={() => onChangeReportType('AUDIT_LOGS')}>
+        Change Report Type
+      </button>
+      <button onClick={() => onChangeDateRange('last7')}>
+        Change Date Range
+      </button>
+      <button
+        onClick={() =>
+          onApplyFilters({ caseType: 'FRAUD', priority: '', investigator: '' })
+        }
+      >
         Apply Filters
       </button>
     </div>
@@ -38,9 +54,15 @@ vi.mock('../../components/ReportsTable', () => ({
   default: ({ data, onExportExcel, onExportCSV, onExportPDF }: any) => (
     <div data-testid="reports-table">
       <div data-testid="table-data">{JSON.stringify(data)}</div>
-      <button onClick={onExportExcel} data-testid="export-excel">Export Excel</button>
-      <button onClick={onExportCSV} data-testid="export-csv">Export CSV</button>
-      <button onClick={onExportPDF} data-testid="export-pdf">Export PDF</button>
+      <button onClick={onExportExcel} data-testid="export-excel">
+        Export Excel
+      </button>
+      <button onClick={onExportCSV} data-testid="export-csv">
+        Export CSV
+      </button>
+      <button onClick={onExportPDF} data-testid="export-pdf">
+        Export PDF
+      </button>
     </div>
   ),
 }));
@@ -55,7 +77,9 @@ vi.mock('../../components/BarChart', () => ({
 }));
 
 vi.mock('../../components/MultiBarChart', () => ({
-  default: ({ data, title }: any) => <div data-testid="multi-bar-chart">{title}</div>,
+  default: ({ data, title }: any) => (
+    <div data-testid="multi-bar-chart">{title}</div>
+  ),
 }));
 
 // Mock export utilities
@@ -180,7 +204,9 @@ describe('CaseStatusReport', () => {
 
     render(<CaseStatusReport />, { wrapper: createWrapper() });
 
-    expect(screen.getByText(/Failed to load reports data/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Failed to load reports data/i),
+    ).toBeInTheDocument();
   });
 
   it('handles export to Excel', async () => {
@@ -246,7 +272,9 @@ describe('CaseStatusReport', () => {
     const exportButton = screen.getByTestId('export-excel');
     await user.click(exportButton);
 
-    expect(global.alert).toHaveBeenCalledWith('Export failed. Please try again.');
+    expect(global.alert).toHaveBeenCalledWith(
+      'Export failed. Please try again.',
+    );
   });
 
   it('handles missing data gracefully', async () => {
@@ -279,4 +307,3 @@ describe('CaseStatusReport', () => {
     expect(screen.getByTestId('multi-bar-chart')).toBeInTheDocument();
   });
 });
-

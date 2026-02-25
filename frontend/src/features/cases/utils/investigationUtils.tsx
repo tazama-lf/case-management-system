@@ -122,3 +122,15 @@ export const fetchCasesAndEvidence = async (
 
     return { caseDetails, supervisorComments, investigatorName, investigationTask, investigationNotes, submittedDate };
 };
+
+
+
+
+
+
+
+
+
+
+
+

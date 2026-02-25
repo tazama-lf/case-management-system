@@ -63,4 +63,3 @@ describe('useWorkQueueFilter', () => {
     expect(result.current.filteredQueues[0].id).toBe('queue-2');
   });
 });
-

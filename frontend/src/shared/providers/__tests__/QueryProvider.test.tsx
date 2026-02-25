@@ -57,7 +57,9 @@ describe('QueryProvider', () => {
       </QueryProvider>,
     );
 
-    await waitFor(() => expect(screen.getByText('stale-data')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('stale-data')).toBeInTheDocument(),
+    );
   });
 
   it('handles mutations with retry configuration', async () => {

@@ -59,7 +59,9 @@ describe('UnassignTaskModal', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: /Unassign Task/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Unassign Task/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Task ID: TASK-123/i)).toBeInTheDocument();
     expect(screen.getByText(/Review Transaction/i)).toBeInTheDocument();
   });
@@ -89,7 +91,9 @@ describe('UnassignTaskModal', () => {
       />,
     );
 
-    const reasonTextarea = screen.getByPlaceholderText(/Explain why this task is being unassigned/i);
+    const reasonTextarea = screen.getByPlaceholderText(
+      /Explain why this task is being unassigned/i,
+    );
     const submitButton = screen.getByRole('button', { name: /Unassign Task/i });
 
     await user.type(reasonTextarea, 'Workload redistribution');
@@ -112,7 +116,9 @@ describe('UnassignTaskModal', () => {
       />,
     );
 
-    const reasonTextarea = screen.getByPlaceholderText(/Explain why this task is being unassigned/i);
+    const reasonTextarea = screen.getByPlaceholderText(
+      /Explain why this task is being unassigned/i,
+    );
     const submitButton = screen.getByRole('button', { name: /Unassign Task/i });
 
     await user.type(reasonTextarea, 'Workload redistribution');
@@ -145,4 +151,3 @@ describe('UnassignTaskModal', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 });
-

@@ -57,7 +57,7 @@ describe('Layout', () => {
         <Layout>
           <div>Test Content</div>
         </Layout>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('Test Content')).toBeInTheDocument();
@@ -67,7 +67,7 @@ describe('Layout', () => {
     render(
       <MemoryRouter>
         <Layout />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByTestId('outlet')).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe('Layout', () => {
         <Layout>
           <div>Content</div>
         </Layout>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     const toggleButton = screen.getByTestId('toggle-sidebar');
@@ -95,7 +95,7 @@ describe('Layout', () => {
         <Layout>
           <div>Content</div>
         </Layout>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // Open sidebar first
@@ -118,7 +118,7 @@ describe('Layout', () => {
         <Layout>
           <div>Content</div>
         </Layout>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // Open sidebar to see logout button
@@ -132,16 +132,14 @@ describe('Layout', () => {
   });
 
   it('renders with title and breadcrumbs', () => {
-    const breadcrumbs = [
-      { name: 'Home', href: '/' },
-    ];
+    const breadcrumbs = [{ name: 'Home', href: '/' }];
 
     render(
       <MemoryRouter>
         <Layout title="Test Title" breadcrumbs={breadcrumbs}>
           <div>Content</div>
         </Layout>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByTestId('header')).toBeInTheDocument();

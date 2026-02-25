@@ -26,10 +26,12 @@ describe('NewDiscussionThreadModal', () => {
         onClose={mockOnClose}
         collaborators={mockCollaborators}
         onCreate={mockOnCreate}
-      />
+      />,
     );
 
-    expect(screen.queryByText('Create New Discussion Thread')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Create New Discussion Thread'),
+    ).not.toBeInTheDocument();
   });
 
   it('renders when open', () => {
@@ -39,10 +41,12 @@ describe('NewDiscussionThreadModal', () => {
         onClose={mockOnClose}
         collaborators={mockCollaborators}
         onCreate={mockOnCreate}
-      />
+      />,
     );
 
-    expect(screen.getByText('Create New Discussion Thread')).toBeInTheDocument();
+    expect(
+      screen.getByText('Create New Discussion Thread'),
+    ).toBeInTheDocument();
   });
 
   it('allows entering title and message', () => {
@@ -52,7 +56,7 @@ describe('NewDiscussionThreadModal', () => {
         onClose={mockOnClose}
         collaborators={mockCollaborators}
         onCreate={mockOnCreate}
-      />
+      />,
     );
 
     const titleInput = screen.getByPlaceholderText('Enter a descriptive title');
@@ -72,7 +76,7 @@ describe('NewDiscussionThreadModal', () => {
         onClose={mockOnClose}
         collaborators={mockCollaborators}
         onCreate={mockOnCreate}
-      />
+      />,
     );
 
     const createButton = screen.getByText('Create Thread');
@@ -86,7 +90,7 @@ describe('NewDiscussionThreadModal', () => {
         onClose={mockOnClose}
         collaborators={mockCollaborators}
         onCreate={mockOnCreate}
-      />
+      />,
     );
 
     const titleInput = screen.getByPlaceholderText('Enter a descriptive title');
@@ -106,7 +110,7 @@ describe('NewDiscussionThreadModal', () => {
         onClose={mockOnClose}
         collaborators={mockCollaborators}
         onCreate={mockOnCreate}
-      />
+      />,
     );
 
     const titleInput = screen.getByPlaceholderText('Enter a descriptive title');
@@ -134,7 +138,7 @@ describe('NewDiscussionThreadModal', () => {
         onClose={mockOnClose}
         collaborators={mockCollaborators}
         onCreate={mockOnCreate}
-      />
+      />,
     );
 
     const checkboxes = screen.getAllByRole('checkbox');
@@ -166,7 +170,7 @@ describe('NewDiscussionThreadModal', () => {
         onClose={mockOnClose}
         collaborators={mockCollaborators}
         onCreate={mockOnCreate}
-      />
+      />,
     );
 
     const cancelButton = screen.getByText('Cancel');
@@ -182,7 +186,7 @@ describe('NewDiscussionThreadModal', () => {
         onClose={mockOnClose}
         collaborators={mockCollaborators}
         onCreate={mockOnCreate}
-      />
+      />,
     );
 
     const titleInput = screen.getByPlaceholderText('Enter a descriptive title');
@@ -194,7 +198,7 @@ describe('NewDiscussionThreadModal', () => {
         onClose={mockOnClose}
         collaborators={mockCollaborators}
         onCreate={mockOnCreate}
-      />
+      />,
     );
 
     rerender(
@@ -203,10 +207,11 @@ describe('NewDiscussionThreadModal', () => {
         onClose={mockOnClose}
         collaborators={mockCollaborators}
         onCreate={mockOnCreate}
-      />
+      />,
     );
 
-    expect(screen.getByPlaceholderText('Enter a descriptive title')).toHaveValue('');
+    expect(
+      screen.getByPlaceholderText('Enter a descriptive title'),
+    ).toHaveValue('');
   });
 });
-

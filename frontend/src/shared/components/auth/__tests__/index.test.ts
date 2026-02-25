@@ -26,4 +26,3 @@ describe('shared/components/auth/index', () => {
     expect(AuthComponents.AuthenticatedOnly).toBeDefined();
   });
 });
-

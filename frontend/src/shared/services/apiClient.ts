@@ -8,7 +8,7 @@ interface ApiRequestOptions extends RequestInit {
 }
 
 class ApiClient {
-  private baseUrl: string;
+  private readonly baseUrl: string;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
@@ -72,21 +72,21 @@ class ApiClient {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
         errorData.message ||
-        `HTTP ${response.status}: ${response.statusText}` ||
-        'An error occurred',
+          `HTTP ${response.status}: ${response.statusText}` ||
+          'An error occurred',
       );
     }
 
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      return response.json();
+      return await response.json();
     }
 
     return response.text() as unknown as T;
   }
 
   async get<T>(endpoint: string, options?: ApiRequestOptions): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'GET' });
+    return await this.request<T>(endpoint, { ...options, method: 'GET' });
   }
 
   async post<T>(
@@ -94,7 +94,7 @@ class ApiClient {
     data?: any,
     options?: ApiRequestOptions,
   ): Promise<T> {
-    return this.request<T>(endpoint, {
+    return await this.request<T>(endpoint, {
       ...options,
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
@@ -106,7 +106,7 @@ class ApiClient {
     data?: any,
     options?: ApiRequestOptions,
   ): Promise<T> {
-    return this.request<T>(endpoint, {
+    return await this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
@@ -118,7 +118,7 @@ class ApiClient {
     data?: any,
     options?: ApiRequestOptions,
   ): Promise<T> {
-    return this.request<T>(endpoint, {
+    return await this.request<T>(endpoint, {
       ...options,
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,
@@ -126,7 +126,7 @@ class ApiClient {
   }
 
   async delete<T>(endpoint: string, options?: ApiRequestOptions): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+    return await this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 
   async upload<T>(
@@ -151,7 +151,7 @@ class ApiClient {
 
     // Remove Content-Type if it exists - browser will set it automatically for FormData
     if (headers && 'Content-Type' in headers) {
-      delete (headers as Record<string, string>)['Content-Type'];
+      delete headers['Content-Type'];
     }
 
     const config: RequestInit = {

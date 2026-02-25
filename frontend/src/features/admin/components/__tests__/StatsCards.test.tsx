@@ -13,7 +13,9 @@ describe('StatsCards', () => {
   it('renders all four stat cards with the correct values', () => {
     render(<StatsCards stats={stats} />);
 
-    expect(screen.getByText('Active Work Queues')).toHaveTextContent('Active Work Queues');
+    expect(screen.getByText('Active Work Queues')).toHaveTextContent(
+      'Active Work Queues',
+    );
     expect(screen.getByText('4')).toBeInTheDocument();
 
     expect(screen.getByText('User Accounts')).toBeInTheDocument();
@@ -26,4 +28,3 @@ describe('StatsCards', () => {
     expect(screen.getByText('3')).toBeInTheDocument();
   });
 });
-

@@ -77,25 +77,29 @@ describe('CommentService', () => {
     });
 
     it('handles errors when adding comment fails', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const error = new Error('Failed to add comment');
       (apiClient.post as vi.Mock).mockRejectedValue(error);
 
-      await expect(
-        commentService.addComment({ note: 'Test' }),
-      ).rejects.toThrow('Failed to add comment');
+      await expect(commentService.addComment({ note: 'Test' })).rejects.toThrow(
+        'Failed to add comment',
+      );
 
       expect(consoleErrorSpy).toHaveBeenCalled();
       consoleErrorSpy.mockRestore();
     });
 
     it('handles non-Error rejection', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (apiClient.post as vi.Mock).mockRejectedValue('String error');
 
-      await expect(
-        commentService.addComment({ note: 'Test' }),
-      ).rejects.toThrow('Failed to add comment');
+      await expect(commentService.addComment({ note: 'Test' })).rejects.toThrow(
+        'Failed to add comment',
+      );
 
       expect(consoleErrorSpy).toHaveBeenCalled();
       consoleErrorSpy.mockRestore();
@@ -120,7 +124,9 @@ describe('CommentService', () => {
     });
 
     it('handles errors when getting comment fails', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const error = new Error('Failed to get comment');
       (apiClient.get as vi.Mock).mockRejectedValue(error);
 
@@ -133,7 +139,9 @@ describe('CommentService', () => {
     });
 
     it('handles non-Error rejection', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue('String error');
 
       await expect(commentService.getComment('COMMENT-1')).rejects.toThrow(
@@ -160,7 +168,9 @@ describe('CommentService', () => {
 
       const result = await commentService.getCommentsByCase('CASE-1');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/comment?caseId=CASE-1');
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/v1/comment?caseId=CASE-1',
+      );
       expect(result).toEqual(mockComments);
     });
 
@@ -173,7 +183,9 @@ describe('CommentService', () => {
     });
 
     it('handles errors when getting comments fails', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const error = new Error('Failed to get comments');
       (apiClient.get as vi.Mock).mockRejectedValue(error);
 
@@ -186,7 +198,9 @@ describe('CommentService', () => {
     });
 
     it('handles non-Error rejection', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue('String error');
 
       await expect(commentService.getCommentsByCase('CASE-1')).rejects.toThrow(
@@ -213,7 +227,9 @@ describe('CommentService', () => {
 
       const result = await commentService.getCommentsByTask('TASK-1');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/comment?taskId=TASK-1');
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/v1/comment?taskId=TASK-1',
+      );
       expect(result).toEqual(mockComments);
     });
 
@@ -226,7 +242,9 @@ describe('CommentService', () => {
     });
 
     it('handles errors when getting comments fails', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const error = new Error('Failed to get comments');
       (apiClient.get as vi.Mock).mockRejectedValue(error);
 
@@ -239,7 +257,9 @@ describe('CommentService', () => {
     });
 
     it('handles non-Error rejection', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue('String error');
 
       await expect(commentService.getCommentsByTask('TASK-1')).rejects.toThrow(
@@ -251,4 +271,3 @@ describe('CommentService', () => {
     });
   });
 });
-

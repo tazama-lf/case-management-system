@@ -19,7 +19,9 @@ describe('DashboardHeader', () => {
     const mockOnCreateClick = vi.fn();
     render(<DashboardHeader onCreateClick={mockOnCreateClick} />);
 
-    const createButton = screen.getByRole('button', { name: /Create Manually/i });
+    const createButton = screen.getByRole('button', {
+      name: /Create Manually/i,
+    });
     expect(createButton).toBeInTheDocument();
   });
 
@@ -28,10 +30,11 @@ describe('DashboardHeader', () => {
     const mockOnCreateClick = vi.fn();
     render(<DashboardHeader onCreateClick={mockOnCreateClick} />);
 
-    const createButton = screen.getByRole('button', { name: /Create Manually/i });
+    const createButton = screen.getByRole('button', {
+      name: /Create Manually/i,
+    });
     await user.click(createButton);
 
     expect(mockOnCreateClick).toHaveBeenCalled();
   });
 });
-

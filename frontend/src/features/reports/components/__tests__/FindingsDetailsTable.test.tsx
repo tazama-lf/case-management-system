@@ -12,7 +12,7 @@ beforeEach(() => {
   global.URL.createObjectURL = mockCreateObjectURL;
   global.URL.revokeObjectURL = mockRevokeObjectURL;
   window.alert = vi.fn();
-  
+
   // Spy on createElement to track anchor element creation
   const originalCreateElement = document.createElement.bind(document);
   vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
@@ -134,12 +134,16 @@ describe('FindingsDetailsTable', () => {
 
     await waitFor(() => {
       // Check for modal title (filename in modal header)
-      const modalTitle = screen.getByRole('heading', { name: /transaction_log_1\.pdf/i });
+      const modalTitle = screen.getByRole('heading', {
+        name: /transaction_log_1\.pdf/i,
+      });
       expect(modalTitle).toBeInTheDocument();
     });
-    
+
     // Check for description in modal (there may be multiple instances)
-    const descriptions = screen.getAllByText('Transaction logs showing duplicate payments');
+    const descriptions = screen.getAllByText(
+      'Transaction logs showing duplicate payments',
+    );
     expect(descriptions.length).toBeGreaterThan(0);
   });
 
@@ -159,7 +163,9 @@ describe('FindingsDetailsTable', () => {
     await user.click(viewButtons[0]);
 
     await waitFor(() => {
-      const modalTitle = screen.getByRole('heading', { name: /transaction_log_1\.pdf/i });
+      const modalTitle = screen.getByRole('heading', {
+        name: /transaction_log_1\.pdf/i,
+      });
       expect(modalTitle).toBeInTheDocument();
     });
 
@@ -168,7 +174,9 @@ describe('FindingsDetailsTable', () => {
     await user.click(closeButton);
 
     await waitFor(() => {
-      expect(screen.queryByRole('heading', { name: /transaction_log_1\.pdf/i })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: /transaction_log_1\.pdf/i }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -188,7 +196,9 @@ describe('FindingsDetailsTable', () => {
     await user.click(viewButtons[0]);
 
     await waitFor(() => {
-      const modalTitle = screen.getByRole('heading', { name: /transaction_log_1\.pdf/i });
+      const modalTitle = screen.getByRole('heading', {
+        name: /transaction_log_1\.pdf/i,
+      });
       expect(modalTitle).toBeInTheDocument();
     });
 
@@ -199,7 +209,9 @@ describe('FindingsDetailsTable', () => {
     }
 
     await waitFor(() => {
-      expect(screen.queryByRole('heading', { name: /transaction_log_1\.pdf/i })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: /transaction_log_1\.pdf/i }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -241,12 +253,16 @@ describe('FindingsDetailsTable', () => {
     await user.click(viewButtons[0]);
 
     await waitFor(() => {
-      const modalTitle = screen.getByRole('heading', { name: /transaction_log_1\.pdf/i });
+      const modalTitle = screen.getByRole('heading', {
+        name: /transaction_log_1\.pdf/i,
+      });
       expect(modalTitle).toBeInTheDocument();
     });
 
     // Click download button in modal (use getAllByRole and get the one in the modal footer)
-    const downloadButtons = screen.getAllByRole('button', { name: /Download/i });
+    const downloadButtons = screen.getAllByRole('button', {
+      name: /Download/i,
+    });
     // The modal footer button should be the last one
     const modalDownloadButton = downloadButtons[downloadButtons.length - 1];
     await user.click(modalDownloadButton);
@@ -275,7 +291,9 @@ describe('FindingsDetailsTable', () => {
 
   it('handles error during download', async () => {
     const user = userEvent.setup();
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
 
     // Mock createObjectURL to throw an error
     const originalCreateObjectURL = global.URL.createObjectURL;
@@ -309,4 +327,3 @@ describe('FindingsDetailsTable', () => {
     consoleErrorSpy.mockRestore();
   });
 });
-

@@ -32,27 +32,33 @@ describe('ReportStatsCards', () => {
 
     // Wait for StatsCard animation to complete - StatsCard animates numeric values using Math.floor
     // The animation increments in steps, so values might not reach exact target immediately
-    await waitFor(() => {
-      const textContent = container.textContent || '';
-      // Check that we have all the sections
-      expect(textContent).toContain('Total Cases');
-      expect(textContent).toContain('Closed Cases');
-      expect(textContent).toContain('Open Cases');
-      expect(textContent).toContain('Avg Resolution Time');
-      
-      // The values should be 100, 60, 40, but due to Math.floor during animation they might be slightly lower
-      // We accept values close to the target (within a reasonable range)
-      // For 100: accept 90-100
-      // For 60: accept 50-60
-      // For 40: accept 30-40
-      const hasTotalCases = /\b(9[0-9]|100)\b/.test(textContent) || textContent.includes('100');
-      const hasClosedCases = /\b(5[0-9]|60)\b/.test(textContent) || textContent.includes('60');
-      const hasOpenCases = /\b(3[0-9]|40)\b/.test(textContent) || textContent.includes('40');
-      
-      // At least one of the expected values should be present
-      expect(hasTotalCases || hasClosedCases || hasOpenCases).toBe(true);
-      expect(textContent).toContain('13 days');
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        const textContent = container.textContent || '';
+        // Check that we have all the sections
+        expect(textContent).toContain('Total Cases');
+        expect(textContent).toContain('Closed Cases');
+        expect(textContent).toContain('Open Cases');
+        expect(textContent).toContain('Avg Resolution Time');
+
+        // The values should be 100, 60, 40, but due to Math.floor during animation they might be slightly lower
+        // We accept values close to the target (within a reasonable range)
+        // For 100: accept 90-100
+        // For 60: accept 50-60
+        // For 40: accept 30-40
+        const hasTotalCases =
+          /\b(9[0-9]|100)\b/.test(textContent) || textContent.includes('100');
+        const hasClosedCases =
+          /\b(5[0-9]|60)\b/.test(textContent) || textContent.includes('60');
+        const hasOpenCases =
+          /\b(3[0-9]|40)\b/.test(textContent) || textContent.includes('40');
+
+        // At least one of the expected values should be present
+        expect(hasTotalCases || hasClosedCases || hasOpenCases).toBe(true);
+        expect(textContent).toContain('13 days');
+      },
+      { timeout: 2000 },
+    );
   });
 
   it('formats resolution time correctly', async () => {
@@ -145,4 +151,3 @@ describe('ReportStatsCards', () => {
     expect(container.textContent).toContain('13 days');
   });
 });
-

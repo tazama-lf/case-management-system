@@ -23,7 +23,8 @@ describe('dashboard.types', () => {
 
   describe('DashboardStats', () => {
     it('defines DashboardStats interface with all properties', () => {
-      const MockIcon: React.ComponentType<React.SVGProps<SVGSVGElement>> = () => null;
+      const MockIcon: React.ComponentType<React.SVGProps<SVGSVGElement>> = () =>
+        null;
       const stats: DashboardStats = {
         label: 'Total Cases',
         value: '100',
@@ -79,7 +80,10 @@ describe('dashboard.types', () => {
     it('supports all Alert types', () => {
       const fraudAlert: Alert = { ...getBaseAlert(), type: 'FRAUD' };
       const amlAlert: Alert = { ...getBaseAlert(), type: 'AML' };
-      const fraudAndAmlAlert: Alert = { ...getBaseAlert(), type: 'FRAUD_AND_AML' };
+      const fraudAndAmlAlert: Alert = {
+        ...getBaseAlert(),
+        type: 'FRAUD_AND_AML',
+      };
 
       expect(fraudAlert.type).toBe('FRAUD');
       expect(amlAlert.type).toBe('AML');
@@ -89,7 +93,10 @@ describe('dashboard.types', () => {
     it('supports all Alert statuses', () => {
       const newAlert: Alert = { ...getBaseAlert(), status: 'NEW' };
       const assignedAlert: Alert = { ...getBaseAlert(), status: 'ASSIGNED' };
-      const inProgressAlert: Alert = { ...getBaseAlert(), status: 'IN_PROGRESS' };
+      const inProgressAlert: Alert = {
+        ...getBaseAlert(),
+        status: 'IN_PROGRESS',
+      };
 
       expect(newAlert.status).toBe('NEW');
       expect(assignedAlert.status).toBe('ASSIGNED');
@@ -151,9 +158,15 @@ describe('dashboard.types', () => {
 
     it('can be used with Alert', () => {
       const lowPriorityAlert: Alert = { ...getBaseAlert(), priority: 'LOW' };
-      const mediumPriorityAlert: Alert = { ...getBaseAlert(), priority: 'MEDIUM' };
+      const mediumPriorityAlert: Alert = {
+        ...getBaseAlert(),
+        priority: 'MEDIUM',
+      };
       const highPriorityAlert: Alert = { ...getBaseAlert(), priority: 'HIGH' };
-      const criticalPriorityAlert: Alert = { ...getBaseAlert(), priority: 'CRITICAL' };
+      const criticalPriorityAlert: Alert = {
+        ...getBaseAlert(),
+        priority: 'CRITICAL',
+      };
 
       expect(lowPriorityAlert.priority).toBe('LOW');
       expect(mediumPriorityAlert.priority).toBe('MEDIUM');
@@ -163,7 +176,10 @@ describe('dashboard.types', () => {
 
     it('can be used with Case', () => {
       const lowPriorityCase: Case = { ...getBaseCase(), priority: 'LOW' };
-      const criticalPriorityCase: Case = { ...getBaseCase(), priority: 'CRITICAL' };
+      const criticalPriorityCase: Case = {
+        ...getBaseCase(),
+        priority: 'CRITICAL',
+      };
 
       expect(lowPriorityCase.priority).toBe('LOW');
       expect(criticalPriorityCase.priority).toBe('CRITICAL');
@@ -181,9 +197,16 @@ describe('dashboard.types', () => {
 
   describe('CaseStatus type', () => {
     it('defines all CaseStatus values', () => {
-      const statuses: CaseStatus[] = ['DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'CLOSED'];
+      const statuses: CaseStatus[] = [
+        'DRAFT',
+        'ASSIGNED',
+        'IN_PROGRESS',
+        'CLOSED',
+      ];
       statuses.forEach((status) => {
-        expect(['DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'CLOSED']).toContain(status);
+        expect(['DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'CLOSED']).toContain(
+          status,
+        );
       });
     });
   });
@@ -226,4 +249,3 @@ function getBaseCase(): Omit<Case, 'type' | 'status' | 'priority'> {
     alertsCount: 0,
   };
 }
-

@@ -55,4 +55,3 @@ describe('RecentActivitySection', () => {
     expect(screen.getByText('Activity 4')).toBeInTheDocument();
   });
 });
-

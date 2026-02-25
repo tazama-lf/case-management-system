@@ -11,12 +11,25 @@ import {
 import RoleGuard from '../RoleGuard';
 
 vi.mock('../RoleGuard', () => ({
-  default: ({ children, requireSupervisor, requireInvestigator, requireAdmin, requireBackendClaim, fallback }: any) => (
+  default: ({
+    children,
+    requireSupervisor,
+    requireInvestigator,
+    requireAdmin,
+    requireBackendClaim,
+    fallback,
+  }: any) => (
     <div data-testid="role-guard">
-      {requireSupervisor && <span data-testid="require-supervisor">supervisor</span>}
-      {requireInvestigator && <span data-testid="require-investigator">investigator</span>}
+      {requireSupervisor && (
+        <span data-testid="require-supervisor">supervisor</span>
+      )}
+      {requireInvestigator && (
+        <span data-testid="require-investigator">investigator</span>
+      )}
       {requireAdmin && <span data-testid="require-admin">admin</span>}
-      {requireBackendClaim && <span data-testid="require-backend-claim">{requireBackendClaim}</span>}
+      {requireBackendClaim && (
+        <span data-testid="require-backend-claim">{requireBackendClaim}</span>
+      )}
       {fallback && <span data-testid="fallback">fallback</span>}
       {children}
     </div>
@@ -32,7 +45,7 @@ describe('RoleComponents', () => {
     render(
       <SupervisorOnly>
         <div>Content</div>
-      </SupervisorOnly>
+      </SupervisorOnly>,
     );
 
     expect(screen.getByTestId('role-guard')).toBeInTheDocument();
@@ -44,7 +57,7 @@ describe('RoleComponents', () => {
     render(
       <SupervisorOnly fallback={<div>No Access</div>}>
         <div>Content</div>
-      </SupervisorOnly>
+      </SupervisorOnly>,
     );
 
     expect(screen.getByTestId('fallback')).toBeInTheDocument();
@@ -54,7 +67,7 @@ describe('RoleComponents', () => {
     render(
       <InvestigatorOnly>
         <div>Content</div>
-      </InvestigatorOnly>
+      </InvestigatorOnly>,
     );
 
     expect(screen.getByTestId('role-guard')).toBeInTheDocument();
@@ -66,7 +79,7 @@ describe('RoleComponents', () => {
     render(
       <InvestigatorOnly fallback={<div>No Access</div>}>
         <div>Content</div>
-      </InvestigatorOnly>
+      </InvestigatorOnly>,
     );
 
     expect(screen.getByTestId('fallback')).toBeInTheDocument();
@@ -76,7 +89,7 @@ describe('RoleComponents', () => {
     render(
       <AdminOnly>
         <div>Content</div>
-      </AdminOnly>
+      </AdminOnly>,
     );
 
     expect(screen.getByTestId('role-guard')).toBeInTheDocument();
@@ -88,7 +101,7 @@ describe('RoleComponents', () => {
     render(
       <AdminOnly fallback={<div>No Access</div>}>
         <div>Content</div>
-      </AdminOnly>
+      </AdminOnly>,
     );
 
     expect(screen.getByTestId('fallback')).toBeInTheDocument();
@@ -98,7 +111,7 @@ describe('RoleComponents', () => {
     render(
       <SupervisorOrAdmin>
         <div>Content</div>
-      </SupervisorOrAdmin>
+      </SupervisorOrAdmin>,
     );
 
     expect(screen.getByTestId('role-guard')).toBeInTheDocument();
@@ -110,7 +123,7 @@ describe('RoleComponents', () => {
     render(
       <SupervisorOrAdmin fallback={<div>No Access</div>}>
         <div>Content</div>
-      </SupervisorOrAdmin>
+      </SupervisorOrAdmin>,
     );
 
     expect(screen.getByTestId('fallback')).toBeInTheDocument();
@@ -120,7 +133,7 @@ describe('RoleComponents', () => {
     render(
       <AuthenticatedOnly>
         <div>Content</div>
-      </AuthenticatedOnly>
+      </AuthenticatedOnly>,
     );
 
     expect(screen.getByTestId('role-guard')).toBeInTheDocument();
@@ -133,10 +146,9 @@ describe('RoleComponents', () => {
     render(
       <AuthenticatedOnly fallback={<div>No Access</div>}>
         <div>Content</div>
-      </AuthenticatedOnly>
+      </AuthenticatedOnly>,
     );
 
     expect(screen.getByTestId('fallback')).toBeInTheDocument();
   });
 });
-

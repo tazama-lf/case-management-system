@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 
 export const Priority = {
   NEW: 'NEW',
@@ -20,12 +20,13 @@ export const AlertStatus = {
 export const AlertType = {
   FRAUD: 'FRAUD',
   AML: 'AML',
-  FRAUD_AND_AML: 'FRAUD_AND_AML'
+  FRAUD_AND_AML: 'FRAUD_AND_AML',
 } as const;
 
 export const CaseStatus = {
   STATUS_00_DRAFT: 'STATUS_00_DRAFT',
-  STATUS_01_PENDING_CASE_CREATION_APPROVAL: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
+  STATUS_01_PENDING_CASE_CREATION_APPROVAL:
+    'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
   STATUS_02_READY_FOR_ASSIGNMENT: 'STATUS_02_READY_FOR_ASSIGNMENT',
   STATUS_03_RETURNED: 'STATUS_03_RETURNED',
   STATUS_10_ASSIGNED: 'STATUS_10_ASSIGNED',
@@ -59,7 +60,6 @@ export interface TransactionHistoryDto {
   transactionData: unknown;
   createdAt: Date;
 }
-
 
 export const CaseType = {
   FRAUD: 'FRAUD',
@@ -145,13 +145,16 @@ export interface AlertsApiResponse {
   pagination: PaginationResponse;
 }
 
-
 export interface ManualTriageDto {
   confidence_per?: number;
   priority?: Priority;
   priorityScore: number;
   alertType?: AlertType;
-  predictionOutcome?: 'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE';
+  predictionOutcome?:
+    | 'FALSE_POSITIVE'
+    | 'TRUE_POSITIVE'
+    | 'FALSE_NEGATIVE'
+    | 'TRUE_NEGATIVE';
   note: string;
   status: CaseStatus;
 }
@@ -203,7 +206,6 @@ export interface SubmitAlertDto {
     networkMap: unknown;
   };
 }
-
 
 export interface ConvertToCaseData {
   caseId?: number;

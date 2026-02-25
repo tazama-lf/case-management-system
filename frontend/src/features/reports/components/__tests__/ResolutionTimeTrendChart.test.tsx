@@ -26,7 +26,12 @@ describe('ResolutionTimeTrendChart', () => {
   ];
 
   it('renders chart with data', () => {
-    render(<ResolutionTimeTrendChart data={mockData} title="Resolution Time Trend" />);
+    render(
+      <ResolutionTimeTrendChart
+        data={mockData}
+        title="Resolution Time Trend"
+      />,
+    );
 
     expect(screen.getByText('Resolution Time Trend')).toBeInTheDocument();
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
@@ -34,7 +39,9 @@ describe('ResolutionTimeTrendChart', () => {
   });
 
   it('renders empty state when data is empty', () => {
-    render(<ResolutionTimeTrendChart data={[]} title="Resolution Time Trend" />);
+    render(
+      <ResolutionTimeTrendChart data={[]} title="Resolution Time Trend" />,
+    );
 
     expect(screen.getByText('Resolution Time Trend')).toBeInTheDocument();
     expect(screen.getByText('No data available')).toBeInTheDocument();
@@ -42,26 +49,47 @@ describe('ResolutionTimeTrendChart', () => {
   });
 
   it('renders empty state when data is null', () => {
-    render(<ResolutionTimeTrendChart data={null as any} title="Resolution Time Trend" />);
+    render(
+      <ResolutionTimeTrendChart
+        data={null as any}
+        title="Resolution Time Trend"
+      />,
+    );
 
     expect(screen.getByText('No data available')).toBeInTheDocument();
   });
 
   it('renders empty state when data is undefined', () => {
-    render(<ResolutionTimeTrendChart data={undefined as any} title="Resolution Time Trend" />);
+    render(
+      <ResolutionTimeTrendChart
+        data={undefined as any}
+        title="Resolution Time Trend"
+      />,
+    );
 
     expect(screen.getByText('No data available')).toBeInTheDocument();
   });
 
   it('applies custom height', () => {
-    render(<ResolutionTimeTrendChart data={mockData} title="Resolution Time Trend" height={400} />);
+    render(
+      <ResolutionTimeTrendChart
+        data={mockData}
+        title="Resolution Time Trend"
+        height={400}
+      />,
+    );
 
     const container = screen.getByTestId('responsive-container');
     expect(container).toBeInTheDocument();
   });
 
   it('renders with default height when not provided', () => {
-    render(<ResolutionTimeTrendChart data={mockData} title="Resolution Time Trend" />);
+    render(
+      <ResolutionTimeTrendChart
+        data={mockData}
+        title="Resolution Time Trend"
+      />,
+    );
 
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
@@ -73,13 +101,23 @@ describe('ResolutionTimeTrendChart', () => {
       { month: '2024-02', avgDays: 20 },
     ];
 
-    render(<ResolutionTimeTrendChart data={duplicateMonthData} title="Resolution Time Trend" />);
+    render(
+      <ResolutionTimeTrendChart
+        data={duplicateMonthData}
+        title="Resolution Time Trend"
+      />,
+    );
 
     expect(screen.getByTestId('line-chart')).toBeInTheDocument();
   });
 
   it('renders all chart elements', () => {
-    render(<ResolutionTimeTrendChart data={mockData} title="Resolution Time Trend" />);
+    render(
+      <ResolutionTimeTrendChart
+        data={mockData}
+        title="Resolution Time Trend"
+      />,
+    );
 
     expect(screen.getByTestId('line-chart')).toBeInTheDocument();
     expect(screen.getByTestId('line')).toBeInTheDocument();
@@ -89,4 +127,3 @@ describe('ResolutionTimeTrendChart', () => {
     expect(screen.getByTestId('tooltip')).toBeInTheDocument();
   });
 });
-

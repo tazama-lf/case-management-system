@@ -25,11 +25,11 @@ describe('useReturnCaseActions', () => {
       id: 'CASE-123',
       status: 'STATUS_70_PENDING_APPROVAL',
     };
-    (caseService.returnCaseForReview as vi.Mock).mockResolvedValue(mockReturnedCase);
-
-    const { result } = renderHook(() =>
-      useReturnCaseActions(mockRefreshCases),
+    (caseService.returnCaseForReview as vi.Mock).mockResolvedValue(
+      mockReturnedCase,
     );
+
+    const { result } = renderHook(() => useReturnCaseActions(mockRefreshCases));
 
     await result.current.handleReturnForReview('CASE-123', 'Test comments');
 
@@ -47,11 +47,11 @@ describe('useReturnCaseActions', () => {
       id: 'CASE-123',
       status: 'STATUS_70_PENDING_APPROVAL',
     };
-    (caseService.returnCaseForReview as vi.Mock).mockResolvedValue(mockReturnedCase);
-
-    const { result } = renderHook(() =>
-      useReturnCaseActions(mockRefreshCases),
+    (caseService.returnCaseForReview as vi.Mock).mockResolvedValue(
+      mockReturnedCase,
     );
+
+    const { result } = renderHook(() => useReturnCaseActions(mockRefreshCases));
 
     await result.current.handleReturnForReview('CASE-123', '  Test comments  ');
 
@@ -66,9 +66,7 @@ describe('useReturnCaseActions', () => {
     const error = new Error('not in a returnable state');
     (caseService.returnCaseForReview as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReturnCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReturnCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReturnForReview('CASE-123', 'Test comments'),
@@ -77,7 +75,9 @@ describe('useReturnCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Return Case for Review Failed',
-        expect.stringContaining('Unable to return this case for review right now'),
+        expect.stringContaining(
+          'Unable to return this case for review right now',
+        ),
       );
     });
   });
@@ -86,9 +86,7 @@ describe('useReturnCaseActions', () => {
     const error = new Error('Unauthorized');
     (caseService.returnCaseForReview as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReturnCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReturnCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReturnForReview('CASE-123', 'Test comments'),
@@ -106,9 +104,7 @@ describe('useReturnCaseActions', () => {
     const error = new Error('403');
     (caseService.returnCaseForReview as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReturnCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReturnCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReturnForReview('CASE-123', 'Test comments'),
@@ -126,9 +122,7 @@ describe('useReturnCaseActions', () => {
     const error = new Error('Case not found');
     (caseService.returnCaseForReview as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReturnCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReturnCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReturnForReview('CASE-123', 'Test comments'),
@@ -146,9 +140,7 @@ describe('useReturnCaseActions', () => {
     const error = new Error('404');
     (caseService.returnCaseForReview as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReturnCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReturnCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReturnForReview('CASE-123', 'Test comments'),
@@ -166,9 +158,7 @@ describe('useReturnCaseActions', () => {
     const error = new Error('Generic error message');
     (caseService.returnCaseForReview as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReturnCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReturnCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReturnForReview('CASE-123', 'Test comments'),
@@ -186,9 +176,7 @@ describe('useReturnCaseActions', () => {
     const error = new Error('');
     (caseService.returnCaseForReview as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReturnCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReturnCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReturnForReview('CASE-123', 'Test comments'),
@@ -202,4 +190,3 @@ describe('useReturnCaseActions', () => {
     });
   });
 });
-

@@ -4,44 +4,48 @@ import { useMemo } from 'react';
 import triageService from '../services/triageservice';
 import { useNotifications } from '../../../shared/providers/NotificationProvider';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
-import type { Alert, AlertsFilter, ManualTriageDto } from '../types/triage.types';
-import type { AlertStatus } from '../types/triage.types';
+import type {
+  Alert,
+  AlertsFilter,
+  ManualTriageDto,
+  AlertStatus,
+} from '../types/triage.types';
 
 export const alertsQueryKeys = {
   all: ['alerts'] as const,
   lists: () => [...alertsQueryKeys.all, 'list'] as const,
-  list: (filters: AlertsFilter) => [...alertsQueryKeys.lists(), filters] as const,
+  list: (filters: AlertsFilter) =>
+    [...alertsQueryKeys.lists(), filters] as const,
   details: () => [...alertsQueryKeys.all, 'detail'] as const,
   detail: (id: number) => [...alertsQueryKeys.details(), id] as const,
-  actionHistory: (id: number) => [...alertsQueryKeys.detail(id), 'actionHistory'] as const,
+  actionHistory: (id: number) =>
+    [...alertsQueryKeys.detail(id), 'actionHistory'] as const,
   filterOptions: () => [...alertsQueryKeys.all, 'filterOptions'] as const,
 };
 
 export const useAlerts = (filters: AlertsFilter = {}) => {
   const [debouncedSearch] = useDebounce(filters.search, 300);
 
-  const debouncedFilters = useMemo(() => ({
-    ...filters,
-    search: debouncedSearch,
-  }), [filters, debouncedSearch]);
+  const debouncedFilters = useMemo(
+    () => ({
+      ...filters,
+      search: debouncedSearch,
+    }),
+    [filters, debouncedSearch],
+  );
 
-  const {
-    data,
-    isLoading,
-    error,
-    refetch,
-    isFetching,
-    isError,
-  } = useQuery({
+  const { data, isLoading, error, refetch, isFetching, isError } = useQuery({
     queryKey: alertsQueryKeys.list(debouncedFilters),
-    queryFn: () => triageService.getAlerts(debouncedFilters),
+    queryFn: async () => await triageService.getAlerts(debouncedFilters),
     enabled: true,
     staleTime: 30000,
     gcTime: 300000,
   });
 
   return {
-    alerts: (data?.alerts || []).map(alert => transformBackendAlertToUI(alert)),
+    alerts: (data?.alerts || []).map((alert) =>
+      transformBackendAlertToUI(alert),
+    ),
     pagination: data?.pagination || {
       currentPage: 1,
       totalPages: 1,
@@ -51,7 +55,7 @@ export const useAlerts = (filters: AlertsFilter = {}) => {
     isLoading,
     isFetching,
     isError,
-    error: error as Error | null,
+    error,
     refetch,
     refreshAlerts: refetch,
   };
@@ -65,7 +69,7 @@ export const useAlertDetails = (alertId: number | null) => {
     refetch,
   } = useQuery({
     queryKey: alertsQueryKeys.detail(alertId!),
-    queryFn: () => triageService.getAlertById(alertId!),
+    queryFn: async () => await triageService.getAlertById(alertId!),
     enabled: !!alertId,
     staleTime: 60000,
   });
@@ -73,7 +77,7 @@ export const useAlertDetails = (alertId: number | null) => {
   return {
     alert,
     isLoading,
-    error: error as Error | null,
+    error,
     refetch,
   };
 };
@@ -85,7 +89,7 @@ export const useAlertActionHistory = (alertId: number | null) => {
     error,
   } = useQuery({
     queryKey: alertsQueryKeys.actionHistory(alertId!),
-    queryFn: () => triageService.getAlertActionHistory(alertId!),
+    queryFn: async () => await triageService.getAlertActionHistory(alertId!),
     enabled: !!alertId,
     staleTime: 30000,
   });
@@ -93,7 +97,7 @@ export const useAlertActionHistory = (alertId: number | null) => {
   return {
     actionHistory: actionHistory || [],
     isLoading,
-    error: error as Error | null,
+    error,
   };
 };
 
@@ -102,18 +106,29 @@ export const useAlertOperations = () => {
   const { showError } = useNotifications();
 
   const closeAlertMutation = useMutation({
-    mutationFn: ({ alertId, status, notes }: { alertId: number; status: AlertStatus; notes: string }) =>
-      triageService.closeAlert(alertId, status, notes),
+    mutationFn: async ({
+      alertId,
+      status,
+      notes,
+    }: {
+      alertId: number;
+      status: AlertStatus;
+      notes: string;
+    }) => await triageService.closeAlert(alertId, status, notes),
     onSuccess: (data, variables) => {
       // showSuccess('Alert closed successfully');
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),
-        (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
+        (oldData: Alert | undefined) =>
+          oldData ? { ...oldData, ...data } : data,
       );
 
-      const caseId = data.case_id ||
-        queryClient.getQueryData<Alert>(alertsQueryKeys.detail(variables.alertId))?.case_id;
+      const caseId =
+        data.case_id ||
+        queryClient.getQueryData<Alert>(
+          alertsQueryKeys.detail(variables.alertId),
+        )?.case_id;
       if (caseId) {
         queryClient.invalidateQueries({ queryKey: ['case', caseId] });
       }
@@ -124,22 +139,33 @@ export const useAlertOperations = () => {
   });
 
   const updateAlertMutation = useMutation({
-    mutationFn: ({ alertId, data }: { alertId: number; data: Record<string, unknown> }) =>
-      triageService.updateAlert(alertId, data),
-      onSuccess: (data, variables) => {
+    mutationFn: async ({
+      alertId,
+      data,
+    }: {
+      alertId: number;
+      data: Record<string, unknown>;
+    }) => await triageService.updateAlert(alertId, data),
+    onSuccess: (data, variables) => {
       // showSuccess('Alert updated successfully');
       // Invalidate all alert lists to refetch with latest data
-       console.log('Failed to refresh case data:');
+      console.log('Failed to refresh case data:');
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
       // Refetch the specific alert detail
-      queryClient.invalidateQueries({ queryKey: alertsQueryKeys.detail(variables.alertId) });
+      queryClient.invalidateQueries({
+        queryKey: alertsQueryKeys.detail(variables.alertId),
+      });
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),
-        (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
+        (oldData: Alert | undefined) =>
+          oldData ? { ...oldData, ...data } : data,
       );
 
-      const caseId = data.case_id ||
-        queryClient.getQueryData<Alert>(alertsQueryKeys.detail(variables.alertId))?.case_id;
+      const caseId =
+        data.case_id ||
+        queryClient.getQueryData<Alert>(
+          alertsQueryKeys.detail(variables.alertId),
+        )?.case_id;
       if (caseId) {
         queryClient.invalidateQueries({ queryKey: ['case', caseId] });
       }
@@ -150,14 +176,20 @@ export const useAlertOperations = () => {
   });
 
   const manualTriageMutation = useMutation({
-    mutationFn: ({ alertId, data }: { alertId: number; data: ManualTriageDto }) =>
-      triageService.performManualTriage(alertId, data),
+    mutationFn: async ({
+      alertId,
+      data,
+    }: {
+      alertId: number;
+      data: ManualTriageDto;
+    }) => await triageService.performManualTriage(alertId, data),
     onSuccess: (data, variables) => {
       // showSuccess('Manual triage completed successfully');
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),
-        (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
+        (oldData: Alert | undefined) =>
+          oldData ? { ...oldData, ...data } : data,
       );
     },
     onError: (error: Error) => {
@@ -175,7 +207,9 @@ export const useAlertOperations = () => {
     operationStates: {
       closingAlert: new Set(closeAlertMutation.isPending ? ['pending'] : []),
       updatingAlert: new Set(updateAlertMutation.isPending ? ['pending'] : []),
-      performingManualTriage: new Set(manualTriageMutation.isPending ? ['pending'] : []),
+      performingManualTriage: new Set(
+        manualTriageMutation.isPending ? ['pending'] : [],
+      ),
       loadingDetails: new Set([]),
     },
   };

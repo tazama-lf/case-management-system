@@ -104,7 +104,9 @@ describe('useAlertOperations', () => {
     };
     const error = new Error('Failed to close alert');
     (triageService.closeAlert as vi.Mock).mockRejectedValue(error);
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
 
     const { result } = renderHook(() => useAlertOperations(mockRefreshAlerts));
 

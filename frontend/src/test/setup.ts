@@ -55,11 +55,11 @@ Object.defineProperty(window, 'matchMedia', {
     matches: false,
     media: query,
     onchange: null,
-    addListener: () => { },
-    removeListener: () => { },
-    addEventListener: () => { },
-    removeEventListener: () => { },
-    dispatchEvent: () => { },
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => {},
   }),
 });
 
@@ -68,10 +68,10 @@ class MockIntersectionObserver {
   rootMargin = '';
   thresholds = [];
 
-  constructor() { }
-  disconnect() { }
-  observe() { }
-  unobserve() { }
+  constructor() {}
+  disconnect() {}
+  observe() {}
+  unobserve() {}
   takeRecords() {
     return [];
   }
@@ -80,10 +80,10 @@ class MockIntersectionObserver {
 global.IntersectionObserver = MockIntersectionObserver as any;
 
 class MockResizeObserver {
-  constructor() { }
-  disconnect() { }
-  observe() { }
-  unobserve() { }
+  constructor() {}
+  disconnect() {}
+  observe() {}
+  unobserve() {}
 }
 
 global.ResizeObserver = MockResizeObserver as any;

@@ -26,13 +26,10 @@ describe('ProfileService', () => {
       notes: 'Test notes',
     });
 
-    expect(apiClient.post).toHaveBeenCalledWith(
-      '/api/v1/profile/generate',
-      {
-        caseId: 'CASE-123',
-        notes: 'Test notes',
-      },
-    );
+    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/profile/generate', {
+      caseId: 'CASE-123',
+      notes: 'Test notes',
+    });
     expect(result).toEqual(mockProfile);
   });
 
@@ -63,4 +60,3 @@ describe('ProfileService', () => {
     ).rejects.toThrow();
   });
 });
-

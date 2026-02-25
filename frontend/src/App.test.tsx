@@ -4,9 +4,10 @@ import App from './App';
 import { vi } from 'vitest';
 
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>(
-    'react-router-dom',
-  );
+  const actual =
+    await vi.importActual<typeof import('react-router-dom')>(
+      'react-router-dom',
+    );
   return {
     ...actual,
     RouterProvider: () => <div data-testid="router-provider" />,
@@ -16,6 +17,8 @@ vi.mock('react-router-dom', async () => {
 describe('App', () => {
   it('renders skip to main content button', () => {
     render(<App />);
-    expect(screen.getByRole('button', { name: /skip to main content/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /skip to main content/i }),
+    ).toBeInTheDocument();
   });
 });

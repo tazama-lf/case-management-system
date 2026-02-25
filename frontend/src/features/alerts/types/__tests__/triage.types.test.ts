@@ -439,4 +439,3 @@ describe('Triage Types - Interfaces', () => {
     expect(response.error?.message).toBe('Failed to fetch');
   });
 });
-

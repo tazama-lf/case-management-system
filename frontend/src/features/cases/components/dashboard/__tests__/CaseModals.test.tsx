@@ -145,15 +145,20 @@ describe('CaseModals', () => {
 
   it('renders CloseCaseModal when isCloseCaseOpen is true', async () => {
     render(<CaseModals {...defaultProps} isCloseCaseOpen={true} />);
-    
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Complete Case Investigation/i })).toBeInTheDocument();
-    }, { timeout: 3000 });
+
+    await waitFor(
+      () => {
+        expect(
+          screen.getByRole('heading', { name: /Complete Case Investigation/i }),
+        ).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
   });
 
   it('renders ReopenCaseModal when isReopenOpen is true', async () => {
     render(<CaseModals {...defaultProps} isReopenOpen={true} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/Reopen Case/i)).toBeInTheDocument();
     });
@@ -161,48 +166,61 @@ describe('CaseModals', () => {
 
   it('renders AbandonCaseModal when isAbandonOpen is true', async () => {
     render(<CaseModals {...defaultProps} isAbandonOpen={true} />);
-    
+
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Abandon Case/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: /Abandon Case/i }),
+      ).toBeInTheDocument();
     });
   });
 
   it('renders SuspendCaseModal when isSuspendOpen is true', async () => {
     render(<CaseModals {...defaultProps} isSuspendOpen={true} />);
-    
+
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Suspend Case/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: /Suspend Case/i }),
+      ).toBeInTheDocument();
     });
   });
 
   it('renders ResumeCaseModal when isResumeOpen is true', async () => {
     render(<CaseModals {...defaultProps} isResumeOpen={true} />);
-    
+
     // Wait for Suspense to resolve and the modal to render
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Resume Case/i })).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(
+          screen.getByRole('heading', { name: /Resume Case/i }),
+        ).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
   });
 
   it('renders ApproveCaseCreationModal when isApproveCreationOpen is true', async () => {
     render(<CaseModals {...defaultProps} isApproveCreationOpen={true} />);
-    
+
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Approve Case Creation/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: /Approve Case Creation/i }),
+      ).toBeInTheDocument();
     });
   });
 
   it('renders RejectCaseCreationModal when isRejectCreationOpen is true', async () => {
     render(<CaseModals {...defaultProps} isRejectCreationOpen={true} />);
-    
+
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Reject Case Creation/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: /Reject Case Creation/i }),
+      ).toBeInTheDocument();
     });
   });
 
   it('renders ApproveCaseReopenModal when isApproveReopenOpen is true', async () => {
     render(<CaseModals {...defaultProps} isApproveReopenOpen={true} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/Approve Case Reopening/i)).toBeInTheDocument();
     });
@@ -210,10 +228,9 @@ describe('CaseModals', () => {
 
   it('renders RejectCaseReopenModal when isRejectReopenOpen is true', async () => {
     render(<CaseModals {...defaultProps} isRejectReopenOpen={true} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/Reject Case Reopening/i)).toBeInTheDocument();
     });
   });
 });
-

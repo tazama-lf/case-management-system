@@ -16,12 +16,14 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   actionLabel,
   onAction,
   icon,
-  className = ''
+  className = '',
 }) => {
   const defaultIcon = <InboxIcon className="w-8 h-8 text-gray-400" />;
 
   return (
-    <div className={`flex flex-col items-center justify-center py-12 px-4 ${className}`}>
+    <div
+      className={`flex flex-col items-center justify-center py-12 px-4 ${className}`}
+    >
       <div className="flex flex-col items-center text-center max-w-md">
         <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
           {icon || defaultIcon}

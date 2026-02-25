@@ -25,7 +25,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <div>Content</div>
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     expect(screen.getByText('Content')).toBeInTheDocument();
@@ -35,30 +35,34 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
-    expect(screen.getByText(/We encountered an unexpected error/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/We encountered an unexpected error/i),
+    ).toBeInTheDocument();
   });
 
   it('renders custom fallback when provided', () => {
     render(
       <ErrorBoundary fallback={<div>Custom Error UI</div>}>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     expect(screen.getByText('Custom Error UI')).toBeInTheDocument();
   });
 
   it('calls componentDidCatch when error occurs', () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
 
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     expect(consoleErrorSpy).toHaveBeenCalled();
@@ -72,7 +76,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     const refreshButton = screen.getByRole('button', { name: /Refresh Page/i });
@@ -92,7 +96,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     const refreshButton = screen.getByRole('button', { name: /Refresh Page/i });
@@ -108,11 +112,10 @@ describe('ErrorBoundary', () => {
       <ErrorBoundary>
         <div>Child 1</div>
         <div>Child 2</div>
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     expect(screen.getByText('Child 1')).toBeInTheDocument();
     expect(screen.getByText('Child 2')).toBeInTheDocument();
   });
 });
-

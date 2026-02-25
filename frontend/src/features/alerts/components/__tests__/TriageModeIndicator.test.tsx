@@ -8,26 +8,38 @@ vi.mock('@/shared/hooks/useSystemConfig', () => ({
   useSystemConfig: vi.fn(),
   getTriageModeLabel: vi.fn((type) => {
     switch (type) {
-      case 'AI': return 'AI Automated';
-      case 'MANUAL': return 'Manual Review';
-      case 'DISABLED': return 'Direct Investigation';
-      default: return 'Unknown';
+      case 'AI':
+        return 'AI Automated';
+      case 'MANUAL':
+        return 'Manual Review';
+      case 'DISABLED':
+        return 'Direct Investigation';
+      default:
+        return 'Unknown';
     }
   }),
   getTriageModeDescription: vi.fn((type) => {
     switch (type) {
-      case 'AI': return 'Alerts are automatically processed using AI predictions with confidence thresholds';
-      case 'MANUAL': return 'All alerts require manual review and human decision-making';
-      case 'DISABLED': return 'Alerts bypass triage and go directly to investigation';
-      default: return 'Unknown triage mode';
+      case 'AI':
+        return 'Alerts are automatically processed using AI predictions with confidence thresholds';
+      case 'MANUAL':
+        return 'All alerts require manual review and human decision-making';
+      case 'DISABLED':
+        return 'Alerts bypass triage and go directly to investigation';
+      default:
+        return 'Unknown triage mode';
     }
   }),
   getTriageModeColor: vi.fn((type) => {
     switch (type) {
-      case 'AI': return 'text-blue-600 bg-blue-50 border-blue-200';
-      case 'MANUAL': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'DISABLED': return 'text-gray-600 bg-gray-50 border-gray-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'AI':
+        return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'MANUAL':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      case 'DISABLED':
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   }),
 }));
@@ -105,7 +117,9 @@ describe('TriageModeIndicator', () => {
 
     render(<TriageModeIndicator showDescription={true} />);
     expect(
-      screen.getByText(/All alerts require manual review and human decision-making/i),
+      screen.getByText(
+        /All alerts require manual review and human decision-making/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -129,7 +143,9 @@ describe('TriageModeIndicator', () => {
       triageType: 'AI',
     });
 
-    const { container } = render(<TriageModeIndicator className="custom-class" />);
+    const { container } = render(
+      <TriageModeIndicator className="custom-class" />,
+    );
     const indicator = container.querySelector('.custom-class');
     expect(indicator).toBeInTheDocument();
   });
@@ -163,4 +179,3 @@ describe('TriageModeIndicator', () => {
     expect(screen.getByText('Direct Investigation')).toBeInTheDocument();
   });
 });
-

@@ -13,8 +13,8 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
 
 class AuthService {
-  private tokenKey = 'authToken';
-  private userKey = 'user';
+  private readonly tokenKey = 'authToken';
+  private readonly userKey = 'user';
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
@@ -237,7 +237,7 @@ class AuthService {
       return false;
     }
 
-    return user.validatedClaims?.[claim] === true || false;
+    return user.validatedClaims?.[claim] || false;
   }
 
   hasCMSTestRole(): boolean {
@@ -290,7 +290,12 @@ class AuthService {
    * @returns true if user has at least one valid CMS role
    */
   validateBackendAccess(): boolean {
-    const validRoles = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_ADMIN', 'CMS_COMPLIANCE_OFFICER'];
+    const validRoles = [
+      'CMS_INVESTIGATOR',
+      'CMS_SUPERVISOR',
+      'CMS_ADMIN',
+      'CMS_COMPLIANCE_OFFICER',
+    ];
 
     // Also allow legacy admin roles for backward compatibility
     return (

@@ -8,8 +8,16 @@ vi.mock('../components', () => ({
   CaseInformationCard: ({ caseInformation }: { caseInformation: any }) => (
     <div>Case Information: {caseInformation.status}</div>
   ),
-  PersonInformationCard: ({ title, personInformation }: { title: string; personInformation: any }) => (
-    <div>{title}: {personInformation.name}</div>
+  PersonInformationCard: ({
+    title,
+    personInformation,
+  }: {
+    title: string;
+    personInformation: any;
+  }) => (
+    <div>
+      {title}: {personInformation.name}
+    </div>
   ),
   BlockAllowListStatus: ({ status }: { status: string }) => (
     <div>Status: {status}</div>
@@ -19,7 +27,9 @@ vi.mock('../components', () => ({
   ),
   ModalHeader: ({ onClose }: { onClose: () => void }) => (
     <div>
-      <button onClick={onClose} aria-label="Close">Close</button>
+      <button onClick={onClose} aria-label="Close">
+        Close
+      </button>
     </div>
   ),
 }));
@@ -101,4 +111,3 @@ describe('RelatedCaseModal', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 });
-

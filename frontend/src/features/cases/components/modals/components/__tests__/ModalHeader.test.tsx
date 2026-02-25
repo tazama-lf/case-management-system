@@ -19,10 +19,14 @@ describe('ModalHeader', () => {
     render(<ModalHeader onClose={mockOnClose} />);
 
     // Find the close button (the X icon button)
-    const closeButton = screen.getAllByRole('button').find(
-      (btn) => btn.className.includes('rounded-lg') && btn.className.includes('text-gray-400')
-    );
-    
+    const closeButton = screen
+      .getAllByRole('button')
+      .find(
+        (btn) =>
+          btn.className.includes('rounded-lg') &&
+          btn.className.includes('text-gray-400'),
+      );
+
     expect(closeButton).toBeInTheDocument();
     if (closeButton) {
       await user.click(closeButton);
@@ -38,4 +42,3 @@ describe('ModalHeader', () => {
     expect(collaborateButton).toBeInTheDocument();
   });
 });
-

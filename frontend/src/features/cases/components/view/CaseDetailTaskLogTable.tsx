@@ -1,10 +1,21 @@
 import React, { Suspense, useEffect, useState } from 'react';
-import { UserPlusIcon, UserMinusIcon, CheckIcon, ArrowPathIcon, Cog6ToothIcon, XCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import {
+  UserPlusIcon,
+  UserMinusIcon,
+  CheckIcon,
+  ArrowPathIcon,
+  Cog6ToothIcon,
+  XCircleIcon,
+  DocumentTextIcon,
+} from '@heroicons/react/24/outline';
 import { formatDate } from '../../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import { useAlertOperations } from '@/features/alerts/hooks/useAlertsQuery';
-import { transformBackendAlertToUI, convertToTriageAlert } from '@/features/alerts/utils/alertTransformers';
+import {
+  transformBackendAlertToUI,
+  convertToTriageAlert,
+} from '@/features/alerts/utils/alertTransformers';
 import triageService from '@/features/alerts/services/triageservice';
 import type { Alert } from '@/features/alerts/types/alertsdashboard.types';
 import type { ManualTriageDto } from '@/features/alerts/types/triage.types';
@@ -42,7 +53,6 @@ interface CaseDetailTaskLogTableProps {
   onTaskClick?: (task: UnifiedWorkQueueTask) => void;
 }
 
-
 const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   alertId,
   tasks,
@@ -57,7 +67,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   onApproveCaseCreation,
   onRejectCaseCreation,
   onTaskClick,
-
 }) => {
   //const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   // const [showManualTriageModal, setShowManualTriageModal] = useState(false);
@@ -65,7 +74,8 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   const [currentUser, setCurrentUser] = useState<User>(); // Replace with actual user fetching logic
   // const { success, error: showError } = useToast();
   const { performManualTriage } = useAlertOperations();
-  const { hasComplianceOfficerRole, hasSupervisorRole, hasInvestigatorRole } = useAuth();
+  const { hasComplianceOfficerRole, hasSupervisorRole, hasInvestigatorRole } =
+    useAuth();
   // const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
 
   useEffect(() => {
@@ -73,17 +83,18 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     if (user) setCurrentUser(user);
   }, []);
 
-  const filteredTasks = tasks.filter(task => {
+  const filteredTasks = tasks.filter((task) => {
     if (hasSupervisorRole() || hasComplianceOfficerRole()) {
       return true;
-    } else if (hasInvestigatorRole() &&
-      task.candidateGroup?.toLowerCase() === 'compliance') {
+    } else if (
+      hasInvestigatorRole() &&
+      task.candidateGroup?.toLowerCase() === 'compliance'
+    ) {
       return false;
     }
 
     return true;
   });
-
 
   const tableColumns = [
     { key: 'taskId', label: 'Task ID', width: 'w-72', align: 'left' },
@@ -93,21 +104,27 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     { key: 'status', label: 'Status', width: 'w-32' },
     { key: 'created', label: 'Created', width: 'w-40' },
     { key: 'assignedTo', label: 'Assigned To', width: 'w-48' },
-    { key: 'actions', label: 'Actions', width: 'w-40', align: 'left' }
+    { key: 'actions', label: 'Actions', width: 'w-40', align: 'left' },
   ];
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       UNASSIGNED: { color: 'bg-gray-100 text-gray-800', label: 'Unassigned' },
       ASSIGNED: { color: 'bg-blue-100 text-blue-800', label: 'Assigned' },
-      IN_PROGRESS: { color: 'bg-yellow-100 text-yellow-800', label: 'In Progress' },
+      IN_PROGRESS: {
+        color: 'bg-yellow-100 text-yellow-800',
+        label: 'In Progress',
+      },
       COMPLETED: { color: 'bg-green-100 text-green-800', label: 'Completed' },
       SUSPENDED: { color: 'bg-red-100 text-red-800', label: 'Blocked' },
     };
 
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.UNASSIGNED;
+    const config =
+      statusConfig[status as keyof typeof statusConfig] ||
+      statusConfig.UNASSIGNED;
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
+      >
         {config.label}
       </span>
     );
@@ -147,7 +164,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     icon: React.ReactNode,
     title: string,
     colorClasses: string,
-    disabled = false
+    disabled = false,
   ) => (
     <button
       key={key}
@@ -161,65 +178,88 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   );
 
   /** Check if the current logged-in user is assigned to this task */
-  const isCurrentUserAssigned = (task: UnifiedWorkQueueTask) => task.assignee === currentUser?.userId;
+  const isCurrentUserAssigned = (task: UnifiedWorkQueueTask) =>
+    task.assignee === currentUser?.userId;
   /** Check if a task can be assigned (unassigned + not special approval tasks) */
   const canAssignTask = (task: UnifiedWorkQueueTask) =>
     !task.assignee &&
     task.name !== 'Approve Case Closure' &&
-    task.name !== 'Approve Case Creation' && task.name !== 'Approve Case Reopening';
+    task.name !== 'Approve Case Creation' &&
+    task.name !== 'Approve Case Reopening';
   /** Check if a task can be reassigned (has assignee + callback exists) */
-  const canReassignTask = (task: UnifiedWorkQueueTask) => task.assignee && onReassign;
+  const canReassignTask = (task: UnifiedWorkQueueTask) =>
+    task.assignee && onReassign;
 
   /** Check if a task can be unassigned (has assignee + callback exists) */
-  const canUnassignTask = (task: UnifiedWorkQueueTask) => task.assignee && onUnassign;
+  const canUnassignTask = (task: UnifiedWorkQueueTask) =>
+    task.assignee && onUnassign;
 
-  const addAssignAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
+  const addAssignAction = (
+    actions: React.ReactNode[],
+    task: UnifiedWorkQueueTask,
+  ) => {
     if (canAssignTask(task)) {
       actions.push(
         createActionButton(
           'assign',
-          () => onAssign(task),
+          () => {
+            onAssign(task);
+          },
           <UserPlusIcon className="h-4 w-4 mr-1" />,
           'Assign task',
-          'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
-        )
+          'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500',
+        ),
       );
     }
   };
 
-
-
-  const addReassignAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
+  const addReassignAction = (
+    actions: React.ReactNode[],
+    task: UnifiedWorkQueueTask,
+  ) => {
     if (canReassignTask(task)) {
       actions.push(
         createActionButton(
           'reassign',
-          () => onReassign!(task),
+          () => {
+            onReassign!(task);
+          },
           <ArrowPathIcon className="h-4 w-4 mr-1" />,
           'Reassign task',
-          'text-purple-700 bg-purple-100 hover:bg-purple-200 focus:ring-purple-500'
-        )
+          'text-purple-700 bg-purple-100 hover:bg-purple-200 focus:ring-purple-500',
+        ),
       );
     }
   };
 
-  const addUnassignAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
+  const addUnassignAction = (
+    actions: React.ReactNode[],
+    task: UnifiedWorkQueueTask,
+  ) => {
     if (canUnassignTask(task)) {
       actions.push(
         createActionButton(
           'unassign',
-          () => onUnassign!(task),
+          () => {
+            onUnassign!(task);
+          },
           <UserMinusIcon className="h-4 w-4 mr-1" />,
           'Unassign task',
-          'text-orange-700 bg-orange-100 hover:bg-orange-200 focus:ring-orange-500'
-        )
+          'text-orange-700 bg-orange-100 hover:bg-orange-200 focus:ring-orange-500',
+        ),
       );
     }
   };
 
-  const addViewAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
+  const addViewAction = (
+    actions: React.ReactNode[],
+    task: UnifiedWorkQueueTask,
+  ) => {
     if (onTaskClick) {
-      const isInvestigationTask = task.name && (task.name.toLowerCase().includes('investigate') || task.name.toLowerCase().includes('sar'));
+      const isInvestigationTask =
+        task.name &&
+        (task.name.toLowerCase().includes('investigate') ||
+          task.name.toLowerCase().includes('sar'));
       const isClickable = isInvestigationTask;
       actions.push(
         createActionButton(
@@ -227,23 +267,33 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
           () => isClickable && onTaskClick(task),
           <EyeIcon className="h-4 w-4 mr-1" />,
           'View task',
-          'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
-        )
+          'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500',
+        ),
       );
     }
   };
 
-  const addApprovalActions = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
+  const addApprovalActions = (
+    actions: React.ReactNode[],
+    task: UnifiedWorkQueueTask,
+  ) => {
     // Handle "Approve Case Creation" tasks - supervisor approval for new cases
-    if (task.name === 'Approve Case Creation' && canManageSupervisorActions && onApproveCaseCreation && caseData) {
+    if (
+      task.name === 'Approve Case Creation' &&
+      canManageSupervisorActions &&
+      onApproveCaseCreation &&
+      caseData
+    ) {
       actions.push(
         createActionButton(
           'approve-creation',
-          () => onApproveCaseCreation(caseData),
+          () => {
+            onApproveCaseCreation(caseData);
+          },
           <CheckIcon className="h-4 w-4 mr-1" />,
           'Approve Case Creation',
-          'text-green-700 bg-green-100 hover:bg-green-200 focus:ring-green-500'
-        )
+          'text-green-700 bg-green-100 hover:bg-green-200 focus:ring-green-500',
+        ),
       );
 
       // Optional reject button if callback is provided
@@ -251,26 +301,35 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
         actions.push(
           createActionButton(
             'reject-creation',
-            () => onRejectCaseCreation(caseData),
+            () => {
+              onRejectCaseCreation(caseData);
+            },
             <XCircleIcon className="h-4 w-4 mr-1" />,
             'Reject Case Creation',
-            'text-red-700 bg-red-100 hover:bg-red-200 focus:ring-red-500'
-          )
+            'text-red-700 bg-red-100 hover:bg-red-200 focus:ring-red-500',
+          ),
         );
       }
     }
 
     // Handle "Approve Case Closure" tasks - supervisor review before case closure
-    if (task.name === 'Approve Case Closure' && canManageSupervisorActions && onApproveCase && caseData) {
+    if (
+      task.name === 'Approve Case Closure' &&
+      canManageSupervisorActions &&
+      onApproveCase &&
+      caseData
+    ) {
       actions.push(
         createActionButton(
           'approve-closure',
-          () => onApproveCase(caseData),
+          () => {
+            onApproveCase(caseData);
+          },
           <CheckIcon className="h-4 w-4 mr-1" />,
           // 'Review',
           'Review Case Closure',
-          'text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:ring-indigo-500'
-        )
+          'text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:ring-indigo-500',
+        ),
       );
     }
   };
@@ -320,16 +379,27 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   //   }
   // };
 
-  const addStatusAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
-    if (task.assignee && onUpdateStatus && task.name !== 'Complete New Case' && isCurrentUserAssigned(task) && task.status.toUpperCase() !== 'SUSPENDED') {
+  const addStatusAction = (
+    actions: React.ReactNode[],
+    task: UnifiedWorkQueueTask,
+  ) => {
+    if (
+      task.assignee &&
+      onUpdateStatus &&
+      task.name !== 'Complete New Case' &&
+      isCurrentUserAssigned(task) &&
+      task.status.toUpperCase() !== 'SUSPENDED'
+    ) {
       actions.push(
         createActionButton(
           'update-status',
-          () => onUpdateStatus(task),
+          () => {
+            onUpdateStatus(task);
+          },
           <Cog6ToothIcon className="h-4 w-4 mr-1" />,
           'Update status',
-          'text-gray-700 bg-gray-100 hover:bg-gray-200 focus:ring-gray-500'
-        )
+          'text-gray-700 bg-gray-100 hover:bg-gray-200 focus:ring-gray-500',
+        ),
       );
     }
   };
@@ -341,14 +411,20 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     if (task.status === 'COMPLETED') {
       if (task.name.toLowerCase().includes('sar')) {
         addViewAction(actions, task);
-      } else if (task.status === 'COMPLETED' && task.name.toLowerCase().includes('investigat')) {
-
+      } else if (
+        task.status === 'COMPLETED' &&
+        task.name.toLowerCase().includes('investigat')
+      ) {
         addViewAction(actions, task);
       }
       return actions;
     }
 
-    if (task.status === 'SUSPENDED' && (caseData.status === 'STATUS_21_SUSPENDED' || caseData.status.includes('SUSPENDED'))) {
+    if (
+      task.status === 'SUSPENDED' &&
+      (caseData.status === 'STATUS_21_SUSPENDED' ||
+        caseData.status.includes('SUSPENDED'))
+    ) {
       addViewAction(actions, task);
       return actions;
     }
@@ -361,7 +437,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
 
         return actions;
       }
-
     }
 
     if (task.status === 'IN_PROGRESS') {
@@ -377,11 +452,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       return actions;
     }
 
-
-
-
-
-
     addAssignAction(actions, task);
     addReassignAction(actions, task);
     addUnassignAction(actions, task);
@@ -391,46 +461,56 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
 
     return actions;
   };
-  const { investigators, supervisors, fetchInvestigatorsList, fetchSupervisorsList, complianceOfficers, fetchComplianceOfficersList } = useInvestigatorSupervisorList();
-
-
+  const {
+    investigators,
+    supervisors,
+    fetchInvestigatorsList,
+    fetchSupervisorsList,
+    complianceOfficers,
+    fetchComplianceOfficersList,
+  } = useInvestigatorSupervisorList();
 
   useEffect(() => {
-    if (investigators.length === 0)
+    if (investigators.length === 0) {
       fetchInvestigatorsList();
-    if (supervisors.length === 0)
+    }
+    if (supervisors.length === 0) {
       fetchSupervisorsList();
-    if (complianceOfficers.length === 0)
+    }
+    if (complianceOfficers.length === 0) {
       fetchComplianceOfficersList();
-
-
+    }
   }, []);
 
-
   const getAssigneeFullName = (assigneeName: string, assignee?: string) => {
-
     // const compliance = (currentUser?.userId === assigneeName || currentUser?.userId === assignee);
     // if (compliance) return `${currentUser?.fullName}`;
 
-    const compliance = complianceOfficers.find(i => i.id === assigneeName || i.id === assignee);
+    const compliance = complianceOfficers.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
     if (compliance) return `${compliance.firstName} ${compliance.lastName}`;
 
-    const inv = investigators.find(i => i.id === assigneeName || i.id === assignee);
+    const inv = investigators.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
     if (inv) return `${inv.firstName} ${inv.lastName}`;
 
-    const sup = supervisors.find(i => i.id === assigneeName || i.id === assignee);
+    const sup = supervisors.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
     if (sup) return `${sup.firstName} ${sup.lastName}`;
 
     return assigneeName || assignee;
   };
 
   const getCandidateGroup = (candidateGroup?: string, taskName?: string) => {
-    const containsInvestigate = taskName?.toLowerCase().includes("investigate") ?? false;
-    if (containsInvestigate) return "Investigators";
-    if (!candidateGroup) return "-";
+    const containsInvestigate =
+      taskName?.toLowerCase().includes('investigate') ?? false;
+    if (containsInvestigate) return 'Investigators';
+    if (!candidateGroup) return '-';
     return candidateGroup.charAt(0).toUpperCase() + candidateGroup.slice(1);
   };
-
 
   return (
     <div className="bg-white shadow rounded-lg">
@@ -446,8 +526,9 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
               {tableColumns.map((col) => (
                 <th
                   key={col.key}
-                  className={`px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${col.align === 'right' ? 'text-right' : 'text-left'
-                    }`}
+                  className={`px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                    col.align === 'right' ? 'text-right' : 'text-left'
+                  }`}
                 >
                   {col.label}
                 </th>
@@ -455,61 +536,65 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredTasks.map((task, index) => {
-              return (
-                <tr key={task.id || `task-${index}`}
-                  className={`hover:bg-gray-50`}
-                >
-                  <td className="px-4 py-3">
-                    <div className="text-xs text-gray-900 font-mono break-all" title={task.taskId?.toString() || ''}>
-                      TASK-{task.taskId || ''}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col">
-                      {task.name && (
-                        <div
-                          className={`text-xs break-words mt-1 text-gray-900`}
-                          title={task.name || 'View task details'}>
-                          {task.name || 'Unnamed Task'}
-
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-xs text-gray-900 font-mono break-all" title={task.caseId?.toString() || ''}>
-                      CASE-{task.caseId || ''}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm text-gray-900 break-words">
-                      {getCandidateGroup(task.candidateGroup, task.name)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {getStatusBadge(task.status)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center text-sm text-gray-500">
-                      {formatDate(task.created || task.createdAt)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm text-gray-900">
-                      {task.assignee ? (
-                        <span className="text-blue-600 break-words">
-                          {getAssigneeFullName(task.assignee, task.assigneeName)}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">Unassigned</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium">
-                    <div className="flex justify-start space-x-2 items-center">
-                      {getAvailableActions(task)}
-                      {/* {task.name === 'SAR/STR Filing' && latestReports?.['INVESTIGATION_REPORT'] && onViewReport && (
+            {filteredTasks.map((task, index) => (
+              <tr
+                key={task.id || `task-${index}`}
+                className={'hover:bg-gray-50'}
+              >
+                <td className="px-4 py-3">
+                  <div
+                    className="text-xs text-gray-900 font-mono break-all"
+                    title={task.taskId?.toString() || ''}
+                  >
+                    TASK-{task.taskId || ''}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-col">
+                    {task.name && (
+                      <div
+                        className={'text-xs break-words mt-1 text-gray-900'}
+                        title={task.name || 'View task details'}
+                      >
+                        {task.name || 'Unnamed Task'}
+                      </div>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div
+                    className="text-xs text-gray-900 font-mono break-all"
+                    title={task.caseId?.toString() || ''}
+                  >
+                    CASE-{task.caseId || ''}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="text-sm text-gray-900 break-words">
+                    {getCandidateGroup(task.candidateGroup, task.name)}
+                  </div>
+                </td>
+                <td className="px-4 py-3">{getStatusBadge(task.status)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center text-sm text-gray-500">
+                    {formatDate(task.created || task.createdAt)}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="text-sm text-gray-900">
+                    {task.assignee ? (
+                      <span className="text-blue-600 break-words">
+                        {getAssigneeFullName(task.assignee, task.assigneeName)}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">Unassigned</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-sm font-medium">
+                  <div className="flex justify-start space-x-2 items-center">
+                    {getAvailableActions(task)}
+                    {/* {task.name === 'SAR/STR Filing' && latestReports?.['INVESTIGATION_REPORT'] && onViewReport && (
                         <button
                           onClick={() => {
                             const report = latestReports['INVESTIGATION_REPORT'];
@@ -523,12 +608,10 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                           <DocumentTextIcon className="h-4 w-4" aria-hidden="true" />
                         </button>
                       )} */}
-                    </div>
-                  </td>
-                </tr>
-              )
-            }
-            )}
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -555,8 +638,8 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
           />
         </Suspense>
       )} */}
-
-    </div>)
+    </div>
+  );
 };
 
 export default CaseDetailTaskLogTable;

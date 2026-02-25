@@ -86,13 +86,16 @@ describe('CaseFilters', () => {
 
     expect(screen.getByDisplayValue('test')).toBeInTheDocument();
     // Check that the select elements have the correct values
-    const statusSelect = screen.getByLabelText(/Status filter/i) as HTMLSelectElement;
-    const prioritySelect = screen.getByLabelText(/Priority filter/i) as HTMLSelectElement;
+    const statusSelect = screen.getByLabelText(
+      /Status filter/i,
+    ) as HTMLSelectElement;
+    const prioritySelect = screen.getByLabelText(
+      /Priority filter/i,
+    ) as HTMLSelectElement;
     const sortSelect = screen.getByLabelText(/Sort by/i) as HTMLSelectElement;
-    
+
     expect(statusSelect.value).toBe('STATUS_20_IN_PROGRESS');
     expect(prioritySelect.value).toBe('URGENT');
     expect(sortSelect.value).toBe('oldest');
   });
 });
-

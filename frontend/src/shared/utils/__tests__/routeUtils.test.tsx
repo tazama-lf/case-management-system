@@ -43,7 +43,9 @@ describe('routeUtils', () => {
     });
 
     it('matches routes with multiple params', () => {
-      expect(matchesRoute('/cases/123/tasks/456', '/cases/:caseId/tasks/:taskId')).toBe(true);
+      expect(
+        matchesRoute('/cases/123/tasks/456', '/cases/:caseId/tasks/:taskId'),
+      ).toBe(true);
     });
 
     it('does not match completely different routes', () => {
@@ -89,7 +91,9 @@ describe('routeUtils', () => {
       );
 
       expect(screen.getByTestId('p')).toHaveTextContent('bar');
-      const allParams = JSON.parse(screen.getByTestId('all').textContent || '{}');
+      const allParams = JSON.parse(
+        screen.getByTestId('all').textContent || '{}',
+      );
       expect(allParams.foo).toBe('bar');
       expect(allParams.x).toBe('1');
     });
@@ -135,7 +139,8 @@ describe('routeUtils', () => {
   describe('useDynamicRoute', () => {
     it('provides navigation helpers', () => {
       const TestComp: React.FC = () => {
-        const { goToCaseDetail, goToAlertDetail, getCurrentRoute } = useDynamicRoute();
+        const { goToCaseDetail, goToAlertDetail, getCurrentRoute } =
+          useDynamicRoute();
         return (
           <div>
             <button

@@ -10,7 +10,7 @@ import {
 import type { EvidenceFindingsStats } from '../types/reports.types';
 
 const StatsCard = React.lazy(
-  () => import('../../dashboard/components/StatsCard'),
+  async () => await import('../../dashboard/components/StatsCard'),
 );
 
 interface EvidenceFindingsStatsCardsProps {
@@ -58,7 +58,6 @@ const EvidenceFindingsStatsCards: React.FC<EvidenceFindingsStatsCardsProps> = ({
       color: 'yellow' as const,
     },
   ];
-
 
   return (
     <div className="grid grid-cols-6 gap-8 mb-8">

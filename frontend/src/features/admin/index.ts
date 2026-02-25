@@ -7,6 +7,4 @@ export { default as ReferenceDashboardContent } from './components/ReferenceDash
 // Pages
 export { default as AdminDashboard } from './pages/AdminDashboard';
 
-export type {
-  WorkQueue,
-} from './types/admindashboard.types';
+export type { WorkQueue } from './types/admindashboard.types';

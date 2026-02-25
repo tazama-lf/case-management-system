@@ -38,7 +38,9 @@ describe('GenerateInvestigationReportModal', () => {
     const userServiceModule = await import('../../../services/userService');
     const taskServiceModule = await import('../../../services/taskService');
     (userServiceModule.default.getAllUsers as vi.Mock).mockResolvedValue([]);
-    (taskServiceModule.taskService.getTasksByCaseId as vi.Mock).mockResolvedValue([]);
+    (
+      taskServiceModule.taskService.getTasksByCaseId as vi.Mock
+    ).mockResolvedValue([]);
   });
 
   it('does not render when open is false', () => {
@@ -49,7 +51,9 @@ describe('GenerateInvestigationReportModal', () => {
         caseId="CASE-123"
       />,
     );
-    expect(screen.queryByText(/Generate Case Investigation Report/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Generate Case Investigation Report/i),
+    ).not.toBeInTheDocument();
   });
 
   it('renders modal when open', () => {
@@ -61,7 +65,11 @@ describe('GenerateInvestigationReportModal', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: /Generate Case Investigation Report/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', {
+        name: /Generate Case Investigation Report/i,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('closes modal when close button is clicked', async () => {
@@ -80,4 +88,3 @@ describe('GenerateInvestigationReportModal', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 });
-

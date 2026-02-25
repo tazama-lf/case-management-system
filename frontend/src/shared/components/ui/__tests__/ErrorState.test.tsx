@@ -9,7 +9,11 @@ describe('ErrorState', () => {
     render(<ErrorState />);
 
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
-    expect(screen.getByText('We encountered an error while loading this content. Please try again.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'We encountered an error while loading this content. Please try again.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('renders custom title', () => {
@@ -28,13 +32,17 @@ describe('ErrorState', () => {
     const onRetry = vi.fn();
     render(<ErrorState onRetry={onRetry} />);
 
-    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Try Again/i }),
+    ).toBeInTheDocument();
   });
 
   it('does not render retry button when onRetry is not provided', () => {
     render(<ErrorState />);
 
-    expect(screen.queryByRole('button', { name: /Try Again/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Try Again/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('calls onRetry when retry button is clicked', async () => {
@@ -70,11 +78,13 @@ describe('ErrorState', () => {
         message="Custom message"
         onRetry={onRetry}
         className="my-class"
-      />
+      />,
     );
 
     expect(screen.getByText('Custom Error')).toBeInTheDocument();
     expect(screen.getByText('Custom message')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Try Again/i }),
+    ).toBeInTheDocument();
   });
 });

@@ -9,7 +9,9 @@ describe('EmptyState', () => {
     render(<EmptyState />);
 
     expect(screen.getByText('No data available')).toBeInTheDocument();
-    expect(screen.getByText('There is no data to display at the moment.')).toBeInTheDocument();
+    expect(
+      screen.getByText('There is no data to display at the moment.'),
+    ).toBeInTheDocument();
   });
 
   it('renders custom title', () => {
@@ -43,7 +45,9 @@ describe('EmptyState', () => {
     const onAction = vi.fn();
     render(<EmptyState actionLabel="Add Item" onAction={onAction} />);
 
-    expect(screen.getByRole('button', { name: 'Add Item' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Add Item' }),
+    ).toBeInTheDocument();
   });
 
   it('does not render action button when actionLabel is not provided', () => {
@@ -89,12 +93,14 @@ describe('EmptyState', () => {
         actionLabel="Create Item"
         onAction={onAction}
         className="my-class"
-      />
+      />,
     );
 
     expect(screen.getByText('No Items')).toBeInTheDocument();
     expect(screen.getByText('Create your first item')).toBeInTheDocument();
     expect(screen.getByTestId('custom-icon')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Create Item' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Create Item' }),
+    ).toBeInTheDocument();
   });
 });

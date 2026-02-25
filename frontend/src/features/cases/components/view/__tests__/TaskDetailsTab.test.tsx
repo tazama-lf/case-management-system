@@ -60,7 +60,9 @@ describe('TaskDetailsTab', () => {
 
   it('renders no task message when no tasks provided', () => {
     render(<TaskDetailsTab row={mockCaseRow} tasks={[]} />);
-    expect(screen.getByText('No task information available')).toBeInTheDocument();
+    expect(
+      screen.getByText('No task information available'),
+    ).toBeInTheDocument();
   });
 
   it('displays task information when task is provided', async () => {
@@ -85,4 +87,3 @@ describe('TaskDetailsTab', () => {
     expect(screen.getByText('CASE-123')).toBeInTheDocument();
   });
 });
-

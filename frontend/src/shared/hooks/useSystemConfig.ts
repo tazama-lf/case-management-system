@@ -14,7 +14,11 @@ export const useSystemConfig = () => {
       const systemConfig = await systemConfigService.getSystemConfig();
       setConfig(systemConfig);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load system configuration');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to load system configuration',
+      );
       setConfig({
         triageType: 'MANUAL',
         confidenceThreshold: 95,

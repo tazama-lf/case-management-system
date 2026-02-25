@@ -358,7 +358,7 @@ describe('AlertsDetailModal', () => {
     const user = userEvent.setup();
     const error = new Error('Failed to load alert');
     (triageService.getAlertById as vi.Mock).mockRejectedValue(error);
-    
+
     // Mock window.location.reload
     const originalReload = window.location.reload;
     const reloadSpy = vi.fn();
@@ -383,7 +383,7 @@ describe('AlertsDetailModal', () => {
     await user.click(retryButton);
 
     expect(reloadSpy).toHaveBeenCalled();
-    
+
     // Restore original
     Object.defineProperty(window, 'location', {
       value: { ...window.location, reload: originalReload },
@@ -391,4 +391,3 @@ describe('AlertsDetailModal', () => {
     });
   });
 });
-

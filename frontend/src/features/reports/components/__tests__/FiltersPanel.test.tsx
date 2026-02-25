@@ -117,7 +117,9 @@ describe('FiltersPanel', () => {
       expect(screen.getByText('Case Type')).toBeInTheDocument();
     });
 
-    const caseTypeSelect = screen.getByText('Case Type').parentElement?.querySelector('select');
+    const caseTypeSelect = screen
+      .getByText('Case Type')
+      .parentElement?.querySelector('select');
     expect(caseTypeSelect).toBeInTheDocument();
     await user.selectOptions(caseTypeSelect!, 'FRAUD');
 
@@ -142,7 +144,9 @@ describe('FiltersPanel', () => {
       expect(screen.getByText('Priority')).toBeInTheDocument();
     });
 
-    const prioritySelect = screen.getByText('Priority').parentElement?.querySelector('select');
+    const prioritySelect = screen
+      .getByText('Priority')
+      .parentElement?.querySelector('select');
     expect(prioritySelect).toBeInTheDocument();
     await user.selectOptions(prioritySelect!, 'HIGH');
 
@@ -167,7 +171,9 @@ describe('FiltersPanel', () => {
       expect(screen.getByText('Investigator')).toBeInTheDocument();
     });
 
-    const investigatorSelect = screen.getByText('Investigator').parentElement?.querySelector('select');
+    const investigatorSelect = screen
+      .getByText('Investigator')
+      .parentElement?.querySelector('select');
     expect(investigatorSelect).toBeInTheDocument();
     await user.selectOptions(investigatorSelect!, 'user-1');
 
@@ -190,7 +196,9 @@ describe('FiltersPanel', () => {
 
     await waitFor(
       () => {
-        expect(screen.getByRole('button', { name: /Apply Filters/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /Apply Filters/i }),
+        ).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
@@ -217,7 +225,9 @@ describe('FiltersPanel', () => {
 
     await waitFor(
       () => {
-        expect(screen.getByRole('button', { name: /Reset Filters/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /Reset Filters/i }),
+        ).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
@@ -245,13 +255,19 @@ describe('FiltersPanel', () => {
       expect(screen.getByText('Case Type')).toBeInTheDocument();
     });
 
-    const caseTypeSelect = screen.getByText('Case Type').parentElement?.querySelector('select') as HTMLSelectElement;
+    const caseTypeSelect = screen
+      .getByText('Case Type')
+      .parentElement?.querySelector('select') as HTMLSelectElement;
     expect(caseTypeSelect?.value).toBe('FRAUD');
 
-    const prioritySelect = screen.getByText('Priority').parentElement?.querySelector('select') as HTMLSelectElement;
+    const prioritySelect = screen
+      .getByText('Priority')
+      .parentElement?.querySelector('select') as HTMLSelectElement;
     expect(prioritySelect?.value).toBe('HIGH');
 
-    const investigatorSelect = screen.getByText('Investigator').parentElement?.querySelector('select') as HTMLSelectElement;
+    const investigatorSelect = screen
+      .getByText('Investigator')
+      .parentElement?.querySelector('select') as HTMLSelectElement;
     expect(investigatorSelect?.value).toBe('user-1');
   });
 

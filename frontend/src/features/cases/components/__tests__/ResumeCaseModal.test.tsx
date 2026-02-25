@@ -52,7 +52,9 @@ describe('ResumeCaseModal', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: /Resume Case/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Resume Case/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Case ID: CASE-123/i)).toBeInTheDocument();
   });
 
@@ -67,7 +69,9 @@ describe('ResumeCaseModal', () => {
     );
 
     expect(
-      screen.getByText(/Resuming this case will move it back to "In Progress" status/i),
+      screen.getByText(
+        /Resuming this case will move it back to "In Progress" status/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -171,4 +175,3 @@ describe('ResumeCaseModal', () => {
     expect(submitButton).toBeDisabled();
   });
 });
-

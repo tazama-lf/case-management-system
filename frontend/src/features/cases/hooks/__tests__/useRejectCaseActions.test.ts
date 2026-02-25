@@ -26,7 +26,9 @@ describe('useRejectCaseActions', () => {
         id: 'CASE-123',
         status: 'STATUS_91_REJECTED',
       };
-      (caseService.rejectCaseCreation as vi.Mock).mockResolvedValue(mockRejectedCase);
+      (caseService.rejectCaseCreation as vi.Mock).mockResolvedValue(
+        mockRejectedCase,
+      );
 
       const { result } = renderHook(() =>
         useRejectCaseActions(mockRefreshCases),
@@ -35,9 +37,12 @@ describe('useRejectCaseActions', () => {
       await result.current.handleRejectCaseCreation('CASE-123', 'Test reason');
 
       await waitFor(() => {
-        expect(caseService.rejectCaseCreation).toHaveBeenCalledWith('CASE-123', {
-          reason: 'Test reason',
-        });
+        expect(caseService.rejectCaseCreation).toHaveBeenCalledWith(
+          'CASE-123',
+          {
+            reason: 'Test reason',
+          },
+        );
         expect(mockSuccess).toHaveBeenCalled();
         expect(mockRefreshCases).toHaveBeenCalled();
       });
@@ -48,18 +53,26 @@ describe('useRejectCaseActions', () => {
         id: 'CASE-123',
         status: 'STATUS_91_REJECTED',
       };
-      (caseService.rejectCaseCreation as vi.Mock).mockResolvedValue(mockRejectedCase);
+      (caseService.rejectCaseCreation as vi.Mock).mockResolvedValue(
+        mockRejectedCase,
+      );
 
       const { result } = renderHook(() =>
         useRejectCaseActions(mockRefreshCases),
       );
 
-      await result.current.handleRejectCaseCreation('CASE-123', '  Test reason  ');
+      await result.current.handleRejectCaseCreation(
+        'CASE-123',
+        '  Test reason  ',
+      );
 
       await waitFor(() => {
-        expect(caseService.rejectCaseCreation).toHaveBeenCalledWith('CASE-123', {
-          reason: 'Test reason',
-        });
+        expect(caseService.rejectCaseCreation).toHaveBeenCalledWith(
+          'CASE-123',
+          {
+            reason: 'Test reason',
+          },
+        );
       });
     });
 
@@ -313,7 +326,9 @@ describe('useRejectCaseActions', () => {
       const mockResult = {
         message: 'Case reopening rejected',
       };
-      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(mockResult);
+      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(
+        mockResult,
+      );
 
       const { result } = renderHook(() =>
         useRejectCaseActions(mockRefreshCases),
@@ -392,4 +407,3 @@ describe('useRejectCaseActions', () => {
     });
   });
 });
-

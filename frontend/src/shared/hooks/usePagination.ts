@@ -24,7 +24,7 @@ interface UsePaginationReturn<T> {
 
 export const usePagination = <T>({
   data,
-  defaultItemsPerPage = 10
+  defaultItemsPerPage = 10,
 }: UsePaginationProps<T>): UsePaginationReturn<T> => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPageState] = useState(defaultItemsPerPage);
@@ -40,8 +40,8 @@ export const usePagination = <T>({
   const pageRange = useMemo(() => {
     const range = [];
     const maxPagesToShow = 5;
-  let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-  const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
 
     if (endPage - startPage < maxPagesToShow - 1) {
       startPage = Math.max(1, endPage - maxPagesToShow + 1);
@@ -56,13 +56,21 @@ export const usePagination = <T>({
 
   const setItemsPerPage = (items: number) => {
     setItemsPerPageState(items);
-    setCurrentPage(1); 
+    setCurrentPage(1);
   };
 
-  const goToFirstPage = () => setCurrentPage(1);
-  const goToLastPage = () => setCurrentPage(totalPages);
-  const goToNextPage = () => setCurrentPage(Math.min(currentPage + 1, totalPages));
-  const goToPreviousPage = () => setCurrentPage(Math.max(currentPage - 1, 1));
+  const goToFirstPage = () => {
+    setCurrentPage(1);
+  };
+  const goToLastPage = () => {
+    setCurrentPage(totalPages);
+  };
+  const goToNextPage = () => {
+    setCurrentPage(Math.min(currentPage + 1, totalPages));
+  };
+  const goToPreviousPage = () => {
+    setCurrentPage(Math.max(currentPage - 1, 1));
+  };
 
   const canGoNext = currentPage < totalPages;
   const canGoPrevious = currentPage > 1;

@@ -48,12 +48,7 @@ describe('TaskLogTable', () => {
   });
 
   it('renders table with tasks', () => {
-    render(
-      <TaskLogTable
-        tasks={mockTasks}
-        onAssign={mockOnAssign}
-      />,
-    );
+    render(<TaskLogTable tasks={mockTasks} onAssign={mockOnAssign} />);
 
     expect(screen.getByText('Task ID')).toBeInTheDocument();
     expect(screen.getByText('TASK-1')).toBeInTheDocument();
@@ -61,12 +56,7 @@ describe('TaskLogTable', () => {
   });
 
   it('displays all table columns', () => {
-    render(
-      <TaskLogTable
-        tasks={mockTasks}
-        onAssign={mockOnAssign}
-      />,
-    );
+    render(<TaskLogTable tasks={mockTasks} onAssign={mockOnAssign} />);
 
     expect(screen.getByText('Task ID')).toBeInTheDocument();
     expect(screen.getByText('Title')).toBeInTheDocument();
@@ -80,12 +70,7 @@ describe('TaskLogTable', () => {
 
   it('calls onAssign when assign button is clicked', async () => {
     const user = userEvent.setup();
-    render(
-      <TaskLogTable
-        tasks={mockTasks}
-        onAssign={mockOnAssign}
-      />,
-    );
+    render(<TaskLogTable tasks={mockTasks} onAssign={mockOnAssign} />);
 
     const assignButton = screen.getByTitle('Assign task');
     await user.click(assignButton);
@@ -169,14 +154,8 @@ describe('TaskLogTable', () => {
   });
 
   it('displays empty state when no tasks', () => {
-    render(
-      <TaskLogTable
-        tasks={[]}
-        onAssign={mockOnAssign}
-      />,
-    );
+    render(<TaskLogTable tasks={[]} onAssign={mockOnAssign} />);
 
     expect(screen.getByText(/No tasks found/i)).toBeInTheDocument();
   });
 });
-

@@ -16,7 +16,9 @@ describe('AlertSummaryItem', () => {
 
     expect(screen.getByText('High priority alerts')).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getByText('Requires immediate attention')).toBeInTheDocument();
+    expect(
+      screen.getByText('Requires immediate attention'),
+    ).toBeInTheDocument();
   });
 
   it('renders alert summary with medium priority', () => {
@@ -65,7 +67,9 @@ describe('AlertSummaryItem', () => {
     };
 
     const { rerender } = render(<AlertSummaryItem alert={highAlert} />);
-    expect(screen.getByText('High priority alerts')).toHaveClass('text-red-600');
+    expect(screen.getByText('High priority alerts')).toHaveClass(
+      'text-red-600',
+    );
 
     const mediumAlert: AlertSummary = {
       priority: 'medium',
@@ -73,7 +77,9 @@ describe('AlertSummaryItem', () => {
       description: 'Test',
     };
     rerender(<AlertSummaryItem alert={mediumAlert} />);
-    expect(screen.getByText('Medium priority alerts')).toHaveClass('text-yellow-600');
+    expect(screen.getByText('Medium priority alerts')).toHaveClass(
+      'text-yellow-600',
+    );
 
     const lowAlert: AlertSummary = {
       priority: 'low',
@@ -81,7 +87,8 @@ describe('AlertSummaryItem', () => {
       description: 'Test',
     };
     rerender(<AlertSummaryItem alert={lowAlert} />);
-    expect(screen.getByText('Low priority alerts')).toHaveClass('text-blue-600');
+    expect(screen.getByText('Low priority alerts')).toHaveClass(
+      'text-blue-600',
+    );
   });
 });
-

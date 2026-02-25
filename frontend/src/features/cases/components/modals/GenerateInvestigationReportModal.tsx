@@ -6,7 +6,6 @@ import {
   DocumentIcon
 } from '@heroicons/react/24/solid';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
-import userService from '../../services/userService';
 import { taskService } from '../../services/taskService';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';

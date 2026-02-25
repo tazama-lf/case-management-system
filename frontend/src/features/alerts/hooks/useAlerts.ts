@@ -1,11 +1,13 @@
-
 import { useReducer, useCallback, useEffect, useMemo } from 'react';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
-import type { Alert, AlertsSearchFilters as UIAlertsSearchFilters } from '../types/alertsdashboard.types';
+import type {
+  Alert,
+  AlertsSearchFilters as UIAlertsSearchFilters,
+} from '../types/alertsdashboard.types';
 
 interface AlertsSearchFilters extends UIAlertsSearchFilters {
-    customDateRange?: { startDate: string; endDate: string };
+  customDateRange?: { startDate: string; endDate: string };
 }
 
 interface AlertsState {
@@ -29,10 +31,16 @@ interface AlertsState {
 
 type Action =
   | { type: 'FETCH_START' }
-  | { type: 'FETCH_SUCCESS'; payload: { alerts: Alert[]; totalItems: number; totalPages: number; } }
+  | {
+      type: 'FETCH_SUCCESS';
+      payload: { alerts: Alert[]; totalItems: number; totalPages: number };
+    }
   | { type: 'FETCH_FAILURE'; payload: string }
   | { type: 'SET_FILTERS'; payload: Partial<AlertsSearchFilters> }
-  | { type: 'SET_SORT'; payload: { column: keyof Alert | string; direction: 'asc' | 'desc' } }
+  | {
+      type: 'SET_SORT';
+      payload: { column: keyof Alert | string; direction: 'asc' | 'desc' };
+    }
   | { type: 'SET_PAGE'; payload: number }
   | { type: 'SET_PAGE_SIZE'; payload: number };
 
@@ -81,13 +89,31 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
     case 'FETCH_FAILURE':
       return { ...state, loading: false, error: action.payload };
     case 'SET_FILTERS':
-      return { ...state, filters: { ...state.filters, ...action.payload }, pagination: { ...state.pagination, currentPage: 1 } };
+      return {
+        ...state,
+        filters: { ...state.filters, ...action.payload },
+        pagination: { ...state.pagination, currentPage: 1 },
+      };
     case 'SET_SORT':
-      return { ...state, sort: action.payload, pagination: { ...state.pagination, currentPage: 1 } };
+      return {
+        ...state,
+        sort: action.payload,
+        pagination: { ...state.pagination, currentPage: 1 },
+      };
     case 'SET_PAGE':
-      return { ...state, pagination: { ...state.pagination, currentPage: action.payload } };
+      return {
+        ...state,
+        pagination: { ...state.pagination, currentPage: action.payload },
+      };
     case 'SET_PAGE_SIZE':
-        return { ...state, pagination: { ...state.pagination, pageSize: action.payload, currentPage: 1 } };
+      return {
+        ...state,
+        pagination: {
+          ...state.pagination,
+          pageSize: action.payload,
+          currentPage: 1,
+        },
+      };
     default:
       return state;
   }
@@ -123,10 +149,19 @@ export const useAlerts = () => {
         },
       });
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-        dispatch({ type: 'FETCH_FAILURE', payload: errorMessage });
+      const errorMessage =
+        error instanceof Error ? error.message : 'An unknown error occurred';
+      dispatch({ type: 'FETCH_FAILURE', payload: errorMessage });
     }
-  }, [state.pagination.currentPage, state.pagination.pageSize, state.sort.column, state.sort.direction, state.filters.source, state.filters.type, state.filters.priority]);
+  }, [
+    state.pagination.currentPage,
+    state.pagination.pageSize,
+    state.sort.column,
+    state.sort.direction,
+    state.filters.source,
+    state.filters.type,
+    state.filters.priority,
+  ]);
 
   useEffect(() => {
     fetchAlerts();
@@ -173,31 +208,46 @@ export const useAlerts = () => {
         .filter(Boolean) // Remove null/undefined values
         .join(' ')
         .toLowerCase()
-        .includes(state.filters.query.toLowerCase())
+        .includes(state.filters.query.toLowerCase()),
     );
   }, [state.allAlerts, state.filters.query]);
 
   const paginatedAlerts = useMemo(() => {
     // For client-side search: if there's a search query, paginate the filtered results
     if (state.filters.query !== '') {
-      const start = (state.pagination.currentPage - 1) * state.pagination.pageSize;
+      const start =
+        (state.pagination.currentPage - 1) * state.pagination.pageSize;
       const end = start + state.pagination.pageSize;
       return searchFilteredAlerts.slice(start, end);
     }
     // Otherwise, use backend pagination (no search)
     return state.filteredAlerts;
-  }, [searchFilteredAlerts, state.filteredAlerts, state.pagination.currentPage, state.pagination.pageSize, state.filters.query]);
-
+  }, [
+    searchFilteredAlerts,
+    state.filteredAlerts,
+    state.pagination.currentPage,
+    state.pagination.pageSize,
+    state.filters.query,
+  ]);
 
   return {
     ...state,
     // Update pagination info based on whether we're doing client-side search
     pagination: {
       ...state.pagination,
-      totalItems: state.filters.query !== '' ? searchFilteredAlerts.length : state.pagination.totalItems,
-      totalPages: state.filters.query !== '' 
-        ? Math.max(1, Math.ceil(searchFilteredAlerts.length / state.pagination.pageSize)) 
-        : state.pagination.totalPages,
+      totalItems:
+        state.filters.query !== ''
+          ? searchFilteredAlerts.length
+          : state.pagination.totalItems,
+      totalPages:
+        state.filters.query !== ''
+          ? Math.max(
+              1,
+              Math.ceil(
+                searchFilteredAlerts.length / state.pagination.pageSize,
+              ),
+            )
+          : state.pagination.totalPages,
     },
     paginatedAlerts,
     setFilters,

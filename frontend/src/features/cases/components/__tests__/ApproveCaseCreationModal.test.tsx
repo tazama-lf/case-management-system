@@ -90,7 +90,9 @@ describe('ApproveCaseCreationModal component', () => {
     );
 
     expect(screen.getByText('FRAUD')).toBeInTheDocument();
-    expect(screen.getByText('STATUS_01_PENDING_CASE_CREATION_APPROVAL')).toBeInTheDocument();
+    expect(
+      screen.getByText('STATUS_01_PENDING_CASE_CREATION_APPROVAL'),
+    ).toBeInTheDocument();
     expect(screen.getByText('HIGH')).toBeInTheDocument();
     expect(screen.getByText('01/01/2023')).toBeInTheDocument();
   });
@@ -110,7 +112,9 @@ describe('ApproveCaseCreationModal component', () => {
     expect(alertHeadings.length).toBeGreaterThan(0);
     expect(screen.getByText('ALERT-456')).toBeInTheDocument();
     expect(screen.getByText('85%')).toBeInTheDocument();
-    expect(screen.getByText('Suspicious transaction detected')).toBeInTheDocument();
+    expect(
+      screen.getByText('Suspicious transaction detected'),
+    ).toBeInTheDocument();
   });
 
   it('does not display alert section when alertId is missing', () => {
@@ -217,7 +221,9 @@ describe('ApproveCaseCreationModal component', () => {
     );
 
     // Modal should not render when caseData is null
-    expect(screen.queryByRole('button', { name: /approve case creation/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /approve case creation/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('closes modal when close button is clicked', async () => {
@@ -296,9 +302,7 @@ describe('ApproveCaseCreationModal component', () => {
       />,
     );
 
-    expect(
-      screen.getByText(/Approval Confirmation/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Approval Confirmation/i)).toBeInTheDocument();
     expect(
       screen.getByText(/The case information is complete and accurate/i),
     ).toBeInTheDocument();

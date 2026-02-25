@@ -327,4 +327,3 @@ describe('navigation.types', () => {
     });
   });
 });
-

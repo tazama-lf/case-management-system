@@ -34,7 +34,7 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
   isOpen,
   onClose,
   alertData,
-  onRelatedItemClick
+  onRelatedItemClick,
 }) => {
   if (!isOpen || !alertData) return null;
 
@@ -50,13 +50,25 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
         {}
         <div className="sticky top-0 bg-white px-6 py-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Alert Details</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Alert Details
+            </h2>
             <button
               onClick={onClose}
               className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -67,34 +79,46 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
             {}
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Alert Summary</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Alert Summary
+                </h3>
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Alert ID</span>
-                    <span className="text-sm font-mono text-gray-900">{alertData.alertId}</span>
+                    <span className="text-sm font-mono text-gray-900">
+                      {alertData.alertId}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Date/Time</span>
-                    <span className="text-sm text-gray-900">{alertData.dateTime}</span>
+                    <span className="text-sm text-gray-900">
+                      {alertData.dateTime}
+                    </span>
                   </div>
                   {alertData.riskScore && (
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Risk Score</span>
-                      <span className={`text-sm font-medium ${getRiskScoreColor(alertData.riskScore)}`}>
+                      <span
+                        className={`text-sm font-medium ${getRiskScoreColor(alertData.riskScore)}`}
+                      >
                         {alertData.riskScore}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Entity</span>
-                    <span className="text-sm text-gray-900">{alertData.entity}</span>
+                    <span className="text-sm text-gray-900">
+                      {alertData.entity}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Related Items</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Related Items
+                </h3>
                 <div className="space-y-2">
                   {alertData.relatedItems.map((item) => (
                     <button
@@ -103,12 +127,26 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
                       className="flex w-full items-center justify-between rounded-md border border-gray-200 p-3 text-left hover:bg-gray-50"
                     >
                       <div className="flex items-center space-x-3">
-                        <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        <svg
+                          className="h-4 w-4 text-indigo-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
                         </svg>
                         <div>
-                          <div className="text-sm font-medium text-indigo-700">{item.title}</div>
-                          <div className="text-xs text-gray-500">{item.description}</div>
+                          <div className="text-sm font-medium text-indigo-700">
+                            {item.title}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {item.description}
+                          </div>
                         </div>
                       </div>
                     </button>
@@ -120,16 +158,21 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
             {}
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Data</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Transaction Data
+                </h3>
                 <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
                   <p className="text-sm text-gray-600">
-                    Transaction data and payload information would be displayed here based on the alert context.
+                    Transaction data and payload information would be displayed
+                    here based on the alert context.
                   </p>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Action History</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Action History
+                </h3>
                 <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
                   <p className="text-sm text-gray-600">
                     Alert action history and timeline would be displayed here.
@@ -141,25 +184,45 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
 
           {}
           <div className="mt-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Rules & Typologies</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Rules & Typologies
+            </h3>
             <div className="space-y-3">
               {alertData.typologyRules.map((rule) => (
-                <div key={rule.id} className="rounded-md border border-gray-200 bg-white">
+                <div
+                  key={rule.id}
+                  className="rounded-md border border-gray-200 bg-white"
+                >
                   <div className="flex items-center justify-between p-4">
                     <div className="flex-1">
-                      <div className="text-sm font-medium text-gray-900">{rule.title}</div>
-                      <div className="text-xs text-gray-500 mt-1">Risk Score: {rule.riskScore}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {rule.title}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Risk Score: {rule.riskScore}
+                      </div>
                     </div>
                     <button className="text-gray-400 hover:text-gray-600">
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
                       </svg>
                     </button>
                   </div>
                   {rule.isExpanded && (
                     <div className="border-t border-gray-200 p-4">
                       <p className="text-sm text-gray-600">
-                        Detailed rule information and matching criteria would be displayed here.
+                        Detailed rule information and matching criteria would be
+                        displayed here.
                       </p>
                     </div>
                   )}

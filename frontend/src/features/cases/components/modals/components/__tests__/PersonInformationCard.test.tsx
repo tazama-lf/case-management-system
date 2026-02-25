@@ -51,4 +51,3 @@ describe('PersonInformationCard', () => {
     expect(screen.getByText('FSP-1')).toBeInTheDocument();
   });
 });
-

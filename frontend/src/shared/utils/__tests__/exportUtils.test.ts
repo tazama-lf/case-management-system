@@ -89,7 +89,9 @@ describe('exportUtils', () => {
     });
 
     it('throws error when data is empty', () => {
-      expect(() => exportToCSV([], 'test-file')).toThrow('Failed to export to CSV');
+      expect(() => exportToCSV([], 'test-file')).toThrow(
+        'Failed to export to CSV',
+      );
     });
   });
 
@@ -107,9 +109,9 @@ describe('exportUtils', () => {
     });
 
     it('throws error when data is empty', async () => {
-      await expect(
-        exportToPDF([], 'test-file', 'Test', []),
-      ).rejects.toThrow('Failed to export to PDF');
+      await expect(exportToPDF([], 'test-file', 'Test', [])).rejects.toThrow(
+        'Failed to export to PDF',
+      );
     });
   });
 

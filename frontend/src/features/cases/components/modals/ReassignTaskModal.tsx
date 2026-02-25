@@ -8,19 +8,36 @@ import authService from '../../../auth/services/authService';
 interface ReassignTaskModalProps {
   open: boolean;
   onClose: () => void;
-  onReassign: (task: UnifiedWorkQueueTask, assignee: string, justification: string) => void | Promise<void>;
+  onReassign: (
+    task: UnifiedWorkQueueTask,
+    assignee: string,
+    justification: string,
+  ) => void | Promise<void>;
   task?: UnifiedWorkQueueTask | null;
 }
 
-const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, onReassign, task }) => {
+const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({
+  open,
+  onClose,
+  onReassign,
+  task,
+}) => {
   const [assignee, setAssignee] = React.useState('');
   const [justification, setJustification] = React.useState('');
   // const [investigators, setInvestigators] = useState<Investigator[]>([]);
   // const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { hasComplianceOfficerRole } = useAuth();
-  const { fetchInvestigatorsList, loadingInvestigators, investigators, fetchComplianceOfficersList, complianceOfficers, supervisors } = useInvestigatorSupervisorList();
-  const [currentUserInvestigator, setCurrentUserInvestigator] = useState<User | null>(null);
+  const {
+    fetchInvestigatorsList,
+    loadingInvestigators,
+    investigators,
+    fetchComplianceOfficersList,
+    complianceOfficers,
+    supervisors,
+  } = useInvestigatorSupervisorList();
+  const [currentUserInvestigator, setCurrentUserInvestigator] =
+    useState<User | null>(null);
 
   useEffect(() => {
     setAssignee('');
@@ -58,7 +75,6 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
         if (hasComplianceOfficerRole()) {
           if (complianceOfficers.length === 0) {
             fetchComplianceOfficersList();
-
           }
         }
       } else {
@@ -68,14 +84,19 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
   }, [open]);
 
   const getAssigneeFullName = (assigneeName: string, assignee?: string) => {
-
-    const compliance = complianceOfficers.find(i => i.id === assigneeName || i.id === assignee);
+    const compliance = complianceOfficers.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
     if (compliance) return `${compliance.firstName} ${compliance.lastName}`;
 
-    const inv = investigators.find(i => i.id === assigneeName || i.id === assignee);
+    const inv = investigators.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
     if (inv) return `${inv.firstName} ${inv.lastName}`;
 
-    const sup = supervisors.find(i => i.id === assigneeName || i.id === assignee);
+    const sup = supervisors.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
     if (sup) return `${sup.firstName} ${sup.lastName}`;
 
     return assigneeName || assignee;
@@ -98,7 +119,9 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
 
   const handleSubmit = async () => {
     if (!canConfirm || isSubmitting) {
-      console.warn('Cannot reassign task: form not valid or already submitting');
+      console.warn(
+        'Cannot reassign task: form not valid or already submitting',
+      );
       return;
     }
 
@@ -136,26 +159,38 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
         </div>
         <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Task ID</label>
-            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">{task.id}</div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Task Name</label>
-            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">{task.name}</div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Current Assignee</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Task ID
+            </label>
             <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
-              {task.assigneeName && task.assignee ? (
-                `${getAssigneeFullName(task.assigneeName, task.assignee)} (${task.assignee})`
-              ) : task.assigneeName || task.assignee || 'Unassigned'}
+              {task.id}
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Reassign To</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Task Name
+            </label>
+            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+              {task.name}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Current Assignee
+            </label>
+            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+              {task.assigneeName && task.assignee
+                ? `${getAssigneeFullName(task.assigneeName, task.assignee)} (${task.assignee})`
+                : task.assigneeName || task.assignee || 'Unassigned'}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Reassign To
+            </label>
             {loadingInvestigators ? (
               <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
                 Loading investigators...
@@ -164,16 +199,22 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
               <>
                 {(() => {
                   const isSarTask = task?.name.toLowerCase().includes('sar');
-                  const optionsList = isSarTask ? complianceOfficers : investigators;
+                  const optionsList = isSarTask
+                    ? complianceOfficers
+                    : investigators;
 
                   const filteredList = optionsList.filter(
-                    user => user.id !== task.assignee && user.id !== currentUserInvestigator?.userId
+                    (user) =>
+                      user.id !== task.assignee &&
+                      user.id !== currentUserInvestigator?.userId,
                   );
 
                   if (filteredList.length === 0) {
                     return (
                       <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
-                        No other {isSarTask ? 'compliance officers' : 'investigators'} available for reassignment
+                        No other{' '}
+                        {isSarTask ? 'compliance officers' : 'investigators'}{' '}
+                        available for reassignment
                       </div>
                     );
                   }
@@ -181,27 +222,35 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
                   return (
                     <select
                       value={assignee}
-                      onChange={(e) => setAssignee(e.target.value)}
+                      onChange={(e) => {
+                        setAssignee(e.target.value);
+                      }}
                       className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       disabled={isSubmitting}
                     >
-                      <option value="">Select {isSarTask ? 'Compliance Officer' : 'Investigator'}</option>
+                      <option value="">
+                        Select{' '}
+                        {isSarTask ? 'Compliance Officer' : 'Investigator'}
+                      </option>
 
                       {isSarTask
-                        ? filteredList.map(co => (
-                          <option key={co.id} value={co.id}>
-                            {co.firstName} {co.lastName} ({co.name})
-                          </option>
-                        ))
-                        : filteredList.map(investigator => (
-                          <option key={investigator.id} value={investigator.id}>
-                            {investigator.firstName} {investigator.lastName} ({investigator.name})
-                          </option>
-                        ))}
+                        ? filteredList.map((co) => (
+                            <option key={co.id} value={co.id}>
+                              {co.firstName} {co.lastName} ({co.name})
+                            </option>
+                          ))
+                        : filteredList.map((investigator) => (
+                            <option
+                              key={investigator.id}
+                              value={investigator.id}
+                            >
+                              {investigator.firstName} {investigator.lastName} (
+                              {investigator.name})
+                            </option>
+                          ))}
                     </select>
                   );
                 })()}
-
               </>
             )}
           </div>
@@ -212,14 +261,17 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
             </label>
             <textarea
               value={justification}
-              onChange={(e) => setJustification(e.target.value)}
+              onChange={(e) => {
+                setJustification(e.target.value);
+              }}
               rows={4}
               placeholder="Provide a reason for reassigning this task..."
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               disabled={isSubmitting}
             />
             <p className="mt-1 text-xs text-gray-500">
-              This note will be recorded in the audit log and sent to both users.
+              This note will be recorded in the audit log and sent to both
+              users.
             </p>
           </div>
 
@@ -253,7 +305,9 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({ open, onClose, on
                   <span className="h-4 w-4 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
                   Reassigning...
                 </span>
-              ) : 'Confirm Reassignment'}
+              ) : (
+                'Confirm Reassignment'
+              )}
             </button>
           </div>
         </div>

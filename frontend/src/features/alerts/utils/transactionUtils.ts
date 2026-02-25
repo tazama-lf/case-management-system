@@ -1,9 +1,8 @@
 import type { TransactionMessage } from '../types/alertsdashboard.types';
 
-
 export function extractTransactionMessagesFromAlert(
   transactionData: any,
-  transactionId: string
+  transactionId: string,
 ): TransactionMessage[] {
   if (!transactionData || typeof transactionData !== 'object') {
     return [];
@@ -54,11 +53,13 @@ export function extractTransactionMessagesFromAlert(
 
     return messages;
   } catch (error) {
-    console.warn('Failed to extract transaction messages from alert data:', error);
+    console.warn(
+      'Failed to extract transaction messages from alert data:',
+      error,
+    );
     return [];
   }
 }
-
 
 export function extractTransactionIdFromAlert(alert: any): string {
   try {

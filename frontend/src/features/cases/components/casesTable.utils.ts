@@ -1,7 +1,7 @@
 import { formatDate } from '@/shared/utils/dateUtils';
 import type { CaseWithTasksDto, TaskDTO } from '../services/caseService';
 
-export type CaseRow = {
+export interface CaseRow {
   id: number;
   type: string;
   typeColor: string;
@@ -23,7 +23,7 @@ export type CaseRow = {
   tasks?: TaskDTO[];
   parentId?: number;
   sarStrStatus?: string;
-};
+}
 
 export const getStatusColor = (status: string): string => {
   const statusColors: Record<string, string> = {
@@ -69,9 +69,7 @@ export const getScoreColor = (score: number): string => {
   return 'text-gray-600 bg-gray-50';
 };
 
-export const formatStatus = (status: string): string => {
-  return status;
-};
+export const formatStatus = (status: string): string => status;
 
 export const getSarStrStatusColor = (status: string): string => {
   const statusColors: Record<string, string> = {
@@ -95,10 +93,14 @@ export const formatSarStrStatus = (status: string): string => {
   return statusLabels[status] || status;
 };
 
-export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow => {
+export const transformBackendCaseToUI = (
+  backendCase: CaseWithTasksDto,
+): CaseRow => {
   // Find SAR/STR Filing task status
-  const sarStrTask = backendCase.tasks?.filter(task => task.name === 'SAR/STR Filing')
-    .sort((a, b) => (b.task_id ?? 0) - (a.task_id ?? 0))[0] || null;
+  const sarStrTask =
+    backendCase.tasks
+      ?.filter((task) => task.name === 'SAR/STR Filing')
+      .sort((a, b) => (b.task_id ?? 0) - (a.task_id ?? 0))[0] || null;
   const sarStrStatus = sarStrTask?.status || 'N/A';
 
   return {
@@ -107,12 +109,17 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     typeColor: getTypeColor(backendCase.case_type),
     status: formatStatus(backendCase.status),
     statusColor: getStatusColor(backendCase.status),
-    typologyId: backendCase.alert?.alert_id?.toString().substring(0, 8) || 'N/A',
+    typologyId:
+      backendCase.alert?.alert_id?.toString().substring(0, 8) || 'N/A',
     score: backendCase.alert?.confidence_per || 0,
     createdOn: formatDate(backendCase.created_at),
-    pickedOn: backendCase.user_role === 'owner' ? new Date(backendCase.updated_at).toLocaleDateString('en-GB') : '-',
+    pickedOn:
+      backendCase.user_role === 'owner'
+        ? new Date(backendCase.updated_at).toLocaleDateString('en-GB')
+        : '-',
     action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
-    assignee: backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User', //Check with Umair
+    assignee:
+      backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User', //Check with Umair
     priority: backendCase.priority,
     userRole: backendCase.user_role,
     totalTasks: backendCase.total_tasks,
@@ -122,6 +129,6 @@ export const transformBackendCaseToUI = (backendCase: CaseWithTasksDto): CaseRow
     transaction: backendCase.alert?.transaction,
     tasks: backendCase.tasks,
     parentId: backendCase?.parent_id,
-    sarStrStatus: sarStrStatus,
+    sarStrStatus,
   };
 };

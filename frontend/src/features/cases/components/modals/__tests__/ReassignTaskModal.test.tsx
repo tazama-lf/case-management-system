@@ -42,7 +42,9 @@ describe('ReassignTaskModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (authService.fetchAllInvestigators as vi.Mock).mockResolvedValue(mockInvestigators);
+    (authService.fetchAllInvestigators as vi.Mock).mockResolvedValue(
+      mockInvestigators,
+    );
   });
 
   it('does not render when open is false', () => {
@@ -121,7 +123,9 @@ describe('ReassignTaskModal', () => {
     const assigneeSelect = screen.getByRole('combobox');
     await user.selectOptions(assigneeSelect, 'inv-2');
 
-    const justificationTextarea = screen.getByPlaceholderText(/Provide a reason for reassigning this task/i);
+    const justificationTextarea = screen.getByPlaceholderText(
+      /Provide a reason for reassigning this task/i,
+    );
     await user.type(justificationTextarea, 'Workload redistribution');
 
     const submitButton = screen.getByRole('button', { name: /Reassign/i });
@@ -153,4 +157,3 @@ describe('ReassignTaskModal', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 });
-

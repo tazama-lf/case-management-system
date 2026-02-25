@@ -10,7 +10,11 @@ const queryClient = new QueryClient({
       retry: (failureCount, error) => {
         if (error instanceof Error) {
           const message = error.message.toLowerCase();
-          if (message.includes('401') || message.includes('403') || message.includes('404')) {
+          if (
+            message.includes('401') ||
+            message.includes('403') ||
+            message.includes('404')
+          ) {
             return false;
           }
         }
@@ -29,15 +33,13 @@ interface QueryProviderProps {
   children: React.ReactNode;
 }
 
-export const QueryProvider: React.FC<QueryProviderProps> = ({ children }) => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools initialIsOpen={false} />
-      )}
-    </QueryClientProvider>
-  );
-};
+export const QueryProvider: React.FC<QueryProviderProps> = ({ children }) => (
+  <QueryClientProvider client={queryClient}>
+    {children}
+    {process.env.NODE_ENV === 'development' && (
+      <ReactQueryDevtools initialIsOpen={false} />
+    )}
+  </QueryClientProvider>
+);
 
 export { queryClient };

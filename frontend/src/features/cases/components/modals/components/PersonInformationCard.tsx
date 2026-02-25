@@ -11,14 +11,14 @@ interface PersonInformationCardProps {
   personInformation: PersonInformation;
 }
 
-const PersonInformationCard: React.FC<PersonInformationCardProps> = ({ 
-  title, 
-  personInformation 
+const PersonInformationCard: React.FC<PersonInformationCardProps> = ({
+  title,
+  personInformation,
 }) => {
   const informationItems = [
     { label: 'Name', value: personInformation.name },
     { label: 'Account ID', value: personInformation.accountId },
-    { label: 'FSP', value: personInformation.fsp }
+    { label: 'FSP', value: personInformation.fsp },
   ];
 
   return (

@@ -41,7 +41,7 @@ describe('CaseService', () => {
       const result = await caseService.getUserCases();
 
       expect(apiClient.get).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/cases/user/assigned')
+        expect.stringContaining('/api/v1/cases/user/assigned'),
       );
       expect(result).toEqual(mockResponse);
     });
@@ -67,10 +67,10 @@ describe('CaseService', () => {
       });
 
       expect(apiClient.get).toHaveBeenCalledWith(
-        expect.stringContaining('status=STATUS_20_IN_PROGRESS')
+        expect.stringContaining('status=STATUS_20_IN_PROGRESS'),
       );
       expect(apiClient.get).toHaveBeenCalledWith(
-        expect.stringContaining('priority=HIGH')
+        expect.stringContaining('priority=HIGH'),
       );
     });
   });
@@ -80,7 +80,7 @@ describe('CaseService', () => {
       const mockStats = {
         totalActiveCases: 5,
         totalPendingTasks: 3,
-        casesByStatus: { 'STATUS_20_IN_PROGRESS': 5 },
+        casesByStatus: { STATUS_20_IN_PROGRESS: 5 },
         casesByPriority: { HIGH: 2, MEDIUM: 3 },
         averageCaseAge: 10,
       };
@@ -88,9 +88,7 @@ describe('CaseService', () => {
 
       const result = await caseService.getUserWorkloadStats();
 
-      expect(apiClient.get).toHaveBeenCalledWith(
-        '/api/v1/cases/user/workload'
-      );
+      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/cases/user/workload');
       expect(result).toEqual(mockStats);
     });
   });
@@ -149,7 +147,7 @@ describe('CaseService', () => {
         '/api/v1/cases/CASE-123/close',
         expect.objectContaining({
           recommendedOutcome: 'STATUS_82_CLOSED_CONFIRMED',
-        })
+        }),
       );
       expect(result).toEqual(mockResponse);
     });
@@ -174,7 +172,7 @@ describe('CaseService', () => {
         '/api/v1/cases/manual',
         expect.objectContaining({
           alertType: 'FRAUD',
-        })
+        }),
       );
       expect(result).toEqual(mockCase);
     });
@@ -195,7 +193,7 @@ describe('CaseService', () => {
 
       expect(apiClient.post).toHaveBeenCalledWith(
         '/api/v1/cases/CASE-123',
-        expect.objectContaining({ status: 'STATUS_20_IN_PROGRESS' })
+        expect.objectContaining({ status: 'STATUS_20_IN_PROGRESS' }),
       );
       expect(result).toEqual(mockCase);
     });
@@ -215,7 +213,7 @@ describe('CaseService', () => {
 
       expect(apiClient.put).toHaveBeenCalledWith(
         '/api/v1/cases/CASE-123/abandon',
-        expect.objectContaining({ reason: 'No longer relevant' })
+        expect.objectContaining({ reason: 'No longer relevant' }),
       );
       expect(result).toEqual(mockCase);
     });
@@ -235,7 +233,7 @@ describe('CaseService', () => {
 
       expect(apiClient.put).toHaveBeenCalledWith(
         '/api/v1/cases/CASE-123/resume',
-        expect.objectContaining({ reason: 'New information available' })
+        expect.objectContaining({ reason: 'New information available' }),
       );
       expect(result).toEqual(mockCase);
     });
@@ -255,7 +253,7 @@ describe('CaseService', () => {
 
       expect(apiClient.put).toHaveBeenCalledWith(
         '/api/v1/cases/CASE-123/reject',
-        expect.objectContaining({ rejectionReason: 'Insufficient evidence' })
+        expect.objectContaining({ rejectionReason: 'Insufficient evidence' }),
       );
       expect(result).toEqual(mockCase);
     });
@@ -275,7 +273,7 @@ describe('CaseService', () => {
 
       expect(apiClient.put).toHaveBeenCalledWith(
         '/api/v1/cases/CASE-123/reopen',
-        expect.objectContaining({ reason: 'New evidence found' })
+        expect.objectContaining({ reason: 'New evidence found' }),
       );
       expect(result).toEqual(mockCase);
     });
@@ -297,7 +295,7 @@ describe('CaseService', () => {
 
       expect(apiClient.put).toHaveBeenCalledWith(
         '/api/v1/cases/CASE-123/approve-reopening',
-        {}
+        {},
       );
       expect(result.success).toBe(true);
     });
@@ -318,12 +316,12 @@ describe('CaseService', () => {
 
       const result = await caseService.rejectCaseReopening(
         'CASE-123',
-        'No new evidence'
+        'No new evidence',
       );
 
       expect(apiClient.put).toHaveBeenCalledWith(
         '/api/v1/cases/CASE-123/reject-reopening',
-        { rejectionReason: 'No new evidence' }
+        { rejectionReason: 'No new evidence' },
       );
       expect(result.rejection_reason).toBe('No new evidence');
     });
@@ -343,7 +341,7 @@ describe('CaseService', () => {
 
       expect(apiClient.put).toHaveBeenCalledWith(
         '/api/v1/cases/CASE-123/suspend',
-        expect.objectContaining({ reason: 'Awaiting external information' })
+        expect.objectContaining({ reason: 'Awaiting external information' }),
       );
       expect(result).toEqual(mockCase);
     });
@@ -366,7 +364,7 @@ describe('CaseService', () => {
         '/api/v1/cases/CASE-123/approve',
         expect.objectContaining({
           finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
-        })
+        }),
       );
       expect(result).toEqual(mockCase);
     });
@@ -388,7 +386,7 @@ describe('CaseService', () => {
         '/api/v1/cases/CASE-123/return-for-review',
         expect.objectContaining({
           reviewComments: 'Needs more investigation',
-        })
+        }),
       );
       expect(result).toEqual(mockCase);
     });
@@ -406,7 +404,7 @@ describe('CaseService', () => {
 
       expect(apiClient.put).toHaveBeenCalledWith(
         '/api/v1/cases/CASE-123/approve-creation',
-        {}
+        {},
       );
       expect(result).toEqual(mockCase);
     });
@@ -426,7 +424,7 @@ describe('CaseService', () => {
 
       expect(apiClient.put).toHaveBeenCalledWith(
         '/api/v1/cases/CASE-123/reject-creation',
-        expect.objectContaining({ reason: 'Invalid case data' })
+        expect.objectContaining({ reason: 'Invalid case data' }),
       );
       expect(result).toEqual(mockCase);
     });
@@ -458,7 +456,7 @@ describe('CaseService', () => {
       const result = await caseService.getUserAssignedCases();
 
       expect(apiClient.get).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/cases/user/assigned')
+        expect.stringContaining('/api/v1/cases/user/assigned'),
       );
       expect(result).toEqual(mockResponse);
     });
@@ -490,7 +488,7 @@ describe('CaseService', () => {
       const result = await caseService.getAllCases();
 
       expect(apiClient.get).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/cases/all')
+        expect.stringContaining('/api/v1/cases/all'),
       );
       expect(result).toEqual(mockResponse);
     });
@@ -533,7 +531,9 @@ describe('CaseService', () => {
     });
 
     it('returns empty array on error', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('Failed'));
 
       const result = await caseService.getCaseHistory('CASE-123');
@@ -557,7 +557,7 @@ describe('CaseService', () => {
       (apiClient.get as vi.Mock).mockRejectedValue(apiError);
 
       await expect(caseService.getCaseDetails('CASE-123')).rejects.toThrow(
-        'Custom error message'
+        'Custom error message',
       );
     });
 
@@ -566,9 +566,8 @@ describe('CaseService', () => {
       (apiClient.get as vi.Mock).mockRejectedValue(error);
 
       await expect(caseService.getCaseDetails('CASE-123')).rejects.toThrow(
-        'Failed to get case details: Network error'
+        'Failed to get case details: Network error',
       );
     });
   });
 });
-

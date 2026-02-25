@@ -53,7 +53,7 @@ import { UserWorkloadResponseDto } from './dto/user-workload-response.dto';
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class CaseController {
-  constructor(private readonly caseService: CaseService) {}
+  constructor(private readonly caseService: CaseService) { }
 
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
@@ -729,8 +729,8 @@ export class CaseController {
   async rejectCaseReopening(@Param('caseId') caseId: number, @Body() dto: RejectCaseReopeningDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
 
-    if (!dto.rejectionReason || dto.rejectionReason.trim().length < 20) {
-      throw new BadRequestException('Rejection reason is required and must be at least 20 characters');
+    if (!dto.rejectionReason || dto.rejectionReason.trim().length < 4) {
+      throw new BadRequestException('Rejection reason is required and must be at least 4 characters');
     }
 
     return await this.caseService.rejectCaseReopening(caseId, dto.rejectionReason, supervisorId, tenantId);

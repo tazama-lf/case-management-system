@@ -40,10 +40,7 @@ describe('CompletionRateTrendChart', () => {
 
   it('renders empty state when data is empty', () => {
     render(
-      <CompletionRateTrendChart
-        data={[]}
-        title="Completion Rate Trend"
-      />,
+      <CompletionRateTrendChart data={[]} title="Completion Rate Trend" />,
     );
 
     expect(screen.getByText('Completion Rate Trend')).toBeInTheDocument();
@@ -97,4 +94,3 @@ describe('CompletionRateTrendChart', () => {
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
 });
-

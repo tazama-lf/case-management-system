@@ -55,7 +55,11 @@ const createWrapper = () => {
     },
   });
   return ({ children }: { children: React.ReactNode }) => {
-    return React.createElement(QueryClientProvider, { client: queryClient }, children);
+    return React.createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      children,
+    );
   };
 };
 
@@ -75,14 +79,21 @@ describe('useAlertsQuery', () => {
         { search: 'test' },
       ]);
       expect(alertsQueryKeys.details()).toEqual(['alerts', 'detail']);
-      expect(alertsQueryKeys.detail('alert-1')).toEqual(['alerts', 'detail', 'alert-1']);
+      expect(alertsQueryKeys.detail('alert-1')).toEqual([
+        'alerts',
+        'detail',
+        'alert-1',
+      ]);
       expect(alertsQueryKeys.actionHistory('alert-1')).toEqual([
         'alerts',
         'detail',
         'alert-1',
         'actionHistory',
       ]);
-      expect(alertsQueryKeys.filterOptions()).toEqual(['alerts', 'filterOptions']);
+      expect(alertsQueryKeys.filterOptions()).toEqual([
+        'alerts',
+        'filterOptions',
+      ]);
     });
   });
 
@@ -112,17 +123,16 @@ describe('useAlertsQuery', () => {
 
       expect(result.current.alerts).toHaveLength(2);
       expect(result.current.pagination).toEqual(mockPagination);
-      expect(mockTriageService.getAlerts).toHaveBeenCalledWith({ search: 'test' });
+      expect(mockTriageService.getAlerts).toHaveBeenCalledWith({
+        search: 'test',
+      });
     });
 
     it('debounces search input', async () => {
-      const { result, rerender } = renderHook(
-        (filters) => useAlerts(filters),
-        {
-          wrapper: createWrapper(),
-          initialProps: { search: 'a' },
-        },
-      );
+      const { result, rerender } = renderHook((filters) => useAlerts(filters), {
+        wrapper: createWrapper(),
+        initialProps: { search: 'a' },
+      });
 
       // Change search quickly
       rerender({ search: 'ab' });
@@ -135,7 +145,9 @@ describe('useAlertsQuery', () => {
     });
 
     it('handles loading state', () => {
-      mockTriageService.getAlerts.mockImplementation(() => new Promise(() => {}));
+      mockTriageService.getAlerts.mockImplementation(
+        () => new Promise(() => {}),
+      );
 
       const { result } = renderHook(() => useAlerts(), {
         wrapper: createWrapper(),
@@ -179,7 +191,12 @@ describe('useAlertsQuery', () => {
     it('refetches alerts when refreshAlerts is called', async () => {
       mockTriageService.getAlerts.mockResolvedValue({
         alerts: [],
-        pagination: { currentPage: 1, totalPages: 1, totalItems: 0, pageSize: 10 },
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          pageSize: 10,
+        },
       });
 
       const { result } = renderHook(() => useAlerts(), {
@@ -192,7 +209,9 @@ describe('useAlertsQuery', () => {
       result.current.refreshAlerts();
 
       await waitFor(() => {
-        expect(mockTriageService.getAlerts.mock.calls.length).toBeGreaterThan(initialCallCount);
+        expect(mockTriageService.getAlerts.mock.calls.length).toBeGreaterThan(
+          initialCallCount,
+        );
       });
     });
   });
@@ -247,7 +266,9 @@ describe('useAlertsQuery', () => {
       result.current.refetch();
 
       await waitFor(() => {
-        expect(mockTriageService.getAlertById.mock.calls.length).toBeGreaterThan(initialCallCount);
+        expect(
+          mockTriageService.getAlertById.mock.calls.length,
+        ).toBeGreaterThan(initialCallCount);
       });
     });
   });
@@ -258,7 +279,9 @@ describe('useAlertsQuery', () => {
         { id: '1', action: 'CREATED', timestamp: '2024-01-01' },
         { id: '2', action: 'UPDATED', timestamp: '2024-01-02' },
       ];
-      mockTriageService.getAlertActionHistory.mockResolvedValueOnce(mockHistory);
+      mockTriageService.getAlertActionHistory.mockResolvedValueOnce(
+        mockHistory,
+      );
 
       const { result } = renderHook(() => useAlertActionHistory('ALERT-1'), {
         wrapper: createWrapper(),
@@ -267,7 +290,9 @@ describe('useAlertsQuery', () => {
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.actionHistory).toEqual(mockHistory);
-      expect(mockTriageService.getAlertActionHistory).toHaveBeenCalledWith('ALERT-1');
+      expect(mockTriageService.getAlertActionHistory).toHaveBeenCalledWith(
+        'ALERT-1',
+      );
     });
 
     it('returns empty array when alertId is null', () => {
@@ -327,7 +352,9 @@ describe('useAlertsQuery', () => {
           'CLOSED',
           'Resolved',
         );
-        expect(mockNotifications.showSuccess).toHaveBeenCalledWith('Alert closed successfully');
+        expect(mockNotifications.showSuccess).toHaveBeenCalledWith(
+          'Alert closed successfully',
+        );
       });
     });
 
@@ -348,7 +375,9 @@ describe('useAlertsQuery', () => {
       });
 
       await waitFor(() => {
-        expect(mockNotifications.showError).toHaveBeenCalledWith('Failed to close');
+        expect(mockNotifications.showError).toHaveBeenCalledWith(
+          'Failed to close',
+        );
       });
     });
 
@@ -371,7 +400,9 @@ describe('useAlertsQuery', () => {
         expect(mockTriageService.updateAlert).toHaveBeenCalledWith('ALERT-1', {
           priority: 'CRITICAL',
         });
-        expect(mockNotifications.showSuccess).toHaveBeenCalledWith('Alert updated successfully');
+        expect(mockNotifications.showSuccess).toHaveBeenCalledWith(
+          'Alert updated successfully',
+        );
       });
     });
 
@@ -391,13 +422,17 @@ describe('useAlertsQuery', () => {
       });
 
       await waitFor(() => {
-        expect(mockNotifications.showError).toHaveBeenCalledWith('Failed to update');
+        expect(mockNotifications.showError).toHaveBeenCalledWith(
+          'Failed to update',
+        );
       });
     });
 
     it('performs manual triage successfully', async () => {
       const mockTriageResult = { alert_id: 'ALERT-1', case_id: 'CASE-1' };
-      mockTriageService.performManualTriage.mockResolvedValueOnce(mockTriageResult);
+      mockTriageService.performManualTriage.mockResolvedValueOnce(
+        mockTriageResult,
+      );
 
       const { result } = renderHook(() => useAlertOperations(), {
         wrapper: createWrapper(),
@@ -411,10 +446,13 @@ describe('useAlertsQuery', () => {
       });
 
       await waitFor(() => {
-        expect(mockTriageService.performManualTriage).toHaveBeenCalledWith('ALERT-1', {
-          action: 'APPROVE',
-          notes: 'Looks good',
-        });
+        expect(mockTriageService.performManualTriage).toHaveBeenCalledWith(
+          'ALERT-1',
+          {
+            action: 'APPROVE',
+            notes: 'Looks good',
+          },
+        );
         expect(mockNotifications.showSuccess).toHaveBeenCalledWith(
           'Manual triage completed successfully',
         );
@@ -437,13 +475,18 @@ describe('useAlertsQuery', () => {
       });
 
       await waitFor(() => {
-        expect(mockNotifications.showError).toHaveBeenCalledWith('Failed to triage');
+        expect(mockNotifications.showError).toHaveBeenCalledWith(
+          'Failed to triage',
+        );
       });
     });
 
     it('tracks pending states correctly', async () => {
       mockTriageService.closeAlert.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ alert_id: 'ALERT-1' }), 100)),
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve({ alert_id: 'ALERT-1' }), 100),
+          ),
       );
 
       const { result } = renderHook(() => useAlertOperations(), {
@@ -460,9 +503,12 @@ describe('useAlertsQuery', () => {
         expect(result.current.isClosingAlert).toBe(true);
       });
 
-      await waitFor(() => {
-        expect(result.current.isClosingAlert).toBe(false);
-      }, { timeout: 200 });
+      await waitFor(
+        () => {
+          expect(result.current.isClosingAlert).toBe(false);
+        },
+        { timeout: 200 },
+      );
     });
   });
 
@@ -480,4 +526,3 @@ describe('useAlertsQuery', () => {
     });
   });
 });
-

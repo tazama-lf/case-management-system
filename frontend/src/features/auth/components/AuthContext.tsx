@@ -59,9 +59,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
-
 
   // Token expiration monitoring - logout when token expires
   useEffect(() => {
@@ -142,7 +143,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // hasAlertTriageRole: authService.hasAlertTriageRole.bind(authService),
     hasInvestigatorRole: authService.hasInvestigatorRole.bind(authService),
     hasSupervisorRole: authService.hasSupervisorRole.bind(authService),
-    hasComplianceOfficerRole: authService.hasComplianceOfficerRole.bind(authService),
+    hasComplianceOfficerRole:
+      authService.hasComplianceOfficerRole.bind(authService),
     hasCMSAdminRole: authService.hasCMSAdminRole.bind(authService),
     hasAdminRole: authService.hasAdminRole.bind(authService),
     hasAnyRole: authService.hasAnyRole.bind(authService),

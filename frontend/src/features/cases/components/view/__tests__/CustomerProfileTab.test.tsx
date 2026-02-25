@@ -30,4 +30,3 @@ describe('CustomerProfileTab', () => {
     expect(screen.getByText('Checking')).toBeInTheDocument();
   });
 });
-

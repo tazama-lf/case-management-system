@@ -30,7 +30,11 @@ describe('InvestigationNotesTab', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Investigation Notes')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Add your investigation notes here... (supports Markdown formatting)')).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(
+          'Add your investigation notes here... (supports Markdown formatting)',
+        ),
+      ).toBeInTheDocument();
     });
   });
 
@@ -43,7 +47,9 @@ describe('InvestigationNotesTab', () => {
         user_id: 'user-1',
       },
     ];
-    (commentService.getCommentsByTask as vi.Mock).mockResolvedValue(mockComments);
+    (commentService.getCommentsByTask as vi.Mock).mockResolvedValue(
+      mockComments,
+    );
 
     render(<InvestigationNotesTab taskId="TASK-1" />);
 
@@ -57,7 +63,9 @@ describe('InvestigationNotesTab', () => {
     render(<InvestigationNotesTab taskId="TASK-1" />);
 
     await waitFor(() => {
-      const textarea = screen.getByPlaceholderText('Add your investigation notes here... (supports Markdown formatting)');
+      const textarea = screen.getByPlaceholderText(
+        'Add your investigation notes here... (supports Markdown formatting)',
+      );
       fireEvent.change(textarea, { target: { value: 'Test notes' } });
       expect(textarea).toHaveValue('Test notes');
     });
@@ -69,17 +77,24 @@ describe('InvestigationNotesTab', () => {
     render(<InvestigationNotesTab taskId="TASK-1" />);
 
     await waitFor(() => {
-      const textarea = screen.getByPlaceholderText('Add your investigation notes here... (supports Markdown formatting)');
+      const textarea = screen.getByPlaceholderText(
+        'Add your investigation notes here... (supports Markdown formatting)',
+      );
       fireEvent.change(textarea, { target: { value: 'Test notes' } });
     });
 
-    const saveButton = await screen.findByRole('button', { name: /Save Investigation Notes/i });
+    const saveButton = await screen.findByRole('button', {
+      name: /Save Investigation Notes/i,
+    });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(taskService.updateTaskForSupervisor).toHaveBeenCalledWith('TASK-1', {
-        investigationNotes: 'Test notes',
-      });
+      expect(taskService.updateTaskForSupervisor).toHaveBeenCalledWith(
+        'TASK-1',
+        {
+          investigationNotes: 'Test notes',
+        },
+      );
       expect(mockShowSuccess).toHaveBeenCalled();
     });
   });
@@ -88,16 +103,22 @@ describe('InvestigationNotesTab', () => {
     render(<InvestigationNotesTab taskId="TASK-1" />);
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Add your investigation notes here... (supports Markdown formatting)')).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(
+          'Add your investigation notes here... (supports Markdown formatting)',
+        ),
+      ).toBeInTheDocument();
     });
 
-    const saveButton = screen.getByRole('button', { name: /Save Investigation Notes/i });
+    const saveButton = screen.getByRole('button', {
+      name: /Save Investigation Notes/i,
+    });
     // Button should be disabled when notes are empty
     expect(saveButton).toBeDisabled();
-    
+
     // Try to click anyway (though it should be disabled)
     fireEvent.click(saveButton);
-    
+
     // The component checks for notes.trim() before calling showError
     // Since button is disabled, the click won't trigger the handler
     // This test verifies the button is properly disabled
@@ -106,8 +127,9 @@ describe('InvestigationNotesTab', () => {
   it('disables save button when notes are empty', async () => {
     render(<InvestigationNotesTab taskId="TASK-1" />);
 
-    const saveButton = await screen.findByRole('button', { name: /Save Investigation Notes/i });
+    const saveButton = await screen.findByRole('button', {
+      name: /Save Investigation Notes/i,
+    });
     expect(saveButton).toBeDisabled();
   });
 });
-

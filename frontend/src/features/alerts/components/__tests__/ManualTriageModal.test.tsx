@@ -76,7 +76,9 @@ describe('ManualTriageModal', () => {
     );
 
     // Close button is the X icon button - find by class or by finding button with XMarkIcon
-    const closeButton = container.querySelector('button[type="button"].text-gray-400');
+    const closeButton = container.querySelector(
+      'button[type="button"].text-gray-400',
+    );
     if (closeButton) {
       await user.click(closeButton);
       expect(mockOnClose).toHaveBeenCalledTimes(1);
@@ -103,14 +105,19 @@ describe('ManualTriageModal', () => {
     );
 
     // Try to submit without filling required note
-    const submitButton = screen.getByRole('button', { name: /submit|save|complete/i });
+    const submitButton = screen.getByRole('button', {
+      name: /submit|save|complete/i,
+    });
     await user.click(submitButton);
 
     // Wait a bit for any async operations and verify onSubmit was not called
     // This is the main assertion - validation should prevent submission
-    await waitFor(() => {
-      expect(mockOnSubmit).not.toHaveBeenCalled();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(mockOnSubmit).not.toHaveBeenCalled();
+      },
+      { timeout: 1000 },
+    );
   });
 
   it('submits form with valid data', async () => {
@@ -125,19 +132,31 @@ describe('ManualTriageModal', () => {
     );
 
     // Fill in required note - use placeholder or find textarea directly
-    const noteInput = container.querySelector('textarea[placeholder*="detailed reasoning"]') as HTMLTextAreaElement;
+    const noteInput = container.querySelector(
+      'textarea[placeholder*="detailed reasoning"]',
+    ) as HTMLTextAreaElement;
     if (noteInput) {
-      await user.type(noteInput, 'This is a valid note with more than 10 characters');
+      await user.type(
+        noteInput,
+        'This is a valid note with more than 10 characters',
+      );
     } else {
       // Fallback: find by aria-describedby
-      const noteInputAlt = container.querySelector('textarea[aria-describedby]') as HTMLTextAreaElement;
+      const noteInputAlt = container.querySelector(
+        'textarea[aria-describedby]',
+      ) as HTMLTextAreaElement;
       if (noteInputAlt) {
-        await user.type(noteInputAlt, 'This is a valid note with more than 10 characters');
+        await user.type(
+          noteInputAlt,
+          'This is a valid note with more than 10 characters',
+        );
       }
     }
 
     // Submit form
-    const submitButton = screen.getByRole('button', { name: /submit|save|complete/i });
+    const submitButton = screen.getByRole('button', {
+      name: /submit|save|complete/i,
+    });
     await user.click(submitButton);
 
     await waitFor(() => {
@@ -165,9 +184,11 @@ describe('ManualTriageModal', () => {
     // Find and update priority score range input
     const priorityScoreInputs = screen.getAllByRole('spinbutton');
     const priorityScoreInput = priorityScoreInputs.find(
-      (input) => (input as HTMLInputElement).min === '0' && (input as HTMLInputElement).max === '1',
+      (input) =>
+        (input as HTMLInputElement).min === '0' &&
+        (input as HTMLInputElement).max === '1',
     );
-    
+
     if (priorityScoreInput) {
       await user.clear(priorityScoreInput);
       await user.type(priorityScoreInput, '0.8');
@@ -182,7 +203,9 @@ describe('ManualTriageModal', () => {
 
   it('displays error message on submission failure', async () => {
     const user = userEvent.setup();
-    const failingOnSubmit = vi.fn().mockRejectedValue(new Error('Submission failed'));
+    const failingOnSubmit = vi
+      .fn()
+      .mockRejectedValue(new Error('Submission failed'));
     const { container } = render(
       <ManualTriageModal
         isOpen={true}
@@ -193,18 +216,30 @@ describe('ManualTriageModal', () => {
     );
 
     // Fill in required fields
-    const noteInput = container.querySelector('textarea[placeholder*="detailed reasoning"]') as HTMLTextAreaElement;
+    const noteInput = container.querySelector(
+      'textarea[placeholder*="detailed reasoning"]',
+    ) as HTMLTextAreaElement;
     if (noteInput) {
-      await user.type(noteInput, 'This is a valid note with more than 10 characters');
+      await user.type(
+        noteInput,
+        'This is a valid note with more than 10 characters',
+      );
     } else {
-      const noteInputAlt = container.querySelector('textarea[aria-describedby]') as HTMLTextAreaElement;
+      const noteInputAlt = container.querySelector(
+        'textarea[aria-describedby]',
+      ) as HTMLTextAreaElement;
       if (noteInputAlt) {
-        await user.type(noteInputAlt, 'This is a valid note with more than 10 characters');
+        await user.type(
+          noteInputAlt,
+          'This is a valid note with more than 10 characters',
+        );
       }
     }
 
     // Submit form
-    const submitButton = screen.getByRole('button', { name: /submit|save|complete/i });
+    const submitButton = screen.getByRole('button', {
+      name: /submit|save|complete/i,
+    });
     await user.click(submitButton);
 
     await waitFor(() => {
@@ -242,7 +277,11 @@ describe('ManualTriageModal', () => {
       />,
     );
 
-    const newAlert = { ...mockAlert, alert_id: 'alert-456', confidence_per: 90 };
+    const newAlert = {
+      ...mockAlert,
+      alert_id: 'alert-456',
+      confidence_per: 90,
+    };
     rerender(
       <ManualTriageModal
         isOpen={true}
@@ -256,4 +295,3 @@ describe('ManualTriageModal', () => {
     expect(screen.getByDisplayValue('90')).toBeInTheDocument();
   });
 });
-

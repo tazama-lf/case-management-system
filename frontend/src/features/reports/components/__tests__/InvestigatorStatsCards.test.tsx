@@ -59,7 +59,9 @@ describe('InvestigatorStatsCards', () => {
       caseClosureRate: undefined as any,
     };
 
-    const { container } = render(<InvestigatorStatsCards stats={undefinedStats} />);
+    const { container } = render(
+      <InvestigatorStatsCards stats={undefinedStats} />,
+    );
 
     await new Promise((resolve) => setTimeout(resolve, 1100));
 
@@ -74,7 +76,9 @@ describe('InvestigatorStatsCards', () => {
       caseClosureRate: '85.7' as any,
     };
 
-    const { container } = render(<InvestigatorStatsCards stats={stringStats} />);
+    const { container } = render(
+      <InvestigatorStatsCards stats={stringStats} />,
+    );
 
     await new Promise((resolve) => setTimeout(resolve, 1100));
 
@@ -109,4 +113,3 @@ describe('InvestigatorStatsCards', () => {
     expect(container.textContent).toContain('0');
   });
 });
-

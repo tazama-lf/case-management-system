@@ -37,30 +37,38 @@ describe('CaseAgeingStatsCards', () => {
 
     // Wait for StatsCard animation to complete - StatsCard animates numeric values using Math.floor
     // The animation increments in steps, so it might show 24 before reaching 25
-    await waitFor(() => {
-      const textContent = container.textContent || '';
-      // Check that we have the cases over 15 days section
-      expect(textContent).toContain('Cases > 15 Days');
-      // The value should be 25, but due to Math.floor during animation it might show 24
-      // We accept either 24 or 25 to account for animation timing
-      const hasValue = textContent.includes('24') || textContent.includes('25');
-      expect(hasValue).toBe(true);
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        const textContent = container.textContent || '';
+        // Check that we have the cases over 15 days section
+        expect(textContent).toContain('Cases > 15 Days');
+        // The value should be 25, but due to Math.floor during animation it might show 24
+        // We accept either 24 or 25 to account for animation timing
+        const hasValue =
+          textContent.includes('24') || textContent.includes('25');
+        expect(hasValue).toBe(true);
+      },
+      { timeout: 2000 },
+    );
   });
 
   it('displays cases over 30 days', async () => {
     const { container } = render(<CaseAgeingStatsCards stats={mockStats} />);
 
     // Wait for StatsCard animation to complete - StatsCard animates numeric values using Math.floor
-    await waitFor(() => {
-      const textContent = container.textContent || '';
-      // Check that we have the cases over 30 days section
-      expect(textContent).toContain('Cases > 30 Days');
-      // The value should be 10, but due to Math.floor during animation it might show 9
-      // We accept either 9 or 10 to account for animation timing
-      const hasValue = textContent.includes('9') || textContent.includes('10');
-      expect(hasValue).toBe(true);
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        const textContent = container.textContent || '';
+        // Check that we have the cases over 30 days section
+        expect(textContent).toContain('Cases > 30 Days');
+        // The value should be 10, but due to Math.floor during animation it might show 9
+        // We accept either 9 or 10 to account for animation timing
+        const hasValue =
+          textContent.includes('9') || textContent.includes('10');
+        expect(hasValue).toBe(true);
+      },
+      { timeout: 2000 },
+    );
   });
 
   it('handles null values', () => {
@@ -133,4 +141,3 @@ describe('CaseAgeingStatsCards', () => {
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
   });
 });
-

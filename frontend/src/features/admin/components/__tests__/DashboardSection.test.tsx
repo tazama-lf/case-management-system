@@ -2,13 +2,12 @@ import { render, screen } from '@testing-library/react';
 import DashboardSection from '../DashboardSection';
 import { describe, it, expect, vi } from 'vitest';
 
-
 describe('DashboardSection', () => {
   it('should render the title and children', () => {
     render(
       <DashboardSection title="Test Section" subtitle="Test Subtitle">
         <div>Test Child</div>
-      </DashboardSection>
+      </DashboardSection>,
     );
 
     expect(screen.getByText('Test Section')).toBeInTheDocument();
@@ -24,7 +23,7 @@ describe('DashboardSection', () => {
         viewAllHref="/test"
       >
         <div>Test Child</div>
-      </DashboardSection>
+      </DashboardSection>,
     );
 
     expect(screen.getByText('View all')).toBeInTheDocument();

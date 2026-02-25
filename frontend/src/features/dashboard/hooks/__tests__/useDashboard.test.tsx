@@ -121,7 +121,9 @@ describe('useDashboardStats', () => {
       casesResolvedThisWeek: 7,
     };
 
-    (dashboardService.getDashboardStats as vi.Mock).mockResolvedValue(mockStats);
+    (dashboardService.getDashboardStats as vi.Mock).mockResolvedValue(
+      mockStats,
+    );
 
     const { result } = renderHook(() => useDashboardStats(), {
       wrapper: createWrapper(),
@@ -181,4 +183,3 @@ describe('useDashboardStats', () => {
     expect(result.current.data).toBeDefined();
   });
 });
-

@@ -72,8 +72,8 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
 
   const transactionData =
     alertDetails?.transaction &&
-      typeof alertDetails.transaction === 'object' &&
-      alertDetails.transaction !== null
+    typeof alertDetails.transaction === 'object' &&
+    alertDetails.transaction !== null
       ? alertDetails.transaction
       : null;
 
@@ -82,7 +82,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
       <div className="w-full max-w-3xl max-h-[90vh] rounded-lg bg-white shadow-xl flex flex-col my-8">
-        { }
+        {}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
@@ -104,12 +104,12 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
           </button>
         </div>
 
-        { }
+        {}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="p-6">
-            { }
+            {}
 
-            { }
+            {}
             <div className="mb-6">
               <h4 className="text-sm font-medium text-gray-700 mb-3">
                 Case Details
@@ -152,7 +152,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
               </div>
             </div>
 
-            { }
+            {}
             {caseData.alertId && (
               <div className="mb-6">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
@@ -169,120 +169,124 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
                   </div>
                 ) : (
                   <div className="rounded-md border border-gray-300 p-3 bg-gray-50 max-h-64 overflow-y-auto space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
-                        Alert ID
-                      </label>
-                      <span className="text-sm break-words">
-                        {caseData.alertId}
-                      </span>
-                    </div>
-                    {alertDetails && (
-                      <>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
-                            Confidence Score
-                          </label>
-                          <span className="text-sm">
-                            {alertDetails.confidence_per?.toFixed(2)}%
-                          </span>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
-                            Alert Type
-                          </label>
-                          <span className="text-sm">
-                            {alertDetails.alert_type || 'N/A'}
-                          </span>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
-                            Source
-                          </label>
-                          <span className="text-sm">
-                            {alertDetails.source || 'N/A'}
-                          </span>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
-                            Priority
-                          </label>
-                          <span className="text-sm">
-                            {alertDetails.priority}
-                          </span>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
-                            Created At
-                          </label>
-                          <span className="text-sm">
-                            {new Date(alertDetails.created_at).toLocaleString()}
-                          </span>
-                        </div>
-                        {alertDetails.prediction_outcome && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Alert ID
+                        </label>
+                        <span className="text-sm break-words">
+                          {caseData.alertId}
+                        </span>
+                      </div>
+                      {alertDetails && (
+                        <>
                           <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1">
-                              Prediction Outcome
+                              Confidence Score
                             </label>
                             <span className="text-sm">
-                              {alertDetails.prediction_outcome}
+                              {alertDetails.confidence_per?.toFixed(2)}%
                             </span>
                           </div>
-                        )}
-                        {alertDetails.txtp && (
                           <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1">
-                              Transaction Type
+                              Alert Type
                             </label>
-                            <span className="text-sm">{alertDetails.txtp}</span>
+                            <span className="text-sm">
+                              {alertDetails.alert_type || 'N/A'}
+                            </span>
                           </div>
-                        )}
-                      </>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Source
+                            </label>
+                            <span className="text-sm">
+                              {alertDetails.source || 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Priority
+                            </label>
+                            <span className="text-sm">
+                              {alertDetails.priority}
+                            </span>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Created At
+                            </label>
+                            <span className="text-sm">
+                              {new Date(
+                                alertDetails.created_at,
+                              ).toLocaleString()}
+                            </span>
+                          </div>
+                          {alertDetails.prediction_outcome && (
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Prediction Outcome
+                              </label>
+                              <span className="text-sm">
+                                {alertDetails.prediction_outcome}
+                              </span>
+                            </div>
+                          )}
+                          {alertDetails.txtp && (
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Transaction Type
+                              </label>
+                              <span className="text-sm">
+                                {alertDetails.txtp}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {alertDetails?.message && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Alert Message
+                        </label>
+                        <p className="text-sm text-gray-700 break-words">
+                          {alertDetails.message}
+                        </p>
+                      </div>
+                    )}
+                    {transactionData && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Transaction Data
+                        </label>
+                        <div className="rounded bg-gray-100 p-2">
+                          <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words">
+                            {JSON.stringify(transactionData, null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+                    {!alertDetails && !loadingAlert && (
+                      <div className="text-sm text-gray-500">
+                        Unable to load alert details
+                      </div>
                     )}
                   </div>
-                  {alertDetails?.message && (
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
-                        Alert Message
-                      </label>
-                      <p className="text-sm text-gray-700 break-words">
-                        {alertDetails.message}
-                      </p>
-                    </div>
-                  )}
-                  {transactionData && (
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
-                        Transaction Data
-                      </label>
-                      <div className="rounded bg-gray-100 p-2">
-                        <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words">
-                          {JSON.stringify(transactionData, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-                  {!alertDetails && !loadingAlert && (
-                    <div className="text-sm text-gray-500">
-                      Unable to load alert details
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
 
-          { }
-          {errors.submit && (
-            <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
-              <p className="text-sm text-red-600">{errors.submit}</p>
-            </div>
-          )}
+            {}
+            {errors.submit && (
+              <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
+                <p className="text-sm text-red-600">{errors.submit}</p>
+              </div>
+            )}
           </div>
         </form>
 
-        { }
+        {}
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
           <button
             type="button"

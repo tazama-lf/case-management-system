@@ -37,7 +37,9 @@ describe('CaseHistoryTab', () => {
   });
 
   it('renders loading state initially', () => {
-    (caseService.getCaseDetails as vi.Mock).mockImplementation(() => new Promise(() => {}));
+    (caseService.getCaseDetails as vi.Mock).mockImplementation(
+      () => new Promise(() => {}),
+    );
     render(<CaseHistoryTab caseId="CASE-123" />);
     expect(document.querySelector('.animate-spin')).toBeInTheDocument();
   });
@@ -115,7 +117,9 @@ describe('CaseHistoryTab', () => {
     render(<CaseHistoryTab caseId="CASE-123" />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Case submitted for approval/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Case submitted for approval/i),
+      ).toBeInTheDocument();
     });
   });
 
@@ -215,7 +219,9 @@ describe('CaseHistoryTab', () => {
     await waitFor(() => {
       // Component always creates at least a case creation event
       expect(screen.getByText('Case Timeline')).toBeInTheDocument();
-      expect(screen.getByText(/Case submitted for approval/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Case submitted for approval/i),
+      ).toBeInTheDocument();
     });
   });
 
@@ -227,10 +233,12 @@ describe('CaseHistoryTab', () => {
 
     render(<CaseHistoryTab caseId="CASE-123" />);
 
-    await waitFor(() => {
-      // Component should still render, even if some data fails to load
-      expect(screen.getByText('Case Timeline')).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        // Component should still render, even if some data fails to load
+        expect(screen.getByText('Case Timeline')).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
   });
 });
-

@@ -12,7 +12,11 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
-    Navigate: ({ to }: { to: string }) => <div data-testid="navigate" data-to={to}>Navigate to {to}</div>,
+    Navigate: ({ to }: { to: string }) => (
+      <div data-testid="navigate" data-to={to}>
+        Navigate to {to}
+      </div>
+    ),
   };
 });
 // Don't mock LoadingSpinner - use the actual component
@@ -92,7 +96,14 @@ describe('ProtectedRoute', () => {
   it('renders children when authenticated with no requirements', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
-      user: { userId: 'user-1', tenantId: 'tenant-1', email: 'test@test.com', fullName: 'Test User', tenantName: 'Test', validatedClaims: {} },
+      user: {
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'test@test.com',
+        fullName: 'Test User',
+        tenantName: 'Test',
+        validatedClaims: {},
+      },
       loading: false,
       hasInvestigatorRole: () => false,
       hasSupervisorRole: () => false,
@@ -111,7 +122,14 @@ describe('ProtectedRoute', () => {
   it('shows backend access required message when requireBackendAccess is true and user lacks access', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
-      user: { userId: 'user-1', tenantId: 'tenant-1', email: 'test@test.com', fullName: 'Test User', tenantName: 'Test', validatedClaims: {} },
+      user: {
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'test@test.com',
+        fullName: 'Test User',
+        tenantName: 'Test',
+        validatedClaims: {},
+      },
       loading: false,
       hasInvestigatorRole: () => false,
       hasSupervisorRole: () => false,
@@ -136,7 +154,14 @@ describe('ProtectedRoute', () => {
   it('shows investigator access required message when requireInvestigator is true and user lacks role', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
-      user: { userId: 'user-1', tenantId: 'tenant-1', email: 'test@test.com', fullName: 'Test User', tenantName: 'Test', validatedClaims: {} },
+      user: {
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'test@test.com',
+        fullName: 'Test User',
+        tenantName: 'Test',
+        validatedClaims: {},
+      },
       loading: false,
       hasInvestigatorRole: () => false,
       hasSupervisorRole: () => false,
@@ -149,7 +174,9 @@ describe('ProtectedRoute', () => {
       </ProtectedRoute>,
     );
 
-    expect(screen.getByText('Investigator Access Required')).toBeInTheDocument();
+    expect(
+      screen.getByText('Investigator Access Required'),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/You need CMS_INVESTIGATOR role to access this page/i),
     ).toBeInTheDocument();
@@ -158,7 +185,14 @@ describe('ProtectedRoute', () => {
   it('shows supervisor access required message when requireSupervisor is true and user lacks role', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
-      user: { userId: 'user-1', tenantId: 'tenant-1', email: 'test@test.com', fullName: 'Test User', tenantName: 'Test', validatedClaims: {} },
+      user: {
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'test@test.com',
+        fullName: 'Test User',
+        tenantName: 'Test',
+        validatedClaims: {},
+      },
       loading: false,
       hasInvestigatorRole: () => false,
       hasSupervisorRole: () => false,
@@ -180,7 +214,14 @@ describe('ProtectedRoute', () => {
   it('shows admin access required message when requireAdmin is true and user lacks role', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
-      user: { userId: 'user-1', tenantId: 'tenant-1', email: 'test@test.com', fullName: 'Test User', tenantName: 'Test', validatedClaims: {} },
+      user: {
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'test@test.com',
+        fullName: 'Test User',
+        tenantName: 'Test',
+        validatedClaims: {},
+      },
       loading: false,
       hasInvestigatorRole: () => false,
       hasSupervisorRole: () => false,
@@ -195,14 +236,23 @@ describe('ProtectedRoute', () => {
 
     expect(screen.getByText('Admin Access Required')).toBeInTheDocument();
     expect(
-      screen.getByText(/You need alert-triage or admin role to access this page/i),
+      screen.getByText(
+        /You need alert-triage or admin role to access this page/i,
+      ),
     ).toBeInTheDocument();
   });
 
   it('renders children when user has required investigator role', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
-      user: { userId: 'user-1', tenantId: 'tenant-1', email: 'test@test.com', fullName: 'Test User', tenantName: 'Test', validatedClaims: {} },
+      user: {
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'test@test.com',
+        fullName: 'Test User',
+        tenantName: 'Test',
+        validatedClaims: {},
+      },
       loading: false,
       hasInvestigatorRole: () => true,
       hasSupervisorRole: () => false,
@@ -221,7 +271,14 @@ describe('ProtectedRoute', () => {
   it('shows access denied when requiredRoles are specified and user lacks all roles', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
-      user: { userId: 'user-1', tenantId: 'tenant-1', email: 'test@test.com', fullName: 'Test User', tenantName: 'Test', validatedClaims: {} },
+      user: {
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'test@test.com',
+        fullName: 'Test User',
+        tenantName: 'Test',
+        validatedClaims: {},
+      },
       loading: false,
       hasInvestigatorRole: () => false,
       hasSupervisorRole: () => false,
@@ -244,7 +301,14 @@ describe('ProtectedRoute', () => {
   it('renders children when user has at least one required role', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
-      user: { userId: 'user-1', tenantId: 'tenant-1', email: 'test@test.com', fullName: 'Test User', tenantName: 'Test', validatedClaims: {} },
+      user: {
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'test@test.com',
+        fullName: 'Test User',
+        tenantName: 'Test',
+        validatedClaims: {},
+      },
       loading: false,
       hasInvestigatorRole: () => false,
       hasSupervisorRole: () => false,
@@ -266,7 +330,14 @@ describe('ProtectedRoute', () => {
   it('displays backend access status correctly', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
-      user: { userId: 'user-1', tenantId: 'tenant-1', email: 'test@test.com', fullName: 'Test User', tenantName: 'Test', validatedClaims: {} },
+      user: {
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'test@test.com',
+        fullName: 'Test User',
+        tenantName: 'Test',
+        validatedClaims: {},
+      },
       loading: false,
       hasInvestigatorRole: () => false,
       hasSupervisorRole: () => false,
@@ -287,14 +358,25 @@ describe('ProtectedRoute', () => {
       </ProtectedRoute>,
     );
 
-    expect(screen.getByText(/alert-triage \(Admin\): ✓ Available/i)).toBeInTheDocument();
-    expect(screen.getByText(/CMS_INVESTIGATOR: ✓ Available/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/alert-triage \(Admin\): ✓ Available/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/CMS_INVESTIGATOR: ✓ Available/i),
+    ).toBeInTheDocument();
   });
 
   it('displays required roles status correctly', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
-      user: { userId: 'user-1', tenantId: 'tenant-1', email: 'test@test.com', fullName: 'Test User', tenantName: 'Test', validatedClaims: {} },
+      user: {
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'test@test.com',
+        fullName: 'Test User',
+        tenantName: 'Test',
+        validatedClaims: {},
+      },
       loading: false,
       hasInvestigatorRole: () => false,
       hasSupervisorRole: () => false,
@@ -314,4 +396,3 @@ describe('ProtectedRoute', () => {
     expect(screen.getByText('Protected Content')).toBeInTheDocument();
   });
 });
-

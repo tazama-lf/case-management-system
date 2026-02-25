@@ -38,16 +38,19 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
   loadingTasks = false,
 }) => {
   const task = tasks.length > 0 ? tasks[0] : null;
-  const [assignedUser, setAssignedUser] = React.useState<UserDetails | null>(null);
+  const [assignedUser, setAssignedUser] = React.useState<UserDetails | null>(
+    null,
+  );
   const [loadingUser, setLoadingUser] = React.useState(false);
 
- 
   React.useEffect(() => {
     const fetchUserDetails = async () => {
       if (task?.assigned_user_id) {
         setLoadingUser(true);
         try {
-          const userDetails = await userService.getUserDetailsById(task.assigned_user_id);
+          const userDetails = await userService.getUserDetailsById(
+            task.assigned_user_id,
+          );
           setAssignedUser(userDetails);
         } catch (error) {
           console.error('Failed to fetch user details:', error);
@@ -64,14 +67,13 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
   }, [task?.assigned_user_id]);
 
   const getTaskStatusColor = (status: string): string => {
-    
     const statusConfig: Record<string, string> = {
       STATUS_01_UNASSIGNED: 'bg-gray-100 text-gray-800 ring-gray-200',
       STATUS_10_ASSIGNED: 'bg-blue-100 text-blue-800 ring-blue-200',
       STATUS_20_IN_PROGRESS: 'bg-yellow-100 text-yellow-800 ring-yellow-200',
       STATUS_21_BLOCKED: 'bg-red-100 text-red-800 ring-red-200',
       STATUS_30_COMPLETED: 'bg-green-100 text-green-800 ring-green-200',
-    
+
       UNASSIGNED: 'bg-gray-100 text-gray-800 ring-gray-200',
       ASSIGNED: 'bg-blue-100 text-blue-800 ring-blue-200',
       IN_PROGRESS: 'bg-yellow-100 text-yellow-800 ring-yellow-200',
@@ -88,7 +90,7 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
       STATUS_20_IN_PROGRESS: '20_IN_PROGRESS',
       STATUS_21_BLOCKED: '21_BLOCKED',
       STATUS_30_COMPLETED: '30_COMPLETED',
- 
+
       UNASSIGNED: 'UNASSIGNED',
       ASSIGNED: 'ASSIGNED',
       IN_PROGRESS: 'IN_PROGRESS',
@@ -105,9 +107,7 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
     return row.priority || 'NEW';
   };
 
-  const formatTaskId = (taskId: number): any => {
-    return taskId || 'No ID';
-  };
+  const formatTaskId = (taskId: number): any => taskId || 'No ID';
 
   const getCaseType = (): string => {
     if (task?.case?.case_type) {

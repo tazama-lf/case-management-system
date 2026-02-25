@@ -12,22 +12,14 @@ describe('DropdownMenu', () => {
 
   it('renders nothing when isOpen is false', () => {
     const { container } = render(
-      <DropdownMenu
-        isOpen={false}
-        options={mockOptions}
-        onSelect={vi.fn()}
-      />,
+      <DropdownMenu isOpen={false} options={mockOptions} onSelect={vi.fn()} />,
     );
     expect(container.firstChild).toBeNull();
   });
 
   it('renders dropdown menu when isOpen is true', () => {
     render(
-      <DropdownMenu
-        isOpen={true}
-        options={mockOptions}
-        onSelect={vi.fn()}
-      />,
+      <DropdownMenu isOpen={true} options={mockOptions} onSelect={vi.fn()} />,
     );
 
     expect(screen.getByText('Option 1')).toBeInTheDocument();
@@ -40,11 +32,7 @@ describe('DropdownMenu', () => {
     const onSelect = vi.fn();
 
     render(
-      <DropdownMenu
-        isOpen={true}
-        options={mockOptions}
-        onSelect={onSelect}
-      />,
+      <DropdownMenu isOpen={true} options={mockOptions} onSelect={onSelect} />,
     );
 
     const option2 = screen.getByText('Option 2');
@@ -70,11 +58,7 @@ describe('DropdownMenu', () => {
 
   it('renders all options as buttons', () => {
     render(
-      <DropdownMenu
-        isOpen={true}
-        options={mockOptions}
-        onSelect={vi.fn()}
-      />,
+      <DropdownMenu isOpen={true} options={mockOptions} onSelect={vi.fn()} />,
     );
 
     const buttons = screen.getAllByRole('button');
@@ -85,13 +69,7 @@ describe('DropdownMenu', () => {
   });
 
   it('handles empty options array', () => {
-    render(
-      <DropdownMenu
-        isOpen={true}
-        options={[]}
-        onSelect={vi.fn()}
-      />,
-    );
+    render(<DropdownMenu isOpen={true} options={[]} onSelect={vi.fn()} />);
 
     const buttons = screen.queryAllByRole('button');
     expect(buttons).toHaveLength(0);
@@ -117,4 +95,3 @@ describe('DropdownMenu', () => {
     expect(screen.getByText('Two')).toBeInTheDocument();
   });
 });
-

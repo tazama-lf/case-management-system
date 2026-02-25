@@ -43,19 +43,32 @@ describe('WorkloadBarChart', () => {
   });
 
   it('renders empty state when data is null', () => {
-    render(<WorkloadBarChart data={null as any} title="Investigator Workload" />);
+    render(
+      <WorkloadBarChart data={null as any} title="Investigator Workload" />,
+    );
 
     expect(screen.getByText('No data available')).toBeInTheDocument();
   });
 
   it('renders empty state when data is undefined', () => {
-    render(<WorkloadBarChart data={undefined as any} title="Investigator Workload" />);
+    render(
+      <WorkloadBarChart
+        data={undefined as any}
+        title="Investigator Workload"
+      />,
+    );
 
     expect(screen.getByText('No data available')).toBeInTheDocument();
   });
 
   it('applies custom height', () => {
-    render(<WorkloadBarChart data={mockData} title="Investigator Workload" height={400} />);
+    render(
+      <WorkloadBarChart
+        data={mockData}
+        title="Investigator Workload"
+        height={400}
+      />,
+    );
 
     const container = screen.getByTestId('responsive-container');
     expect(container).toBeInTheDocument();
@@ -79,4 +92,3 @@ describe('WorkloadBarChart', () => {
     expect(screen.getByTestId('legend')).toBeInTheDocument();
   });
 });
-

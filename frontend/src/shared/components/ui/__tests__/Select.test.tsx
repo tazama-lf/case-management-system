@@ -13,7 +13,7 @@ describe('OptionsRenderer', () => {
     const { container } = render(
       <select>
         <OptionsRenderer options={options} />
-      </select>
+      </select>,
     );
 
     expect(screen.getByText('Option 1')).toBeInTheDocument();
@@ -26,7 +26,7 @@ describe('OptionsRenderer', () => {
     render(
       <select>
         <OptionsRenderer options={options} placeholder="Select..." />
-      </select>
+      </select>,
     );
 
     expect(screen.getByText('Select...')).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe('OptionsRenderer', () => {
     render(
       <select>
         <OptionsRenderer options={options} />
-      </select>
+      </select>,
     );
 
     expect(screen.getByText('Empty')).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe('Select', () => {
 
   it('applies custom className', () => {
     const { container } = render(
-      <Select options={options} className="custom-class" />
+      <Select options={options} className="custom-class" />,
     );
 
     const select = container.querySelector('select');
@@ -88,12 +88,7 @@ describe('Select', () => {
 
   it('passes through other props', () => {
     render(
-      <Select
-        options={options}
-        name="test-select"
-        id="test-id"
-        disabled
-      />
+      <Select options={options} name="test-select" id="test-id" disabled />,
     );
 
     const select = screen.getByRole('combobox');
@@ -102,4 +97,3 @@ describe('Select', () => {
     expect(select).toBeDisabled();
   });
 });
-

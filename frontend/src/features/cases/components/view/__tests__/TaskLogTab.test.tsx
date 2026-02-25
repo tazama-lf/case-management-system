@@ -50,7 +50,9 @@ describe('TaskLogTab', () => {
       hasComplianceOfficerRole: () => false,
     });
     (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (authService.fetchAllInvestigators as vi.Mock).mockResolvedValue(mockInvestigators);
+    (authService.fetchAllInvestigators as vi.Mock).mockResolvedValue(
+      mockInvestigators,
+    );
   });
 
   it('renders task log tab', () => {
@@ -60,7 +62,9 @@ describe('TaskLogTab', () => {
   });
 
   it('displays loading state initially', async () => {
-    (taskService.getTasksByCaseId as vi.Mock).mockImplementation(() => new Promise(() => {}));
+    (taskService.getTasksByCaseId as vi.Mock).mockImplementation(
+      () => new Promise(() => {}),
+    );
     render(<TaskLogTab caseId="CASE-123" />);
     // Component shows search input even while loading
     expect(screen.getByPlaceholderText('Search tasks...')).toBeInTheDocument();
@@ -86,7 +90,9 @@ describe('TaskLogTab', () => {
     render(<TaskLogTab caseId="CASE-123" />);
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search tasks...')).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText('Search tasks...'),
+      ).toBeInTheDocument();
     });
 
     const searchInput = screen.getByPlaceholderText('Search tasks...');
@@ -101,7 +107,9 @@ describe('TaskLogTab', () => {
     await waitFor(() => {
       const statusFilter = screen.getByRole('combobox');
       expect(statusFilter).toBeInTheDocument();
-      fireEvent.change(statusFilter, { target: { value: 'STATUS_20_IN_PROGRESS' } });
+      fireEvent.change(statusFilter, {
+        target: { value: 'STATUS_20_IN_PROGRESS' },
+      });
       expect(statusFilter).toHaveValue('STATUS_20_IN_PROGRESS');
     });
   });
@@ -112,7 +120,9 @@ describe('TaskLogTab', () => {
     render(<TaskLogTab caseId="CASE-123" />);
 
     await waitFor(() => {
-      expect(screen.getByText(/No tasks found for this case/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/No tasks found for this case/i),
+      ).toBeInTheDocument();
     });
   });
 
@@ -137,8 +147,9 @@ describe('TaskLogTab', () => {
 
     await waitFor(() => {
       // Component should handle error gracefully
-      expect(screen.getByText(/No tasks found for this case/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/No tasks found for this case/i),
+      ).toBeInTheDocument();
     });
   });
 });
-

@@ -68,34 +68,30 @@ const getRiskBreakdown = (alert: TriageAlert) => {
   try {
     const maybe = alert.alert_data as unknown;
     if (maybe && typeof maybe === 'object') {
-      const tadp = (maybe as Record<string, unknown>)['tadpResult'];
+      const tadp = (maybe as Record<string, unknown>).tadpResult;
       if (tadp && typeof tadp === 'object') {
-        const typologyResult = (tadp as Record<string, unknown>)[
-          'typologyResult'
-        ];
+        const { typologyResult } = tadp as Record<string, unknown>;
         if (
           Array.isArray(typologyResult) &&
           typologyResult.length > 0 &&
           typeof typologyResult[0] === 'object'
         ) {
           const typ = typologyResult[0] as Record<string, unknown>;
-          const maybeRules = typ['ruleResults'];
+          const maybeRules = typ.ruleResults;
           if (Array.isArray(maybeRules)) {
             return maybeRules.map((r) => {
               const rec = r as Record<string, unknown>;
-              const id =
-                (rec['id'] as string) || String(rec['ruleId'] || 'unknown');
-              const name =
-                (rec['label'] as string) || (rec['name'] as string) || id;
+              const id = (rec.id as string) || String(rec.ruleId || 'unknown');
+              const name = (rec.label as string) || (rec.name as string) || id;
               const type =
-                (rec['subRuleRef'] as string) ||
-                (rec['type'] as string) ||
-                (rec['category'] as string) ||
+                (rec.subRuleRef as string) ||
+                (rec.type as string) ||
+                (rec.category as string) ||
                 'Unknown';
               const wght =
-                typeof rec['wght'] === 'number'
-                  ? (rec['wght'] as number)
-                  : Number(rec['weight'] || 0);
+                typeof rec.wght === 'number'
+                  ? rec.wght
+                  : Number(rec.weight || 0);
               return { name, type, score: wght };
             });
           }
@@ -143,24 +139,19 @@ const extractTypologyInfo = (alert: TriageAlert) => {
   try {
     const maybe = alert.alert_data as unknown;
     if (maybe && typeof maybe === 'object') {
-      const tadp = (maybe as Record<string, unknown>)['tadpResult'];
+      const tadp = (maybe as Record<string, unknown>).tadpResult;
       if (tadp && typeof tadp === 'object') {
-        const typologyResult = (tadp as Record<string, unknown>)[
-          'typologyResult'
-        ];
+        const { typologyResult } = tadp as Record<string, unknown>;
         if (
           Array.isArray(typologyResult) &&
           typologyResult.length > 0 &&
           typeof typologyResult[0] === 'object'
         ) {
           const typ = typologyResult[0] as Record<string, unknown>;
-          const id = typ['cfg'] as string | undefined;
-          const label =
-            (typ['label'] as string) || (typ['name'] as string) || id;
+          const id = typ.cfg as string | undefined;
+          const label = (typ.label as string) || (typ.name as string) || id;
           const result =
-            typeof typ['result'] === 'number'
-              ? (typ['result'] as number)
-              : undefined;
+            typeof typ.result === 'number' ? typ.result : undefined;
           return { id, label, result };
         }
       }
@@ -171,14 +162,13 @@ const extractTypologyInfo = (alert: TriageAlert) => {
   return { id: undefined, label: undefined, result: undefined };
 };
 
-const escapeHtml = (unsafe: string) => {
-  return unsafe
+const escapeHtml = (unsafe: string) =>
+  unsafe
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
-};
 
 const syntaxHighlightJson = (obj: unknown) => {
   const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
@@ -387,7 +377,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
             </p>
             <div className="mt-6 flex justify-center space-x-3">
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  window.location.reload();
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 Retry
@@ -495,9 +487,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
                         return showButton && onManualTriage ? (
                           <button
-                            onClick={() =>
-                              onManualTriage(convertToLegacyAlert(alert))
-                            }
+                            onClick={() => {
+                              onManualTriage(convertToLegacyAlert(alert));
+                            }}
                             className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
                             title={
                               isManualMode
@@ -651,7 +643,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     Rules & Typologies
                   </h4>
                   <button
-                    onClick={() => setShowRules(!showRules)}
+                    onClick={() => {
+                      setShowRules(!showRules);
+                    }}
                     className="text-sm px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     {showRules ? 'Hide Risk Breakdown' : 'Show Risk Breakdown'}

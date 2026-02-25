@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen } from '@testing-library/react';
 import CaseDashboardContainer from '../CaseDashboardContainer';
 import { vi, describe, it, beforeEach, expect } from 'vitest';

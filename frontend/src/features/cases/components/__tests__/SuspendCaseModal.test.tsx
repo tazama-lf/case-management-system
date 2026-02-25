@@ -52,7 +52,9 @@ describe('SuspendCaseModal', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: /Suspend Case/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Suspend Case/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Case ID: CASE-123/i)).toBeInTheDocument();
   });
 
@@ -68,7 +70,9 @@ describe('SuspendCaseModal', () => {
 
     expect(screen.getByText(/Suspension Workflow/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Task status becomes "BLOCKED", case status becomes "SUSPENDED"/i),
+      screen.getByText(
+        /Task status becomes "BLOCKED", case status becomes "SUSPENDED"/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -197,4 +201,3 @@ describe('SuspendCaseModal', () => {
     expect(submitButton).toBeDisabled();
   });
 });
-

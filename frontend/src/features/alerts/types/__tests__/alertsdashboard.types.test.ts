@@ -157,4 +157,3 @@ describe('Alerts Dashboard Types', () => {
     expect(typeof props.onBack).toBe('function');
   });
 });
-

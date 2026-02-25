@@ -146,4 +146,3 @@ describe('alerts/index.ts exports', () => {
     { timeout: 10000 },
   );
 });
-

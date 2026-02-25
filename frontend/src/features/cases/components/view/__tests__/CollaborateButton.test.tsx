@@ -29,4 +29,3 @@ describe('CollaborateButton', () => {
     expect(button.className).toContain('bg-green-600');
   });
 });
-

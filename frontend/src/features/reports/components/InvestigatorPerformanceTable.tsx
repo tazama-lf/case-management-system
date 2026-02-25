@@ -13,39 +13,36 @@ interface InvestigatorPerformanceTableProps {
   onExportPDF?: () => void;
 }
 
-const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> = ({
-  data,
-  title,
-  onExportExcel,
-  onExportCSV,
-  onExportPDF
-}) => {
+const InvestigatorPerformanceTable: React.FC<
+  InvestigatorPerformanceTableProps
+> = ({ data, title, onExportExcel, onExportCSV, onExportPDF }) => {
+  const { currentPage, totalPages, paginatedData, setCurrentPage } =
+    usePagination({
+      data,
+      defaultItemsPerPage: 10,
+    });
+
   const {
-    currentPage,
-    totalPages,
-    paginatedData,
-    setCurrentPage,
-  } = usePagination({
-    data,
-    defaultItemsPerPage: 10,
-  });
-
-  const { fetchInvestigatorsList, investigators, supervisors, fetchSupervisorsList } = useInvestigatorSupervisorList();
-
+    fetchInvestigatorsList,
+    investigators,
+    supervisors,
+    fetchSupervisorsList,
+  } = useInvestigatorSupervisorList();
 
   useEffect(() => {
-    if (investigators.length === 0)
+    if (investigators.length === 0) {
       fetchInvestigatorsList();
-    if (supervisors.length === 0)
+    }
+    if (supervisors.length === 0) {
       fetchSupervisorsList();
+    }
   }, []);
 
   const getUserNameById = (userId: string) => {
-
-    const inv = investigators.find(i => i.id === userId);
+    const inv = investigators.find((i) => i.id === userId);
     if (inv) return `${inv.firstName} ${inv.lastName}`;
 
-    const sup = supervisors.find(i => i.id === userId);
+    const sup = supervisors.find((i) => i.id === userId);
     if (sup) return `${sup.firstName} ${sup.lastName}`;
 
     return userId;
@@ -57,7 +54,7 @@ const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> 
     pageSize: 10, // Fixed page size
     totalItems: data.length,
     totalPages,
-    onPageChange: setCurrentPage
+    onPageChange: setCurrentPage,
   };
 
   const getTrendColor = (trend: string | undefined) => {
@@ -72,7 +69,9 @@ const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
         <div className="flex items-center justify-center h-48">
-          <p className="text-gray-500 text-center">No performance data available</p>
+          <p className="text-gray-500 text-center">
+            No performance data available
+          </p>
         </div>
       </div>
     );
@@ -158,7 +157,9 @@ const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> 
                 <td colSpan={8} className="px-6 py-12 text-center">
                   <div className="text-gray-500">
                     <p className="text-lg font-medium">No data available</p>
-                    <p className="mt-1">There are no investigator performance records to display.</p>
+                    <p className="mt-1">
+                      There are no investigator performance records to display.
+                    </p>
                   </div>
                 </td>
               </tr>
@@ -166,8 +167,21 @@ const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> 
               paginatedData.map((row, index) => (
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-xs text-gray-900 font-mono">
-                    <div className="break-all" title={(row as any).investigatorId || (row as any).investigator_id || (row as any).userId || (row as any).user_id || ''}>
-                      {(row as any).investigatorId || (row as any).investigator_id || (row as any).userId || (row as any).user_id || 'N/A'}
+                    <div
+                      className="break-all"
+                      title={
+                        (row as any).investigatorId ||
+                        (row as any).investigator_id ||
+                        (row as any).userId ||
+                        (row as any).user_id ||
+                        ''
+                      }
+                    >
+                      {(row as any).investigatorId ||
+                        (row as any).investigator_id ||
+                        (row as any).userId ||
+                        (row as any).user_id ||
+                        'N/A'}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
@@ -192,7 +206,9 @@ const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> 
                   <td className="px-4 py-3 text-sm text-gray-900">
                     {row.caseClosureRate || 0}%
                   </td>
-                  <td className={`px-4 py-3 text-sm font-medium ${getTrendColor(row.performanceTrend)}`}>
+                  <td
+                    className={`px-4 py-3 text-sm font-medium ${getTrendColor(row.performanceTrend)}`}
+                  >
                     <div className="break-words">
                       {row.performanceTrend || 'Stable'}
                     </div>
@@ -204,7 +220,10 @@ const InvestigatorPerformanceTable: React.FC<InvestigatorPerformanceTableProps> 
         </table>
       </div>
 
-      <TablePagination pagination={pagination} itemLabel="performance records" />
+      <TablePagination
+        pagination={pagination}
+        itemLabel="performance records"
+      />
     </div>
   );
 };

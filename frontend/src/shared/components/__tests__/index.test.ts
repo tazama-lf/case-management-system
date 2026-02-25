@@ -18,4 +18,3 @@ describe('shared/components/index', () => {
     expect(Components.LoadingSpinner).toBeDefined();
   });
 });
-

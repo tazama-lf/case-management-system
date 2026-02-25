@@ -45,17 +45,25 @@ describe('useSanctionsScreening', () => {
         screenings: [],
         pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
       };
-      (sanctionsService.getCaseSanctionsScreenings as vi.Mock).mockResolvedValue(mockScreenings);
+      (
+        sanctionsService.getCaseSanctionsScreenings as vi.Mock
+      ).mockResolvedValue(mockScreenings);
 
-      const { result } = renderHook(() => useCaseSanctionsScreenings('CASE-123'), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useCaseSanctionsScreenings('CASE-123'),
+        {
+          wrapper: createWrapper(),
+        },
+      );
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(sanctionsService.getCaseSanctionsScreenings).toHaveBeenCalledWith('CASE-123', undefined);
+      expect(sanctionsService.getCaseSanctionsScreenings).toHaveBeenCalledWith(
+        'CASE-123',
+        undefined,
+      );
     });
 
     it('fetches case sanctions screenings with filters', async () => {
@@ -63,35 +71,50 @@ describe('useSanctionsScreening', () => {
         screenings: [],
         pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
       };
-      (sanctionsService.getCaseSanctionsScreenings as vi.Mock).mockResolvedValue(mockScreenings);
+      (
+        sanctionsService.getCaseSanctionsScreenings as vi.Mock
+      ).mockResolvedValue(mockScreenings);
 
       const filters = { disposition: 'PENDING_REVIEW', tool_source: 'OFAC' };
-      const { result } = renderHook(() => useCaseSanctionsScreenings('CASE-123', filters), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useCaseSanctionsScreenings('CASE-123', filters),
+        {
+          wrapper: createWrapper(),
+        },
+      );
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(sanctionsService.getCaseSanctionsScreenings).toHaveBeenCalledWith('CASE-123', filters);
+      expect(sanctionsService.getCaseSanctionsScreenings).toHaveBeenCalledWith(
+        'CASE-123',
+        filters,
+      );
     });
   });
 
   describe('useSanctionsScreening', () => {
     it('fetches single sanctions screening', async () => {
       const mockScreening = { screening_id: 'SCREENING-1', status: 'PENDING' };
-      (sanctionsService.getSanctionsScreening as vi.Mock).mockResolvedValue(mockScreening);
+      (sanctionsService.getSanctionsScreening as vi.Mock).mockResolvedValue(
+        mockScreening,
+      );
 
-      const { result } = renderHook(() => useSanctionsScreening('SCREENING-1'), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useSanctionsScreening('SCREENING-1'),
+        {
+          wrapper: createWrapper(),
+        },
+      );
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(sanctionsService.getSanctionsScreening).toHaveBeenCalledWith('SCREENING-1');
+      expect(sanctionsService.getSanctionsScreening).toHaveBeenCalledWith(
+        'SCREENING-1',
+      );
     });
 
     it('respects enabled flag', () => {
@@ -112,7 +135,9 @@ describe('useSanctionsScreening', () => {
           case_id: 'CASE-123',
         },
       };
-      (sanctionsService.createSanctionsScreening as vi.Mock).mockResolvedValue(mockResponse);
+      (sanctionsService.createSanctionsScreening as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() => useCreateSanctionsScreening(), {
         wrapper: createWrapper(),
@@ -134,7 +159,9 @@ describe('useSanctionsScreening', () => {
 
     it('handles creation error', async () => {
       const error = new Error('Creation failed');
-      (sanctionsService.createSanctionsScreening as vi.Mock).mockRejectedValue(error);
+      (sanctionsService.createSanctionsScreening as vi.Mock).mockRejectedValue(
+        error,
+      );
 
       const { result } = renderHook(() => useCreateSanctionsScreening(), {
         wrapper: createWrapper(),
@@ -167,7 +194,9 @@ describe('useSanctionsScreening', () => {
           disposition: 'CLEARED',
         },
       };
-      (sanctionsService.updateSanctionsScreening as vi.Mock).mockResolvedValue(mockResponse);
+      (sanctionsService.updateSanctionsScreening as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() => useUpdateSanctionsScreening(), {
         wrapper: createWrapper(),
@@ -191,7 +220,9 @@ describe('useSanctionsScreening', () => {
         screening_id: 'SCREENING-1',
         success: true,
       };
-      (sanctionsService.deleteSanctionsScreening as vi.Mock).mockResolvedValue(mockResponse);
+      (sanctionsService.deleteSanctionsScreening as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() => useDeleteSanctionsScreening(), {
         wrapper: createWrapper(),
@@ -201,7 +232,9 @@ describe('useSanctionsScreening', () => {
         await result.current.mutateAsync('SCREENING-1');
       });
 
-      expect(sanctionsService.deleteSanctionsScreening).toHaveBeenCalledWith('SCREENING-1');
+      expect(sanctionsService.deleteSanctionsScreening).toHaveBeenCalledWith(
+        'SCREENING-1',
+      );
       expect(toast.success).toHaveBeenCalled();
     });
   });
@@ -212,7 +245,9 @@ describe('useSanctionsScreening', () => {
         url: 'http://example.com/report.pdf',
         file_name: 'report.pdf',
       };
-      (sanctionsService.downloadSanctionsReport as vi.Mock).mockResolvedValue(mockResponse);
+      (sanctionsService.downloadSanctionsReport as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() => useDownloadSanctionsReport(), {
         wrapper: createWrapper(),
@@ -222,7 +257,9 @@ describe('useSanctionsScreening', () => {
         await result.current.mutateAsync('SCREENING-1');
       });
 
-      expect(sanctionsService.downloadSanctionsReport).toHaveBeenCalledWith('SCREENING-1');
+      expect(sanctionsService.downloadSanctionsReport).toHaveBeenCalledWith(
+        'SCREENING-1',
+      );
       expect(toast.success).toHaveBeenCalled();
     });
   });
@@ -238,17 +275,24 @@ describe('useSanctionsScreening', () => {
           timestamp: new Date(),
         },
       ];
-      (sanctionsService.getSanctionsScreeningAuditLogs as vi.Mock).mockResolvedValue(mockLogs);
+      (
+        sanctionsService.getSanctionsScreeningAuditLogs as vi.Mock
+      ).mockResolvedValue(mockLogs);
 
-      const { result } = renderHook(() => useSanctionsScreeningAuditLogs('SCREENING-1'), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useSanctionsScreeningAuditLogs('SCREENING-1'),
+        {
+          wrapper: createWrapper(),
+        },
+      );
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(sanctionsService.getSanctionsScreeningAuditLogs).toHaveBeenCalledWith('SCREENING-1');
+      expect(
+        sanctionsService.getSanctionsScreeningAuditLogs,
+      ).toHaveBeenCalledWith('SCREENING-1');
     });
   });
 
@@ -259,17 +303,24 @@ describe('useSanctionsScreening', () => {
         high_risk_count: 2,
         pending_review_count: 3,
       };
-      (sanctionsService.getCaseSanctionsStatistics as vi.Mock).mockResolvedValue(mockStats);
+      (
+        sanctionsService.getCaseSanctionsStatistics as vi.Mock
+      ).mockResolvedValue(mockStats);
 
-      const { result } = renderHook(() => useCaseSanctionsStatistics('CASE-123'), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useCaseSanctionsStatistics('CASE-123'),
+        {
+          wrapper: createWrapper(),
+        },
+      );
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(sanctionsService.getCaseSanctionsStatistics).toHaveBeenCalledWith('CASE-123');
+      expect(sanctionsService.getCaseSanctionsStatistics).toHaveBeenCalledWith(
+        'CASE-123',
+      );
     });
   });
 
@@ -279,11 +330,18 @@ describe('useSanctionsScreening', () => {
         screenings: [],
         pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
       };
-      (sanctionsService.searchSanctionsScreenings as vi.Mock).mockResolvedValue(mockResponse);
+      (sanctionsService.searchSanctionsScreenings as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(
-        () => useSearchSanctionsScreenings({ disposition: 'PENDING_REVIEW' }, 1, 20),
-        { wrapper: createWrapper() }
+        () =>
+          useSearchSanctionsScreenings(
+            { disposition: 'PENDING_REVIEW' },
+            1,
+            20,
+          ),
+        { wrapper: createWrapper() },
       );
 
       await waitFor(() => {
@@ -294,4 +352,3 @@ describe('useSanctionsScreening', () => {
     });
   });
 });
-

@@ -27,7 +27,7 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard>
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('Content')).toBeInTheDocument();
@@ -42,7 +42,7 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard requireSupervisor>
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('Content')).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard requireSupervisor fallback={<div>No Access</div>}>
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('No Access')).toBeInTheDocument();
@@ -73,7 +73,7 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard requireSupervisor>
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('Content')).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard requireInvestigator>
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('Content')).toBeInTheDocument();
@@ -103,7 +103,7 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard requireInvestigator fallback={<div>No Access</div>}>
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('No Access')).toBeInTheDocument();
@@ -117,7 +117,7 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard requireAdmin>
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('Content')).toBeInTheDocument();
@@ -131,7 +131,7 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard requireAdmin fallback={<div>No Access</div>}>
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('No Access')).toBeInTheDocument();
@@ -145,7 +145,7 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard requireBackendClaim="alert-triage">
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('Content')).toBeInTheDocument();
@@ -157,9 +157,12 @@ describe('RoleGuard', () => {
     } as any);
 
     render(
-      <RoleGuard requireBackendClaim="alert-triage" fallback={<div>No Access</div>}>
+      <RoleGuard
+        requireBackendClaim="alert-triage"
+        fallback={<div>No Access</div>}
+      >
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('No Access')).toBeInTheDocument();
@@ -173,7 +176,7 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard requiredRoles={['CMS_ADMIN', 'CMS_SUPERVISOR']}>
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('Content')).toBeInTheDocument();
@@ -187,7 +190,7 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard requiredRoles={['CMS_ADMIN']} fallback={<div>No Access</div>}>
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('No Access')).toBeInTheDocument();
@@ -201,7 +204,7 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard requiredRoles={['CMS_ADMIN', 'CMS_SUPERVISOR']} requireAll>
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('Content')).toBeInTheDocument();
@@ -213,9 +216,13 @@ describe('RoleGuard', () => {
     } as any);
 
     render(
-      <RoleGuard requiredRoles={['CMS_ADMIN', 'CMS_SUPERVISOR']} requireAll fallback={<div>No Access</div>}>
+      <RoleGuard
+        requiredRoles={['CMS_ADMIN', 'CMS_SUPERVISOR']}
+        requireAll
+        fallback={<div>No Access</div>}
+      >
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('No Access')).toBeInTheDocument();
@@ -229,7 +236,7 @@ describe('RoleGuard', () => {
     const { container } = render(
       <RoleGuard requireAdmin>
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.queryByText('Content')).not.toBeInTheDocument();
@@ -247,10 +254,9 @@ describe('RoleGuard', () => {
     render(
       <RoleGuard requireSupervisor requireBackendClaim="alert-triage">
         <div>Content</div>
-      </RoleGuard>
+      </RoleGuard>,
     );
 
     expect(screen.getByText('Content')).toBeInTheDocument();
   });
 });
-

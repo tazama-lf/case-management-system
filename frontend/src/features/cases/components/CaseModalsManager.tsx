@@ -4,27 +4,61 @@ import {
   caseService,
   type CloseCaseDto,
   type ApproveCaseClosureDto,
-  type RejectCaseCreationDto
+  type RejectCaseCreationDto,
 } from '@/features/cases/services/caseService';
 import type { CaseRow } from '@/features/cases/components/casesTable.utils';
-import type { Priority, AlertType, CaseStatus, PredictionOutcome } from '@/features/cases/components/CreateCaseModal';
+import type {
+  Priority,
+  AlertType,
+  CaseStatus,
+  PredictionOutcome,
+} from '@/features/cases/components/CreateCaseModal';
 import { useToast } from '@/shared/providers/ToastProvider';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
-import { convertToTriageAlert, ManualTriageModal, transformBackendAlertToUI, triageService, type Alert } from '@/features/alerts';
+import {
+  convertToTriageAlert,
+  ManualTriageModal,
+  transformBackendAlertToUI,
+  triageService,
+  type Alert,
+} from '@/features/alerts';
 import type { ManualTriageDto } from '@/features/alerts/types/triage.types';
 import { useAlertOperations } from '@/features/alerts/hooks/useAlertsQuery';
 // Dynamic imports for modals
-const CloseCaseModal = lazy(() => import('@/features/cases/components/CloseCaseModal'));
-const ApproveCaseReopenModal = lazy(() => import('@/features/cases/components/ApproveCaseReopenModal'));
-const RejectCaseReopenModal = lazy(() => import('@/features/cases/components/RejectCaseReopenModal'));
-const ReopenCaseModal = lazy(() => import('@/features/cases/components/ReopenCaseModal'));
-const AbandonCaseModal = lazy(() => import('@/features/cases/components/AbandonCaseModal'));
-const SuspendCaseModal = lazy(() => import('@/features/cases/components/SuspendCaseModal'));
-const ResumeCaseModal = lazy(() => import('@/features/cases/components/ResumeCaseModal'));
-const ApproveCaseCreationModal = lazy(() => import('@/features/cases/components/ApproveCaseCreationModal'));
-const RejectCaseCreationModal = lazy(() => import('@/features/cases/components/RejectCaseCreationModal'));
-const CaseClosureDecisionModal = lazy(() => import('@/features/cases/components/CaseClosureDecisionModal'));
-
+const CloseCaseModal = lazy(
+  async () => await import('@/features/cases/components/CloseCaseModal'),
+);
+const ApproveCaseReopenModal = lazy(
+  async () =>
+    await import('@/features/cases/components/ApproveCaseReopenModal'),
+);
+const RejectCaseReopenModal = lazy(
+  async () => await import('@/features/cases/components/RejectCaseReopenModal'),
+);
+const ReopenCaseModal = lazy(
+  async () => await import('@/features/cases/components/ReopenCaseModal'),
+);
+const AbandonCaseModal = lazy(
+  async () => await import('@/features/cases/components/AbandonCaseModal'),
+);
+const SuspendCaseModal = lazy(
+  async () => await import('@/features/cases/components/SuspendCaseModal'),
+);
+const ResumeCaseModal = lazy(
+  async () => await import('@/features/cases/components/ResumeCaseModal'),
+);
+const ApproveCaseCreationModal = lazy(
+  async () =>
+    await import('@/features/cases/components/ApproveCaseCreationModal'),
+);
+const RejectCaseCreationModal = lazy(
+  async () =>
+    await import('@/features/cases/components/RejectCaseCreationModal'),
+);
+const CaseClosureDecisionModal = lazy(
+  async () =>
+    await import('@/features/cases/components/CaseClosureDecisionModal'),
+);
 
 export interface CaseModalState {
   isCreateOpen: boolean;
@@ -77,11 +111,25 @@ interface CaseModalsManagerProps {
     isInvestigatorOnly: boolean;
   };
   caseActions: {
-    handleCloseCaseSubmit: (caseId: number, data: CloseCaseDto) => Promise<void>;
+    handleCloseCaseSubmit: (
+      caseId: number,
+      data: CloseCaseDto,
+    ) => Promise<void>;
     handleAbandonSubmit: (caseId: number, reason: string) => Promise<void>;
-    handleSuspendSubmit: (caseId: number, reason: string, taskIds: number[]) => Promise<void>;
+    handleSuspendSubmit: (
+      caseId: number,
+      reason: string,
+      taskIds: number[],
+    ) => Promise<void>;
     handleResumeSubmit: (caseId: number, reason: string) => Promise<void>;
-    handleApproveClosureSubmit: (caseId: number, finalOutcome: "STATUS_81_CLOSED_REFUTED" | "STATUS_82_CLOSED_CONFIRMED" | "STATUS_83_CLOSED_INCONCLUSIVE", supervisorComments?: string) => Promise<void>;
+    handleApproveClosureSubmit: (
+      caseId: number,
+      finalOutcome:
+        | 'STATUS_81_CLOSED_REFUTED'
+        | 'STATUS_82_CLOSED_CONFIRMED'
+        | 'STATUS_83_CLOSED_INCONCLUSIVE',
+      supervisorComments?: string,
+    ) => Promise<void>;
     handleApproveCreation: (caseId: number) => Promise<void>;
     handleRejectCaseCreation: (caseId: number, reason: string) => Promise<void>;
     handleRejectCase: (caseId: number, reason: string) => Promise<void>;
@@ -94,7 +142,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
   modalActions,
   onRefreshCases,
   permissions,
-  caseActions
+  caseActions,
 }) => {
   const [selectedAlert, setSelectedAlert] = React.useState<Alert | null>(null);
   const { performManualTriage } = useAlertOperations();
@@ -110,7 +158,10 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
   };
   const [subCasesDetails, setSubCasesDetails] = React.useState<CaseRow[]>();
 
-  const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
+  const handleManualTriage = async (
+    alert: Alert,
+    triageData: ManualTriageDto,
+  ) => {
     try {
       await performManualTriage({
         alertId: alert.alert_id,
@@ -119,16 +170,22 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       // Close modal immediately
       setSelectedAlert(null);
       modalActions.setIsUpdateAlertOpen(false);
-      success('Manual Triage Completed', 'The alert has been triaged successfully.');
+      success(
+        'Manual Triage Completed',
+        'The alert has been triaged successfully.',
+      );
       // Brief delay to ensure backend has processed the triage and created new tasks
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Refresh tasks to show updated "Complete New Case" status and new "Investigate" task
       if (onRefreshCases) {
         await onRefreshCases();
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to perform triage. Please try again.';
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'Failed to perform triage. Please try again.';
       error('Triage Failed', errorMessage);
       throw error;
     }
@@ -154,13 +211,19 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
 
       const newCase = await caseService.createCase(manualCreateCaseData);
 
-      const alertInfo = payload.alertId ? `\nAssociated Alert ID: ${payload.alertId}\nAlert Type: ${payload.alertType}` : '';
-      success('Case Created', `Case ${newCase.case_id} created successfully with status: ${newCase.status}${alertInfo}`);
+      const alertInfo = payload.alertId
+        ? `\nAssociated Alert ID: ${payload.alertId}\nAlert Type: ${payload.alertType}`
+        : '';
+      success(
+        'Case Created',
+        `Case ${newCase.case_id} created successfully with status: ${newCase.status}${alertInfo}`,
+      );
 
       modalActions.setIsCreateOpen(false);
       await onRefreshCases();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create case';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to create case';
       modalActions.setCreateCaseError(errorMessage);
       error('Create Case Failed', errorMessage);
     } finally {
@@ -187,13 +250,19 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
 
       const newCase = await caseService.SaveCaseAsDraft(manualCreateCaseData);
 
-      const alertInfo = payload.alertId ? `\nAssociated Alert ID: ${payload.alertId}\nAlert Type: ${payload.alertType}` : '';
-      success('Case Created', `Case ${newCase.case_id} created successfully with status: ${newCase.status}${alertInfo}`);
+      const alertInfo = payload.alertId
+        ? `\nAssociated Alert ID: ${payload.alertId}\nAlert Type: ${payload.alertType}`
+        : '';
+      success(
+        'Case Created',
+        `Case ${newCase.case_id} created successfully with status: ${newCase.status}${alertInfo}`,
+      );
 
       modalActions.setIsCreateOpen(false);
       await onRefreshCases();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create case';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to create case';
       modalActions.setCreateCaseError(errorMessage);
       error('Create Case Failed', errorMessage);
     } finally {
@@ -201,12 +270,15 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     }
   };
 
-  const handleUpdate = async (caseId: number, payload: {
-    priority: Priority;
-    priorityScore: number;
-    alertType: AlertType;
-    assignee?: string;
-  }) => {
+  const handleUpdate = async (
+    caseId: number,
+    payload: {
+      priority: Priority;
+      priorityScore: number;
+      alertType: AlertType;
+      assignee?: string;
+    },
+  ) => {
     modalActions.setCreateCaseLoading(true);
     modalActions.setCreateCaseError('');
 
@@ -220,7 +292,10 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
 
       const updatedCase = await caseService.updateCase(caseId, updateCaseData);
 
-      success('Draft Case Completed', `Case ${updatedCase.case_id} completed successfully with status: ${updatedCase.status}\nPriority: ${payload.priority}\nType: ${payload.alertType}`);
+      success(
+        'Draft Case Completed',
+        `Case ${updatedCase.case_id} completed successfully with status: ${updatedCase.status}\nPriority: ${payload.priority}\nType: ${payload.alertType}`,
+      );
 
       modalActions.setIsCreateOpen(false);
       modalActions.setCreateModalMode('create');
@@ -228,23 +303,27 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
 
       await onRefreshCases();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update case';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to update case';
       modalActions.setCreateCaseError(errorMessage);
       error('Update Case Failed', errorMessage);
     } finally {
       modalActions.setCreateCaseLoading(false);
     }
   };
-  const handleCompleteCase = async (caseId: number, payload: {
-    priority: Priority;
-    priorityScore: number;
-    alertType: AlertType;
-    assignee?: string;
-    status: CaseStatus;
-    confidence: number;
-    predictionOutcome?: PredictionOutcome;
-    note: string;
-  }) => {
+  const handleCompleteCase = async (
+    caseId: number,
+    payload: {
+      priority: Priority;
+      priorityScore: number;
+      alertType: AlertType;
+      assignee?: string;
+      status: CaseStatus;
+      confidence: number;
+      predictionOutcome?: PredictionOutcome;
+      note: string;
+    },
+  ) => {
     modalActions.setCreateCaseLoading(true);
     modalActions.setCreateCaseError('');
 
@@ -260,9 +339,15 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         ...(payload.assignee && { caseOwnerUserId: payload.assignee }),
       };
 
-      const updatedCase = await caseService.completeCase(caseId, updateCaseData);
+      const updatedCase = await caseService.completeCase(
+        caseId,
+        updateCaseData,
+      );
 
-      success('Draft Case Completed', `Case ${updatedCase.case_id} completed successfully with status: ${updatedCase.status}\nPriority: ${payload.priority}\nType: ${payload.alertType}`);
+      success(
+        'Draft Case Completed',
+        `Case ${updatedCase.case_id} completed successfully with status: ${updatedCase.status}\nPriority: ${payload.priority}\nType: ${payload.alertType}`,
+      );
 
       modalActions.setIsCreateOpen(false);
       modalActions.setCreateModalMode('create');
@@ -270,7 +355,8 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
 
       await onRefreshCases();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update case';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to update case';
       modalActions.setCreateCaseError(errorMessage);
       error('Update Case Failed', errorMessage);
     } finally {
@@ -297,7 +383,11 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     modalActions.setSelectedRow(null);
   };
 
-  const handleSuspendSubmit = async (caseId: number, reason: string, taskIds: number[]) => {
+  const handleSuspendSubmit = async (
+    caseId: number,
+    reason: string,
+    taskIds: number[],
+  ) => {
     await caseActions.handleSuspendSubmit(caseId, reason, taskIds);
     modalActions.setIsSuspendOpen(false);
     modalActions.setSelectedRow(null);
@@ -311,7 +401,10 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
 
   const handleRejectSubmit = async (rejectionReason: string) => {
     if (!modalState.selectedRow) return;
-    await caseActions.handleRejectCase(modalState.selectedRow.id, rejectionReason);
+    await caseActions.handleRejectCase(
+      modalState.selectedRow.id,
+      rejectionReason,
+    );
     modalActions.setIsCaseClosureDecisionOpen(false);
     modalActions.setSelectedRow(null);
   };
@@ -319,11 +412,11 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
   const handleApproveSubmit = async (data: ApproveCaseClosureDto) => {
     if (!modalState.selectedRow) return;
 
-    const finalOutcome = data.finalOutcome as "STATUS_81_CLOSED_REFUTED" | "STATUS_82_CLOSED_CONFIRMED" | "STATUS_83_CLOSED_INCONCLUSIVE";
+    const { finalOutcome } = data;
     await caseActions.handleApproveClosureSubmit(
       modalState.selectedRow.id,
       finalOutcome,
-      data.supervisorComments
+      data.supervisorComments,
     );
     modalActions.setIsCaseClosureDecisionOpen(false);
     modalActions.setSelectedRow(null);
@@ -335,53 +428,67 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     modalActions.setSelectedRow(null);
   };
 
-  const handleRejectCreationSubmit = async (caseId: number, data: RejectCaseCreationDto) => {
+  const handleRejectCreationSubmit = async (
+    caseId: number,
+    data: RejectCaseCreationDto,
+  ) => {
     await caseActions.handleRejectCaseCreation(caseId, data.reason);
     modalActions.setIsRejectCreationOpen(false);
     modalActions.setSelectedRow(null);
   };
 
-  const handleApproveReopenSubmit = async (caseId: number, comments?: string) => {
+  const handleApproveReopenSubmit = async (
+    caseId: number,
+    comments?: string,
+  ) => {
     try {
       const resp = await caseService.approveCaseReopening(caseId);
 
       const updatedStatus = resp.case?.status;
       let outcomeDetails = '';
       if (updatedStatus === 'STATUS_10_ASSIGNED') {
-        const assignedTo = resp.investigation_task?.assigned_to ? ` and assigned to ${resp.investigation_task.assigned_to}` : '';
+        const assignedTo = resp.investigation_task?.assigned_to
+          ? ` and assigned to ${resp.investigation_task.assigned_to}`
+          : '';
         outcomeDetails = `\n\nStatus: STATUS_10_ASSIGNED\nAn "Investigate Case" task (${resp.investigation_task?.task_id || 'N/A'}) has been created${assignedTo}.`;
       } else if (updatedStatus === 'STATUS_02_READY_FOR_ASSIGNMENT') {
-        const candidateGroup = resp.investigation_task?.candidateGroup || 'Investigations';
+        const candidateGroup =
+          resp.investigation_task?.candidateGroup || 'Investigations';
         outcomeDetails = `\n\nStatus: STATUS_02_READY_FOR_ASSIGNMENT\nAn "Investigate Case" task (${resp.investigation_task?.task_id || 'N/A'}) has been created in the ${candidateGroup} queue.`;
       } else if (updatedStatus === 'STATUS_31_REOPENED') {
-        outcomeDetails = `\n\nStatus: STATUS_31_REOPENED\nAn "Investigate Case" task has been created.`;
+        outcomeDetails =
+          '\n\nStatus: STATUS_31_REOPENED\nAn "Investigate Case" task has been created.';
       }
 
-      const commentsMessage = comments ? `\n\nApprover Comments: ${comments}` : '';
-      success('Case Reopening Approved', `Case ${caseId} reopening has been approved.${outcomeDetails}${commentsMessage}`);
+      const commentsMessage = comments
+        ? `\n\nApprover Comments: ${comments}`
+        : '';
+      success(
+        'Case Reopening Approved',
+        `Case ${caseId} reopening has been approved.${outcomeDetails}${commentsMessage}`,
+      );
       modalActions.setIsApproveReopenOpen(false);
       modalActions.setSelectedRow(null);
 
       await onRefreshCases();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to approve case reopening';
+      const message =
+        err instanceof Error ? err.message : 'Failed to approve case reopening';
       error('Approve Case Reopening Failed', message);
     }
   };
 
   const openTriageModal = async () => {
     try {
-      if (!modalState.selectedRow || !modalState.selectedRow.alertId) return;
+      if (!modalState.selectedRow?.alertId) return;
 
-      const alertDetails = await triageService.getAlertById(modalState.selectedRow.alertId);
+      const alertDetails = await triageService.getAlertById(
+        modalState.selectedRow.alertId,
+      );
       const transformed = transformBackendAlertToUI(alertDetails);
       setSelectedAlert(transformed);
-
     } catch (error) {
-      console.error(
-        'Failed to load alert for triage:',
-        error
-      );
+      console.error('Failed to load alert for triage:', error);
       modalActions.setIsUpdateAlertOpen(false);
     }
   };
@@ -396,13 +503,17 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         outcomeDetails += `\nStatus: ${status}\nThe case remains closed.`;
       }
 
-      success('Case Reopening Rejected', `Case ${caseId} reopening has been rejected.${outcomeDetails}`);
+      success(
+        'Case Reopening Rejected',
+        `Case ${caseId} reopening has been rejected.${outcomeDetails}`,
+      );
       modalActions.setIsRejectReopenOpen(false);
       modalActions.setSelectedRow(null);
 
       await onRefreshCases();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to reject case reopening';
+      const message =
+        err instanceof Error ? err.message : 'Failed to reject case reopening';
       error('Reject Case Reopening Failed', message);
     }
   };
@@ -425,17 +536,24 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         error={modalState.createCaseError}
         mode={modalState.createModalMode}
         existingCaseId={modalState.editingCaseId || undefined}
-        initial={modalState.selectedRow ? {
-          alertId: modalState.selectedRow.alertId,
-          alertType: ((): AlertType => {
-            const t = (modalState.selectedRow.type || '').toUpperCase();
-            if (t.includes('FRAUD') && t.includes('AML')) return 'FRAUD_AND_AML';
-            if (t.includes('AML')) return 'AML';
-            return 'FRAUD';
-          })(),
-          priority: (modalState.selectedRow.priority?.toUpperCase() as Priority) || 'NEW',
-          priorityScore: 0.33
-        } : undefined}
+        initial={
+          modalState.selectedRow
+            ? {
+                alertId: modalState.selectedRow.alertId,
+                alertType: ((): AlertType => {
+                  const t = (modalState.selectedRow.type || '').toUpperCase();
+                  if (t.includes('FRAUD') && t.includes('AML'))
+                    return 'FRAUD_AND_AML';
+                  if (t.includes('AML')) return 'AML';
+                  return 'FRAUD';
+                })(),
+                priority:
+                  (modalState.selectedRow.priority?.toUpperCase() as Priority) ||
+                  'NEW',
+                priorityScore: 0.33,
+              }
+            : undefined
+        }
       />
 
       <Suspense fallback={<div>Loading modal...</div>}>
@@ -447,7 +565,9 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
               modalActions.setIsUpdateAlertOpen(false);
               setSelectedAlert(null);
             }}
-            onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
+            onSubmit={async (triageData: ManualTriageDto) => {
+              await handleManualTriage(selectedAlert, triageData);
+            }}
           />
         )}
       </Suspense>
@@ -472,7 +592,6 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
             modalActions.setEditingCaseId(row.id);
             modalActions.setIsViewOpen(false);
           }
-
         }}
         onCloseCase={(row) => {
           modalActions.setSelectedRow(row);
@@ -529,13 +648,23 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       <Suspense fallback={<div>Loading modal...</div>}>
         <CloseCaseModal
           open={modalState.isCloseCaseOpen}
-          onClose={() => modalActions.setIsCloseCaseOpen(false)}
-          caseId={modalState.selectedRow?.id != null ? modalState.selectedRow.id.toString() : ''}
-          caseName={modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''}
+          onClose={() => {
+            modalActions.setIsCloseCaseOpen(false);
+          }}
+          caseId={
+            modalState.selectedRow?.id != null
+              ? modalState.selectedRow.id.toString()
+              : ''
+          }
+          caseName={
+            modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''
+          }
           onSubmit={handleCloseCaseSubmit}
           caseData={modalState.selectedRow}
           subCasesDetails={
-            modalState.selectedRow?.type === 'FRAUD_AND_AML' ? subCasesDetails : undefined
+            modalState.selectedRow?.type === 'FRAUD_AND_AML'
+              ? subCasesDetails
+              : undefined
           }
         />
       </Suspense>
@@ -543,7 +672,9 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       <Suspense fallback={<div>Loading modal...</div>}>
         <ReopenCaseModal
           open={modalState.isReopenOpen}
-          onClose={() => modalActions.setIsReopenOpen(false)}
+          onClose={() => {
+            modalActions.setIsReopenOpen(false);
+          }}
           onReopen={handleReopenSubmit}
           caseData={modalState.selectedRow}
         />
@@ -552,7 +683,9 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       <Suspense fallback={<div>Loading modal...</div>}>
         <AbandonCaseModal
           open={modalState.isAbandonOpen}
-          onClose={() => modalActions.setIsAbandonOpen(false)}
+          onClose={() => {
+            modalActions.setIsAbandonOpen(false);
+          }}
           onAbandon={handleAbandonSubmit}
           caseData={modalState.selectedRow}
         />
@@ -561,7 +694,9 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       <Suspense fallback={<div>Loading modal...</div>}>
         <SuspendCaseModal
           open={modalState.isSuspendOpen}
-          onClose={() => modalActions.setIsSuspendOpen(false)}
+          onClose={() => {
+            modalActions.setIsSuspendOpen(false);
+          }}
           onSuspend={handleSuspendSubmit}
           caseData={modalState.selectedRow}
         />
@@ -570,7 +705,9 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       <Suspense fallback={<div>Loading modal...</div>}>
         <ResumeCaseModal
           open={modalState.isResumeOpen}
-          onClose={() => modalActions.setIsResumeOpen(false)}
+          onClose={() => {
+            modalActions.setIsResumeOpen(false);
+          }}
           onResume={handleResumeSubmit}
           caseData={modalState.selectedRow}
         />
@@ -579,9 +716,17 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       <Suspense fallback={<div>Loading modal...</div>}>
         <CaseClosureDecisionModal
           open={modalState.isCaseClosureDecisionOpen}
-          onClose={() => modalActions.setIsCaseClosureDecisionOpen(false)}
-          caseId={modalState.selectedRow?.id != null ? modalState.selectedRow.id : null}
-          caseName={modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''}
+          onClose={() => {
+            modalActions.setIsCaseClosureDecisionOpen(false);
+          }}
+          caseId={
+            modalState.selectedRow?.id != null
+              ? modalState.selectedRow.id
+              : null
+          }
+          caseName={
+            modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''
+          }
           //recommendedOutcome={modalState.selectedRow?.status || ''} //Commented to fix dropdown issue (PENDING APPROVAL)
           recommendedOutcome={'STATUS_83_CLOSED_INCONCLUSIVE'}
           taskList={modalState.selectedRow?.tasks ?? []}
@@ -594,26 +739,40 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       <Suspense fallback={<div>Loading modal...</div>}>
         <ApproveCaseCreationModal
           open={modalState.isApproveCreationOpen}
-          onClose={() => modalActions.setIsApproveCreationOpen(false)}
+          onClose={() => {
+            modalActions.setIsApproveCreationOpen(false);
+          }}
           caseData={modalState.selectedRow}
-          onSubmit={(caseId) => handleApproveCreationSubmit(caseId)}
+          onSubmit={async (caseId) => {
+            await handleApproveCreationSubmit(caseId);
+          }}
         />
       </Suspense>
 
       <Suspense fallback={<div>Loading modal...</div>}>
         <RejectCaseCreationModal
           open={modalState.isRejectCreationOpen}
-          onClose={() => modalActions.setIsRejectCreationOpen(false)}
+          onClose={() => {
+            modalActions.setIsRejectCreationOpen(false);
+          }}
           caseData={modalState.selectedRow}
-          onSubmit={(caseId, data) => handleRejectCreationSubmit(caseId, data)}
+          onSubmit={async (caseId, data) => {
+            await handleRejectCreationSubmit(caseId, data);
+          }}
         />
       </Suspense>
 
       <Suspense fallback={<div>Loading modal...</div>}>
         <ApproveCaseReopenModal
           open={modalState.isApproveReopenOpen}
-          onClose={() => modalActions.setIsApproveReopenOpen(false)}
-          caseId={modalState.selectedRow?.id != null ? modalState.selectedRow.id : null}
+          onClose={() => {
+            modalActions.setIsApproveReopenOpen(false);
+          }}
+          caseId={
+            modalState.selectedRow?.id != null
+              ? modalState.selectedRow.id
+              : null
+          }
           requesterRole={undefined}
           onApprove={handleApproveReopenSubmit}
         />
@@ -622,8 +781,14 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       <Suspense fallback={<div>Loading modal...</div>}>
         <RejectCaseReopenModal
           open={modalState.isRejectReopenOpen}
-          onClose={() => modalActions.setIsRejectReopenOpen(false)}
-          caseId={modalState.selectedRow?.id != null ? modalState.selectedRow.id : null}
+          onClose={() => {
+            modalActions.setIsRejectReopenOpen(false);
+          }}
+          caseId={
+            modalState.selectedRow?.id != null
+              ? modalState.selectedRow.id
+              : null
+          }
           onReject={handleRejectReopenSubmit}
         />
       </Suspense>

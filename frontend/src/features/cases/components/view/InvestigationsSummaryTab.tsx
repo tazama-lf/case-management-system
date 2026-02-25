@@ -15,7 +15,6 @@ import authService from '@/features/auth/services/authService';
 import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import type { TaskForSupervisor } from '../../services/taskService';
 import { formatDate } from '@/shared/utils/dateUtils';
-import { loadEvidence, fetchCasesAndEvidence } from '../../utils/investigationUtils';
 
 const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
 

@@ -54,17 +54,17 @@
 }
 
 /* Additional MDX Editor popups and dialogs */
-[class*="linkDialogPopover"],
-[class*="popupContainer"],
-[class*="_linkDialog"],
-[class*="_dialogPopover"] {
+[class*='linkDialogPopover'],
+[class*='popupContainer'],
+[class*='_linkDialog'],
+[class*='_dialogPopover'] {
   z-index: 9999 !important;
 }
 
 /* Ensure all MDX editor overlays appear above modals (modals are z-50) */
-.mdx-editor-container [role="dialog"],
-.mdx-editor-container [role="alertdialog"],
-.mdx-editor [role="dialog"],
-.mdx-editor [role="alertdialog"] {
+.mdx-editor-container [role='dialog'],
+.mdx-editor-container [role='alertdialog'],
+.mdx-editor [role='dialog'],
+.mdx-editor [role='alertdialog'] {
   z-index: 9999 !important;
 }

@@ -19,16 +19,24 @@ vi.mock('../../hooks/useReports', () => ({
 
 // Mock components
 vi.mock('../../components/AuditLogsStatsCards', () => ({
-  default: ({ stats }: any) => <div data-testid="audit-logs-stats-cards">{JSON.stringify(stats)}</div>,
+  default: ({ stats }: any) => (
+    <div data-testid="audit-logs-stats-cards">{JSON.stringify(stats)}</div>
+  ),
 }));
 
 vi.mock('../../components/AuditLogsTable', () => ({
   default: ({ data, onExportExcel, onExportCSV, onExportPDF }: any) => (
     <div data-testid="audit-logs-table">
       <div data-testid="table-data">{JSON.stringify(data)}</div>
-      <button onClick={onExportExcel} data-testid="export-excel">Export Excel</button>
-      <button onClick={onExportCSV} data-testid="export-csv">Export CSV</button>
-      <button onClick={onExportPDF} data-testid="export-pdf">Export PDF</button>
+      <button onClick={onExportExcel} data-testid="export-excel">
+        Export Excel
+      </button>
+      <button onClick={onExportCSV} data-testid="export-csv">
+        Export CSV
+      </button>
+      <button onClick={onExportPDF} data-testid="export-pdf">
+        Export PDF
+      </button>
     </div>
   ),
 }));
@@ -99,7 +107,9 @@ describe('AuditLogsReport', () => {
   });
 
   it('renders audit logs report with data', async () => {
-    render(<AuditLogsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<AuditLogsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('audit-logs-stats-cards')).toBeInTheDocument();
@@ -115,10 +125,14 @@ describe('AuditLogsReport', () => {
       isError: false,
     } as any);
 
-    render(<AuditLogsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<AuditLogsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
-    expect(screen.queryByTestId('audit-logs-stats-cards')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('audit-logs-stats-cards'),
+    ).not.toBeInTheDocument();
   });
 
   it('renders error state', () => {
@@ -129,14 +143,20 @@ describe('AuditLogsReport', () => {
       isError: true,
     } as any);
 
-    render(<AuditLogsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<AuditLogsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
-    expect(screen.getByText(/Failed to load audit logs data/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Failed to load audit logs data/i),
+    ).toBeInTheDocument();
   });
 
   it('handles export to Excel', async () => {
     const user = userEvent.setup();
-    render(<AuditLogsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<AuditLogsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('export-excel')).toBeInTheDocument();
@@ -145,13 +165,18 @@ describe('AuditLogsReport', () => {
     const exportButton = screen.getByTestId('export-excel');
     await user.click(exportButton);
 
-    expect(formatDataForExport).toHaveBeenCalledWith(mockAuditData.auditLogs, 'AUDIT_LOGS');
+    expect(formatDataForExport).toHaveBeenCalledWith(
+      mockAuditData.auditLogs,
+      'AUDIT_LOGS',
+    );
     expect(exportToExcel).toHaveBeenCalled();
   });
 
   it('handles export to CSV', async () => {
     const user = userEvent.setup();
-    render(<AuditLogsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<AuditLogsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('export-csv')).toBeInTheDocument();
@@ -160,13 +185,18 @@ describe('AuditLogsReport', () => {
     const exportButton = screen.getByTestId('export-csv');
     await user.click(exportButton);
 
-    expect(formatDataForExport).toHaveBeenCalledWith(mockAuditData.auditLogs, 'AUDIT_LOGS');
+    expect(formatDataForExport).toHaveBeenCalledWith(
+      mockAuditData.auditLogs,
+      'AUDIT_LOGS',
+    );
     expect(exportToCSV).toHaveBeenCalled();
   });
 
   it('handles export to PDF', async () => {
     const user = userEvent.setup();
-    render(<AuditLogsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<AuditLogsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('export-pdf')).toBeInTheDocument();
@@ -176,7 +206,10 @@ describe('AuditLogsReport', () => {
     await user.click(exportButton);
 
     await waitFor(() => {
-      expect(formatDataForExport).toHaveBeenCalledWith(mockAuditData.auditLogs, 'AUDIT_LOGS');
+      expect(formatDataForExport).toHaveBeenCalledWith(
+        mockAuditData.auditLogs,
+        'AUDIT_LOGS',
+      );
       expect(getColumnsForReport).toHaveBeenCalledWith('AUDIT_LOGS');
       expect(exportToPDF).toHaveBeenCalled();
     });
@@ -188,7 +221,9 @@ describe('AuditLogsReport', () => {
       throw new Error('Export failed');
     });
 
-    render(<AuditLogsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<AuditLogsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('export-excel')).toBeInTheDocument();
@@ -197,7 +232,9 @@ describe('AuditLogsReport', () => {
     const exportButton = screen.getByTestId('export-excel');
     await user.click(exportButton);
 
-    expect(global.alert).toHaveBeenCalledWith('Export failed. Please try again.');
+    expect(global.alert).toHaveBeenCalledWith(
+      'Export failed. Please try again.',
+    );
   });
 
   it('handles missing data gracefully', async () => {
@@ -208,7 +245,9 @@ describe('AuditLogsReport', () => {
       isError: false,
     } as any);
 
-    render(<AuditLogsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<AuditLogsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('audit-logs-stats-cards')).toBeInTheDocument();
@@ -222,4 +261,3 @@ describe('AuditLogsReport', () => {
     expect(useAuditLogs).toHaveBeenCalledWith('last7');
   });
 });
-

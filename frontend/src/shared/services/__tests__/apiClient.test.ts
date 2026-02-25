@@ -21,7 +21,9 @@ describe('apiClient', () => {
     const fetchMock = vi.fn().mockResolvedValue(res);
     vi.stubGlobal('fetch', fetchMock);
 
-    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({ Authorization: 'Bearer tok' });
+    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({
+      Authorization: 'Bearer tok',
+    });
 
     const result = await apiClient.get('/test');
     expect(result).toEqual(mockData);
@@ -38,7 +40,9 @@ describe('apiClient', () => {
     const fetchMock = vi.fn().mockResolvedValue(res);
     vi.stubGlobal('fetch', fetchMock);
 
-    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({ Authorization: 'Bearer tok' });
+    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({
+      Authorization: 'Bearer tok',
+    });
 
     const result = await apiClient.post('/test', { name: 'Test' });
     expect(result).toEqual(mockData);
@@ -61,7 +65,9 @@ describe('apiClient', () => {
     const fetchMock = vi.fn().mockResolvedValue(res);
     vi.stubGlobal('fetch', fetchMock);
 
-    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({ Authorization: 'Bearer tok' });
+    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({
+      Authorization: 'Bearer tok',
+    });
 
     const result = await apiClient.put('/test/1', { name: 'Updated' });
     expect(result).toEqual(mockData);
@@ -84,7 +90,9 @@ describe('apiClient', () => {
     const fetchMock = vi.fn().mockResolvedValue(res);
     vi.stubGlobal('fetch', fetchMock);
 
-    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({ Authorization: 'Bearer tok' });
+    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({
+      Authorization: 'Bearer tok',
+    });
 
     const result = await apiClient.patch('/test/1', { name: 'Patched' });
     expect(result).toEqual(mockData);
@@ -106,7 +114,9 @@ describe('apiClient', () => {
     const fetchMock = vi.fn().mockResolvedValue(res);
     vi.stubGlobal('fetch', fetchMock);
 
-    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({ Authorization: 'Bearer tok' });
+    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({
+      Authorization: 'Bearer tok',
+    });
 
     const result = await apiClient.delete('/test/1');
     expect(result).toEqual({ success: true });
@@ -127,7 +137,9 @@ describe('apiClient', () => {
     const fetchMock = vi.fn().mockResolvedValue(res);
     vi.stubGlobal('fetch', fetchMock);
 
-    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({ Authorization: 'Bearer tok' });
+    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({
+      Authorization: 'Bearer tok',
+    });
 
     const result = await apiClient.get('/text');
     expect(result).toBe('Plain text response');
@@ -158,7 +170,9 @@ describe('apiClient', () => {
     });
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(res));
-    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({ Authorization: 'Bearer tok' });
+    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({
+      Authorization: 'Bearer tok',
+    });
 
     await expect(apiClient.get('/bad')).rejects.toThrow('Bad');
   });
@@ -170,9 +184,13 @@ describe('apiClient', () => {
     });
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(res));
-    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({ Authorization: 'Bearer tok' });
+    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({
+      Authorization: 'Bearer tok',
+    });
 
-    await expect(apiClient.get('/notfound')).rejects.toThrow('HTTP 404: Not Found');
+    await expect(apiClient.get('/notfound')).rejects.toThrow(
+      'HTTP 404: Not Found',
+    );
   });
 
   it('retries on 401 when refreshUserProfile returns truthy', async () => {
@@ -182,13 +200,18 @@ describe('apiClient', () => {
       headers: { 'content-type': 'application/json' },
     });
 
-    const fetchMock = vi.fn().mockResolvedValueOnce(res401).mockResolvedValueOnce(res200);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(res401)
+      .mockResolvedValueOnce(res200);
     vi.stubGlobal('fetch', fetchMock);
 
     vi.spyOn(authService, 'getAuthHeader')
       .mockReturnValueOnce({ Authorization: 'Bearer old' })
       .mockReturnValueOnce({ Authorization: 'Bearer new' });
-    vi.spyOn(authService, 'refreshUserProfile').mockResolvedValue({ userId: 'u1' } as any);
+    vi.spyOn(authService, 'refreshUserProfile').mockResolvedValue({
+      userId: 'u1',
+    } as any);
 
     const result = await apiClient.get('/retry');
     expect(result).toEqual({ ok: true });
@@ -201,9 +224,13 @@ describe('apiClient', () => {
     const fetchMock = vi.fn().mockResolvedValue(res401);
     vi.stubGlobal('fetch', fetchMock);
 
-    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({ Authorization: 'Bearer tok' });
+    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({
+      Authorization: 'Bearer tok',
+    });
     vi.spyOn(authService, 'refreshUserProfile').mockResolvedValue(null);
-    const logoutSpy = vi.spyOn(authService, 'logout').mockImplementation(() => {});
+    const logoutSpy = vi
+      .spyOn(authService, 'logout')
+      .mockImplementation(() => {});
 
     const originalHref = window.location.href;
     delete (window as any).location;
@@ -227,10 +254,16 @@ describe('apiClient', () => {
     const fetchMock = vi.fn().mockResolvedValue(res);
     vi.stubGlobal('fetch', fetchMock);
 
-    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({ Authorization: 'Bearer tok' });
+    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({
+      Authorization: 'Bearer tok',
+    });
 
     const formData = new FormData();
-    formData.append('file', new Blob(['test'], { type: 'text/plain' }), 'test.txt');
+    formData.append(
+      'file',
+      new Blob(['test'], { type: 'text/plain' }),
+      'test.txt',
+    );
 
     const result = await apiClient.upload('/upload', formData);
     expect(result).toEqual(mockData);
@@ -246,13 +279,18 @@ describe('apiClient', () => {
       headers: { 'content-type': 'application/json' },
     });
 
-    const fetchMock = vi.fn().mockResolvedValueOnce(res401).mockResolvedValueOnce(res200);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(res401)
+      .mockResolvedValueOnce(res200);
     vi.stubGlobal('fetch', fetchMock);
 
     vi.spyOn(authService, 'getAuthHeader')
       .mockReturnValueOnce({ Authorization: 'Bearer old' })
       .mockReturnValueOnce({ Authorization: 'Bearer new' });
-    vi.spyOn(authService, 'refreshUserProfile').mockResolvedValue({ userId: 'u1' } as any);
+    vi.spyOn(authService, 'refreshUserProfile').mockResolvedValue({
+      userId: 'u1',
+    } as any);
 
     const formData = new FormData();
     formData.append('file', new Blob(['test']), 'test.txt');
@@ -277,7 +315,9 @@ describe('apiClient', () => {
     const formData = new FormData();
     formData.append('file', new Blob(['test']), 'test.txt');
 
-    const result = await apiClient.upload('/public-upload', formData, { skipAuth: true });
+    const result = await apiClient.upload('/public-upload', formData, {
+      skipAuth: true,
+    });
     expect(result).toEqual(mockData);
     expect(getAuthHeaderSpy).not.toHaveBeenCalled();
   });
@@ -286,10 +326,15 @@ describe('apiClient', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const error = new Error('Network error');
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error));
-    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({ Authorization: 'Bearer tok' });
+    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({
+      Authorization: 'Bearer tok',
+    });
 
     await expect(apiClient.get('/error')).rejects.toThrow('Network error');
-    expect(consoleSpy).toHaveBeenCalledWith('API request failed: /error', error);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'API request failed: /error',
+      error,
+    );
 
     consoleSpy.mockRestore();
   });
@@ -298,15 +343,21 @@ describe('apiClient', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const error = new Error('Upload error');
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error));
-    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({ Authorization: 'Bearer tok' });
+    vi.spyOn(authService, 'getAuthHeader').mockReturnValue({
+      Authorization: 'Bearer tok',
+    });
 
     const formData = new FormData();
     formData.append('file', new Blob(['test']), 'test.txt');
 
-    await expect(apiClient.upload('/upload', formData)).rejects.toThrow('Upload error');
-    expect(consoleSpy).toHaveBeenCalledWith('API upload failed: /upload', error);
+    await expect(apiClient.upload('/upload', formData)).rejects.toThrow(
+      'Upload error',
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'API upload failed: /upload',
+      error,
+    );
 
     consoleSpy.mockRestore();
   });
 });
-

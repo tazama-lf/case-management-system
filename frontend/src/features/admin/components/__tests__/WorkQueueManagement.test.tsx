@@ -116,9 +116,7 @@ describe('WorkQueueManagement', () => {
 
     render(<WorkQueueManagement />);
 
-    expect(
-      screen.getByText(/Error loading work queues/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Error loading work queues/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /Retry/i }));
     expect(retry).toHaveBeenCalled();
@@ -132,7 +130,9 @@ describe('WorkQueueManagement', () => {
 
     render(<WorkQueueManagement />);
 
-    expect(screen.getByTestId('work-queues-table')).toHaveTextContent('rows: 1');
+    expect(screen.getByTestId('work-queues-table')).toHaveTextContent(
+      'rows: 1',
+    );
 
     await user.click(screen.getByText('delete-first'));
 
