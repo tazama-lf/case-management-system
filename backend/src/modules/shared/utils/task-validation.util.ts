@@ -30,7 +30,7 @@ export interface TaskFilterOptions {
 @Injectable()
 export class TaskValidationUtil {
   findApprovalTask(tasks: Task[]): Task | undefined {
-    return tasks.find((task) => task.name?.toLowerCase() === TASK_NAMES.APPROVE_CASE_CLOSURE);
+    return tasks.find((task) => task.name?.toLowerCase() === TASK_NAMES.APPROVE_CASE_CLOSURE.toLowerCase());
   }
 
   filterTasks(tasks: Task[], options: TaskFilterOptions = {}): Task[] {

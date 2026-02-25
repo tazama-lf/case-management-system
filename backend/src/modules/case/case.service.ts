@@ -36,7 +36,7 @@ export class CaseService {
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+  ) { }
 
   async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any, role: string) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
@@ -88,6 +88,7 @@ export class CaseService {
         const createCommentDto = new CreateCommentDto();
         createCommentDto.caseId = updatedCase.case_id;
         createCommentDto.note = `Case suspended: ${reason}`;
+        createCommentDto.tenantId = tenantId;
         await this.commentService.addComment(createCommentDto, userId);
 
         await this.loggingOrchestrationService.logActionsWithHistory(
@@ -207,6 +208,7 @@ export class CaseService {
         const createCommentDto = new CreateCommentDto();
         createCommentDto.caseId = caseId;
         createCommentDto.note = `Case resumed: ${reason}`;
+        createCommentDto.tenantId = tenantId;
         await this.commentService.addComment(createCommentDto, userId);
 
         await this.loggingOrchestrationService.logActionsWithHistory(
@@ -290,6 +292,7 @@ export class CaseService {
         //createCommentDto.taskId = updatedTask.task_id;
         createCommentDto.note = reason;
         createCommentDto.caseId = caseId;
+        createCommentDto.tenantId = tenantId;
         this.commentService.addComment(createCommentDto, userId);
 
         this.flowableService.handleCaseAbandoned({ caseId, reason });
@@ -451,7 +454,7 @@ export class CaseService {
         });
 
         await this.commentService.addComment(
-          { caseId, taskId: completeNewCaseTask.task_id, note: updateData.note } as CreateCommentDto,
+          { caseId, taskId: completeNewCaseTask.task_id, note: updateData.note, tenantId } as CreateCommentDto,
           userId,
         );
         return { case: updatedCase, completedTask };
