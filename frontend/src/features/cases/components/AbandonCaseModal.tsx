@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { TrashIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import {
+  TrashIcon,
+  XMarkIcon,
+  ExclamationTriangleIcon,
+} from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
 
 interface AbandonCaseModalProps {
@@ -13,7 +17,7 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
   open,
   onClose,
   onAbandon,
-  caseData
+  caseData,
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,7 +38,10 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Failed to abandon case:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to abandon case. Please try again.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to abandon case. Please try again.';
       setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
@@ -63,9 +70,7 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
               <h3 className="text-lg font-semibold text-gray-900">
                 Abandon Case
               </h3>
-              <p className="text-sm text-gray-600">
-                Case ID: {caseData?.id}
-              </p>
+              <p className="text-sm text-gray-600">Case ID: {caseData?.id}</p>
             </div>
           </div>
           <button
@@ -86,24 +91,33 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
                   Warning: This action cannot be undone
                 </h4>
                 <p className="text-sm text-red-700">
-                  Abandoning this case will permanently remove it from active investigation.
-                  All associated tasks will be cancelled and the case will be marked as abandoned.
+                  Abandoning this case will permanently remove it from active
+                  investigation. All associated tasks will be cancelled and the
+                  case will be marked as abandoned.
                 </p>
               </div>
             </div>
           </div>
 
-          { }
+          {}
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
             <p className="text-sm text-yellow-800">
-              <strong>Note:</strong> Only cases in DRAFT status can be abandoned. The case must have a "Complete New Case" task associated with it.
+              <strong>Note:</strong> Only cases in DRAFT status can be
+              abandoned. The case must have a "Complete New Case" task
+              associated with it.
             </p>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
-              <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for abandoning <span className="text-red-500">*</span><span className="text-xs text-gray-500 ml-2">(minimum 4 characters)</span>
+              <label
+                htmlFor="reason"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Reason for abandoning <span className="text-red-500">*</span>
+                <span className="text-xs text-gray-500 ml-2">
+                  (minimum 4 characters)
+                </span>
               </label>
               <textarea
                 id="reason"
@@ -129,11 +143,13 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
                 <p className="mt-1 text-sm text-red-600">{errors.reason}</p>
               )}
               {!isReasonValid && reason.length > 0 && (
-                <p className="mt-1 text-sm text-red-600">Reason must be at least 4 characters</p>
+                <p className="mt-1 text-sm text-red-600">
+                  Reason must be at least 4 characters
+                </p>
               )}
             </div>
 
-            { }
+            {}
             {errors.submit && (
               <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
                 <p className="text-sm text-red-600">{errors.submit}</p>

@@ -35,26 +35,26 @@ export const sanctionsKeys = {
 export const useCaseSanctionsScreenings = (
   caseId: string,
   filters?: SanctionsScreeningFilters,
-) => {
-  return useQuery({
+) =>
+  useQuery({
     queryKey: sanctionsKeys.list(caseId, filters),
-    queryFn: () => sanctionsService.getCaseSanctionsScreenings(caseId, filters),
+    queryFn: async () =>
+      await sanctionsService.getCaseSanctionsScreenings(caseId, filters),
     staleTime: 2 * 60 * 1000, // 2 minutes
     enabled: !!caseId,
   });
-};
 
 /**
  * Hook to fetch a single sanctions screening
  */
-export const useSanctionsScreening = (screeningId: string) => {
-  return useQuery({
+export const useSanctionsScreening = (screeningId: string) =>
+  useQuery({
     queryKey: sanctionsKeys.detail(screeningId),
-    queryFn: () => sanctionsService.getSanctionsScreening(screeningId),
+    queryFn: async () =>
+      await sanctionsService.getSanctionsScreening(screeningId),
     staleTime: 2 * 60 * 1000,
     enabled: !!screeningId,
   });
-};
 
 /**
  * Hook to create a new sanctions screening
@@ -63,8 +63,8 @@ export const useCreateSanctionsScreening = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateSanctionsScreeningDto) =>
-      sanctionsService.createSanctionsScreening(data),
+    mutationFn: async (data: CreateSanctionsScreeningDto) =>
+      await sanctionsService.createSanctionsScreening(data),
     onSuccess: (_response, variables) => {
       // Invalidate and refetch case screenings list
       queryClient.invalidateQueries({
@@ -91,10 +91,10 @@ export const useUpdateSanctionsScreening = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: UpdateSanctionsScreeningDto) =>
-      sanctionsService.updateSanctionsScreening(data),
+    mutationFn: async (data: UpdateSanctionsScreeningDto) =>
+      await sanctionsService.updateSanctionsScreening(data),
     onSuccess: (response) => {
-      const screening = response.screening;
+      const { screening } = response;
 
       // Update the specific screening in cache
       queryClient.setQueryData<SanctionsScreening>(
@@ -122,8 +122,8 @@ export const useDeleteSanctionsScreening = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (screeningId: string) =>
-      sanctionsService.deleteSanctionsScreening(screeningId),
+    mutationFn: async (screeningId: string) =>
+      await sanctionsService.deleteSanctionsScreening(screeningId),
     onSuccess: (response) => {
       // Invalidate all lists (we don't have case_id here)
       queryClient.invalidateQueries({
@@ -146,10 +146,10 @@ export const useDeleteSanctionsScreening = () => {
 /**
  * Hook to download sanctions report
  */
-export const useDownloadSanctionsReport = () => {
-  return useMutation({
-    mutationFn: (screeningId: string) =>
-      sanctionsService.downloadSanctionsReport(screeningId),
+export const useDownloadSanctionsReport = () =>
+  useMutation({
+    mutationFn: async (screeningId: string) =>
+      await sanctionsService.downloadSanctionsReport(screeningId),
     onSuccess: () => {
       toast.success('Download started');
     },
@@ -157,31 +157,30 @@ export const useDownloadSanctionsReport = () => {
       toast.error(`Failed to download report: ${error.message}`);
     },
   });
-};
 
 /**
  * Hook to fetch audit logs for a screening
  */
-export const useSanctionsScreeningAuditLogs = (screeningId: string) => {
-  return useQuery({
+export const useSanctionsScreeningAuditLogs = (screeningId: string) =>
+  useQuery({
     queryKey: sanctionsKeys.auditLogs(screeningId),
-    queryFn: () => sanctionsService.getSanctionsScreeningAuditLogs(screeningId),
+    queryFn: async () =>
+      await sanctionsService.getSanctionsScreeningAuditLogs(screeningId),
     staleTime: 1 * 60 * 1000, // 1 minute
     enabled: !!screeningId,
   });
-};
 
 /**
  * Hook to fetch statistics for a case
  */
-export const useCaseSanctionsStatistics = (caseId: string) => {
-  return useQuery({
+export const useCaseSanctionsStatistics = (caseId: string) =>
+  useQuery({
     queryKey: sanctionsKeys.statistics(caseId),
-    queryFn: () => sanctionsService.getCaseSanctionsStatistics(caseId),
+    queryFn: async () =>
+      await sanctionsService.getCaseSanctionsStatistics(caseId),
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!caseId,
   });
-};
 
 /**
  * Hook to search sanctions screenings across all cases
@@ -190,12 +189,11 @@ export const useSearchSanctionsScreenings = (
   filters: SanctionsScreeningFilters,
   page = 1,
   limit = 20,
-) => {
-  return useQuery({
+) =>
+  useQuery({
     queryKey: sanctionsKeys.search(filters),
-    queryFn: () =>
-      sanctionsService.searchSanctionsScreenings(filters, page, limit),
+    queryFn: async () =>
+      await sanctionsService.searchSanctionsScreenings(filters, page, limit),
     staleTime: 2 * 60 * 1000,
     placeholderData: (previousData) => previousData,
   });
-};

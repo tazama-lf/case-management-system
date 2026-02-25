@@ -3,13 +3,15 @@ import { saveAs } from 'file-saver';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import type { Task } from '@/features/cases/services/taskService';
-import type { FindingDetail, SupportingEvidence, TaskEvidence } from '@/features/reports/types/reports.types';
+import type {
+  FindingDetail,
+  SupportingEvidence,
+  TaskEvidence,
+} from '@/features/reports/types/reports.types';
 
 (pdfMake as any).vfs = (pdfFonts as any).vfs;
 
-export interface ExportData {
-  [key: string]: any;
-}
+export type ExportData = Record<string, any>;
 
 export interface TableColumn {
   key: string;
@@ -20,7 +22,7 @@ export interface TableColumn {
 export const exportToExcel = (
   data: ExportData[],
   filename: string,
-  sheetName: string = 'Data'
+  sheetName = 'Data',
 ) => {
   try {
     if (!data || data.length === 0) {
@@ -32,14 +34,22 @@ export const exportToExcel = (
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
     if (data.length > 0) {
-      const colWidths = Object.keys(data[0] || {}).map(key => ({
-        wch: Math.max(key.length, ...data.map(row => String(row[key] || '').length))
+      const colWidths = Object.keys(data[0] || {}).map((key) => ({
+        wch: Math.max(
+          key.length,
+          ...data.map((row) => String(row[key] || '').length),
+        ),
       }));
       worksheet['!cols'] = colWidths;
     }
 
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: 'xlsx',
+      type: 'array',
+    });
+    const blob = new Blob([excelBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
     saveAs(blob, `${filename}.xlsx`);
   } catch (error) {
     console.error('Error exporting to Excel:', error);
@@ -47,10 +57,7 @@ export const exportToExcel = (
   }
 };
 
-export const exportToCSV = (
-  data: ExportData[],
-  filename: string
-) => {
+export const exportToCSV = (data: ExportData[], filename: string) => {
   try {
     if (!data || data.length === 0) {
       throw new Error('No data to export');
@@ -59,18 +66,22 @@ export const exportToCSV = (
     const headers = Object.keys(data[0]);
     const csvContent = [
       headers.join(','),
-      ...data.map(row =>
-        headers.map(header => {
-          const value = row[header];
-          if (
-            typeof value === 'string' &&
-            (value.includes(',') || value.includes('"') || value.includes('\n'))
-          ) {
-            return `"${value.replace(/"/g, '""')}"`;
-          }
-          return value || '';
-        }).join(',')
-      )
+      ...data.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header];
+            if (
+              typeof value === 'string' &&
+              (value.includes(',') ||
+                value.includes('"') ||
+                value.includes('\n'))
+            ) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value || '';
+          })
+          .join(','),
+      ),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -85,7 +96,7 @@ export const exportToPDF = async (
   data: ExportData[],
   filename: string,
   title: string,
-  columns: TableColumn[]
+  columns: TableColumn[],
 ) => {
   try {
     if (!data || data.length === 0) {
@@ -95,19 +106,22 @@ export const exportToPDF = async (
     // A4 dimensions in points: 841.89 x 595.28 (landscape)
     // With margins [40, 60, 100, 60], available width = 841.89 - 140 = 701.89
     const availableWidth = 550;
-    const totalRequestedWidth = columns.reduce((sum, col) => sum + (col.width || 100), 0);
+    const totalRequestedWidth = columns.reduce(
+      (sum, col) => sum + (col.width || 100),
+      0,
+    );
     const widthScale = availableWidth / totalRequestedWidth;
 
     const tableBody = [
-      columns.map(col => ({
+      columns.map((col) => ({
         text: col.label,
         style: 'tableHeader',
         fillColor: '#3b82f6',
         color: '#ffffff',
-        alignment: 'center'
+        alignment: 'center',
       })),
-      ...data.map(row =>
-        columns.map(col => {
+      ...data.map((row) =>
+        columns.map((col) => {
           const value = row[col.key];
           let displayValue = '';
 
@@ -118,17 +132,15 @@ export const exportToPDF = async (
           return {
             text: displayValue,
             style: 'tableCell',
-            fontSize: col.key.toLowerCase().includes('id') ? 7 : 9
+            fontSize: col.key.toLowerCase().includes('id') ? 7 : 9,
           };
-        })
-      )
+        }),
+      ),
     ];
 
-
-    const columnWidths = columns.map(col => {
+    const columnWidths = columns.map((col) => {
       const requestedWidth = col.width || 100;
       const scaledWidth = Math.floor(requestedWidth * widthScale);
-
 
       if (col.key.toLowerCase().includes('id')) {
         return Math.max(scaledWidth, 70);
@@ -145,7 +157,7 @@ export const exportToPDF = async (
         {
           text: title,
           style: 'header',
-          margin: [0, 0, 0, 20] as [number, number, number, number]
+          margin: [0, 0, 0, 20] as [number, number, number, number],
         },
         {
           text: `Generated on: ${new Date().toLocaleDateString('en-US', {
@@ -154,10 +166,10 @@ export const exportToPDF = async (
             month: 'long',
             day: 'numeric',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
           })}`,
           style: 'subheader',
-          margin: [0, 0, 0, 20] as [number, number, number, number]
+          margin: [0, 0, 0, 20] as [number, number, number, number],
         },
         {
           table: {
@@ -165,20 +177,28 @@ export const exportToPDF = async (
             widths: columnWidths,
             body: tableBody,
             dontBreakRows: false,
-            keepWithHeaderRows: 1
+            keepWithHeaderRows: 1,
           },
           layout: {
             fillColor: function (rowIndex: number) {
-              return (rowIndex === 0) ? '#3b82f6' : (rowIndex % 2 === 0) ? '#f3f4f6' : '#ffffff';
+              return rowIndex === 0
+                ? '#3b82f6'
+                : rowIndex % 2 === 0
+                  ? '#f3f4f6'
+                  : '#ffffff';
             },
             hLineWidth: function (i: number, node: any) {
-              return (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5;
+              return i === 0 || i === 1 || i === node.table.body.length
+                ? 1
+                : 0.5;
             },
             vLineWidth: function (i: number, node: any) {
-              return (i === 0 || i === node.table.widths.length) ? 1 : 0.5;
+              return i === 0 || i === node.table.widths.length ? 1 : 0.5;
             },
             hLineColor: function (i: number, node: any) {
-              return (i === 0 || i === 1 || i === node.table.body.length) ? '#1f2937' : '#d1d5db';
+              return i === 0 || i === 1 || i === node.table.body.length
+                ? '#1f2937'
+                : '#d1d5db';
             },
             vLineColor: function () {
               return '#d1d5db';
@@ -194,154 +214,183 @@ export const exportToPDF = async (
             },
             paddingBottom: function () {
               return 6;
-            }
-          }
+            },
+          },
         },
         {
           text: `Total Records: ${data.length}`,
           style: 'footer',
-          margin: [0, 20, 0, 0] as [number, number, number, number]
-        }
+          margin: [0, 20, 0, 0] as [number, number, number, number],
+        },
       ],
       styles: {
         header: {
           fontSize: 20,
           bold: true,
           alignment: 'center' as const,
-          color: '#1f2937'
+          color: '#1f2937',
         },
         subheader: {
           fontSize: 11,
           alignment: 'center' as const,
           color: '#6b7280',
-          italics: true
+          italics: true,
         },
         tableHeader: {
           bold: true,
           fontSize: 10,
           color: '#ffffff',
           fillColor: '#3b82f6',
-          alignment: 'center' as const
+          alignment: 'center' as const,
         },
         tableCell: {
           fontSize: 9,
           alignment: 'left' as const,
-          color: '#1f2937'
+          color: '#1f2937',
         },
         footer: {
           fontSize: 10,
           alignment: 'right' as const,
           color: '#6b7280',
-          bold: true
-        }
+          bold: true,
+        },
       },
       defaultStyle: {
-        fontSize: 9
-      }
+        fontSize: 9,
+      },
     };
 
     const pdfDoc = (pdfMake as any).createPdf(docDefinition);
     pdfDoc.download(`${filename}.pdf`);
-
   } catch (error) {
     console.error('Error exporting to PDF:', error);
     throw new Error('Failed to export to PDF');
   }
 };
 
-export const formatDataForExport = (data: any[], reportType: string): ExportData[] => {
+export const formatDataForExport = (
+  data: any[],
+  reportType: string,
+): ExportData[] => {
   switch (reportType) {
     case 'CASE_STATUS':
-      return data.map(item => ({
-        'Status': item.status || '',
-        'Count': item.count || 0,
-        'Percentage': item.percentage || '0%',
+      return data.map((item) => ({
+        Status: item.status || '',
+        Count: item.count || 0,
+        Percentage: item.percentage || '0%',
         'Avg Time in Status': item.avgTimeInStatus || '0 days',
         'Current Trend Period': item.currentTrendPeriod || 'No trend',
       }));
 
     case 'TASK_COMPLETION':
-      return data.map(item => ({
+      return data.map((item) => ({
         'Task Type': item.taskType || '',
-        'Total': item.total || 0,
-        'Completed': item.completed || 0,
+        Total: item.total || 0,
+        Completed: item.completed || 0,
         'Completion Rate': `${item.completionRate || 0}%`,
         'Avg Time (Days)': item.avgTime || 0,
-        'Trend': `${item.trend > 0 ? '+' : ''}${item.trend || 0}%`,
+        Trend: `${item.trend > 0 ? '+' : ''}${item.trend || 0}%`,
       }));
 
     case 'AUDIT_LOGS':
-      return data.map(item => ({
+      return data.map((item) => ({
         'Log ID': String(item.audit_log_id || item.logId || item.id || ''),
         'User ID': String(item.user_id || item.userId || item.user || ''),
-        'Operation': item.operation || '',
+        Operation: item.operation || '',
         'Entity Name': item.entity_name || item.entityName || '',
-        'Action Performed': item.action_performed || item.actionPerformed || item.action || '',
-        'Outcome': item.outcome || '',
-        'Performed At': item.performed_at || item.performedAt || item.timestamp || '',
-        'Type': item.type || 'Info',
+        'Action Performed':
+          item.action_performed || item.actionPerformed || item.action || '',
+        Outcome: item.outcome || '',
+        'Performed At':
+          item.performed_at || item.performedAt || item.timestamp || '',
+        Type: item.type || 'Info',
       }));
 
     case 'CASE_AGEING':
-      return data.map(item => ({
+      return data.map((item) => ({
         'Case ID': String(item.caseId || item.case_id || item.id || ''),
-        'Type': item.type || item.caseType || '',
-        'Status': item.status || '',
-        'Created Date': item.createdDate || item.created_date || item.createdAt || '',
+        Type: item.type || item.caseType || '',
+        Status: item.status || '',
+        'Created Date':
+          item.createdDate || item.created_date || item.createdAt || '',
         'Age (Days)': item.ageDays || item.age_days || item.age || 0,
-        'Priority': item.priority || 'Normal',
-        'User ID': String(item.userId || item.user_id || item.assigneeId || item.assignee_id || ''),
-        'Investigator': item.investigator || item.assignee || item.assigned_to || 'Unassigned',
+        Priority: item.priority || 'Normal',
+        'User ID': String(
+          item.userId ||
+            item.user_id ||
+            item.assigneeId ||
+            item.assignee_id ||
+            '',
+        ),
+        Investigator:
+          item.investigator ||
+          item.assignee ||
+          item.assigned_to ||
+          'Unassigned',
       }));
 
     case 'INVESTIGATOR_WORKLOAD':
-      return data.map(item => ({
-        'Investigator ID': String(item.investigatorId || item.investigator_id || item.userId || item.user_id || ''),
-        'Investigator': item.investigator || item.name || item.fullName || 'Unknown',
-        'Role': item.role || 'Investigator',
+      return data.map((item) => ({
+        'Investigator ID': String(
+          item.investigatorId ||
+            item.investigator_id ||
+            item.userId ||
+            item.user_id ||
+            '',
+        ),
+        Investigator:
+          item.investigator || item.name || item.fullName || 'Unknown',
+        Role: item.role || 'Investigator',
         'Active Cases': item.activeCases || item.active_cases || 0,
         'Completed Cases': item.completedCases || item.completed_cases || 0,
-        'Avg Resolution Time (Days)': item.avgResolutionTime || item.avg_resolution_time || 0,
-        'Case Closure Rate (%)': item.caseClosureRate || item.case_closure_rate || 0,
-        'Performance Trend': item.performanceTrend || item.performance_trend || 'Stable',
+        'Avg Resolution Time (Days)':
+          item.avgResolutionTime || item.avg_resolution_time || 0,
+        'Case Closure Rate (%)':
+          item.caseClosureRate || item.case_closure_rate || 0,
+        'Performance Trend':
+          item.performanceTrend || item.performance_trend || 'Stable',
       }));
 
     case 'EVIDENCE_FINDINGS':
-      return (data as FindingDetail[]).reduce<Record<string, string>[]>((rows, caseItem) => {
-        for (const task of caseItem.tasks) {
-          for (const ev of task.supportingEvidence) {
-            rows.push({
-              'Case ID': String(caseItem.caseId),
-              'Task ID': String(task.taskId ?? ''),
-              'Finding': caseItem.finding ?? '',
-              'Conclusion': caseItem.conclusion ?? '',
-              'Supporting Evidence': ev.fileName ?? '',
-              'Comments': [
-                ev.id,
-                ev.evidenceType,
-                ev.uploadedByName,
-                ev.description,
-              ]
-                .filter(Boolean)
-                .join(' | '),
-              'Date Identified': caseItem.dateIdentified ?? '',
-            });
+      return (data as FindingDetail[]).reduce<Array<Record<string, string>>>(
+        (rows, caseItem) => {
+          for (const task of caseItem.tasks) {
+            for (const ev of task.supportingEvidence) {
+              rows.push({
+                'Case ID': String(caseItem.caseId),
+                'Task ID': String(task.taskId ?? ''),
+                Finding: caseItem.finding ?? '',
+                Conclusion: caseItem.conclusion ?? '',
+                'Supporting Evidence': ev.fileName ?? '',
+                Comments: [
+                  ev.id,
+                  ev.evidenceType,
+                  ev.uploadedByName,
+                  ev.description,
+                ]
+                  .filter(Boolean)
+                  .join(' | '),
+                'Date Identified': caseItem.dateIdentified ?? '',
+              });
+            }
           }
-        }
-        return rows;
-      }, []);
+          return rows;
+        },
+        [],
+      );
 
     default:
-
-      return data.map(item => {
+      return data.map((item) => {
         const formatted: ExportData = {};
-        Object.keys(item).forEach(key => {
+        Object.keys(item).forEach((key) => {
           const value = item[key];
 
-          if (key.toLowerCase().includes('id') || key.toLowerCase().includes('case')) {
+          if (
+            key.toLowerCase().includes('id') ||
+            key.toLowerCase().includes('case')
+          ) {
             formatted[key] = String(value || '');
-          }
-          else {
+          } else {
             formatted[key] = value;
           }
         });
@@ -358,7 +407,11 @@ export const getColumnsForReport = (reportType: string): TableColumn[] => {
         { key: 'Count', label: 'Count', width: 60 },
         { key: 'Percentage', label: 'Percentage', width: 80 },
         { key: 'Avg Time in Status', label: 'Avg Time in Status', width: 120 },
-        { key: 'Current Trend Period', label: 'Current Trend Period', width: 140 },
+        {
+          key: 'Current Trend Period',
+          label: 'Current Trend Period',
+          width: 140,
+        },
       ];
 
     case 'TASK_COMPLETION':
@@ -402,8 +455,16 @@ export const getColumnsForReport = (reportType: string): TableColumn[] => {
         { key: 'Role', label: 'Role', width: 80 },
         { key: 'Active Cases', label: 'Active Cases', width: 90 },
         { key: 'Completed Cases', label: 'Completed Cases', width: 100 },
-        { key: 'Avg Resolution Time (Days)', label: 'Avg Resolution Time (Days)', width: 130 },
-        { key: 'Case Closure Rate (%)', label: 'Case Closure Rate (%)', width: 120 },
+        {
+          key: 'Avg Resolution Time (Days)',
+          label: 'Avg Resolution Time (Days)',
+          width: 130,
+        },
+        {
+          key: 'Case Closure Rate (%)',
+          label: 'Case Closure Rate (%)',
+          width: 120,
+        },
         { key: 'Performance Trend', label: 'Performance Trend', width: 110 },
       ];
 
@@ -413,7 +474,11 @@ export const getColumnsForReport = (reportType: string): TableColumn[] => {
         { key: 'Task ID', label: 'Task ID', width: 20 },
         { key: 'Finding', label: 'Finding', width: 80 },
         { key: 'Conclusion', label: 'Conclusion', width: 80 },
-        { key: 'Supporting Evidence', label: 'Supporting Evidence', width: 150 },
+        {
+          key: 'Supporting Evidence',
+          label: 'Supporting Evidence',
+          width: 150,
+        },
         { key: 'Comments', label: 'Comments', width: 120 },
         { key: 'Date Identified', label: 'Date Identified', width: 100 },
       ];

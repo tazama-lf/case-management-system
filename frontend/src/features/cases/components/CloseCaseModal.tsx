@@ -7,7 +7,6 @@ import GenerateInvestigationReportModal from '../components/modals/GenerateInves
 import type { CaseRow } from './casesTable.utils';
 import { getCaseStatusBadge } from '@/shared/constants/case.constant';
 
-
 interface CloseCaseModalProps {
   open: boolean;
   onClose: () => void;
@@ -25,7 +24,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
   caseName,
   onSubmit,
   caseData,
-  subCasesDetails
+  subCasesDetails,
 }) => {
   const [formData, setFormData] = useState<CloseCaseDto>({
     recommendedOutcome: 'STATUS_83_CLOSED_INCONCLUSIVE',
@@ -95,17 +94,15 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
     } finally {
       setIsSubmitting(false);
     }
-
   };
 
   useEffect(() => {
     if (caseData?.type === 'FRAUD_AND_AML') {
       const combined = 'STATUS_84_COMPLETED';
 
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        recommendedOutcome:
-          combined as CloseCaseDto['recommendedOutcome'],
+        recommendedOutcome: combined as CloseCaseDto['recommendedOutcome'],
       }));
     }
   }, [caseData?.type, subCasesDetails]);
@@ -123,7 +120,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
-          { }
+          {}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
@@ -151,9 +148,9 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
             </button>
           </div>
 
-          { }
+          {}
           <form onSubmit={handleSubmit} className="p-6">
-            { }
+            {}
             {/* SUB CASES – Only for FRAUD_AND_AML */}
             {caseData?.type === 'FRAUD_AND_AML' &&
               subCasesDetails &&
@@ -184,14 +181,20 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
                           <div className="text-xs text-gray-500 uppercase">
                             Type
                           </div>
-                          <div className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${sub.typeColor}`}>
+                          <div
+                            className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${sub.typeColor}`}
+                          >
                             {sub.type || 'N/A'}
                           </div>
                         </div>
 
                         <div>
-                          <div className="text-xs text-gray-500 uppercase">Status</div>
-                          <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${sub.statusColor}`}>
+                          <div className="text-xs text-gray-500 uppercase">
+                            Status
+                          </div>
+                          <span
+                            className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${sub.statusColor}`}
+                          >
                             {getCaseStatusBadge(sub.status)}
                           </span>
                         </div>
@@ -219,16 +222,18 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
             ) : (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {isSupervisor ? 'Final Outcome' : 'Recommended Outcome'} <span className="text-red-500">*</span>
+                  {isSupervisor ? 'Final Outcome' : 'Recommended Outcome'}{' '}
+                  <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.recommendedOutcome}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData((prev) => ({
                       ...prev,
-                      recommendedOutcome: e.target.value as CloseCaseDto['recommendedOutcome'],
-                    }))
-                  }
+                      recommendedOutcome: e.target
+                        .value as CloseCaseDto['recommendedOutcome'],
+                    }));
+                  }}
                   disabled={isSubmitting || reportApproved}
                   className="w-full rounded-md border border-gray-300 px-3 py-2
              disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -246,25 +251,28 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
                 <p className="mt-1 text-xs text-gray-500">
                   {isSupervisor
                     ? 'This is the final outcome that will be applied to the case'
-                    : 'This outcome will be reviewed by the supervisor during approval'
-                  }
+                    : 'This outcome will be reviewed by the supervisor during approval'}
                 </p>
               </div>
             )}
 
-            { }
+            {}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Final Investigation Notes <span className="text-red-500">*</span><span className="text-xs text-gray-500 ml-2">(minimum 4 characters)</span>
+                Final Investigation Notes{' '}
+                <span className="text-red-500">*</span>
+                <span className="text-xs text-gray-500 ml-2">
+                  (minimum 4 characters)
+                </span>
               </label>
               <textarea
                 value={formData.finalNotes || ''}
-                onChange={(e) =>
+                onChange={(e) => {
                   setFormData((prev) => ({
                     ...prev,
                     finalNotes: e.target.value,
-                  }))
-                }
+                  }));
+                }}
                 rows={4}
                 maxLength={500}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -275,7 +283,9 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
                 <p className="text-xs text-gray-500">
                   {formData.finalNotes.length}/4 characters minimum
                 </p>
-                <span className={`text-xs ${formData.finalNotes.length >= 500 ? 'text-red-500' : 'text-gray-500'}`}>
+                <span
+                  className={`text-xs ${formData.finalNotes.length >= 500 ? 'text-red-500' : 'text-gray-500'}`}
+                >
                   {formData.finalNotes.length}/500
                 </span>
               </div>
@@ -284,15 +294,15 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
               )}
             </div>
 
-            { }
-            { }
+            {}
+            {}
             {errors.submit && (
               <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
                 <p className="text-sm text-red-600">{errors.submit}</p>
               </div>
             )}
 
-            { }
+            {}
             <div className="flex justify-end gap-3">
               <button
                 type="button"
@@ -309,23 +319,30 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
                   disabled={isSubmitting}
                   className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'Submitting for Approval...' : 'Submit for Approval'}
+                  {isSubmitting
+                    ? 'Submitting for Approval...'
+                    : 'Submit for Approval'}
                 </button>
               )}
 
               {/* SUPERVISOR → Generate Report */}
-              {isSupervisor && !reportApproved && caseData?.type !== 'FRAUD_AND_AML' && (
-                <button
-                  type="button"
-                  disabled={isSubmitting || formData.finalNotes.trim().length < 4}
-                  onClick={() => setShowReportModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm disabled:from-blue-400 disabled:to-blue-400 disabled:shadow-none disabled:cursor-not-allowed "
-
-                >
-                  <DocumentTextIcon className="h-5 w-5" />
-                  Generate Investigation Report
-                </button>
-              )}
+              {isSupervisor &&
+                !reportApproved &&
+                caseData?.type !== 'FRAUD_AND_AML' && (
+                  <button
+                    type="button"
+                    disabled={
+                      isSubmitting || formData.finalNotes.trim().length < 4
+                    }
+                    onClick={() => {
+                      setShowReportModal(true);
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm disabled:from-blue-400 disabled:to-blue-400 disabled:shadow-none disabled:cursor-not-allowed "
+                  >
+                    <DocumentTextIcon className="h-5 w-5" />
+                    Generate Investigation Report
+                  </button>
+                )}
 
               {/* SUPERVISOR → Close Case (AFTER report) */}
               {isSupervisor && caseData?.type === 'FRAUD_AND_AML' && (
@@ -345,7 +362,9 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
         {/* Generate Report Modal */}
         <GenerateInvestigationReportModal
           open={showReportModal}
-          onClose={() => setShowReportModal(false)}
+          onClose={() => {
+            setShowReportModal(false);
+          }}
           caseId={caseData?.id || Number(caseId)}
           caseStatus={caseData?.status}
           caseTitle={`Case ${caseData?.id || caseId} - ${caseData?.type || 'Investigation'}`}

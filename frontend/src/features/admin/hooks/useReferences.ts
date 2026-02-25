@@ -50,10 +50,12 @@ export const useReferenceLookup = () => {
     }
   };
 
-  const onPageChange = (page: number) =>
+  const onPageChange = (page: number) => {
     setPagination((prev) => ({ ...prev, currentPage: page }));
-  const onPageSizeChange = (size: number) =>
+  };
+  const onPageSizeChange = (size: number) => {
     setPagination((prev) => ({ ...prev, pageSize: size }));
+  };
 
   useEffect(() => {
     fetchReferences();

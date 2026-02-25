@@ -31,17 +31,27 @@ describe('PaginationControls', () => {
   });
 
   it('calculates and displays correct item range', () => {
-    render(<PaginationControls {...defaultProps} currentPage={2} itemsPerPage={25} />);
+    render(
+      <PaginationControls
+        {...defaultProps}
+        currentPage={2}
+        itemsPerPage={25}
+      />,
+    );
 
     const showingTexts = screen.getAllByText((content, element) => {
       const text = element?.textContent || '';
-      return text.includes('Showing') && text.includes('26') && text.includes('50');
+      return (
+        text.includes('Showing') && text.includes('26') && text.includes('50')
+      );
     });
     expect(showingTexts.length).toBeGreaterThan(0);
   });
 
   it('displays correct page numbers in range', () => {
-    render(<PaginationControls {...defaultProps} pageRange={[1, 2, 3, 4, 5]} />);
+    render(
+      <PaginationControls {...defaultProps} pageRange={[1, 2, 3, 4, 5]} />,
+    );
 
     const page1 = screen.getByRole('button', { name: '1' });
     const page2 = screen.getByRole('button', { name: '2' });
@@ -52,7 +62,13 @@ describe('PaginationControls', () => {
   });
 
   it('highlights current page', () => {
-    render(<PaginationControls {...defaultProps} currentPage={3} pageRange={[1, 2, 3, 4, 5]} />);
+    render(
+      <PaginationControls
+        {...defaultProps}
+        currentPage={3}
+        pageRange={[1, 2, 3, 4, 5]}
+      />,
+    );
 
     const currentPageButton = screen.getByRole('button', { name: '3' });
     expect(currentPageButton).toHaveClass('bg-indigo-600', 'text-white');
@@ -61,7 +77,9 @@ describe('PaginationControls', () => {
   it('calls onPageChange when page number is clicked', async () => {
     const user = userEvent.setup();
     const onPageChange = vi.fn();
-    render(<PaginationControls {...defaultProps} onPageChange={onPageChange} />);
+    render(
+      <PaginationControls {...defaultProps} onPageChange={onPageChange} />,
+    );
 
     const pageButton = screen.getByRole('button', { name: '2' });
     await user.click(pageButton);
@@ -72,7 +90,9 @@ describe('PaginationControls', () => {
   it('calls onNext when next button is clicked', async () => {
     const user = userEvent.setup();
     const onNext = vi.fn();
-    render(<PaginationControls {...defaultProps} onNext={onNext} canGoNext={true} />);
+    render(
+      <PaginationControls {...defaultProps} onNext={onNext} canGoNext={true} />,
+    );
 
     const nextButtons = screen.getAllByRole('button', { name: /Next/i });
     await user.click(nextButtons[0]);
@@ -83,7 +103,14 @@ describe('PaginationControls', () => {
   it('calls onPrevious when previous button is clicked', async () => {
     const user = userEvent.setup();
     const onPrevious = vi.fn();
-    render(<PaginationControls {...defaultProps} onPrevious={onPrevious} canGoPrevious={true} currentPage={2} />);
+    render(
+      <PaginationControls
+        {...defaultProps}
+        onPrevious={onPrevious}
+        canGoPrevious={true}
+        currentPage={2}
+      />,
+    );
 
     const prevButtons = screen.getAllByRole('button', { name: /Previous/i });
     await user.click(prevButtons[0]);
@@ -108,7 +135,12 @@ describe('PaginationControls', () => {
   it('calls onItemsPerPageChange when items per page is changed', async () => {
     const user = userEvent.setup();
     const onItemsPerPageChange = vi.fn();
-    render(<PaginationControls {...defaultProps} onItemsPerPageChange={onItemsPerPageChange} />);
+    render(
+      <PaginationControls
+        {...defaultProps}
+        onItemsPerPageChange={onItemsPerPageChange}
+      />,
+    );
 
     const select = screen.getByDisplayValue('25');
     await user.selectOptions(select, '50');
@@ -117,7 +149,13 @@ describe('PaginationControls', () => {
   });
 
   it('uses custom itemsPerPageOptions', () => {
-    render(<PaginationControls {...defaultProps} itemsPerPageOptions={[5, 10, 20]} itemsPerPage={5} />);
+    render(
+      <PaginationControls
+        {...defaultProps}
+        itemsPerPageOptions={[5, 10, 20]}
+        itemsPerPage={5}
+      />,
+    );
 
     const select = screen.getByDisplayValue('5');
     expect(select).toBeInTheDocument();
@@ -127,7 +165,9 @@ describe('PaginationControls', () => {
   });
 
   it('returns null when totalItems is 0', () => {
-    const { container } = render(<PaginationControls {...defaultProps} totalItems={0} />);
+    const { container } = render(
+      <PaginationControls {...defaultProps} totalItems={0} />,
+    );
 
     expect(container.firstChild).toBeNull();
   });
@@ -140,30 +180,54 @@ describe('PaginationControls', () => {
   });
 
   it('displays correct mobile page info', () => {
-    render(<PaginationControls {...defaultProps} currentPage={5} totalPages={10} />);
+    render(
+      <PaginationControls {...defaultProps} currentPage={5} totalPages={10} />,
+    );
 
     expect(screen.getByText(/Page 5 of 10/i)).toBeInTheDocument();
   });
 
   it('handles last page correctly', () => {
-    render(<PaginationControls {...defaultProps} currentPage={10} totalPages={10} totalItems={250} itemsPerPage={25} />);
+    render(
+      <PaginationControls
+        {...defaultProps}
+        currentPage={10}
+        totalPages={10}
+        totalItems={250}
+        itemsPerPage={25}
+      />,
+    );
 
     const showingTexts = screen.getAllByText((content, element) => {
       const text = element?.textContent || '';
-      return text.includes('Showing') && text.includes('226') && text.includes('250');
+      return (
+        text.includes('Showing') && text.includes('226') && text.includes('250')
+      );
     });
     expect(showingTexts.length).toBeGreaterThan(0);
   });
 
   it('handles single page correctly', () => {
-    render(<PaginationControls {...defaultProps} currentPage={1} totalPages={1} totalItems={10} itemsPerPage={25} />);
+    render(
+      <PaginationControls
+        {...defaultProps}
+        currentPage={1}
+        totalPages={1}
+        totalItems={10}
+        itemsPerPage={25}
+      />,
+    );
 
     expect(screen.getByText(/Page 1 of 1/i)).toBeInTheDocument();
     const showingTexts = screen.getAllByText((content, element) => {
       const text = element?.textContent || '';
-      return text.includes('Showing') && text.includes('1') && text.includes('10') && text.includes('results');
+      return (
+        text.includes('Showing') &&
+        text.includes('1') &&
+        text.includes('10') &&
+        text.includes('results')
+      );
     });
     expect(showingTexts.length).toBeGreaterThan(0);
   });
 });
-

@@ -14,7 +14,11 @@ describe('useNavigation', () => {
     };
 
     const wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(NavigationContext.Provider, { value: mockContext }, children);
+      React.createElement(
+        NavigationContext.Provider,
+        { value: mockContext },
+        children,
+      );
 
     const { result } = renderHook(() => useNavigation(), { wrapper });
 
@@ -33,4 +37,3 @@ describe('useNavigation', () => {
     consoleSpy.mockRestore();
   });
 });
-

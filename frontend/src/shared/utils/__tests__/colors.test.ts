@@ -53,17 +53,23 @@ describe('colors', () => {
 
   describe('getTaskStatusColor', () => {
     it('returns correct color for STATUS_30_COMPLETED', () => {
-      expect(getTaskStatusColor(TaskStatus.STATUS_30_COMPLETED)).toBe('#10b981');
+      expect(getTaskStatusColor(TaskStatus.STATUS_30_COMPLETED)).toBe(
+        '#10b981',
+      );
       expect(getTaskStatusColor('STATUS_30_COMPLETED')).toBe('#10b981');
     });
 
     it('returns correct color for STATUS_20_IN_PROGRESS', () => {
-      expect(getTaskStatusColor(TaskStatus.STATUS_20_IN_PROGRESS)).toBe('#3b82f6');
+      expect(getTaskStatusColor(TaskStatus.STATUS_20_IN_PROGRESS)).toBe(
+        '#3b82f6',
+      );
       expect(getTaskStatusColor('STATUS_20_IN_PROGRESS')).toBe('#3b82f6');
     });
 
     it('returns correct color for STATUS_01_UNASSIGNED', () => {
-      expect(getTaskStatusColor(TaskStatus.STATUS_01_UNASSIGNED)).toBe('#6b7280');
+      expect(getTaskStatusColor(TaskStatus.STATUS_01_UNASSIGNED)).toBe(
+        '#6b7280',
+      );
       expect(getTaskStatusColor('STATUS_01_UNASSIGNED')).toBe('#6b7280');
     });
 
@@ -87,14 +93,18 @@ describe('colors', () => {
       expect(getCaseTypeColorClass(CaseType.FRAUD)).toBe(
         'text-red-500 bg-red-50 border-red-200',
       );
-      expect(getCaseTypeColorClass('FRAUD')).toBe('text-red-500 bg-red-50 border-red-200');
+      expect(getCaseTypeColorClass('FRAUD')).toBe(
+        'text-red-500 bg-red-50 border-red-200',
+      );
     });
 
     it('returns correct class for AML', () => {
       expect(getCaseTypeColorClass(CaseType.AML)).toBe(
         'text-purple-500 bg-purple-50 border-purple-200',
       );
-      expect(getCaseTypeColorClass('AML')).toBe('text-purple-500 bg-purple-50 border-purple-200');
+      expect(getCaseTypeColorClass('AML')).toBe(
+        'text-purple-500 bg-purple-50 border-purple-200',
+      );
     });
 
     it('returns correct class for FRAUD_AND_AML', () => {
@@ -110,8 +120,12 @@ describe('colors', () => {
       expect(getCaseTypeColorClass(CaseType.NONE)).toBe(
         'text-blue-500 bg-blue-50 border-blue-200',
       );
-      expect(getCaseTypeColorClass(null)).toBe('text-blue-500 bg-blue-50 border-blue-200');
-      expect(getCaseTypeColorClass('UNKNOWN')).toBe('text-blue-500 bg-blue-50 border-blue-200');
+      expect(getCaseTypeColorClass(null)).toBe(
+        'text-blue-500 bg-blue-50 border-blue-200',
+      );
+      expect(getCaseTypeColorClass('UNKNOWN')).toBe(
+        'text-blue-500 bg-blue-50 border-blue-200',
+      );
     });
   });
 
@@ -162,8 +176,9 @@ describe('colors', () => {
     });
 
     it('returns default class for unknown status', () => {
-      expect(getTaskStatusColorClass('UNKNOWN')).toBe('text-gray-500 bg-gray-50 border-gray-200');
+      expect(getTaskStatusColorClass('UNKNOWN')).toBe(
+        'text-gray-500 bg-gray-50 border-gray-200',
+      );
     });
   });
 });
-

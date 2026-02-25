@@ -33,7 +33,9 @@ describe('TaskEvidenceTab', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (evidenceService.getTaskEvidence as vi.Mock).mockResolvedValue(mockEvidence);
+    (evidenceService.getTaskEvidence as vi.Mock).mockResolvedValue(
+      mockEvidence,
+    );
     (evidenceService.uploadEvidence as vi.Mock).mockResolvedValue({
       success: true,
       message: 'Upload successful',
@@ -73,7 +75,9 @@ describe('TaskEvidenceTab', () => {
   it('displays transaction profile section', () => {
     render(<TaskEvidenceTab taskId="TASK-1" caseId="CASE-123" />);
 
-    expect(screen.getByText('Transaction Profile Analysis')).toBeInTheDocument();
+    expect(
+      screen.getByText('Transaction Profile Analysis'),
+    ).toBeInTheDocument();
   });
 
   it('opens transaction profile modal when generate button is clicked', () => {
@@ -96,10 +100,13 @@ describe('TaskEvidenceTab', () => {
   it('allows adding comments to evidence sections', () => {
     render(<TaskEvidenceTab taskId="TASK-1" caseId="CASE-123" />);
 
-    const commentTextareas = screen.getAllByPlaceholderText(/Add comments about/i);
+    const commentTextareas =
+      screen.getAllByPlaceholderText(/Add comments about/i);
     expect(commentTextareas.length).toBeGreaterThan(0);
 
-    fireEvent.change(commentTextareas[0], { target: { value: 'Test comment' } });
+    fireEvent.change(commentTextareas[0], {
+      target: { value: 'Test comment' },
+    });
     expect(commentTextareas[0]).toHaveValue('Test comment');
   });
 
@@ -110,7 +117,7 @@ describe('TaskEvidenceTab', () => {
         taskId="TASK-1"
         caseId="CASE-123"
         onUploadComplete={mockOnUploadComplete}
-      />
+      />,
     );
 
     // The component calls onUploadComplete after successful upload
@@ -120,4 +127,3 @@ describe('TaskEvidenceTab', () => {
     });
   });
 });
-

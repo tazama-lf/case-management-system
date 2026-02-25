@@ -1,16 +1,15 @@
 import apiClient from '../../../shared/services/apiClient';
 import type { ApiErrorResponse } from '../../alerts/types/triage.types';
 
-
 export const TaskStatus = {
   STATUS_01_UNASSIGNED: 'STATUS_01_UNASSIGNED',
   STATUS_10_ASSIGNED: 'STATUS_10_ASSIGNED',
   STATUS_20_IN_PROGRESS: 'STATUS_20_IN_PROGRESS',
   STATUS_30_COMPLETED: 'STATUS_30_COMPLETED',
-  STATUS_21_BLOCKED: 'STATUS_21_BLOCKED'
+  STATUS_21_BLOCKED: 'STATUS_21_BLOCKED',
 } as const;
 
-export type TaskStatusType = typeof TaskStatus[keyof typeof TaskStatus];
+export type TaskStatusType = (typeof TaskStatus)[keyof typeof TaskStatus];
 
 export interface TaskForSupervisor {
   task_id: number;
@@ -35,7 +34,6 @@ export interface TaskForSupervisor {
     priority?: string;
   };
 }
-
 
 export interface Task {
   id: number;
@@ -93,7 +91,7 @@ export interface SupervisorTasksResponse {
 }
 
 export class TaskService {
-  private baseUrl = '/api/v1/task';
+  private readonly baseUrl = '/api/v1/task';
 
   async getTasks(filters?: TaskFilters): Promise<TasksResponse> {
     try {
@@ -106,7 +104,9 @@ export class TaskService {
         });
       }
 
-      const response = await apiClient.get<TasksResponse>(`${this.baseUrl}?${params}`);
+      const response = await apiClient.get<TasksResponse>(
+        `${this.baseUrl}?${params}`,
+      );
       return response;
     } catch (error: any) {
       throw this.handleError(error, 'get tasks');
@@ -126,7 +126,10 @@ export class TaskService {
       const response = await apiClient.get<TaskForSupervisor[]>(url);
       return Array.isArray(response) ? response : [];
     } catch (error: any) {
-      console.error('TaskService: Failed to get all tasks from backend:', error);
+      console.error(
+        'TaskService: Failed to get all tasks from backend:',
+        error,
+      );
       throw this.handleError(error, 'get all tasks');
     }
   }
@@ -140,14 +143,18 @@ export class TaskService {
     }
   }
 
-  async assignTaskToInvestigator(taskId: number, assignedUserId: string, note?: string): Promise<TaskForSupervisor> {
+  async assignTaskToInvestigator(
+    taskId: number,
+    assignedUserId: string,
+    note?: string,
+  ): Promise<TaskForSupervisor> {
     try {
       const response = await apiClient.patch<TaskForSupervisor>(
         `${this.baseUrl}/${taskId}/assign`,
         {
           assignedUserId,
-          note
-        }
+          note,
+        },
       );
 
       return response;
@@ -157,15 +164,19 @@ export class TaskService {
     }
   }
 
-  async reassignTask(taskId: number, assignedUserId: string, note: string): Promise<{ success: boolean; message: string }> {
+  async reassignTask(
+    taskId: number,
+    assignedUserId: string,
+    note: string,
+  ): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await apiClient.patch<{ success: boolean; message: string }>(
-        `${this.baseUrl}/${taskId}/reassign`,
-        {
-          assignedUserId,
-          note
-        }
-      );
+      const response = await apiClient.patch<{
+        success: boolean;
+        message: string;
+      }>(`${this.baseUrl}/${taskId}/reassign`, {
+        assignedUserId,
+        note,
+      });
 
       return response;
     } catch (error: any) {
@@ -174,24 +185,30 @@ export class TaskService {
     }
   }
 
-  async assignTask(taskId: number, data: AssignTaskData): Promise<{ success: boolean; message: string }> {
+  async assignTask(
+    taskId: number,
+    data: AssignTaskData,
+  ): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await apiClient.post<{ success: boolean; message: string }>(
-        `${this.baseUrl}/${taskId}/assign`,
-        data
-      );
+      const response = await apiClient.post<{
+        success: boolean;
+        message: string;
+      }>(`${this.baseUrl}/${taskId}/assign`, data);
       return response;
     } catch (error: any) {
       throw this.handleError(error, 'assign task');
     }
   }
 
-  async unassignTask(taskId: number, data: UnassignTaskData): Promise<{ success: boolean; message: string }> {
+  async unassignTask(
+    taskId: number,
+    data: UnassignTaskData,
+  ): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await apiClient.patch<{ success: boolean; message: string }>(
-        `${this.baseUrl}/${taskId}/unassign`,
-        data
-      );
+      const response = await apiClient.patch<{
+        success: boolean;
+        message: string;
+      }>(`${this.baseUrl}/${taskId}/unassign`, data);
       return response;
     } catch (error: any) {
       throw this.handleError(error, 'unassign task');
@@ -200,7 +217,10 @@ export class TaskService {
 
   async updateTask(taskId: number, data: Partial<Task>): Promise<Task> {
     try {
-      const response = await apiClient.patch<Task>(`${this.baseUrl}/${taskId}`, data);
+      const response = await apiClient.patch<Task>(
+        `${this.baseUrl}/${taskId}`,
+        data,
+      );
       return this.validateTaskResponse(response);
     } catch (error: any) {
       throw this.handleError(error, 'update task');
@@ -218,14 +238,19 @@ export class TaskService {
     },
   ): Promise<TaskForSupervisor> {
     try {
-      const response = await apiClient.patch<TaskForSupervisor>(`${this.baseUrl}/${taskId}`, data);
+      const response = await apiClient.patch<TaskForSupervisor>(
+        `${this.baseUrl}/${taskId}`,
+        data,
+      );
       return response;
     } catch (error: any) {
       throw this.handleError(error, 'update task for supervisor');
     }
   }
 
-  async createTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
+  async createTask(
+    data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<Task> {
     try {
       const response = await apiClient.post<Task>(this.baseUrl, data);
       return this.validateTaskResponse(response);
@@ -241,17 +266,23 @@ export class TaskService {
       const response = await apiClient.get<TaskForSupervisor[]>(url);
       return Array.isArray(response) ? response : [];
     } catch (error: any) {
-      console.error('TaskService: Failed to get tasks for case:', caseId, error);
+      console.error(
+        'TaskService: Failed to get tasks for case:',
+        caseId,
+        error,
+      );
       throw this.handleError(error, 'get tasks by case ID');
     }
   }
 
-  async getInvestigationTaskForCase(caseId: number): Promise<TaskForSupervisor | null> {
+  async getInvestigationTaskForCase(
+    caseId: number,
+  ): Promise<TaskForSupervisor | null> {
     try {
       const tasks = await this.getTasksByCaseId(caseId);
       // Find investigation task
-      const investigationTask = tasks.find(
-        (t) => t.name && t.name.toLowerCase().includes('investigation')
+      const investigationTask = tasks.find((t) =>
+        t.name?.toLowerCase().includes('investigation'),
       );
       return investigationTask || null;
     } catch (error: any) {
@@ -269,31 +300,34 @@ export class TaskService {
   ): Promise<{ success: boolean; message: string }> {
     try {
       const updateData: Partial<Task> = {
-        status: TaskStatus.STATUS_30_COMPLETED
+        status: TaskStatus.STATUS_30_COMPLETED,
       };
 
       await this.updateTask(taskId, updateData);
 
       return {
         success: true,
-        message: 'Task completed successfully'
+        message: 'Task completed successfully',
       };
     } catch (error: any) {
       throw this.handleError(error, 'complete task');
     }
   }
 
-  async closeTask(taskId: number, _data: CloseTaskData): Promise<{ success: boolean; message: string }> {
+  async closeTask(
+    taskId: number,
+    _data: CloseTaskData,
+  ): Promise<{ success: boolean; message: string }> {
     try {
       const updateData: Partial<Task> = {
-        status: TaskStatus.STATUS_30_COMPLETED
+        status: TaskStatus.STATUS_30_COMPLETED,
       };
 
       await this.updateTask(taskId, updateData);
 
       return {
         success: true,
-        message: 'Task closed successfully'
+        message: 'Task closed successfully',
       };
     } catch (error: any) {
       throw this.handleError(error, 'close task');
@@ -301,15 +335,21 @@ export class TaskService {
   }
 
   async startTask(taskId: number): Promise<TaskForSupervisor> {
-    return this.updateTaskForSupervisor(taskId, { status: TaskStatus.STATUS_20_IN_PROGRESS });
+    return await this.updateTaskForSupervisor(taskId, {
+      status: TaskStatus.STATUS_20_IN_PROGRESS,
+    });
   }
 
   async blockTask(taskId: number): Promise<TaskForSupervisor> {
-    return this.updateTaskForSupervisor(taskId, { status: TaskStatus.STATUS_21_BLOCKED });
+    return await this.updateTaskForSupervisor(taskId, {
+      status: TaskStatus.STATUS_21_BLOCKED,
+    });
   }
 
   async completeTaskForSupervisor(taskId: number): Promise<TaskForSupervisor> {
-    return this.updateTaskForSupervisor(taskId, { status: TaskStatus.STATUS_30_COMPLETED });
+    return await this.updateTaskForSupervisor(taskId, {
+      status: TaskStatus.STATUS_30_COMPLETED,
+    });
   }
 
   private validateTaskResponse(data: unknown): Task {

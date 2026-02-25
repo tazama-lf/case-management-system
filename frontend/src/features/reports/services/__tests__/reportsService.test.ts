@@ -88,7 +88,12 @@ describe('ReportsService', () => {
 
     it('should include filters in query params', async () => {
       vi.mocked(apiClient.get).mockResolvedValue({
-        stats: { totalCases: 0, closedCases: 0, openCases: 0, avgResolutionTime: 0 },
+        stats: {
+          totalCases: 0,
+          closedCases: 0,
+          openCases: 0,
+          avgResolutionTime: 0,
+        },
         statusDistribution: {
           assigned: 0,
           inProgress: 0,
@@ -374,4 +379,3 @@ describe('ReportsService', () => {
     });
   });
 });
-

@@ -91,7 +91,10 @@ export const handlers = [
     if (search) {
       filteredAlerts = filteredAlerts.filter(
         (alert) =>
-          alert.alert_id.toString().toLowerCase().includes(search.toLowerCase()) ||
+          alert.alert_id
+            .toString()
+            .toLowerCase()
+            .includes(search.toLowerCase()) ||
           alert.message.toLowerCase().includes(search.toLowerCase()),
       );
     }
@@ -139,7 +142,9 @@ export const handlers = [
     const { alertId } = params;
     const updates = (await request.json()) as any;
 
-    const alertIndex = mockAlerts.findIndex((a) => a.alert_id.toString() === alertId);
+    const alertIndex = mockAlerts.findIndex(
+      (a) => a.alert_id.toString() === alertId,
+    );
     if (alertIndex === -1) {
       return HttpResponse.json({ error: 'Alert not found' }, { status: 404 });
     }
@@ -201,7 +206,9 @@ export const handlers = [
     async ({ params }) => {
       const { alertId } = params;
 
-      const alertIndex = mockAlerts.findIndex((a) => a.alert_id.toString() === alertId);
+      const alertIndex = mockAlerts.findIndex(
+        (a) => a.alert_id.toString() === alertId,
+      );
       if (alertIndex === -1) {
         return HttpResponse.json({ error: 'Alert not found' }, { status: 404 });
       }
@@ -222,7 +229,9 @@ export const handlers = [
   http.patch('/api/v1/triage/alerts/:alertId/close', async ({ params }) => {
     const { alertId } = params;
 
-    const alertIndex = mockAlerts.findIndex((a) => a.alert_id.toString() === alertId);
+    const alertIndex = mockAlerts.findIndex(
+      (a) => a.alert_id.toString() === alertId,
+    );
     if (alertIndex === -1) {
       return HttpResponse.json({ error: 'Alert not found' }, { status: 404 });
     }
@@ -238,7 +247,7 @@ export const handlers = [
   }),
 
   http.get('/api/v1/triage/alerts/timeout-test', () => {
-    return new Promise(() => { });
+    return new Promise(() => {});
   }),
 ];
 

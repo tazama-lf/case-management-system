@@ -23,9 +23,7 @@ describe('useReopenCaseActions', () => {
   it('reopens case successfully', async () => {
     (caseService.reopenCase as vi.Mock).mockResolvedValue({});
 
-    const { result } = renderHook(() =>
-      useReopenCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReopenCaseActions(mockRefreshCases));
 
     await result.current.handleReopenSubmit('CASE-123', 'Test reason');
 
@@ -41,9 +39,7 @@ describe('useReopenCaseActions', () => {
   it('trims reason before sending', async () => {
     (caseService.reopenCase as vi.Mock).mockResolvedValue({});
 
-    const { result } = renderHook(() =>
-      useReopenCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReopenCaseActions(mockRefreshCases));
 
     await result.current.handleReopenSubmit('CASE-123', '  Test reason  ');
 
@@ -58,9 +54,7 @@ describe('useReopenCaseActions', () => {
     const error = new Error('not in a reopenable state');
     (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReopenCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReopenCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReopenSubmit('CASE-123', 'Test reason'),
@@ -78,9 +72,7 @@ describe('useReopenCaseActions', () => {
     const error = new Error('Unauthorized');
     (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReopenCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReopenCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReopenSubmit('CASE-123', 'Test reason'),
@@ -98,9 +90,7 @@ describe('useReopenCaseActions', () => {
     const error = new Error('403');
     (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReopenCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReopenCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReopenSubmit('CASE-123', 'Test reason'),
@@ -118,9 +108,7 @@ describe('useReopenCaseActions', () => {
     const error = new Error('Case not found');
     (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReopenCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReopenCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReopenSubmit('CASE-123', 'Test reason'),
@@ -138,9 +126,7 @@ describe('useReopenCaseActions', () => {
     const error = new Error('404');
     (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReopenCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReopenCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReopenSubmit('CASE-123', 'Test reason'),
@@ -158,9 +144,7 @@ describe('useReopenCaseActions', () => {
     const error = new Error('Generic error message');
     (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReopenCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReopenCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReopenSubmit('CASE-123', 'Test reason'),
@@ -178,9 +162,7 @@ describe('useReopenCaseActions', () => {
     const error = new Error('');
     (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useReopenCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useReopenCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleReopenSubmit('CASE-123', 'Test reason'),
@@ -194,4 +176,3 @@ describe('useReopenCaseActions', () => {
     });
   });
 });
-

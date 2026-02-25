@@ -1,5 +1,8 @@
 import React from 'react';
-import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import {
+  ExclamationTriangleIcon,
+  ArrowPathIcon,
+} from '@heroicons/react/24/outline';
 
 interface ErrorFallbackProps {
   error?: Error;
@@ -12,50 +15,64 @@ interface ErrorFallbackProps {
 const ErrorFallback: React.FC<ErrorFallbackProps> = ({
   error,
   resetError,
-  title = "Something went wrong",
+  title = 'Something went wrong',
   message,
-  showRetry = true
+  showRetry = true,
 }) => {
   const getErrorMessage = () => {
     if (message) return message;
 
     if (error?.message) {
-      if (error.message.includes('Network Error') || error.message.includes('fetch')) {
-        return "Unable to connect to the server. Please check your internet connection and try again.";
+      if (
+        error.message.includes('Network Error') ||
+        error.message.includes('fetch')
+      ) {
+        return 'Unable to connect to the server. Please check your internet connection and try again.';
       }
-      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
-        return "Your session has expired. Please refresh the page and log in again.";
+      if (
+        error.message.includes('401') ||
+        error.message.includes('Unauthorized')
+      ) {
+        return 'Your session has expired. Please refresh the page and log in again.';
       }
-      if (error.message.includes('403') || error.message.includes('Forbidden')) {
+      if (
+        error.message.includes('403') ||
+        error.message.includes('Forbidden')
+      ) {
         return "You don't have permission to perform this action.";
       }
-      if (error.message.includes('404') || error.message.includes('Not Found')) {
-        return "The requested resource was not found.";
+      if (
+        error.message.includes('404') ||
+        error.message.includes('Not Found')
+      ) {
+        return 'The requested resource was not found.';
       }
-      if (error.message.includes('500') || error.message.includes('Internal Server Error')) {
-        return "A server error occurred. Please try again later or contact support if the problem persists.";
+      if (
+        error.message.includes('500') ||
+        error.message.includes('Internal Server Error')
+      ) {
+        return 'A server error occurred. Please try again later or contact support if the problem persists.';
       }
 
       return error.message;
     }
 
-    return "An unexpected error occurred. Please try again.";
+    return 'An unexpected error occurred. Please try again.';
   };
 
   return (
     <div className="min-h-96 flex items-center justify-center p-4">
       <div className="text-center max-w-md mx-auto">
         <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
-          <ExclamationTriangleIcon className="h-8 w-8 text-red-600" aria-hidden="true" />
+          <ExclamationTriangleIcon
+            className="h-8 w-8 text-red-600"
+            aria-hidden="true"
+          />
         </div>
 
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          {title}
-        </h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
 
-        <p className="text-sm text-gray-600 mb-6">
-          {getErrorMessage()}
-        </p>
+        <p className="text-sm text-gray-600 mb-6">{getErrorMessage()}</p>
 
         {showRetry && resetError && (
           <button

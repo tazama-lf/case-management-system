@@ -5,20 +5,24 @@ import ProtectedRoute from '@/features/auth/components/ProtectedRoute';
 import RoleBasedRedirect from '@/shared/components/navigation/RoleBasedRedirect';
 
 // Dynamic imports for route-level code splitting
-const Login = lazy(() => import('@/features/auth/pages/Login'));
-const Dashboard = lazy(() => import('@/features/dashboard/pages/Dashboard'));
-const Reports = lazy(() => import('@/features/reports/pages/CaseStatusReport'));
+const Login = lazy(async () => await import('@/features/auth/pages/Login'));
+const Dashboard = lazy(
+  async () => await import('@/features/dashboard/pages/Dashboard'),
+);
+const Reports = lazy(
+  async () => await import('@/features/reports/pages/CaseStatusReport'),
+);
 const AlertsDashboard = lazy(
-  () => import('@/features/alerts/pages/AlertsDashboard'),
+  async () => await import('@/features/alerts/pages/AlertsDashboard'),
 );
 const CasesDashboard = lazy(
-  () => import('@/features/cases/pages/CasesDashboard'),
+  async () => await import('@/features/cases/pages/CasesDashboard'),
 );
 const AdminDashboard = lazy(
-  () => import('@/features/admin/pages/AdminDashboard'),
+  async () => await import('@/features/admin/pages/AdminDashboard'),
 );
 const ReferenceIdDashboard = lazy(
-  () => import('@/features/admin/pages/ReferenceIdDashboard'),
+  async () => await import('@/features/admin/pages/ReferenceIdDashboard'),
 );
 
 // Loading fallback component
@@ -93,7 +97,11 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute
             requireBackendAccess
-            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'CMS_COMPLIANCE_OFFICER']}
+            requiredRoles={[
+              'CMS_SUPERVISOR',
+              'CMS_INVESTIGATOR',
+              'CMS_COMPLIANCE_OFFICER',
+            ]}
           >
             <Suspense fallback={<PageLoadingFallback />}>
               <CasesDashboard />
@@ -106,7 +114,11 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute
             requireBackendAccess
-            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'CMS_COMPLIANCE_OFFICER']}
+            requiredRoles={[
+              'CMS_SUPERVISOR',
+              'CMS_INVESTIGATOR',
+              'CMS_COMPLIANCE_OFFICER',
+            ]}
           >
             <Suspense fallback={<PageLoadingFallback />}>
               <CasesDashboard />
@@ -143,8 +155,7 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         element: (
-          <ProtectedRoute requireBackendAccess
-            requiredRoles={['CMS_ADMIN']}>
+          <ProtectedRoute requireBackendAccess requiredRoles={['CMS_ADMIN']}>
             <Suspense fallback={<PageLoadingFallback />}>
               <AdminDashboard />
             </Suspense>
@@ -154,8 +165,7 @@ export const router = createBrowserRouter([
       {
         path: 'reference_id',
         element: (
-          <ProtectedRoute requireBackendAccess
-            requiredRoles={['CMS_ADMIN']}>
+          <ProtectedRoute requireBackendAccess requiredRoles={['CMS_ADMIN']}>
             <Suspense fallback={<PageLoadingFallback />}>
               <ReferenceIdDashboard />
             </Suspense>

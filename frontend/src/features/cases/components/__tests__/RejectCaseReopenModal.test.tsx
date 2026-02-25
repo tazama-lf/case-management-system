@@ -21,9 +21,7 @@ describe('RejectCaseReopenModal', () => {
         onReject={mockOnReject}
       />,
     );
-    expect(
-      screen.queryByText('Reject Case Reopening'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Reject Case Reopening')).not.toBeInTheDocument();
   });
 
   it('renders modal with case ID when open', () => {
@@ -197,4 +195,3 @@ describe('RejectCaseReopenModal', () => {
     expect(screen.getByText(/characters minimum/i)).toBeInTheDocument();
   });
 });
-

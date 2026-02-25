@@ -46,7 +46,9 @@ describe('useEvidence', () => {
         evidence: [],
         total: 0,
       };
-      (evidenceService.getCaseEvidence as vi.Mock).mockResolvedValue(mockEvidence);
+      (evidenceService.getCaseEvidence as vi.Mock).mockResolvedValue(
+        mockEvidence,
+      );
 
       const { result } = renderHook(() => useCaseEvidence('CASE-123'), {
         wrapper: createWrapper(),
@@ -60,20 +62,25 @@ describe('useEvidence', () => {
     });
 
     it('respects enabled flag', () => {
-      const { result } = renderHook(() => useCaseEvidence('CASE-123', undefined, 1, 20, false), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useCaseEvidence('CASE-123', undefined, 1, 20, false),
+        {
+          wrapper: createWrapper(),
+        },
+      );
 
       expect(result.current.isFetching).toBe(false);
     });
 
     it('passes filters and pagination', async () => {
       const mockEvidence = { evidence: [], total: 0 };
-      (evidenceService.getCaseEvidence as vi.Mock).mockResolvedValue(mockEvidence);
+      (evidenceService.getCaseEvidence as vi.Mock).mockResolvedValue(
+        mockEvidence,
+      );
 
       const { result } = renderHook(
         () => useCaseEvidence('CASE-123', { evidenceType: 'SANCTIONS' }, 2, 10),
-        { wrapper: createWrapper() }
+        { wrapper: createWrapper() },
       );
 
       await waitFor(() => {
@@ -84,7 +91,7 @@ describe('useEvidence', () => {
         'CASE-123',
         { evidenceType: 'SANCTIONS' },
         2,
-        10
+        10,
       );
     });
   });
@@ -92,7 +99,9 @@ describe('useEvidence', () => {
   describe('useEvidenceDetails', () => {
     it('fetches evidence details', async () => {
       const mockEvidence = { id: 'EVIDENCE-1', name: 'Test Evidence' };
-      (evidenceService.getEvidenceById as vi.Mock).mockResolvedValue(mockEvidence);
+      (evidenceService.getEvidenceById as vi.Mock).mockResolvedValue(
+        mockEvidence,
+      );
 
       const { result } = renderHook(() => useEvidenceDetails('EVIDENCE-1'), {
         wrapper: createWrapper(),
@@ -102,13 +111,18 @@ describe('useEvidence', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(evidenceService.getEvidenceById).toHaveBeenCalledWith('EVIDENCE-1');
+      expect(evidenceService.getEvidenceById).toHaveBeenCalledWith(
+        'EVIDENCE-1',
+      );
     });
 
     it('respects enabled flag', () => {
-      const { result } = renderHook(() => useEvidenceDetails('EVIDENCE-1', false), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useEvidenceDetails('EVIDENCE-1', false),
+        {
+          wrapper: createWrapper(),
+        },
+      );
 
       expect(result.current.isFetching).toBe(false);
     });
@@ -125,15 +139,20 @@ describe('useEvidence', () => {
       };
       // Mock the method if it exists
       if (evidenceService.getCaseEvidenceStatistics) {
-        (evidenceService.getCaseEvidenceStatistics as vi.Mock).mockResolvedValue(mockStats);
+        (
+          evidenceService.getCaseEvidenceStatistics as vi.Mock
+        ).mockResolvedValue(mockStats);
 
         const { result } = renderHook(() => useEvidenceStatistics('CASE-123'), {
           wrapper: createWrapper(),
         });
 
-        await waitFor(() => {
-          expect(result.current.isSuccess).toBe(true);
-        }, { timeout: 3000 }).catch(() => {
+        await waitFor(
+          () => {
+            expect(result.current.isSuccess).toBe(true);
+          },
+          { timeout: 3000 },
+        ).catch(() => {
           // Method may not exist, skip test
         });
       } else {
@@ -156,15 +175,20 @@ describe('useEvidence', () => {
       ];
       // Mock the method if it exists
       if (evidenceService.getEvidenceAuditLog) {
-        (evidenceService.getEvidenceAuditLog as vi.Mock).mockResolvedValue(mockLogs);
+        (evidenceService.getEvidenceAuditLog as vi.Mock).mockResolvedValue(
+          mockLogs,
+        );
 
         const { result } = renderHook(() => useEvidenceAuditLog('EVIDENCE-1'), {
           wrapper: createWrapper(),
         });
 
-        await waitFor(() => {
-          expect(result.current.isSuccess).toBe(true);
-        }, { timeout: 3000 }).catch(() => {
+        await waitFor(
+          () => {
+            expect(result.current.isSuccess).toBe(true);
+          },
+          { timeout: 3000 },
+        ).catch(() => {
           // Method may not exist, skip test
         });
       } else {
@@ -182,7 +206,9 @@ describe('useEvidence', () => {
           file_name: 'test.pdf',
         },
       };
-      (evidenceService.uploadEvidence as vi.Mock).mockResolvedValue(mockResponse);
+      (evidenceService.uploadEvidence as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() => useUploadEvidence('CASE-123'), {
         wrapper: createWrapper(),
@@ -231,7 +257,9 @@ describe('useEvidence', () => {
         hash_match: true,
         verified: true,
       };
-      (evidenceService.verifyEvidence as vi.Mock).mockResolvedValue(mockResponse);
+      (evidenceService.verifyEvidence as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() => useVerifyEvidence('CASE-123'), {
         wrapper: createWrapper(),
@@ -254,7 +282,9 @@ describe('useEvidence', () => {
         hash_match: false,
         verified: false,
       };
-      (evidenceService.verifyEvidence as vi.Mock).mockResolvedValue(mockResponse);
+      (evidenceService.verifyEvidence as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() => useVerifyEvidence('CASE-123'), {
         wrapper: createWrapper(),
@@ -306,11 +336,16 @@ describe('useEvidence', () => {
           evidence_id: 'EVIDENCE-1',
           fileName: 'test.pdf',
         };
-        (evidenceService.updateEvidenceMetadata as vi.Mock).mockResolvedValue(mockEvidence);
+        (evidenceService.updateEvidenceMetadata as vi.Mock).mockResolvedValue(
+          mockEvidence,
+        );
 
-        const { result } = renderHook(() => useUpdateEvidenceMetadata('CASE-123'), {
-          wrapper: createWrapper(),
-        });
+        const { result } = renderHook(
+          () => useUpdateEvidenceMetadata('CASE-123'),
+          {
+            wrapper: createWrapper(),
+          },
+        );
 
         await act(async () => {
           await result.current.mutateAsync({
@@ -331,7 +366,7 @@ describe('useEvidence', () => {
       const mockBlob = new Blob(['test'], { type: 'application/pdf' });
       const mockUrl = 'blob:http://localhost/test';
       const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
-      
+
       // Mock URL.createObjectURL
       const originalCreateObjectURL = global.URL.createObjectURL;
       global.URL.createObjectURL = vi.fn().mockReturnValue(mockUrl);
@@ -349,9 +384,11 @@ describe('useEvidence', () => {
         await result.current.mutateAsync('EVIDENCE-1');
       });
 
-      expect(evidenceService.downloadEvidence).toHaveBeenCalledWith('EVIDENCE-1');
+      expect(evidenceService.downloadEvidence).toHaveBeenCalledWith(
+        'EVIDENCE-1',
+      );
       expect(toast.success).toHaveBeenCalled();
-      
+
       openSpy.mockRestore();
       global.URL.createObjectURL = originalCreateObjectURL;
     });
@@ -365,16 +402,21 @@ describe('useEvidence', () => {
           evidence: [],
           total: 0,
         };
-        (evidenceService.searchEvidence as vi.Mock).mockResolvedValue(mockResponse);
+        (evidenceService.searchEvidence as vi.Mock).mockResolvedValue(
+          mockResponse,
+        );
 
         const { result } = renderHook(
           () => useSearchEvidence({ evidenceType: 'SANCTIONS' }, 1, 20),
-          { wrapper: createWrapper() }
+          { wrapper: createWrapper() },
         );
 
-        await waitFor(() => {
-          expect(result.current.isSuccess).toBe(true);
-        }, { timeout: 3000 }).catch(() => {
+        await waitFor(
+          () => {
+            expect(result.current.isSuccess).toBe(true);
+          },
+          { timeout: 3000 },
+        ).catch(() => {
           // Method may not exist
         });
       } else {
@@ -383,4 +425,3 @@ describe('useEvidence', () => {
     });
   });
 });
-

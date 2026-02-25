@@ -11,28 +11,36 @@ export const useDynamicRoute = () => {
     navigate,
     location,
 
-    goToCaseDetail: (caseId: number) => navigate(`/cases/${caseId}`),
-    goToAlertDetail: (alertId: number) => navigate(`/alerts/${alertId}`),
-    goToReport: (reportType: string) => navigate(`/reports/${reportType}`),
-    goBack: () => navigate(-1),
+    goToCaseDetail: async (caseId: number) => {
+      await navigate(`/cases/${caseId}`);
+    },
+    goToAlertDetail: async (alertId: number) => {
+      await navigate(`/alerts/${alertId}`);
+    },
+    goToReport: async (reportType: string) => {
+      await navigate(`/reports/${reportType}`);
+    },
+    goBack: async () => {
+      await navigate(-1);
+    },
 
     getCurrentRoute: () => ({
       pathname: location.pathname,
       search: location.search,
       hash: location.hash,
-      state: location.state
-    })
+      state: location.state,
+    }),
   };
 };
-
 
 export const useUrlParams = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const searchParams = useMemo(() => {
-    return new URLSearchParams(location.search);
-  }, [location.search]);
+  const searchParams = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search],
+  );
 
   const updateParams = (newParams: Record<string, string | null>) => {
     const updatedParams = new URLSearchParams(searchParams);
@@ -45,15 +53,16 @@ export const useUrlParams = () => {
       }
     });
 
-    navigate({
-      pathname: location.pathname,
-      search: updatedParams.toString()
-    }, { replace: true });
+    navigate(
+      {
+        pathname: location.pathname,
+        search: updatedParams.toString(),
+      },
+      { replace: true },
+    );
   };
 
-  const getParam = (key: string): string | null => {
-    return searchParams.get(key);
-  };
+  const getParam = (key: string): string | null => searchParams.get(key);
 
   const setParam = (key: string, value: string | null) => {
     updateParams({ [key]: value });
@@ -70,7 +79,7 @@ export const useUrlParams = () => {
     removeParam,
     updateParams,
 
-    getAllParams: () => Object.fromEntries(searchParams.entries())
+    getAllParams: () => Object.fromEntries(searchParams.entries()),
   };
 };
 
@@ -85,20 +94,22 @@ export const ROUTES = {
   REPORTS: '/reports',
   REPORT_DETAIL: '/reports/:reportType',
   ADMIN: '/admin',
-  REFERENCE_ID: '/reference_id'
+  REFERENCE_ID: '/reference_id',
 } as const;
 
 /**
  * Helper function to build dynamic routes with parameters
  */
-export const buildRoute = (route: string, params: Record<string, string>): string => {
+export const buildRoute = (
+  route: string,
+  params: Record<string, string>,
+): string => {
   let builtRoute = route;
   Object.entries(params).forEach(([key, value]) => {
     builtRoute = builtRoute.replace(`:${key}`, value);
   });
   return builtRoute;
 };
-
 
 export const matchesRoute = (pathname: string, route: string): boolean => {
   const routePattern = route.replace(/:[^/]+/g, '[^/]+');
@@ -111,5 +122,5 @@ export default {
   useUrlParams,
   ROUTES,
   buildRoute,
-  matchesRoute
+  matchesRoute,
 };

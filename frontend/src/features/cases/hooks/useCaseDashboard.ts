@@ -6,7 +6,10 @@ import { useAuth } from '@/features/auth/components/AuthContext';
 import { useToast } from '@/shared/providers/ToastProvider';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
 import { useCaseActions } from '@/features/cases/hooks';
-import type { CaseModalState, CaseModalActions } from '../components/CaseModalsManager';
+import type {
+  CaseModalState,
+  CaseModalActions,
+} from '../components/CaseModalsManager';
 import useDebounce from '@/shared/hooks/useDebounce';
 
 export interface CaseDashboardFilters {
@@ -59,11 +62,12 @@ export const useCaseDashboard = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
   const [sarStrStatusFilter, setSarStrStatusFilter] = useState<string>('');
-  const [caseTypeFilter, setCaseTypeFilter] = useState<'all' | 'draft' | 'closed'>('all');
+  const [caseTypeFilter, setCaseTypeFilter] = useState<
+    'all' | 'draft' | 'closed'
+  >('all');
 
   // Debounce search term to avoid excessive API calls
   const debouncedSearch = useDebounce(search, 500);
-
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isUpdateAlertOpen, setIsUpdateAlertOpen] = useState(false);
@@ -73,13 +77,16 @@ export const useCaseDashboard = () => {
   const [isAbandonOpen, setIsAbandonOpen] = useState(false);
   const [isSuspendOpen, setIsSuspendOpen] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
-  const [isCaseClosureDecisionOpen, setIsCaseClosureDecisionOpen] = useState(false);
+  const [isCaseClosureDecisionOpen, setIsCaseClosureDecisionOpen] =
+    useState(false);
   const [isApproveCreationOpen, setIsApproveCreationOpen] = useState(false);
   const [isRejectCreationOpen, setIsRejectCreationOpen] = useState(false);
   const [isApproveReopenOpen, setIsApproveReopenOpen] = useState(false);
   const [isRejectReopenOpen, setIsRejectReopenOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<CaseRow | null>(null);
-  const [createModalMode, setCreateModalMode] = useState<'create' | 'edit'>('create');
+  const [createModalMode, setCreateModalMode] = useState<'create' | 'edit'>(
+    'create',
+  );
   const [editingCaseId, setEditingCaseId] = useState<number | null>(null);
   const [createCaseLoading, setCreateCaseLoading] = useState(false);
   const [createCaseError, setCreateCaseError] = useState<string>('');
@@ -118,9 +125,9 @@ export const useCaseDashboard = () => {
         page: currentPage,
         limit: pageSize,
         search: debouncedSearch || undefined,
-        excludeDraft: excludeDraft,
-        excludeClosed: excludeClosed,
-        closedOnly: closedOnly,
+        excludeDraft,
+        excludeClosed,
+        closedOnly,
       });
 
       const transformedCases = response.cases.map(transformBackendCaseToUI);
@@ -137,7 +144,16 @@ export const useCaseDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, priorityFilter, sarStrStatusFilter, sortBy, currentPage, pageSize, debouncedSearch, caseTypeFilter]);
+  }, [
+    statusFilter,
+    priorityFilter,
+    sarStrStatusFilter,
+    sortBy,
+    currentPage,
+    pageSize,
+    debouncedSearch,
+    caseTypeFilter,
+  ]);
 
   // Case actions hook
   const caseActions = useCaseActions(fetchCases);
@@ -146,16 +162,14 @@ export const useCaseDashboard = () => {
     fetchCases();
   }, [fetchCases]);
 
-
   useEffect(() => {
     const caseId = Number(params.caseId);
     if (caseId && cases.length > 0) {
-      const caseToView = cases.find(c => c.id === caseId);
+      const caseToView = cases.find((c) => c.id === caseId);
       if (caseToView) {
         setSelectedRow(caseToView);
         setIsViewOpen(true);
       } else {
-
         navigate('/cases');
       }
     }
@@ -179,9 +193,8 @@ export const useCaseDashboard = () => {
     currentPage,
     pageSize,
     totalItems,
-    totalPages
+    totalPages,
   };
-
 
   const dashboardActions = {
     handleView: (row: CaseRow) => {
@@ -201,8 +214,6 @@ export const useCaseDashboard = () => {
         setIsCreateOpen(true);
       }
     },
-
-
 
     handleCloseCase: (row: CaseRow) => {
       setSelectedRow(row);
@@ -264,7 +275,7 @@ export const useCaseDashboard = () => {
       setEditingCaseId(null);
       setSelectedRow(null);
       setIsCreateOpen(true);
-    }
+    },
   };
 
   const filterActions = {
@@ -273,9 +284,8 @@ export const useCaseDashboard = () => {
     setStatusFilter,
     setPriorityFilter,
     setSarStrStatusFilter,
-    setCaseTypeFilter
+    setCaseTypeFilter,
   };
-
 
   const modalState: CaseModalState = {
     isCreateOpen,
@@ -295,7 +305,7 @@ export const useCaseDashboard = () => {
     createModalMode,
     editingCaseId,
     createCaseLoading,
-    createCaseError
+    createCaseError,
   };
 
   const modalActions: CaseModalActions = {
@@ -316,9 +326,8 @@ export const useCaseDashboard = () => {
     setCreateModalMode,
     setEditingCaseId,
     setCreateCaseLoading,
-    setCreateCaseError
+    setCreateCaseError,
   };
-
 
   const supervisorOrAdmin = hasSupervisorRole() || hasCMSAdminRole();
   const investigatorOnly = hasInvestigatorRole() && !supervisorOrAdmin;
@@ -333,20 +342,18 @@ export const useCaseDashboard = () => {
       statusFilter,
       priorityFilter,
       sarStrStatusFilter,
-      caseTypeFilter
+      caseTypeFilter,
     },
     pagination,
     permissions: {
       canManageSupervisorActions: supervisorOrAdmin,
-      isInvestigatorOnly: investigatorOnly
-    }
+      isInvestigatorOnly: investigatorOnly,
+    },
   };
 
   return {
-
     dashboardState,
     modalState,
-
 
     dashboardActions,
     filterActions,
@@ -361,7 +368,7 @@ export const useCaseDashboard = () => {
       setPageSize(size);
       setCurrentPage(1); // Reset to first page when changing page size
     },
-    refreshCases: fetchCases
+    refreshCases: fetchCases,
   };
 };
 

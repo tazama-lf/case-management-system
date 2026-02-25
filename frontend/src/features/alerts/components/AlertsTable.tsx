@@ -119,7 +119,9 @@ const AlertsTable = <T extends Record<string, unknown>>({
                     ref={(input) => {
                       if (input) input.indeterminate = isPartiallySelected;
                     }}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    onChange={(e) => {
+                      handleSelectAll(e.target.checked);
+                    }}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                 </th>
@@ -170,20 +172,22 @@ const AlertsTable = <T extends Record<string, unknown>>({
                   <tr
                     key={String(key)}
                     className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''} ${onRowClick ? 'cursor-pointer' : ''}`}
-                    onClick={() => onRowClick && onRowClick(row)}
+                    onClick={() => onRowClick?.(row)}
                   >
                     {}
                     {selectable && (
                       <td
                         className="px-6 py-4 whitespace-nowrap"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
                       >
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={(e) =>
-                            handleRowSelect(key, e.target.checked)
-                          }
+                          onChange={(e) => {
+                            handleRowSelect(key, e.target.checked);
+                          }}
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
                       </td>

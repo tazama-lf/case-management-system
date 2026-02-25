@@ -5,7 +5,11 @@ import { MemoryRouter } from 'react-router-dom';
 import Header from '../Header';
 
 vi.mock('../Breadcrumb', () => ({
-  default: ({ items }: any) => <nav data-testid="breadcrumb">{items?.map((i: any) => i.name).join(' > ')}</nav>,
+  default: ({ items }: any) => (
+    <nav data-testid="breadcrumb">
+      {items?.map((i: any) => i.name).join(' > ')}
+    </nav>
+  ),
 }));
 
 describe('Header', () => {
@@ -22,7 +26,7 @@ describe('Header', () => {
     render(
       <MemoryRouter>
         <Header user={mockUser} title="Test Title" />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // Title appears in both desktop and mobile views
@@ -39,7 +43,7 @@ describe('Header', () => {
     render(
       <MemoryRouter>
         <Header user={mockUser} breadcrumbs={breadcrumbs} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // Breadcrumbs may appear multiple times (desktop and mobile)
@@ -51,7 +55,7 @@ describe('Header', () => {
     render(
       <MemoryRouter>
         <Header user={mockUser} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -62,7 +66,7 @@ describe('Header', () => {
     render(
       <MemoryRouter>
         <Header user={mockUser} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('JD')).toBeInTheDocument();
@@ -77,7 +81,7 @@ describe('Header', () => {
     render(
       <MemoryRouter>
         <Header user={userWithoutName as any} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('TE')).toBeInTheDocument();
@@ -92,7 +96,7 @@ describe('Header', () => {
     render(
       <MemoryRouter>
         <Header user={userWithRole as any} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('CMS INVESTIGATOR')).toBeInTheDocument();
@@ -108,7 +112,7 @@ describe('Header', () => {
           sidebarOpen={false}
           setSidebarOpen={setSidebarOpen}
         />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // Toggle button is only visible on mobile (md:hidden)
@@ -125,12 +129,8 @@ describe('Header', () => {
   it('shows X icon when sidebar is open', () => {
     render(
       <MemoryRouter>
-        <Header
-          user={mockUser}
-          sidebarOpen={true}
-          setSidebarOpen={vi.fn()}
-        />
-      </MemoryRouter>
+        <Header user={mockUser} sidebarOpen={true} setSidebarOpen={vi.fn()} />
+      </MemoryRouter>,
     );
 
     // Toggle button should exist (may be hidden on desktop with md:hidden class)
@@ -142,14 +142,16 @@ describe('Header', () => {
   });
 
   it('renders mobile title and breadcrumbs', () => {
-    const breadcrumbs = [
-      { name: 'Home', href: '/' },
-    ];
+    const breadcrumbs = [{ name: 'Home', href: '/' }];
 
     render(
       <MemoryRouter>
-        <Header user={mockUser} title="Mobile Title" breadcrumbs={breadcrumbs} />
-      </MemoryRouter>
+        <Header
+          user={mockUser}
+          title="Mobile Title"
+          breadcrumbs={breadcrumbs}
+        />
+      </MemoryRouter>,
     );
 
     // Title appears in both desktop and mobile views
@@ -157,4 +159,3 @@ describe('Header', () => {
     expect(titles.length).toBeGreaterThan(0);
   });
 });
-

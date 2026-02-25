@@ -18,8 +18,20 @@ vi.mock('../../utils/alertTransformers', () => ({
 const mockService = triageService as unknown as { getAlerts: vi.Mock };
 const mockTransformer = transformBackendAlertToUI as vi.Mock;
 
-const backendAlert = { alert_id: 'ALERT-1', priority: 'URGENT', created_at: '2024-01-01T00:00:00Z' };
-const uiAlert = { alert_id: 'ALERT-1', priority: 'URGENT', created_at: '2024-01-01T00:00:00Z', message: 'Test', txtp: 'tx-1', source: 'REST API', alert_type: 'FRAUD' };
+const backendAlert = {
+  alert_id: 'ALERT-1',
+  priority: 'URGENT',
+  created_at: '2024-01-01T00:00:00Z',
+};
+const uiAlert = {
+  alert_id: 'ALERT-1',
+  priority: 'URGENT',
+  created_at: '2024-01-01T00:00:00Z',
+  message: 'Test',
+  txtp: 'tx-1',
+  source: 'REST API',
+  alert_type: 'FRAUD',
+};
 
 describe('useAlerts', () => {
   beforeEach(() => {
@@ -80,9 +92,13 @@ describe('useAlerts', () => {
   });
 
   it('filters alerts by query string', async () => {
-    const alert1 = { ...uiAlert, alert_id: 'ALERT-1', message: 'Fraud detected' };
+    const alert1 = {
+      ...uiAlert,
+      alert_id: 'ALERT-1',
+      message: 'Fraud detected',
+    };
     const alert2 = { ...uiAlert, alert_id: 'ALERT-2', message: 'AML check' };
-    
+
     mockService.getAlerts.mockResolvedValueOnce({
       alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
       pagination: { totalItems: 2, totalPages: 1 },
@@ -98,14 +114,16 @@ describe('useAlerts', () => {
 
     await waitFor(() => {
       const filtered = result.current.filteredAlerts;
-      expect(filtered.some(a => a.message?.toLowerCase().includes('fraud'))).toBe(true);
+      expect(
+        filtered.some((a) => a.message?.toLowerCase().includes('fraud')),
+      ).toBe(true);
     });
   });
 
   it('filters alerts by source', async () => {
     const alert1 = { ...uiAlert, source: 'REST API' };
     const alert2 = { ...uiAlert, alert_id: 'ALERT-2', source: 'NATS' };
-    
+
     mockService.getAlerts.mockResolvedValueOnce({
       alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
       pagination: { totalItems: 2, totalPages: 1 },
@@ -121,14 +139,16 @@ describe('useAlerts', () => {
 
     await waitFor(() => {
       const filtered = result.current.filteredAlerts;
-      expect(filtered.every(a => (a.source || '').toLowerCase() === 'rest api')).toBe(true);
+      expect(
+        filtered.every((a) => (a.source || '').toLowerCase() === 'rest api'),
+      ).toBe(true);
     });
   });
 
   it('filters alerts by type', async () => {
     const alert1 = { ...uiAlert, alert_type: 'FRAUD' };
     const alert2 = { ...uiAlert, alert_id: 'ALERT-2', alert_type: 'AML' };
-    
+
     mockService.getAlerts.mockResolvedValueOnce({
       alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
       pagination: { totalItems: 2, totalPages: 1 },
@@ -144,14 +164,16 @@ describe('useAlerts', () => {
 
     await waitFor(() => {
       const filtered = result.current.filteredAlerts;
-      expect(filtered.every(a => (a.alert_type || '').toLowerCase() === 'fraud')).toBe(true);
+      expect(
+        filtered.every((a) => (a.alert_type || '').toLowerCase() === 'fraud'),
+      ).toBe(true);
     });
   });
 
   it('filters alerts by priority', async () => {
     const alert1 = { ...uiAlert, priority: 'URGENT' };
     const alert2 = { ...uiAlert, alert_id: 'ALERT-2', priority: 'CRITICAL' };
-    
+
     mockService.getAlerts.mockResolvedValueOnce({
       alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
       pagination: { totalItems: 2, totalPages: 1 },
@@ -167,7 +189,9 @@ describe('useAlerts', () => {
 
     await waitFor(() => {
       const filtered = result.current.filteredAlerts;
-      expect(filtered.every(a => (a.priority || '').toLowerCase() === 'urgent')).toBe(true);
+      expect(
+        filtered.every((a) => (a.priority || '').toLowerCase() === 'urgent'),
+      ).toBe(true);
     });
   });
 
@@ -176,13 +200,19 @@ describe('useAlerts', () => {
     const todayAlert = { ...uiAlert, created_at: today.toISOString() };
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayAlert = { ...uiAlert, alert_id: 'ALERT-2', created_at: yesterday.toISOString() };
-    
+    const yesterdayAlert = {
+      ...uiAlert,
+      alert_id: 'ALERT-2',
+      created_at: yesterday.toISOString(),
+    };
+
     mockService.getAlerts.mockResolvedValueOnce({
       alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
       pagination: { totalItems: 2, totalPages: 1 },
     });
-    mockTransformer.mockReturnValueOnce(todayAlert).mockReturnValueOnce(yesterdayAlert);
+    mockTransformer
+      .mockReturnValueOnce(todayAlert)
+      .mockReturnValueOnce(yesterdayAlert);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -201,21 +231,27 @@ describe('useAlerts', () => {
     const startDate = '2024-01-01';
     const endDate = '2024-01-31';
     const inRangeAlert = { ...uiAlert, created_at: '2024-01-15T00:00:00Z' };
-    const outOfRangeAlert = { ...uiAlert, alert_id: 'ALERT-2', created_at: '2024-02-15T00:00:00Z' };
-    
+    const outOfRangeAlert = {
+      ...uiAlert,
+      alert_id: 'ALERT-2',
+      created_at: '2024-02-15T00:00:00Z',
+    };
+
     mockService.getAlerts.mockResolvedValueOnce({
       alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
       pagination: { totalItems: 2, totalPages: 1 },
     });
-    mockTransformer.mockReturnValueOnce(inRangeAlert).mockReturnValueOnce(outOfRangeAlert);
+    mockTransformer
+      .mockReturnValueOnce(inRangeAlert)
+      .mockReturnValueOnce(outOfRangeAlert);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     act(() => {
-      result.current.setFilters({ 
+      result.current.setFilters({
         timeRange: 'custom',
-        customDateRange: { startDate, endDate }
+        customDateRange: { startDate, endDate },
       });
     });
 
@@ -228,7 +264,7 @@ describe('useAlerts', () => {
   it('sorts alerts ascending', async () => {
     const alert1 = { ...uiAlert, alert_id: 'ALERT-1', priority: 'A' };
     const alert2 = { ...uiAlert, alert_id: 'ALERT-2', priority: 'B' };
-    
+
     mockService.getAlerts.mockResolvedValueOnce({
       alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
       pagination: { totalItems: 2, totalPages: 1 },
@@ -251,7 +287,7 @@ describe('useAlerts', () => {
   it('sorts alerts descending', async () => {
     const alert1 = { ...uiAlert, alert_id: 'ALERT-1', priority: 'A' };
     const alert2 = { ...uiAlert, alert_id: 'ALERT-2', priority: 'B' };
-    
+
     mockService.getAlerts.mockResolvedValueOnce({
       alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
       pagination: { totalItems: 2, totalPages: 1 },
@@ -276,7 +312,7 @@ describe('useAlerts', () => {
       ...uiAlert,
       alert_id: `ALERT-${i + 1}`,
     }));
-    
+
     mockService.getAlerts.mockResolvedValueOnce({
       alerts: alerts.map(() => backendAlert),
       pagination: { totalItems: 25, totalPages: 3 },
@@ -340,7 +376,7 @@ describe('useAlerts', () => {
       transaction: { id: 'tx-123', amount: 1000 },
       network_map: { nodes: [{ id: 'node-1' }] },
     };
-    
+
     mockService.getAlerts.mockResolvedValueOnce({
       alerts: [backendAlert],
       pagination: { totalItems: 1, totalPages: 1 },
@@ -379,4 +415,3 @@ describe('useAlerts', () => {
     });
   });
 });
-

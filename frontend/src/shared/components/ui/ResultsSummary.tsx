@@ -3,20 +3,23 @@ import React from 'react';
 // Utility function to map frontend column names to user-friendly display names
 const getColumnDisplayName = (column: string): string => {
   const columnDisplayNames: Record<string, string> = {
-    'lastUpdated': 'Date Created',
-    'created_at': 'Date Created',
-    'updated_at': 'Last Updated', 
-    'priority': 'Priority',
-    'confidence_per': 'Confidence %',
-    'source': 'Source',
-    'alert_type': 'Alert Type',
-    'txtp': 'Transaction Type',
-    'alert_id': 'Alert ID',
-    'case_id': 'Case ID',
-    'status': 'Status'
+    lastUpdated: 'Date Created',
+    created_at: 'Date Created',
+    updated_at: 'Last Updated',
+    priority: 'Priority',
+    confidence_per: 'Confidence %',
+    source: 'Source',
+    alert_type: 'Alert Type',
+    txtp: 'Transaction Type',
+    alert_id: 'Alert ID',
+    case_id: 'Case ID',
+    status: 'Status',
   };
-  
-  return columnDisplayNames[column] || column.charAt(0).toUpperCase() + column.slice(1);
+
+  return (
+    columnDisplayNames[column] ||
+    column.charAt(0).toUpperCase() + column.slice(1)
+  );
 };
 
 interface ResultsSummaryProps {
@@ -35,17 +38,16 @@ interface ResultsSummaryProps {
   itemType?: string;
 }
 
-const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination,
-  onPageSizeChange, sort,
+const ResultsSummary: React.FC<ResultsSummaryProps> = ({
+  pagination,
+  onPageSizeChange,
+  sort,
 }) => {
-  const {
-    pageSize,
-  } = pagination;
+  const { pageSize } = pagination;
 
   return (
     <div className="mb-4 flex items-center justify-between">
-      {<div className="text-sm text-gray-600">
-      </div>}
+      {<div className="text-sm text-gray-600"></div>}
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
           <label htmlFor="pageSize" className="text-sm text-gray-600">
@@ -54,7 +56,9 @@ const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination,
           <select
             id="pageSize"
             value={pageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            onChange={(e) => {
+              onPageSizeChange(Number(e.target.value));
+            }}
             className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value={5}>5</option>
@@ -67,7 +71,8 @@ const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination,
           <span className="text-sm text-gray-600">per page</span>
         </div>
         <div className="text-sm text-gray-600">
-          Sorted by {getColumnDisplayName(sort.column)} ({sort.direction === 'asc' ? 'Ascending' : 'Descending'})
+          Sorted by {getColumnDisplayName(sort.column)} (
+          {sort.direction === 'asc' ? 'Ascending' : 'Descending'})
         </div>
       </div>
     </div>

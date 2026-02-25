@@ -47,4 +47,3 @@ describe('CaseInformationCard', () => {
     expect(screen.getByText('CLOSED')).toBeInTheDocument();
   });
 });
-

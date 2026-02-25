@@ -4,5 +4,5 @@ export {
   InvestigatorOnly,
   AdminOnly,
   SupervisorOrAdmin,
-  AuthenticatedOnly
+  AuthenticatedOnly,
 } from './RoleComponents';

@@ -52,9 +52,7 @@ describe('workQueueService', () => {
 
     await workQueueService.deleteWorkQueue('queue-1');
 
-    expect(mockApi.delete).toHaveBeenCalledWith(
-      '/api/v1/work-queues/queue-1',
-    );
+    expect(mockApi.delete).toHaveBeenCalledWith('/api/v1/work-queues/queue-1');
   });
 
   it('supports create and update operations', async () => {
@@ -65,14 +63,10 @@ describe('workQueueService', () => {
     await workQueueService.createWorkQueue(payload);
     await workQueueService.updateWorkQueue('queue-1', payload);
 
-    expect(mockApi.post).toHaveBeenCalledWith(
-      '/api/v1/work-queues',
-      payload,
-    );
+    expect(mockApi.post).toHaveBeenCalledWith('/api/v1/work-queues', payload);
     expect(mockApi.put).toHaveBeenCalledWith(
       '/api/v1/work-queues/queue-1',
       payload,
     );
   });
 });
-

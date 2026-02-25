@@ -42,7 +42,9 @@ describe('AssignTaskModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (authService.fetchAllInvestigators as vi.Mock).mockResolvedValue(mockInvestigators);
+    (authService.fetchAllInvestigators as vi.Mock).mockResolvedValue(
+      mockInvestigators,
+    );
     (authService.getUser as vi.Mock).mockReturnValue({
       userId: 'user-1',
       fullName: 'Current User',
@@ -84,7 +86,9 @@ describe('AssignTaskModal', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: /Assign Task/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Assign Task/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText('TASK-123')).toBeInTheDocument();
   });
 
@@ -140,7 +144,9 @@ describe('AssignTaskModal', () => {
     const assigneeSelect = screen.getByRole('combobox');
     await user.selectOptions(assigneeSelect, 'inv-1');
 
-    const notesTextarea = screen.getByPlaceholderText(/Add any assignment notes/i);
+    const notesTextarea = screen.getByPlaceholderText(
+      /Add any assignment notes/i,
+    );
     await user.type(notesTextarea, 'Assigned for review');
 
     const submitButton = screen.getByRole('button', { name: /Assign/i });
@@ -172,4 +178,3 @@ describe('AssignTaskModal', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 });
-

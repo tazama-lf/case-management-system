@@ -1,6 +1,8 @@
 import apiClient from '@/shared/services/apiClient';
-import type { ReferenceIdsData, ReferenceIdsRequest } from '../types/admindashboard.types';
-
+import type {
+  ReferenceIdsData,
+  ReferenceIdsRequest,
+} from '../types/admindashboard.types';
 
 interface ReferenceIdsResponse {
   items: ReferenceIdsData[];
@@ -24,15 +26,19 @@ class ReferenceIdService {
     }
   }
 
-  async createReferenceIds(data: ReferenceIdsRequest): Promise<ReferenceIdsResponse> {
+  async createReferenceIds(
+    data: ReferenceIdsRequest,
+  ): Promise<ReferenceIdsResponse> {
     try {
-      const response = await apiClient.post<ReferenceIdsResponse>(`${this.baseEndpoint}/reference-id`, data);
+      const response = await apiClient.post<ReferenceIdsResponse>(
+        `${this.baseEndpoint}/reference-id`,
+        data,
+      );
       return response;
     } catch (error: any) {
       throw this.handleError(error, 'create reference id');
     }
   }
-
 
   private handleError(error: any, operation: string): Error {
     console.error(`ReferenceIdService Error - ${operation}:`, error);

@@ -1,4 +1,6 @@
-import React from 'react';
+import type React from 'react';
+
+import type { TablePaginationInfo } from '@/shared/types/pagination.types';
 
 export type { Alert, Priority, AlertType } from './triage.types';
 
@@ -20,8 +22,6 @@ export interface AlertsSearchFilters {
   endDate?: string;
 }
 
-import type { TablePaginationInfo } from '@/shared/types/pagination.types';
-
 export interface AlertsTableColumn<T> {
   key: keyof T | string;
   header: string;
@@ -41,8 +41,8 @@ export interface AlertsTableAction<T> {
 
 export interface AlertsTableProps<T> {
   data: T[];
-  columns: AlertsTableColumn<T>[];
-  actions?: AlertsTableAction<T>[];
+  columns: Array<AlertsTableColumn<T>>;
+  actions?: Array<AlertsTableAction<T>>;
   loading?: boolean;
   emptyMessage?: string;
   pagination?: TablePaginationInfo;

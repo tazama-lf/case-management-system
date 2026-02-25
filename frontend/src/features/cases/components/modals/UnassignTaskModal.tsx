@@ -14,32 +14,45 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
   open,
   onClose,
   onUnassign,
-  task
+  task,
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { investigators, supervisors, fetchInvestigatorsList, fetchSupervisorsList, complianceOfficers, fetchComplianceOfficersList } = useInvestigatorSupervisorList();
+  const {
+    investigators,
+    supervisors,
+    fetchInvestigatorsList,
+    fetchSupervisorsList,
+    complianceOfficers,
+    fetchComplianceOfficersList,
+  } = useInvestigatorSupervisorList();
 
   React.useEffect(() => {
-    if (investigators.length === 0)
+    if (investigators.length === 0) {
       fetchInvestigatorsList();
-    if (supervisors.length === 0)
+    }
+    if (supervisors.length === 0) {
       fetchSupervisorsList();
-    if (complianceOfficers.length === 0)
+    }
+    if (complianceOfficers.length === 0) {
       fetchComplianceOfficersList();
-
-
+    }
   }, []);
 
   const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
-
-    const compliance = complianceOfficers.find(i => i.id === assigneeName || i.id === assignee);
+    const compliance = complianceOfficers.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
     if (compliance) return `${compliance.firstName} ${compliance.lastName}`;
 
-    const inv = investigators.find(i => i.id === assigneeName || i.id === assignee);
+    const inv = investigators.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
     if (inv) return `${inv.firstName} ${inv.lastName}`;
 
-    const sup = supervisors.find(i => i.id === assigneeName || i.id === assignee);
+    const sup = supervisors.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
     if (sup) return `${sup.firstName} ${sup.lastName}`;
 
     return assigneeName || assignee;
@@ -84,9 +97,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
               <h3 className="text-lg font-semibold text-gray-900">
                 Unassign Task
               </h3>
-              <p className="text-sm text-gray-600">
-                Task ID: {task.id}
-              </p>
+              <p className="text-sm text-gray-600">Task ID: {task.id}</p>
             </div>
           </div>
           <button
@@ -102,18 +113,29 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
           <div className="mb-4">
             <div className="bg-gray-50 border border-gray-200 rounded-md p-3 mb-4">
               <div className="text-sm">
-                <div className="font-medium text-gray-900 mb-1">Task Details:</div>
+                <div className="font-medium text-gray-900 mb-1">
+                  Task Details:
+                </div>
                 <div className="text-gray-700">
-                  <div><strong>Name:</strong> {task.name}</div>
-                  <div><strong>Current Assignee:</strong> {getAssigneeFullName(task.assignee, task.assigneeName) || 'Unassigned'}</div>
-                  <div><strong>Status:</strong> {task.status}</div>
+                  <div>
+                    <strong>Name:</strong> {task.name}
+                  </div>
+                  <div>
+                    <strong>Current Assignee:</strong>{' '}
+                    {getAssigneeFullName(task.assignee, task.assigneeName) ||
+                      'Unassigned'}
+                  </div>
+                  <div>
+                    <strong>Status:</strong> {task.status}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           <p className="text-sm text-gray-700 mb-4">
-            This task will be unassigned and returned to the work queue. The current assignee will be notified of the unassignment.
+            This task will be unassigned and returned to the work queue. The
+            current assignee will be notified of the unassignment.
           </p>
 
           {/* <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
@@ -130,13 +152,18 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
 
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
-              <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="reason"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Reason for unassignment <span className="text-red-500">*</span>
               </label>
               <textarea
                 id="reason"
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                onChange={(e) => {
+                  setReason(e.target.value);
+                }}
                 rows={3}
                 required
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
@@ -144,7 +171,8 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
               />
               {reason.trim().length === 0 && (
                 <p className="text-xs text-gray-500 mt-1">
-                  A reason is required for audit logging and notification purposes.
+                  A reason is required for audit logging and notification
+                  purposes.
                 </p>
               )}
             </div>

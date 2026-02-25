@@ -10,7 +10,9 @@ vi.mock('../../../../features/auth/components/AuthContext', () => ({
 
 vi.mock('../../ui/LoadingSpinner', () => ({
   default: ({ fullScreen }: any) => (
-    <div data-testid="loading-spinner">{fullScreen ? 'Full Screen' : 'Loading'}</div>
+    <div data-testid="loading-spinner">
+      {fullScreen ? 'Full Screen' : 'Loading'}
+    </div>
   ),
 }));
 
@@ -26,7 +28,7 @@ describe('RoleBasedRedirect', () => {
     render(
       <MemoryRouter>
         <RoleBasedRedirect />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
@@ -41,7 +43,7 @@ describe('RoleBasedRedirect', () => {
     render(
       <MemoryRouter>
         <RoleBasedRedirect />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // Navigate component should redirect
@@ -57,7 +59,7 @@ describe('RoleBasedRedirect', () => {
     render(
       <MemoryRouter>
         <RoleBasedRedirect />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // Navigate component should redirect

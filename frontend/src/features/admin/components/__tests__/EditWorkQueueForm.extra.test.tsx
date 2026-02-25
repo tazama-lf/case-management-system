@@ -20,7 +20,11 @@ describe('EditWorkQueueForm additional behaviors', () => {
 
   it('adds a role when selected from the dropdown', () => {
     render(
-      <EditWorkQueueForm queue={mockWorkQueue} onSave={() => {}} onCancel={() => {}} />
+      <EditWorkQueueForm
+        queue={mockWorkQueue}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />,
     );
 
     const selects = screen.getAllByRole('combobox');
@@ -31,14 +35,18 @@ describe('EditWorkQueueForm additional behaviors', () => {
 
     const amlRoleMatches = screen.getAllByText('AML Specialist');
     // there will be an <option> and a tag; ensure a tag/span exists
-    expect(amlRoleMatches.some((el) => el.tagName.toLowerCase() === 'span')).toBe(
-      true
-    );
+    expect(
+      amlRoleMatches.some((el) => el.tagName.toLowerCase() === 'span'),
+    ).toBe(true);
   });
 
   it('adds a task type when selected from the dropdown', () => {
     render(
-      <EditWorkQueueForm queue={mockWorkQueue} onSave={() => {}} onCancel={() => {}} />
+      <EditWorkQueueForm
+        queue={mockWorkQueue}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />,
     );
 
     const selects = screen.getAllByRole('combobox');
@@ -47,8 +55,8 @@ describe('EditWorkQueueForm additional behaviors', () => {
     fireEvent.change(taskSelect, { target: { value: 'AML Alert' } });
 
     const amlTaskMatches = screen.getAllByText('AML Alert');
-    expect(amlTaskMatches.some((el) => el.tagName.toLowerCase() === 'span')).toBe(
-      true
-    );
+    expect(
+      amlTaskMatches.some((el) => el.tagName.toLowerCase() === 'span'),
+    ).toBe(true);
   });
 });

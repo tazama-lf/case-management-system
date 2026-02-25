@@ -2,7 +2,12 @@ import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useCase, useUserCases, useUserWorkloadStats, canActOnCase } from '../useCase';
+import {
+  useCase,
+  useUserCases,
+  useUserWorkloadStats,
+  canActOnCase,
+} from '../useCase';
 import { caseService } from '../../services/caseService';
 
 vi.mock('../../services/caseService');
@@ -112,4 +117,3 @@ describe('canActOnCase', () => {
     expect(canActOnCase(undefined)).toBe(false);
   });
 });
-

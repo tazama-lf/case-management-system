@@ -1,5 +1,8 @@
 import React from 'react';
-import { ExclamationCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import {
+  ExclamationCircleIcon,
+  ArrowPathIcon,
+} from '@heroicons/react/24/outline';
 
 interface ErrorStateProps {
   /**
@@ -39,7 +42,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({
   onRetry,
   size = 'medium',
   className = '',
-  severity = 'error'
+  severity = 'error',
 }) => {
   const sizeClasses = {
     small: {
@@ -47,22 +50,22 @@ const ErrorState: React.FC<ErrorStateProps> = ({
       icon: 'h-8 w-8',
       title: 'text-base',
       message: 'text-sm',
-      button: 'px-3 py-1.5 text-sm'
+      button: 'px-3 py-1.5 text-sm',
     },
     medium: {
       container: 'p-6',
       icon: 'h-10 w-10',
       title: 'text-lg',
       message: 'text-base',
-      button: 'px-4 py-2 text-sm'
+      button: 'px-4 py-2 text-sm',
     },
     large: {
       container: 'p-8',
       icon: 'h-12 w-12',
       title: 'text-xl',
       message: 'text-lg',
-      button: 'px-6 py-3 text-base'
-    }
+      button: 'px-6 py-3 text-base',
+    },
   };
 
   const severityClasses = {
@@ -71,36 +74,42 @@ const ErrorState: React.FC<ErrorStateProps> = ({
       icon: 'text-red-500',
       title: 'text-red-900',
       message: 'text-red-700',
-      button: 'bg-red-600 hover:bg-red-700 text-white'
+      button: 'bg-red-600 hover:bg-red-700 text-white',
     },
     warning: {
       background: 'bg-yellow-50 border-yellow-200',
       icon: 'text-yellow-500',
       title: 'text-yellow-900',
       message: 'text-yellow-700',
-      button: 'bg-yellow-600 hover:bg-yellow-700 text-white'
+      button: 'bg-yellow-600 hover:bg-yellow-700 text-white',
     },
     info: {
       background: 'bg-blue-50 border-blue-200',
       icon: 'text-blue-500',
       title: 'text-blue-900',
       message: 'text-blue-700',
-      button: 'bg-blue-600 hover:bg-blue-700 text-white'
-    }
+      button: 'bg-blue-600 hover:bg-blue-700 text-white',
+    },
   };
 
   const currentSize = sizeClasses[size];
   const currentSeverity = severityClasses[severity];
 
   return (
-    <div className={`border rounded-lg ${currentSeverity.background} ${currentSize.container} ${className}`}>
+    <div
+      className={`border rounded-lg ${currentSeverity.background} ${currentSize.container} ${className}`}
+    >
       <div className="flex flex-col items-center text-center">
-        <ExclamationCircleIcon className={`${currentSize.icon} ${currentSeverity.icon} mb-3`} />
-        
-        <h3 className={`font-semibold ${currentSeverity.title} ${currentSize.title} mb-2`}>
+        <ExclamationCircleIcon
+          className={`${currentSize.icon} ${currentSeverity.icon} mb-3`}
+        />
+
+        <h3
+          className={`font-semibold ${currentSeverity.title} ${currentSize.title} mb-2`}
+        >
           {title}
         </h3>
-        
+
         <p className={`${currentSeverity.message} ${currentSize.message} mb-4`}>
           {message}
         </p>

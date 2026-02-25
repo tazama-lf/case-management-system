@@ -28,4 +28,3 @@ describe('BlockAllowListStatus', () => {
     expect(screen.getByText('Pending Investigation')).toBeInTheDocument();
   });
 });
-

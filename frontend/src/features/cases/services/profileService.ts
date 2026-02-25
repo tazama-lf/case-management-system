@@ -51,12 +51,14 @@ export interface GenerateProfileResponse extends TransactionProfile {}
 export interface GetProfileResponse extends TransactionProfile {}
 
 export class ProfileService {
-  private baseUrl = '/api/v1/dwh/profile';
+  private readonly baseUrl = '/api/v1/dwh/profile';
 
-  async generateProfile(request: GenerateProfileRequest): Promise<GenerateProfileResponse> {
+  async generateProfile(
+    request: GenerateProfileRequest,
+  ): Promise<GenerateProfileResponse> {
     try {
       const user = localStorage.getItem('user');
-      let tenantId = request.tenantId;
+      let { tenantId } = request;
       if (user) {
         try {
           const userData = JSON.parse(user);
@@ -66,7 +68,7 @@ export class ProfileService {
         }
       }
       const response = await apiClient.post<GenerateProfileResponse>(
-         `${this.baseUrl}/generate`,
+        `${this.baseUrl}/generate`,
         { ...request, tenantId },
       );
       return response;

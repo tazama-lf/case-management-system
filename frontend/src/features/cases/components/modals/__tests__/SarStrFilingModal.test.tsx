@@ -32,7 +32,9 @@ describe('SarStrFilingModal', () => {
         caseId="CASE-123"
       />,
     );
-    expect(screen.queryByRole('heading', { name: /SAR\/STR Filing/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: /SAR\/STR Filing/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders modal when open', async () => {
@@ -46,7 +48,9 @@ describe('SarStrFilingModal', () => {
     );
 
     await waitFor(() => {
-      const headings = screen.getAllByRole('heading', { name: /SAR\/STR Filing/i });
+      const headings = screen.getAllByRole('heading', {
+        name: /SAR\/STR Filing/i,
+      });
       expect(headings.length).toBeGreaterThan(0);
     });
   });
@@ -92,11 +96,10 @@ describe('SarStrFilingModal', () => {
       const closeButtons = screen.getAllByRole('button', { name: /Close/i });
       expect(closeButtons.length).toBeGreaterThan(0);
     });
-    
+
     const closeButtons = screen.getAllByRole('button', { name: /Close/i });
     await user.click(closeButtons[0]);
 
     expect(mockOnClose).toHaveBeenCalled();
   });
 });
-

@@ -139,4 +139,3 @@ describe('AlertsTable', () => {
     expect(pagination.onPageChange).toHaveBeenCalledWith(2);
   });
 });
-

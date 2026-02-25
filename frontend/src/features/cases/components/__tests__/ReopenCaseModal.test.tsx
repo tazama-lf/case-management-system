@@ -164,7 +164,9 @@ describe('ReopenCaseModal', () => {
     const error = new Error('Reopening failed');
     mockOnReopen.mockRejectedValue(error);
 
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
 
     render(
       <ReopenCaseModal
@@ -258,4 +260,3 @@ describe('ReopenCaseModal', () => {
     expect(screen.getByText(/characters minimum/i)).toBeInTheDocument();
   });
 });
-

@@ -1,1 +1,1 @@
-export * from './evidence.types';
+export type * from './evidence.types';

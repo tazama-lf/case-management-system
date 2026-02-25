@@ -86,4 +86,3 @@ describe('LineChart', () => {
     expect(screen.getByTestId('legend')).toBeInTheDocument();
   });
 });
-

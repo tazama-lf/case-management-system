@@ -26,12 +26,7 @@ describe('CompletionTimeChart', () => {
   ];
 
   it('renders chart with data', () => {
-    render(
-      <CompletionTimeChart
-        data={mockData}
-        title="Completion Time"
-      />,
-    );
+    render(<CompletionTimeChart data={mockData} title="Completion Time" />);
 
     expect(screen.getByText('Completion Time')).toBeInTheDocument();
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
@@ -39,12 +34,7 @@ describe('CompletionTimeChart', () => {
   });
 
   it('renders empty state when data is empty', () => {
-    render(
-      <CompletionTimeChart
-        data={[]}
-        title="Completion Time"
-      />,
-    );
+    render(<CompletionTimeChart data={[]} title="Completion Time" />);
 
     expect(screen.getByText('Completion Time')).toBeInTheDocument();
     expect(
@@ -54,12 +44,7 @@ describe('CompletionTimeChart', () => {
   });
 
   it('renders empty state when data is null', () => {
-    render(
-      <CompletionTimeChart
-        data={null as any}
-        title="Completion Time"
-      />,
-    );
+    render(<CompletionTimeChart data={null as any} title="Completion Time" />);
 
     expect(
       screen.getByText('No completion time data available'),
@@ -68,10 +53,7 @@ describe('CompletionTimeChart', () => {
 
   it('renders empty state when data is undefined', () => {
     render(
-      <CompletionTimeChart
-        data={undefined as any}
-        title="Completion Time"
-      />,
+      <CompletionTimeChart data={undefined as any} title="Completion Time" />,
     );
 
     expect(
@@ -93,14 +75,8 @@ describe('CompletionTimeChart', () => {
   });
 
   it('renders with default height when not provided', () => {
-    render(
-      <CompletionTimeChart
-        data={mockData}
-        title="Completion Time"
-      />,
-    );
+    render(<CompletionTimeChart data={mockData} title="Completion Time" />);
 
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
 });
-

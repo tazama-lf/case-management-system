@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 
 export interface NavItem {
   name: string;
@@ -51,9 +51,9 @@ export interface HeaderProps {
   title?: string;
 }
 
-export type NavigationContextType = {
+export interface NavigationContextType {
   currentPath: string;
   navigate: (path: string) => void;
   user: User | null;
   setUser: (user: User | null) => void;
-};
+}

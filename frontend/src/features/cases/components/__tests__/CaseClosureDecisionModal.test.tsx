@@ -82,11 +82,11 @@ describe('CaseClosureDecisionModal component', () => {
 
     // Find the decision selection button (not the form heading)
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -110,11 +110,11 @@ describe('CaseClosureDecisionModal component', () => {
 
     // Find the decision selection button (not the form heading)
     const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find(btn => {
+    const decisionButton = rejectButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -138,17 +138,19 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
 
     await waitFor(() => {
-      expect(screen.getByText(/Investigator's Recommended Outcome/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Investigator's Recommended Outcome/i),
+      ).toBeInTheDocument();
       expect(screen.getByText(/82 Closed Confirmed/i)).toBeInTheDocument();
     });
   });
@@ -166,11 +168,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -194,18 +196,22 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
 
     await waitFor(() => {
-      expect(screen.getByText(/Investigator's Final Notes/i)).toBeInTheDocument();
-      expect(screen.getByText(/These are final notes from the investigator/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Investigator's Final Notes/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/These are final notes from the investigator/i),
+      ).toBeInTheDocument();
     });
   });
 
@@ -223,18 +229,22 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
 
     await waitFor(() => {
-      expect(screen.getByText(/Investigator's Recommendations/i)).toBeInTheDocument();
-      expect(screen.getByText(/These are recommendations from the investigator/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Investigator's Recommendations/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/These are recommendations from the investigator/i),
+      ).toBeInTheDocument();
     });
   });
 
@@ -254,11 +264,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -297,11 +307,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -310,7 +320,9 @@ describe('CaseClosureDecisionModal component', () => {
       expect(screen.getByText(/Supervisor Comments/i)).toBeInTheDocument();
     });
 
-    const commentsTextarea = screen.getByPlaceholderText(/provide any additional comments/i);
+    const commentsTextarea = screen.getByPlaceholderText(
+      /provide any additional comments/i,
+    );
     await user.type(commentsTextarea, 'Approved with supervisor comments');
 
     const submitButton = screen.getByRole('button', {
@@ -343,11 +355,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -357,7 +369,9 @@ describe('CaseClosureDecisionModal component', () => {
     });
 
     // Find select by its text content or role
-    const outcomeSelect = screen.getByRole('combobox') || screen.getByDisplayValue(/83 - Closed Inconclusive/i);
+    const outcomeSelect =
+      screen.getByRole('combobox') ||
+      screen.getByDisplayValue(/83 - Closed Inconclusive/i);
     await user.selectOptions(outcomeSelect, 'STATUS_82_CLOSED_CONFIRMED');
 
     const submitButton = screen.getByRole('button', {
@@ -388,11 +402,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -426,11 +440,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -467,11 +481,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find(btn => {
+    const decisionButton = rejectButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -481,7 +495,10 @@ describe('CaseClosureDecisionModal component', () => {
     });
 
     const reasonTextarea = screen.getByPlaceholderText(/explain in detail/i);
-    await user.type(reasonTextarea, 'This is a detailed rejection reason that meets the minimum length requirement');
+    await user.type(
+      reasonTextarea,
+      'This is a detailed rejection reason that meets the minimum length requirement',
+    );
 
     const submitButton = screen.getByRole('button', {
       name: /reject case closure/i,
@@ -489,7 +506,9 @@ describe('CaseClosureDecisionModal component', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(onReject).toHaveBeenCalledWith('This is a detailed rejection reason that meets the minimum length requirement');
+      expect(onReject).toHaveBeenCalledWith(
+        'This is a detailed rejection reason that meets the minimum length requirement',
+      );
       expect(onClose).toHaveBeenCalled();
     });
   });
@@ -509,11 +528,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find(btn => {
+    const decisionButton = rejectButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -531,8 +550,11 @@ describe('CaseClosureDecisionModal component', () => {
     expect(submitButton).toBeDisabled();
 
     await user.clear(reasonTextarea);
-    await user.type(reasonTextarea, 'This is a detailed rejection reason that meets the minimum length requirement');
-    
+    await user.type(
+      reasonTextarea,
+      'This is a detailed rejection reason that meets the minimum length requirement',
+    );
+
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
     });
@@ -553,11 +575,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find(btn => {
+    const decisionButton = rejectButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -568,13 +590,13 @@ describe('CaseClosureDecisionModal component', () => {
 
     const reasonTextarea = screen.getByPlaceholderText(/explain in detail/i);
     await user.type(reasonTextarea, 'Short');
-    
+
     // Submit button should be disabled for short reason
     const submitButton = screen.getByRole('button', {
       name: /reject case closure/i,
     });
     expect(submitButton).toBeDisabled();
-    
+
     // Try to submit form to trigger validation (even though button is disabled)
     const form = reasonTextarea.closest('form');
     if (form) {
@@ -582,11 +604,16 @@ describe('CaseClosureDecisionModal component', () => {
     }
 
     // Validation error should appear after form submission attempt
-    await waitFor(() => {
-      const errorText = screen.queryByText(/Rejection reason must be at least 15 characters/i);
-      // Error might not show if button is disabled, but validation should prevent submission
-      expect(onReject).not.toHaveBeenCalled();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        const errorText = screen.queryByText(
+          /Rejection reason must be at least 15 characters/i,
+        );
+        // Error might not show if button is disabled, but validation should prevent submission
+        expect(onReject).not.toHaveBeenCalled();
+      },
+      { timeout: 1000 },
+    );
   });
 
   it('handles reject error and displays error message', async () => {
@@ -604,11 +631,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find(btn => {
+    const decisionButton = rejectButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -618,7 +645,10 @@ describe('CaseClosureDecisionModal component', () => {
     });
 
     const reasonTextarea = screen.getByPlaceholderText(/explain in detail/i);
-    await user.type(reasonTextarea, 'This is a detailed rejection reason that meets the minimum length requirement');
+    await user.type(
+      reasonTextarea,
+      'This is a detailed rejection reason that meets the minimum length requirement',
+    );
 
     const submitButton = screen.getByRole('button', {
       name: /reject case closure/i,
@@ -645,11 +675,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find(btn => {
+    const decisionButton = rejectButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -659,7 +689,10 @@ describe('CaseClosureDecisionModal component', () => {
     });
 
     const reasonTextarea = screen.getByPlaceholderText(/explain in detail/i);
-    await user.type(reasonTextarea, 'This is a detailed rejection reason that meets the minimum length requirement');
+    await user.type(
+      reasonTextarea,
+      'This is a detailed rejection reason that meets the minimum length requirement',
+    );
 
     const submitButton = screen.getByRole('button', {
       name: /reject case closure/i,
@@ -687,11 +720,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -722,11 +755,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find(btn => {
+    const decisionButton = rejectButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -758,11 +791,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -793,11 +826,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -832,7 +865,9 @@ describe('CaseClosureDecisionModal component', () => {
       />,
     );
 
-    const rejectButton = screen.getByText(/Reject Case Closure/i).closest('button');
+    const rejectButton = screen
+      .getByText(/Reject Case Closure/i)
+      .closest('button');
     if (rejectButton) {
       await user.click(rejectButton);
     }
@@ -882,11 +917,11 @@ describe('CaseClosureDecisionModal component', () => {
     );
 
     const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find(btn => {
+    const decisionButton = approveButtons.find((btn) => {
       const button = btn.closest('button');
       return button && !button.getAttribute('type');
     });
-    
+
     if (decisionButton) {
       await user.click(decisionButton.closest('button')!);
     }
@@ -896,7 +931,9 @@ describe('CaseClosureDecisionModal component', () => {
     });
 
     // Find select by role or display value
-    const outcomeSelect = screen.getByRole('combobox') || screen.getByDisplayValue(/83 - Closed Inconclusive/i);
+    const outcomeSelect =
+      screen.getByRole('combobox') ||
+      screen.getByDisplayValue(/83 - Closed Inconclusive/i);
     expect(outcomeSelect).toHaveValue('STATUS_83_CLOSED_INCONCLUSIVE');
   });
 });

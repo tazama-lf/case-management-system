@@ -8,12 +8,10 @@ describe('alertTransformers basic utilities', () => {
     expect(transformers.mapSeverityToPriority('high')).toBe('CRITICAL');
     expect(transformers.mapSeverityToPriority('critical')).toBe('BREACH');
 
-    expect(
-      transformers.mapUIStatusToAlertStatus('new'),
-    ).toBe('NEW');
-    expect(
-      transformers.mapUIStatusToAlertStatus('investigating'),
-    ).toBe('INVESTIGATING');
+    expect(transformers.mapUIStatusToAlertStatus('new')).toBe('NEW');
+    expect(transformers.mapUIStatusToAlertStatus('investigating')).toBe(
+      'INVESTIGATING',
+    );
     expect(transformers.mapUIStatusToAlertStatus('closed')).toBe('CLOSED');
   });
 

@@ -26,7 +26,9 @@ describe('useApproveCaseActions', () => {
         id: 'CASE-123',
         status: 'STATUS_82_CLOSED_CONFIRMED',
       };
-      (caseService.approveCaseClosure as vi.Mock).mockResolvedValue(mockApprovedCase);
+      (caseService.approveCaseClosure as vi.Mock).mockResolvedValue(
+        mockApprovedCase,
+      );
 
       const { result } = renderHook(() =>
         useApproveCaseActions(mockRefreshCases),
@@ -39,10 +41,13 @@ describe('useApproveCaseActions', () => {
       );
 
       await waitFor(() => {
-        expect(caseService.approveCaseClosure).toHaveBeenCalledWith('CASE-123', {
-          finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
-          supervisorComments: 'Test comments',
-        });
+        expect(caseService.approveCaseClosure).toHaveBeenCalledWith(
+          'CASE-123',
+          {
+            finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+            supervisorComments: 'Test comments',
+          },
+        );
         expect(mockSuccess).toHaveBeenCalled();
         expect(mockRefreshCases).toHaveBeenCalled();
       });
@@ -53,7 +58,9 @@ describe('useApproveCaseActions', () => {
         id: 'CASE-123',
         status: 'STATUS_82_CLOSED_CONFIRMED',
       };
-      (caseService.approveCaseClosure as vi.Mock).mockResolvedValue(mockApprovedCase);
+      (caseService.approveCaseClosure as vi.Mock).mockResolvedValue(
+        mockApprovedCase,
+      );
 
       const { result } = renderHook(() =>
         useApproveCaseActions(mockRefreshCases),
@@ -65,10 +72,13 @@ describe('useApproveCaseActions', () => {
       );
 
       await waitFor(() => {
-        expect(caseService.approveCaseClosure).toHaveBeenCalledWith('CASE-123', {
-          finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
-          supervisorComments: undefined,
-        });
+        expect(caseService.approveCaseClosure).toHaveBeenCalledWith(
+          'CASE-123',
+          {
+            finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+            supervisorComments: undefined,
+          },
+        );
       });
     });
 
@@ -77,7 +87,9 @@ describe('useApproveCaseActions', () => {
         id: 'CASE-123',
         status: 'STATUS_82_CLOSED_CONFIRMED',
       };
-      (caseService.approveCaseClosure as vi.Mock).mockResolvedValue(mockApprovedCase);
+      (caseService.approveCaseClosure as vi.Mock).mockResolvedValue(
+        mockApprovedCase,
+      );
 
       const { result } = renderHook(() =>
         useApproveCaseActions(mockRefreshCases),
@@ -90,10 +102,13 @@ describe('useApproveCaseActions', () => {
       );
 
       await waitFor(() => {
-        expect(caseService.approveCaseClosure).toHaveBeenCalledWith('CASE-123', {
-          finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
-          supervisorComments: 'Test comments',
-        });
+        expect(caseService.approveCaseClosure).toHaveBeenCalledWith(
+          'CASE-123',
+          {
+            finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+            supervisorComments: 'Test comments',
+          },
+        );
       });
     });
 
@@ -242,7 +257,9 @@ describe('useApproveCaseActions', () => {
         id: 'CASE-123',
         status: 'STATUS_10_ASSIGNED',
       };
-      (caseService.approveCaseCreation as vi.Mock).mockResolvedValue(mockApprovedCase);
+      (caseService.approveCaseCreation as vi.Mock).mockResolvedValue(
+        mockApprovedCase,
+      );
 
       const { result } = renderHook(() =>
         useApproveCaseActions(mockRefreshCases),
@@ -251,7 +268,9 @@ describe('useApproveCaseActions', () => {
       await result.current.handleApproveCreation('CASE-123');
 
       await waitFor(() => {
-        expect(caseService.approveCaseCreation).toHaveBeenCalledWith('CASE-123');
+        expect(caseService.approveCaseCreation).toHaveBeenCalledWith(
+          'CASE-123',
+        );
         expect(mockSuccess).toHaveBeenCalled();
         expect(mockRefreshCases).toHaveBeenCalled();
       });
@@ -323,7 +342,9 @@ describe('useApproveCaseActions', () => {
       const mockResult = {
         message: 'Case reopened successfully',
       };
-      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(mockResult);
+      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(
+        mockResult,
+      );
 
       const { result } = renderHook(() =>
         useApproveCaseActions(mockRefreshCases),
@@ -332,7 +353,9 @@ describe('useApproveCaseActions', () => {
       await result.current.handleApproveReopening('CASE-123');
 
       await waitFor(() => {
-        expect(caseService.approveCaseReopening).toHaveBeenCalledWith('CASE-123');
+        expect(caseService.approveCaseReopening).toHaveBeenCalledWith(
+          'CASE-123',
+        );
         expect(mockSuccess).toHaveBeenCalled();
         expect(mockRefreshCases).toHaveBeenCalled();
       });
@@ -399,4 +422,3 @@ describe('useApproveCaseActions', () => {
     });
   });
 });
-

@@ -15,7 +15,7 @@ describe('LoadingState', () => {
     render(
       <LoadingState>
         <div>Content</div>
-      </LoadingState>
+      </LoadingState>,
     );
 
     expect(screen.getByText('Content')).toBeInTheDocument();
@@ -25,7 +25,7 @@ describe('LoadingState', () => {
     render(
       <LoadingState loading={true}>
         <div>Content</div>
-      </LoadingState>
+      </LoadingState>,
     );
 
     // SpinnerWithText renders "Loading..." text - there may be multiple instances
@@ -35,12 +35,9 @@ describe('LoadingState', () => {
 
   it('renders custom loading component', () => {
     render(
-      <LoadingState
-        loading={true}
-        loadingComponent={<div>Custom Loading</div>}
-      >
+      <LoadingState loading={true} loadingComponent={<div>Custom Loading</div>}>
         <div>Content</div>
-      </LoadingState>
+      </LoadingState>,
     );
 
     expect(screen.getByText('Custom Loading')).toBeInTheDocument();
@@ -50,7 +47,7 @@ describe('LoadingState', () => {
     render(
       <LoadingState error="Something went wrong">
         <div>Content</div>
-      </LoadingState>
+      </LoadingState>,
     );
 
     expect(screen.getByText('Error Loading Data')).toBeInTheDocument();
@@ -61,7 +58,7 @@ describe('LoadingState', () => {
     render(
       <LoadingState error={new Error('Test error')}>
         <div>Content</div>
-      </LoadingState>
+      </LoadingState>,
     );
 
     expect(screen.getByText('Error Loading Data')).toBeInTheDocument();
@@ -70,12 +67,9 @@ describe('LoadingState', () => {
 
   it('renders custom error component', () => {
     render(
-      <LoadingState
-        error="Error"
-        errorComponent={<div>Custom Error</div>}
-      >
+      <LoadingState error="Error" errorComponent={<div>Custom Error</div>}>
         <div>Content</div>
-      </LoadingState>
+      </LoadingState>,
     );
 
     expect(screen.getByText('Custom Error')).toBeInTheDocument();
@@ -85,21 +79,20 @@ describe('LoadingState', () => {
     render(
       <LoadingState empty={true}>
         <div>Content</div>
-      </LoadingState>
+      </LoadingState>,
     );
 
     expect(screen.getByText('No Data Available')).toBeInTheDocument();
-    expect(screen.getByText("There's nothing to display right now.")).toBeInTheDocument();
+    expect(
+      screen.getByText("There's nothing to display right now."),
+    ).toBeInTheDocument();
   });
 
   it('renders custom empty component', () => {
     render(
-      <LoadingState
-        empty={true}
-        emptyComponent={<div>Custom Empty</div>}
-      >
+      <LoadingState empty={true} emptyComponent={<div>Custom Empty</div>}>
         <div>Content</div>
-      </LoadingState>
+      </LoadingState>,
     );
 
     expect(screen.getByText('Custom Empty')).toBeInTheDocument();
@@ -109,7 +102,7 @@ describe('LoadingState', () => {
     const { container } = render(
       <LoadingState className="custom-class">
         <div>Content</div>
-      </LoadingState>
+      </LoadingState>,
     );
 
     expect(container.firstChild).toHaveClass('custom-class');
@@ -121,7 +114,7 @@ describe('LoadingOverlay', () => {
     render(
       <LoadingOverlay isLoading={false}>
         <div>Content</div>
-      </LoadingOverlay>
+      </LoadingOverlay>,
     );
 
     expect(screen.getByText('Content')).toBeInTheDocument();
@@ -132,7 +125,7 @@ describe('LoadingOverlay', () => {
     const { container } = render(
       <LoadingOverlay isLoading={true}>
         <div>Content</div>
-      </LoadingOverlay>
+      </LoadingOverlay>,
     );
 
     // Loading overlay should be present
@@ -147,7 +140,7 @@ describe('LoadingOverlay', () => {
     render(
       <LoadingOverlay isLoading={true} text="Please wait...">
         <div>Content</div>
-      </LoadingOverlay>
+      </LoadingOverlay>,
     );
 
     expect(screen.getByText('Please wait...')).toBeInTheDocument();
@@ -157,7 +150,7 @@ describe('LoadingOverlay', () => {
     const { container } = render(
       <LoadingOverlay isLoading={true} overlay={false}>
         <div>Content</div>
-      </LoadingOverlay>
+      </LoadingOverlay>,
     );
 
     const overlay = container.querySelector('.bg-white.bg-opacity-75');
@@ -226,4 +219,3 @@ describe('ListSkeleton', () => {
     expect(skeletons.length).toBe(9); // 3 items * 3 skeletons each
   });
 });
-

@@ -42,7 +42,9 @@ describe('RejectCaseCreationModal', () => {
         onSubmit={mockOnSubmit}
       />,
     );
-    expect(screen.queryByRole('heading', { name: /Reject Case Creation/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: /Reject Case Creation/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('does not render when caseData is null', () => {
@@ -54,7 +56,9 @@ describe('RejectCaseCreationModal', () => {
         onSubmit={mockOnSubmit}
       />,
     );
-    expect(screen.queryByRole('heading', { name: /Reject Case Creation/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: /Reject Case Creation/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders modal with case information when open', () => {
@@ -67,7 +71,9 @@ describe('RejectCaseCreationModal', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: /Reject Case Creation/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Reject Case Creation/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Case ID: CASE-123/i)).toBeInTheDocument();
     // FRAUD appears multiple times, just check it exists
     expect(screen.getAllByText(/FRAUD/i).length).toBeGreaterThan(0);
@@ -127,7 +133,9 @@ describe('RejectCaseCreationModal', () => {
     await user.click(submitButton);
 
     expect(
-      await screen.findByText(/Rejection reason must be at least 10 characters/i),
+      await screen.findByText(
+        /Rejection reason must be at least 10 characters/i,
+      ),
     ).toBeInTheDocument();
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
@@ -152,7 +160,10 @@ describe('RejectCaseCreationModal', () => {
 
     expect(submitButton).toBeDisabled();
 
-    await user.type(textarea, 'This is a valid rejection reason that is long enough');
+    await user.type(
+      textarea,
+      'This is a valid rejection reason that is long enough',
+    );
 
     await waitFor(() => {
       expect(submitButton).not.toBeDisabled();
@@ -215,9 +226,7 @@ describe('RejectCaseCreationModal', () => {
     await user.type(textarea, 'This is a valid rejection reason');
     await user.click(submitButton);
 
-    expect(
-      await screen.findByText('Submission failed'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Submission failed')).toBeInTheDocument();
     expect(mockOnClose).not.toHaveBeenCalled();
   });
 
@@ -307,7 +316,9 @@ describe('RejectCaseCreationModal', () => {
     await user.click(submitButton);
 
     expect(
-      await screen.findByText(/Rejection reason must be at least 10 characters/i),
+      await screen.findByText(
+        /Rejection reason must be at least 10 characters/i,
+      ),
     ).toBeInTheDocument();
 
     // Type valid reason
@@ -321,4 +332,3 @@ describe('RejectCaseCreationModal', () => {
     });
   });
 });
-

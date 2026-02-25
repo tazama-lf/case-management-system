@@ -125,7 +125,7 @@ describe('AuditLogsTable', () => {
     const entityLabels = screen.getAllByText('Entity');
     const entityLabel = entityLabels[0];
     const entitySelect = entityLabel.parentElement?.querySelector('select');
-    
+
     await user.selectOptions(outcomeSelect!, 'Success');
     await user.selectOptions(entitySelect!, 'Case');
 
@@ -146,7 +146,8 @@ describe('AuditLogsTable', () => {
     render(<AuditLogsTable data={largeData} />);
 
     const itemsPerPageLabel = screen.getByText('Items per page');
-    const itemsPerPageSelect = itemsPerPageLabel.parentElement?.querySelector('select');
+    const itemsPerPageSelect =
+      itemsPerPageLabel.parentElement?.querySelector('select');
     expect(itemsPerPageSelect).toBeInTheDocument();
     await user.selectOptions(itemsPerPageSelect!, '25');
 
@@ -216,7 +217,9 @@ describe('AuditLogsTable', () => {
 
     render(<AuditLogsTable data={mockData} onExportExcel={onExportExcel} />);
 
-    const exportButton = screen.getByRole('button', { name: /Export as Excel/i });
+    const exportButton = screen.getByRole('button', {
+      name: /Export as Excel/i,
+    });
     await user.click(exportButton);
 
     expect(onExportExcel).toHaveBeenCalledTimes(1);
@@ -321,4 +324,3 @@ describe('AuditLogsTable', () => {
     expect(infoElements.length).toBeGreaterThan(0);
   });
 });
-

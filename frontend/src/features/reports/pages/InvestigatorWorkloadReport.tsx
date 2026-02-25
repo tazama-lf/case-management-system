@@ -7,16 +7,26 @@ import ResolutionEfficiencyChart from '../components/ResolutionEfficiencyChart';
 import OutcomeDistributionChart from '../components/OutcomeDistributionChart';
 import InvestigatorPerformanceTable from '../components/InvestigatorPerformanceTable';
 import { useInvestigatorWorkload } from '../hooks/useReports';
-import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
+import {
+  exportToExcel,
+  exportToCSV,
+  exportToPDF,
+  formatDataForExport,
+  getColumnsForReport,
+} from '../../../shared/utils/exportUtils';
 
 interface InvestigatorWorkloadReportProps {
   dateRange: string;
 }
 
 const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
-  dateRange
+  dateRange,
 }) => {
-  const { data: workloadData, isLoading, error } = useInvestigatorWorkload(dateRange);
+  const {
+    data: workloadData,
+    isLoading,
+    error,
+  } = useInvestigatorWorkload(dateRange);
 
   if (isLoading) {
     return (
@@ -39,24 +49,41 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <div className="flex items-center">
           <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
-          <p className="text-red-700">Failed to load investigator workload data. Please try again.</p>
+          <p className="text-red-700">
+            Failed to load investigator workload data. Please try again.
+          </p>
         </div>
       </div>
     );
   }
 
-  const { stats, workloadData: workload, volumeTrend, efficiencyData, outcomeData, performanceData } = workloadData || {
-    stats: { totalInvestigators: 0, avgCasesPerInvestigator: 0, avgResolutionTime: 0, caseClosureRate: 0 },
+  const {
+    stats,
+    workloadData: workload,
+    volumeTrend,
+    efficiencyData,
+    outcomeData,
+    performanceData,
+  } = workloadData || {
+    stats: {
+      totalInvestigators: 0,
+      avgCasesPerInvestigator: 0,
+      avgResolutionTime: 0,
+      caseClosureRate: 0,
+    },
     workloadData: [],
     volumeTrend: [],
     efficiencyData: [],
     outcomeData: [],
-    performanceData: []
+    performanceData: [],
   };
 
   const handleExportExcel = () => {
     try {
-      const formattedData = formatDataForExport(performanceData, 'INVESTIGATOR_WORKLOAD');
+      const formattedData = formatDataForExport(
+        performanceData,
+        'INVESTIGATOR_WORKLOAD',
+      );
       const filename = `investigator-workload-report-${new Date().toISOString().split('T')[0]}`;
       exportToExcel(formattedData, filename, 'Investigator Workload Report');
     } catch (error) {
@@ -67,7 +94,10 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
 
   const handleExportCSV = () => {
     try {
-      const formattedData = formatDataForExport(performanceData, 'INVESTIGATOR_WORKLOAD');
+      const formattedData = formatDataForExport(
+        performanceData,
+        'INVESTIGATOR_WORKLOAD',
+      );
       const filename = `investigator-workload-report-${new Date().toISOString().split('T')[0]}`;
       exportToCSV(formattedData, filename);
     } catch (error) {
@@ -78,10 +108,18 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
 
   const handleExportPDF = async () => {
     try {
-      const formattedData = formatDataForExport(performanceData, 'INVESTIGATOR_WORKLOAD');
+      const formattedData = formatDataForExport(
+        performanceData,
+        'INVESTIGATOR_WORKLOAD',
+      );
       const filename = `investigator-workload-report-${new Date().toISOString().split('T')[0]}`;
       const columns = getColumnsForReport('INVESTIGATOR_WORKLOAD');
-      await exportToPDF(formattedData, filename, 'Investigator Workload Report', columns);
+      await exportToPDF(
+        formattedData,
+        filename,
+        'Investigator Workload Report',
+        columns,
+      );
     } catch (error) {
       console.error('Export failed:', error);
       alert('Export failed. Please try again.');

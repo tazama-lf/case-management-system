@@ -10,11 +10,12 @@ const TablePagination: React.FC<TablePaginationProps> = ({
     return null;
   }
 
-  const { currentPage, pageSize, totalItems, totalPages, onPageChange } = pagination;
+  const { currentPage, pageSize, totalItems, totalPages, onPageChange } =
+    pagination;
 
   // Generate page numbers with ellipsis logic
   const generatePageNumbers = () => {
-    const pages: (number | 'ellipsis')[] = [];
+    const pages: Array<number | 'ellipsis'> = [];
     const windowSize = 5;
     const half = Math.floor(windowSize / 2);
 
@@ -38,22 +39,20 @@ const TablePagination: React.FC<TablePaginationProps> = ({
   };
 
   const pages = generatePageNumbers();
-  
+
   const startItem = Math.min((currentPage - 1) * pageSize + 1, totalItems);
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
   return (
-    <div className={`bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 ${className}`}>
+    <div
+      className={`bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 ${className}`}
+    >
       <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
         <div>
           <p className="text-sm text-gray-700">
-            Showing{' '}
-            <span className="font-medium">{startItem}</span>
-            {' '}to{' '}
-            <span className="font-medium">{endItem}</span>
-            {' '}of{' '}
-            <span className="font-medium">{totalItems}</span>
-            {' '}{itemLabel}
+            Showing <span className="font-medium">{startItem}</span> to{' '}
+            <span className="font-medium">{endItem}</span> of{' '}
+            <span className="font-medium">{totalItems}</span> {itemLabel}
           </p>
         </div>
         <div>
@@ -63,7 +62,9 @@ const TablePagination: React.FC<TablePaginationProps> = ({
           >
             {/* Previous Button */}
             <button
-              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+              onClick={() => {
+                onPageChange(Math.max(1, currentPage - 1));
+              }}
               disabled={currentPage <= 1}
               className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -82,7 +83,9 @@ const TablePagination: React.FC<TablePaginationProps> = ({
               ) : (
                 <button
                   key={page}
-                  onClick={() => onPageChange(page)}
+                  onClick={() => {
+                    onPageChange(page);
+                  }}
                   className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                     currentPage === page
                       ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
@@ -97,7 +100,9 @@ const TablePagination: React.FC<TablePaginationProps> = ({
 
             {/* Next Button */}
             <button
-              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+              onClick={() => {
+                onPageChange(Math.min(totalPages, currentPage + 1));
+              }}
               disabled={currentPage >= totalPages}
               className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >

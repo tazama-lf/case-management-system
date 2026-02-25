@@ -80,12 +80,16 @@ describe('RelatedAlertModal', () => {
     );
 
     // Close button is an icon button without aria-label, find it by its position
-    const closeButton = screen.getAllByRole('button').find(
-      (btn) => btn.className.includes('rounded-lg') && btn.className.includes('text-gray-400')
-    ) || screen.getAllByRole('button')[0];
+    const closeButton =
+      screen
+        .getAllByRole('button')
+        .find(
+          (btn) =>
+            btn.className.includes('rounded-lg') &&
+            btn.className.includes('text-gray-400'),
+        ) || screen.getAllByRole('button')[0];
     await user.click(closeButton);
 
     expect(mockOnClose).toHaveBeenCalled();
   });
 });
-

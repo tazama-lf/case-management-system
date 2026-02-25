@@ -9,11 +9,15 @@ describe('transactionUtils', () => {
   describe('extractTransactionMessagesFromAlert', () => {
     it('returns empty array for null or undefined transaction data', () => {
       expect(extractTransactionMessagesFromAlert(null, 'txn-1')).toEqual([]);
-      expect(extractTransactionMessagesFromAlert(undefined, 'txn-1')).toEqual([]);
+      expect(extractTransactionMessagesFromAlert(undefined, 'txn-1')).toEqual(
+        [],
+      );
     });
 
     it('returns empty array for non-object transaction data', () => {
-      expect(extractTransactionMessagesFromAlert('string', 'txn-1')).toEqual([]);
+      expect(extractTransactionMessagesFromAlert('string', 'txn-1')).toEqual(
+        [],
+      );
       expect(extractTransactionMessagesFromAlert(123, 'txn-1')).toEqual([]);
       // Note: Arrays are objects in JavaScript, so [] would pass the typeof check
       // but the function checks for specific properties, so empty array returns generic message
@@ -121,7 +125,9 @@ describe('transactionUtils', () => {
         },
       });
 
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleWarnSpy = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
       const messages = extractTransactionMessagesFromAlert(
         transactionData,
         'txn-6',
@@ -202,7 +208,9 @@ describe('transactionUtils', () => {
         txtp: 'fallback-txn',
       };
 
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleWarnSpy = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
       const result = extractTransactionIdFromAlert(alert);
       expect(result).toBe('fallback-txn');
       expect(consoleWarnSpy).toHaveBeenCalled();
@@ -229,4 +237,3 @@ describe('transactionUtils', () => {
     });
   });
 });
-

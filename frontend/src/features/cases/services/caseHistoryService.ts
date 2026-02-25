@@ -11,11 +11,8 @@ export interface CaseHistoryEntry {
   performed_at: Date;
 }
 
-
 export class CaseHistoryService {
-  private baseUrl = '/api/v1/case-history';
-
-
+  private readonly baseUrl = '/api/v1/case-history';
 
   // async getCaseHistoryByTask(caseId: number): Promise<TaskHistoryEntry[]> {
   //   try {
@@ -27,7 +24,6 @@ export class CaseHistoryService {
 
   //     return response.taskHistory ?? [];
 
-
   //   } catch (error) {
   //     console.error('Failed to fetch case history by Task:', error);
   //     return [];
@@ -36,7 +32,9 @@ export class CaseHistoryService {
 
   async getCaseHistory(caseId: number): Promise<CaseHistoryEntry[]> {
     try {
-      const response = await apiClient.get<CaseHistoryEntry[]>(`${this.baseUrl}/${caseId}`);
+      const response = await apiClient.get<CaseHistoryEntry[]>(
+        `${this.baseUrl}/${caseId}`,
+      );
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Failed to fetch case history by Case:', error);

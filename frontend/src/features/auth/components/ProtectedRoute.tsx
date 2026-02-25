@@ -92,9 +92,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                   CMS_SUPERVISOR: {hasSupervisor ? '✓ Available' : '✗ Missing'}
                 </li>
                 <li
-                  className={hasCMSComplianceOfficer ? 'text-green-600' : 'text-red-600'}
+                  className={
+                    hasCMSComplianceOfficer ? 'text-green-600' : 'text-red-600'
+                  }
                 >
-                  CMS_COMPLIANCE_OFFICER: {hasCMSComplianceOfficer ? '✓ Available' : '✗ Missing'}
+                  CMS_COMPLIANCE_OFFICER:{' '}
+                  {hasCMSComplianceOfficer ? '✓ Available' : '✗ Missing'}
                 </li>
               </ul>
             </div>
@@ -104,7 +107,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             to your account.
           </p>
           <button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              window.history.back();
+            }}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Go Back
@@ -125,7 +130,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             You need CMS_INVESTIGATOR role to access this page.
           </p>
           <button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              window.history.back();
+            }}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Go Back
@@ -146,7 +153,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             You need CMS_SUPERVISOR role to access this page.
           </p>
           <button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              window.history.back();
+            }}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Go Back
@@ -167,7 +176,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             You need alert-triage or admin role to access this page.
           </p>
           <button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              window.history.back();
+            }}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Go Back
@@ -188,7 +199,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             You need CMS_ADMIN role to access the admin dashboard.
           </p>
           <button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              window.history.back();
+            }}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Go Back
@@ -209,7 +222,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             You need CMS_COMPLIANCE_OFFICER role to access this page.
           </p>
           <button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              window.history.back();
+            }}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Go Back
@@ -255,7 +270,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               to your account.
             </p>
             <button
-              onClick={() => window.history.back()}
+              onClick={() => {
+                window.history.back();
+              }}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Go Back

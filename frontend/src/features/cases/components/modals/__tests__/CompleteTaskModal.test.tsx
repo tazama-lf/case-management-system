@@ -41,7 +41,8 @@ describe('CompleteTaskModal', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: /Complete Task/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Complete Task/i }),
+    ).toBeInTheDocument();
   });
 });
-

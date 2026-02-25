@@ -3,7 +3,7 @@ import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  DocumentIcon
+  DocumentIcon,
 } from '@heroicons/react/24/solid';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
 import userService from '../../services/userService';
@@ -16,7 +16,10 @@ import type { Evidence } from '../../types/evidence.types';
 import { reportsService } from '../../../reports/services/reportsService';
 import { evidenceService } from '../../services/evidenceService';
 import type { TaskDTO } from '../../services/caseService';
-import { loadEvidence, fetchCasesAndEvidence } from '../../utils/investigationUtils';
+import {
+  loadEvidence,
+  fetchCasesAndEvidence,
+} from '../../utils/investigationUtils';
 import type { TaskComment } from '../../services/commentService';
 import { formatDate } from '@/shared/utils/dateUtils';
 
@@ -44,11 +47,10 @@ interface GenerateInvestigationReportModalProps {
   selectedOutcome?: string;
   selectedFinalNotes?: string;
   onApproved?: () => void;
-
 }
 
 marked.setOptions({
-  breaks: true, 
+  breaks: true,
   gfm: true,
 });
 
@@ -78,7 +80,7 @@ const convertMarkdownToPdfMake = (markdownText: string): any => {
         ul: { margin: [0, 5, 0, 5] },
         ol: { margin: [0, 5, 0, 5] },
         li: { margin: [0, 2, 0, 2] },
-      }
+      },
     });
 
     return pdfContent;
@@ -110,7 +112,7 @@ export const FINAL_OUTCOMES = [
   },
 ] as const;
 
-export type FinalOutcomeType = typeof FINAL_OUTCOMES[number]['value'];
+export type FinalOutcomeType = (typeof FINAL_OUTCOMES)[number]['value'];
 
 const getUserRole = () => {
   try {
@@ -132,7 +134,9 @@ const getUserRole = () => {
 
 (pdfMake as any).vfs = (pdfFonts as any).vfs;
 
-const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModalProps> = ({
+const GenerateInvestigationReportModal: React.FC<
+  GenerateInvestigationReportModalProps
+> = ({
   caseStatus,
   open,
   onClose,
@@ -153,11 +157,17 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [tasksCompleted, setTasksCompleted] = useState(false);
   const [incompleteTasks, setIncompleteTasks] = useState<string[]>([]);
   const [checkingTasks, setCheckingTasks] = useState(false);
-  const [evidenceCategories, setEvidenceCategories] = useState<EvidenceCategory[]>([]);
+  const [evidenceCategories, setEvidenceCategories] = useState<
+    EvidenceCategory[]
+  >([]);
   const [caseComments, setCaseComments] = useState<TaskComment[]>([]);
-  const [supervisorComments, setSupervisorComments] = useState<TaskComment[]>([]);
+  const [supervisorComments, setSupervisorComments] = useState<TaskComment[]>(
+    [],
+  );
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
-  const [finalOutcome, setFinalOutcome] = useState<FinalOutcomeType | ''>((selectedOutcome as FinalOutcomeType) || '');
+  const [finalOutcome, setFinalOutcome] = useState<FinalOutcomeType | ''>(
+    (selectedOutcome as FinalOutcomeType) || '',
+  );
   const hasFetchedRef = React.useRef(false);
   const [evidenceLoaded, setEvidenceLoaded] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
@@ -170,15 +180,15 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const latestInvestigateTask = React.useMemo(() => {
     if (!tasks?.length) return null;
 
-    return tasks
-      .filter(task =>
-        task.name?.toLowerCase().includes('investigate'),
-      )
-      .sort((a, b) => {
-        const aTime = new Date(a.created_at ?? 0).getTime();
-        const bTime = new Date(b.created_at ?? 0).getTime();
-        return bTime - aTime;
-      })[0] || null;
+    return (
+      tasks
+        .filter((task) => task.name?.toLowerCase().includes('investigate'))
+        .sort((a, b) => {
+          const aTime = new Date(a.created_at ?? 0).getTime();
+          const bTime = new Date(b.created_at ?? 0).getTime();
+          return bTime - aTime;
+        })[0] || null
+    );
   }, [tasks]);
 
   const isReportReady =
@@ -202,7 +212,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
     try {
       const {
-
         caseComments,
         supervisorComments,
         investigatorName,
@@ -240,11 +249,14 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
   useEffect(() => {
     if (open && caseComments?.[0]?.user_id) {
-      userService.getUserDetailsById(caseComments[0].user_id).then((userDetails) => {
-        if (userDetails) {
-          setInvestigatorName(userService.formatUserName(userDetails));
-        }
-      }).catch(() => { });
+      userService
+        .getUserDetailsById(caseComments[0].user_id)
+        .then((userDetails) => {
+          if (userDetails) {
+            setInvestigatorName(userService.formatUserName(userDetails));
+          }
+        })
+        .catch(() => {});
     }
   }, [open, caseComments]);
 
@@ -255,15 +267,15 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       setCheckingTasks(true);
       try {
         const tasks = await taskService.getTasksByCaseId(caseId);
-        const investigationTasks = tasks.filter(task =>
-          task.name?.toLowerCase().includes('investigate')
+        const investigationTasks = tasks.filter((task) =>
+          task.name?.toLowerCase().includes('investigate'),
         );
 
         const incomplete = investigationTasks.filter(
-          task => task.status !== 'STATUS_30_COMPLETED'
+          (task) => task.status !== 'STATUS_30_COMPLETED',
         );
 
-        setIncompleteTasks(incomplete.map(t => t.name || 'Unknown Task'));
+        setIncompleteTasks(incomplete.map((t) => t.name || 'Unknown Task'));
         setTasksCompleted(incomplete.length === 0);
       } catch (error) {
         showError('Failed to check task status');
@@ -281,28 +293,31 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   }, [finalOutcome, caseData?.createdOn, caseData?.case_type]);
 
   const buildExecutiveSummary = () => {
-    const createdDate = caseData?.createdOn ? formatDate(caseData.createdOn) : 'N/A';
+    const createdDate = caseData?.createdOn
+      ? formatDate(caseData.createdOn)
+      : 'N/A';
     const caseType = caseData?.case_type || 'Investigation';
     const outcome = finalOutcome || 'Under Review';
 
     return `This report summarizes the investigation of Case ${caseData?.case_id || caseId}, a ${caseType} case. The investigation was conducted and submitted on ${createdDate}. After thorough analysis of the evidence and findings, the investigator has recommended the outcome: ${outcome}.`;
   };
 
-  const [executiveSummary, setExecutiveSummary] = useState(buildExecutiveSummary());
-  const [keyFindings, setKeyFindings] = useState(
-    investigationNotes || ""
+  const [executiveSummary, setExecutiveSummary] = useState(
+    buildExecutiveSummary(),
   );
+  const [keyFindings, setKeyFindings] = useState(investigationNotes || '');
   const [recommendations, setRecommendations] = useState(
-    "Based on the investigation findings and evidence review:\n\n1. Review investigator's recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure."
+    "Based on the investigation findings and evidence review:\n\n1. Review investigator's recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure.",
   );
   const [supervisorFeedback, setSupervisorFeedback] = useState(
-    supervisorComments?.[0]?.note || ""
+    supervisorComments?.[0]?.note || '',
   );
   const [reportOutcome, setReportOutcome] = useState<string | undefined>('');
-  const [monitoringDuration, setMonitoringDuration] = useState<30 | 60 | 90 | 180>(30);
+  const [monitoringDuration, setMonitoringDuration] = useState<
+    30 | 60 | 90 | 180
+  >(30);
   const [showApprovalConfirm, setShowApprovalConfirm] = useState(false);
   const [userRole] = useState<string>(getUserRole());
-
 
   const evidenceList = (evidenceCategories ?? []).map((category) => ({
     stack: [
@@ -337,7 +352,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: true
+    hour12: true,
   });
 
   const submittedDate = caseComments?.[0]?.created_at
@@ -366,7 +381,15 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       },
       {
         canvas: [
-          { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#3b82f6' }
+          {
+            type: 'line',
+            x1: 0,
+            y1: 0,
+            x2: 515,
+            y2: 0,
+            lineWidth: 2,
+            lineColor: '#3b82f6',
+          },
         ],
         margin: [0, 0, 0, 20],
       },
@@ -381,17 +404,38 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           {
             width: '50%',
             stack: [
-              { text: [{ text: 'Case ID: ', bold: true }, caseData?.case_id || caseId || 'N/A'], margin: [0, 0, 0, 5] },
-              { text: [{ text: 'Type: ', bold: true }, caseData?.case_type || 'Investigation'], margin: [0, 0, 0, 5] },
-            ]
+              {
+                text: [
+                  { text: 'Case ID: ', bold: true },
+                  caseData?.case_id || caseId || 'N/A',
+                ],
+                margin: [0, 0, 0, 5],
+              },
+              {
+                text: [
+                  { text: 'Type: ', bold: true },
+                  caseData?.case_type || 'Investigation',
+                ],
+                margin: [0, 0, 0, 5],
+              },
+            ],
           },
           {
             width: '50%',
             stack: [
-              { text: [{ text: 'Investigator: ', bold: true }, investigatorName], margin: [0, 0, 0, 5] },
-              { text: [{ text: 'Submitted: ', bold: true }, submittedDate], margin: [0, 0, 0, 5] },
-            ]
-          }
+              {
+                text: [
+                  { text: 'Investigator: ', bold: true },
+                  investigatorName,
+                ],
+                margin: [0, 0, 0, 5],
+              },
+              {
+                text: [{ text: 'Submitted: ', bold: true }, submittedDate],
+                margin: [0, 0, 0, 5],
+              },
+            ],
+          },
         ],
         margin: [0, 0, 0, 20],
       },
@@ -403,9 +447,8 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       },
       ...(Array.isArray(convertMarkdownToPdfMake(executiveSummary))
         ? convertMarkdownToPdfMake(executiveSummary)
-        : [convertMarkdownToPdfMake(executiveSummary)]
-      ),
-      { text: '', margin: [0, 0, 0, 12] }, 
+        : [convertMarkdownToPdfMake(executiveSummary)]),
+      { text: '', margin: [0, 0, 0, 12] },
 
       {
         text: 'KEY FINDINGS',
@@ -413,31 +456,43 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         margin: [0, 0, 0, 10],
       },
       ...(investigationNotes
-        ? (Array.isArray(convertMarkdownToPdfMake(investigationNotes))
+        ? Array.isArray(convertMarkdownToPdfMake(investigationNotes))
           ? convertMarkdownToPdfMake(investigationNotes)
-          : [convertMarkdownToPdfMake(investigationNotes)])
-        : [{
-            text: 'No investigation notes added.',
-            fontSize: 9,
-            color: '#6b7280',
-            italics: true,
-            margin: [0, 0, 0, 0],
-          }]
-      ),
+          : [convertMarkdownToPdfMake(investigationNotes)]
+        : [
+            {
+              text: 'No investigation notes added.',
+              fontSize: 9,
+              color: '#6b7280',
+              italics: true,
+              margin: [0, 0, 0, 0],
+            },
+          ]),
       { text: '', margin: [0, 0, 0, 12] },
 
-      ...((supervisorFeedback || selectedFinalNotes) ? [
-        {
-          text: 'SUPERVISOR FEEDBACK',
-          style: 'sectionHeader',
-          margin: [0, 0, 0, 10],
-        },
-        ...(Array.isArray(convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || ''))
-          ? convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || '')
-          : [convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || '')]
-        ),
-        { text: '', margin: [0, 0, 0, 12] }, 
-      ] : []),
+      ...(supervisorFeedback || selectedFinalNotes
+        ? [
+            {
+              text: 'SUPERVISOR FEEDBACK',
+              style: 'sectionHeader',
+              margin: [0, 0, 0, 10],
+            },
+            ...(Array.isArray(
+              convertMarkdownToPdfMake(
+                selectedFinalNotes || supervisorFeedback || '',
+              ),
+            )
+              ? convertMarkdownToPdfMake(
+                  selectedFinalNotes || supervisorFeedback || '',
+                )
+              : [
+                  convertMarkdownToPdfMake(
+                    selectedFinalNotes || supervisorFeedback || '',
+                  ),
+                ]),
+            { text: '', margin: [0, 0, 0, 12] },
+          ]
+        : []),
 
       {
         text: 'EVIDENCE SUMMARY',
@@ -445,19 +500,22 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         margin: [0, 0, 0, 10],
       },
       ...(evidenceList && evidenceList.length > 0
-        ? [{
-            ul: evidenceList,
-            style: 'body',
-            margin: [0, 0, 0, 12],
-          }]
-        : [{
-            text: 'No evidence summary attached.',
-            fontSize: 9,
-            color: '#6b7280',
-            italics: true,
-            margin: [0, 0, 0, 0],
-          }]
-      ),
+        ? [
+            {
+              ul: evidenceList,
+              style: 'body',
+              margin: [0, 0, 0, 12],
+            },
+          ]
+        : [
+            {
+              text: 'No evidence summary attached.',
+              fontSize: 9,
+              color: '#6b7280',
+              italics: true,
+              margin: [0, 0, 0, 0],
+            },
+          ]),
       { text: '', margin: [0, 0, 0, 12] },
 
       {
@@ -478,13 +536,20 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       },
       ...(Array.isArray(convertMarkdownToPdfMake(recommendations))
         ? convertMarkdownToPdfMake(recommendations)
-        : [convertMarkdownToPdfMake(recommendations)]
-      ),
+        : [convertMarkdownToPdfMake(recommendations)]),
       { text: '', margin: [0, 0, 0, 30] },
 
       {
         canvas: [
-          { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#d1d5db' }
+          {
+            type: 'line',
+            x1: 0,
+            y1: 0,
+            x2: 515,
+            y2: 0,
+            lineWidth: 1,
+            lineColor: '#d1d5db',
+          },
         ],
         margin: [0, 0, 0, 10],
       },
@@ -563,8 +628,8 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     setShowApprovalConfirm(true);
   };
 
-  const generatePdfFile = (docDefinition: any): Promise<File> => {
-    return new Promise((resolve, reject) => {
+  const generatePdfFile = async (docDefinition: any): Promise<File> =>
+    await new Promise((resolve, reject) => {
       try {
         const pdfDoc = (pdfMake as any).createPdf(docDefinition);
 
@@ -578,7 +643,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         reject(err);
       }
     });
-  };
 
   // const handleGenerateReport = async () => {
   //   if (isGenerating) return;
@@ -604,7 +668,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     }, 300);
   };
 
-
   const handleFinalize = async () => {
     setShowApprovalConfirm(false);
     setIsFinalizing(true);
@@ -627,24 +690,28 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         }
         setStep('generated');
 
-
         if (latestInvestigateTask && investigationNotes) {
           try {
-            await taskService.updateTaskForSupervisor(latestInvestigateTask.task_id, {
-              investigationNotes: investigationNotes,
-            });
+            await taskService.updateTaskForSupervisor(
+              latestInvestigateTask.task_id,
+              {
+                investigationNotes,
+              },
+            );
           } catch {
             // Ignore task update errors
           }
         }
 
         const outcomeKey = `fraud-report-outcome-${caseId}`;
-        localStorage.setItem(outcomeKey, JSON.stringify({
-          outcome: reportOutcome,
-          approvedAt: new Date().toISOString(),
-          reportId: generateFraudReport.fileName || `${caseId}-v1`,
-        }));
-
+        localStorage.setItem(
+          outcomeKey,
+          JSON.stringify({
+            outcome: reportOutcome,
+            approvedAt: new Date().toISOString(),
+            reportId: generateFraudReport.fileName || `${caseId}-v1`,
+          }),
+        );
       } catch {
         showError('Failed to generate report. Please try again.');
       } finally {
@@ -712,8 +779,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
               {/* Description */}
               <p className="text-sm text-gray-600 mb-8 max-w-md">
-                This will consolidate all investigation findings, evidence, and conclusions
-                into a comprehensive report for your review and approval.
+                This will consolidate all investigation findings, evidence, and
+                conclusions into a comprehensive report for your review and
+                approval.
               </p>
 
               {/* Report Contents */}
@@ -725,34 +793,45 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <div className="flex items-start gap-3">
                     <DocumentIcon className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div>
-                      <span className="text-sm font-medium text-gray-900">Executive Summary: </span>
+                      <span className="text-sm font-medium text-gray-900">
+                        Executive Summary:{' '}
+                      </span>
                       <span className="text-sm text-gray-600">
-                        Overview of the case, investigation scope, and key outcomes
+                        Overview of the case, investigation scope, and key
+                        outcomes
                       </span>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
                     <div>
-                      <span className="text-sm font-medium text-gray-900">Key Findings: </span>
+                      <span className="text-sm font-medium text-gray-900">
+                        Key Findings:{' '}
+                      </span>
                       <span className="text-sm text-gray-600">
-                        Detailed analysis of suspicious activities and patterns identified
+                        Detailed analysis of suspicious activities and patterns
+                        identified
                       </span>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <DocumentIcon className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div>
-                      <span className="text-sm font-medium text-gray-900">Evidence Summary: </span>
+                      <span className="text-sm font-medium text-gray-900">
+                        Evidence Summary:{' '}
+                      </span>
                       <span className="text-sm text-gray-600">
-                        Documentation and evidence collected during investigation
+                        Documentation and evidence collected during
+                        investigation
                       </span>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <CheckCircleIcon className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                     <div>
-                      <span className="text-sm font-medium text-gray-900">Final Outcome Decision: </span>
+                      <span className="text-sm font-medium text-gray-900">
+                        Final Outcome Decision:{' '}
+                      </span>
                       <span className="text-sm text-gray-600">
                         Final determination on case status and disposition
                       </span>
@@ -761,7 +840,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <div className="flex items-start gap-3">
                     <CheckCircleIcon className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                     <div>
-                      <span className="text-sm font-medium text-gray-900">Recommendations: </span>
+                      <span className="text-sm font-medium text-gray-900">
+                        Recommendations:{' '}
+                      </span>
                       <span className="text-sm text-gray-600">
                         Investigator's conclusions and recommended actions
                       </span>
@@ -770,30 +851,39 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 </div>
               </div>
 
-              {userRole === 'CMS_SUPERVISOR' && !tasksCompleted && incompleteTasks.length > 0 && (
-                <div className="w-full max-w-md rounded-md bg-yellow-50 border border-yellow-200 p-4 mb-6">
-                  <div className="flex">
-                    <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400 flex-shrink-0" />
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-yellow-800">
-                        Complete Investigation Tasks First
-                      </h3>
-                      <div className="mt-2 text-sm text-yellow-700">
-                        <p>The following tasks must be completed before generating a report:</p>
-                        <ul className="list-disc list-inside mt-1">
-                          {incompleteTasks.map((task, idx) => (
-                            <li key={idx}>{task}</li>
-                          ))}
-                        </ul>
+              {userRole === 'CMS_SUPERVISOR' &&
+                !tasksCompleted &&
+                incompleteTasks.length > 0 && (
+                  <div className="w-full max-w-md rounded-md bg-yellow-50 border border-yellow-200 p-4 mb-6">
+                    <div className="flex">
+                      <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400 flex-shrink-0" />
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-yellow-800">
+                          Complete Investigation Tasks First
+                        </h3>
+                        <div className="mt-2 text-sm text-yellow-700">
+                          <p>
+                            The following tasks must be completed before
+                            generating a report:
+                          </p>
+                          <ul className="list-disc list-inside mt-1">
+                            {incompleteTasks.map((task, idx) => (
+                              <li key={idx}>{task}</li>
+                            ))}
+                          </ul>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
               <button
                 onClick={handleGenerateReport}
-                disabled={!isReportReady || (userRole === 'CMS_SUPERVISOR' && (!tasksCompleted || checkingTasks))}
+                disabled={
+                  !isReportReady ||
+                  (userRole === 'CMS_SUPERVISOR' &&
+                    (!tasksCompleted || checkingTasks))
+                }
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
               >
                 {checkingTasks && userRole === 'CMS_SUPERVISOR' ? (
@@ -846,19 +936,27 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <div className="flex items-center gap-2">
                     <DocumentIcon className="h-4 w-4 text-gray-500" />
                     <span className="font-medium text-gray-700">Case ID:</span>
-                    <span className="text-gray-900">{caseData?.case_id || caseId || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {caseData?.case_id || caseId || 'N/A'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <ExclamationTriangleIcon className="h-4 w-4 text-gray-500" />
                     <span className="font-medium text-gray-700">Type:</span>
-                    <span className="text-gray-900">{caseData?.case_type || 'Investigation'}</span>
+                    <span className="text-gray-900">
+                      {caseData?.case_type || 'Investigation'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-700">Investigator:</span>
+                    <span className="font-medium text-gray-700">
+                      Investigator:
+                    </span>
                     <span className="text-gray-900">{investigatorName}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-700">Submitted:</span>
+                    <span className="font-medium text-gray-700">
+                      Submitted:
+                    </span>
                     <span className="text-gray-900">
                       {caseComments?.[0]?.created_at
                         ? formatDate(caseComments[0].created_at)
@@ -870,7 +968,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
               {/* Executive Summary */}
               <div className="space-y-3">
-                <h5 className="text-sm font-semibold text-gray-900">Executive Summary</h5>
+                <h5 className="text-sm font-semibold text-gray-900">
+                  Executive Summary
+                </h5>
                 <textarea
                   value={executiveSummary}
                   onChange={(e) => {
@@ -884,12 +984,14 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
               {/* Key Findings */}
               <div className="space-y-3">
-                <h5 className="text-sm font-semibold text-gray-900">Key Findings</h5>
+                <h5 className="text-sm font-semibold text-gray-900">
+                  Key Findings
+                </h5>
                 {investigationNotes ? (
                   <div
                     className="markdown-content text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded border border-gray-200"
                     dangerouslySetInnerHTML={{
-                      __html: marked(investigationNotes) as string
+                      __html: marked(investigationNotes) as string,
                     }}
                   />
                 ) : (
@@ -900,9 +1002,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               </div>
 
               {/* Supervisor Feedback */}
-              {(selectedFinalNotes || (supervisorComments && supervisorComments.length > 0)) && (
+              {(selectedFinalNotes ||
+                (supervisorComments && supervisorComments.length > 0)) && (
                 <div className="space-y-3">
-                  <h5 className="text-sm font-semibold text-gray-900">Supervisor Feedback</h5>
+                  <h5 className="text-sm font-semibold text-gray-900">
+                    Supervisor Feedback
+                  </h5>
                   {selectedFinalNotes ? (
                     <>
                       <div className="w-full px-3 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-300 rounded-md min-h-[6rem] whitespace-pre-wrap">
@@ -928,7 +1033,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
               {/* Evidence Summary */}
               <div className="space-y-3">
-                <h5 className="text-sm font-semibold text-gray-900">Evidence Summary</h5>
+                <h5 className="text-sm font-semibold text-gray-900">
+                  Evidence Summary
+                </h5>
 
                 <div className="bg-gray-50 rounded-lg p-4">
                   {evidenceCategories && evidenceCategories.length > 0 ? (
@@ -964,7 +1071,11 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                                       {doc.fileName || 'Untitled Document'}
                                     </p>
                                     <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                                      <span>{evidenceService.formatFileSize(doc.fileSize || 0)}</span>
+                                      <span>
+                                        {evidenceService.formatFileSize(
+                                          doc.fileSize || 0,
+                                        )}
+                                      </span>
                                       <span>•</span>
                                       <span>{doc.evidenceType}</span>
                                       {doc.uploadedAt && (
@@ -997,7 +1108,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 </div>
               </div>
 
-
               {/* Report Outcome - Read-only display */}
               <div className="space-y-3">
                 <h5 className="text-sm font-semibold text-gray-900">
@@ -1006,21 +1116,24 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
                 <div className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
                   {finalOutcome
-                    ? FINAL_OUTCOMES.find(o => o.value === finalOutcome)?.label || 'Not specified'
-                    : 'Not specified'
-                  }
+                    ? FINAL_OUTCOMES.find((o) => o.value === finalOutcome)
+                        ?.label || 'Not specified'
+                    : 'Not specified'}
                 </div>
               </div>
-
 
               {/* Monitoring Duration - only shown when Under Monitoring is selected */}
               {reportOutcome === 'Under Monitoring' && (
                 <div className="space-y-3">
-                  <h5 className="text-sm font-semibold text-gray-900">Monitoring Duration</h5>
+                  <h5 className="text-sm font-semibold text-gray-900">
+                    Monitoring Duration
+                  </h5>
                   <select
                     value={monitoringDuration}
                     onChange={(e) => {
-                      setMonitoringDuration(Number(e.target.value) as 30 | 60 | 90 | 180);
+                      setMonitoringDuration(
+                        Number(e.target.value) as 30 | 60 | 90 | 180,
+                      );
                       setIsApproved(false);
                     }}
                     disabled={userRole !== 'CMS_SUPERVISOR'}
@@ -1031,13 +1144,17 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                     <option value={90}>90 Days</option>
                     <option value={180}>180 Days</option>
                   </select>
-                  <p className="text-xs text-gray-500">Select the duration for continued monitoring of this case.</p>
+                  <p className="text-xs text-gray-500">
+                    Select the duration for continued monitoring of this case.
+                  </p>
                 </div>
               )}
 
               {/* Recommendations */}
               <div className="space-y-3">
-                <h5 className="text-sm font-semibold text-gray-900">Recommendations & Conclusions</h5>
+                <h5 className="text-sm font-semibold text-gray-900">
+                  Recommendations & Conclusions
+                </h5>
                 <textarea
                   value={recommendations}
                   onChange={(e) => {
@@ -1068,10 +1185,11 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <button
                     onClick={handleApproveClick}
                     disabled={isFinalizing || isApproved}
-                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${isApproved
-                      ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                      : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
-                      }`}
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
+                      isApproved
+                        ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                        : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
+                    }`}
                   >
                     {isFinalizing ? (
                       <>
@@ -1105,18 +1223,26 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                 <CheckCircleIcon className="h-6 w-6 text-green-600" />
               </div>
-              <h4 className="text-lg font-semibold text-gray-900">Confirm Report Approval</h4>
+              <h4 className="text-lg font-semibold text-gray-900">
+                Confirm Report Approval
+              </h4>
             </div>
 
             <div className="mb-6 space-y-3">
               <p className="text-sm text-gray-600">
-                You are about to finalize and approve this investigation report. This action will:
+                You are about to finalize and approve this investigation report.
+                This action will:
               </p>
               <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
                 <li>Lock the report for editing</li>
-                <li>Set the case outcome to: <strong>{reportOutcome}</strong></li>
+                <li>
+                  Set the case outcome to: <strong>{reportOutcome}</strong>
+                </li>
                 {reportOutcome === 'Under Monitoring' && (
-                  <li>Set monitoring duration to: <strong>{monitoringDuration} days</strong></li>
+                  <li>
+                    Set monitoring duration to:{' '}
+                    <strong>{monitoringDuration} days</strong>
+                  </li>
                 )}
                 <li>Archive the report for compliance</li>
                 <li>Notify relevant stakeholders</li>
@@ -1128,7 +1254,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setShowApprovalConfirm(false)}
+                onClick={() => {
+                  setShowApprovalConfirm(false);
+                }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Cancel

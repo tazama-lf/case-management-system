@@ -29,9 +29,7 @@ describe('useCloseCaseActions', () => {
     };
     (caseService.closeCase as vi.Mock).mockResolvedValue(mockResponse);
 
-    const { result } = renderHook(() =>
-      useCloseCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useCloseCaseActions(mockRefreshCases));
 
     await result.current.handleCloseCaseSubmit('CASE-123', {
       investigationSummary: 'Test summary',
@@ -50,9 +48,7 @@ describe('useCloseCaseActions', () => {
     const error = new Error('Investigation task is not completed');
     (caseService.closeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useCloseCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useCloseCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleCloseCaseSubmit('CASE-123', {
@@ -74,9 +70,7 @@ describe('useCloseCaseActions', () => {
     const error = new Error('not in a closeable state');
     (caseService.closeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useCloseCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useCloseCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleCloseCaseSubmit('CASE-123', {
@@ -98,9 +92,7 @@ describe('useCloseCaseActions', () => {
     const error = new Error('Unauthorized');
     (caseService.closeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useCloseCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useCloseCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleCloseCaseSubmit('CASE-123', {
@@ -122,9 +114,7 @@ describe('useCloseCaseActions', () => {
     const error = new Error('403');
     (caseService.closeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useCloseCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useCloseCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleCloseCaseSubmit('CASE-123', {
@@ -146,9 +136,7 @@ describe('useCloseCaseActions', () => {
     const error = new Error('Case not found');
     (caseService.closeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useCloseCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useCloseCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleCloseCaseSubmit('CASE-123', {
@@ -170,9 +158,7 @@ describe('useCloseCaseActions', () => {
     const error = new Error('404');
     (caseService.closeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useCloseCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useCloseCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleCloseCaseSubmit('CASE-123', {
@@ -194,9 +180,7 @@ describe('useCloseCaseActions', () => {
     const error = new Error('Generic error message');
     (caseService.closeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useCloseCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useCloseCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleCloseCaseSubmit('CASE-123', {
@@ -218,9 +202,7 @@ describe('useCloseCaseActions', () => {
     const error = new Error('');
     (caseService.closeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useCloseCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useCloseCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleCloseCaseSubmit('CASE-123', {
@@ -238,4 +220,3 @@ describe('useCloseCaseActions', () => {
     });
   });
 });
-

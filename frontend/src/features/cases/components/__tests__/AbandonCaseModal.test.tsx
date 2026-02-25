@@ -143,7 +143,10 @@ describe('AbandonCaseModal component', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(onAbandon).toHaveBeenCalledWith('CASE-123', 'This is a valid reason that is long enough');
+      expect(onAbandon).toHaveBeenCalledWith(
+        'CASE-123',
+        'This is a valid reason that is long enough',
+      );
       expect(onClose).toHaveBeenCalled();
     });
   });
@@ -220,7 +223,7 @@ describe('AbandonCaseModal component', () => {
 
     const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
     await user.type(textarea, 'Some reason text');
-    
+
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
     await user.click(cancelButton);
 
@@ -251,7 +254,7 @@ describe('AbandonCaseModal component', () => {
     // Cancel button should be disabled when submitting
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
     expect(cancelButton).toBeDisabled();
-    
+
     // onClose should not be called while submitting
     expect(onClose).not.toHaveBeenCalled();
   });

@@ -13,11 +13,13 @@ async function testFetchInvestigators() {
 }
 
 if (typeof window !== 'undefined') {
-  testFetchInvestigators().then(() => {
-    console.log('Test completed successfully');
-  }).catch((error) => {
-    console.error('Test failed:', error);
-  });
+  testFetchInvestigators()
+    .then(() => {
+      console.log('Test completed successfully');
+    })
+    .catch((error) => {
+      console.error('Test failed:', error);
+    });
 }
 
 export { testFetchInvestigators };

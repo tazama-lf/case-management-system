@@ -402,7 +402,11 @@ p {
 .simplemde-wrapper .CodeMirror {
   border: 1px solid #d1d5db;
   border-radius: 0.375rem;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
   font-size: 0.875rem;
   line-height: 1.25rem;
   min-height: 200px;
@@ -455,7 +459,11 @@ p {
   border: 1px solid #d1d5db;
   border-radius: 0.375rem;
   padding: 1rem;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .simplemde-wrapper .editor-preview h1,
@@ -545,7 +553,7 @@ p {
 
 .markdown-content br {
   display: block !important;
-  content: "" !important;
+  content: '' !important;
   margin: 0.1rem 0 !important;
 }
 
@@ -584,7 +592,7 @@ p {
   overflow: hidden;
 }
 
-.mdx-editor-container [role="toolbar"] {
+.mdx-editor-container [role='toolbar'] {
   position: sticky;
   top: 0;
   z-index: 10;
@@ -618,12 +626,12 @@ p {
 }
 
 /* Ensure link dialog appears above modal */
-[class*="linkDialog"],
-[class*="popupContainer"],
-[class*="_linkDialog"],
-[class*="_popupContainer"],
-[role="dialog"],
-[role="alertdialog"] {
+[class*='linkDialog'],
+[class*='popupContainer'],
+[class*='_linkDialog'],
+[class*='_popupContainer'],
+[role='dialog'],
+[role='alertdialog'] {
   z-index: 9999 !important;
 }
 

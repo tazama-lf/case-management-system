@@ -58,7 +58,9 @@ describe('CloseTaskModal', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: /Close Task/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Close Task/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText('TASK-123')).toBeInTheDocument();
     expect(screen.getByText('Review Transaction')).toBeInTheDocument();
   });
@@ -88,7 +90,9 @@ describe('CloseTaskModal', () => {
       />,
     );
 
-    const notesTextarea = screen.getByPlaceholderText(/Provide details about the task completion/i);
+    const notesTextarea = screen.getByPlaceholderText(
+      /Provide details about the task completion/i,
+    );
     const submitButton = screen.getByRole('button', { name: /Close Task/i });
 
     await user.type(notesTextarea, 'Task completed successfully');
@@ -109,16 +113,15 @@ describe('CloseTaskModal', () => {
       />,
     );
 
-    const notesTextarea = screen.getByPlaceholderText(/Provide details about the task completion/i);
+    const notesTextarea = screen.getByPlaceholderText(
+      /Provide details about the task completion/i,
+    );
     const submitButton = screen.getByRole('button', { name: /Close Task/i });
 
     await user.type(notesTextarea, 'Task completed');
     await user.click(submitButton);
 
-    expect(mockOnCloseTask).toHaveBeenCalledWith(
-      mockTask,
-      'Task completed',
-    );
+    expect(mockOnCloseTask).toHaveBeenCalledWith(mockTask, 'Task completed');
   });
 
   it('closes modal when cancel button is clicked', async () => {
@@ -138,4 +141,3 @@ describe('CloseTaskModal', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 });
-

@@ -42,7 +42,9 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
         <span className="text-sm text-gray-700">Show</span>
         <select
           value={itemsPerPage}
-          onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+          onChange={(e) => {
+            onItemsPerPageChange(Number(e.target.value));
+          }}
           className="mx-1 rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         >
           {itemsPerPageOptions.map((option) => (
@@ -74,10 +76,11 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
             <button
               onClick={onPrevious}
               disabled={!canGoPrevious}
-              className={`relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 focus:z-20 focus:outline-offset-0 ${canGoPrevious
+              className={`relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 focus:z-20 focus:outline-offset-0 ${
+                canGoPrevious
                   ? 'hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500'
                   : 'cursor-not-allowed opacity-50'
-                }`}
+              }`}
             >
               <span className="sr-only">Previous</span>
               <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
@@ -87,11 +90,14 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
             {pageRange.map((page) => (
               <button
                 key={page}
-                onClick={() => onPageChange(page)}
-                className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-inset ring-gray-300 focus:z-20 focus:outline-offset-0 ${page === currentPage
+                onClick={() => {
+                  onPageChange(page);
+                }}
+                className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-inset ring-gray-300 focus:z-20 focus:outline-offset-0 ${
+                  page === currentPage
                     ? 'z-10 bg-indigo-600 text-white focus:ring-2 focus:ring-indigo-500'
                     : 'text-gray-900 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500'
-                  }`}
+                }`}
               >
                 {page}
               </button>
@@ -101,10 +107,11 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
             <button
               onClick={onNext}
               disabled={!canGoNext}
-              className={`relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 focus:z-20 focus:outline-offset-0 ${canGoNext
+              className={`relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 focus:z-20 focus:outline-offset-0 ${
+                canGoNext
                   ? 'hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500'
                   : 'cursor-not-allowed opacity-50'
-                }`}
+              }`}
             >
               <span className="sr-only">Next</span>
               <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
@@ -118,8 +125,9 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
         <button
           onClick={onPrevious}
           disabled={!canGoPrevious}
-          className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 ${canGoPrevious ? 'hover:bg-gray-50' : 'cursor-not-allowed opacity-50'
-            }`}
+          className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 ${
+            canGoPrevious ? 'hover:bg-gray-50' : 'cursor-not-allowed opacity-50'
+          }`}
         >
           Previous
         </button>
@@ -129,8 +137,9 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
         <button
           onClick={onNext}
           disabled={!canGoNext}
-          className={`relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 ${canGoNext ? 'hover:bg-gray-50' : 'cursor-not-allowed opacity-50'
-            }`}
+          className={`relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 ${
+            canGoNext ? 'hover:bg-gray-50' : 'cursor-not-allowed opacity-50'
+          }`}
         >
           Next
         </button>

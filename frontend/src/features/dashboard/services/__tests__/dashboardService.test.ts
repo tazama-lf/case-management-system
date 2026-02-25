@@ -60,9 +60,11 @@ describe('dashboardService', () => {
     });
 
     it('handles errors and throws with message', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const error = new Error('Network error');
-      
+
       // Mock getDashboardStats to throw, which will cause Promise.all to reject
       vi.spyOn(dashboardService, 'getDashboardStats').mockRejectedValue(error);
       vi.spyOn(dashboardService, 'getRecentAlerts').mockRejectedValue(error);
@@ -72,7 +74,10 @@ describe('dashboardService', () => {
         'Failed to load dashboard data',
       );
 
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to fetch dashboard data:', expect.any(Error));
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Failed to fetch dashboard data:',
+        expect.any(Error),
+      );
 
       consoleSpy.mockRestore();
     });
@@ -96,7 +101,9 @@ describe('dashboardService', () => {
     });
 
     it('returns default values when API call fails', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('API error'));
 
       const result = await dashboardService.getDashboardStats();
@@ -166,7 +173,9 @@ describe('dashboardService', () => {
     });
 
     it('returns default alerts when API call fails', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('API error'));
 
       const result = await dashboardService.getRecentAlerts();
@@ -237,7 +246,9 @@ describe('dashboardService', () => {
     });
 
     it('returns default cases when API call fails', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('API error'));
 
       const result = await dashboardService.getActiveCases();
@@ -332,4 +343,3 @@ describe('dashboardService', () => {
     });
   });
 });
-

@@ -11,4 +11,3 @@ describe('modals/components/index', () => {
     expect(module.ModalHeader).toBeDefined();
   });
 });
-

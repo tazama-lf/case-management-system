@@ -3,15 +3,19 @@ import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import AuditLogsStatsCards from '../components/AuditLogsStatsCards';
 import AuditLogsTable from '../components/AuditLogsTable';
 import { useAuditLogs } from '../hooks/useReports';
-import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '../../../shared/utils/exportUtils';
+import {
+  exportToExcel,
+  exportToCSV,
+  exportToPDF,
+  formatDataForExport,
+  getColumnsForReport,
+} from '../../../shared/utils/exportUtils';
 
 interface AuditLogsReportProps {
   dateRange: string;
 }
 
-const AuditLogsReport: React.FC<AuditLogsReportProps> = ({
-  dateRange
-}) => {
+const AuditLogsReport: React.FC<AuditLogsReportProps> = ({ dateRange }) => {
   const { data: auditData, isLoading, error } = useAuditLogs(dateRange);
 
   if (isLoading) {
@@ -32,7 +36,9 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <div className="flex items-center">
           <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
-          <p className="text-red-700">Failed to load audit logs data. Please try again.</p>
+          <p className="text-red-700">
+            Failed to load audit logs data. Please try again.
+          </p>
         </div>
       </div>
     );
@@ -40,7 +46,7 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({
 
   const { stats, auditLogs } = auditData || {
     stats: { totalLogs: 0, caseActions: 0, userSessions: 0, systemWarnings: 0 },
-    auditLogs: []
+    auditLogs: [],
   };
 
   const handleExportExcel = () => {

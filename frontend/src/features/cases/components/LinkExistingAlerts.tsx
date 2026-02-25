@@ -14,7 +14,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
   selectedAlerts,
   onAlertsChange,
   isVisible,
-  onAlertsSelected
+  onAlertsSelected,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [availableAlerts, setAvailableAlerts] = useState<Alert[]>([]);
@@ -38,12 +38,15 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
     const loadNALTAlerts = async () => {
       setIsLoading(true);
       try {
-        const response = await triageService.getNALTAlerts(searchTerm || undefined, {
-          page: 1, // Always start from page 1 when search term changes
-          limit: pagination.pageSize,
-          sortBy: 'created_at',
-          sortOrder: 'desc'
-        });
+        const response = await triageService.getNALTAlerts(
+          searchTerm || undefined,
+          {
+            page: 1, // Always start from page 1 when search term changes
+            limit: pagination.pageSize,
+            sortBy: 'created_at',
+            sortOrder: 'desc',
+          },
+        );
         setAvailableAlerts(response.alerts);
         setPagination(response.pagination);
       } catch (error) {
@@ -54,60 +57,79 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
     };
 
     const timeoutId = setTimeout(loadNALTAlerts, 300);
-    return () => clearTimeout(timeoutId);
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [isVisible, searchTerm, pagination.pageSize]);
 
   const handleAlertToggle = (alert: Alert) => {
-    const isSelected = selectedAlerts.some(a => a.alert_id === alert.alert_id);
+    const isSelected = selectedAlerts.some(
+      (a) => a.alert_id === alert.alert_id,
+    );
     if (isSelected) {
-      onAlertsChange(selectedAlerts.filter(a => a.alert_id !== alert.alert_id));
+      onAlertsChange(
+        selectedAlerts.filter((a) => a.alert_id !== alert.alert_id),
+      );
     } else {
       onAlertsChange([...selectedAlerts, alert]);
     }
   };
 
-  const handlePageChange = useCallback((newPage: number) => {
-    setPagination(prev => ({ ...prev, currentPage: newPage }));
-    loadAlertsWithPagination(newPage, pagination.pageSize);
-  }, [pagination.pageSize]);
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      setPagination((prev) => ({ ...prev, currentPage: newPage }));
+      loadAlertsWithPagination(newPage, pagination.pageSize);
+    },
+    [pagination.pageSize],
+  );
 
   const handlePageSizeChange = useCallback((newPageSize: number) => {
-    setPagination(prev => ({ ...prev, pageSize: newPageSize, currentPage: 1 }));
+    setPagination((prev) => ({
+      ...prev,
+      pageSize: newPageSize,
+      currentPage: 1,
+    }));
     loadAlertsWithPagination(1, newPageSize);
   }, []);
 
-  const loadAlertsWithPagination = useCallback(async (page: number, limit: number) => {
-    setIsLoading(true);
-    try {
-      const response = await triageService.getNALTAlerts(searchTerm || undefined, {
-        page,
-        limit,
-        sortBy: 'created_at',
-        sortOrder: 'desc'
-      });
-      setAvailableAlerts(response.alerts);
-      setPagination(response.pagination);
-    } catch (error) {
-      console.error('Failed to load NALT alerts:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [searchTerm]);
+  const loadAlertsWithPagination = useCallback(
+    async (page: number, limit: number) => {
+      setIsLoading(true);
+      try {
+        const response = await triageService.getNALTAlerts(
+          searchTerm || undefined,
+          {
+            page,
+            limit,
+            sortBy: 'created_at',
+            sortOrder: 'desc',
+          },
+        );
+        setAvailableAlerts(response.alerts);
+        setPagination(response.pagination);
+      } catch (error) {
+        console.error('Failed to load NALT alerts:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [searchTerm],
+  );
 
-  const isAlertSelected = (alert: Alert) => {
-    return selectedAlerts.some(a => a.alert_id === alert.alert_id);
-  };
+  const isAlertSelected = (alert: Alert) =>
+    selectedAlerts.some((a) => a.alert_id === alert.alert_id);
 
-  const filteredAlerts = React.useMemo(() => {
-    return availableAlerts;
-  }, [availableAlerts]);
+  const filteredAlerts = React.useMemo(
+    () => availableAlerts,
+    [availableAlerts],
+  );
 
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString('en-US', {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric'
+        year: 'numeric',
       });
     } catch {
       return dateString;
@@ -145,14 +167,17 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
       {}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium text-gray-900">Link Existing Alerts</h3>
+          <h3 className="text-lg font-medium text-gray-900">
+            Link Existing Alerts
+          </h3>
           <p className="text-sm text-gray-500">
             Search and select NALT status alerts to link to this case
           </p>
         </div>
         {selectedAlerts.length > 0 && (
           <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-            {selectedAlerts.length} alert{selectedAlerts.length !== 1 ? 's' : ''} selected
+            {selectedAlerts.length} alert
+            {selectedAlerts.length !== 1 ? 's' : ''} selected
           </div>
         )}
       </div>
@@ -162,7 +187,9 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
         <input
           type="text"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+          }}
           placeholder="Search by Alert ID, type, or description..."
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
         />
@@ -174,10 +201,13 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-blue-900">
-              {selectedAlerts.length} alert{selectedAlerts.length !== 1 ? 's' : ''} selected
+              {selectedAlerts.length} alert
+              {selectedAlerts.length !== 1 ? 's' : ''} selected
             </span>
             <button
-              onClick={() => onAlertsChange([])}
+              onClick={() => {
+                onAlertsChange([]);
+              }}
               className="text-xs text-blue-600 hover:text-blue-800"
             >
               Clear all
@@ -191,27 +221,29 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
 
       {/* Page Size and Sorting Info */}
       {!isLoading && pagination.totalItems > 0 && (
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2 ml-auto">
-                  <label className="text-sm text-gray-600">Show:</label>
-                  <select
-                    value={pagination.pageSize}
-                    onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                    className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                  </select>
-                  <span className="text-sm text-gray-600">per page</span>
-                </div>
-                
-                <div className="text-sm text-gray-600">
-                  Sorted by Date Created (Descending)
-                </div>
-              </div>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 ml-auto">
+            <label className="text-sm text-gray-600">Show:</label>
+            <select
+              value={pagination.pageSize}
+              onChange={(e) => {
+                handlePageSizeChange(Number(e.target.value));
+              }}
+              className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+            <span className="text-sm text-gray-600">per page</span>
+          </div>
+
+          <div className="text-sm text-gray-600">
+            Sorted by Date Created (Descending)
+          </div>
+        </div>
       )}
       {}
       <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -239,13 +271,19 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                  <td
+                    colSpan={5}
+                    className="px-4 py-8 text-center text-sm text-gray-500"
+                  >
                     Loading alerts...
                   </td>
                 </tr>
               ) : filteredAlerts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                  <td
+                    colSpan={5}
+                    className="px-4 py-8 text-center text-sm text-gray-500"
+                  >
                     No alerts found
                   </td>
                 </tr>
@@ -256,13 +294,17 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                     className={`hover:bg-gray-50 cursor-pointer ${
                       isAlertSelected(alert) ? 'bg-blue-50' : ''
                     }`}
-                    onClick={() => handleAlertToggle(alert)}
+                    onClick={() => {
+                      handleAlertToggle(alert);
+                    }}
                   >
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
                         checked={isAlertSelected(alert)}
-                        onChange={() => handleAlertToggle(alert)}
+                        onChange={() => {
+                          handleAlertToggle(alert);
+                        }}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                     </td>
@@ -270,16 +312,20 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                       {alert.alert_id}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        getTypeBadge(alert.txtp || alert.alert_type || 'Unknown')
-                      }`}>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getTypeBadge(
+                          alert.txtp || alert.alert_type || 'Unknown',
+                        )}`}
+                      >
                         {alert.txtp || alert.alert_type || 'Unknown'}
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        getRiskScoreBadge(alert.priority || 0)
-                      }`}>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getRiskScoreBadge(
+                          alert.priority || 0,
+                        )}`}
+                      >
                         {alert.priority || 0}
                       </span>
                     </td>
@@ -313,11 +359,12 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                       pagination.totalItems,
                     )}
                   </span>{' '}
-                  of <span className="font-medium">{pagination.totalItems}</span>{' '}
+                  of{' '}
+                  <span className="font-medium">{pagination.totalItems}</span>{' '}
                   results
                 </p>
               </div>
-              
+
               {/* Page Navigation - Always show if pagination exists */}
               {pagination.totalPages > 0 && (
                 <div>
@@ -326,17 +373,21 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                     aria-label="Pagination"
                   >
                     <button
-                      onClick={() => handlePageChange(Math.max(1, pagination.currentPage - 1))}
+                      onClick={() => {
+                        handlePageChange(
+                          Math.max(1, pagination.currentPage - 1),
+                        );
+                      }}
                       disabled={pagination.currentPage <= 1}
                       className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Previous
                     </button>
-                    
+
                     {/* Page Numbers with Ellipsis Logic */}
                     {(() => {
                       const { currentPage, totalPages } = pagination;
-                      const pages: (number | 'ellipsis')[] = [];
+                      const pages: Array<number | 'ellipsis'> = [];
                       const windowSize = 5;
                       const half = Math.floor(windowSize / 2);
 
@@ -347,7 +398,10 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                         for (let p = 1; p <= totalPages; p++) addPage(p);
                       } else {
                         const start = Math.max(2, currentPage - half);
-                        const end = Math.min(totalPages - 1, currentPage + half);
+                        const end = Math.min(
+                          totalPages - 1,
+                          currentPage + half,
+                        );
 
                         addPage(1);
                         if (start > 2) addEllipsis();
@@ -367,22 +421,33 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                         ) : (
                           <button
                             key={p}
-                            onClick={() => handlePageChange(p)}
+                            onClick={() => {
+                              handlePageChange(p);
+                            }}
                             className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                               pagination.currentPage === p
                                 ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
                                 : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                             }`}
-                            aria-current={pagination.currentPage === p ? 'page' : undefined}
+                            aria-current={
+                              pagination.currentPage === p ? 'page' : undefined
+                            }
                           >
                             {p}
                           </button>
                         ),
                       );
                     })()}
-                    
+
                     <button
-                      onClick={() => handlePageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))}
+                      onClick={() => {
+                        handlePageChange(
+                          Math.min(
+                            pagination.totalPages,
+                            pagination.currentPage + 1,
+                          ),
+                        );
+                      }}
                       disabled={pagination.currentPage >= pagination.totalPages}
                       className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -401,10 +466,14 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
         <div className="flex">
           <div className="ml-3">
             <div className="text-sm text-yellow-800">
-              <strong>Note:</strong> Selected alerts will be linked to this case.
-              You can manage linked alerts after case creation from the case details page.
+              <strong>Note:</strong> Selected alerts will be linked to this
+              case. You can manage linked alerts after case creation from the
+              case details page.
               {selectedAlerts.length > 0 && (
-                <p className="mt-1 font-medium">The Create Case button is now enabled. Click it to create a case with the first selected alert.</p>
+                <p className="mt-1 font-medium">
+                  The Create Case button is now enabled. Click it to create a
+                  case with the first selected alert.
+                </p>
               )}
             </div>
           </div>

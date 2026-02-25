@@ -34,11 +34,9 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
   onPageChange,
   onPageSizeChange,
   onCreateNew,
-  onView
+  onView,
 }) => {
-  const {
-    hasComplianceOfficerRole
-  } = useAuth();
+  const { hasComplianceOfficerRole } = useAuth();
   const { cases, loading, errorState, filters, pagination } = dashboardState;
 
   return (
@@ -48,8 +46,12 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
           {/* Header Section */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Cases Dashboard</h1>
-              <p className="mt-2 text-gray-600">Manage and track investigation cases</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Cases Dashboard
+              </h1>
+              <p className="mt-2 text-gray-600">
+                Manage and track investigation cases
+              </p>
             </div>
             {!hasComplianceOfficerRole() ? (
               <div className="flex items-center space-x-3">
@@ -60,13 +62,9 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
                   <PlusIcon className="h-4 w-4" />
                   Create Manually
                 </button>
-
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
-
-
-              </div>
+              <div className="flex items-center space-x-3"></div>
             )}
           </div>
 
@@ -103,7 +101,10 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
                 loading={loading}
                 lastUpdated={null}
                 onPageSizeChange={onPageSizeChange}
-                sort={{ column: 'updated_at', direction: filters.sortBy === 'recent' ? 'desc' : 'asc' }}
+                sort={{
+                  column: 'updated_at',
+                  direction: filters.sortBy === 'recent' ? 'desc' : 'asc',
+                }}
                 itemType="cases"
               />
 
@@ -116,7 +117,7 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
                   pageSize: pagination.pageSize,
                   totalItems: pagination.totalItems,
                   totalPages: pagination.totalPages,
-                  onPageChange: onPageChange,
+                  onPageChange,
                 }}
               />
             </>

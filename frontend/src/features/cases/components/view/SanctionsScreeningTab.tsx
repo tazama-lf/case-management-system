@@ -126,7 +126,9 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({
           )}
         </div>
         <button
-          onClick={() => setShowUploadModal(true)}
+          onClick={() => {
+            setShowUploadModal(true);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           <PlusIcon className="h-4 w-4" />
@@ -142,12 +144,16 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({
             type="text"
             placeholder="Search screenings..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+            }}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
         <button
-          onClick={() => setShowFilters(!showFilters)}
+          onClick={() => {
+            setShowFilters(!showFilters);
+          }}
           className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium border shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
             showFilters
               ? 'bg-blue-50 border-blue-200 text-blue-700'
@@ -177,11 +183,11 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({
               </label>
               <select
                 value={dispositionFilter}
-                onChange={(e) =>
+                onChange={(e) => {
                   setDispositionFilter(
                     e.target.value as SanctionsDisposition | '',
-                  )
-                }
+                  );
+                }}
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">All Dispositions</option>
@@ -198,7 +204,9 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({
               </label>
               <select
                 value={toolFilter}
-                onChange={(e) => setToolFilter(e.target.value)}
+                onChange={(e) => {
+                  setToolFilter(e.target.value);
+                }}
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">All Tools</option>
@@ -230,7 +238,9 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({
               Get started by uploading your first sanctions screening report.
             </p>
             <button
-              onClick={() => setShowUploadModal(true)}
+              onClick={() => {
+                setShowUploadModal(true);
+              }}
               className="mt-4 inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
               <PlusIcon className="h-4 w-4" />
@@ -252,7 +262,9 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({
       {showUploadModal && (
         <UploadScreeningModal
           caseId={caseId}
-          onClose={() => setShowUploadModal(false)}
+          onClose={() => {
+            setShowUploadModal(false);
+          }}
         />
       )}
 
@@ -335,7 +347,9 @@ const ScreeningCard: React.FC<ScreeningCardProps> = ({
         </div>
 
         <button
-          onClick={() => onViewDetails(screening)}
+          onClick={() => {
+            onViewDetails(screening);
+          }}
           className="ml-4 text-sm text-blue-600 hover:text-blue-700 font-medium"
         >
           View Details →
@@ -428,7 +442,9 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
     >
       <div
         className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
       >
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">
@@ -487,9 +503,9 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
               type="date"
               required
               value={formData.screening_date}
-              onChange={(e) =>
-                setFormData({ ...formData, screening_date: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, screening_date: e.target.value });
+              }}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
@@ -502,9 +518,9 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
             <select
               required
               value={formData.tool_source}
-              onChange={(e) =>
-                setFormData({ ...formData, tool_source: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, tool_source: e.target.value });
+              }}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="">Select a tool...</option>
@@ -524,9 +540,9 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
             <input
               type="text"
               value={formData.reference_id}
-              onChange={(e) =>
-                setFormData({ ...formData, reference_id: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, reference_id: e.target.value });
+              }}
               placeholder="External system reference"
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
@@ -540,12 +556,12 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
             <select
               required
               value={formData.disposition}
-              onChange={(e) =>
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   disposition: e.target.value as SanctionsDisposition,
-                })
-              }
+                });
+              }}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               {DISPOSITION_OPTIONS.map((opt) => (
@@ -565,12 +581,12 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
               type="number"
               min="0"
               value={formData.match_count}
-              onChange={(e) =>
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   match_count: parseInt(e.target.value) || 0,
-                })
-              }
+                });
+              }}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
@@ -584,9 +600,9 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
               required
               rows={4}
               value={formData.summary}
-              onChange={(e) =>
-                setFormData({ ...formData, summary: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, summary: e.target.value });
+              }}
               placeholder="Summarize the screening results and findings..."
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
@@ -607,13 +623,13 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
                     type="number"
                     min="0"
                     value={formData.entities_screened || ''}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setFormData({
                         ...formData,
                         entities_screened:
                           parseInt(e.target.value) || undefined,
-                      })
-                    }
+                      });
+                    }}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -626,13 +642,13 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
                     min="0"
                     max="100"
                     value={formData.confidence_score || ''}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setFormData({
                         ...formData,
                         confidence_score:
                           parseFloat(e.target.value) || undefined,
-                      })
-                    }
+                      });
+                    }}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -643,7 +659,7 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
                 </label>
                 <select
                   value={formData.risk_level || ''}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       risk_level:
@@ -652,8 +668,8 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
                           | 'MEDIUM'
                           | 'HIGH'
                           | 'CRITICAL') || undefined,
-                    })
-                  }
+                    });
+                  }}
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="">Not specified</option>
@@ -670,12 +686,12 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
                 <input
                   type="text"
                   value={formData.watchlists_checked || ''}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       watchlists_checked: e.target.value,
-                    })
-                  }
+                    });
+                  }}
                   placeholder="OFAC, EU, UN, etc."
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
@@ -758,7 +774,9 @@ const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({
     >
       <div
         className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
       >
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">

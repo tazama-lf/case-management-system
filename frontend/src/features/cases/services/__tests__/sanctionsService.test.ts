@@ -15,9 +15,9 @@ beforeEach(() => {
     download: '',
     click: mockClick,
   };
-  
+
   global.document.createElement = vi.fn(() => mockLink) as any;
-  
+
   // Properly mock document.body
   Object.defineProperty(global.document, 'body', {
     value: {
@@ -48,7 +48,8 @@ describe('sanctionsService', () => {
       };
       (apiClient.get as vi.Mock).mockResolvedValue(mockScreenings);
 
-      const result = await sanctionsService.getCaseSanctionsScreenings('CASE-123');
+      const result =
+        await sanctionsService.getCaseSanctionsScreenings('CASE-123');
 
       expect(apiClient.get).toHaveBeenCalled();
       expect(result).toEqual(mockScreenings);
@@ -68,7 +69,7 @@ describe('sanctionsService', () => {
       });
 
       expect(apiClient.get).toHaveBeenCalledWith(
-        expect.stringContaining('disposition=PENDING_REVIEW')
+        expect.stringContaining('disposition=PENDING_REVIEW'),
       );
     });
   });
@@ -82,16 +83,21 @@ describe('sanctionsService', () => {
       };
       (apiClient.get as vi.Mock).mockResolvedValue(mockScreening);
 
-      const result = await sanctionsService.getSanctionsScreening('SCREENING-1');
+      const result =
+        await sanctionsService.getSanctionsScreening('SCREENING-1');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/sanctions-screenings/SCREENING-1');
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/v1/sanctions-screenings/SCREENING-1',
+      );
       expect(result).toEqual(mockScreening);
     });
   });
 
   describe('createSanctionsScreening', () => {
     it('creates sanctions screening with file', async () => {
-      const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+      const mockFile = new File(['test'], 'test.pdf', {
+        type: 'application/pdf',
+      });
       const mockResponse = {
         screening: {
           screening_id: 'SCREENING-1',
@@ -175,7 +181,7 @@ describe('sanctionsService', () => {
 
       expect(apiClient.patch).toHaveBeenCalledWith(
         '/api/v1/sanctions-screenings/SCREENING-1',
-        { disposition: 'CLEARED' }
+        { disposition: 'CLEARED' },
       );
       expect(result).toEqual(mockResponse);
     });
@@ -189,9 +195,12 @@ describe('sanctionsService', () => {
       };
       (apiClient.delete as vi.Mock).mockResolvedValue(mockResponse);
 
-      const result = await sanctionsService.deleteSanctionsScreening('SCREENING-1');
+      const result =
+        await sanctionsService.deleteSanctionsScreening('SCREENING-1');
 
-      expect(apiClient.delete).toHaveBeenCalledWith('/api/v1/sanctions-screenings/SCREENING-1');
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/api/v1/sanctions-screenings/SCREENING-1',
+      );
       expect(result).toEqual(mockResponse);
     });
   });
@@ -204,10 +213,11 @@ describe('sanctionsService', () => {
       };
       (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
 
-      const result = await sanctionsService.downloadSanctionsReport('SCREENING-1');
+      const result =
+        await sanctionsService.downloadSanctionsReport('SCREENING-1');
 
       expect(apiClient.get).toHaveBeenCalledWith(
-        '/api/v1/sanctions-screenings/SCREENING-1/download'
+        '/api/v1/sanctions-screenings/SCREENING-1/download',
       );
       expect(mockClick).toHaveBeenCalled();
       expect(result).toEqual(mockResponse);
@@ -227,10 +237,11 @@ describe('sanctionsService', () => {
       ];
       (apiClient.get as vi.Mock).mockResolvedValue(mockLogs);
 
-      const result = await sanctionsService.getSanctionsScreeningAuditLogs('SCREENING-1');
+      const result =
+        await sanctionsService.getSanctionsScreeningAuditLogs('SCREENING-1');
 
       expect(apiClient.get).toHaveBeenCalledWith(
-        '/api/v1/sanctions-screenings/SCREENING-1/audit-logs'
+        '/api/v1/sanctions-screenings/SCREENING-1/audit-logs',
       );
       expect(result).toEqual(mockLogs);
     });
@@ -245,10 +256,11 @@ describe('sanctionsService', () => {
       };
       (apiClient.get as vi.Mock).mockResolvedValue(mockStats);
 
-      const result = await sanctionsService.getCaseSanctionsStatistics('CASE-123');
+      const result =
+        await sanctionsService.getCaseSanctionsStatistics('CASE-123');
 
       expect(apiClient.get).toHaveBeenCalledWith(
-        '/api/v1/sanctions-screenings/case/CASE-123/statistics'
+        '/api/v1/sanctions-screenings/case/CASE-123/statistics',
       );
       expect(result).toEqual(mockStats);
     });
@@ -265,7 +277,7 @@ describe('sanctionsService', () => {
       const result = await sanctionsService.searchSanctionsScreenings(
         { disposition: 'PENDING_REVIEW' },
         1,
-        20
+        20,
       );
 
       expect(apiClient.get).toHaveBeenCalled();
@@ -291,7 +303,7 @@ describe('sanctionsService', () => {
           search: 'test',
         },
         2,
-        10
+        10,
       );
 
       expect(apiClient.get).toHaveBeenCalled();
@@ -300,7 +312,9 @@ describe('sanctionsService', () => {
 
   describe('validateScreeningFile', () => {
     it('validates file within size limit', () => {
-      const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+      const mockFile = new File(['test'], 'test.pdf', {
+        type: 'application/pdf',
+      });
       Object.defineProperty(mockFile, 'size', { value: 10 * 1024 * 1024 }); // 10MB
 
       const result = sanctionsService.validateScreeningFile(mockFile);
@@ -309,7 +323,9 @@ describe('sanctionsService', () => {
     });
 
     it('rejects file exceeding size limit', () => {
-      const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+      const mockFile = new File(['test'], 'test.pdf', {
+        type: 'application/pdf',
+      });
       Object.defineProperty(mockFile, 'size', { value: 60 * 1024 * 1024 }); // 60MB
 
       const result = sanctionsService.validateScreeningFile(mockFile);
@@ -319,7 +335,9 @@ describe('sanctionsService', () => {
     });
 
     it('validates allowed file types', () => {
-      const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+      const mockFile = new File(['test'], 'test.pdf', {
+        type: 'application/pdf',
+      });
       Object.defineProperty(mockFile, 'size', { value: 1024 });
 
       const result = sanctionsService.validateScreeningFile(mockFile);
@@ -328,7 +346,9 @@ describe('sanctionsService', () => {
     });
 
     it('rejects disallowed file types', () => {
-      const mockFile = new File(['test'], 'test.exe', { type: 'application/x-msdownload' });
+      const mockFile = new File(['test'], 'test.exe', {
+        type: 'application/x-msdownload',
+      });
       Object.defineProperty(mockFile, 'size', { value: 1024 });
 
       const result = sanctionsService.validateScreeningFile(mockFile);
@@ -358,8 +378,12 @@ describe('sanctionsService', () => {
   describe('getDispositionColor', () => {
     it('returns color for known dispositions', () => {
       expect(sanctionsService.getDispositionColor('CLEARED')).toBe('green');
-      expect(sanctionsService.getDispositionColor('POSITIVE_MATCH')).toBe('red');
-      expect(sanctionsService.getDispositionColor('PENDING_REVIEW')).toBe('blue');
+      expect(sanctionsService.getDispositionColor('POSITIVE_MATCH')).toBe(
+        'red',
+      );
+      expect(sanctionsService.getDispositionColor('PENDING_REVIEW')).toBe(
+        'blue',
+      );
     });
 
     it('returns gray for unknown disposition', () => {
@@ -391,4 +415,3 @@ describe('sanctionsService', () => {
     });
   });
 });
-

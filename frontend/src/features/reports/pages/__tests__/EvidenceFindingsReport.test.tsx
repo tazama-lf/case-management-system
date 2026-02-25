@@ -20,14 +20,20 @@ vi.mock('../../hooks/useReports', () => ({
 
 // Mock components
 vi.mock('../../components/EvidenceFindingsStatsCards', () => ({
-  default: ({ stats }: any) => <div data-testid="evidence-findings-stats-cards">{JSON.stringify(stats)}</div>,
+  default: ({ stats }: any) => (
+    <div data-testid="evidence-findings-stats-cards">
+      {JSON.stringify(stats)}
+    </div>
+  ),
 }));
 
 vi.mock('../../../../shared/components/PaginationControls', () => ({
   default: ({ currentPage, totalPages, onPageChange }: any) => (
     <div data-testid="pagination-controls">
       <button onClick={() => onPageChange(currentPage + 1)}>Next</button>
-      <span>Page {currentPage} of {totalPages}</span>
+      <span>
+        Page {currentPage} of {totalPages}
+      </span>
     </div>
   ),
 }));
@@ -122,10 +128,14 @@ describe('EvidenceFindingsReport', () => {
   });
 
   it('renders evidence findings report with data', async () => {
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
-      expect(screen.getByTestId('evidence-findings-stats-cards')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('evidence-findings-stats-cards'),
+      ).toBeInTheDocument();
       expect(screen.getByText('Evidence Findings Report')).toBeInTheDocument();
     });
   });
@@ -138,7 +148,9 @@ describe('EvidenceFindingsReport', () => {
       isError: false,
     } as any);
 
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     expect(screen.getByText('Evidence Findings Report')).toBeInTheDocument();
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
@@ -152,17 +164,25 @@ describe('EvidenceFindingsReport', () => {
       isError: true,
     } as any);
 
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
-    expect(screen.getByText(/Failed to load evidence findings data/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Failed to load evidence findings data/i),
+    ).toBeInTheDocument();
   });
 
   it('handles search input', async () => {
     const user = userEvent.setup();
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/Search findings/i)).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/Search findings/i),
+      ).toBeInTheDocument();
     });
 
     const searchInput = screen.getByPlaceholderText(/Search findings/i);
@@ -173,7 +193,9 @@ describe('EvidenceFindingsReport', () => {
 
   it('handles status filter', async () => {
     const user = userEvent.setup();
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByText('All Statuses')).toBeInTheDocument();
@@ -187,7 +209,9 @@ describe('EvidenceFindingsReport', () => {
 
   it('handles export to Excel', async () => {
     const user = userEvent.setup();
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Export to Excel')).toBeInTheDocument();
@@ -202,7 +226,9 @@ describe('EvidenceFindingsReport', () => {
 
   it('handles export to CSV', async () => {
     const user = userEvent.setup();
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Export as CSV')).toBeInTheDocument();
@@ -217,7 +243,9 @@ describe('EvidenceFindingsReport', () => {
 
   it('handles export to PDF', async () => {
     const user = userEvent.setup();
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Export as PDF')).toBeInTheDocument();
@@ -239,7 +267,9 @@ describe('EvidenceFindingsReport', () => {
       throw new Error('Export failed');
     });
 
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Export to Excel')).toBeInTheDocument();
@@ -248,7 +278,9 @@ describe('EvidenceFindingsReport', () => {
     const exportButton = screen.getByText('Export to Excel');
     await user.click(exportButton);
 
-    expect(global.alert).toHaveBeenCalledWith('Export failed. Please try again.');
+    expect(global.alert).toHaveBeenCalledWith(
+      'Export failed. Please try again.',
+    );
   });
 
   it('handles missing data gracefully', async () => {
@@ -259,42 +291,58 @@ describe('EvidenceFindingsReport', () => {
       isError: false,
     } as any);
 
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
-      expect(screen.getByTestId('evidence-findings-stats-cards')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('evidence-findings-stats-cards'),
+      ).toBeInTheDocument();
     });
   });
 
   it('displays findings list', async () => {
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
-      expect(screen.getByText('Evidence collected for investigation')).toBeInTheDocument();
+      expect(
+        screen.getByText('Evidence collected for investigation'),
+      ).toBeInTheDocument();
       expect(screen.getByText('Another finding')).toBeInTheDocument();
     });
   });
 
   it('filters findings by search term', async () => {
     const user = userEvent.setup();
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/Search findings/i)).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/Search findings/i),
+      ).toBeInTheDocument();
     });
 
     const searchInput = screen.getByPlaceholderText(/Search findings/i);
     await user.type(searchInput, 'investigation');
 
     await waitFor(() => {
-      expect(screen.getByText('Evidence collected for investigation')).toBeInTheDocument();
+      expect(
+        screen.getByText('Evidence collected for investigation'),
+      ).toBeInTheDocument();
       expect(screen.queryByText('Another finding')).not.toBeInTheDocument();
     });
   });
 
   it('filters findings by status', async () => {
     const user = userEvent.setup();
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByText('All Statuses')).toBeInTheDocument();
@@ -304,20 +352,28 @@ describe('EvidenceFindingsReport', () => {
     await user.selectOptions(statusSelect, 'Confirmed');
 
     await waitFor(() => {
-      expect(screen.getByText('Evidence collected for investigation')).toBeInTheDocument();
+      expect(
+        screen.getByText('Evidence collected for investigation'),
+      ).toBeInTheDocument();
       expect(screen.queryByText('Another finding')).not.toBeInTheDocument();
     });
   });
 
   it('expands and collapses finding details', async () => {
     const user = userEvent.setup();
-    render(<EvidenceFindingsReport dateRange="last30" />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByText('Evidence collected for investigation')).toBeInTheDocument();
+    render(<EvidenceFindingsReport dateRange="last30" />, {
+      wrapper: createWrapper(),
     });
 
-    const findingElement = screen.getByText('Evidence collected for investigation').closest('div');
+    await waitFor(() => {
+      expect(
+        screen.getByText('Evidence collected for investigation'),
+      ).toBeInTheDocument();
+    });
+
+    const findingElement = screen
+      .getByText('Evidence collected for investigation')
+      .closest('div');
     if (findingElement) {
       await user.click(findingElement);
 
@@ -333,4 +389,3 @@ describe('EvidenceFindingsReport', () => {
     expect(useEvidenceFindings).toHaveBeenCalledWith('last30');
   });
 });
-

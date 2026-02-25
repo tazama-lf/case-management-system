@@ -26,12 +26,7 @@ describe('MultiBarChart', () => {
   ];
 
   it('renders chart with data', () => {
-    render(
-      <MultiBarChart
-        data={mockData}
-        title="Cases Overview"
-      />,
-    );
+    render(<MultiBarChart data={mockData} title="Cases Overview" />);
 
     expect(screen.getByText('Cases Overview')).toBeInTheDocument();
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
@@ -41,11 +36,7 @@ describe('MultiBarChart', () => {
 
   it('renders loading state', () => {
     render(
-      <MultiBarChart
-        data={mockData}
-        title="Cases Overview"
-        isLoading={true}
-      />,
+      <MultiBarChart data={mockData} title="Cases Overview" isLoading={true} />,
     );
 
     expect(screen.getByText('Cases Overview')).toBeInTheDocument();
@@ -53,12 +44,7 @@ describe('MultiBarChart', () => {
   });
 
   it('renders empty state when data is empty', () => {
-    render(
-      <MultiBarChart
-        data={[]}
-        title="Cases Overview"
-      />,
-    );
+    render(<MultiBarChart data={[]} title="Cases Overview" />);
 
     expect(screen.getByText('Cases Overview')).toBeInTheDocument();
     expect(screen.getByText('No data available')).toBeInTheDocument();
@@ -66,34 +52,20 @@ describe('MultiBarChart', () => {
   });
 
   it('renders empty state when data is null', () => {
-    render(
-      <MultiBarChart
-        data={null as any}
-        title="Cases Overview"
-      />,
-    );
+    render(<MultiBarChart data={null as any} title="Cases Overview" />);
 
     expect(screen.getByText('No data available')).toBeInTheDocument();
   });
 
   it('renders empty state when data is undefined', () => {
-    render(
-      <MultiBarChart
-        data={undefined as any}
-        title="Cases Overview"
-      />,
-    );
+    render(<MultiBarChart data={undefined as any} title="Cases Overview" />);
 
     expect(screen.getByText('No data available')).toBeInTheDocument();
   });
 
   it('applies custom height', () => {
     render(
-      <MultiBarChart
-        data={mockData}
-        title="Cases Overview"
-        height={400}
-      />,
+      <MultiBarChart data={mockData} title="Cases Overview" height={400} />,
     );
 
     const container = screen.getByTestId('responsive-container');
@@ -101,14 +73,8 @@ describe('MultiBarChart', () => {
   });
 
   it('renders with default height when not provided', () => {
-    render(
-      <MultiBarChart
-        data={mockData}
-        title="Cases Overview"
-      />,
-    );
+    render(<MultiBarChart data={mockData} title="Cases Overview" />);
 
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
 });
-

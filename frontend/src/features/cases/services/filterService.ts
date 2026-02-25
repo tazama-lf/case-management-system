@@ -1,8 +1,6 @@
 import apiClient from '../../../shared/services/apiClient';
 import type { ApiErrorResponse } from '../../alerts/types/triage.types';
 
-
-
 export interface UserFilters {
   filter_Id: number;
   user_id: string;
@@ -18,35 +16,45 @@ export interface CreateUserFilters {
   filterType: string;
 }
 
-
 export interface UserDefinedFilters extends UserFilters {
   filters: UserFilters[];
 }
 
-
 export class FilterService {
-  private baseUrl = '/api/v1/filter';
+  private readonly baseUrl = '/api/v1/filter';
 
-  async getFilters(user_id: string, filterType: string): Promise<UserDefinedFilters[]> {
+  async getFilters(
+    user_id: string,
+    filterType: string,
+  ): Promise<UserDefinedFilters[]> {
     try {
-      const response = await apiClient.get<UserDefinedFilters[]>(`${this.baseUrl}/user/${user_id}/filterType/${filterType}`);
+      const response = await apiClient.get<UserDefinedFilters[]>(
+        `${this.baseUrl}/user/${user_id}/filterType/${filterType}`,
+      );
       return Array.isArray(response) ? response : [];
     } catch (error: any) {
-      console.error('FilterService: Failed to get filters for user:', user_id, error);
+      console.error(
+        'FilterService: Failed to get filters for user:',
+        user_id,
+        error,
+      );
       throw this.handleError(error, 'get user defined filter failed');
     }
   }
 
   async createFilter(createFilterDTO: CreateUserFilters): Promise<UserFilters> {
     try {
-      const response = await apiClient.post<UserFilters>(`${this.baseUrl}/create`, createFilterDTO);
+      const response = await apiClient.post<UserFilters>(
+        `${this.baseUrl}/create`,
+        createFilterDTO,
+      );
       return this.validateFilterResponse(response);
     } catch (error: any) {
       // Check for 409 Conflict - duplicate filter
       if (error.response?.status === 409) {
         throw new Error('FILTER_ALREADY_EXISTS');
       }
-      
+
       throw this.handleError(error, 'create filter');
     }
   }

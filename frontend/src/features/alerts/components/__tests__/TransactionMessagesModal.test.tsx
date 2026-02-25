@@ -114,7 +114,9 @@ describe('TransactionMessagesModal', () => {
       expect(screen.getByText('PAYMENT')).toBeInTheDocument();
     });
 
-    const messageCard = screen.getByText('PAYMENT').closest('div[class*="cursor-pointer"]');
+    const messageCard = screen
+      .getByText('PAYMENT')
+      .closest('div[class*="cursor-pointer"]');
     if (messageCard) {
       await user.click(messageCard);
       expect(mockOnMessageClick).toHaveBeenCalledWith(
@@ -216,7 +218,9 @@ describe('TransactionMessagesModal', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/No transaction messages found/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/No transaction messages found/i),
+      ).toBeInTheDocument();
     });
   });
 
@@ -267,4 +271,3 @@ describe('TransactionMessagesModal', () => {
     });
   });
 });
-

@@ -14,7 +14,9 @@ describe('LinkedItemsTab', () => {
   });
 
   it('renders loading state initially', () => {
-    (caseService.getCaseDetails as vi.Mock).mockImplementation(() => new Promise(() => {}));
+    (caseService.getCaseDetails as vi.Mock).mockImplementation(
+      () => new Promise(() => {}),
+    );
     render(<LinkedItemsTab caseId="CASE-123" />);
     // Loading spinner is present but doesn't have role="status"
     expect(document.querySelector('.animate-spin')).toBeInTheDocument();
@@ -93,4 +95,3 @@ describe('LinkedItemsTab', () => {
     });
   });
 });
-

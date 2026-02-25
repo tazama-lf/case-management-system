@@ -155,4 +155,3 @@ describe('admindashboard.types', () => {
     expect(permission.category).toBe('Cases');
   });
 });
-

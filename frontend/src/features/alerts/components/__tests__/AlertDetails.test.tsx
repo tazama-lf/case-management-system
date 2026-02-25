@@ -52,12 +52,18 @@ describe('AlertDetails', () => {
 
     expect(screen.getByText(/Alert Details/i)).toBeInTheDocument();
     expect(screen.getByText('URGENT')).toBeInTheDocument();
-    expect(screen.getByText(/Suspicious transaction detected/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Suspicious transaction detected/),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^Update Alert$/i }));
     await user.click(screen.getByRole('button', { name: /^Close Alert$/i }));
-    expect(onUpdate).toHaveBeenCalledWith(expect.objectContaining({ alert_id: 'ALERT-1' }));
-    expect(onCloseAlert).toHaveBeenCalledWith(expect.objectContaining({ alert_id: 'ALERT-1' }));
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ alert_id: 'ALERT-1' }),
+    );
+    expect(onCloseAlert).toHaveBeenCalledWith(
+      expect.objectContaining({ alert_id: 'ALERT-1' }),
+    );
   });
 
   it('shows placeholders when loading, and renders nothing once alert is absent and not loading', () => {
@@ -86,9 +92,12 @@ describe('AlertDetails', () => {
 describe('AlertDetailsRoot', () => {
   it('renders without crashing', () => {
     render(
-      <AlertDetails.Root alert={{ id: '1', title: 'Test Alert', status: 'open' }} onClose={() => {}}>
+      <AlertDetails.Root
+        alert={{ id: '1', title: 'Test Alert', status: 'open' }}
+        onClose={() => {}}
+      >
         <div>Test Alert</div>
-      </AlertDetails.Root>
+      </AlertDetails.Root>,
     );
     expect(screen.getByText(/Test Alert/i)).toBeInTheDocument();
   });

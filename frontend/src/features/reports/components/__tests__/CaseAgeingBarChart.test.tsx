@@ -66,7 +66,9 @@ describe('CaseAgeingBarChart', () => {
   });
 
   it('applies custom height', () => {
-    render(<CaseAgeingBarChart data={mockData} title="Case Ageing" height={400} />);
+    render(
+      <CaseAgeingBarChart data={mockData} title="Case Ageing" height={400} />,
+    );
 
     const container = screen.getByTestId('responsive-container');
     expect(container).toBeInTheDocument();
@@ -102,4 +104,3 @@ describe('CaseAgeingBarChart', () => {
     expect(bars.length).toBeGreaterThan(0);
   });
 });
-

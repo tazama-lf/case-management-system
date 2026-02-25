@@ -10,7 +10,9 @@ vi.mock('../../../shared/hooks/usePagination', () => {
   return {
     usePagination: ({ data, defaultItemsPerPage }: any) => {
       const [currentPage, setCurrentPage] = React.useState(1);
-      const [itemsPerPage, setItemsPerPage] = React.useState(defaultItemsPerPage || 10);
+      const [itemsPerPage, setItemsPerPage] = React.useState(
+        defaultItemsPerPage || 10,
+      );
       const totalPages = Math.ceil(data.length / itemsPerPage);
       const startIndex = (currentPage - 1) * itemsPerPage;
       const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
@@ -26,7 +28,10 @@ vi.mock('../../../shared/hooks/usePagination', () => {
         goToPreviousPage: () => setCurrentPage((p) => Math.max(p - 1, 1)),
         canGoNext: currentPage < totalPages,
         canGoPrevious: currentPage > 1,
-        pageRange: Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1),
+        pageRange: Array.from(
+          { length: Math.min(totalPages, 5) },
+          (_, i) => i + 1,
+        ),
       };
     },
   };
@@ -46,7 +51,9 @@ vi.mock('../../../shared/components/PaginationControls', () => {
         <button onClick={onPrevious} disabled={currentPage === 1}>
           Previous
         </button>
-        <span>Page {currentPage} of {totalPages}</span>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
         <button onClick={onNext} disabled={currentPage === totalPages}>
           Next
         </button>
@@ -155,7 +162,9 @@ describe('ReportsTable', () => {
       />,
     );
 
-    const exportButton = screen.getByRole('button', { name: /Export as Excel/i });
+    const exportButton = screen.getByRole('button', {
+      name: /Export as Excel/i,
+    });
     await user.click(exportButton);
 
     expect(onExportExcel).toHaveBeenCalledTimes(1);
@@ -200,9 +209,15 @@ describe('ReportsTable', () => {
   it('only shows export buttons when callbacks are provided', () => {
     render(<ReportsTable data={mockData} title="Case Status Report" />);
 
-    expect(screen.queryByRole('button', { name: /Export as Excel/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Export as CSV/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Export as PDF/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Export as Excel/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Export as CSV/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Export as PDF/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('handles pagination', async () => {
@@ -245,4 +260,3 @@ describe('ReportsTable', () => {
     }
   });
 });
-

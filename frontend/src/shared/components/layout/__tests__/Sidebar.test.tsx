@@ -43,7 +43,7 @@ describe('Sidebar', () => {
     render(
       <MemoryRouter>
         <Sidebar navigation={mockNavigation} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('Investigation Platform')).toBeInTheDocument();
@@ -54,7 +54,7 @@ describe('Sidebar', () => {
     render(
       <MemoryRouter>
         <Sidebar navigation={mockNavigation} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // Admin should see Cases
@@ -65,7 +65,7 @@ describe('Sidebar', () => {
     render(
       <MemoryRouter>
         <Sidebar navigation={mockNavigation} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     const dashboardLink = screen.getByText('Dashboard').closest('a');
@@ -91,7 +91,7 @@ describe('Sidebar', () => {
     render(
       <MemoryRouter>
         <Sidebar navigation={navigationWithChildren} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     const parentButton = screen.getByText('Parent').closest('button');
@@ -106,7 +106,7 @@ describe('Sidebar', () => {
     render(
       <MemoryRouter>
         <Sidebar navigation={mockNavigation} onLogout={onLogout} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     const logoutButton = screen.getByText('Logout');
@@ -119,7 +119,7 @@ describe('Sidebar', () => {
     render(
       <MemoryRouter>
         <Sidebar navigation={mockNavigation} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.queryByText('Logout')).not.toBeInTheDocument();
@@ -138,10 +138,9 @@ describe('Sidebar', () => {
     render(
       <MemoryRouter>
         <Sidebar navigation={navigationWithBadge} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('5')).toBeInTheDocument();
   });
 });
-

@@ -61,7 +61,9 @@ describe('useCaseData', () => {
     const mockResponse = {
       cases: [{ case_id: 'CASE-1', status: 'IN_PROGRESS' }],
     };
-    (caseService.getUserAssignedCases as vi.Mock).mockResolvedValue(mockResponse);
+    (caseService.getUserAssignedCases as vi.Mock).mockResolvedValue(
+      mockResponse,
+    );
 
     const { result } = renderHook(() => useCaseData());
 
@@ -101,7 +103,11 @@ describe('useCaseData', () => {
     const { result } = renderHook(() => useCaseData());
 
     await act(async () => {
-      await result.current.fetchCases('STATUS_20_IN_PROGRESS', 'HIGH', 'recent');
+      await result.current.fetchCases(
+        'STATUS_20_IN_PROGRESS',
+        'HIGH',
+        'recent',
+      );
     });
 
     await waitFor(() => {
@@ -114,7 +120,7 @@ describe('useCaseData', () => {
         priority: 'HIGH',
         sortBy: 'updated_at',
         sortOrder: 'desc',
-      })
+      }),
     );
   });
 
@@ -127,7 +133,11 @@ describe('useCaseData', () => {
     const { result } = renderHook(() => useCaseData());
 
     await act(async () => {
-      await result.current.refreshCases('STATUS_20_IN_PROGRESS', 'HIGH', 'recent');
+      await result.current.refreshCases(
+        'STATUS_20_IN_PROGRESS',
+        'HIGH',
+        'recent',
+      );
     });
 
     expect(caseService.getAllCases).toHaveBeenCalled();
@@ -135,8 +145,12 @@ describe('useCaseData', () => {
   });
 
   it('handles refresh errors gracefully', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    (caseService.getAllCases as vi.Mock).mockRejectedValue(new Error('Refresh failed'));
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    (caseService.getAllCases as vi.Mock).mockRejectedValue(
+      new Error('Refresh failed'),
+    );
 
     const { result } = renderHook(() => useCaseData());
 
@@ -246,7 +260,7 @@ describe('useCaseActions', () => {
       expect.objectContaining({
         priority: 'HIGH',
         caseType: 'FRAUD',
-      })
+      }),
     );
     expect(mockSuccess).toHaveBeenCalled();
     expect(mockRefreshCases).toHaveBeenCalled();
@@ -264,10 +278,9 @@ describe('useCaseActions', () => {
       await result.current.handleReopenSubmit('CASE-123', 'New evidence found');
     });
 
-    expect(caseService.reopenCase).toHaveBeenCalledWith(
-      'CASE-123',
-      { reason: 'New evidence found' }
-    );
+    expect(caseService.reopenCase).toHaveBeenCalledWith('CASE-123', {
+      reason: 'New evidence found',
+    });
     expect(mockSuccess).toHaveBeenCalled();
     expect(mockRefreshCases).toHaveBeenCalled();
   });
@@ -284,7 +297,7 @@ describe('useCaseActions', () => {
 
     expect(mockError).toHaveBeenCalledWith(
       'Reopen Case Failed',
-      expect.stringContaining('Case cannot be reopened')
+      expect.stringContaining('Case cannot be reopened'),
     );
   });
 
@@ -297,13 +310,15 @@ describe('useCaseActions', () => {
     const { result } = renderHook(() => useCaseActions(mockRefreshCases));
 
     await act(async () => {
-      await result.current.handleAbandonSubmit('CASE-123', 'No longer relevant');
+      await result.current.handleAbandonSubmit(
+        'CASE-123',
+        'No longer relevant',
+      );
     });
 
-    expect(caseService.abandonCase).toHaveBeenCalledWith(
-      'CASE-123',
-      { reason: 'No longer relevant' }
-    );
+    expect(caseService.abandonCase).toHaveBeenCalledWith('CASE-123', {
+      reason: 'No longer relevant',
+    });
     expect(mockSuccess).toHaveBeenCalled();
   });
 
@@ -367,7 +382,7 @@ describe('useCaseActions', () => {
     await act(async () => {
       await result.current.handleApproveSubmit(
         { finalOutcome: 'STATUS_82_CLOSED_CONFIRMED' },
-        { id: 'CASE-123' } as any
+        { id: 'CASE-123' } as any,
       );
     });
 
@@ -446,11 +461,10 @@ describe('useCaseActions', () => {
     await act(async () => {
       await result.current.handleApproveSubmit(
         { finalOutcome: 'STATUS_82_CLOSED_CONFIRMED' },
-        null
+        null,
       );
     });
 
     expect(caseService.approveCaseClosure).not.toHaveBeenCalled();
   });
 });
-

@@ -18,7 +18,9 @@ vi.mock('recharts', () => ({
   YAxis: () => null,
   CartesianGrid: () => null,
   Tooltip: () => null,
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   Area: () => null,
   AreaChart: () => <div>AreaChart</div>,
 }));
@@ -47,7 +49,9 @@ describe('GenerateTransactionProfileModal', () => {
         onSaveProfile={mockOnSaveProfile}
       />,
     );
-    expect(screen.queryByText(/Generate Transaction Profile|Transaction Profile/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Generate Transaction Profile|Transaction Profile/i),
+    ).not.toBeInTheDocument();
   });
 
   it('renders modal when open', () => {
@@ -81,4 +85,3 @@ describe('GenerateTransactionProfileModal', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 });
-

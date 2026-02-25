@@ -149,7 +149,9 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({
                 <React.Fragment key={index}>
                   <tr
                     className="hover:bg-gray-50/50 cursor-pointer"
-                    onClick={() => toggleExpanded(index)}
+                    onClick={() => {
+                      toggleExpanded(index);
+                    }}
                   >
                     <td className="px-6 py-4 text-sm font-mono text-gray-600">
                       {finding.caseId}
@@ -274,7 +276,9 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
             <div
               className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white">

@@ -30,7 +30,9 @@ describe('EvidenceService', () => {
 
   describe('uploadEvidence', () => {
     it('uploads evidence with basic fields', async () => {
-      const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+      const mockFile = new File(['test'], 'test.pdf', {
+        type: 'application/pdf',
+      });
       const mockResponse = {
         evidence: {
           id: 'EVIDENCE-1',
@@ -51,7 +53,9 @@ describe('EvidenceService', () => {
     });
 
     it('uploads evidence with sanctions-specific fields', async () => {
-      const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+      const mockFile = new File(['test'], 'test.pdf', {
+        type: 'application/pdf',
+      });
       const mockResponse = {
         evidence: {
           id: 'EVIDENCE-1',
@@ -73,7 +77,9 @@ describe('EvidenceService', () => {
     });
 
     it('uploads evidence with adverse media fields', async () => {
-      const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+      const mockFile = new File(['test'], 'test.pdf', {
+        type: 'application/pdf',
+      });
       const mockResponse = {
         evidence: {
           id: 'EVIDENCE-1',
@@ -112,7 +118,9 @@ describe('EvidenceService', () => {
 
       const result = await evidenceService.getTaskEvidence('TASK-1');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/evidence/task/TASK-1');
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/v1/evidence/task/TASK-1',
+      );
       expect(result).toEqual(mockEvidence);
     });
 
@@ -157,7 +165,9 @@ describe('EvidenceService', () => {
 
       const result = await evidenceService.getCaseEvidence('CASE-123');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/evidence/case/CASE-123');
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/v1/evidence/case/CASE-123',
+      );
       expect(result).toEqual(mockEvidence);
     });
   });
@@ -172,7 +182,9 @@ describe('EvidenceService', () => {
 
       const result = await evidenceService.getEvidenceByType('SANCTIONS');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/evidence/evidenceType/SANCTIONS');
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/v1/evidence/evidenceType/SANCTIONS',
+      );
       expect(result).toBeDefined();
     });
   });
@@ -203,7 +215,9 @@ describe('EvidenceService', () => {
 
       const result = await evidenceService.verifyEvidence('EVIDENCE-1');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/evidence/EVIDENCE-1/verify');
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/v1/evidence/EVIDENCE-1/verify',
+      );
       expect(result).toEqual(mockResponse);
     });
   });
@@ -232,9 +246,9 @@ describe('EvidenceService', () => {
         json: () => Promise.resolve({ message: 'Unauthorized' }),
       });
 
-      await expect(evidenceService.downloadEvidence('EVIDENCE-1')).rejects.toThrow(
-        'Authentication failed'
-      );
+      await expect(
+        evidenceService.downloadEvidence('EVIDENCE-1'),
+      ).rejects.toThrow('Authentication failed');
     });
 
     it('handles 403 permission error', async () => {
@@ -246,9 +260,9 @@ describe('EvidenceService', () => {
         json: () => Promise.resolve({ message: 'Forbidden' }),
       });
 
-      await expect(evidenceService.downloadEvidence('EVIDENCE-1')).rejects.toThrow(
-        'permission'
-      );
+      await expect(
+        evidenceService.downloadEvidence('EVIDENCE-1'),
+      ).rejects.toThrow('permission');
     });
 
     it('handles 404 not found error', async () => {
@@ -260,18 +274,18 @@ describe('EvidenceService', () => {
         json: () => Promise.resolve({ message: 'Not Found' }),
       });
 
-      await expect(evidenceService.downloadEvidence('EVIDENCE-1')).rejects.toThrow(
-        'not found'
-      );
+      await expect(
+        evidenceService.downloadEvidence('EVIDENCE-1'),
+      ).rejects.toThrow('not found');
     });
 
     it('handles missing auth token', async () => {
       localStorageMock.getItem.mockReturnValue(null);
       sessionStorageMock.getItem.mockReturnValue(null);
 
-      await expect(evidenceService.downloadEvidence('EVIDENCE-1')).rejects.toThrow(
-        'authentication token'
-      );
+      await expect(
+        evidenceService.downloadEvidence('EVIDENCE-1'),
+      ).rejects.toThrow('authentication token');
     });
 
     it('handles empty blob', async () => {
@@ -282,9 +296,9 @@ describe('EvidenceService', () => {
         headers: new Headers(),
       });
 
-      await expect(evidenceService.downloadEvidence('EVIDENCE-1')).rejects.toThrow(
-        'empty file'
-      );
+      await expect(
+        evidenceService.downloadEvidence('EVIDENCE-1'),
+      ).rejects.toThrow('empty file');
     });
   });
 
@@ -305,15 +319,17 @@ describe('EvidenceService', () => {
 
   describe('calculateFileHash', () => {
     it('calculates file hash', async () => {
-      const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' });
-      
+      const mockFile = new File(['test content'], 'test.txt', {
+        type: 'text/plain',
+      });
+
       // Mock crypto.subtle if not available
       if (!crypto.subtle) {
         (global.crypto as any).subtle = {
           digest: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
         };
       }
-      
+
       try {
         const result = await evidenceService.calculateFileHash(mockFile);
         expect(result).toBeTruthy();
@@ -328,9 +344,13 @@ describe('EvidenceService', () => {
       const mockFile = new File(['test'], 'test.txt');
       // Mock crypto.subtle to throw error
       const originalSubtle = crypto.subtle;
-      (crypto.subtle as any).digest = vi.fn().mockRejectedValue(new Error('Hash failed'));
+      (crypto.subtle as any).digest = vi
+        .fn()
+        .mockRejectedValue(new Error('Hash failed'));
 
-      await expect(evidenceService.calculateFileHash(mockFile)).rejects.toThrow();
+      await expect(
+        evidenceService.calculateFileHash(mockFile),
+      ).rejects.toThrow();
 
       (crypto.subtle as any).digest = originalSubtle.digest;
     });
@@ -338,7 +358,9 @@ describe('EvidenceService', () => {
 
   describe('validateFile', () => {
     it('validates file size within limit', () => {
-      const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+      const mockFile = new File(['test'], 'test.pdf', {
+        type: 'application/pdf',
+      });
       Object.defineProperty(mockFile, 'size', { value: 1024 * 1024 }); // 1MB
 
       const result = evidenceService.validateFile(mockFile, 50);
@@ -347,7 +369,9 @@ describe('EvidenceService', () => {
     });
 
     it('rejects file exceeding size limit', () => {
-      const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+      const mockFile = new File(['test'], 'test.pdf', {
+        type: 'application/pdf',
+      });
       Object.defineProperty(mockFile, 'size', { value: 60 * 1024 * 1024 }); // 60MB
 
       const result = evidenceService.validateFile(mockFile, 50);
@@ -357,7 +381,9 @@ describe('EvidenceService', () => {
     });
 
     it('validates allowed file types', () => {
-      const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+      const mockFile = new File(['test'], 'test.pdf', {
+        type: 'application/pdf',
+      });
       Object.defineProperty(mockFile, 'size', { value: 1024 });
 
       const result = evidenceService.validateFile(mockFile);
@@ -366,7 +392,9 @@ describe('EvidenceService', () => {
     });
 
     it('rejects disallowed file types', () => {
-      const mockFile = new File(['test'], 'test.exe', { type: 'application/x-msdownload' });
+      const mockFile = new File(['test'], 'test.exe', {
+        type: 'application/x-msdownload',
+      });
       Object.defineProperty(mockFile, 'size', { value: 1024 });
 
       const result = evidenceService.validateFile(mockFile);
@@ -403,8 +431,9 @@ describe('EvidenceService', () => {
       const error = new Error('Failed to get evidence');
       (apiClient.get as vi.Mock).mockRejectedValue(error);
 
-      await expect(evidenceService.getEvidenceById('EVIDENCE-1')).rejects.toThrow();
+      await expect(
+        evidenceService.getEvidenceById('EVIDENCE-1'),
+      ).rejects.toThrow();
     });
   });
 });
-
