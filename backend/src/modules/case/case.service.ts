@@ -111,7 +111,6 @@ export class CaseService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_21_SUSPENDED,
-        reason: `Case suspended: ${reason}`,
       });
 
       try {
@@ -176,7 +175,6 @@ export class CaseService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
-        reason: `Case resumed: ${reason}`,
       });
 
       const result = await this.prismaService.$transaction(async (prisma) => {
@@ -418,7 +416,6 @@ export class CaseService {
         await this.flowableService.handleCaseStatusChanged({
           caseId,
           newStatus: targetStatus,
-          reason: `Case creation completed by ${role}`,
         });
 
         const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];

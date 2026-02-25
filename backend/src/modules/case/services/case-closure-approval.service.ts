@@ -214,10 +214,9 @@ export class CaseClosureApprovalService {
             newStatus: TaskStatus.STATUS_30_COMPLETED,
             completionVariables: {
               investigationAction: 'complete',
-              fraudInvestigationAction: 'complete',
-              amlInvestigationAction: 'complete',
-              recommendedOutcome: dto.recommendedOutcome,
+              finalOutcome: dto.recommendedOutcome,
               investigationNotes: dto.finalNotes,
+              userRole: role,
             },
           });
         }
@@ -302,10 +301,9 @@ export class CaseClosureApprovalService {
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
             investigationAction: 'requestClosure',
-            fraudInvestigationAction: 'requestClosure',
-            amlInvestigationAction: 'requestClosure',
-            recommendedOutcome: dto.recommendedOutcome,
+            finalOutcome: dto.recommendedOutcome,
             investigationNotes: dto.finalNotes,
+            userRole: role,
           },
         });
       }
@@ -313,7 +311,6 @@ export class CaseClosureApprovalService {
       await this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        reason: `Case closure requested with outcome: ${dto.recommendedOutcome}`,
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -594,7 +591,6 @@ export class CaseClosureApprovalService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
-        reason: `Case closure rejected and returned to investigator: ${comments}`,
       });
 
       // Then complete the approval task in BPMN
@@ -732,7 +728,6 @@ export class CaseClosureApprovalService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
-        reason: `Case returned for review by supervisor: ${comments}`,
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(

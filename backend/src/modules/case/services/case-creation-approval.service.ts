@@ -425,7 +425,6 @@ export class CaseCreationApprovalService {
         await this.flowableService.handleCaseStatusChanged({
           caseId,
           newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          reason: 'Case creation approved by supervisor',
         });
 
         const completedApprovalTask = await tx.task.update({
@@ -606,7 +605,6 @@ export class CaseCreationApprovalService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_00_DRAFT,
-        reason: `Case creation rejected: ${reason}`,
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -810,7 +808,6 @@ export class CaseCreationApprovalService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: status,
-        reason: 'Case status updated',
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(
