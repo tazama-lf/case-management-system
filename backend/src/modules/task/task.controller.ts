@@ -117,7 +117,7 @@ export class TaskController {
   })
   async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest): Promise<Task> {
     const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
     return await this.taskService.createTask(createTaskDto, userId, tenantId);
   }
 
@@ -467,7 +467,7 @@ export class TaskController {
   })
   async updateTask(@Param('taskId') taskId: number, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest): Promise<Task> {
     const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
     return await this.taskService.updateTask(taskId, dto, userId, tenantId);
   }
 
@@ -519,7 +519,7 @@ export class TaskController {
     description: 'Unauthorized - Invalid or missing authentication',
   })
   async getTasks(@Req() req: AuthenticatedRequest, @Query('status') status?: string): Promise<Task[]> {
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
     return await this.taskService.getTasks(tenantId, status);
   }
 
@@ -573,7 +573,7 @@ export class TaskController {
   })
   async getTasksByCaseId(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<Task[]> {
     const userId = req.user.token.clientId;
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
     const userClaims = req.user.token.claims ?? [];
     return await this.taskService.getTasksByCaseId(caseId, tenantId, userId, userClaims);
   }
@@ -630,7 +630,7 @@ export class TaskController {
     description: 'Not Found - Task does not exist',
   })
   async getTaskById(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest): Promise<Task | null> {
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
     return await this.taskService.getTaskById(taskId, tenantId);
   }
 }

@@ -13,7 +13,7 @@ export class NatsStartupService implements OnModuleInit {
     private readonly logger: LoggerService,
     private readonly configService: ConfigService,
     private readonly processAlertService: ProcessAlertService,
-  ) { }
+  ) {}
 
   async onModuleInit(): Promise<void> {
     try {
@@ -23,10 +23,7 @@ export class NatsStartupService implements OnModuleInit {
       await this.startupService.init(this.handleMessage.bind(this), this.logger);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(
-        `Failed to initialize NATS Relay Plugin : ${errorMessage}`,
-        NatsStartupService.name,
-      );
+      this.logger.error(`Failed to initialize NATS Relay Plugin : ${errorMessage}`, NatsStartupService.name);
       throw error;
     }
   }

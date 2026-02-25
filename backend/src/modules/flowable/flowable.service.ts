@@ -324,6 +324,7 @@ export class FlowableService implements OnModuleInit {
           creationType: event.creationType,
           caseStatus: event.caseStatus,
           creatorRole: event.creatorRole,
+          isReopened: event.isReopened,
           // Required BPMN variables with safe defaults
           caseType: (event as any).caseType ?? 'FRAUD',
           casePriority: (event as any).priority ?? 'NEW',

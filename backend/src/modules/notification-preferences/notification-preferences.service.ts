@@ -211,7 +211,7 @@ export class NotificationPreferencesService {
     sms_enabled?: boolean;
     dashboard_enabled?: boolean;
   }): void {
-    const hasEnabledChannel = 
+    const hasEnabledChannel =
       channels.email_enabled === true ||
       channels.in_app_enabled === true ||
       channels.sms_enabled === true ||

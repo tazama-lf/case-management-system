@@ -44,8 +44,8 @@ export class CacheService implements OnModuleInit {
     this.logger.log('Initializing CMS cache...', CacheService.name);
 
     // Add delay to ensure all services (especially Redis) are initialized
-    setTimeout(() => {
-      this.initializeUserCache().catch((error) => {
+    setTimeout(async () => {
+      await this.initializeUserCache().catch((error) => {
         this.logger.error('Cache initialization error:', error);
         this.logger.warn(`Cache initialization failed (non-blocking): ${error.message}`, CacheService.name);
       });

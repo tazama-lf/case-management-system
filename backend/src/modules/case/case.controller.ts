@@ -329,7 +329,7 @@ export class CaseController {
 
   @Get('user/workload')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  @ApiOperation({ summary: 'Get case workload statistics', description: "Get summary statistics of user's case workload" })
+  @ApiOperation({ summary: 'Get case workload statistics', description: 'Get summary statistics of user\'s case workload' })
   @ApiResponse({ status: 200, description: 'Workload statistics retrieved successfully', type: UserWorkloadResponseDto })
   async getUserWorkload(@Req() req: AuthenticatedRequest) {
     const { userId, isComplianceOfficer } = extractUserData(req);
@@ -344,7 +344,7 @@ export class CaseController {
   @ApiResponse({ status: 403, description: 'Forbidden - Compliance officers can only access confirmed closed cases' })
   async getCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const { isComplianceOfficer, tenantId } = extractUserData(req);
-    return this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
+    return await this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
   }
 
   @Get('parentId/:caseId')
