@@ -120,12 +120,12 @@ const ignoreUnhandled = (reason: any) => {
 if (typeof process !== 'undefined' && process && process.on) {
   process.on('unhandledRejection', (reason) => {
     if (ignoreUnhandled(reason)) return;
-    // eslint-disable-next-line no-console
+     
     console.error('Unhandled rejection in tests:', reason);
   });
   process.on('uncaughtException', (err: any) => {
     if (ignoreUnhandled(err)) return;
-    // eslint-disable-next-line no-console
+     
     console.error('Uncaught exception in tests:', err);
   });
 }

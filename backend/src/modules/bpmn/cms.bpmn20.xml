@@ -24,6 +24,21 @@
         </startEvent>
 
         <exclusiveGateway id="caseReopenedGateway" name="Case Reopened Check"/>
+        <exclusiveGateway id="caseReopenRoleGateway" name="Case Status Check"/>
+
+        <userTask id="reopenApproval" name="Approve Case Reopening"
+                  flowable:candidateGroups="supervisors">
+            <documentation>Task to handle reopen approval</documentation>
+            <extensionElements>
+                <flowable:formProperty id="reopenApprovalDecision" name="Reopen Approval Decision"
+                                       type="enum" required="true">
+                    <flowable:value id="approve" name="Approve"/>
+                    <flowable:value id="reject" name="Reject"/>
+                </flowable:formProperty>
+            </extensionElements>
+        </userTask>
+
+        <exclusiveGateway id="caseReopenApprovalDecisionGateway" name="Reopen Approved?"/>
 
         <!-- CASE ASSIGNMENT LOGIC -->
         <userTask id="completeCaseCreation" name="Complete New Case"
@@ -174,9 +189,35 @@
         <sequenceFlow id="flowStart" sourceRef="startEvent" targetRef="caseReopenedGateway"/>
 
             <!-- Reopened case goes to investigation -->
-        <sequenceFlow id="flowReopened" sourceRef="caseReopenedGateway" targetRef="investigateCase">
+        <sequenceFlow id="flowReopened" sourceRef="caseReopenedGateway" targetRef="caseReopenRoleGateway">
             <conditionExpression xsi:type="tFormalExpression">
                 ${isReopened == true}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowReopenRole" sourceRef="caseReopenRoleGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creatorRole == 'SUPERVISOR'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowReopenInvestigator" sourceRef="caseReopenRoleGateway" targetRef="reopenApproval">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creatorRole == 'INVESTIGATOR'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowReopenApproval" sourceRef="reopenApproval" targetRef="caseReopenApprovalDecisionGateway"/>
+
+        <sequenceFlow id="flowReopenApproved" sourceRef="caseReopenApprovalDecisionGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${reopenApprovalDecision == 'approve'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowReopenRejected" sourceRef="caseReopenApprovalDecisionGateway" targetRef="endRejected">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${reopenApprovalDecision == 'reject'}
             </conditionExpression>
         </sequenceFlow>
 
