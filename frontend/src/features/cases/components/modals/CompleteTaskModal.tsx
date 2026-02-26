@@ -35,8 +35,8 @@ const CompleteTaskModal: React.FC<CompleteTaskModalProps> = ({
   const formatOutcome = (outcome: string): string =>
     outcome
       .replace('STATUS_', '')
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (l) => l.toUpperCase());
+      .replace(/_/gu, ' ')
+      .replace(/\b\w/gu, (l) => l.toUpperCase());
 
   // Check if task requires recommended outcome dropdown
   const requiresOutcomeDropdown =

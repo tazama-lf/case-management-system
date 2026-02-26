@@ -31,7 +31,7 @@ interface CaseHistoryTabProps {
   row?: CaseRow;
 }
 
-const getEventIcon = (outcome: string, action: string) => {
+const _getEventIcon = (outcome: string, action: string) => {
   // Select icon based on action type
   let IconComponent = DocumentTextIcon;
   const actionLower = action.toLowerCase();
@@ -96,7 +96,7 @@ const getEventIcon = (outcome: string, action: string) => {
   );
 };
 
-const mapOutcomeToEventOutcome = (
+const _mapOutcomeToEventOutcome = (
   outcome: string,
 ): 'success' | 'warning' | 'error' | 'info' => {
   if (!outcome) return 'info';
@@ -125,7 +125,7 @@ const formatOperation = (operation: string): string =>
     .replace(/_/g, ' ')
     .replace(/^./, (str) => str.toUpperCase())
     .trim();
-const mapStatusToEvent = (
+const _mapStatusToEvent = (
   status: string,
   timestamp: string,
 ): Omit<CaseHistoryEvent, 'id' | 'userId' | 'type'> | null => {
@@ -233,7 +233,7 @@ const mapStatusToEvent = (
 const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
   const [history, setHistory] = useState<CaseHistoryEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [investigators, setInvestigators] = useState<Record<string, string>>(
+  const [_investigators, setInvestigators] = useState<Record<string, string>>(
     {},
   );
 

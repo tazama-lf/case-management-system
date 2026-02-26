@@ -37,7 +37,7 @@ const CaseAgeingBarChart: React.FC<CaseAgeingBarChartProps> = ({
   }
 
   const formatStatusName = (status: string) =>
-    status.replace('STATUS_', '').replace(/_/g, ' ').trim();
+    status.replace('STATUS_', '').replace(/_/gu, ' ').trim();
 
   const chartData = data.map((item) => ({
     status: formatStatusName(item.status),

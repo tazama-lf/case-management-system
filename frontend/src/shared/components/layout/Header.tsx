@@ -74,7 +74,7 @@ const Header: React.FC<HeaderComponentProps> = ({
               <div className="text-xs text-gray-500">
                 {user?.email ||
                   (user?.roles && user.roles.length > 0
-                    ? user.roles[0].replace(/_/g, ' ').replace(/-/g, ' ')
+                    ? user.roles[0].replace(/_/gu, ' ').replace(/-/gu, ' ')
                     : 'User')}
               </div>
             </div>

@@ -76,7 +76,7 @@ export const exportToCSV = (data: ExportData[], filename: string) => {
                 value.includes('"') ||
                 value.includes('\n'))
             ) {
-              return `"${value.replace(/"/g, '""')}"`;
+              return `"${value.replace(/"/gu, '""')}"`;
             }
             return value || '';
           })

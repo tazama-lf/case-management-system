@@ -319,8 +319,8 @@ The case has been suspended and all associated tasks have been blocked. Supervis
       let errorMessage = 'Failed to suspend case. Please try again.';
       const errorString = err instanceof Error ? err.message : '';
       const normalizedErrorString = (errorString || '')
-        .replace(/"Investigate case"/g, '"Investigate Case"')
-        .replace(/\bcase\b/g, 'Case');
+        .replace(/"Investigate case"/gu, '"Investigate Case"')
+        .replace(/\bcase\b/gu, 'Case');
 
       if (errorString.includes('not in a suspendable state')) {
         errorMessage =
@@ -493,8 +493,8 @@ The case has been returned to the investigator for additional work.`,
 
 Final Outcome: ${data.finalOutcome
           .replace('STATUS_', '')
-          .replace(/_/g, ' ')
-          .replace(/\b\w/g, (l: string) => l.toUpperCase())}
+          .replace(/_/gu, ' ')
+          .replace(/\b\w/gu, (l: string) => l.toUpperCase())}
 Status: ${approvedCase.status}
 
 The case has been finalized with the selected outcome.`,

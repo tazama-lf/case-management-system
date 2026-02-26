@@ -49,8 +49,8 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
         e.preventDefault();
         const { href } = target as HTMLAnchorElement;
         let url = href;
-        if (!/^https?:\/\//i.exec(href) && !/^mailto:/i.exec(href)) {
-          const match = /\/([^/]+)$/.exec(href);
+        if (!/^https?:\/\//iu.exec(href) && !/^mailto:/iu.exec(href)) {
+          const match = /\/([^/]+)$/u.exec(href);
           if (match) {
             url = `https://${match[1]}`;
           }
@@ -67,8 +67,8 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   }, []);
 
   const transformMarkdownLinks = (markdown: string): string =>
-    markdown.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
-      if (!url.match(/^(https?:\/\/|mailto:|#)/i)) {
+    markdown.replace(/\[([^\]]+)\]\(([^)]+)\)/gu, (match, text, url) => {
+      if (!url.match(/^(https?:\/\/|mailto:|#)/iu)) {
         return `[${text}](https://${url})`;
       }
       return match;

@@ -380,8 +380,8 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               className="markdown-content text-sm text-gray-700 bg-gray-50 p-4 rounded border border-gray-200"
               dangerouslySetInnerHTML={{
                 __html: (marked(investigationNotes) as string)
-                  .replace(/(<\/p>\s*<ol>)/g, '</p><br><ol>')
-                  .replace(/(<\/p>\s*<ul>)/g, '</p><br><ul>')
+                  .replace(/(<\/p>\s*<ol>)/gu, '</p><br><ol>')
+                  .replace(/(<\/p>\s*<ul>)/gu, '</p><br><ul>')
               }}
             />
           ) : (

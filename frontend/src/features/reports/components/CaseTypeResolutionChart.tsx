@@ -40,7 +40,7 @@ const CaseTypeResolutionChart: React.FC<CaseTypeResolutionChartProps> = ({
     type:
       item.caseType === 'NONE'
         ? 'None'
-        : item.caseType.replace(/_/g, ' ').replace(/AND/g, '&'),
+        : item.caseType.replace(/_/gu, ' ').replace(/AND/gu, '&'),
     averageDays: Math.round(item.avgDays),
   }));
 
@@ -61,8 +61,8 @@ const CaseTypeResolutionChart: React.FC<CaseTypeResolutionChartProps> = ({
             label={{ value: 'Days', angle: -90, position: 'insideLeft' }}
           />
           <Tooltip
-            formatter={(value: number) => {
-              if (value === 0) {
+            formatter={(value: number | undefined) => {
+              if (!value || value === 0) {
                 return ['< 1 day', 'Time to Resolve'];
               }
               return [
