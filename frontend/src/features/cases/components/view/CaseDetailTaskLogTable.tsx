@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   UserPlusIcon,
   UserMinusIcon,
@@ -6,21 +6,11 @@ import {
   ArrowPathIcon,
   Cog6ToothIcon,
   XCircleIcon,
-  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { formatDate } from '../../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import { useAlertOperations } from '@/features/alerts/hooks/useAlertsQuery';
-import {
-  transformBackendAlertToUI,
-  convertToTriageAlert,
-} from '@/features/alerts/utils/alertTransformers';
-import triageService from '@/features/alerts/services/triageservice';
-import type { Alert } from '@/features/alerts/types/alertsdashboard.types';
-import type { ManualTriageDto } from '@/features/alerts/types/triage.types';
-import { useToast } from '@/shared/providers/ToastProvider';
-import ManualTriageModal from '@/features/alerts/components/ManualTriageModal';
 import authService from '@/features/auth/services/authService';
 import type { User } from '@/shared/interfaces/user.interface';
 import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
@@ -73,7 +63,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   // const [loadingAlertForTask, setLoadingAlertForTask] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<User>(); // Replace with actual user fetching logic
   // const { success, error: showError } = useToast();
-  const { performManualTriage } = useAlertOperations();
+  useAlertOperations();
   const { hasComplianceOfficerRole, hasSupervisorRole, hasInvestigatorRole } =
     useAuth();
   // const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
@@ -334,51 +324,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     }
   };
 
-  // const addTriageAction = (actions: React.ReactNode[], task: UnifiedWorkQueueTask) => {
-  //   if (task.name === 'Complete New Case' && onUpdateStatus) {
-  //     const isLoading = loadingAlertForTask === task.id;
-  //     actions.push(
-  //       <button
-  //         key="complete-triage"
-  //         onClick={async () => {
-  //           try {
-  //             if (alertId == null || alertId == undefined) {
-  //               console.error('alert Id is undefined');
-  //               showError('Error', 'AlertId is undefined');
-  //               return;
-  //             }
-  //             // Fetch alert details for triage analysis
-  //             const alertDetails = await triageService.getAlertById(alertId);
-  //             setSelectedAlert(transformBackendAlertToUI(alertDetails));
-  //             setShowManualTriageModal(true);
-  //           } catch (error) {
-  //             console.error('Failed to load alert for triage:', error);
-  //             const errorMessage = error instanceof Error ? error.message : 'Failed to load alert details';
-  //             showError('Error', errorMessage);
-  //           } finally {
-  //             setLoadingAlertForTask(null);
-  //           }
-  //         }}
-  //         disabled={isLoading}
-  //         className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-  //         title="Complete triage"
-  //       >
-  //         {/* Show loading spinner or normal icon based on state */}
-  //         {isLoading ? (
-  //           <>
-  //             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700 mr-1" />
-  //             Loading...
-  //           </>
-  //         ) : (
-  //           <>
-  //             <CheckIcon className="h-4 w-4 mr-1" />
-  //             {/* Complete */}
-  //           </>
-  //         )}
-  //       </button>);
-  //   }
-  // };
-
   const addStatusAction = (
     actions: React.ReactNode[],
     task: UnifiedWorkQueueTask,
@@ -594,20 +539,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                 <td className="px-4 py-3 text-sm font-medium">
                   <div className="flex justify-start space-x-2 items-center">
                     {getAvailableActions(task)}
-                    {/* {task.name === 'SAR/STR Filing' && latestReports?.['INVESTIGATION_REPORT'] && onViewReport && (
-                        <button
-                          onClick={() => {
-                            const report = latestReports['INVESTIGATION_REPORT'];
-                            if (!report) return;
-                            onViewReport(report.reportId);
-                          }}
-                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                          title="View Investigation Report"
-                        >
-
-                          <DocumentTextIcon className="h-4 w-4" aria-hidden="true" />
-                        </button>
-                      )} */}
                   </div>
                 </td>
               </tr>

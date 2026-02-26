@@ -1,15 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import {
-  CheckCircleIcon,
-  DocumentTextIcon,
-  ExclamationTriangleIcon,
-  UserPlusIcon,
-  ClockIcon,
-  ArrowPathIcon,
-  UserMinusIcon,
-  FolderOpenIcon,
-  DocumentCheckIcon,
-} from '@heroicons/react/24/outline';
 import type { CaseRow } from '../casesTable.utils';
 import authService from '@/features/auth/services/authService';
 import { caseHistoryService } from '../../services/caseHistoryService';
@@ -31,93 +20,6 @@ interface CaseHistoryTabProps {
   row?: CaseRow;
 }
 
-const _getEventIcon = (outcome: string, action: string) => {
-  // Select icon based on action type
-  let IconComponent = DocumentTextIcon;
-  const actionLower = action.toLowerCase();
-
-  if (actionLower.includes('created') || actionLower.includes('submitted')) {
-    IconComponent = FolderOpenIcon;
-  } else if (actionLower.includes('reassigned')) {
-    IconComponent = ArrowPathIcon;
-  } else if (actionLower.includes('unassigned')) {
-    IconComponent = UserMinusIcon;
-  } else if (actionLower.includes('assigned')) {
-    IconComponent = UserPlusIcon;
-  } else if (
-    actionLower.includes('completed') ||
-    actionLower.includes('closed')
-  ) {
-    IconComponent = CheckCircleIcon;
-  } else if (actionLower.includes('approved')) {
-    IconComponent = DocumentCheckIcon;
-  } else if (
-    actionLower.includes('pending') ||
-    actionLower.includes('awaiting')
-  ) {
-    IconComponent = ClockIcon;
-  } else if (
-    actionLower.includes('returned') ||
-    actionLower.includes('rejected')
-  ) {
-    IconComponent = ArrowPathIcon;
-  } else if (
-    actionLower.includes('abandoned') ||
-    actionLower.includes('suspended') ||
-    actionLower.includes('error')
-  ) {
-    IconComponent = ExclamationTriangleIcon;
-  }
-
-  const bgColor =
-    outcome === 'success'
-      ? 'bg-green-100'
-      : outcome === 'error'
-        ? 'bg-red-100'
-        : outcome === 'warning'
-          ? 'bg-yellow-100'
-          : 'bg-blue-100';
-
-  const iconColor =
-    outcome === 'success'
-      ? 'text-green-600'
-      : outcome === 'error'
-        ? 'text-red-600'
-        : outcome === 'warning'
-          ? 'text-yellow-600'
-          : 'text-blue-600';
-
-  return (
-    <div
-      className={`flex h-10 w-10 items-center justify-center rounded ${bgColor}`}
-    >
-      <IconComponent className={`h-5 w-5 ${iconColor}`} />
-    </div>
-  );
-};
-
-const _mapOutcomeToEventOutcome = (
-  outcome: string,
-): 'success' | 'warning' | 'error' | 'info' => {
-  if (!outcome) return 'info';
-  const lowerOutcome = outcome.toLowerCase();
-  if (
-    lowerOutcome === 'success' ||
-    lowerOutcome === 'completed' ||
-    lowerOutcome === 'approved'
-  )
-    return 'success';
-  if (
-    lowerOutcome === 'error' ||
-    lowerOutcome === 'failed' ||
-    lowerOutcome === 'denied'
-  )
-    return 'error';
-  if (lowerOutcome === 'warning' || lowerOutcome === 'pending')
-    return 'warning';
-  return 'info';
-};
-
 const formatOperation = (operation: string): string =>
   // Convert camelCase or snake_case to Title Case
   operation
@@ -125,117 +27,10 @@ const formatOperation = (operation: string): string =>
     .replace(/_/g, ' ')
     .replace(/^./, (str) => str.toUpperCase())
     .trim();
-const _mapStatusToEvent = (
-  status: string,
-  timestamp: string,
-): Omit<CaseHistoryEvent, 'id' | 'userId' | 'type'> | null => {
-  const statusMap: Record<
-    string,
-    {
-      action: string;
-      details: string;
-      outcome: 'success' | 'warning' | 'error' | 'info';
-    }
-  > = {
-    STATUS_00_DRAFT: {
-      action: 'Case drafted',
-      details: 'Case created as draft',
-      outcome: 'info',
-    },
-    STATUS_01_PENDING_CASE_CREATION_APPROVAL: {
-      action: 'Pending approval',
-      details: 'Case awaiting supervisor approval for creation',
-      outcome: 'warning',
-    },
-    STATUS_02_READY_FOR_ASSIGNMENT: {
-      action: 'Ready for assignment',
-      details: 'Case approved and ready to be assigned to an investigator',
-      outcome: 'info',
-    },
-    STATUS_03_RETURNED: {
-      action: 'Returned for review',
-      details: 'Case returned for additional review',
-      outcome: 'warning',
-    },
-    STATUS_10_ASSIGNED: {
-      action: 'Case assigned',
-      details: 'Case assigned to investigator',
-      outcome: 'info',
-    },
-    STATUS_20_IN_PROGRESS: {
-      action: 'Investigation in progress',
-      details: 'Investigation is currently underway',
-      outcome: 'info',
-    },
-    STATUS_21_SUSPENDED: {
-      action: 'Case suspended',
-      details: 'Investigation temporarily suspended',
-      outcome: 'warning',
-    },
-    STATUS_22_PENDING_FINAL_APPROVAL: {
-      action: 'Pending final approval',
-      details: 'Case closure awaiting supervisor approval',
-      outcome: 'warning',
-    },
-    STATUS_30_PENDING_REOPENING: {
-      action: 'Pending reopening',
-      details: 'Case reopening request awaiting approval',
-      outcome: 'warning',
-    },
-    STATUS_31_REOPENED: {
-      action: 'Case reopened',
-      details: 'Case has been reopened for further investigation',
-      outcome: 'info',
-    },
-    STATUS_71_AUTOCLOSED_CONFIRMED: {
-      action: 'Autoclosed - Confirmed',
-      details: 'Case automatically closed and confirmed by system',
-      outcome: 'success',
-    },
-    STATUS_72_AUTOCLOSED_REFUTED: {
-      action: 'Autoclosed - Refuted',
-      details: 'Case automatically closed and refuted by system',
-      outcome: 'success',
-    },
-    STATUS_81_CLOSED_REFUTED: {
-      action: 'Case closed - Refuted',
-      details: 'Investigation completed and case closed as refuted',
-      outcome: 'success',
-    },
-    STATUS_82_CLOSED_CONFIRMED: {
-      action: 'Case closed - Confirmed',
-      details: 'Investigation completed and case closed as confirmed',
-      outcome: 'success',
-    },
-    STATUS_83_CLOSED_INCONCLUSIVE: {
-      action: 'Case closed - Inconclusive',
-      details: 'Investigation completed but results inconclusive',
-      outcome: 'success',
-    },
-    STATUS_99_ABANDONED: {
-      action: 'Case abandoned',
-      details: 'Case has been abandoned',
-      outcome: 'error',
-    },
-  };
-
-  const eventData = statusMap[status];
-  if (!eventData) return null;
-
-  return {
-    timestamp,
-    action: eventData.action,
-    performedBy: 'System',
-    details: eventData.details,
-  };
-};
 
 const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
   const [history, setHistory] = useState<CaseHistoryEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [_investigators, setInvestigators] = useState<Record<string, string>>(
-    {},
-  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -243,16 +38,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
         setLoading(true);
 
         try {
-          const investigatorList = await authService.fetchAllInvestigators();
-          const investigatorMap: Record<string, string> = {};
-          investigatorList.forEach((inv) => {
-            const fullName =
-              inv.firstName && inv.lastName
-                ? `${inv.firstName} ${inv.lastName}`
-                : inv.username;
-            investigatorMap[inv.id] = fullName;
-          });
-          setInvestigators(investigatorMap);
+          await authService.fetchAllInvestigators();
         } catch (err) {
           console.warn('Failed to fetch investigators:', err);
         }
@@ -359,9 +145,6 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
             } else if (operationLower.includes('assigntask')) {
               action = 'Task assigned';
             }
-            // else if (operationLower.includes('retrievetask')) {
-            //   action = 'Task retrieved';
-            // }
             else if (operationLower.includes('completetask')) {
               action = 'Task completed';
             } else if (
@@ -395,11 +178,6 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
         } catch (err) {
           console.warn('Failed to fetch case History:', err);
         }
-
-        // const uniqueEvents = Array.from(
-        //   new Map(events.map(event => [event.id, event])).values()
-        // );
-
         events.sort(
           (a, b) =>
             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
@@ -472,15 +250,6 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                             {event.details}
                           </div>
                         )}
-                        {/* {event.userId && investigators[event.userId] && (
-                          <div className="text-sm text-blue-600">
-                            {event.type === 'task' && event.action.includes('assigned')
-                              ? `Assigned to ${investigators[event.userId]}`
-                              : event.performedBy === 'System'
-                                ? `Related to ${investigators[event.userId]}`
-                                : `By ${investigators[event.userId]}`}
-                          </div>
-                        )} */}
                       </div>
                     </div>
                   </div>
@@ -497,15 +266,6 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                             {event.details}
                           </div>
                         )}
-                        {/* {event.userId && investigators[event.userId] && (
-                          <div className="text-sm text-blue-600">
-                            {event.type === 'task' && event.action.includes('assigned')
-                              ? `Assigned to ${investigators[event.userId]}`
-                              : event.performedBy === 'System'
-                                ? `Related to ${investigators[event.userId]}`
-                                : `By ${investigators[event.userId]}`}
-                          </div>
-                        )} */}
                       </div>
                     </div>
                     <div className="w-1/2 pl-8">

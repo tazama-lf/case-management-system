@@ -19,7 +19,6 @@ import {
   markdownShortcutPlugin,
   quotePlugin,
   toolbarPlugin,
-  BlockTypeSelect,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 import { TaskStatus } from '../../services/taskService';

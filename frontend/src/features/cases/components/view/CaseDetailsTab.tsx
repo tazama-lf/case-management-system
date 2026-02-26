@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { CaseRow } from '../casesTable.utils';
 import CaseActionsPanel from './CaseActionsPanel';
 import { getCaseStatusBadge } from '@/shared/constants/case.constant';
@@ -9,7 +9,6 @@ import {
   ChevronUpIcon,
   DocumentTextIcon,
 } from '@heroicons/react/24/outline';
-import { useAuth } from '@/features/auth/components/AuthContext';
 import { evidenceService } from '../../services/evidenceService';
 
 interface CaseDetailsTabProps {
@@ -89,7 +88,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   const [openTransactions, setOpenTransactions] = React.useState<
     Record<string, boolean>
   >({});
-  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [ , setViewingId] = useState<string | null>(null);
   const [latestReports, setLatestReports] = useState<
     Record<string, LatestReport | null>
   >({});
@@ -113,7 +112,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     }
   };
 
-  const transactionData = getTransactionData();
+  getTransactionData();
 
   const getNestedValue = (
     obj: Record<string, unknown> | null,

@@ -13,11 +13,9 @@ const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
   const [loading, setLoading] = useState(true);
   const {
     fetchInvestigatorsList,
-    loadingInvestigators,
     investigators,
     supervisors,
     fetchSupervisorsList,
-    loadingSupervisors,
   } = useInvestigatorSupervisorList();
 
   useEffect(() => {

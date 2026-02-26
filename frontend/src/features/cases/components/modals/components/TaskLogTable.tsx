@@ -9,7 +9,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { formatDate } from '../../../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../../../shared/components/ui';
-import type { UnifiedWorkQueueTask } from '../../../../workqueue/types/flowable.types';
+import type { UnifiedWorkQueueTask } from '../../../types/task.types';
+
 
 interface TaskLogTableProps {
   tasks: UnifiedWorkQueueTask[];
@@ -189,18 +190,6 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
     }
 
     return actions;
-  };
-
-  const handleRowKeyDown = (
-    event: React.KeyboardEvent<HTMLTableRowElement>,
-    task: UnifiedWorkQueueTask,
-  ) => {
-    if (!onTaskClick) return;
-
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onTaskClick(task);
-    }
   };
 
   return (
