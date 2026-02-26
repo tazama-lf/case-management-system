@@ -12,6 +12,7 @@ import {
   Verify2FADto,
   ConfigurationChangeLogDto,
 } from './dto/config.dto';
+import { Audit } from '../audit/decorators/audit-log.decorator';
 
 @ApiTags('System Configuration')
 @Controller('api/v1/config')
@@ -22,6 +23,7 @@ export class ConfigManagementController {
 
   @Put('roles/:roleName')
   @RequireAdminRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Configure role permissions',
@@ -83,6 +85,7 @@ export class ConfigManagementController {
 
   @Put('integration/:systemName')
   @RequireAdminRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Configure external integration',
@@ -115,6 +118,7 @@ export class ConfigManagementController {
 
   @Post('integration/:systemName/test')
   @RequireAdminRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Test integration connection',
@@ -142,6 +146,7 @@ export class ConfigManagementController {
 
   @Post('verify-2fa/:changeId')
   @RequireAdminRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Verify 2FA for configuration change',

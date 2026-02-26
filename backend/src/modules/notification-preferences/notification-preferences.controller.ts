@@ -11,6 +11,7 @@ import {
 } from './dto';
 import { JwtUser } from 'src/utils/interfaces/Auth.interface';
 import { NotificationResponseDto } from 'src/modules/notification-preferences/dto/notification-preference-response.dto';
+import { Audit } from '../audit/decorators/audit-log.decorator';
 
 @ApiTags('Notification Preferences')
 @Controller('api/v1/users/me/notification-preferences')
@@ -33,6 +34,7 @@ export class NotificationPreferencesController {
   }
 
   @Put()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update user notification preferences',

@@ -1,21 +1,23 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { AuditLogController } from './auditLog.controller';
 import { AuditLogService } from './auditLog.service';
 import { PrismaModule } from '../../../prisma/prisma.module';
 import { createAuditProvider } from '@tazama-lf/audit-lib';
 import { APP_INTERCEPTOR } from '@nestjs/core';
-import { AuditLogDecoratorInterceptor } from './decorators/audit-log.interceptor';
+import { AuditInterceptor } from '../../interpectors/audit-log.interceptor';
 
+@Global()
 @Module({
+  imports: [PrismaModule],
   controllers: [AuditLogController],
   providers: [
-    AuditLogService,
     createAuditProvider('case-management-system'),
     {
       provide: APP_INTERCEPTOR,
-      useClass: AuditLogDecoratorInterceptor,
+      useClass: AuditInterceptor,
     },
+    AuditLogService,
   ],
-  exports: [AuditLogService],
+  exports: [AuditLogService, 'AUDIT_LOGGER'],
 })
-export class AuditLogModule {}
+export class AuditLogModule { }

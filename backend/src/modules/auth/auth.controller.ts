@@ -3,7 +3,6 @@ import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiQuery, ApiTags,
 import { RequireAuthenticated } from '../../decorators/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
-import { AuditLogService } from '../audit/auditLog.service';
 import { User } from '../../decorators/user.decorator';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import { Outcome } from 'src/utils/types/outcome';
@@ -11,6 +10,7 @@ import type { AuthenticatedUser } from '../../utils/types/auth.types';
 import { AuthMeResponseDto } from 'src/modules/auth/dto/AuthMeResponse.dto';
 import { LoginRequestDto } from 'src/modules/auth/dto/LoginRequest.dto';
 import { LoginResponseDto } from 'src/modules/auth/dto/LoginResponse.dto';
+import { Audit } from '../audit/decorators/audit-log.decorator';
 
 @ApiTags('Auth')
 @ApiBearerAuth('jwt')
@@ -18,11 +18,11 @@ import { LoginResponseDto } from 'src/modules/auth/dto/LoginResponse.dto';
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly auditLogService: AuditLogService,
     private readonly logger: LoggerService,
   ) {}
 
   @Post('login')
+  @Audit()
   @HttpCode(200)
   @ApiOperation({ summary: 'Authenticate user', description: 'Authenticates a user and returns a JWT token.' })
   @ApiBody({ type: LoginRequestDto })
@@ -31,13 +31,6 @@ export class AuthController {
   async login(@Body() body: LoginRequestDto): Promise<LoginResponseDto> {
     try {
       const result = await this.authService.login(body.username, body.password);
-      await this.auditLogService.logAction({
-        userId: 'unknown',
-        operation: 'login',
-        entityName: 'user',
-        actionPerformed: 'login',
-        outcome: Outcome.SUCCESS,
-      });
       const response: LoginResponseDto = {
         message: 'Login successful',
         token: result.token,
@@ -49,13 +42,6 @@ export class AuthController {
       return response;
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error('Unknown login error');
-      await this.auditLogService.logAction({
-        userId: 'unknown',
-        operation: 'login',
-        entityName: 'user',
-        actionPerformed: 'login',
-        outcome: Outcome.FAILURE,
-      });
       this.logger.warn(`Login failed for user ${body.username}: ${err.message}`, AuthController.name);
       throw new UnauthorizedException('Invalid credentials');
     }

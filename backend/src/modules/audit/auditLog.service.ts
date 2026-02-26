@@ -2,8 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { v4 as uuidv4, validate as isUuid } from 'uuid';
 import { AuditLog } from '@prisma/client-cms';
-import { AuditLogInput, IAuditService } from '@tazama-lf/audit-lib';
-import { AuditLogResult } from '@tazama-lf/audit-lib/lib/utils/interfaces/audit';
+import { IAuditLogInput, IAuditService } from '@tazama-lf/audit-lib';
 
 @Injectable()
 export class AuditLogService {
@@ -12,8 +11,13 @@ export class AuditLogService {
     @Inject('AUDIT_LOGGER') private readonly logger: IAuditService,
   ) { }
 
-  async logAction(data: AuditLogInput): Promise<AuditLogResult> {
-    return await this.logger.log(data);
+  async logAction(data: IAuditLogInput): Promise<void> {
+    try {
+      await this.logger.log(data);
+    } catch (error) {
+      // Log the error but do not throw, to avoid impacting the main operation
+      console.error('Failed to log audit action:', error);
+    }
   }
 
   async getLogs(limit = 50, offset = 0): Promise<AuditLog[]> {

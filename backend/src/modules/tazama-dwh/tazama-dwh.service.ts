@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaDWHService } from '../../../prismaDWH/prismaDWH.service';
-import { AuditLogService } from '../audit/auditLog.service';
 import { GenerateProfileDto } from './dto/generate-profile.dto';
 import { ProfileResponseDto, DetectedAnomalyDto } from './dto/profile-response.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
@@ -10,7 +9,6 @@ export class TazamaDwhService {
   constructor(
     private readonly prismaDwh: PrismaDWHService,
     private readonly logger: LoggerService,
-    private readonly auditLog: AuditLogService,
   ) {}
   private formatTransactionForTable(tx: any) {
     return {
@@ -84,15 +82,6 @@ export class TazamaDwhService {
       description: (tx.amt?.toNumber() ?? 0) > peerBaseline.avgValue ? 'Large transaction flagged' : 'Cross-border anomaly',
       risk: (tx.amt?.toNumber() ?? 0) > 5000 ? 'High' : (tx.amt?.toNumber() ?? 0) > 2000 ? 'Medium' : 'Low',
     }));
-    if (this.auditLog) {
-      await this.auditLog.logAction({
-        userId,
-        operation: 'generate',
-        entityName: 'TransactionProfile',
-        actionPerformed: 'PROFILE_GENERATED',
-        outcome: 'SUCCESS',
-      });
-    }
     return {
       tenantId: dto.tenantId,
       filters: dto.filters,

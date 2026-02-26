@@ -11,12 +11,11 @@ import { FlowableIdentityService } from './services/flowable-identity.service';
 import { FlowableClientFactory } from './services/flowable-client.factory';
 import { LoggerModule } from '../../logger/logger.module';
 import { ConfigModule } from '@nestjs/config';
-import { AuditLogModule } from 'src/modules/audit/auditLog.module';
 import { PrismaModule } from '../../../prisma/prisma.module';
 import { RepositoryModule } from '../repository/repository.module';
 
 @Module({
-  imports: [LoggerModule, ConfigModule, RepositoryModule, AuditLogModule, PrismaModule],
+  imports: [LoggerModule, ConfigModule, RepositoryModule, PrismaModule],
   providers: [
     FlowableClientFactory,
     FlowableService,

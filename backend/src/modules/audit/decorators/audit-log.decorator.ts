@@ -1,13 +1,15 @@
-import { SetMetadata } from '@nestjs/common';
+import { UseInterceptors } from '@nestjs/common';
+import { AuditInterceptor } from '../../../interpectors/audit-log.interceptor';
 
-export interface AuditLogOptions {
-  eventType: string;
-  resourceType: string;
-  resourceId?: string;
-  description?: string;
-  outcome?: Record<string, unknown>;
-  actionPerformed?: Record<string, unknown>;
-}
-
-export const AUDIT_LOG_OPTIONS_KEY = 'auditLogOptions';
-export const AuditLog = (options: AuditLogOptions) => SetMetadata(AUDIT_LOG_OPTIONS_KEY, options);
+/**
+ * Audit decorator for marking endpoints that require audit logging
+ *
+ * Usage:
+ * @Audit()
+ * @Post('/create')
+ * async createResource() { ... }
+ *
+ * This decorator applies the AuditInterceptor to capture and log
+ * critical user actions for compliance and security monitoring.
+ */
+export const Audit = (): ReturnType<typeof UseInterceptors> => UseInterceptors(AuditInterceptor);

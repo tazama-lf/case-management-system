@@ -3,7 +3,6 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { FlowableTaskService } from './flowable-task.service';
 import { FlowableUtilitiesService } from './flowable-utilities.service';
-import { AuditLogService } from '../../audit/auditLog.service';
 import { TaskStatus } from '@prisma/client-cms';
 import { CaseRepository } from '../../repository/case.repository';
 import { TaskRepository } from 'src/modules/repository/task.repository';
@@ -17,7 +16,6 @@ export class BpmnSyncService {
   constructor(
     private readonly flowableTaskService: FlowableTaskService,
     private readonly utilitiesService: FlowableUtilitiesService,
-    private readonly auditLogService: AuditLogService,
     private readonly caseRepository: CaseRepository,
     private readonly taskRepository: TaskRepository,
     private readonly logger: LoggerService,

@@ -1,6 +1,5 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { AuditLogService } from '../audit/auditLog.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import * as crypto from 'node:crypto';
 import { Outcome } from '../../utils/types/outcome';
@@ -11,7 +10,6 @@ export class ConfigManagementService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditLog: AuditLogService,
     private readonly logger: LoggerService,
   ) {
     this.encryptionKey = process.env.CONFIG_ENCRYPTION_KEY || 'default-encryption-key';
@@ -116,25 +114,9 @@ export class ConfigManagementService {
         },
       });
 
-      await this.auditLog.logAction({
-        userId,
-        operation: 'CONFIGURE_ROLE',
-        entityName: 'RolePermission',
-        actionPerformed: `Configured role ${roleName} with permissions: ${permissions.join(', ')}`,
-        outcome: Outcome.SUCCESS,
-      });
-
       return roleConfig;
     } catch (error) {
       this.logger.error(`Failed to configure role: ${error.message}`);
-
-      await this.auditLog.logAction({
-        userId,
-        operation: 'CONFIGURE_ROLE',
-        entityName: 'RolePermission',
-        actionPerformed: `Failed to configure role ${roleName}`,
-        outcome: Outcome.FAILURE,
-      });
 
       throw error;
     }
@@ -204,14 +186,6 @@ export class ConfigManagementService {
       },
     });
 
-    await this.auditLog.logAction({
-      userId,
-      operation: 'DELETE_ROLE',
-      entityName: 'RolePermission',
-      actionPerformed: `Deleted role ${roleName}`,
-      outcome: Outcome.SUCCESS,
-    });
-
     return { message: `Role ${roleName} deleted successfully` };
   }
 
@@ -279,14 +253,6 @@ export class ConfigManagementService {
         },
       });
 
-      await this.auditLog.logAction({
-        userId,
-        operation: 'CONFIGURE_INTEGRATION',
-        entityName: 'IntegrationConfig',
-        actionPerformed: `Configured integration for ${systemName}`,
-        outcome: Outcome.SUCCESS,
-      });
-
       return {
         ...integrationConfig,
         api_key: config.api_key ? '***ENCRYPTED***' : null,
@@ -294,14 +260,6 @@ export class ConfigManagementService {
       };
     } catch (error) {
       this.logger.error(`Failed to configure integration: ${error.message}`);
-
-      await this.auditLog.logAction({
-        userId,
-        operation: 'CONFIGURE_INTEGRATION',
-        entityName: 'IntegrationConfig',
-        actionPerformed: `Failed to configure integration for ${systemName}`,
-        outcome: Outcome.FAILURE,
-      });
 
       throw error;
     }
@@ -352,14 +310,6 @@ export class ConfigManagementService {
       },
     });
 
-    await this.auditLog.logAction({
-      userId,
-      operation: enabled ? 'ENABLE_INTEGRATION' : 'DISABLE_INTEGRATION',
-      entityName: 'IntegrationConfig',
-      actionPerformed: `${enabled ? 'Enabled' : 'Disabled'} integration ${systemName}`,
-      outcome: Outcome.SUCCESS,
-    });
-
     return { message: `Integration ${systemName} ${enabled ? 'enabled' : 'disabled'} successfully` };
   }
 
@@ -391,14 +341,6 @@ export class ConfigManagementService {
           last_tested_at: new Date(),
           test_status: testResult ? 'SUCCESS' : 'FAILED',
         },
-      });
-
-      await this.auditLog.logAction({
-        userId,
-        operation: 'TEST_INTEGRATION',
-        entityName: 'IntegrationConfig',
-        actionPerformed: `Tested integration ${systemName}: ${testResult ? 'SUCCESS' : 'FAILED'}`,
-        outcome: testResult ? Outcome.SUCCESS : Outcome.FAILURE,
       });
 
       return {
@@ -541,14 +483,6 @@ export class ConfigManagementService {
       });
     }
 
-    await this.auditLog.logAction({
-      userId,
-      operation: 'APPLY_CONFIG_CHANGE',
-      entityName: 'Configuration',
-      actionPerformed: `Applied configuration change ${changeId} after 2FA verification`,
-      outcome: Outcome.SUCCESS,
-    });
-
     return {
       message: 'Configuration change approved and applied',
       changeId,
@@ -684,14 +618,6 @@ export class ConfigManagementService {
         created_by: userId,
         updated_by: userId,
       },
-    });
-
-    await this.auditLog.logAction({
-      userId,
-      operation: 'UPDATE_SYSTEM_CONFIG',
-      entityName: 'SystemConfiguration',
-      actionPerformed: `Updated system configuration ${configKey}`,
-      outcome: Outcome.SUCCESS,
     });
 
     return config;

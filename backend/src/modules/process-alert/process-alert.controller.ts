@@ -5,6 +5,7 @@ import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CreateAlertDTO } from '../alert/dto';
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
+import { Audit } from '../audit/decorators/audit-log.decorator';
 
 @Controller('ingest-alert')
 @UseGuards(TazamaAuthGuard)
@@ -13,6 +14,7 @@ export class ProcessAlertController {
 
   @Post('')
   @RequireAuthenticated()
+  @Audit()
   @ApiOperation({
     summary: 'Process incoming alert event',
     description: 'Internal endpoint for alert ingestion from event stream',

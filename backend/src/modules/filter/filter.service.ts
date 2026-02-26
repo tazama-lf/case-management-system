@@ -1,5 +1,4 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { createFilterDto } from './dto/create-filter.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Outcome } from '../../utils/types/outcome';
@@ -10,7 +9,6 @@ import { filters } from '@prisma/client-cms';
 export class FilterService {
   constructor(
     private readonly logger: LoggerService,
-    private readonly auditLogService: AuditLogService,
     private readonly filterRepository: FilterRepository,
   ) {}
 
@@ -32,26 +30,9 @@ export class FilterService {
 
       const filter = await this.filterRepository.createFilter(userId, createFilterDto);
 
-      this.auditLogService.logAction({
-        userId,
-        operation: 'createFilter',
-        entityName: FilterService.name,
-        actionPerformed: `Saving user defined filter for ${createFilterDto.filterType}`,
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
-
       return filter;
     } catch (error) {
       this.logger.error('Error adding filter', error, FilterService.name);
-      this.auditLogService.logAction({
-        userId,
-        operation: 'createFilter',
-        entityName: FilterService.name,
-        actionPerformed: `Attempt user defined filter for ${createFilterDto.filterType}`,
-        outcome: Outcome.FAILURE,
-        performedAt: new Date(),
-      });
 
       // Re-throw the error so the controller can handle it properly
       throw error;
@@ -67,26 +48,9 @@ export class FilterService {
         throw new NotFoundException('Filter not found');
       }
 
-      this.auditLogService.logAction({
-        userId,
-        operation: 'getFiltersByUserAndType',
-        entityName: FilterService.name,
-        actionPerformed: `Successfully retrieved  filter with ID: ${userId} and filterType: ${filterType}`,
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
-
       return filter;
     } catch (error) {
       this.logger.error('Error retrieving filter', error, FilterService.name);
-      this.auditLogService.logAction({
-        userId,
-        operation: 'getFiltersByUserAndType',
-        entityName: FilterService.name,
-        actionPerformed: `Error retrieving filter with ID: ${userId} and filterType: ${filterType}`,
-        outcome: Outcome.FAILURE,
-        performedAt: new Date(),
-      });
       throw error;
     }
   }

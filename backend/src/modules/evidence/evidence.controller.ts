@@ -23,6 +23,7 @@ import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, Verify
 import { RequireInvestigatorOrSupervisorRoleOrComplianceRole, TazamaClaims } from 'src/decorators/auth.decorator';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
+import { Audit } from '../audit/decorators/audit-log.decorator';
 
 @ApiTags('Evidence')
 @Controller('api/v1/evidence')
@@ -33,6 +34,7 @@ export class EvidenceController {
 
   @Post('upload')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @Audit()
   @ApiOperation({ summary: 'Upload evidence for a task' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -186,6 +188,7 @@ export class EvidenceController {
 
   @Delete(':id/attachments/:attachmentName')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @Audit()
   @ApiOperation({ summary: 'delete evidence' })
   @ApiResponse({
     status: 200,
