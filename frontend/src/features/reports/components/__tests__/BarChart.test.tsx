@@ -94,4 +94,3 @@ describe('BarChart', () => {
     expect(cells.length).toBe(3);
   });
 });
-

@@ -6,7 +6,6 @@ export interface UploadReportDto {
   outcome?: string;
   investigatorInputs?: string;
   supervisorRemarks?: string;
-
 }
 
 export interface UploadReportResponse {

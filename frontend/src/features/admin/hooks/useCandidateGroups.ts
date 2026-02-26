@@ -24,7 +24,9 @@ interface UseCandidateGroupsResult {
   onPageSizeChange: (size: number) => void;
 }
 
-export const useCandidateGroups = (params?: UseCandidateGroupsParams): UseCandidateGroupsResult => {
+export const useCandidateGroups = (
+  params?: UseCandidateGroupsParams,
+): UseCandidateGroupsResult => {
   const [workQueues, setWorkQueues] = useState<WorkQueue[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,23 +38,24 @@ export const useCandidateGroups = (params?: UseCandidateGroupsParams): UseCandid
     try {
       setLoading(true);
       setError(null);
-      
-      const start = (currentPage - 1 ) * pageSize;
+
+      const start = (currentPage - 1) * pageSize;
       const response = await workQueueService.getCandidateGroups({
         size: pageSize,
-        start: start
+        start,
       });
-    
-      const workQueues: WorkQueue[] = response.items.map(group => ({
+
+      const workQueues: WorkQueue[] = response.items.map((group) => ({
         id: group.id,
         name: group.name,
-        type: group.type
+        type: group.type,
       }));
-      
+
       setWorkQueues(workQueues);
       setTotalItems(response.totalCount);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch candidate groups';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch candidate groups';
       setError(errorMessage);
       console.error('Error fetching candidate groups:', err);
     } finally {
@@ -83,7 +86,7 @@ export const useCandidateGroups = (params?: UseCandidateGroupsParams): UseCandid
       currentPage,
       pageSize,
       totalItems,
-      totalPages
+      totalPages,
     },
     refetch: fetchCandidateGroups,
     onPageChange,

@@ -36,7 +36,9 @@ describe('OutcomeDistributionChart', () => {
   ];
 
   it('renders chart with data', () => {
-    render(<OutcomeDistributionChart data={mockData} title="Outcome Distribution" />);
+    render(
+      <OutcomeDistributionChart data={mockData} title="Outcome Distribution" />,
+    );
 
     expect(screen.getByText('Outcome Distribution')).toBeInTheDocument();
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
@@ -52,32 +54,52 @@ describe('OutcomeDistributionChart', () => {
   });
 
   it('renders empty state when data is null', () => {
-    render(<OutcomeDistributionChart data={null as any} title="Outcome Distribution" />);
+    render(
+      <OutcomeDistributionChart
+        data={null as any}
+        title="Outcome Distribution"
+      />,
+    );
 
     expect(screen.getByText('No outcome data available')).toBeInTheDocument();
   });
 
   it('renders empty state when data is undefined', () => {
-    render(<OutcomeDistributionChart data={undefined as any} title="Outcome Distribution" />);
+    render(
+      <OutcomeDistributionChart
+        data={undefined as any}
+        title="Outcome Distribution"
+      />,
+    );
 
     expect(screen.getByText('No outcome data available')).toBeInTheDocument();
   });
 
   it('applies custom height', () => {
-    render(<OutcomeDistributionChart data={mockData} title="Outcome Distribution" height={400} />);
+    render(
+      <OutcomeDistributionChart
+        data={mockData}
+        title="Outcome Distribution"
+        height={400}
+      />,
+    );
 
     const container = screen.getByTestId('responsive-container');
     expect(container).toBeInTheDocument();
   });
 
   it('renders with default height when not provided', () => {
-    render(<OutcomeDistributionChart data={mockData} title="Outcome Distribution" />);
+    render(
+      <OutcomeDistributionChart data={mockData} title="Outcome Distribution" />,
+    );
 
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
 
   it('renders all chart elements', () => {
-    render(<OutcomeDistributionChart data={mockData} title="Outcome Distribution" />);
+    render(
+      <OutcomeDistributionChart data={mockData} title="Outcome Distribution" />,
+    );
 
     expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
     expect(screen.getAllByTestId('bar')).toHaveLength(3); // Three bars
@@ -88,4 +110,3 @@ describe('OutcomeDistributionChart', () => {
     expect(screen.getByTestId('legend')).toBeInTheDocument();
   });
 });
-

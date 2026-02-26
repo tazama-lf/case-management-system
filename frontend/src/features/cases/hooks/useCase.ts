@@ -1,40 +1,41 @@
 import { useQuery } from '@tanstack/react-query';
 import { caseService } from '../services/caseService';
 import type { Case } from '../../alerts/types/triage.types';
-import type { GetUserCasesQueryDto, GetUserCasesResponseDto, UserWorkloadStatsDto } from '../services/caseService';
+import type {
+  GetUserCasesQueryDto,
+  GetUserCasesResponseDto,
+  UserWorkloadStatsDto,
+} from '../services/caseService';
 
-export const useCase = (caseId: number | undefined) => {
-  return useQuery<Case, Error>({
+export const useCase = (caseId: number | undefined) =>
+  useQuery<Case>({
     queryKey: ['case', caseId],
-    queryFn: () => {
+    queryFn: async () => {
       if (!caseId) {
         throw new Error('Case ID is required');
       }
-      return caseService.getCaseDetails(caseId);
+      return await caseService.getCaseDetails(caseId);
     },
     enabled: !!caseId,
     staleTime: 5 * 60 * 1000,
     retry: 2,
   });
-};
 
-export const useUserCases = (query?: GetUserCasesQueryDto) => {
-  return useQuery<GetUserCasesResponseDto, Error>({
+export const useUserCases = (query?: GetUserCasesQueryDto) =>
+  useQuery<GetUserCasesResponseDto>({
     queryKey: ['userCases', query],
-    queryFn: () => caseService.getUserCases(query),
+    queryFn: async () => await caseService.getUserCases(query),
     staleTime: 2 * 60 * 1000,
     retry: 2,
   });
-};
 
-export const useUserWorkloadStats = () => {
-  return useQuery<UserWorkloadStatsDto, Error>({
+export const useUserWorkloadStats = () =>
+  useQuery<UserWorkloadStatsDto>({
     queryKey: ['userWorkloadStats'],
-    queryFn: () => caseService.getUserWorkloadStats(),
+    queryFn: async () => await caseService.getUserWorkloadStats(),
     staleTime: 5 * 60 * 1000,
     retry: 2,
   });
-};
 
 export const canActOnCase = (caseStatus: string | undefined): boolean => {
   if (!caseStatus) return false;
@@ -42,7 +43,7 @@ export const canActOnCase = (caseStatus: string | undefined): boolean => {
   const closedStatuses = [
     'STATUS_82_CLOSED_CONFIRMED',
     'STATUS_81_CLOSED_REFUTED',
-    'STATUS_83_CLOSED_INCONCLUSIVE'
+    'STATUS_83_CLOSED_INCONCLUSIVE',
   ];
 
   return !closedStatuses.includes(caseStatus);

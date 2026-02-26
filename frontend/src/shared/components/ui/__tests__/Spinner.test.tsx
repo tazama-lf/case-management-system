@@ -114,15 +114,15 @@ describe('SpinnerWithText', () => {
     const types = ['spinner', 'dots', 'pulse'] as const;
 
     types.forEach((type) => {
-      const { container } = render(
-        <SpinnerWithText spinnerType={type} />
-      );
+      const { container } = render(<SpinnerWithText spinnerType={type} />);
       expect(container.firstChild).toBeInTheDocument();
     });
   });
 
   it('renders with different sizes', () => {
-    const { rerender } = render(<SpinnerWithText size="sm" text="Loading sm" />);
+    const { rerender } = render(
+      <SpinnerWithText size="sm" text="Loading sm" />,
+    );
     expect(screen.getByText('Loading sm')).toBeInTheDocument();
 
     rerender(<SpinnerWithText size="md" text="Loading md" />);
@@ -133,10 +133,7 @@ describe('SpinnerWithText', () => {
   });
 
   it('applies custom className', () => {
-    const { container } = render(
-      <SpinnerWithText className="custom-class" />
-    );
+    const { container } = render(<SpinnerWithText className="custom-class" />);
     expect(container.firstChild).toHaveClass('custom-class');
   });
 });
-

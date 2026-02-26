@@ -33,7 +33,6 @@ interface ViewCaseModalProps {
   onAfterTaskReassign?: () => void;
   generateReport?: (caseId: number) => void;
   setSubCasesDetails?: (rows: CaseRow[]) => void;
-
 }
 
 const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
@@ -54,11 +53,13 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
   onRejectCaseReopen,
   onApproveCaseCreation,
   onRejectCaseCreation,
-  setSubCasesDetails
+  setSubCasesDetails,
 }) => {
   const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
-  const [localCaseData, setLocalCaseData] = React.useState<CaseRow | null>(null);
+  const [localCaseData, setLocalCaseData] = React.useState<CaseRow | null>(
+    null,
+  );
   const [subCases, setSubCases] = React.useState<CaseRow[]>([]);
   const [parentCase, setparentCase] = React.useState<CaseRow | null>(null);
 
@@ -81,7 +82,9 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
     if (!row?.id) return;
     try {
       const caseDetails = await caseService.getCaseDetails(row.id);
-      const transformedCase = transformBackendCaseToUI(caseDetails as unknown as CaseWithTasksDto);
+      const transformedCase = transformBackendCaseToUI(
+        caseDetails as unknown as CaseWithTasksDto,
+      );
       setLocalCaseData(transformedCase);
     } catch (error) {
       console.error('Failed to refresh case data:', error);
@@ -92,7 +95,9 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
     if (!row?.id || !row?.parentId) return;
     try {
       const caseDetails = await caseService.getCaseDetails(row.parentId);
-      const transformedCase = transformBackendCaseToUI(caseDetails as unknown as CaseWithTasksDto);
+      const transformedCase = transformBackendCaseToUI(
+        caseDetails as unknown as CaseWithTasksDto,
+      );
       setparentCase(transformedCase);
     } catch (error) {
       console.error('Failed to refresh case data:', error);
@@ -105,10 +110,10 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
     if (localCaseData.type === 'FRAUD_AND_AML') {
       try {
         const subCasesDetails = await caseService.getSubCasesDetails(
-          localCaseData.id
+          localCaseData.id,
         );
         const transformed = subCasesDetails.map((c) =>
-          transformBackendCaseToUI(c as unknown as CaseWithTasksDto)
+          transformBackendCaseToUI(c as unknown as CaseWithTasksDto),
         );
 
         setSubCases(transformed);
@@ -136,17 +141,23 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
       <div className="mt-6 w-full max-w-5xl rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
-        { }
+        {}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-gray-900">{showCollaborate ? 'Case Collaboration' : 'Case Details'}</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {showCollaborate ? 'Case Collaboration' : 'Case Details'}
+            </h3>
           </div>
-          <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Close"
+          >
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
 
-        { }
+        {}
         {!showCollaborate && (
           <div className="flex items-center gap-2 px-6 pt-3 border-b border-gray-200">
             {(
@@ -159,9 +170,14 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
             ).map((t) => (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${tab === t.key ? 'border-b-2 border-indigo-600 text-indigo-700' : 'text-gray-600 hover:text-gray-800'
-                  }`}
+                onClick={() => {
+                  setTab(t.key);
+                }}
+                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${
+                  tab === t.key
+                    ? 'border-b-2 border-indigo-600 text-indigo-700'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
               >
                 {t.label}
               </button>
@@ -169,7 +185,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
           </div>
         )}
 
-        { }
+        {}
         <div className="px-6 py-5 overflow-y-auto flex-1">
           {showCollaborate ? (
             <CollaboratePanel />
@@ -181,9 +197,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                   subCasesDetails={
                     displayData.type === 'FRAUD_AND_AML' ? subCases : undefined
                   }
-                  parentCaseDetails={
-                    displayData?.parentId ? parentCase : null
-                  }
+                  parentCaseDetails={displayData?.parentId ? parentCase : null}
                   canManageSupervisorActions={canManageSupervisorActions}
                   showActions={false}
                   onComplete={onComplete}
@@ -206,10 +220,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                   onAfterTaskReassign={onAfterTaskReassign}
                   onRefreshCases={async () => {
                     // Refresh both the main case list and the local case data
-                    await Promise.all([
-                      onRefreshCases?.(),
-                      refreshCaseData()
-                    ]);
+                    await Promise.all([onRefreshCases?.(), refreshCaseData()]);
                   }}
                   canManageSupervisorActions={canManageSupervisorActions}
                   caseData={displayData}
@@ -220,7 +231,9 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                   onAbandonCase={onAbandonCase}
                 />
               )}
-              {tab === 'comments' && <CommentHistoryTab caseId={displayData.id} />}
+              {tab === 'comments' && (
+                <CommentHistoryTab caseId={displayData.id} />
+              )}
               {tab === 'history' && (
                 <CaseHistoryTab caseId={displayData.id} row={displayData} />
               )}
@@ -228,7 +241,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
           )}
         </div>
 
-        { }
+        {}
         {!showCollaborate && tab === 'details' && (
           <div className="border-t border-gray-200 bg-white px-6 py-4">
             <CaseActionsPanel
@@ -236,9 +249,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
               subCasesDetails={
                 displayData.type === 'FRAUD_AND_AML' ? subCases : undefined
               }
-              parentCaseDetails={
-                displayData?.parentId ? parentCase : null
-              }
+              parentCaseDetails={displayData?.parentId ? parentCase : null}
               canManageSupervisorActions={canManageSupervisorActions}
               onComplete={onComplete}
               onCloseCase={onCloseCase}

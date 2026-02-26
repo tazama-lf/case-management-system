@@ -1,5 +1,5 @@
 import React from 'react';
-import { XMarkIcon} from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { CaseRow } from './casesTable.utils';
 import CollaboratePanel from './view/CollaboratePanel';
 import TaskEvidenceTab from './view/TaskEvidenceTab';
@@ -9,7 +9,14 @@ import InvestigationSummaryTab from './view/InvestigationsSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
 
-type ViewTabKey = 'details' | 'evidence' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary';
+type ViewTabKey =
+  | 'details'
+  | 'evidence'
+  | 'linked'
+  | 'tasks'
+  | 'notes'
+  | 'customer'
+  | 'summary';
 
 interface TaskDetailsModalProps {
   selectedTask: any;
@@ -67,13 +74,12 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
       <div className="mt-6 w-full max-w-5xl rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
-        { }
+        {}
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900">
               {showCollaborate ? 'Case Collaboration' : 'Task Details'}
             </h3>
-
           </div>
           <button
             onClick={onClose}
@@ -84,7 +90,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           </button>
         </div>
 
-        { }
+        {}
         {!showCollaborate && (
           <div className="flex items-center gap-2 px-6 pt-3">
             {(
@@ -98,11 +104,14 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             ).map((t) => (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${tab === t.key
-                  ? 'border-b-2 border-indigo-600 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-800'
-                  }`}
+                onClick={() => {
+                  setTab(t.key);
+                }}
+                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${
+                  tab === t.key
+                    ? 'border-b-2 border-indigo-600 text-indigo-700'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
               >
                 {t.label}
               </button>
@@ -110,7 +119,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           </div>
         )}
 
-        { }
+        {}
         {/* Content */}
         <div className="px-6 py-5 overflow-y-auto flex-1">
           {showCollaborate ? (
@@ -118,13 +127,17 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           ) : (
             <>
               <div style={{ display: tab === 'details' ? 'block' : 'none' }}>
-                <TaskDetailsTab row={row} tasks={tasks.filter(t => t.task_id === selectedTask?.id)} loadingTasks={loadingTasks} />
+                <TaskDetailsTab
+                  row={row}
+                  tasks={tasks.filter((t) => t.task_id === selectedTask?.id)}
+                  loadingTasks={loadingTasks}
+                />
               </div>
               <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
                 <TaskEvidenceTab
-                  task={tasks.filter(t => t.task_id === selectedTask?.id)[0]}
+                  task={tasks.filter((t) => t.task_id === selectedTask?.id)[0]}
                   onUploadComplete={() => {
-                    setSummaryRefreshKey(prev => prev + 1);
+                    setSummaryRefreshKey((prev) => prev + 1);
                   }}
                 />
               </div>
@@ -133,21 +146,28 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               </div>
               <div style={{ display: tab === 'notes' ? 'block' : 'none' }}>
                 <InvestigationNotesTab
-                  task={tasks.filter(t => t.task_id === selectedTask?.id)[0]}
-                  onNotesUpdate={() => setSummaryRefreshKey(prev => prev + 1)}
+                  task={tasks.filter((t) => t.task_id === selectedTask?.id)[0]}
+                  onNotesUpdate={() => {
+                    setSummaryRefreshKey((prev) => prev + 1);
+                  }}
                 />
               </div>
               <div style={{ display: tab === 'summary' ? 'block' : 'none' }}>
                 {row?.id && (
                   <InvestigationSummaryTab
-                    task={tasks.filter(t => t.task_id === selectedTask?.id)[0]}
+                    task={
+                      tasks.filter((t) => t.task_id === selectedTask?.id)[0]
+                    }
                     caseId={row.id}
                     row={row}
                     refreshKey={summaryRefreshKey}
                     onTaskUpdate={() => {
                       // Refresh tasks in this modal
                       if (row?.id) {
-                        taskService.getTasksByCaseId(row.id).then(setTasks).catch(console.error);
+                        taskService
+                          .getTasksByCaseId(row.id)
+                          .then(setTasks)
+                          .catch(console.error);
                       }
                       // Notify parent (TaskLogTab) to refresh its task list
                       if (onTaskUpdate) {
@@ -161,7 +181,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           )}
         </div>
 
-        { }
+        {}
         <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
           <button
             type="button"

@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { CheckIcon, XCircleIcon, PlayIcon, PauseIcon, TrashIcon } from '@heroicons/react/24/outline';
+import {
+  CheckIcon,
+  XCircleIcon,
+  PlayIcon,
+  PauseIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 import type { CaseRow } from '../casesTable.utils';
 import authService from '@/features/auth/services/authService';
 import { caseService } from '../../services/caseService';
@@ -63,15 +69,6 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     fetchData();
   }, [fetchTasks]);
 
-  const hasCompletedStrTask = tasks
-    .filter(task => task.name === 'SAR/STR Filing')
-    .sort((a, b) => (b.task_id ?? 0) - (a.task_id ?? 0))[0] || null;
-
-  // Compliance officers cannot perform any case actions
-  if (hasComplianceOfficerRole()) {
-    return null;
-  }
-
   // Fetch case details to get case_owner_user_id
   useEffect(() => {
     const fetchCaseDetails = async () => {
@@ -83,10 +80,18 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
       }
     };
 
-    if (caseData.id) {
-      fetchCaseDetails();
-    }
+    fetchCaseDetails();
   }, [caseData.id]);
+
+  const hasCompletedStrTask =
+    tasks
+      .filter((task) => task.name === 'SAR/STR Filing')
+      .sort((a, b) => (b.task_id ?? 0) - (a.task_id ?? 0))[0] || null;
+
+  // Compliance officers cannot perform any case actions
+  if (hasComplianceOfficerRole()) {
+    return null;
+  }
 
   // Check if the logged-in user is the case owner
   const isUserCaseOwner = (): boolean => {
@@ -103,169 +108,212 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
       actions.push(
         <button
           key="complete"
-          onClick={() => onComplete(caseData)}
+          onClick={() => {
+            onComplete(caseData);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <CheckIcon className="h-4 w-4" />
           Complete Case
-        </button>
+        </button>,
       );
     }
 
     // Close Case button - show for in-progress cases when ALL investigation tasks are completed and user is case owner
-    const investigateTasks = caseData?.tasks?.filter((t) => t.name.startsWith('Investigate')) || [];
-    const completedInvestigateTasks = investigateTasks.filter((t) => t.status === 'STATUS_30_COMPLETED');
+    const investigateTasks =
+      caseData?.tasks?.filter((t) => t.name.startsWith('Investigate')) || [];
+    const completedInvestigateTasks = investigateTasks.filter(
+      (t) => t.status === 'STATUS_30_COMPLETED',
+    );
 
-    if (onCloseCase && (
-      caseData.status === 'STATUS_20_IN_PROGRESS' ||
-      caseData.status.includes('IN PROGRESS')
-    ) && investigateTasks.length > 0 && investigateTasks.length === completedInvestigateTasks.length && isUserCaseOwner()) {
+    if (
+      onCloseCase &&
+      (caseData.status === 'STATUS_20_IN_PROGRESS' ||
+        caseData.status.includes('IN PROGRESS')) &&
+      investigateTasks.length > 0 &&
+      investigateTasks.length === completedInvestigateTasks.length &&
+      isUserCaseOwner()
+    ) {
       actions.push(
         <button
           key="close"
-          onClick={() => onCloseCase(caseData)}
+          onClick={() => {
+            onCloseCase(caseData);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
         >
           <XCircleIcon className="h-4 w-4" />
           Close Case
-        </button>
+        </button>,
       );
-    } else if (onCloseCase && caseData.type === 'FRAUD_AND_AML' && (caseData.status === 'STATUS_20_IN_PROGRESS' || caseData.status.includes('IN PROGRESS'))
-      && hasSupervisorRole() && subCasesDetails &&
+    } else if (
+      onCloseCase &&
+      caseData.type === 'FRAUD_AND_AML' &&
+      (caseData.status === 'STATUS_20_IN_PROGRESS' ||
+        caseData.status.includes('IN PROGRESS')) &&
+      hasSupervisorRole() &&
+      subCasesDetails &&
       subCasesDetails.length > 0 &&
-      subCasesDetails.every(sub =>
-        CLOSED_STATUSES.includes(sub.status)
-      )) {
+      subCasesDetails.every((sub) => CLOSED_STATUSES.includes(sub.status))
+    ) {
       actions.push(
         <button
           key="close"
-          onClick={() => onCloseCase(caseData)}
+          onClick={() => {
+            onCloseCase(caseData);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
         >
           <XCircleIcon className="h-4 w-4" />
           Close Case
-        </button>
+        </button>,
       );
     }
 
-
     // Case Closure Decision button - show for cases pending final approval
-    if (showSupervisorControls &&
+    if (
+      showSupervisorControls &&
       onApproveCase &&
       (caseData.status === 'STATUS_22_PENDING_FINAL_APPROVAL' ||
-        caseData.status.includes('PENDING FINAL APPROVAL'))) {
+        caseData.status.includes('PENDING FINAL APPROVAL'))
+    ) {
       actions.push(
         <button
           key="approve-closure"
-          onClick={() => onApproveCase(caseData)}
+          onClick={() => {
+            onApproveCase(caseData);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <CheckIcon className="h-4 w-4" />
           Review Case Closure
-        </button>
+        </button>,
       );
     }
 
     // Approve Case Creation button - show for cases pending creation approval
-    if (showSupervisorControls &&
+    if (
+      showSupervisorControls &&
       onApproveCaseCreation &&
       (caseData.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
-        caseData.status.includes('PENDING CASE CREATION APPROVAL'))) {
+        caseData.status.includes('PENDING CASE CREATION APPROVAL'))
+    ) {
       actions.push(
         <button
           key="approve-creation"
-          onClick={() => onApproveCaseCreation(caseData)}
+          onClick={() => {
+            onApproveCaseCreation(caseData);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
         >
           <CheckIcon className="h-4 w-4" />
           Approve Case Creation
-        </button>
+        </button>,
       );
     }
 
     // Reject Case Creation button - show for cases pending creation approval
-    if (showSupervisorControls &&
+    if (
+      showSupervisorControls &&
       onRejectCaseCreation &&
       (caseData.status === 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' ||
-        caseData.status.includes('PENDING CASE CREATION APPROVAL'))) {
+        caseData.status.includes('PENDING CASE CREATION APPROVAL'))
+    ) {
       actions.push(
         <button
           key="reject-creation"
-          onClick={() => onRejectCaseCreation(caseData)}
+          onClick={() => {
+            onRejectCaseCreation(caseData);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
         >
           <XCircleIcon className="h-4 w-4" />
           Reject Case Creation
-        </button>
+        </button>,
       );
     }
 
     // Approve Case Reopening button - show for cases pending reopening approval
-    if (showSupervisorControls &&
+    if (
+      showSupervisorControls &&
       onApproveCaseReopen &&
       (caseData.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
-        caseData.status.includes('PENDING CASE REOPENING APPROVAL'))) {
+        caseData.status.includes('PENDING CASE REOPENING APPROVAL'))
+    ) {
       actions.push(
         <button
           key="approve-reopen"
-          onClick={() => onApproveCaseReopen(caseData)}
+          onClick={() => {
+            onApproveCaseReopen(caseData);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
         >
           <CheckIcon className="h-4 w-4" />
           Approve Case Reopening
-        </button>
+        </button>,
       );
     }
 
     // Reject Case Reopening button - show for cases pending reopening approval
-    if (showSupervisorControls &&
+    if (
+      showSupervisorControls &&
       onRejectCaseReopen &&
       (caseData.status === 'STATUS_31_PENDING_CASE_REOPENING_APPROVAL' ||
-        caseData.status.includes('PENDING CASE REOPENING APPROVAL'))) {
+        caseData.status.includes('PENDING CASE REOPENING APPROVAL'))
+    ) {
       actions.push(
         <button
           key="reject-reopen"
-          onClick={() => onRejectCaseReopen(caseData)}
+          onClick={() => {
+            onRejectCaseReopen(caseData);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
         >
           <XCircleIcon className="h-4 w-4" />
           Reject Case Reopening
-        </button>
+        </button>,
       );
     }
 
-
     // Reopen Case button - show for closed cases
-    if (onReopenCase && CLOSED_STATUSES.includes(caseData.status) && caseData.type !== 'FRAUD_AND_AML') {
-
+    if (
+      onReopenCase &&
+      CLOSED_STATUSES.includes(caseData.status) &&
+      caseData.type !== 'FRAUD_AND_AML'
+    ) {
       if (caseData.status === 'STATUS_82_CLOSED_CONFIRMED') {
-        if (hasCompletedStrTask && hasCompletedStrTask?.status === TaskStatus.STATUS_30_COMPLETED) {
+        if (
+          hasCompletedStrTask &&
+          hasCompletedStrTask?.status === TaskStatus.STATUS_30_COMPLETED
+        ) {
           actions.push(
             <button
               key="reopen"
-              onClick={() => onReopenCase(caseData)}
+              onClick={() => {
+                onReopenCase(caseData);
+              }}
               className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               <PlayIcon className="h-4 w-4" />
               Reopen Case
-            </button>
+            </button>,
           );
         }
       } else {
         actions.push(
           <button
             key="reopen"
-            onClick={() => onReopenCase(caseData)}
+            onClick={() => {
+              onReopenCase(caseData);
+            }}
             className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             <PlayIcon className="h-4 w-4" />
             Reopen Case
-          </button>
+          </button>,
         );
       }
-
     }
-
 
     // if (onReopenCase && hasCompletedStrTask?.status === TaskStatus.STATUS_30_COMPLETED && CLOSED_STATUSES.includes(caseData.status)) {
     //   if (caseData.parentId) {
@@ -325,50 +373,61 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     // }
 
     // Abandon Case button - show for draft cases only
-    if (onAbandonCase && (caseData.status === 'STATUS_00_DRAFT')) {
+    if (onAbandonCase && caseData.status === 'STATUS_00_DRAFT') {
       actions.push(
         <button
           key="abandon"
-          onClick={() => onAbandonCase(caseData)}
+          onClick={() => {
+            onAbandonCase(caseData);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
         >
           <TrashIcon className="h-4 w-4" />
           Abandon Case
-        </button>
+        </button>,
       );
     }
 
     // Suspend Case button - show for in-progress cases
-    if (onSuspendCase && (
-      caseData.status === 'STATUS_20_IN_PROGRESS' ||
-      caseData.status.includes('IN PROGRESS')
-    ) && (caseData?.tasks && caseData.tasks.length > 0 && caseData.tasks.some((t) => t.status === 'STATUS_20_IN_PROGRESS'))) {
+    if (
+      onSuspendCase &&
+      (caseData.status === 'STATUS_20_IN_PROGRESS' ||
+        caseData.status.includes('IN PROGRESS')) &&
+      caseData?.tasks &&
+      caseData.tasks.length > 0 &&
+      caseData.tasks.some((t) => t.status === 'STATUS_20_IN_PROGRESS')
+    ) {
       actions.push(
         <button
           key="suspend"
-          onClick={() => onSuspendCase(caseData)}
+          onClick={() => {
+            onSuspendCase(caseData);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500"
         >
           <PauseIcon className="h-4 w-4" />
           Suspend Case
-        </button>
+        </button>,
       );
     }
 
     // Resume Case button - show for suspended cases
-    if (onResumeCase && (
-      caseData.status === 'STATUS_21_SUSPENDED' ||
-      caseData.status.includes('SUSPENDED')
-    )) {
+    if (
+      onResumeCase &&
+      (caseData.status === 'STATUS_21_SUSPENDED' ||
+        caseData.status.includes('SUSPENDED'))
+    ) {
       actions.push(
         <button
           key="resume"
-          onClick={() => onResumeCase(caseData)}
+          onClick={() => {
+            onResumeCase(caseData);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
         >
           <PlayIcon className="h-4 w-4" />
           Resume Case
-        </button>
+        </button>,
       );
     }
 
@@ -381,11 +440,7 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     return null;
   }
 
-  return (
-    <div className="flex flex-wrap gap-3">
-      {availableActions}
-    </div>
-  );
+  return <div className="flex flex-wrap gap-3">{availableActions}</div>;
 };
 
 export default CaseActionsPanel;

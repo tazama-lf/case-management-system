@@ -87,14 +87,16 @@ describe('EvidenceRegistryPage', () => {
     render(<EvidenceRegistryPage />, { wrapper: createWrapper() });
 
     expect(screen.getByText('Evidence Registry')).toBeInTheDocument();
-    expect(screen.getByText('Search and verify evidence across all cases')).toBeInTheDocument();
+    expect(
+      screen.getByText('Search and verify evidence across all cases'),
+    ).toBeInTheDocument();
   });
 
   it('displays search input', () => {
     render(<EvidenceRegistryPage />, { wrapper: createWrapper() });
 
     const searchInput = screen.getByPlaceholderText(
-      'Search by filename, description, tags, case ID...'
+      'Search by filename, description, tags, case ID...',
     );
     expect(searchInput).toBeInTheDocument();
   });
@@ -103,7 +105,7 @@ describe('EvidenceRegistryPage', () => {
     render(<EvidenceRegistryPage />, { wrapper: createWrapper() });
 
     const searchInput = screen.getByPlaceholderText(
-      'Search by filename, description, tags, case ID...'
+      'Search by filename, description, tags, case ID...',
     );
     fireEvent.change(searchInput, { target: { value: 'test' } });
 
@@ -121,11 +123,11 @@ describe('EvidenceRegistryPage', () => {
 
     // Find the button that contains "Hide" and "Filters" text
     const buttons = screen.getAllByRole('button');
-    const hideButton = buttons.find(button => {
+    const hideButton = buttons.find((button) => {
       const text = button.textContent || '';
       return text.includes('Hide') && text.includes('Filters');
     });
-    
+
     expect(hideButton).toBeDefined();
     if (hideButton) {
       fireEvent.click(hideButton);
@@ -138,7 +140,7 @@ describe('EvidenceRegistryPage', () => {
 
     // Button should now show "Show Filters"
     const updatedButtons = screen.getAllByRole('button');
-    const showButton = updatedButtons.find(button => {
+    const showButton = updatedButtons.find((button) => {
       const text = button.textContent || '';
       return text.includes('Show') && text.includes('Filters');
     });
@@ -156,11 +158,18 @@ describe('EvidenceRegistryPage', () => {
     // Find the select element by role since label is not properly associated
     const selects = screen.getAllByRole('combobox');
     // Find the select that has the evidence type options (Document, Screenshot, etc.)
-    const typeSelect = selects.find(select => {
-      const options = Array.from(select.querySelectorAll('option')).map(opt => opt.textContent);
-      return options.includes('All Types') && options.includes('Document') && options.includes('Screenshot');
-    }) || selects[0];
-    
+    const typeSelect =
+      selects.find((select) => {
+        const options = Array.from(select.querySelectorAll('option')).map(
+          (opt) => opt.textContent,
+        );
+        return (
+          options.includes('All Types') &&
+          options.includes('Document') &&
+          options.includes('Screenshot')
+        );
+      }) || selects[0];
+
     expect(typeSelect).toBeDefined();
     if (typeSelect) {
       // Use a valid option value from the component
@@ -181,11 +190,18 @@ describe('EvidenceRegistryPage', () => {
     const selects = screen.getAllByRole('combobox');
     // The verification status select should be the second one (after evidence type)
     // Find it by checking which select has the "All", "Verified", "Unverified" options
-    const verifiedSelect = selects.find(select => {
-      const options = Array.from(select.querySelectorAll('option')).map(opt => opt.textContent);
-      return options.includes('All') && options.includes('Verified') && options.includes('Unverified');
-    }) || selects[1];
-    
+    const verifiedSelect =
+      selects.find((select) => {
+        const options = Array.from(select.querySelectorAll('option')).map(
+          (opt) => opt.textContent,
+        );
+        return (
+          options.includes('All') &&
+          options.includes('Verified') &&
+          options.includes('Unverified')
+        );
+      }) || selects[1];
+
     expect(verifiedSelect).toBeDefined();
     if (verifiedSelect) {
       fireEvent.change(verifiedSelect, { target: { value: 'true' } });
@@ -250,7 +266,9 @@ describe('EvidenceRegistryPage', () => {
   it('opens evidence details modal on evidence click', () => {
     render(<EvidenceRegistryPage />, { wrapper: createWrapper() });
 
-    const evidenceCard = screen.getByText('test.pdf').closest('[class*="card"]');
+    const evidenceCard = screen
+      .getByText('test.pdf')
+      .closest('[class*="card"]');
     if (evidenceCard) {
       fireEvent.click(evidenceCard);
     }
@@ -352,4 +370,3 @@ describe('EvidenceRegistryPage', () => {
     expect(verifiedElements.length).toBeGreaterThan(0);
   });
 });
-

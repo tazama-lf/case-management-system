@@ -68,34 +68,30 @@ const getRiskBreakdown = (alert: TriageAlert) => {
   try {
     const maybe = alert.alert_data as unknown;
     if (maybe && typeof maybe === 'object') {
-      const tadp = (maybe as Record<string, unknown>)['tadpResult'];
+      const tadp = (maybe as Record<string, unknown>).tadpResult;
       if (tadp && typeof tadp === 'object') {
-        const typologyResult = (tadp as Record<string, unknown>)[
-          'typologyResult'
-        ];
+        const { typologyResult } = tadp as Record<string, unknown>;
         if (
           Array.isArray(typologyResult) &&
           typologyResult.length > 0 &&
           typeof typologyResult[0] === 'object'
         ) {
           const typ = typologyResult[0] as Record<string, unknown>;
-          const maybeRules = typ['ruleResults'];
+          const maybeRules = typ.ruleResults;
           if (Array.isArray(maybeRules)) {
             return maybeRules.map((r) => {
               const rec = r as Record<string, unknown>;
-              const id =
-                (rec['id'] as string) || String(rec['ruleId'] || 'unknown');
-              const name =
-                (rec['label'] as string) || (rec['name'] as string) || id;
+              const id = (rec.id as string) || String(rec.ruleId || 'unknown');
+              const name = (rec.label as string) || (rec.name as string) || id;
               const type =
-                (rec['subRuleRef'] as string) ||
-                (rec['type'] as string) ||
-                (rec['category'] as string) ||
+                (rec.subRuleRef as string) ||
+                (rec.type as string) ||
+                (rec.category as string) ||
                 'Unknown';
               const wght =
-                typeof rec['wght'] === 'number'
-                  ? (rec['wght'] as number)
-                  : Number(rec['weight'] || 0);
+                typeof rec.wght === 'number'
+                  ? rec.wght
+                  : Number(rec.weight || 0);
               return { name, type, score: wght };
             });
           }
@@ -143,24 +139,19 @@ const extractTypologyInfo = (alert: TriageAlert) => {
   try {
     const maybe = alert.alert_data as unknown;
     if (maybe && typeof maybe === 'object') {
-      const tadp = (maybe as Record<string, unknown>)['tadpResult'];
+      const tadp = (maybe as Record<string, unknown>).tadpResult;
       if (tadp && typeof tadp === 'object') {
-        const typologyResult = (tadp as Record<string, unknown>)[
-          'typologyResult'
-        ];
+        const { typologyResult } = tadp as Record<string, unknown>;
         if (
           Array.isArray(typologyResult) &&
           typologyResult.length > 0 &&
           typeof typologyResult[0] === 'object'
         ) {
           const typ = typologyResult[0] as Record<string, unknown>;
-          const id = typ['cfg'] as string | undefined;
-          const label =
-            (typ['label'] as string) || (typ['name'] as string) || id;
+          const id = typ.cfg as string | undefined;
+          const label = (typ.label as string) || (typ.name as string) || id;
           const result =
-            typeof typ['result'] === 'number'
-              ? (typ['result'] as number)
-              : undefined;
+            typeof typ.result === 'number' ? typ.result : undefined;
           return { id, label, result };
         }
       }
@@ -171,14 +162,13 @@ const extractTypologyInfo = (alert: TriageAlert) => {
   return { id: undefined, label: undefined, result: undefined };
 };
 
-const escapeHtml = (unsafe: string) => {
-  return unsafe
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-};
+const escapeHtml = (unsafe: string) =>
+  unsafe
+    .replace(/&/gu, '&amp;')
+    .replace(/</gu, '&lt;')
+    .replace(/>/gu, '&gt;')
+    .replace(/"/gu, '&quot;')
+    .replace(/'/gu, '&#039;');
 
 const syntaxHighlightJson = (obj: unknown) => {
   const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
@@ -186,21 +176,21 @@ const syntaxHighlightJson = (obj: unknown) => {
 
   const highlighted = escaped
     .replace(
-      /("(.*?)")(?=\s*:)/g,
+      /("(.*?)")(?=\s*:)/gu,
       '<span class="text-indigo-700 font-medium">$1</span>',
     )
-    .replace(/:\s*"(.*?)"/g, ': <span class="text-green-700">"$1"</span>')
+    .replace(/:\s*"(.*?)"/gu, ': <span class="text-green-700">"$1"</span>')
     .replace(
-      /(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/gi,
+      /(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/giu,
       '$1<span class="text-red-600">$2</span>',
     )
     .replace(
-      /(:\s*)(true|false)/gi,
+      /(:\s*)(true|false)/giu,
       '$1<span class="text-yellow-600">$2</span>',
     )
-    .replace(/(:\s*)(null)/gi, '$1<span class="text-gray-500">$2</span>');
+    .replace(/(:\s*)(null)/giu, '$1<span class="text-gray-500">$2</span>');
 
-  return highlighted.replace(/\n/g, '<br/>').replace(/ /g, '&nbsp;');
+  return highlighted.replace(/\n/gu, '<br/>').replace(/ /gu, '&nbsp;');
 };
 
 const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
@@ -280,10 +270,12 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         return;
       }
 
+      setAlert(null);
       setLoading(true);
       setError(null);
 
       try {
+        await new Promise(resolve => setTimeout(resolve, 500));
         const alertDetails = await triageService.getAlertById(alertId);
         setAlert(alertDetails);
 
@@ -385,7 +377,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
             </p>
             <div className="mt-6 flex justify-center space-x-3">
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  window.location.reload();
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 Retry
@@ -425,7 +419,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
-        {}
+        { }
         <div
           className="fixed inset-0 bg-gray-900 opacity-60 transition-opacity"
           onClick={() => {
@@ -440,9 +434,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           aria-hidden="true"
         ></div>
 
-        {}
+        { }
         <div className="relative inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-5xl sm:w-full">
-          {}
+          { }
           <div className="absolute top-0 right-0 pt-4 pr-4 z-10">
             <button
               onClick={() => {
@@ -461,10 +455,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
             </button>
           </div>
 
-          {}
+          { }
           <div className="bg-white px-4 pt-4 pb-4 max-h-[85vh] overflow-y-auto">
             <div className="max-w-4xl mx-auto">
-              {}
+              { }
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
@@ -477,9 +471,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       {alert.priority}
                     </span>
 
-                    {}
+                    { }
                     <div className="flex items-center space-x-2 ml-4">
-                      {}
+                      { }
                       {(() => {
                         const triageCompleted =
                           actionHistory?.operation.includes('ALERT_UPDATED');
@@ -493,9 +487,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
                         return showButton && onManualTriage ? (
                           <button
-                            onClick={() =>
-                              onManualTriage(convertToLegacyAlert(alert))
-                            }
+                            onClick={() => {
+                              onManualTriage(convertToLegacyAlert(alert));
+                            }}
                             className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
                             title={
                               isManualMode
@@ -508,7 +502,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                         ) : null;
                       })()}
 
-                      {}
+                      { }
                       {isAIMode && (
                         <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md border border-blue-200">
                           AI Processed
@@ -525,10 +519,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              {}
+              { }
               <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-                  {}
+                  { }
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Alert Summary
@@ -569,7 +563,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     </div>
                   </div>
 
-                  {}
+                  { }
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Transaction Data
@@ -592,10 +586,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              {}
+              { }
               <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-                  {}
+                  { }
                   <div className="w-full bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Action History
@@ -616,13 +610,12 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
                         >
                           <div
-                            className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
-                              actionHistory.outcome === 'SUCCESS'
-                                ? 'bg-green-100 text-green-600'
-                                : actionHistory.outcome === 'FAILURE'
-                                  ? 'bg-red-100 text-red-600'
-                                  : 'bg-blue-100 text-blue-600'
-                            }`}
+                            className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${actionHistory.outcome === 'SUCCESS'
+                              ? 'bg-green-100 text-green-600'
+                              : actionHistory.outcome === 'FAILURE'
+                                ? 'bg-red-100 text-red-600'
+                                : 'bg-blue-100 text-blue-600'
+                              }`}
                           >
                             <ClockIcon className="w-4 h-4" />
                           </div>
@@ -643,14 +636,16 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              {}
+              { }
               <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
                     Rules & Typologies
                   </h4>
                   <button
-                    onClick={() => setShowRules(!showRules)}
+                    onClick={() => {
+                      setShowRules(!showRules);
+                    }}
                     className="text-sm px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     {showRules ? 'Hide Risk Breakdown' : 'Show Risk Breakdown'}
@@ -678,7 +673,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                   </div>
                 </div>
 
-                {}
+                { }
                 <div
                   className={`overflow-hidden transition-all duration-300 ${showRules ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
                 >

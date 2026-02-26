@@ -20,7 +20,7 @@ describe('FocusTrap', () => {
     render(
       <FocusTrap>
         <button>Test Button</button>
-      </FocusTrap>
+      </FocusTrap>,
     );
 
     expect(screen.getByText('Test Button')).toBeInTheDocument();
@@ -31,7 +31,7 @@ describe('FocusTrap', () => {
       <FocusTrap active={true}>
         <button>First</button>
         <button>Second</button>
-      </FocusTrap>
+      </FocusTrap>,
     );
 
     const firstButton = screen.getByText('First');
@@ -42,7 +42,7 @@ describe('FocusTrap', () => {
     render(
       <FocusTrap active={false}>
         <button>Test</button>
-      </FocusTrap>
+      </FocusTrap>,
     );
 
     const button = screen.getByText('Test');
@@ -55,7 +55,7 @@ describe('FocusTrap', () => {
         <button>First</button>
         <button>Second</button>
         <button>Third</button>
-      </FocusTrap>
+      </FocusTrap>,
     );
 
     const buttons = screen.getAllByRole('button');
@@ -71,7 +71,7 @@ describe('FocusTrap', () => {
       <FocusTrap active={true}>
         <button>First</button>
         <button>Second</button>
-      </FocusTrap>
+      </FocusTrap>,
     );
 
     const buttons = screen.getAllByRole('button');
@@ -87,7 +87,7 @@ describe('FocusTrap', () => {
     render(
       <FocusTrap active={true} onEscape={onEscape}>
         <button>Test</button>
-      </FocusTrap>
+      </FocusTrap>,
     );
 
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -103,7 +103,7 @@ describe('FocusTrap', () => {
     const { unmount } = render(
       <FocusTrap active={true} restoreFocus={true}>
         <button>Test</button>
-      </FocusTrap>
+      </FocusTrap>,
     );
 
     unmount();
@@ -116,7 +116,7 @@ describe('FocusTrap', () => {
     const { container } = render(
       <FocusTrap className="custom-class">
         <div>Content</div>
-      </FocusTrap>
+      </FocusTrap>,
     );
 
     expect(container.firstChild).toHaveClass('custom-class');
@@ -150,13 +150,15 @@ describe('SkipToContent', () => {
 
     // The target should be focused and scrollIntoView should be called
     expect(target).toBeInTheDocument();
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' });
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'smooth',
+    });
     document.body.removeChild(target);
   });
 
   it('applies custom className', () => {
     const { container } = render(
-      <SkipToContent targetId="main" className="custom-class" />
+      <SkipToContent targetId="main" className="custom-class" />,
     );
     expect(container.firstChild).toHaveClass('custom-class');
   });
@@ -175,7 +177,7 @@ describe('ScreenReaderText', () => {
 
   it('renders with custom element', () => {
     const { container } = render(
-      <ScreenReaderText as="div">Text</ScreenReaderText>
+      <ScreenReaderText as="div">Text</ScreenReaderText>,
     );
     expect(container.firstChild?.tagName).toBe('DIV');
   });
@@ -236,14 +238,16 @@ describe('AccessibleButton', () => {
     const variants = ['primary', 'secondary', 'danger'] as const;
     variants.forEach((variant) => {
       const { container } = render(
-        <AccessibleButton variant={variant}>Test</AccessibleButton>
+        <AccessibleButton variant={variant}>Test</AccessibleButton>,
       );
       expect(container.firstChild).toBeInTheDocument();
     });
   });
 
   it('renders with different sizes', () => {
-    const { rerender } = render(<AccessibleButton size="sm">Test</AccessibleButton>);
+    const { rerender } = render(
+      <AccessibleButton size="sm">Test</AccessibleButton>,
+    );
     expect(screen.getByText('Test')).toBeInTheDocument();
 
     rerender(<AccessibleButton size="md">Test</AccessibleButton>);
@@ -276,4 +280,3 @@ describe('useKeyboardNavigation', () => {
     expect(screen.getByText('Item 2')).toBeInTheDocument();
   });
 });
-

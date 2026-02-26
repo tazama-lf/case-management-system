@@ -12,29 +12,21 @@ export interface TaskHistoryEntry {
   task_id: number;
 }
 
-
 export class TaskHistoryService {
-  private baseUrl = '/api/v1/task-history';
-
-
+  private readonly baseUrl = '/api/v1/task-history';
 
   async getCaseHistory(caseId: number): Promise<TaskHistoryEntry[]> {
     try {
       const response = await apiClient.get<{
         taskHistory: TaskHistoryEntry[];
-      }>(
-        `${this.baseUrl}/${caseId}`
-      );
+      }>(`${this.baseUrl}/${caseId}`);
 
       return Array.isArray(response) ? response : [];
-
-
     } catch (error) {
       console.error('Failed to fetch case history by Task:', error);
       return [];
     }
   }
-
 
   private handleError(error: any, operation: string): Error {
     if (error.response?.data) {

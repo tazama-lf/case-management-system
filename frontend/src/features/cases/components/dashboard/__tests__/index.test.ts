@@ -17,4 +17,3 @@ describe('cases/components/dashboard/index.ts exports', () => {
     expect(module.DashboardHeader).toBeDefined();
   });
 });
-

@@ -16,7 +16,6 @@ import { FlowableService } from '../../../src/modules/flowable/flowable.service'
 import { AlertRepository } from '../repository/alert.repository';
 import { CloseCaseDto, ManualCreateCaseDto, GetAllCasesQueryDto, GetUserCasesQueryDto, UpdateCaseDto } from './dto';
 import { CacheService } from '../shared/cache.service';
-import { CaseRepository } from '../repository/case.repository';
 import { CaseCreationService } from './services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 
@@ -82,13 +81,14 @@ export class CaseService {
           }
         }
         const updatedTask = await Promise.all(
-          investigateTask.map((task) =>
-            this.taskService.updateTask(task.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId, tenantId),
+          investigateTask.map(
+            async (task) => await this.taskService.updateTask(task.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId, tenantId),
           ),
         );
         const createCommentDto = new CreateCommentDto();
         createCommentDto.caseId = updatedCase.case_id;
         createCommentDto.note = `Case suspended: ${reason}`;
+        createCommentDto.tenantId = tenantId;
         await this.commentService.addComment(createCommentDto, userId);
 
         await this.loggingOrchestrationService.logActionsWithHistory(
@@ -111,7 +111,6 @@ export class CaseService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_21_SUSPENDED,
-        reason: `Case suspended: ${reason}`,
       });
 
       try {
@@ -176,7 +175,6 @@ export class CaseService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
-        reason: `Case resumed: ${reason}`,
       });
 
       const result = await this.prismaService.$transaction(async (prisma) => {
@@ -201,13 +199,14 @@ export class CaseService {
         }
 
         const updatedTask = await Promise.all(
-          investigateTask.map((t) =>
-            this.taskService.updateTask(t.task_id, { status: TaskStatus.STATUS_20_IN_PROGRESS }, userId, tenantId),
+          investigateTask.map(
+            async (t) => await this.taskService.updateTask(t.task_id, { status: TaskStatus.STATUS_20_IN_PROGRESS }, userId, tenantId),
           ),
         );
         const createCommentDto = new CreateCommentDto();
         createCommentDto.caseId = caseId;
         createCommentDto.note = `Case resumed: ${reason}`;
+        createCommentDto.tenantId = tenantId;
         await this.commentService.addComment(createCommentDto, userId);
 
         await this.loggingOrchestrationService.logActionsWithHistory(
@@ -291,6 +290,7 @@ export class CaseService {
         //createCommentDto.taskId = updatedTask.task_id;
         createCommentDto.note = reason;
         createCommentDto.caseId = caseId;
+        createCommentDto.tenantId = tenantId;
         this.commentService.addComment(createCommentDto, userId);
 
         this.flowableService.handleCaseAbandoned({ caseId, reason });
@@ -418,7 +418,6 @@ export class CaseService {
         await this.flowableService.handleCaseStatusChanged({
           caseId,
           newStatus: targetStatus,
-          reason: `Case creation completed by ${role}`,
         });
 
         const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];
@@ -452,7 +451,7 @@ export class CaseService {
         });
 
         await this.commentService.addComment(
-          { caseId, taskId: completeNewCaseTask.task_id, note: updateData.note } as CreateCommentDto,
+          { caseId, taskId: completeNewCaseTask.task_id, note: updateData.note, tenantId } as CreateCommentDto,
           userId,
         );
         return { case: updatedCase, completedTask };

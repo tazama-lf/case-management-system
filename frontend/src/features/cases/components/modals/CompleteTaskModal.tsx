@@ -5,20 +5,26 @@ import { CheckIcon } from '@heroicons/react/24/outline';
 interface CompleteTaskModalProps {
   open: boolean;
   onClose: () => void;
-  onCompleteTask: (task: UnifiedWorkQueueTask, notes?: string, recommendedOutcome?: string) => void;
+  onCompleteTask: (
+    task: UnifiedWorkQueueTask,
+    notes?: string,
+    recommendedOutcome?: string,
+  ) => void;
   task?: UnifiedWorkQueueTask | null;
   loading?: boolean;
 }
 
-const CompleteTaskModal: React.FC<CompleteTaskModalProps> = ({ 
-  open, 
-  onClose, 
-  onCompleteTask, 
+const CompleteTaskModal: React.FC<CompleteTaskModalProps> = ({
+  open,
+  onClose,
+  onCompleteTask,
   task,
-  loading = false 
+  loading = false,
 }) => {
   const [notes, setNotes] = React.useState('');
-  const [recommendedOutcome, setRecommendedOutcome] = React.useState('STATUS_83_CLOSED_INCONCLUSIVE');
+  const [recommendedOutcome, setRecommendedOutcome] = React.useState(
+    'STATUS_83_CLOSED_INCONCLUSIVE',
+  );
 
   React.useEffect(() => {
     setNotes('');
@@ -26,24 +32,28 @@ const CompleteTaskModal: React.FC<CompleteTaskModalProps> = ({
   }, [task, open]);
 
   // Helper function to format outcome display text
-  const formatOutcome = (outcome: string): string => {
-    return outcome
+  const formatOutcome = (outcome: string): string =>
+    outcome
       .replace('STATUS_', '')
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase());
-  };
+      .replace(/_/gu, ' ')
+      .replace(/\b\w/gu, (l) => l.toUpperCase());
 
   // Check if task requires recommended outcome dropdown
-  const requiresOutcomeDropdown = task?.name === 'Investigate AML' || task?.name === 'Investigate Fraud';
+  const requiresOutcomeDropdown =
+    task?.name === 'Investigate AML' || task?.name === 'Investigate Fraud';
 
   if (!open || !task) return null;
 
   const handleComplete = () => {
     const completionData = {
       notes: notes || undefined,
-      ...(requiresOutcomeDropdown && { recommendedOutcome })
+      ...(requiresOutcomeDropdown && { recommendedOutcome }),
     };
-    onCompleteTask(task, completionData.notes, completionData.recommendedOutcome);
+    onCompleteTask(
+      task,
+      completionData.notes,
+      completionData.recommendedOutcome,
+    );
     setNotes('');
     setRecommendedOutcome('STATUS_83_CLOSED_INCONCLUSIVE');
   };
@@ -54,27 +64,35 @@ const CompleteTaskModal: React.FC<CompleteTaskModalProps> = ({
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <CheckIcon className="h-6 w-6 text-green-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Complete Task</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Complete Task
+            </h3>
           </div>
         </div>
 
         <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Task ID</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Task ID
+            </label>
             <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
               {task.id}
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Task Name</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Task Name
+            </label>
             <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
               {task.name}
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Current Status</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Current Status
+            </label>
             <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
               <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-gray-200">
                 {task.status}
@@ -90,13 +108,21 @@ const CompleteTaskModal: React.FC<CompleteTaskModalProps> = ({
               </label>
               <select
                 value={recommendedOutcome}
-                onChange={(e) => setRecommendedOutcome(e.target.value)}
+                onChange={(e) => {
+                  setRecommendedOutcome(e.target.value);
+                }}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                 disabled={loading}
               >
-                <option value="STATUS_83_CLOSED_INCONCLUSIVE">{formatOutcome("STATUS_83_CLOSED_INCONCLUSIVE")}</option>
-                <option value="STATUS_81_CLOSED_REFUTED">{formatOutcome("STATUS_81_CLOSED_REFUTED")}</option>
-                <option value="STATUS_82_CLOSED_CONFIRMED">{formatOutcome("STATUS_82_CLOSED_CONFIRMED")}</option>
+                <option value="STATUS_83_CLOSED_INCONCLUSIVE">
+                  {formatOutcome('STATUS_83_CLOSED_INCONCLUSIVE')}
+                </option>
+                <option value="STATUS_81_CLOSED_REFUTED">
+                  {formatOutcome('STATUS_81_CLOSED_REFUTED')}
+                </option>
+                <option value="STATUS_82_CLOSED_CONFIRMED">
+                  {formatOutcome('STATUS_82_CLOSED_CONFIRMED')}
+                </option>
               </select>
               <p className="mt-1 text-xs text-gray-500">
                 Select the outcome based on your investigation findings
@@ -106,15 +132,20 @@ const CompleteTaskModal: React.FC<CompleteTaskModalProps> = ({
 
           <div className="rounded-md bg-green-50 p-3">
             <div className="text-sm text-green-800">
-              <strong>Action:</strong> This task will be marked as <strong>Complete</strong>.
+              <strong>Action:</strong> This task will be marked as{' '}
+              <strong>Complete</strong>.
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Completion Notes (Optional)</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Completion Notes (Optional)
+            </label>
             <textarea
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => {
+                setNotes(e.target.value);
+              }}
               placeholder="Add any notes about the task completion..."
               rows={4}
               className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"

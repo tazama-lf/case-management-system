@@ -37,24 +37,43 @@ describe('CaseTypeResolutionChart', () => {
     render(<CaseTypeResolutionChart data={[]} title="Resolution Time" />);
 
     expect(screen.getByText('Resolution Time')).toBeInTheDocument();
-    expect(screen.getByText('No closed cases in selected period')).toBeInTheDocument();
+    expect(
+      screen.getByText('No closed cases in selected period'),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('bar-chart')).not.toBeInTheDocument();
   });
 
   it('renders empty state when data is null', () => {
-    render(<CaseTypeResolutionChart data={null as any} title="Resolution Time" />);
+    render(
+      <CaseTypeResolutionChart data={null as any} title="Resolution Time" />,
+    );
 
-    expect(screen.getByText('No closed cases in selected period')).toBeInTheDocument();
+    expect(
+      screen.getByText('No closed cases in selected period'),
+    ).toBeInTheDocument();
   });
 
   it('renders empty state when data is undefined', () => {
-    render(<CaseTypeResolutionChart data={undefined as any} title="Resolution Time" />);
+    render(
+      <CaseTypeResolutionChart
+        data={undefined as any}
+        title="Resolution Time"
+      />,
+    );
 
-    expect(screen.getByText('No closed cases in selected period')).toBeInTheDocument();
+    expect(
+      screen.getByText('No closed cases in selected period'),
+    ).toBeInTheDocument();
   });
 
   it('applies custom height', () => {
-    render(<CaseTypeResolutionChart data={mockData} title="Resolution Time" height={400} />);
+    render(
+      <CaseTypeResolutionChart
+        data={mockData}
+        title="Resolution Time"
+        height={400}
+      />,
+    );
 
     const container = screen.getByTestId('responsive-container');
     expect(container).toBeInTheDocument();
@@ -73,9 +92,7 @@ describe('CaseTypeResolutionChart', () => {
   });
 
   it('handles NONE case type', () => {
-    const noneData: CaseTypeResolution[] = [
-      { caseType: 'NONE', avgDays: 5.0 },
-    ];
+    const noneData: CaseTypeResolution[] = [{ caseType: 'NONE', avgDays: 5.0 }];
 
     render(<CaseTypeResolutionChart data={noneData} title="Resolution Time" />);
 
@@ -99,4 +116,3 @@ describe('CaseTypeResolutionChart', () => {
     expect(screen.getByTestId('tooltip')).toBeInTheDocument();
   });
 });
-

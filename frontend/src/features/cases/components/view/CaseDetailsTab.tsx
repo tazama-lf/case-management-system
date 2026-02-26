@@ -7,7 +7,7 @@ import triageService from '../../../alerts/services/triageservice';
 import {
   ChevronDownIcon,
   ChevronUpIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import { evidenceService } from '../../services/evidenceService';
@@ -31,19 +31,24 @@ interface CaseDetailsTabProps {
   onRejectCaseCreation?: (row: CaseRow) => void;
 }
 
-const SectionCard: React.FC<{ title?: string; children: React.ReactNode }> = ({ title, children }) => (
+const SectionCard: React.FC<{ title?: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
   <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-    {title ? <div className="mb-2 text-sm font-semibold text-gray-700">{title}</div> : null}
+    {title ? (
+      <div className="mb-2 text-sm font-semibold text-gray-700">{title}</div>
+    ) : null}
     <div className="text-sm text-gray-900">{children}</div>
   </div>
 );
 
 const getPriorityColor = (priority: string): string => {
   const priorityColors: Record<string, string> = {
-    'NEW': 'bg-blue-50 text-blue-700 ring-blue-200',
-    'URGENT': 'bg-yellow-50 text-yellow-700 ring-yellow-200',
-    'CRITICAL': 'bg-orange-50 text-orange-700 ring-orange-200',
-    'BREACH': 'bg-red-50 text-red-700 ring-red-200',
+    NEW: 'bg-blue-50 text-blue-700 ring-blue-200',
+    URGENT: 'bg-yellow-50 text-yellow-700 ring-yellow-200',
+    CRITICAL: 'bg-orange-50 text-orange-700 ring-orange-200',
+    BREACH: 'bg-red-50 text-red-700 ring-red-200',
   };
   return priorityColors[priority] || 'bg-gray-50 text-gray-700 ring-gray-200';
 };
@@ -56,10 +61,10 @@ const getScoreColor = (score: number): string => {
   return 'text-gray-600 bg-gray-50';
 };
 
-type LatestReport = {
+interface LatestReport {
   reportType: string;
   reportId: string;
-};
+}
 
 const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   row,
@@ -79,11 +84,15 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   onApproveCaseCreation,
   onRejectCaseCreation,
 }) => {
-
-  const [transactionalData, setTransactionData] = React.useState<TransactionHistoryDto[]>();
-  const [openTransactions, setOpenTransactions] = React.useState<Record<string, boolean>>({});
+  const [transactionalData, setTransactionData] =
+    React.useState<TransactionHistoryDto[]>();
+  const [openTransactions, setOpenTransactions] = React.useState<
+    Record<string, boolean>
+  >({});
   const [viewingId, setViewingId] = useState<string | null>(null);
-  const [latestReports, setLatestReports] = useState<Record<string, LatestReport | null>>({});
+  const [latestReports, setLatestReports] = useState<
+    Record<string, LatestReport | null>
+  >({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -106,7 +115,10 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
 
   const transactionData = getTransactionData();
 
-  const getNestedValue = (obj: Record<string, unknown> | null, path: string[]): string => {
+  const getNestedValue = (
+    obj: Record<string, unknown> | null,
+    path: string[],
+  ): string => {
     if (!obj) return 'N/A';
     let current: unknown = obj;
     for (const key of path) {
@@ -119,14 +131,13 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     return typeof current === 'string' ? current : 'N/A';
   };
 
-  const escapeHtml = (unsafe: string) => {
-    return unsafe
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  };
+  const escapeHtml = (unsafe: string) =>
+    unsafe
+      .replace(/&/gu, '&amp;')
+      .replace(/</gu, '&lt;')
+      .replace(/>/gu, '&gt;')
+      .replace(/"/gu, '&quot;')
+      .replace(/'/gu, '&#039;');
 
   const syntaxHighlightJson = (obj: unknown) => {
     const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
@@ -134,21 +145,21 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
 
     const highlighted = escaped
       .replace(
-        /("(.*?)")(?=\s*:)/g,
+        /("(.*?)")(?=\s*:)/gu,
         '<span class="text-indigo-700 font-medium">$1</span>',
       )
-      .replace(/:\s*"(.*?)"/g, ': <span class="text-green-700">"$1"</span>')
+      .replace(/:\s*"(.*?)"/gu, ': <span class="text-green-700">"$1"</span>')
       .replace(
-        /(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/gi,
+        /(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/giu,
         '$1<span class="text-red-600">$2</span>',
       )
       .replace(
-        /(:\s*)(true|false)/gi,
+        /(:\s*)(true|false)/giu,
         '$1<span class="text-yellow-600">$2</span>',
       )
-      .replace(/(:\s*)(null)/gi, '$1<span class="text-gray-500">$2</span>');
+      .replace(/(:\s*)(null)/giu, '$1<span class="text-gray-500">$2</span>');
 
-    return highlighted.replace(/\n/g, '<br/>').replace(/ /g, '&nbsp;');
+    return highlighted.replace(/\n/gu, '<br/>').replace(/ /gu, '&nbsp;');
   };
 
   React.useEffect(() => {
@@ -156,10 +167,15 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       if (!row?.alertId) return;
 
       try {
-        const transactionData = await triageService.getAlertTransactionalData(row.alertId);
+        const transactionData = await triageService.getAlertTransactionalData(
+          row.alertId,
+        );
         setTransactionData(transactionData);
       } catch (error) {
-        console.error(`Unable to retrieve Transaction Data for alert ID ${row.alertId}`, error);
+        console.error(
+          `Unable to retrieve Transaction Data for alert ID ${row.alertId}`,
+          error,
+        );
       }
     };
 
@@ -170,7 +186,6 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     setLatestReports({});
     setViewingId(null);
     if (!row.id) return;
-
 
     const isClosed = row.status.toLowerCase().includes('closed');
     if (!isClosed) {
@@ -187,31 +202,35 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
 
       evidenceResponse.evidence.forEach((evidence) => {
         const reportType = evidence.evidenceType || 'INVESTIGATION_REPORT';
-        const reportId = evidence.reportId;
+        const { reportId } = evidence;
 
-        const submittedAt =
-          evidence.attachments?.[0]?.submittedAt
-            ? new Date(evidence.attachments[0].submittedAt).getTime()
-            : 0;
+        const submittedAt = evidence.attachments?.[0]?.submittedAt
+          ? new Date(evidence.attachments[0].submittedAt).getTime()
+          : 0;
 
         const existing = latestByType[reportType];
 
         if (!existing) {
-          latestByType[reportType] = { reportType, reportId: reportId ? reportId : '' };
+          latestByType[reportType] = {
+            reportType,
+            reportId: reportId ? reportId : '',
+          };
           return;
         }
 
         const existingEvidence = evidenceResponse.evidence.find(
-          (e) => e.reportId === existing.reportId
+          (e) => e.reportId === existing.reportId,
         );
 
-        const existingDate =
-          existingEvidence?.attachments?.[0]?.submittedAt
-            ? new Date(existingEvidence.attachments[0].submittedAt).getTime()
-            : 0;
+        const existingDate = existingEvidence?.attachments?.[0]?.submittedAt
+          ? new Date(existingEvidence.attachments[0].submittedAt).getTime()
+          : 0;
 
         if (submittedAt > existingDate) {
-          latestByType[reportType] = { reportType, reportId: reportId ? reportId : '' };
+          latestByType[reportType] = {
+            reportType,
+            reportId: reportId ? reportId : '',
+          };
         }
       });
 
@@ -223,13 +242,9 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     }
   }, [row.id]);
 
-
   useEffect(() => {
-
     loadReport();
   }, [loadReport]);
-
-
 
   const handleViewReport = async (reportId?: string) => {
     if (!reportId) {
@@ -239,11 +254,17 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     setViewingId(actualReportId);
 
     try {
-      console.log('[Report View] Starting view for:', { actualReportId, reportId });
+      console.log('[Report View] Starting view for:', {
+        actualReportId,
+        reportId,
+      });
       // Fetch the encrypted blob from CouchDB
       const blob = await evidenceService.viewEvidence(actualReportId);
 
-      console.log('[Report View] Blob received:', { size: blob.size, type: blob.type });
+      console.log('[Report View] Blob received:', {
+        size: blob.size,
+        type: blob.type,
+      });
 
       if (blob.size === 0) {
         throw new Error('Received empty file');
@@ -262,7 +283,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         'text/plain',
         'text/html',
         'text/csv',
-      ].some(type => mimeType.includes(type));
+      ].some((type) => mimeType.includes(type));
 
       // Create blob URL
       const blobUrl = URL.createObjectURL(blob);
@@ -274,7 +295,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       } else {
         // For non-previewable files, inform user and offer download
         const shouldDownload = confirm(
-          `This file type (${mimeType}) cannot be previewed in the browser.\n\nWould you like to download it instead?`
+          `This file type (${mimeType}) cannot be previewed in the browser.\n\nWould you like to download it instead?`,
         );
 
         if (shouldDownload) {
@@ -303,7 +324,8 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       }
     } catch (err) {
       console.error('[Report View] Error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unknown error occurred';
       alert(`Failed to view Report: ${errorMessage}`);
     } finally {
       setViewingId(null);
@@ -315,9 +337,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       <div className="flex items-center justify-center py-16">
         <div className="flex items-center gap-3">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-          <span className="text-sm text-gray-600">
-            Loading case details…
-          </span>
+          <span className="text-sm text-gray-600">Loading case details…</span>
         </div>
       </div>
     );
@@ -336,11 +356,13 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
 
             <div className="flex items-center gap-2 ml-6">
               {row.status.toLowerCase().includes('closed') &&
-                latestReports['INVESTIGATION_REPORT']?.reportId && (
+                latestReports.INVESTIGATION_REPORT?.reportId && (
                   <button
-                    onClick={() =>
-                      handleViewReport(latestReports['INVESTIGATION_REPORT']!.reportId)
-                    }
+                    onClick={async () => {
+                      await handleViewReport(
+                        latestReports.INVESTIGATION_REPORT!.reportId,
+                      );
+                    }}
                     className="inline-flex items-center gap-2 px-4 py-2
                      bg-gradient-to-r from-blue-600 to-blue-700
                      text-white text-sm font-medium rounded-md
@@ -361,26 +383,34 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
               </div>
               <div>
                 <div className="text-xs text-gray-500 uppercase">Case Type</div>
-                <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${row.typeColor}`}>
+                <span
+                  className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${row.typeColor}`}
+                >
                   {row.type || 'N/A'}
                 </span>
               </div>
               <div>
                 <div className="text-xs text-gray-500 uppercase">Status</div>
-                <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${row.statusColor}`}>
+                <span
+                  className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${row.statusColor}`}
+                >
                   {getCaseStatusBadge(row.status)}
                 </span>
               </div>
               <div>
                 <div className="text-xs text-gray-500 uppercase">Priority</div>
                 <div className="inline-flex items-center gap-2">
-                  <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${getPriorityColor(row.priority)}`}>
+                  <span
+                    className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${getPriorityColor(row.priority)}`}
+                  >
                     {row.priority}
                   </span>
                 </div>
               </div>
               <div>
-                <div className="text-xs text-gray-500 uppercase">Created On</div>
+                <div className="text-xs text-gray-500 uppercase">
+                  Created On
+                </div>
                 <div className="font-medium text-gray-900">{row.createdOn}</div>
               </div>
               {/* <div>
@@ -392,8 +422,12 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
                 <div className="font-medium text-gray-900">{row.assignee || 'N/A'}</div>
               </div> */}
               <div>
-                <div className="text-xs text-gray-500 uppercase">Total Tasks</div>
-                <div className="font-medium text-gray-900">{row.totalTasks}</div>
+                <div className="text-xs text-gray-500 uppercase">
+                  Total Tasks
+                </div>
+                <div className="font-medium text-gray-900">
+                  {row.totalTasks}
+                </div>
               </div>
             </div>
           </SectionCard>
@@ -402,16 +436,24 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         {/* Parent Case Information */}
         {row?.parentId && parentCaseDetails && (
           <div className="space-y-3">
-            <div className="text-sm font-semibold text-gray-700">Parent Case Information</div>
+            <div className="text-sm font-semibold text-gray-700">
+              Parent Case Information
+            </div>
             <SectionCard>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <div>
-                  <div className="text-xs text-gray-500 uppercase">Parent ID</div>
-                  <div className="font-medium text-gray-900">{parentCaseDetails.id}</div>
+                  <div className="text-xs text-gray-500 uppercase">
+                    Parent ID
+                  </div>
+                  <div className="font-medium text-gray-900">
+                    {parentCaseDetails.id}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 uppercase">Status</div>
-                  <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${parentCaseDetails.statusColor}`}>
+                  <span
+                    className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${parentCaseDetails.statusColor}`}
+                  >
                     {getCaseStatusBadge(parentCaseDetails.status)}
                   </span>
                 </div>
@@ -423,36 +465,46 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         {/* Sub Cases Information */}
         {row?.type === 'FRAUD_AND_AML' && subCasesDetails && (
           <div className="space-y-3">
-            <div className="text-sm font-semibold text-gray-700">Sub Case Information</div>
+            <div className="text-sm font-semibold text-gray-700">
+              Sub Case Information
+            </div>
             <SectionCard>
-              {subCasesDetails.map(subCases => (
+              {subCasesDetails.map((subCases) => (
                 <div key={subCases.id} className="mb-4">
-
                   <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-
                     <div>
-                      <div className="text-xs text-gray-500 uppercase">SubCase ID</div>
-                      <div className="font-medium text-gray-900">{subCases.id}</div>
+                      <div className="text-xs text-gray-500 uppercase">
+                        SubCase ID
+                      </div>
+                      <div className="font-medium text-gray-900">
+                        {subCases.id}
+                      </div>
                     </div>
 
                     <div>
-                      <div className="text-xs text-gray-500 uppercase">SubCase Type</div>
-                      <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${subCases.typeColor}`}>
+                      <div className="text-xs text-gray-500 uppercase">
+                        SubCase Type
+                      </div>
+                      <span
+                        className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${subCases.typeColor}`}
+                      >
                         {subCases.type || 'N/A'}
                       </span>
                     </div>
 
                     <div>
-                      <div className="text-xs text-gray-500 uppercase">Status</div>
-                      <span className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${subCases.statusColor}`}>
+                      <div className="text-xs text-gray-500 uppercase">
+                        Status
+                      </div>
+                      <span
+                        className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${subCases.statusColor}`}
+                      >
                         {getCaseStatusBadge(subCases.status)}
                       </span>
                     </div>
-
                   </div>
                 </div>
               ))}
-
             </SectionCard>
           </div>
         )}
@@ -460,22 +512,32 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         {/* Alert Information */}
         {row.alertId && (
           <div className="space-y-3">
-            <div className="text-sm font-semibold text-gray-700">Alert Information</div>
+            <div className="text-sm font-semibold text-gray-700">
+              Alert Information
+            </div>
             <SectionCard>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <div>
-                  <div className="text-xs text-gray-500 uppercase">Alert ID</div>
+                  <div className="text-xs text-gray-500 uppercase">
+                    Alert ID
+                  </div>
                   <div className="font-medium text-gray-900">{row.alertId}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 uppercase">Confidence Score</div>
-                  <div className={`inline-flex px-2 py-1 text-sm font-bold rounded-full ${getScoreColor(row.confidencePercent || 0)}`}>
+                  <div className="text-xs text-gray-500 uppercase">
+                    Confidence Score
+                  </div>
+                  <div
+                    className={`inline-flex px-2 py-1 text-sm font-bold rounded-full ${getScoreColor(row.confidencePercent || 0)}`}
+                  >
                     {row.confidencePercent || 0}%
                   </div>
                 </div>
                 <div className="col-span-2">
                   <div className="text-xs text-gray-500 uppercase">Message</div>
-                  <div className="font-medium text-gray-900 mt-1">{row.alertMessage || 'N/A'}</div>
+                  <div className="font-medium text-gray-900 mt-1">
+                    {row.alertMessage || 'N/A'}
+                  </div>
                 </div>
               </div>
             </SectionCard>
@@ -486,11 +548,16 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       {/* Transactions */}
       {transactionalData && transactionalData.length > 0 && (
         <div className="space-y-3">
-          <div className="text-sm font-semibold text-gray-700">Transactions</div>
+          <div className="text-sm font-semibold text-gray-700">
+            Transactions
+          </div>
 
           {transactionalData.map((tx) => {
             const isOpen = openTransactions[tx.transactionId] || false;
-            const txTp = getNestedValue(tx.transactionData as Record<string, unknown>, ['TxTp']);
+            const txTp = getNestedValue(
+              tx.transactionData as Record<string, unknown>,
+              ['TxTp'],
+            );
 
             return (
               <section
@@ -500,12 +567,12 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
                 {/* HEADER */}
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
                     setOpenTransactions((prev) => ({
                       ...prev,
                       [tx.transactionId]: !prev[tx.transactionId],
-                    }))
-                  }
+                    }));
+                  }}
                   className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
                 >
                   <div>
@@ -565,7 +632,6 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
           />
         </div>
       )}
-
     </div>
   );
 };

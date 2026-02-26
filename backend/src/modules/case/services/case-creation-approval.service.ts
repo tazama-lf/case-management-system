@@ -83,6 +83,7 @@ export class CaseCreationApprovalService {
           caseStatus,
           creationType: CaseCreationType.MANUAL,
           creatorRole: role,
+          isReopened: false,
         });
 
         const updatedAlert = await this.alertRepository.updateAlert(
@@ -225,6 +226,7 @@ export class CaseCreationApprovalService {
         caseStatus: CaseStatus.STATUS_00_DRAFT,
         creationType: CaseCreationType.MANUAL,
         creatorRole: role,
+        isReopened: false,
       });
 
       // Create "Complete New Case" task assigned to the creator
@@ -425,7 +427,6 @@ export class CaseCreationApprovalService {
         await this.flowableService.handleCaseStatusChanged({
           caseId,
           newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          reason: 'Case creation approved by supervisor',
         });
 
         const completedApprovalTask = await tx.task.update({
@@ -606,7 +607,6 @@ export class CaseCreationApprovalService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: CaseStatus.STATUS_00_DRAFT,
-        reason: `Case creation rejected: ${reason}`,
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -718,7 +718,7 @@ export class CaseCreationApprovalService {
 
   async createCase(createCaseDTO: CreateCaseDto, userId: string): Promise<Case> {
     try {
-      this.logger.log(`Start - Create Case`, CaseCreationApprovalService.name);
+      this.logger.log('Start - Create Case', CaseCreationApprovalService.name);
       const createdCase = await this.caseRepository.createCase({
         tenantId: createCaseDTO.tenantId,
         caseCreatorUserId: createCaseDTO.caseCreatorUserId,
@@ -736,6 +736,7 @@ export class CaseCreationApprovalService {
         caseStatus: createdCase.status,
         creationType: createCaseDTO.caseCreationType,
         creatorRole: 'SYSTEM',
+        isReopened: false,
       });
 
       this.logger.log(
@@ -810,7 +811,6 @@ export class CaseCreationApprovalService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: status,
-        reason: 'Case status updated',
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(

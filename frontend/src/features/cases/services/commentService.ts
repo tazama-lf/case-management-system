@@ -11,7 +11,6 @@ export interface Comment {
   updated_at: string;
 }
 
-
 export interface TaskComment {
   comment_id: number;
   user_id: string;
@@ -33,24 +32,36 @@ export interface CreateCommentDto {
 }
 
 export class CommentService {
-  private baseUrl = '/api/v1/comment';
+  private readonly baseUrl = '/api/v1/comment';
 
   async getCommentsByCaseId(caseId: number): Promise<CommentsByCaseId[]> {
     try {
-      const response = await apiClient.get<CommentsByCaseId[]>(`${this.baseUrl}/case/${caseId}/comment`);
+      const response = await apiClient.get<CommentsByCaseId[]>(
+        `${this.baseUrl}/case/${caseId}/comment`,
+      );
       return Array.isArray(response) ? response : [];
     } catch (error: any) {
-      console.error('CommentService: Failed to get tasks with comments for case:', caseId, error);
+      console.error(
+        'CommentService: Failed to get tasks with comments for case:',
+        caseId,
+        error,
+      );
       throw this.handleError(error, 'get tasks with comments by case ID');
     }
   }
 
   async getCommentsByTaskId(taskId: number): Promise<CommentsByCaseId[]> {
     try {
-      const response = await apiClient.get<CommentsByCaseId[]>(`${this.baseUrl}/task/${taskId}/comment`);
+      const response = await apiClient.get<CommentsByCaseId[]>(
+        `${this.baseUrl}/task/${taskId}/comment`,
+      );
       return Array.isArray(response) ? response : [];
     } catch (error: any) {
-      console.error('CommentService: Failed to get tasks with comments for task:', taskId, error);
+      console.error(
+        'CommentService: Failed to get tasks with comments for task:',
+        taskId,
+        error,
+      );
       throw this.handleError(error, 'get tasks with comments by task ID');
     }
   }
@@ -61,31 +72,36 @@ export class CommentService {
       return response;
     } catch (error: unknown) {
       console.error('CommentService: Failed to add comment:', error);
-      const message = error instanceof Error ? error.message : 'Failed to add comment';
+      const message =
+        error instanceof Error ? error.message : 'Failed to add comment';
       throw new Error(message);
     }
   }
-
 
   async getComment(commentId: number): Promise<TaskComment> {
     try {
-      const response = await apiClient.get<TaskComment>(`${this.baseUrl}/${commentId}`);
+      const response = await apiClient.get<TaskComment>(
+        `${this.baseUrl}/${commentId}`,
+      );
       return response;
     } catch (error: unknown) {
       console.error('CommentService: Failed to get comment:', error);
-      const message = error instanceof Error ? error.message : 'Failed to get comment';
+      const message =
+        error instanceof Error ? error.message : 'Failed to get comment';
       throw new Error(message);
     }
   }
 
-
   async getCommentsByCase(caseId: number): Promise<TaskComment[]> {
     try {
-      const response = await apiClient.get<TaskComment[]>(`${this.baseUrl}?caseId=${caseId}`);
+      const response = await apiClient.get<TaskComment[]>(
+        `${this.baseUrl}?caseId=${caseId}`,
+      );
       return Array.isArray(response) ? response : [];
     } catch (error: unknown) {
       console.error('CommentService: Failed to get comments by case:', error);
-      const message = error instanceof Error ? error.message : 'Failed to get comments';
+      const message =
+        error instanceof Error ? error.message : 'Failed to get comments';
       throw new Error(message);
     }
   }
@@ -95,15 +111,17 @@ export class CommentService {
    */
   async getCommentsByTask(taskId: number): Promise<TaskComment[]> {
     try {
-      const response = await apiClient.get<TaskComment[]>(`${this.baseUrl}?taskId=${taskId}`);
+      const response = await apiClient.get<TaskComment[]>(
+        `${this.baseUrl}?taskId=${taskId}`,
+      );
       return Array.isArray(response) ? response : [];
     } catch (error: unknown) {
       console.error('CommentService: Failed to get comments by task:', error);
-      const message = error instanceof Error ? error.message : 'Failed to get comments';
+      const message =
+        error instanceof Error ? error.message : 'Failed to get comments';
       throw new Error(message);
     }
   }
-
 
   private handleError(error: any, operation: string): Error {
     if (error.response?.data) {

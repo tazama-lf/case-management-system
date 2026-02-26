@@ -86,4 +86,3 @@ describe('CaseSummaryItem', () => {
     expect(screen.getByText('Recently closed')).toHaveClass('text-green-600');
   });
 });
-

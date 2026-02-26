@@ -101,4 +101,3 @@ describe('CaseDetailsTab', () => {
     expect(userService.getUserDetailsById).not.toHaveBeenCalled();
   });
 });
-

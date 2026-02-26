@@ -1,7 +1,10 @@
 import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { NotificationProvider, useNotifications } from '../NotificationProvider';
+import {
+  NotificationProvider,
+  useNotifications,
+} from '../NotificationProvider';
 
 const mockToastSuccess = vi.fn((message, options) => `success-${message}`);
 const mockToastError = vi.fn((message, options) => `error-${message}`);
@@ -41,20 +44,35 @@ import toast from 'react-hot-toast';
 
 describe('NotificationProvider', () => {
   const TestComponent = () => {
-    const { showSuccess, showError, showWarning, showInfo, showLoading, dismiss } =
-      useNotifications();
+    const {
+      showSuccess,
+      showError,
+      showWarning,
+      showInfo,
+      showLoading,
+      dismiss,
+    } = useNotifications();
 
     return (
       <div>
-        <button onClick={() => showSuccess('Success message')}>Show Success</button>
+        <button onClick={() => showSuccess('Success message')}>
+          Show Success
+        </button>
         <button onClick={() => showError('Error message')}>Show Error</button>
-        <button onClick={() => showWarning('Warning message')}>Show Warning</button>
+        <button onClick={() => showWarning('Warning message')}>
+          Show Warning
+        </button>
         <button onClick={() => showInfo('Info message')}>Show Info</button>
-        <button onClick={() => showLoading('Loading message')}>Show Loading</button>
+        <button onClick={() => showLoading('Loading message')}>
+          Show Loading
+        </button>
         <button onClick={() => dismiss('toast-id')}>Dismiss</button>
         <button
           onClick={() =>
-            showSuccess('Custom success', { duration: 5000, position: 'bottom-right' })
+            showSuccess('Custom success', {
+              duration: 5000,
+              position: 'bottom-right',
+            })
           }
         >
           Show Custom Success
@@ -75,7 +93,7 @@ describe('NotificationProvider', () => {
     render(
       <NotificationProvider>
         <TestComponent />
-      </NotificationProvider>
+      </NotificationProvider>,
     );
 
     expect(screen.getByText('Show Success')).toBeInTheDocument();
@@ -86,7 +104,7 @@ describe('NotificationProvider', () => {
     render(
       <NotificationProvider>
         <TestComponent />
-      </NotificationProvider>
+      </NotificationProvider>,
     );
 
     const button = screen.getByText('Show Success');
@@ -104,7 +122,7 @@ describe('NotificationProvider', () => {
     render(
       <NotificationProvider>
         <TestComponent />
-      </NotificationProvider>
+      </NotificationProvider>,
     );
 
     const button = screen.getByText('Show Error');
@@ -122,7 +140,7 @@ describe('NotificationProvider', () => {
     render(
       <NotificationProvider>
         <TestComponent />
-      </NotificationProvider>
+      </NotificationProvider>,
     );
 
     const button = screen.getByText('Show Warning');
@@ -148,7 +166,7 @@ describe('NotificationProvider', () => {
     render(
       <NotificationProvider>
         <TestComponent />
-      </NotificationProvider>
+      </NotificationProvider>,
     );
 
     const button = screen.getByText('Show Info');
@@ -174,7 +192,7 @@ describe('NotificationProvider', () => {
     render(
       <NotificationProvider>
         <TestComponent />
-      </NotificationProvider>
+      </NotificationProvider>,
     );
 
     const button = screen.getByText('Show Loading');
@@ -191,7 +209,7 @@ describe('NotificationProvider', () => {
     render(
       <NotificationProvider>
         <TestComponent />
-      </NotificationProvider>
+      </NotificationProvider>,
     );
 
     const button = screen.getByText('Dismiss');
@@ -206,7 +224,7 @@ describe('NotificationProvider', () => {
     render(
       <NotificationProvider>
         <TestComponent />
-      </NotificationProvider>
+      </NotificationProvider>,
     );
 
     const button = screen.getByText('Show Custom Success');
@@ -235,4 +253,3 @@ describe('NotificationProvider', () => {
     consoleSpy.mockRestore();
   });
 });
-

@@ -32,20 +32,26 @@ describe('AuditLogsStatsCards', () => {
 
     // Wait for animation to complete (StatsCard animates numeric values)
     // The animation takes 1000ms, so wait a bit longer to ensure completion
-    await waitFor(() => {
-      const textContent = container.textContent || '';
-      expect(textContent).toContain('530');
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        const textContent = container.textContent || '';
+        expect(textContent).toContain('530');
+      },
+      { timeout: 2000 },
+    );
   });
 
   it('displays user sessions value', async () => {
     const { container } = render(<AuditLogsStatsCards stats={mockStats} />);
 
     // Wait for animation to complete
-    await waitFor(() => {
-      const textContent = container.textContent || '';
-      expect(textContent).toContain('310');
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        const textContent = container.textContent || '';
+        expect(textContent).toContain('310');
+      },
+      { timeout: 2000 },
+    );
   });
 
   it('displays system warnings value', async () => {
@@ -55,15 +61,19 @@ describe('AuditLogsStatsCards', () => {
     // The animation increments in steps (value / 60), so for 12 it increments by 0.2
     // Math.floor(11.8) = 11, Math.floor(12.0) = 12
     // The animation completes when current >= value, setting animatedValue to the exact value
-    await waitFor(() => {
-      const textContent = container.textContent || '';
-      // Check that we have the system warnings section
-      expect(textContent).toContain('System Warnings');
-      // The final value should be 12, but during animation it might show 11
-      // We accept either 11 or 12 to account for animation timing
-      const hasValue = textContent.includes('11') || textContent.includes('12');
-      expect(hasValue).toBe(true);
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        const textContent = container.textContent || '';
+        // Check that we have the system warnings section
+        expect(textContent).toContain('System Warnings');
+        // The final value should be 12, but during animation it might show 11
+        // We accept either 11 or 12 to account for animation timing
+        const hasValue =
+          textContent.includes('11') || textContent.includes('12');
+        expect(hasValue).toBe(true);
+      },
+      { timeout: 2000 },
+    );
   });
 
   it('displays subtitles correctly', () => {
@@ -102,4 +112,3 @@ describe('AuditLogsStatsCards', () => {
     expect(screen.getByText('1,234,567')).toBeInTheDocument();
   });
 });
-

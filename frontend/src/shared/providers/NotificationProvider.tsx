@@ -11,12 +11,16 @@ interface NotificationContextType {
   dismiss: (toastId: string) => void;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+const NotificationContext = createContext<NotificationContextType | undefined>(
+  undefined,
+);
 
 export const useNotifications = (): NotificationContextType => {
   const context = useContext(NotificationContext);
   if (!context) {
-    throw new Error('useNotifications must be used within a NotificationProvider');
+    throw new Error(
+      'useNotifications must be used within a NotificationProvider',
+    );
   }
   return context;
 };
@@ -25,7 +29,9 @@ interface NotificationProviderProps {
   children: React.ReactNode;
 }
 
-export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
+export const NotificationProvider: React.FC<NotificationProviderProps> = ({
+  children,
+}) => {
   const showSuccess = (message: string, options?: ToastOptions) => {
     toast.success(message, {
       duration: 4000,
@@ -68,11 +74,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     });
   };
 
-  const showLoading = (message: string): string => {
-    return toast.loading(message, {
+  const showLoading = (message: string): string =>
+    toast.loading(message, {
       position: 'top-right',
     });
-  };
 
   const dismiss = (toastId: string) => {
     toast.dismiss(toastId);

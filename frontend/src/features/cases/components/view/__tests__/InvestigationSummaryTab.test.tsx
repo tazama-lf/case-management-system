@@ -66,8 +66,12 @@ describe('InvestigationSummaryTab', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (evidenceService.getCaseEvidence as vi.Mock).mockResolvedValue(mockEvidence);
-    (commentService.getCommentsByCase as vi.Mock).mockResolvedValue(mockComments);
+    (evidenceService.getCaseEvidence as vi.Mock).mockResolvedValue(
+      mockEvidence,
+    );
+    (commentService.getCommentsByCase as vi.Mock).mockResolvedValue(
+      mockComments,
+    );
     (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
     (commentService.getCommentsByTask as vi.Mock).mockResolvedValue([]);
     (userService.getUserDetailsById as vi.Mock).mockResolvedValue({
@@ -79,7 +83,9 @@ describe('InvestigationSummaryTab', () => {
   });
 
   it('renders loading state initially', () => {
-    (caseService.getCaseDetails as vi.Mock).mockImplementation(() => new Promise(() => {}));
+    (caseService.getCaseDetails as vi.Mock).mockImplementation(
+      () => new Promise(() => {}),
+    );
     render(<InvestigationSummaryTab caseId="CASE-123" />);
     expect(document.querySelector('.animate-spin')).toBeInTheDocument();
   });
@@ -127,7 +133,9 @@ describe('InvestigationSummaryTab', () => {
     render(<InvestigationSummaryTab caseId="CASE-123" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Final Investigation Summary')).toBeInTheDocument();
+      expect(
+        screen.getByText('Final Investigation Summary'),
+      ).toBeInTheDocument();
       expect(screen.getByText('Investigation complete')).toBeInTheDocument();
     });
   });
@@ -137,7 +145,9 @@ describe('InvestigationSummaryTab', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Evidence Summary')).toBeInTheDocument();
-      expect(screen.getByText(/Sanctions Screening Results/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Sanctions Screening Results/i),
+      ).toBeInTheDocument();
     });
   });
 
@@ -160,13 +170,17 @@ describe('InvestigationSummaryTab', () => {
     render(<InvestigationSummaryTab caseId="CASE-123" />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Sanctions Screening Results/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Sanctions Screening Results/i),
+      ).toBeInTheDocument();
     });
 
-    const categoryButton = screen.getByText(/Sanctions Screening Results/i).closest('button');
+    const categoryButton = screen
+      .getByText(/Sanctions Screening Results/i)
+      .closest('button');
     if (categoryButton) {
       fireEvent.click(categoryButton);
-      
+
       await waitFor(() => {
         expect(screen.getByText('test.pdf')).toBeInTheDocument();
       });
@@ -176,7 +190,7 @@ describe('InvestigationSummaryTab', () => {
   it('allows expanding evidence categories to see download button', async () => {
     const mockBlob = new Blob(['test'], { type: 'application/pdf' });
     (evidenceService.downloadEvidence as vi.Mock).mockResolvedValue(mockBlob);
-    
+
     // Mock URL methods
     global.URL.createObjectURL = vi.fn(() => 'blob:url');
     global.URL.revokeObjectURL = vi.fn();
@@ -184,13 +198,17 @@ describe('InvestigationSummaryTab', () => {
     render(<InvestigationSummaryTab caseId="CASE-123" />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Sanctions Screening Results/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Sanctions Screening Results/i),
+      ).toBeInTheDocument();
     });
 
-    const categoryButton = screen.getByText(/Sanctions Screening Results/i).closest('button');
+    const categoryButton = screen
+      .getByText(/Sanctions Screening Results/i)
+      .closest('button');
     if (categoryButton) {
       fireEvent.click(categoryButton);
-      
+
       await waitFor(() => {
         // After expanding, download button should be available
         const downloadButtons = screen.queryAllByText('Download');
@@ -214,4 +232,3 @@ describe('InvestigationSummaryTab', () => {
     });
   });
 });
-

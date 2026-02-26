@@ -29,13 +29,13 @@ describe('EvidenceFindingsStatsCards', () => {
     await waitFor(() => {
       expect(screen.getByText('Total Findings')).toBeInTheDocument();
     });
-    
+
     // Verify all card titles are present (values are rendered by StatsCard component)
     expect(screen.getByText('Total Findings')).toBeInTheDocument();
     expect(screen.getByText('Evidence Items')).toBeInTheDocument();
     expect(screen.getByText('Confirmed')).toBeInTheDocument();
     expect(screen.getByText('Refuted')).toBeInTheDocument();
-    
+
     // Verify that StatsCard components are rendered (they will display the values)
     // The exact value formatting is handled by the StatsCard component
     const cards = document.querySelectorAll('.bg-white.rounded-lg.shadow-sm');
@@ -72,4 +72,3 @@ describe('EvidenceFindingsStatsCards', () => {
     });
   });
 });
-

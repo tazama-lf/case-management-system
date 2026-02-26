@@ -24,22 +24,22 @@ describe('CaseVolumeTrendChart', () => {
     {
       month: 'Jan',
       investigators: {
-        'investigator1': 10,
-        'investigator2': 15,
+        investigator1: 10,
+        investigator2: 15,
       },
     },
     {
       month: 'Feb',
       investigators: {
-        'investigator1': 12,
-        'investigator2': 18,
+        investigator1: 12,
+        investigator2: 18,
       },
     },
     {
       month: 'Mar',
       investigators: {
-        'investigator1': 8,
-        'investigator2': 20,
+        investigator1: 8,
+        investigator2: 20,
       },
     },
   ];
@@ -56,24 +56,43 @@ describe('CaseVolumeTrendChart', () => {
     render(<CaseVolumeTrendChart data={[]} title="Case Volume Trend" />);
 
     expect(screen.getByText('Case Volume Trend')).toBeInTheDocument();
-    expect(screen.getByText('No volume trend data available')).toBeInTheDocument();
+    expect(
+      screen.getByText('No volume trend data available'),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('line-chart')).not.toBeInTheDocument();
   });
 
   it('renders empty state when data is null', () => {
-    render(<CaseVolumeTrendChart data={null as any} title="Case Volume Trend" />);
+    render(
+      <CaseVolumeTrendChart data={null as any} title="Case Volume Trend" />,
+    );
 
-    expect(screen.getByText('No volume trend data available')).toBeInTheDocument();
+    expect(
+      screen.getByText('No volume trend data available'),
+    ).toBeInTheDocument();
   });
 
   it('renders empty state when data is undefined', () => {
-    render(<CaseVolumeTrendChart data={undefined as any} title="Case Volume Trend" />);
+    render(
+      <CaseVolumeTrendChart
+        data={undefined as any}
+        title="Case Volume Trend"
+      />,
+    );
 
-    expect(screen.getByText('No volume trend data available')).toBeInTheDocument();
+    expect(
+      screen.getByText('No volume trend data available'),
+    ).toBeInTheDocument();
   });
 
   it('applies custom height', () => {
-    render(<CaseVolumeTrendChart data={mockData} title="Case Volume Trend" height={400} />);
+    render(
+      <CaseVolumeTrendChart
+        data={mockData}
+        title="Case Volume Trend"
+        height={400}
+      />,
+    );
 
     const container = screen.getByTestId('responsive-container');
     expect(container).toBeInTheDocument();
@@ -97,12 +116,17 @@ describe('CaseVolumeTrendChart', () => {
       {
         month: 'Jan',
         investigators: {
-          'investigator1': 10,
+          investigator1: 10,
         },
       },
     ];
 
-    render(<CaseVolumeTrendChart data={singleInvestigatorData} title="Case Volume Trend" />);
+    render(
+      <CaseVolumeTrendChart
+        data={singleInvestigatorData}
+        title="Case Volume Trend"
+      />,
+    );
 
     const lines = screen.getAllByTestId('line');
     expect(lines.length).toBe(1);
@@ -116,7 +140,12 @@ describe('CaseVolumeTrendChart', () => {
       },
     ];
 
-    render(<CaseVolumeTrendChart data={emptyInvestigatorsData} title="Case Volume Trend" />);
+    render(
+      <CaseVolumeTrendChart
+        data={emptyInvestigatorsData}
+        title="Case Volume Trend"
+      />,
+    );
 
     expect(screen.getByTestId('line-chart')).toBeInTheDocument();
   });
@@ -132,4 +161,3 @@ describe('CaseVolumeTrendChart', () => {
     expect(screen.getByTestId('legend')).toBeInTheDocument();
   });
 });
-

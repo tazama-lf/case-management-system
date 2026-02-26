@@ -5,27 +5,36 @@ import type { CaseRow } from './casesTable.utils';
 interface SuspendCaseModalProps {
   open: boolean;
   onClose: () => void;
-  onSuspend: (caseId: number, reason: string, selectedTaskIds: number[]) => void;
+  onSuspend: (
+    caseId: number,
+    reason: string,
+    selectedTaskIds: number[],
+  ) => void;
   caseData: CaseRow | null;
 }
-
 
 const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
   open,
   onClose,
   onSuspend,
-  caseData
+  caseData,
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
-  const investigationTasks = ['Investigate Case', 'Investigate Fraud', 'Investigate AML'];
+  const investigationTasks = [
+    'Investigate Case',
+    'Investigate Fraud',
+    'Investigate AML',
+  ];
 
   const isReasonValid = reason.trim().length >= 4;
-  const inProgressTasks = caseData?.tasks?.filter(
-    (t) => t.status === 'STATUS_20_IN_PROGRESS' && investigationTasks.includes(t.name)
-  ) || [];
-
+  const inProgressTasks =
+    caseData?.tasks?.filter(
+      (t) =>
+        t.status === 'STATUS_20_IN_PROGRESS' &&
+        investigationTasks.includes(t.name),
+    ) || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,9 +75,7 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
               <h3 className="text-lg font-semibold text-gray-900">
                 Suspend Case
               </h3>
-              <p className="text-sm text-gray-600">
-                Case ID: {caseData?.id}
-              </p>
+              <p className="text-sm text-gray-600">Case ID: {caseData?.id}</p>
             </div>
           </div>
           <button
@@ -82,7 +89,8 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
 
         <div className="px-6 pb-4">
           <p className="text-sm text-gray-700 mb-4">
-            Temporarily pause a case due to blocked progress or pending information.
+            Temporarily pause a case due to blocked progress or pending
+            information.
           </p>
 
           {/* <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
@@ -97,13 +105,17 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
           {inProgressTasks.length > 0 && (
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {inProgressTasks.length > 1 ? 'Select task(s) to suspend' : 'Task to suspend'}
+                {inProgressTasks.length > 1
+                  ? 'Select task(s) to suspend'
+                  : 'Task to suspend'}
               </label>
               {inProgressTasks.length === 1 && selectedTaskIds.length === 0 && (
                 <input
                   type="hidden"
                   value={inProgressTasks[0].task_id}
-                  ref={() => setSelectedTaskIds([inProgressTasks[0].task_id])}
+                  ref={() => {
+                    setSelectedTaskIds([inProgressTasks[0].task_id]);
+                  }}
                 />
               )}
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -116,36 +128,46 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
                       type="checkbox"
                       value={task.task_id}
                       checked={
-                        selectedTaskIds.includes(task.task_id) || inProgressTasks.length === 1
+                        selectedTaskIds.includes(task.task_id) ||
+                        inProgressTasks.length === 1
                       }
                       disabled={inProgressTasks.length === 1}
                       onChange={(e) => {
                         const id = e.target.value;
-                        setSelectedTaskIds(prev =>
+                        setSelectedTaskIds((prev) =>
                           prev.includes(Number(id))
-                            ? prev.filter(tid => tid !== Number(id))
-                            : [...prev, Number(id)]
+                            ? prev.filter((tid) => tid !== Number(id))
+                            : [...prev, Number(id)],
                         );
                       }}
                       className="h-4 w-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
                     />
-                    <span>{task.name} (Task ID - {task.task_id})</span>
+                    <span>
+                      {task.name} (Task ID - {task.task_id})
+                    </span>
                   </label>
                 ))}
               </div>
             </div>
           )}
 
-
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
-              <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for suspension <span className="text-red-500">*</span><span className="text-xs text-gray-500 ml-2">(minimum 4 characters)</span>
+              <label
+                htmlFor="reason"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Reason for suspension <span className="text-red-500">*</span>
+                <span className="text-xs text-gray-500 ml-2">
+                  (minimum 4 characters)
+                </span>
               </label>
               <textarea
                 id="reason"
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                onChange={(e) => {
+                  setReason(e.target.value);
+                }}
                 rows={4}
                 maxLength={500}
                 required
@@ -156,14 +178,17 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
                 <p className="text-xs text-gray-500">
                   {reason.length}/4 characters minimum
                 </p>
-                <span className={`text-xs ${reason.length >= 500 ? 'text-red-500' : 'text-gray-500'}`}>
+                <span
+                  className={`text-xs ${reason.length >= 500 ? 'text-red-500' : 'text-gray-500'}`}
+                >
                   {reason.length}/500
                 </span>
-
               </div>
 
               {!isReasonValid && reason.length > 0 && (
-                <p className="mt-1 text-sm text-red-600">Reason must be at least 4 characters</p>
+                <p className="mt-1 text-sm text-red-600">
+                  Reason must be at least 4 characters
+                </p>
               )}
             </div>
 

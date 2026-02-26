@@ -38,7 +38,9 @@ describe('taskService', () => {
     });
 
     it('handles errors gracefully', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const error = new Error('Failed to fetch');
       (apiClient.get as vi.Mock).mockRejectedValue(error);
 
@@ -140,7 +142,7 @@ describe('taskService', () => {
 
       expect(apiClient.patch).toHaveBeenCalledWith(
         '/api/v1/task/TASK-1/unassign',
-        { reason: 'No longer needed' }
+        { reason: 'No longer needed' },
       );
       expect(result).toEqual(mockResponse);
     });
@@ -159,10 +161,9 @@ describe('taskService', () => {
         name: 'Updated Task',
       });
 
-      expect(apiClient.patch).toHaveBeenCalledWith(
-        '/api/v1/task/TASK-1',
-        { name: 'Updated Task' }
-      );
+      expect(apiClient.patch).toHaveBeenCalledWith('/api/v1/task/TASK-1', {
+        name: 'Updated Task',
+      });
       expect(result).toEqual(mockTask);
     });
 
@@ -170,7 +171,7 @@ describe('taskService', () => {
       (apiClient.patch as vi.Mock).mockResolvedValue({ name: 'Task' });
 
       await expect(taskService.updateTask('TASK-1', {})).rejects.toThrow(
-        'Task ID is missing'
+        'Task ID is missing',
       );
     });
   });
@@ -323,10 +324,9 @@ describe('taskService', () => {
 
       const result = await taskService.completeTask('TASK-1');
 
-      expect(apiClient.patch).toHaveBeenCalledWith(
-        '/api/v1/task/TASK-1',
-        { status: TaskStatus.STATUS_30_COMPLETED }
-      );
+      expect(apiClient.patch).toHaveBeenCalledWith('/api/v1/task/TASK-1', {
+        status: TaskStatus.STATUS_30_COMPLETED,
+      });
       expect(result.success).toBe(true);
     });
   });
@@ -358,10 +358,9 @@ describe('taskService', () => {
 
       const result = await taskService.startTask('TASK-1');
 
-      expect(apiClient.patch).toHaveBeenCalledWith(
-        '/api/v1/task/TASK-1',
-        { status: TaskStatus.STATUS_20_IN_PROGRESS }
-      );
+      expect(apiClient.patch).toHaveBeenCalledWith('/api/v1/task/TASK-1', {
+        status: TaskStatus.STATUS_20_IN_PROGRESS,
+      });
       expect(result).toEqual(mockTask);
     });
   });
@@ -376,10 +375,9 @@ describe('taskService', () => {
 
       const result = await taskService.blockTask('TASK-1');
 
-      expect(apiClient.patch).toHaveBeenCalledWith(
-        '/api/v1/task/TASK-1',
-        { status: TaskStatus.STATUS_21_BLOCKED }
-      );
+      expect(apiClient.patch).toHaveBeenCalledWith('/api/v1/task/TASK-1', {
+        status: TaskStatus.STATUS_21_BLOCKED,
+      });
       expect(result).toEqual(mockTask);
     });
   });
@@ -394,10 +392,9 @@ describe('taskService', () => {
 
       const result = await taskService.completeTaskForSupervisor('TASK-1');
 
-      expect(apiClient.patch).toHaveBeenCalledWith(
-        '/api/v1/task/TASK-1',
-        { status: TaskStatus.STATUS_30_COMPLETED }
-      );
+      expect(apiClient.patch).toHaveBeenCalledWith('/api/v1/task/TASK-1', {
+        status: TaskStatus.STATUS_30_COMPLETED,
+      });
       expect(result).toEqual(mockTask);
     });
   });
@@ -450,7 +447,9 @@ describe('taskService', () => {
     });
 
     it('handles getInvestigationTaskForCase errors', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const error = new Error('Failed to fetch');
       (apiClient.get as vi.Mock).mockRejectedValue(error);
 
@@ -463,4 +462,3 @@ describe('taskService', () => {
     });
   });
 });
-

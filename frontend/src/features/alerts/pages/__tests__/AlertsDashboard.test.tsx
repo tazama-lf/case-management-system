@@ -5,7 +5,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AlertsDashboard from '../AlertsDashboard';
 import { useAlerts } from '../../hooks/useAlerts';
 import { useSystemConfig } from '@/shared/hooks/useSystemConfig';
-import { useAlertFilterOptions, useAlertOperations } from '../../hooks/useAlertsQuery';
+import {
+  useAlertFilterOptions,
+  useAlertOperations,
+} from '../../hooks/useAlertsQuery';
 import { useToast } from '@/shared/providers/ToastProvider';
 import triageService from '../../services/triageservice';
 import { transformBackendAlertToUI } from '../../utils/alertTransformers';
@@ -21,22 +24,32 @@ vi.mock('../../utils/alertTransformers');
 // Mock lazy-loaded modals
 vi.mock('../../components/AlertsDetailModal', () => ({
   default: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) =>
-    isOpen ? <div data-testid="alerts-detail-modal">Alerts Detail Modal</div> : null,
+    isOpen ? (
+      <div data-testid="alerts-detail-modal">Alerts Detail Modal</div>
+    ) : null,
 }));
 
 vi.mock('../../components/ManualTriageModal', () => ({
   default: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) =>
-    isOpen ? <div data-testid="manual-triage-modal">Manual Triage Modal</div> : null,
+    isOpen ? (
+      <div data-testid="manual-triage-modal">Manual Triage Modal</div>
+    ) : null,
 }));
 
 vi.mock('../../components/TransactionMessagesModal', () => ({
   default: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div data-testid="transaction-messages-modal">Transaction Messages Modal</div> : null,
+    isOpen ? (
+      <div data-testid="transaction-messages-modal">
+        Transaction Messages Modal
+      </div>
+    ) : null,
 }));
 
 vi.mock('../../components/MessagePayloadModal', () => ({
   default: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div data-testid="message-payload-modal">Message Payload Modal</div> : null,
+    isOpen ? (
+      <div data-testid="message-payload-modal">Message Payload Modal</div>
+    ) : null,
 }));
 
 describe('AlertsDashboard', () => {
@@ -120,7 +133,9 @@ describe('AlertsDashboard', () => {
     vi.clearAllMocks();
     (useAlerts as vi.Mock).mockReturnValue(mockUseAlerts);
     (useSystemConfig as vi.Mock).mockReturnValue(mockUseSystemConfig);
-    (useAlertFilterOptions as vi.Mock).mockReturnValue(mockUseAlertFilterOptions);
+    (useAlertFilterOptions as vi.Mock).mockReturnValue(
+      mockUseAlertFilterOptions,
+    );
     (useAlertOperations as vi.Mock).mockReturnValue(mockUseAlertOperations);
     (useToast as vi.Mock).mockReturnValue(mockUseToast);
     (transformBackendAlertToUI as vi.Mock).mockImplementation((alert) => alert);
@@ -130,7 +145,9 @@ describe('AlertsDashboard', () => {
     render(<AlertsDashboard />);
     expect(screen.getByText('Alerts Dashboard')).toBeInTheDocument();
     expect(
-      screen.getByText(/Manual triage and investigation - all alerts require human review/i),
+      screen.getByText(
+        /Manual triage and investigation - all alerts require human review/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -156,7 +173,9 @@ describe('AlertsDashboard', () => {
     const errorTexts = screen.getAllByText(/Failed to load alerts/i);
     expect(errorTexts.length).toBeGreaterThan(0);
     // Should also have retry button (ErrorFallback uses "Try Again" text)
-    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /try again/i }),
+    ).toBeInTheDocument();
   });
 
   it('renders alerts table with data', () => {
@@ -168,7 +187,9 @@ describe('AlertsDashboard', () => {
   it('opens detail modal when a row is clicked', async () => {
     const user = userEvent.setup();
     const mockGetAlertById = vi.fn().mockResolvedValue(mockAlerts[0]);
-    (triageService.getAlertById as vi.Mock).mockImplementation(mockGetAlertById);
+    (triageService.getAlertById as vi.Mock).mockImplementation(
+      mockGetAlertById,
+    );
 
     render(<AlertsDashboard />);
 
@@ -259,7 +280,9 @@ describe('AlertsDashboard', () => {
     if (txButtons.length > 0) {
       await user.click(txButtons[0]);
       await waitFor(() => {
-        expect(screen.getByTestId('transaction-messages-modal')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('transaction-messages-modal'),
+        ).toBeInTheDocument();
       });
     }
   });
@@ -268,11 +291,13 @@ describe('AlertsDashboard', () => {
     const user = userEvent.setup();
     const performManualTriage = vi.fn().mockResolvedValue({});
     const mockGetAlertById = vi.fn().mockResolvedValue(mockAlerts[0]);
-    
+
     (useAlertOperations as vi.Mock).mockReturnValue({
       performManualTriage,
     });
-    (triageService.getAlertById as vi.Mock).mockImplementation(mockGetAlertById);
+    (triageService.getAlertById as vi.Mock).mockImplementation(
+      mockGetAlertById,
+    );
 
     render(<AlertsDashboard />);
 
@@ -289,8 +314,12 @@ describe('AlertsDashboard', () => {
 
   it('handles error when fetching alert details on row click', async () => {
     const user = userEvent.setup();
-    const mockGetAlertById = vi.fn().mockRejectedValue(new Error('Failed to fetch'));
-    (triageService.getAlertById as vi.Mock).mockImplementation(mockGetAlertById);
+    const mockGetAlertById = vi
+      .fn()
+      .mockRejectedValue(new Error('Failed to fetch'));
+    (triageService.getAlertById as vi.Mock).mockImplementation(
+      mockGetAlertById,
+    );
 
     render(<AlertsDashboard />);
 
@@ -306,7 +335,9 @@ describe('AlertsDashboard', () => {
   });
 
   it('handles error when performing manual triage', async () => {
-    const performManualTriage = vi.fn().mockRejectedValue(new Error('Triage failed'));
+    const performManualTriage = vi
+      .fn()
+      .mockRejectedValue(new Error('Triage failed'));
     (useAlertOperations as vi.Mock).mockReturnValue({
       performManualTriage,
     });
@@ -318,7 +349,7 @@ describe('AlertsDashboard', () => {
     const user = userEvent.setup();
     const setPageSize = vi.fn();
     const setPage = vi.fn();
-    
+
     (useAlerts as vi.Mock).mockReturnValue({
       ...mockUseAlerts,
       setPageSize,
@@ -353,7 +384,7 @@ describe('AlertsDashboard', () => {
     const user = userEvent.setup();
     const setFilters = vi.fn();
     const setPage = vi.fn();
-    
+
     (useAlerts as vi.Mock).mockReturnValue({
       ...mockUseAlerts,
       filters: {
@@ -390,7 +421,7 @@ describe('AlertsDashboard', () => {
   it('handles custom date range change', async () => {
     const user = userEvent.setup();
     const setFilters = vi.fn();
-    
+
     (useAlerts as vi.Mock).mockReturnValue({
       ...mockUseAlerts,
       setFilters,
@@ -402,7 +433,7 @@ describe('AlertsDashboard', () => {
   it('handles refresh alerts on error fallback retry', async () => {
     const user = userEvent.setup();
     const refreshAlerts = vi.fn();
-    
+
     (useAlerts as vi.Mock).mockReturnValue({
       ...mockUseAlerts,
       error: 'Failed to load alerts',
@@ -427,7 +458,9 @@ describe('AlertsDashboard', () => {
 
     render(<AlertsDashboard />);
     expect(
-      screen.getByText(/Triage and investigate alerts, convert to cases, and manage alert workflows/i),
+      screen.getByText(
+        /Triage and investigate alerts, convert to cases, and manage alert workflows/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -444,4 +477,3 @@ describe('AlertsDashboard', () => {
     // Modal close is handled by state management
   });
 });
-

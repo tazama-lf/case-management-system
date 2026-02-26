@@ -16,7 +16,6 @@ import { caseHistoryService } from '../../services/caseHistoryService';
 import { taskHistoryService } from '../../services/taskHistoryService';
 import { formatDate } from '@/shared/utils/dateUtils';
 
-
 interface CaseHistoryEvent {
   id: string;
   timestamp: string;
@@ -32,7 +31,7 @@ interface CaseHistoryTabProps {
   row?: CaseRow;
 }
 
-const getEventIcon = (outcome: string, action: string) => {
+const _getEventIcon = (outcome: string, action: string) => {
   // Select icon based on action type
   let IconComponent = DocumentTextIcon;
   const actionLower = action.toLowerCase();
@@ -45,58 +44,99 @@ const getEventIcon = (outcome: string, action: string) => {
     IconComponent = UserMinusIcon;
   } else if (actionLower.includes('assigned')) {
     IconComponent = UserPlusIcon;
-  } else if (actionLower.includes('completed') || actionLower.includes('closed')) {
+  } else if (
+    actionLower.includes('completed') ||
+    actionLower.includes('closed')
+  ) {
     IconComponent = CheckCircleIcon;
   } else if (actionLower.includes('approved')) {
     IconComponent = DocumentCheckIcon;
-  } else if (actionLower.includes('pending') || actionLower.includes('awaiting')) {
+  } else if (
+    actionLower.includes('pending') ||
+    actionLower.includes('awaiting')
+  ) {
     IconComponent = ClockIcon;
-  } else if (actionLower.includes('returned') || actionLower.includes('rejected')) {
+  } else if (
+    actionLower.includes('returned') ||
+    actionLower.includes('rejected')
+  ) {
     IconComponent = ArrowPathIcon;
-  } else if (actionLower.includes('abandoned') || actionLower.includes('suspended') || actionLower.includes('error')) {
+  } else if (
+    actionLower.includes('abandoned') ||
+    actionLower.includes('suspended') ||
+    actionLower.includes('error')
+  ) {
     IconComponent = ExclamationTriangleIcon;
   }
 
-  const bgColor = outcome === 'success' ? 'bg-green-100' :
-    outcome === 'error' ? 'bg-red-100' :
-      outcome === 'warning' ? 'bg-yellow-100' :
-        'bg-blue-100';
+  const bgColor =
+    outcome === 'success'
+      ? 'bg-green-100'
+      : outcome === 'error'
+        ? 'bg-red-100'
+        : outcome === 'warning'
+          ? 'bg-yellow-100'
+          : 'bg-blue-100';
 
-  const iconColor = outcome === 'success' ? 'text-green-600' :
-    outcome === 'error' ? 'text-red-600' :
-      outcome === 'warning' ? 'text-yellow-600' :
-        'text-blue-600';
+  const iconColor =
+    outcome === 'success'
+      ? 'text-green-600'
+      : outcome === 'error'
+        ? 'text-red-600'
+        : outcome === 'warning'
+          ? 'text-yellow-600'
+          : 'text-blue-600';
 
   return (
-    <div className={`flex h-10 w-10 items-center justify-center rounded ${bgColor}`}>
+    <div
+      className={`flex h-10 w-10 items-center justify-center rounded ${bgColor}`}
+    >
       <IconComponent className={`h-5 w-5 ${iconColor}`} />
     </div>
   );
 };
 
-const mapOutcomeToEventOutcome = (outcome: string): 'success' | 'warning' | 'error' | 'info' => {
+const _mapOutcomeToEventOutcome = (
+  outcome: string,
+): 'success' | 'warning' | 'error' | 'info' => {
   if (!outcome) return 'info';
   const lowerOutcome = outcome.toLowerCase();
-  if (lowerOutcome === 'success' || lowerOutcome === 'completed' || lowerOutcome === 'approved') return 'success';
-  if (lowerOutcome === 'error' || lowerOutcome === 'failed' || lowerOutcome === 'denied') return 'error';
-  if (lowerOutcome === 'warning' || lowerOutcome === 'pending') return 'warning';
+  if (
+    lowerOutcome === 'success' ||
+    lowerOutcome === 'completed' ||
+    lowerOutcome === 'approved'
+  )
+    {return 'success';}
+  if (
+    lowerOutcome === 'error' ||
+    lowerOutcome === 'failed' ||
+    lowerOutcome === 'denied'
+  )
+    {return 'error';}
+  if (lowerOutcome === 'warning' || lowerOutcome === 'pending')
+    {return 'warning';}
   return 'info';
 };
 
-const formatOperation = (operation: string): string => {
+const formatOperation = (operation: string): string =>
   // Convert camelCase or snake_case to Title Case
-  return operation
+  operation
     .replace(/([A-Z])/g, ' $1')
     .replace(/_/g, ' ')
     .replace(/^./, (str) => str.toUpperCase())
     .trim();
-};
-
-const mapStatusToEvent = (
+const _mapStatusToEvent = (
   status: string,
-  timestamp: string
+  timestamp: string,
 ): Omit<CaseHistoryEvent, 'id' | 'userId' | 'type'> | null => {
-  const statusMap: Record<string, { action: string; details: string; outcome: 'success' | 'warning' | 'error' | 'info' }> = {
+  const statusMap: Record<
+    string,
+    {
+      action: string;
+      details: string;
+      outcome: 'success' | 'warning' | 'error' | 'info';
+    }
+  > = {
     STATUS_00_DRAFT: {
       action: 'Case drafted',
       details: 'Case created as draft',
@@ -193,7 +233,9 @@ const mapStatusToEvent = (
 const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
   const [history, setHistory] = useState<CaseHistoryEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [investigators, setInvestigators] = useState<Record<string, string>>({});
+  const [_investigators, setInvestigators] = useState<Record<string, string>>(
+    {},
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -223,113 +265,98 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
 
           caseHistory.forEach((log) => {
             let action = formatOperation(log.operation);
-            let details = log.action_performed || 'Action performed';
+            const details = log.action_performed || 'Action performed';
 
-            const operationLower = log.operation.toLowerCase().replace(/\s|_/g, '');
+            const operationLower = log.operation
+              .toLowerCase()
+              .replace(/\s|_/g, '');
 
-            if (operationLower.includes('createcase') || operationLower.includes('createmanualcase')) {
+            if (
+              operationLower.includes('createcase') ||
+              operationLower.includes('createmanualcase')
+            ) {
               action = 'Case created';
-            }
-            else if (operationLower.includes('savecaseasdraft')) {
+            } else if (operationLower.includes('savecaseasdraft')) {
               action = 'Case saved as draft';
-            }
-            else if (operationLower.includes('completecase')) {
+            } else if (operationLower.includes('completecase')) {
               action = 'Case completed';
-            }
-            else if (operationLower.includes('completecasecreation')) {
+            } else if (operationLower.includes('completecasecreation')) {
               action = 'Case creation completed';
-            }
-            else if (operationLower.includes('updatecasestatus')) {
+            } else if (operationLower.includes('updatecasestatus')) {
               action = 'Case status updated';
-            }
-            else if (operationLower === 'updatecase') {
+            } else if (operationLower === 'updatecase') {
               action = 'Case updated';
-            }
-            else if (operationLower.includes('suspendcase')) {
+            } else if (operationLower.includes('suspendcase')) {
               action = 'Case suspended';
-            }
-            else if (operationLower.includes('resumecase')) {
+            } else if (operationLower.includes('resumecase')) {
               action = 'Case resumed';
-            }
-            else if (operationLower.includes('closecase') && details.toLowerCase().includes('approval')) {
+            } else if (
+              operationLower.includes('closecase') &&
+              details.toLowerCase().includes('approval')
+            ) {
               action = 'Case closure submitted for approval';
-            }
-            else if (operationLower.includes('closecase')) {
+            } else if (operationLower.includes('closecase')) {
               action = 'Case closed';
-            }
-            else if (operationLower.includes('abandoncase')) {
+            } else if (operationLower.includes('abandoncase')) {
               action = 'Case abandoned';
-            }
-            else if (operationLower.includes('reopencase')) {
+            } else if (operationLower.includes('reopencase')) {
               action = 'Case reopened';
-            }
-            else if (operationLower.includes('approvecasecreation')) {
+            } else if (operationLower.includes('approvecasecreation')) {
               action = 'Approve case creation';
-            }
-            else if (operationLower.includes('rejectcasecreation')) {
+            } else if (operationLower.includes('rejectcasecreation')) {
               action = 'Reject case creation';
-            }
-            else if (operationLower.includes('approvecaseclosure')) {
+            } else if (operationLower.includes('approvecaseclosure')) {
               action = 'Case approved';
-            }
-            else if (operationLower.includes('rejectcaseclosure')) {
+            } else if (operationLower.includes('rejectcaseclosure')) {
               action = 'Case rejected';
-            }
-            else if (operationLower.includes('approvecasereopening')) {
+            } else if (operationLower.includes('approvecasereopening')) {
               action = 'Approve case reopening';
-            }
-            else if (operationLower.includes('rejectcasereopening')) {
+            } else if (operationLower.includes('rejectcasereopening')) {
               action = 'Reject case reopening';
-            }
-            else if (operationLower.includes('returncaseforreview')) {
+            } else if (operationLower.includes('returncaseforreview')) {
               action = 'Case returned for review';
-            }
-            else if (operationLower.includes('autoclosed')) {
+            } else if (operationLower.includes('autoclosed')) {
               action = 'Case auto-closed';
             }
 
             events.push({
               id: `event-${log.case_id}`,
-              timestamp: log.performed_at instanceof Date
-                ? log.performed_at.toISOString()
-                : new Date(log.performed_at).toISOString(),
-              action: action,
+              timestamp:
+                log.performed_at instanceof Date
+                  ? log.performed_at.toISOString()
+                  : new Date(log.performed_at).toISOString(),
+              action,
               performedBy: log.entity_name === 'System' ? 'System' : 'User',
               userId: log.user_id,
-              details: details,
+              details,
               type: 'case',
             });
           });
 
           taskHistory.forEach((log) => {
             let action = formatOperation(log.operation);
-            let details = log.action_performed || 'Action performed';
+            const details = log.action_performed || 'Action performed';
 
-            const operationLower = log.operation.toLowerCase().replace(/\s|_/g, '');
+            const operationLower = log.operation
+              .toLowerCase()
+              .replace(/\s|_/g, '');
             const actionLower = (log.action_performed || '').toLowerCase();
 
             if (operationLower.includes('createtask')) {
               action = 'Task created';
-            }
-            else if (operationLower.includes('createsartask')) {
+            } else if (operationLower.includes('createsartask')) {
               action = 'SAR/STR task created';
-            }
-            else if (operationLower.includes('updatetask')) {
+            } else if (operationLower.includes('updatetask')) {
               action = 'Task updated';
-            }
-            else if (operationLower.includes('claimtask')) {
+            } else if (operationLower.includes('claimtask')) {
               action = 'Task claimed';
-            }
-            else if (operationLower.includes('selfassigntask')) {
+            } else if (operationLower.includes('selfassigntask')) {
               action = 'Task self-assigned';
-            }
-            else if (operationLower.includes('reassigntask')) {
+            } else if (operationLower.includes('reassigntask')) {
               action = 'Task reassigned';
-            }
-            else if (operationLower.includes('unassigntask')) {
+            } else if (operationLower.includes('unassigntask')) {
               action = 'Task unassigned';
-            }
-            else if (operationLower.includes('assigntask')) {
+            } else if (operationLower.includes('assigntask')) {
               action = 'Task assigned';
             }
             // else if (operationLower.includes('retrievetask')) {
@@ -337,24 +364,19 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
             // }
             else if (operationLower.includes('completetask')) {
               action = 'Task completed';
-            }
-
-            else if (operationLower.includes('upload') || actionLower.includes('evidence')) {
+            } else if (
+              operationLower.includes('upload') ||
+              actionLower.includes('evidence')
+            ) {
               action = 'Evidence uploaded';
-            }
-
-            else if (operationLower.includes('assigntasktoinvestigator')) {
+            } else if (operationLower.includes('assigntasktoinvestigator')) {
               action = 'Assign Task to Investigator';
-            }
-
-            else if (operationLower.includes('investigationtasktriggered')) {
+            } else if (operationLower.includes('investigationtasktriggered')) {
               action = 'Investigation task triggered';
-            }
-            else if (operationLower.includes('triagealertupdated')) {
+            } else if (operationLower.includes('triagealertupdated')) {
               action = 'Triage alert updated';
-            }
-            else {
-
+            } else {
+              // Keep the default action
             }
 
             events.push({
@@ -370,7 +392,6 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
               type: 'task',
             });
           });
-
         } catch (err) {
           console.warn('Failed to fetch case History:', err);
         }
@@ -400,10 +421,8 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
   };
 
-
-
   const sortedHistory = [...history].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
   );
 
   if (loading) {
@@ -417,7 +436,9 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
   return (
     <div className="space-y-6">
       {/* Timeline Header */}
-      <h3 className="text-xl font-semibold text-gray-900 text-center mb-8">Case Timeline</h3>
+      <h3 className="text-xl font-semibold text-gray-900 text-center mb-8">
+        Case Timeline
+      </h3>
 
       {/* Timeline Events */}
       {sortedHistory.length > 0 ? (
@@ -437,13 +458,19 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                   // Left side layout (date on left, content on right)
                   <div className="flex items-start gap-8">
                     <div className="w-1/2 text-right pr-8">
-                      <div className="text-sm text-gray-500">{formatDate(event.timestamp)}</div>
+                      <div className="text-sm text-gray-500">
+                        {formatDate(event.timestamp)}
+                      </div>
                     </div>
                     <div className="w-1/2 pl-8">
                       <div className="space-y-1">
-                        <div className="font-semibold text-gray-900">{formatActionText(event.action)}</div>
+                        <div className="font-semibold text-gray-900">
+                          {formatActionText(event.action)}
+                        </div>
                         {event.details && (
-                          <div className="text-sm text-gray-600">{event.details}</div>
+                          <div className="text-sm text-gray-600">
+                            {event.details}
+                          </div>
                         )}
                         {/* {event.userId && investigators[event.userId] && (
                           <div className="text-sm text-blue-600">
@@ -462,9 +489,13 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                   <div className="flex items-start gap-8">
                     <div className="w-1/2 text-right pr-8">
                       <div className="space-y-1">
-                        <div className="font-semibold text-gray-900">{formatActionText(event.action)}</div>
+                        <div className="font-semibold text-gray-900">
+                          {formatActionText(event.action)}
+                        </div>
                         {event.details && (
-                          <div className="text-sm text-gray-600">{event.details}</div>
+                          <div className="text-sm text-gray-600">
+                            {event.details}
+                          </div>
                         )}
                         {/* {event.userId && investigators[event.userId] && (
                           <div className="text-sm text-blue-600">
@@ -478,7 +509,9 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
                       </div>
                     </div>
                     <div className="w-1/2 pl-8">
-                      <div className="text-sm text-gray-500">{formatDate(event.timestamp)}</div>
+                      <div className="text-sm text-gray-500">
+                        {formatDate(event.timestamp)}
+                      </div>
                     </div>
                   </div>
                 )}

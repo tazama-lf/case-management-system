@@ -27,7 +27,9 @@ describe('CaseAgeingPieChart', () => {
   ];
 
   it('renders chart with data', () => {
-    render(<CaseAgeingPieChart data={mockData} title="Case Ageing Distribution" />);
+    render(
+      <CaseAgeingPieChart data={mockData} title="Case Ageing Distribution" />,
+    );
 
     expect(screen.getByText('Case Ageing Distribution')).toBeInTheDocument();
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
@@ -43,13 +45,23 @@ describe('CaseAgeingPieChart', () => {
   });
 
   it('renders empty state when data is null', () => {
-    render(<CaseAgeingPieChart data={null as any} title="Case Ageing Distribution" />);
+    render(
+      <CaseAgeingPieChart
+        data={null as any}
+        title="Case Ageing Distribution"
+      />,
+    );
 
     expect(screen.getByText('No data available')).toBeInTheDocument();
   });
 
   it('renders empty state when data is undefined', () => {
-    render(<CaseAgeingPieChart data={undefined as any} title="Case Ageing Distribution" />);
+    render(
+      <CaseAgeingPieChart
+        data={undefined as any}
+        title="Case Ageing Distribution"
+      />,
+    );
 
     expect(screen.getByText('No data available')).toBeInTheDocument();
   });
@@ -60,26 +72,38 @@ describe('CaseAgeingPieChart', () => {
       { ageRange: '8-15 days', count: 0, percentage: 0, color: '#fbbf24' },
     ];
 
-    render(<CaseAgeingPieChart data={zeroData} title="Case Ageing Distribution" />);
+    render(
+      <CaseAgeingPieChart data={zeroData} title="Case Ageing Distribution" />,
+    );
 
     expect(screen.getByText('No cases found')).toBeInTheDocument();
   });
 
   it('applies custom size', () => {
-    render(<CaseAgeingPieChart data={mockData} title="Case Ageing Distribution" size={400} />);
+    render(
+      <CaseAgeingPieChart
+        data={mockData}
+        title="Case Ageing Distribution"
+        size={400}
+      />,
+    );
 
     const container = screen.getByTestId('responsive-container');
     expect(container).toBeInTheDocument();
   });
 
   it('renders with default size when not provided', () => {
-    render(<CaseAgeingPieChart data={mockData} title="Case Ageing Distribution" />);
+    render(
+      <CaseAgeingPieChart data={mockData} title="Case Ageing Distribution" />,
+    );
 
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
 
   it('renders custom legend with percentages', () => {
-    render(<CaseAgeingPieChart data={mockData} title="Case Ageing Distribution" />);
+    render(
+      <CaseAgeingPieChart data={mockData} title="Case Ageing Distribution" />,
+    );
 
     expect(screen.getByText(/0-7 days: 50\.0%/)).toBeInTheDocument();
     expect(screen.getByText(/8-15 days: 25\.0%/)).toBeInTheDocument();
@@ -92,18 +116,24 @@ describe('CaseAgeingPieChart', () => {
       { ageRange: '0-7 days', count: 20, percentage: 100, color: '#10b981' },
     ];
 
-    render(<CaseAgeingPieChart data={partialData} title="Case Ageing Distribution" />);
+    render(
+      <CaseAgeingPieChart
+        data={partialData}
+        title="Case Ageing Distribution"
+      />,
+    );
 
     // Should still render legend for all ranges
     expect(screen.getByText(/0-7 days:/)).toBeInTheDocument();
   });
 
   it('renders all chart elements', () => {
-    render(<CaseAgeingPieChart data={mockData} title="Case Ageing Distribution" />);
+    render(
+      <CaseAgeingPieChart data={mockData} title="Case Ageing Distribution" />,
+    );
 
     expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
     expect(screen.getByTestId('pie')).toBeInTheDocument();
     expect(screen.getByTestId('tooltip')).toBeInTheDocument();
   });
 });
-

@@ -192,43 +192,14 @@ describe('ReportsService', () => {
       expect(result.caseTypes).toBeDefined();
     });
 
-    it('should return case status report for today', async () => {
-      const result = await service.getCaseStatus('today', { tenantId: 'tenant-123' });
-
-      expect(result).toBeDefined();
-      expect(prismaService.case.groupBy).toHaveBeenCalled();
-    });
-
-    it('should return case status report for yesterday', async () => {
-      const result = await service.getCaseStatus('yesterday', { tenantId: 'tenant-123' });
-
-      expect(result).toBeDefined();
-      expect(prismaService.case.groupBy).toHaveBeenCalled();
-    });
-
-    it('should return case status report for last7 days', async () => {
-      const result = await service.getCaseStatus('last7', { tenantId: 'tenant-123' });
-
-      expect(result).toBeDefined();
-    });
-
-    it('should return case status report for last90 days', async () => {
-      const result = await service.getCaseStatus('last90', { tenantId: 'tenant-123' });
-
-      expect(result).toBeDefined();
-    });
-
-    it('should return case status report for thisMonth', async () => {
-      const result = await service.getCaseStatus('thisMonth', { tenantId: 'tenant-123' });
-
-      expect(result).toBeDefined();
-    });
-
-    it('should return case status report for lastYear', async () => {
-      const result = await service.getCaseStatus('lastYear', { tenantId: 'tenant-123' });
-
-      expect(result).toBeDefined();
-    });
+    it.each(['today', 'yesterday', 'last7', 'last90', 'thisMonth', 'lastYear'])(
+      'should return case status report for %s',
+      async (timeRange) => {
+        const result = await service.getCaseStatus(timeRange, { tenantId: 'tenant-123' });
+        expect(result).toBeDefined();
+        expect(prismaService.case.groupBy).toHaveBeenCalled();
+      },
+    );
 
     it('should filter by caseType', async () => {
       const result = await service.getCaseStatus('last30', {
@@ -246,47 +217,29 @@ describe('ReportsService', () => {
       );
     });
 
-    it('should filter by priority', async () => {
-      const result = await service.getCaseStatus('last30', {
-        tenantId: 'tenant-123',
-        priority: 'HIGH',
-      });
+    it.each([
+      ['priority', { priority: 'HIGH' }, { priority: 'HIGH' }],
+      ['investigator', { investigator: 'user-123' }, { case_owner_user_id: 'user-123' }],
+      ['requestingUserId', { requestingUserId: 'user-123' }, {}],
+    ])(
+      'should filter by %s',
+      async (_filterName, filterParam, expectedWhereClause) => {
+        const result = await service.getCaseStatus('last30', {
+          tenantId: 'tenant-123',
+          ...filterParam,
+        });
 
-      expect(result).toBeDefined();
-      expect(prismaService.case.groupBy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            priority: 'HIGH',
-          }),
-        })
-      );
-    });
-
-    it('should filter by investigator', async () => {
-      const result = await service.getCaseStatus('last30', {
-        tenantId: 'tenant-123',
-        investigator: 'user-123',
-      });
-
-      expect(result).toBeDefined();
-      expect(prismaService.case.groupBy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            case_owner_user_id: 'user-123',
-          }),
-        })
-      );
-    });
-
-    it('should filter by requestingUserId to show only relevant cases', async () => {
-      const result = await service.getCaseStatus('last30', {
-        tenantId: 'tenant-123',
-        requestingUserId: 'user-123',
-      });
-
-      expect(result).toBeDefined();
-      expect(prismaService.case.groupBy).toHaveBeenCalled();
-    });
+        expect(result).toBeDefined();
+        expect(prismaService.case.groupBy).toHaveBeenCalled();
+        if (Object.keys(expectedWhereClause).length > 0) {
+          expect(prismaService.case.groupBy).toHaveBeenCalledWith(
+            expect.objectContaining({
+              where: expect.objectContaining(expectedWhereClause),
+            }),
+          );
+        }
+      },
+    );
 
     it('should calculate average resolution time correctly', async () => {
       prismaService.case.findMany.mockResolvedValue([
@@ -411,7 +364,7 @@ describe('ReportsService', () => {
 
     it('should filter logs by date range', async () => {
       auditLogService.getLogs.mockResolvedValue([
-        { ...mockAuditLog, performed_at: new Date('2026-02-23') },
+        { ...mockAuditLog, performed_at: new Date('2026-02-24') },
         { ...mockAuditLog, performed_at: new Date('2025-01-01') },
       ]);
 

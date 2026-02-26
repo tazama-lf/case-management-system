@@ -19,8 +19,26 @@
                 <flowable:formProperty id="caseStatus" name="Case Status" type="string" default="STATUS_00_DRAFT"/>
                 <flowable:formProperty id="creationType" name="Creation Type" type="string" required="true"/>
                 <flowable:formProperty id="creatorRole" name="Creator Role" type="string" default="SUPERVISOR"/>
+                <flowable:formProperty id="isReopened" name="Is Reopened" type="boolean"/>
             </extensionElements>
         </startEvent>
+
+        <exclusiveGateway id="caseReopenedGateway" name="Case Reopened Check"/>
+        <exclusiveGateway id="caseReopenRoleGateway" name="Case Status Check"/>
+
+        <userTask id="reopenApproval" name="Approve Case Reopening"
+                  flowable:candidateGroups="supervisors">
+            <documentation>Task to handle reopen approval</documentation>
+            <extensionElements>
+                <flowable:formProperty id="reopenApprovalDecision" name="Reopen Approval Decision"
+                                       type="enum" required="true">
+                    <flowable:value id="approve" name="Approve"/>
+                    <flowable:value id="reject" name="Reject"/>
+                </flowable:formProperty>
+            </extensionElements>
+        </userTask>
+
+        <exclusiveGateway id="caseReopenApprovalDecisionGateway" name="Reopen Approved?"/>
 
         <!-- CASE ASSIGNMENT LOGIC -->
         <userTask id="completeCaseCreation" name="Complete New Case"
@@ -66,10 +84,10 @@
         <endEvent id="endAutoclose" name="Case Autoclosed"/>
 
         <!-- CASE STATUS GATEWAY -->
-        <exclusiveGateway id="caseStatusGateway" name="Case Status Check"/>
+        <!-- <exclusiveGateway id="caseStatusGateway" name="Case Status Check"/> -->
 
         <!-- MANUAL CREATION PATH -->
-        <exclusiveGateway id="roleGateway" name="Creator Role Check"/>
+        <exclusiveGateway id="roleGateway" name="Creator Role Check" default="flowManual"/>
 
         <!-- SUPERVISOR APPROVAL PATH -->
         <userTask id="approveCaseCreation" name="Approve Case Creation"
@@ -87,10 +105,7 @@
 
         <exclusiveGateway id="creationApprovalGateway" name="Creation Approved?"/>
 
-        <!-- CASE TYPE ROUTING -->
-        <exclusiveGateway id="investigationRoutingGateway" name="Investigation Type Routing"/>
-
-        <!-- SINGLE INVESTIGATION TASK (for FRAUD or AML only) -->
+        <!-- Investigate Case -->
         <userTask id="investigateCase" name="Investigate Case"
                   flowable:candidateGroups="investigations">
             <documentation>Investigation task for single type cases (FRAUD or AML only)</documentation>
@@ -104,66 +119,20 @@
                     <flowable:value id="requestClosure" name="Request Closure"/>
                     <flowable:value id="returnCase" name="Return Case"/>
                 </flowable:formProperty>
-                <flowable:formProperty id="recommendedOutcome" name="Recommended Outcome" type="enum">
+                <flowable:formProperty id="finalOutcome" name="Recommended Outcome" type="enum">
                     <flowable:value id="STATUS_81_CLOSED_REFUTED" name="Closed - Refuted"/>
                     <flowable:value id="STATUS_82_CLOSED_CONFIRMED" name="Closed - Confirmed"/>
                     <flowable:value id="STATUS_83_CLOSED_INCONCLUSIVE" name="Closed - Inconclusive"/>
                 </flowable:formProperty>
-            </extensionElements>
-        </userTask>
-
-        <!-- PARALLEL GATEWAY FOR FRAUD_AND_AML -->
-        <parallelGateway id="fraudAmlSplitGateway" name="Split Fraud and AML Investigation"/>
-
-        <!-- FRAUD INVESTIGATION TASK -->
-        <userTask id="investigateFraud" name="Investigate Fraud"
-                  flowable:candidateGroups="investigations">
-            <documentation>Fraud investigation task for FRAUD_AND_AML cases</documentation>
-            <extensionElements>
-                <flowable:formProperty id="fraudInvestigationNotes" name="Fraud Investigation Notes" type="string"/>
-                <flowable:formProperty id="fraudInvestigationAction" name="Fraud Action"
-                                       type="enum" required="true">
-                    <flowable:value id="inProgress" name="Mark In Progress"/>
-                    <flowable:value id="complete" name="Complete Investigation"/>
-                    <flowable:value id="suspend" name="Suspend Case"/>
-                    <flowable:value id="requestClosure" name="Request Closure"/>
-                    <flowable:value id="returnCase" name="Return Case"/>
-                </flowable:formProperty>
-                <flowable:formProperty id="fraudRecommendedOutcome" name="Fraud Recommended Outcome" type="enum">
-                    <flowable:value id="STATUS_81_CLOSED_REFUTED" name="Closed - Refuted"/>
-                    <flowable:value id="STATUS_82_CLOSED_CONFIRMED" name="Closed - Confirmed"/>
-                    <flowable:value id="STATUS_83_CLOSED_INCONCLUSIVE" name="Closed - Inconclusive"/>
+                <flowable:formProperty id="userRole" name="User Role" type="string" default="INVESTIGATOR" readable="false">
+                    <flowable:value id="CMS_INVESTIGATOR" name="Investigator"/>
+                    <flowable:value id="CMS_SUPERVISOR" name="Supervisor"/> 
                 </flowable:formProperty>
             </extensionElements>
         </userTask>
-
-        <!-- AML INVESTIGATION TASK -->
-        <userTask id="investigateAml" name="Investigate AML"
-                  flowable:candidateGroups="investigations">
-            <documentation>AML investigation task for FRAUD_AND_AML cases</documentation>
-            <extensionElements>
-                <flowable:formProperty id="amlInvestigationNotes" name="AML Investigation Notes" type="string"/>
-                <flowable:formProperty id="amlInvestigationAction" name="AML Action"
-                                       type="enum" required="true">
-                    <flowable:value id="inProgress" name="Mark In Progress"/>
-                    <flowable:value id="complete" name="Complete Investigation"/>
-                    <flowable:value id="suspend" name="Suspend Case"/>
-                    <flowable:value id="requestClosure" name="Request Closure"/>
-                    <flowable:value id="returnCase" name="Return Case"/>
-                </flowable:formProperty>
-                <flowable:formProperty id="amlRecommendedOutcome" name="AML Recommended Outcome" type="enum">
-                    <flowable:value id="STATUS_81_CLOSED_REFUTED" name="Closed - Refuted"/>
-                    <flowable:value id="STATUS_82_CLOSED_CONFIRMED" name="Closed - Confirmed"/>
-                    <flowable:value id="STATUS_83_CLOSED_INCONCLUSIVE" name="Closed - Inconclusive"/>
-                </flowable:formProperty>
-            </extensionElements>
-        </userTask>
-
-        <!-- PARALLEL GATEWAY TO JOIN INVESTIGATIONS -->
-        <parallelGateway id="fraudAmlJoinGateway" name="Join Fraud and AML Investigation"/>
 
         <!-- Investigation Decision Gateway -->
-        <exclusiveGateway id="investigationDecisionGateway" name="Investigation Action"/>
+        <exclusiveGateway id="investigationDecisionGateway" name="Investigation Decision"/>
 
         <!-- CASE CLOSURE APPROVAL PATH -->
         <userTask id="supervisorApproval" name="Approve Case Closure"
@@ -182,8 +151,6 @@
                     <flowable:value id="STATUS_82_CLOSED_CONFIRMED" name="Closed - Confirmed"/>
                     <flowable:value id="STATUS_83_CLOSED_INCONCLUSIVE" name="Closed - Inconclusive"/>
                 </flowable:formProperty>
-                <flowable:formProperty id="supervisorComments" name="Supervisor Comments" type="string"/>
-                <!-- <flowable:formProperty id="qualityScore" name="Quality Score" type="long"/> -->
             </extensionElements>
         </userTask>
 
@@ -194,7 +161,7 @@
         <exclusiveGateway id="sarStrDecisionGateway" name="SAR/STR Filing Required"/>
 
         <!-- SAR/STR Filing Task -->
-        <userTask id="fileSarStr" name="File SAR/STR Report"
+        <userTask id="fileSarStr" name="SAR/STR Filing"
                   flowable:candidateGroups="compliance">
             <documentation>File Suspicious Activity Report (SAR) or Suspicious Transaction Report (STR) for confirmed cases</documentation>
             <extensionElements>
@@ -209,17 +176,6 @@
         <!-- SAR/STR Completion Decision Gateway -->
         <exclusiveGateway id="sarStrCompletionGateway" name="SAR/STR Action Decision"/>
 
-        <!-- Case Reopening Support -->
-        <userTask id="reopenCase" name="Reopen Case"
-                  flowable:candidateGroups="supervisors">
-            <documentation>Supervisor can reopen a closed case</documentation>
-            <extensionElements>
-                <flowable:formProperty id="reopenReason" name="Reason for Reopening" type="string" required="true"/>
-                <flowable:formProperty id="newAssignee" name="Reassign To" type="string"/>
-                <flowable:formProperty id="reopenNotes" name="Reopening Notes" type="string"/>
-            </extensionElements>
-        </userTask>
-
         <!-- End Events -->
         <endEvent id="endSuccess" name="Case Workflow Complete"/>
         <endEvent id="endApproved" name="Case Closed"/>
@@ -230,61 +186,91 @@
         <!-- SEQUENCE FLOWS -->
 
         <!-- Initial routing -->
-        <sequenceFlow id="flowStart" sourceRef="startEvent" targetRef="completeCaseCreation"/>
+        <sequenceFlow id="flowStart" sourceRef="startEvent" targetRef="caseReopenedGateway"/>
 
+            <!-- Reopened case goes to investigation -->
+        <sequenceFlow id="flowReopened" sourceRef="caseReopenedGateway" targetRef="caseReopenRoleGateway">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${isReopened == true}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowReopenRole" sourceRef="caseReopenRoleGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creatorRole == 'SUPERVISOR'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowReopenInvestigator" sourceRef="caseReopenRoleGateway" targetRef="reopenApproval">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creatorRole == 'INVESTIGATOR'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowReopenApproval" sourceRef="reopenApproval" targetRef="caseReopenApprovalDecisionGateway"/>
+
+        <sequenceFlow id="flowReopenApproved" sourceRef="caseReopenApprovalDecisionGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${reopenApprovalDecision == 'approve'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowReopenRejected" sourceRef="caseReopenApprovalDecisionGateway" targetRef="endRejected">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${reopenApprovalDecision == 'reject'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowNotReopened" sourceRef="caseReopenedGateway" targetRef="completeCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${isReopened == false}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Complete Case Creation -> Creation Type Gateway -->
         <sequenceFlow id="flowToCreationTypeGateway" sourceRef="completeCaseCreation" targetRef="creationTypeGateway"/>
 
         <!-- Automatic creation path -->
+        <!-- Creation Type Auto -> Auto Close Gateway -->
         <sequenceFlow id="flowAutomatic" sourceRef="creationTypeGateway" targetRef="autoCloseGateway">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creationType == 'AUTOMATIC_SYSTEM'}
             </conditionExpression>
         </sequenceFlow>
 
+        <!-- Auto Close Eligible -> Perform Auto Close -->
         <sequenceFlow id="flowAutoclose" sourceRef="autoCloseGateway" targetRef="performAutoclose">
             <conditionExpression xsi:type="tFormalExpression">
                 ${autoCloseEligible == true}
             </conditionExpression>
         </sequenceFlow>
 
+        <!-- Perform Auto Close -> End Process -->
         <sequenceFlow id="flowAutocloseEnd" sourceRef="performAutoclose" targetRef="endAutoclose"/>
 
-        <!-- From autoclose to case creation for non-eligible cases -->
-        <sequenceFlow id="flowAutocloseToCreation" sourceRef="autoCloseGateway" targetRef="investigationRoutingGateway">
+        <!-- Auto Close Not Eligible -> Investigate Case -->
+        <sequenceFlow id="flowAutocloseToCreation" sourceRef="autoCloseGateway" targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
                 ${autoCloseEligible == false}
             </conditionExpression>
         </sequenceFlow>
 
         <!-- Manual creation path -->
-        <sequenceFlow id="flowManual" sourceRef="creationTypeGateway" targetRef="caseStatusGateway">
+        <sequenceFlow id="flowManual" sourceRef="creationTypeGateway" targetRef="roleGateway">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creationType == 'MANUAL'}
             </conditionExpression>
         </sequenceFlow>
 
-        <!-- Case status routing for manual creation -->
-        <sequenceFlow id="flowDraftCase" sourceRef="caseStatusGateway" targetRef="roleGateway">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${caseStatus == 'STATUS_00_DRAFT'}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <sequenceFlow id="flowNonDraftCase" sourceRef="caseStatusGateway" targetRef="roleGateway">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${caseStatus != 'STATUS_00_DRAFT'}
-            </conditionExpression>
-        </sequenceFlow>
-
         <!-- DRAFT cases: All roles go directly to case creation (no approval needed) -->
-        <sequenceFlow id="flowDraftCases" sourceRef="roleGateway" targetRef="completeCaseCreation">
+        <!-- <sequenceFlow id="flowDraftCases" sourceRef="roleGateway" targetRef="completeCaseCreation">
             <conditionExpression xsi:type="tFormalExpression">
                 ${caseStatus == 'STATUS_00_DRAFT'}
             </conditionExpression>
-        </sequenceFlow>
+        </sequenceFlow> -->
 
         <!-- NON-DRAFT cases: Supervisor goes directly to investigation -->
-        <sequenceFlow id="flowSupervisorNonDraft" sourceRef="roleGateway" targetRef="investigationRoutingGateway">
+        <sequenceFlow id="flowSupervisorNonDraft" sourceRef="roleGateway" targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creatorRole == 'SUPERVISOR' &amp;&amp; caseStatus != 'STATUS_00_DRAFT'}
             </conditionExpression>
@@ -300,77 +286,53 @@
         <sequenceFlow id="flowFromApproval" sourceRef="approveCaseCreation" targetRef="creationApprovalGateway"/>
 
         <!-- After approval for NON-DRAFT investigator cases - go directly to investigation -->
-        <sequenceFlow id="flowCreationApproved" sourceRef="creationApprovalGateway" targetRef="investigationRoutingGateway">
+        <sequenceFlow id="flowCreationApproved" sourceRef="creationApprovalGateway" targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creationApproval == 'approve'}
             </conditionExpression>
         </sequenceFlow>
 
-        <sequenceFlow id="flowCreationRejected" sourceRef="creationApprovalGateway" targetRef="endRejected">
+        <sequenceFlow id="flowCreationRejected" sourceRef="creationApprovalGateway" targetRef="completeCaseCreation">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creationApproval == 'reject'}
             </conditionExpression>
         </sequenceFlow>
 
-        <!-- Investigation routing based on case type -->
-        <sequenceFlow id="flowSingleTypeInvestigation" sourceRef="investigationRoutingGateway" targetRef="investigateCase">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${caseType == 'FRAUD' || caseType == 'AML'}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <sequenceFlow id="flowFraudAndAmlInvestigation" sourceRef="investigationRoutingGateway" targetRef="fraudAmlSplitGateway">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${caseType == 'FRAUD_AND_AML'}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <!-- Parallel flows for FRAUD_AND_AML -->
-        <sequenceFlow id="flowToFraudInvestigation" sourceRef="fraudAmlSplitGateway" targetRef="investigateFraud"/>
-        <sequenceFlow id="flowToAmlInvestigation" sourceRef="fraudAmlSplitGateway" targetRef="investigateAml"/>
-
-        <!-- Join parallel flows -->
-        <sequenceFlow id="flowFromFraudInvestigation" sourceRef="investigateFraud" targetRef="fraudAmlJoinGateway"/>
-        <sequenceFlow id="flowFromAmlInvestigation" sourceRef="investigateAml" targetRef="fraudAmlJoinGateway"/>
-
-        <!-- From join gateway to decision -->
-        <sequenceFlow id="flowFromJoinToDecision" sourceRef="fraudAmlJoinGateway" targetRef="investigationDecisionGateway"/>
-
         <!-- Investigation decision routing -->
         <sequenceFlow id="flowFromInvestigation" sourceRef="investigateCase" targetRef="investigationDecisionGateway"/>
 
         <!-- Back to investigation for in progress -->
-        <sequenceFlow id="flowInProgress" sourceRef="investigationDecisionGateway" targetRef="investigationRoutingGateway">
+        <sequenceFlow id="flowInProgress" sourceRef="investigationDecisionGateway" targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
-                ${investigationAction == 'inProgress' || fraudInvestigationAction == 'inProgress' || amlInvestigationAction == 'inProgress'}
+                ${investigationAction == 'inProgress'}
             </conditionExpression>
         </sequenceFlow>
 
         <!-- Request closure -->
         <sequenceFlow id="flowRequestClosure" sourceRef="investigationDecisionGateway" targetRef="supervisorApproval">
             <conditionExpression xsi:type="tFormalExpression">
-                ${investigationAction == 'requestClosure' || (fraudInvestigationAction == 'requestClosure' &amp;&amp; amlInvestigationAction == 'requestClosure')}
+                ${investigationAction == 'requestClosure'}
             </conditionExpression>
         </sequenceFlow>
 
         <!-- Suspend case -->
         <sequenceFlow id="flowSuspend" sourceRef="investigationDecisionGateway" targetRef="endSuspended">
             <conditionExpression xsi:type="tFormalExpression">
-                ${investigationAction == 'suspend' || fraudInvestigationAction == 'suspend' || amlInvestigationAction == 'suspend'}
+                ${investigationAction == 'suspend'}
             </conditionExpression>
         </sequenceFlow>
 
         <!-- Return case -->
-        <sequenceFlow id="flowReturn" sourceRef="investigationDecisionGateway" targetRef="investigationRoutingGateway">
+        <sequenceFlow id="flowReturn" sourceRef="investigationDecisionGateway" targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
-                ${investigationAction == 'returnCase' || fraudInvestigationAction == 'returnCase' || amlInvestigationAction == 'returnCase'}
+                ${investigationAction == 'returnCase'}
             </conditionExpression>
         </sequenceFlow>
 
         <!-- Complete without approval -->
-        <sequenceFlow id="flowComplete" sourceRef="investigationDecisionGateway" targetRef="endSuccess">
+        <sequenceFlow id="flowComplete" sourceRef="investigationDecisionGateway" targetRef="sarStrDecisionGateway">
             <conditionExpression xsi:type="tFormalExpression">
-                ${investigationAction == 'complete' || (fraudInvestigationAction == 'complete' &amp;&amp; amlInvestigationAction == 'complete')}
+                ${investigationAction == 'complete' }
             </conditionExpression>
         </sequenceFlow>
 
@@ -382,16 +344,23 @@
                 ${approvalDecision == 'approve'}
             </conditionExpression>
         </sequenceFlow>
+
+        <sequenceFlow id="flowReject" sourceRef="approvalDecisionGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${approvalDecision == 'reject'}
+            </conditionExpression>
+        </sequenceFlow>
+
         <!-- SAR/STR Filing flows -->
         <sequenceFlow id="flowRequiresSarStr" sourceRef="sarStrDecisionGateway" targetRef="fileSarStr">
             <conditionExpression xsi:type="tFormalExpression">
-                ${finalOutcome == 'STATUS_82_CLOSED_CONFIRMED'}
+                ${finalOutcome == 'STATUS_82_CLOSED_CONFIRMED' }
             </conditionExpression>
         </sequenceFlow>
 
         <sequenceFlow id="flowNoSarStrRequired" sourceRef="sarStrDecisionGateway" targetRef="endApproved">
             <conditionExpression xsi:type="tFormalExpression">
-                ${finalOutcome != 'STATUS_82_CLOSED_CONFIRMED'}
+                ${finalOutcome != 'STATUS_82_CLOSED_CONFIRMED' }
             </conditionExpression>
         </sequenceFlow>
 
@@ -409,13 +378,5 @@
                 ${sarStrAction == 'complete'}
             </conditionExpression>
         </sequenceFlow>
-        
-        <sequenceFlow id="flowReject" sourceRef="approvalDecisionGateway" targetRef="investigationRoutingGateway">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${approvalDecision == 'reject'}
-            </conditionExpression>
-        </sequenceFlow>
-
     </process>
-
 </definitions>

@@ -6,7 +6,6 @@ import {
   DocumentIcon
 } from '@heroicons/react/24/solid';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
-import userService from '../../services/userService';
 import { taskService } from '../../services/taskService';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -48,7 +47,7 @@ interface GenerateInvestigationReportModalProps {
 }
 
 marked.setOptions({
-  breaks: true, 
+  breaks: true,
   gfm: true,
 });
 
@@ -124,7 +123,9 @@ const getUserRole = () => {
         if (claims.includes('CMS_INVESTIGATOR')) return 'CMS_INVESTIGATOR';
       }
     }
-  } catch { }
+  } catch {
+    // Ignore JWTdecoding errors
+  }
   return 'CMS_SUPERVISOR';
 };
 
@@ -152,7 +153,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [incompleteTasks, setIncompleteTasks] = useState<string[]>([]);
   const [checkingTasks, setCheckingTasks] = useState(false);
   const [evidenceCategories, setEvidenceCategories] = useState<EvidenceCategory[]>([]);
-  const [caseComments, setCaseComments] = useState<TaskComment[]>([]);
   const [supervisorComments, setSupervisorComments] = useState<TaskComment[]>([]);
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
   const [finalOutcome, setFinalOutcome] = useState<FinalOutcomeType | ''>((selectedOutcome as FinalOutcomeType) || '');
@@ -160,6 +160,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [evidenceLoaded, setEvidenceLoaded] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [notesLoaded, setNotesLoaded] = useState(false);
+  const [submittedDate, setSubmittedDate] = useState<string>('N/A');
 
   useEffect(() => {
     hasFetchedRef.current = false;
@@ -200,16 +201,14 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
     try {
       const {
-
-        caseComments,
         supervisorComments,
         investigatorName,
         investigationNotes,
+        submittedDate,
       } = await fetchCasesAndEvidence(caseId, latestInvestigateTask.task_id);
-
-      setCaseComments(caseComments);
       setSupervisorComments(supervisorComments);
       setInvestigatorName(investigatorName);
+      setSubmittedDate(submittedDate);
       setInvestigationNotes(investigationNotes);
     } catch (err) {
       console.error('Failed to fetch case data:', err);
@@ -235,16 +234,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       setFinalOutcome(selectedOutcome as FinalOutcomeType);
     }
   }, [selectedOutcome]);
-
-  useEffect(() => {
-    if (open && caseComments?.[0]?.user_id) {
-      userService.getUserDetailsById(caseComments[0].user_id).then((userDetails) => {
-        if (userDetails) {
-          setInvestigatorName(userService.formatUserName(userDetails));
-        }
-      }).catch(() => { });
-    }
-  }, [open, caseComments]);
 
   useEffect(() => {
     const checkTaskCompletion = async () => {
@@ -288,13 +277,13 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
   const [executiveSummary, setExecutiveSummary] = useState(buildExecutiveSummary());
   const [keyFindings, setKeyFindings] = useState(
-    investigationNotes || ""
+    investigationNotes || ''
   );
   const [recommendations, setRecommendations] = useState(
-    "Based on the investigation findings and evidence review:\n\n1. Review investigator's recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure."
+    'Based on the investigation findings and evidence review:\n\n1. Review investigator\'s recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure.'
   );
   const [supervisorFeedback, setSupervisorFeedback] = useState(
-    supervisorComments?.[0]?.note || ""
+    supervisorComments?.[0]?.note || ''
   );
   const [reportOutcome, setReportOutcome] = useState<string | undefined>('');
   const [monitoringDuration, setMonitoringDuration] = useState<30 | 60 | 90 | 180>(30);
@@ -328,19 +317,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       },
     ],
   }));
-
-  const timestamp = new Date().toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
-
-  const submittedDate = caseComments?.[0]?.created_at
-    ? formatDate(caseComments[0].created_at)
-    : 'N/A';
 
   const docDefinition: any = {
     pageSize: 'A4',
@@ -403,7 +379,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         ? convertMarkdownToPdfMake(executiveSummary)
         : [convertMarkdownToPdfMake(executiveSummary)]
       ),
-      { text: '', margin: [0, 0, 0, 12] }, 
+      { text: '', margin: [0, 0, 0, 12] },
 
       {
         text: 'KEY FINDINGS',
@@ -415,12 +391,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           ? convertMarkdownToPdfMake(investigationNotes)
           : [convertMarkdownToPdfMake(investigationNotes)])
         : [{
-            text: 'No investigation notes added.',
-            fontSize: 9,
-            color: '#6b7280',
-            italics: true,
-            margin: [0, 0, 0, 0],
-          }]
+          text: 'No investigation notes added.',
+          fontSize: 9,
+          color: '#6b7280',
+          italics: true,
+          margin: [0, 0, 0, 0],
+        }]
       ),
       { text: '', margin: [0, 0, 0, 12] },
 
@@ -434,7 +410,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           ? convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || '')
           : [convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || '')]
         ),
-        { text: '', margin: [0, 0, 0, 12] }, 
+        { text: '', margin: [0, 0, 0, 12] },
       ] : []),
 
       {
@@ -444,17 +420,17 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       },
       ...(evidenceList && evidenceList.length > 0
         ? [{
-            ul: evidenceList,
-            style: 'body',
-            margin: [0, 0, 0, 12],
-          }]
+          ul: evidenceList,
+          style: 'body',
+          margin: [0, 0, 0, 12],
+        }]
         : [{
-            text: 'No evidence summary attached.',
-            fontSize: 9,
-            color: '#6b7280',
-            italics: true,
-            margin: [0, 0, 0, 0],
-          }]
+          text: 'No evidence summary attached.',
+          fontSize: 9,
+          color: '#6b7280',
+          italics: true,
+          margin: [0, 0, 0, 0],
+        }]
       ),
       { text: '', margin: [0, 0, 0, 12] },
 
@@ -561,8 +537,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     setShowApprovalConfirm(true);
   };
 
-  const generatePdfFile = (docDefinition: any): Promise<File> => {
-    return new Promise((resolve, reject) => {
+  const generatePdfFile = async (docDefinition: any): Promise<File> => await new Promise((resolve, reject) => {
       try {
         const pdfDoc = (pdfMake as any).createPdf(docDefinition);
 
@@ -576,20 +551,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         reject(err);
       }
     });
-  };
-
-  // const handleGenerateReport = async () => {
-  //   if (isGenerating) return;
-
-  //   setIsGenerating(true);
-
-  //   try {
-  //     await new Promise((resolve) => setTimeout(resolve, 1000));
-  //     setStep('generated');
-  //   } finally {
-  //     setIsGenerating(false);
-  //   }
-  // };
 
   const handleGenerateReport = () => {
     if (!isReportReady) return;
@@ -629,9 +590,10 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         if (latestInvestigateTask && investigationNotes) {
           try {
             await taskService.updateTaskForSupervisor(latestInvestigateTask.task_id, {
-              investigationNotes: investigationNotes,
+              investigationNotes,
             });
           } catch {
+            // Ignore task update errors
           }
         }
 
@@ -857,9 +819,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-700">Submitted:</span>
                     <span className="text-gray-900">
-                      {caseComments?.[0]?.created_at
-                        ? formatDate(caseComments[0].created_at)
-                        : 'N/A'}
+                      {submittedDate}
                     </span>
                   </div>
                 </div>
@@ -1125,7 +1085,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setShowApprovalConfirm(false)}
+                onClick={() => { setShowApprovalConfirm(false); }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Cancel

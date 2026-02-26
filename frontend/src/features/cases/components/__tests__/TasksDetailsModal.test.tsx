@@ -82,7 +82,9 @@ describe('TasksDetailsModal', () => {
     (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue([]);
   });
 
-  const renderModal = (props: Partial<React.ComponentProps<typeof TasksDetailsModal>>) => {
+  const renderModal = (
+    props: Partial<React.ComponentProps<typeof TasksDetailsModal>>,
+  ) => {
     return render(
       <TasksDetailsModal
         open={true}
@@ -107,7 +109,9 @@ describe('TasksDetailsModal', () => {
   it('renders modal with task details when open', () => {
     renderModal({});
 
-    expect(screen.getByRole('heading', { name: /Task Details/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Task Details/i }),
+    ).toBeInTheDocument();
   });
 
   it('fetches tasks when modal opens', async () => {
@@ -137,4 +141,3 @@ describe('TasksDetailsModal', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 });
-

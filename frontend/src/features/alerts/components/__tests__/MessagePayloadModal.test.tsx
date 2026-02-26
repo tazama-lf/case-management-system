@@ -115,7 +115,9 @@ describe('MessagePayloadModal', () => {
       />,
     );
 
-    expect(screen.getByText('No transaction data available')).toBeInTheDocument();
+    expect(
+      screen.getByText('No transaction data available'),
+    ).toBeInTheDocument();
   });
 
   it('closes modal when close button is clicked', async () => {
@@ -168,7 +170,9 @@ describe('MessagePayloadModal', () => {
       />,
     );
 
-    const downloadButtons = screen.getAllByRole('button', { name: /download/i });
+    const downloadButtons = screen.getAllByRole('button', {
+      name: /download/i,
+    });
     await user.click(downloadButtons[0]);
 
     // Verify download functionality was triggered
@@ -187,7 +191,9 @@ describe('MessagePayloadModal', () => {
       />,
     );
 
-    const downloadButtons = screen.getAllByRole('button', { name: /download/i });
+    const downloadButtons = screen.getAllByRole('button', {
+      name: /download/i,
+    });
     downloadButtons.forEach((button) => {
       expect(button).toBeDisabled();
     });
@@ -196,20 +202,26 @@ describe('MessagePayloadModal', () => {
   it('generates correct filename for download', async () => {
     const user = userEvent.setup();
     let capturedDownload = '';
-    const originalCreateElement = global.document.createElement.bind(global.document);
-    
-    const createElementSpy = vi.spyOn(global.document, 'createElement').mockImplementation((tagName) => {
-      if (tagName === 'a') {
-        const link = originalCreateElement('a') as HTMLAnchorElement;
-        Object.defineProperty(link, 'download', {
-          get: () => capturedDownload,
-          set: (value) => { capturedDownload = value; },
-          configurable: true,
-        });
-        return link;
-      }
-      return originalCreateElement(tagName);
-    });
+    const originalCreateElement = global.document.createElement.bind(
+      global.document,
+    );
+
+    const createElementSpy = vi
+      .spyOn(global.document, 'createElement')
+      .mockImplementation((tagName) => {
+        if (tagName === 'a') {
+          const link = originalCreateElement('a') as HTMLAnchorElement;
+          Object.defineProperty(link, 'download', {
+            get: () => capturedDownload,
+            set: (value) => {
+              capturedDownload = value;
+            },
+            configurable: true,
+          });
+          return link;
+        }
+        return originalCreateElement(tagName);
+      });
 
     render(
       <MessagePayloadModal
@@ -220,7 +232,9 @@ describe('MessagePayloadModal', () => {
       />,
     );
 
-    const downloadButtons = screen.getAllByRole('button', { name: /download/i });
+    const downloadButtons = screen.getAllByRole('button', {
+      name: /download/i,
+    });
     await user.click(downloadButtons[0]);
 
     expect(capturedDownload).toBe('PAYMENT_msg-123_payload.json');
@@ -241,4 +255,3 @@ describe('MessagePayloadModal', () => {
     expect(screen.getByText(timestamp)).toBeInTheDocument();
   });
 });
-

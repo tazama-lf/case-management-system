@@ -13,8 +13,8 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
 
 class AuthService {
-  private tokenKey = 'authToken';
-  private userKey = 'user';
+  private readonly tokenKey = 'authToken';
+  private readonly userKey = 'user';
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
@@ -134,79 +134,10 @@ class AuthService {
     return token ? !this.isTokenExpired(token) : false;
   }
 
-  // decodeToken(token: string): User | null {
-  //   const decoded = this.getDecodedToken(token);
-  //   if (!decoded) {
-  //     return null;
-  //   }
-
-  //   try {
-  //     const user: User = {
-  //       userId: decoded.clientId,
-  //       tenantId: decoded.tenantId,
-  //       email: decoded.email,
-  //       fullName: decoded.fullName,
-  //       tenantName: decoded.tenantName,
-  //       validatedClaims: decoded,
-  //     };
-
-  //     return user;
-  //   } catch (error) {
-  //     console.error('Error extracting user info from decoded token:', error);
-  //     return null;
-  //   }
-  // }
-
-  // private extractRoles(payload: DecodedToken): string[] {
-  //   const roles: string[] = [];
-
-  //   if (payload.resource_access?.CMS?.roles) {
-  //     roles.push(...payload.resource_access.CMS.roles);
-  //   }
-
-  //   if (roles.length === 0 && payload.resource_access) {
-  //     Object.values(payload.resource_access).forEach(
-  //       (resource: { roles: string[] }) => {
-  //         if (resource.roles) {
-  //           roles.push(...resource.roles);
-  //         }
-  //       },
-  //     );
-  //   }
-
-  //   return roles;
-  // }
-
-  // private extractBackendClaims(payload: DecodedToken): string[] {
-  //   const claims: string[] = [];
-
-  //   if (payload.claims && Array.isArray(payload.claims)) {
-  //     claims.push(...payload.claims);
-  //   }
-
-  //   if (payload.realm_access?.roles) {
-  //     claims.push(...payload.realm_access.roles);
-  //   }
-
-  //   if (payload.resource_access) {
-  //     Object.entries(payload.resource_access).forEach(([, access]) => {
-  //       if (access.roles) {
-  //         access.roles.forEach((role) => {
-  //           claims.push(role);
-  //         });
-  //       }
-  //     });
-  //   }
-
-  //   const finalClaims = [...new Set(claims)];
-
-  //   return finalClaims;
-  // }
-
   private getDecodedToken(token: string): DecodedToken | null {
     try {
       const payload = token.split('.')[1];
-      return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+      return JSON.parse(atob(payload.replace(/-/gu, '+').replace(/_/gu, '/')));
     } catch (error) {
       console.error('Error decoding token:', error);
       return null;
@@ -237,7 +168,7 @@ class AuthService {
       return false;
     }
 
-    return user.validatedClaims?.[claim] === true || false;
+    return user.validatedClaims?.[claim] || false;
   }
 
   hasCMSTestRole(): boolean {
@@ -290,7 +221,12 @@ class AuthService {
    * @returns true if user has at least one valid CMS role
    */
   validateBackendAccess(): boolean {
-    const validRoles = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_ADMIN', 'CMS_COMPLIANCE_OFFICER'];
+    const validRoles = [
+      'CMS_INVESTIGATOR',
+      'CMS_SUPERVISOR',
+      'CMS_ADMIN',
+      'CMS_COMPLIANCE_OFFICER',
+    ];
 
     // Also allow legacy admin roles for backward compatibility
     return (

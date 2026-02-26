@@ -29,7 +29,7 @@ export class AlertRepository extends BaseRepository {
         alert_data: AlertData,
         transaction,
         network_map: networkMap,
-        case_id: !alertData.caseId ? null : alertData.caseId,
+        case_id: alertData.caseId ? alertData.caseId : null,
       },
     });
 

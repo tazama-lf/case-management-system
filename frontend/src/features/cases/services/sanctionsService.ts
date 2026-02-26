@@ -30,8 +30,9 @@ export const getCaseSanctionsScreenings = async (
   if (filters?.tool_source) params.append('tool_source', filters.tool_source);
   if (filters?.date_from) params.append('date_from', filters.date_from);
   if (filters?.date_to) params.append('date_to', filters.date_to);
-  if (filters?.investigator_id)
+  if (filters?.investigator_id) {
     params.append('investigator_id', filters.investigator_id);
+  }
   if (filters?.search) params.append('search', filters.search);
 
   const queryString = params.toString();
@@ -45,9 +46,8 @@ export const getCaseSanctionsScreenings = async (
  */
 export const getSanctionsScreening = async (
   screeningId: string,
-): Promise<SanctionsScreening> => {
-  return await apiClient.get<SanctionsScreening>(`${BASE_URL}/${screeningId}`);
-};
+): Promise<SanctionsScreening> =>
+  await apiClient.get<SanctionsScreening>(`${BASE_URL}/${screeningId}`);
 
 /**
  * Create a new sanctions screening with optional file upload
@@ -71,8 +71,9 @@ export const createSanctionsScreening = async (
   formData.append('summary', dto.summary);
 
   if (dto.reference_id) formData.append('reference_id', dto.reference_id);
-  if (dto.match_count !== undefined)
+  if (dto.match_count !== undefined) {
     formData.append('match_count', dto.match_count.toString());
+  }
   if (dto.metadata) formData.append('metadata', JSON.stringify(dto.metadata));
 
   return await apiClient.post<SanctionsScreeningResponse>(BASE_URL, formData, {
@@ -101,11 +102,10 @@ export const updateSanctionsScreening = async (
  */
 export const deleteSanctionsScreening = async (
   screeningId: string,
-): Promise<DeleteSanctionsScreeningResponse> => {
-  return await apiClient.delete<DeleteSanctionsScreeningResponse>(
+): Promise<DeleteSanctionsScreeningResponse> =>
+  await apiClient.delete<DeleteSanctionsScreeningResponse>(
     `${BASE_URL}/${screeningId}`,
   );
-};
 
 /**
  * Download the sanctions screening report file
@@ -133,22 +133,20 @@ export const downloadSanctionsReport = async (
  */
 export const getSanctionsScreeningAuditLogs = async (
   screeningId: string,
-): Promise<SanctionsScreeningAuditLog[]> => {
-  return await apiClient.get<SanctionsScreeningAuditLog[]>(
+): Promise<SanctionsScreeningAuditLog[]> =>
+  await apiClient.get<SanctionsScreeningAuditLog[]>(
     `${BASE_URL}/${screeningId}/audit-logs`,
   );
-};
 
 /**
  * Get sanctions screening statistics for a case
  */
 export const getCaseSanctionsStatistics = async (
   caseId: string,
-): Promise<SanctionsScreeningStatistics> => {
-  return await apiClient.get<SanctionsScreeningStatistics>(
+): Promise<SanctionsScreeningStatistics> =>
+  await apiClient.get<SanctionsScreeningStatistics>(
     `${BASE_URL}/case/${caseId}/statistics`,
   );
-};
 
 /**
  * Search sanctions screenings across all cases (for registry)
@@ -168,8 +166,9 @@ export const searchSanctionsScreenings = async (
   if (filters.tool_source) params.append('tool_source', filters.tool_source);
   if (filters.date_from) params.append('date_from', filters.date_from);
   if (filters.date_to) params.append('date_to', filters.date_to);
-  if (filters.investigator_id)
+  if (filters.investigator_id) {
     params.append('investigator_id', filters.investigator_id);
+  }
   if (filters.search) params.append('search', filters.search);
 
   return await apiClient.get<SanctionsScreeningListResponse>(
@@ -203,7 +202,7 @@ export const validateScreeningFile = (
   if (!ALLOWED_TYPES.includes(file.type)) {
     return {
       valid: false,
-      error: `Invalid file type. Allowed types: PDF, Excel, CSV, JSON, TXT`,
+      error: 'Invalid file type. Allowed types: PDF, Excel, CSV, JSON, TXT',
     };
   }
 
@@ -220,7 +219,7 @@ export const formatFileSize = (bytes: number): string => {
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 };
 
 /**

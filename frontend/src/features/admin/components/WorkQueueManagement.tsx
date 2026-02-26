@@ -14,18 +14,23 @@ interface WorkQueueManagementProps {
 }
 
 const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
-  className = ''
+  className = '',
 }) => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const { workQueues, loading, error, pagination, onPageChange, onPageSizeChange, refetch } = useCandidateGroups({
-    currentPage: 1,
-    pageSize: 10
-  });
   const {
-    searchTerm,
-    setSearchTerm,
-    filteredQueues
-  } = useWorkQueueFilter(workQueues);
+    workQueues,
+    loading,
+    error,
+    pagination,
+    onPageChange,
+    onPageSizeChange,
+    refetch,
+  } = useCandidateGroups({
+    currentPage: 1,
+    pageSize: 10,
+  });
+  const { searchTerm, setSearchTerm, filteredQueues } =
+    useWorkQueueFilter(workQueues);
 
   const handleCreateQueue = () => {
     setCreateModalOpen(true);
@@ -41,7 +46,9 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
           <p className="font-semibold">Error loading work queues</p>
           <p className="text-sm mt-1">{error || 'An error occurred'}</p>
           <button
-            onClick={() => refetch()}
+            onClick={async () => {
+              await refetch();
+            }}
             className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
             Retry
@@ -52,10 +59,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
   }
 
   return (
-    <PageContainer
-      className={className}
-    >
-
+    <PageContainer className={className}>
       <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl shadow-sm border border-slate-200 p-6 mt-8 mb-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="max-w-md">
@@ -84,7 +88,6 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
         </div>
       </div>
 
-
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -104,13 +107,12 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
             itemType="work queues"
           />
 
-
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <AdminWorkQueuesTable
               queues={filteredQueues}
               pagination={{
                 ...pagination,
-                onPageChange
+                onPageChange,
               }}
             />
           </div>
@@ -119,7 +121,9 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
 
       <CreateQueueModal
         open={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
+        onClose={() => {
+          setCreateModalOpen(false);
+        }}
         onCreate={refetch}
       />
     </PageContainer>

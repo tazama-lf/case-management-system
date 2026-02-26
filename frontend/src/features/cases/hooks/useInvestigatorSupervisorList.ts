@@ -12,20 +12,22 @@ export const useInvestigatorSupervisorList = () => {
     return cached ? JSON.parse(cached) : [];
   });
 
-
   const [investigators, setInvestigators] = useState<UserOption[]>(() => {
     const cached = sessionStorage.getItem(investigatorsCacheKey);
     return cached ? JSON.parse(cached) : [];
   });
 
-  const [complianceOfficers, setComplianceOfficers] = useState<UserOption[]>(() => {
-    const cached = sessionStorage.getItem(complianceCacheKey);
-    return cached ? JSON.parse(cached) : [];
-  });
+  const [complianceOfficers, setComplianceOfficers] = useState<UserOption[]>(
+    () => {
+      const cached = sessionStorage.getItem(complianceCacheKey);
+      return cached ? JSON.parse(cached) : [];
+    },
+  );
 
   const [loadingInvestigators, setLoadingInvestigators] = useState(false);
   const [loadingSupervisors, setLoadingSupervisors] = useState(false);
-  const [loadingComplianceOfficers, setLoadingComplianceOfficers] = useState(false);
+  const [loadingComplianceOfficers, setLoadingComplianceOfficers] =
+    useState(false);
 
   const fetchInvestigatorsList = async () => {
     setLoadingInvestigators(true);

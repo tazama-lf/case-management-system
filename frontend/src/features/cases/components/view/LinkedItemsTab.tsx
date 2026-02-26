@@ -30,7 +30,9 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
   const [loading, setLoading] = useState(true);
   // const [linkedCases, setLinkedCases] = useState<LinkedCase[]>([]);
   // const [linkedAlerts, setLinkedAlerts] = useState<LinkedAlert[]>([]);
-  const [linkedTransactions, setLinkedTransactions] = useState<LinkedTransaction[]>([]);
+  const [linkedTransactions, setLinkedTransactions] = useState<
+    LinkedTransaction[]
+  >([]);
   const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
 
@@ -57,21 +59,28 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
         const allAlerts = alertsResponse.alerts;
 
         // Find alerts linked to this case
-        const caseAlerts = allAlerts.filter(alert => alert.case_id === caseId);
+        const caseAlerts = allAlerts.filter(
+          (alert) => alert.case_id === caseId,
+        );
 
         // Extract transaction IDs from alerts
         const transactionIds = new Set<string>();
-        const alertTransactionMap = new Map<string, { label: string; description: string }>();
+        const alertTransactionMap = new Map<
+          string,
+          { label: string; description: string }
+        >();
 
-        caseAlerts.forEach(alert => {
+        caseAlerts.forEach((alert) => {
           if (alert.transaction && typeof alert.transaction === 'object') {
             const txn = alert.transaction as Record<string, unknown>;
-            const txnId = (txn.TransactionID || txn.transaction_id || txn.id) as string | undefined;
+            const txnId = (txn.TransactionID ||
+              txn.transaction_id ||
+              txn.id) as string | undefined;
             if (txnId) {
               transactionIds.add(txnId);
               alertTransactionMap.set(txnId, {
                 label: alert.message || 'Transaction Alert',
-                description: alert.txtp || 'Suspicious activity detected'
+                description: alert.txtp || 'Suspicious activity detected',
               });
             }
           }
@@ -85,10 +94,14 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
         // }));
 
         // Map transactions for display
-        const mappedTransactions: LinkedTransaction[] = Array.from(transactionIds).map(txnId => ({
+        const mappedTransactions: LinkedTransaction[] = Array.from(
+          transactionIds,
+        ).map((txnId) => ({
           id: txnId,
           label: alertTransactionMap.get(txnId)?.label || 'Transaction',
-          description: alertTransactionMap.get(txnId)?.description || 'Related transaction'
+          description:
+            alertTransactionMap.get(txnId)?.description ||
+            'Related transaction',
         }));
 
         // Fetch all cases to find related ones
@@ -96,22 +109,29 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
         const allCases = casesResponse.cases;
 
         // Find related cases (cases with shared alert IDs)
-        const alertIds = caseAlerts.map(alert => alert.alert_id);
+        const alertIds = caseAlerts.map((alert) => alert.alert_id);
         const relatedCaseIds = new Set<string>();
 
         // Find cases that reference any of our alerts
-        allAlerts.forEach(alert => {
-          if (alert.case_id && alert.case_id !== caseId && alertIds.includes(alert.alert_id)) {
+        allAlerts.forEach((alert) => {
+          if (
+            alert.case_id &&
+            alert.case_id !== caseId &&
+            alertIds.includes(alert.alert_id)
+          ) {
             relatedCaseIds.add(alert.case_id.toString());
           }
         });
 
         // Also find cases with the same parent_id or where parent_id equals caseId
-        allCases.forEach(caseItem => {
+        allCases.forEach((caseItem) => {
           if (caseItem.case_id !== caseId) {
-            if (caseItem.case_id === currentCase.parent_id ||
+            if (
+              caseItem.case_id === currentCase.parent_id ||
               caseItem.case_id === caseId ||
-              (currentCase.parent_id && caseItem.case_id === currentCase.parent_id)) {
+              (currentCase.parent_id &&
+                caseItem.case_id === currentCase.parent_id)
+            ) {
               relatedCaseIds.add(caseItem.case_id.toString());
             }
           }
@@ -194,7 +214,9 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
 
       {/* Related Transactions Section */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Related Transactions</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">
+          Related Transactions
+        </h3>
         <div className="space-y-2">
           {linkedTransactions.length > 0 ? (
             linkedTransactions.map((item) => (
@@ -204,11 +226,15 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline text-sm"
               >
                 <LinkIcon className="h-4 w-4 flex-shrink-0" />
-                <span>{item.id} - {item.label}</span>
+                <span>
+                  {item.id} - {item.label}
+                </span>
               </a>
             ))
           ) : (
-            <p className="text-sm text-gray-500">No related transactions found</p>
+            <p className="text-sm text-gray-500">
+              No related transactions found
+            </p>
           )}
         </div>
       </div>

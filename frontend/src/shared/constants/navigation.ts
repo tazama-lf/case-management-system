@@ -24,7 +24,12 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     name: 'Cases',
     href: '/cases',
     icon: FolderIcon,
-    roles: ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR', 'CMS_COMPLIANCE_OFFICER', 'alert-triage'],
+    roles: [
+      'CMS_SUPERVISOR',
+      'CMS_INVESTIGATOR',
+      'CMS_COMPLIANCE_OFFICER',
+      'alert-triage',
+    ],
   },
   {
     name: 'Reports',

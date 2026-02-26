@@ -73,7 +73,7 @@ export interface InvestigatorWorkload {
 
 export interface VolumeTrend {
   month: string;
-  investigators: { [key: string]: number };
+  investigators: Record<string, number>;
 }
 
 export interface ResolutionEfficiency {

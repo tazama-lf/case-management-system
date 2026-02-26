@@ -97,16 +97,21 @@ describe('CommentService', () => {
 
       const result = await service.addComment(createCommentDto, 'user-123');
 
+      expect(result).toBeDefined();
       expect(result).toEqual(mockComment);
+      expect(result!.note).toBe('Test comment');
+      expect(result!.user_id).toBe('user-123');
+      expect(result!.case_id).toBe(1);
       expect(commentRepository.createComment).toHaveBeenCalledWith('user-123', createCommentDto);
-      expect(auditLogService.logAction).toHaveBeenCalledWith({
-        userId: 'user-123',
-        operation: 'addComment',
-        entityName: CommentService.name,
-        actionPerformed: 'Test comment',
-        outcome: Outcome.SUCCESS,
-        performedAt: expect.any(Date),
-      });
+      
+      // Verify audit log with timestamp within last 5 seconds
+      const auditCall = (auditLogService.logAction as jest.Mock).mock.calls[0][0];
+      expect(auditCall.userId).toBe('user-123');
+      expect(auditCall.operation).toBe('addComment');
+      expect(auditCall.outcome).toBe(Outcome.SUCCESS);
+      expect(auditCall.performedAt).toBeInstanceOf(Date);
+      expect(Date.now() - auditCall.performedAt.getTime()).toBeLessThan(5000);
+      
       expect(loggerService.log).toHaveBeenCalledWith('Adding comment : user-123', CommentService.name);
     });
 
@@ -197,6 +202,37 @@ describe('CommentService', () => {
       expect(result).toBeDefined();
       expect(result!.note).toBe('');
       expect(commentRepository.createComment).toHaveBeenCalled();
+    });
+
+    it('should handle very long notes correctly', async () => {
+      const longNote = 'a'.repeat(5000);
+      const longNoteDto = {
+        ...createCommentDto,
+        note: longNote,
+      };
+      (commentRepository.createComment as jest.Mock).mockResolvedValue({
+        ...mockComment,
+        note: longNote,
+      });
+
+      const result = await service.addComment(longNoteDto, 'user-123');
+
+      expect(result).toBeDefined();
+      expect(result!.note).toBe(longNote);
+      expect(result!.note.length).toBe(5000);
+    });
+
+    it('should pass tenantId to repository for tenant isolation', async () => {
+      (commentRepository.createComment as jest.Mock).mockResolvedValue(mockComment);
+
+      await service.addComment(createCommentDto, 'user-123');
+
+      expect(commentRepository.createComment).toHaveBeenCalledWith(
+        'user-123',
+        expect.objectContaining({
+          tenantId: 'tenant-123',
+        }),
+      );
     });
   });
 

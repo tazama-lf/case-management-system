@@ -2,7 +2,10 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CollaboratePanel from '../CollaboratePanel';
-import type { Collaborator, NewDiscussionThreadPayload } from '../NewDiscussionThreadModal';
+import type {
+  Collaborator,
+  NewDiscussionThreadPayload,
+} from '../NewDiscussionThreadModal';
 
 const mockCollaborators: Collaborator[] = [
   { id: '1', name: 'John Doe', role: 'Investigator' },
@@ -17,7 +20,12 @@ describe('CollaboratePanel', () => {
   });
 
   it('renders collaboration information', () => {
-    render(<CollaboratePanel collaborators={mockCollaborators} onCreateThread={mockOnCreateThread} />);
+    render(
+      <CollaboratePanel
+        collaborators={mockCollaborators}
+        onCreateThread={mockOnCreateThread}
+      />,
+    );
 
     expect(screen.getByText('Alert Stage')).toBeInTheDocument();
     expect(screen.getByText('Investigate')).toBeInTheDocument();
@@ -26,20 +34,34 @@ describe('CollaboratePanel', () => {
 
   it('displays default collaborators when none provided', () => {
     render(<CollaboratePanel onCreateThread={mockOnCreateThread} />);
-    expect(screen.getByText('Collaborators & Task Assignments')).toBeInTheDocument();
+    expect(
+      screen.getByText('Collaborators & Task Assignments'),
+    ).toBeInTheDocument();
   });
 
   it('opens new discussion thread modal when button is clicked', () => {
-    render(<CollaboratePanel collaborators={mockCollaborators} onCreateThread={mockOnCreateThread} />);
+    render(
+      <CollaboratePanel
+        collaborators={mockCollaborators}
+        onCreateThread={mockOnCreateThread}
+      />,
+    );
 
     const newThreadButton = screen.getByText('+ New Thread');
     fireEvent.click(newThreadButton);
 
-    expect(screen.getByText('Create New Discussion Thread')).toBeInTheDocument();
+    expect(
+      screen.getByText('Create New Discussion Thread'),
+    ).toBeInTheDocument();
   });
 
   it('calls onCreateThread when thread is created', () => {
-    render(<CollaboratePanel collaborators={mockCollaborators} onCreateThread={mockOnCreateThread} />);
+    render(
+      <CollaboratePanel
+        collaborators={mockCollaborators}
+        onCreateThread={mockOnCreateThread}
+      />,
+    );
 
     const newThreadButton = screen.getByText('+ New Thread');
     fireEvent.click(newThreadButton);
@@ -61,9 +83,15 @@ describe('CollaboratePanel', () => {
   });
 
   it('displays discussion threads', () => {
-    render(<CollaboratePanel collaborators={mockCollaborators} onCreateThread={mockOnCreateThread} />);
+    render(
+      <CollaboratePanel
+        collaborators={mockCollaborators}
+        onCreateThread={mockOnCreateThread}
+      />,
+    );
 
-    expect(screen.getByText('Transaction Pattern Analysis')).toBeInTheDocument();
+    expect(
+      screen.getByText('Transaction Pattern Analysis'),
+    ).toBeInTheDocument();
   });
 });
-

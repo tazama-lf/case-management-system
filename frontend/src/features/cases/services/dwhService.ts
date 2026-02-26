@@ -37,15 +37,17 @@ export interface CustomerProfileResponse {
 }
 
 export const dwhService = {
-  async getCustomerProfile(transactionId: string): Promise<CustomerProfileResponse> {
+  async getCustomerProfile(
+    transactionId: string,
+  ): Promise<CustomerProfileResponse> {
     console.log('dwhService.getCustomerProfile called with:', transactionId);
     try {
       const response = await apiClient.get<CustomerProfileResponse>(
-        `/api/v1/dwh/customer/profile/${transactionId}`
+        `/api/v1/dwh/customer/profile/${transactionId}`,
       );
       console.log('dwhService API response:', response);
       console.log('dwhService API response.data:', response.data);
-      
+
       // Check if data is at response level or response.data level
       const data = response.data || response;
       console.log('dwhService returning data:', data);

@@ -10,7 +10,8 @@ export const useCaseReopenActions = (refreshCases: () => Promise<void>) => {
       success('Case Reopening Approved', `Case ${caseId} reopening approved.`);
       await refreshCases();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to approve case reopening';
+      const message =
+        err instanceof Error ? err.message : 'Failed to approve case reopening';
       error('Approve Case Reopening Failed', message);
       throw err;
     }
@@ -19,10 +20,14 @@ export const useCaseReopenActions = (refreshCases: () => Promise<void>) => {
   const handleRejectReopenSubmit = async (caseId: number, reason: string) => {
     try {
       await caseService.rejectCaseReopening(caseId, reason);
-      success('Case Reopening Rejected', `Case ${caseId} reopening rejected. Reason: ${reason}`);
+      success(
+        'Case Reopening Rejected',
+        `Case ${caseId} reopening rejected. Reason: ${reason}`,
+      );
       await refreshCases();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to reject case reopening';
+      const message =
+        err instanceof Error ? err.message : 'Failed to reject case reopening';
       error('Reject Case Reopening Failed', message);
       throw err;
     }

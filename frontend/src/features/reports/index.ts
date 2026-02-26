@@ -17,7 +17,7 @@ export {
   useInvestigatorWorkload,
   useTaskCompletion,
   useAuditLogs,
-  useCaseAgeing
+  useCaseAgeing,
 } from './hooks/useReports';
 
 export { reportsService } from './services/reportsService';
@@ -54,5 +54,5 @@ export type {
   AgeingDistribution,
   CaseTypeResolution,
   CaseAgeingDetail,
-  CaseAgeingData
+  CaseAgeingData,
 } from './types/reports.types';

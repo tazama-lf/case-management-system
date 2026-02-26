@@ -4,14 +4,17 @@ export { default as Sidebar } from './components/layout/Sidebar';
 export { default as Breadcrumb } from './components/layout/Breadcrumb';
 export { default as LayoutWithProvider } from './components/layout/LayoutWithProvider';
 
-export { NotificationProvider, useNotifications } from './providers/NotificationProvider';
+export {
+  NotificationProvider,
+  useNotifications,
+} from './providers/NotificationProvider';
 export { QueryProvider } from './providers/QueryProvider';
 
 export { default as useDebounce } from './hooks/useDebounce';
 
-export * from './types/navigation.types';
-export * from './types/dashboard.types';
-export * from './types/pagination.types';
+export type * from './types/navigation.types';
+export type * from './types/dashboard.types';
+export type * from './types/pagination.types';
 
 export * from './constants/navigation';
 

@@ -79,11 +79,10 @@ describe('reports/index', () => {
     // and that value exports are defined
     expect(Reports).toBeDefined();
     expect(typeof Reports).toBe('object');
-    
+
     // Verify that the module exports exist (components, hooks, services)
     expect(Reports.Reports).toBeDefined();
     expect(Reports.reportsService).toBeDefined();
     expect(Reports.useReports).toBeDefined();
   });
 });
-

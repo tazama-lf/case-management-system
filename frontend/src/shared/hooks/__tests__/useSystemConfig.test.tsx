@@ -1,11 +1,17 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
-import { useSystemConfig, getTriageModeLabel, getTriageModeDescription, getTriageModeColor } from '../useSystemConfig';
+import {
+  useSystemConfig,
+  getTriageModeLabel,
+  getTriageModeDescription,
+  getTriageModeColor,
+} from '../useSystemConfig';
 import systemConfigService from '../../services/systemConfigService';
 
 const TestComponent: React.FC = () => {
-  const { config, loading, error, triageType, isAIMode, isManualMode } = useSystemConfig();
+  const { config, loading, error, triageType, isAIMode, isManualMode } =
+    useSystemConfig();
 
   return (
     <div>
@@ -36,7 +42,9 @@ describe('useSystemConfig', () => {
     // Initially loading true
     expect(screen.getByText(/loading:true/)).toBeInTheDocument();
 
-    await waitFor(() => expect(screen.getByText(/loading:false/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/loading:false/)).toBeInTheDocument(),
+    );
 
     expect(screen.getByText(/triage:AI/)).toBeInTheDocument();
     expect(screen.getByText(/isAI:true/)).toBeInTheDocument();
@@ -45,11 +53,15 @@ describe('useSystemConfig', () => {
   });
 
   it('handles service error and returns defaults and error message', async () => {
-    vi.spyOn(systemConfigService, 'getSystemConfig').mockRejectedValue(new Error('network fail'));
+    vi.spyOn(systemConfigService, 'getSystemConfig').mockRejectedValue(
+      new Error('network fail'),
+    );
 
     render(<TestComponent />);
 
-    await waitFor(() => expect(screen.getByText(/loading:false/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/loading:false/)).toBeInTheDocument(),
+    );
 
     // default triageType should be MANUAL when error occurs
     expect(screen.getByText(/triage:MANUAL/)).toBeInTheDocument();

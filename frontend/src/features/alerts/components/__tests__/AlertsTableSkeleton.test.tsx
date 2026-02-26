@@ -10,4 +10,3 @@ describe('AlertsTableSkeleton', () => {
     expect(rows.length).toBe(3);
   });
 });
-

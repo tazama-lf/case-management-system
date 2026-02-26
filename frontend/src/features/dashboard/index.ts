@@ -14,5 +14,5 @@ export type {
   DashboardStats,
   AlertSummary,
   CaseSummary,
-  DashboardData
+  DashboardData,
 } from './types/dashboard.types';

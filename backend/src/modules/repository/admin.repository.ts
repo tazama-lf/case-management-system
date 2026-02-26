@@ -9,9 +9,17 @@ export class AdminRepository extends BaseRepository {
     super(prisma);
   }
 
-  async registerReferenceId(idData: Prisma.ReferenceIdCreateInput, tx?: Prisma.TransactionClient) {
+  async registerReferenceId(
+    idData: Prisma.ReferenceIdCreateInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{
+    txTp: string;
+    referenceIdName: string;
+    createdAt: Date;
+    id: number;
+  }> {
     try {
-      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
       const referenceId = await client.referenceId.create({
         data: idData,
       });
@@ -29,9 +37,16 @@ export class AdminRepository extends BaseRepository {
     }
   }
 
-  async getReferenceId(tx?: Prisma.TransactionClient) {
+  async getReferenceId(tx?: Prisma.TransactionClient): Promise<
+    Array<{
+      txTp: string;
+      referenceIdName: string;
+      createdAt: Date;
+      id: number;
+    }>
+  > {
     try {
-      const client: Prisma.TransactionClient | PrismaService = tx || this.prisma;
+      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
       const referenceIds = await client.referenceId.findMany();
 
       if (!referenceIds) {

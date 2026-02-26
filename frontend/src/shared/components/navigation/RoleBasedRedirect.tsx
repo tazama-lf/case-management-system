@@ -8,7 +8,8 @@ import LoadingSpinner from '../ui/LoadingSpinner';
  * CMS_ADMIN users go to admin dashboard, compliance officers go to cases, others go to main dashboard.
  */
 const RoleBasedRedirect: React.FC = () => {
-  const { loading, user, hasCMSAdminRole, hasComplianceOfficerRole } = useAuth();
+  const { loading, user, hasCMSAdminRole, hasComplianceOfficerRole } =
+    useAuth();
 
   if (loading) {
     return <LoadingSpinner fullScreen />;

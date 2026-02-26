@@ -10,12 +10,16 @@ vi.mock('../../hooks/useDashboard', () => ({
 }));
 
 vi.mock('@/features/dashboard/components/StatsCards', () => ({
-  default: ({ stats }: any) => <div data-testid="stats-cards">Stats: {stats.totalAlerts}</div>,
+  default: ({ stats }: any) => (
+    <div data-testid="stats-cards">Stats: {stats.totalAlerts}</div>
+  ),
 }));
 
 vi.mock('@/features/dashboard/components/DashboardSection', () => ({
   default: ({ title, children }: any) => (
-    <div data-testid={`dashboard-section-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+    <div
+      data-testid={`dashboard-section-${title.toLowerCase().replace(/\s+/g, '-')}`}
+    >
       <h3>{title}</h3>
       {children}
     </div>
@@ -23,11 +27,15 @@ vi.mock('@/features/dashboard/components/DashboardSection', () => ({
 }));
 
 vi.mock('@/features/dashboard/components/AlertSummaryItem', () => ({
-  default: ({ alert }: any) => <div data-testid="alert-summary">Alert: {alert.priority}</div>,
+  default: ({ alert }: any) => (
+    <div data-testid="alert-summary">Alert: {alert.priority}</div>
+  ),
 }));
 
 vi.mock('@/features/dashboard/components/CaseSummaryItem', () => ({
-  default: ({ case: caseItem }: any) => <div data-testid="case-summary">Case: {caseItem.status}</div>,
+  default: ({ case: caseItem }: any) => (
+    <div data-testid="case-summary">Case: {caseItem.status}</div>
+  ),
 }));
 
 vi.mock('@/shared/components/ui', () => ({
@@ -129,8 +137,12 @@ describe('Dashboard', () => {
     });
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByTestId('dashboard-section-recent-alerts')).toBeInTheDocument();
-    expect(screen.getByTestId('dashboard-section-active-cases')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('dashboard-section-recent-alerts'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('dashboard-section-active-cases'),
+    ).toBeInTheDocument();
   });
 
   it('renders empty state when no alerts', async () => {
@@ -267,4 +279,3 @@ describe('Dashboard', () => {
     window.location = originalReload;
   });
 });
-

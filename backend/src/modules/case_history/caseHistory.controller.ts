@@ -39,7 +39,7 @@ export class CaseHistoryController {
   @ApiOkResponse({ description: 'Event log entries returned successfully.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
   async getLogs(@Query('limit') limit = 50, @Query('offset') offset = 0, @Req() req: AuthenticatedRequest): Promise<CaseHistory[]> {
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
     return await this.caseHistoryService.getLogs(tenantId, limit, offset);
   }
 
@@ -61,7 +61,7 @@ export class CaseHistoryController {
   })
   @ApiResponse({ status: 404, description: 'Case History not found' })
   async getCaseHistory(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<CaseHistory[]> {
-    const tenantId = req.user.token.tenantId;
+    const { tenantId } = req.user.token;
     return await this.caseHistoryService.getCaseHistory(caseId, tenantId);
   }
 }

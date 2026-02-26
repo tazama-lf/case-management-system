@@ -50,10 +50,9 @@ describe('AlertsSearchAndFilters', () => {
   it('updates query and time range filters', async () => {
     renderComponent();
 
-    fireEvent.change(
-      screen.getByPlaceholderText(/search by alert id/i),
-      { target: { value: 'ALERT-1' } },
-    );
+    fireEvent.change(screen.getByPlaceholderText(/search by alert id/i), {
+      target: { value: 'ALERT-1' },
+    });
     expect(onFilterChange).toHaveBeenCalledWith('query', 'ALERT-1');
 
     await userEvent.click(screen.getByRole('button', { name: /filters/i }));
@@ -94,4 +93,3 @@ describe('AlertsSearchAndFilters', () => {
     expect(onCustomDateRangeChange).toHaveBeenCalledTimes(2);
   });
 });
-

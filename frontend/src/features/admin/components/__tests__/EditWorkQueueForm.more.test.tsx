@@ -20,7 +20,11 @@ describe('EditWorkQueueForm thorough behaviors', () => {
 
   it('removes a role when the remove button is clicked', () => {
     render(
-      <EditWorkQueueForm queue={mockWorkQueue} onSave={() => {}} onCancel={() => {}} />
+      <EditWorkQueueForm
+        queue={mockWorkQueue}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />,
     );
 
     // Ensure initial role exists
@@ -38,7 +42,11 @@ describe('EditWorkQueueForm thorough behaviors', () => {
 
   it('removes a task type when the remove button is clicked', () => {
     render(
-      <EditWorkQueueForm queue={mockWorkQueue} onSave={() => {}} onCancel={() => {}} />
+      <EditWorkQueueForm
+        queue={mockWorkQueue}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />,
     );
 
     expect(screen.getByText('New Case')).toBeInTheDocument();
@@ -57,7 +65,13 @@ describe('EditWorkQueueForm thorough behaviors', () => {
 
   it('calls onSave with newly added role and task type included', () => {
     const onSave = vi.fn();
-    render(<EditWorkQueueForm queue={mockWorkQueue} onSave={onSave} onCancel={() => {}} />);
+    render(
+      <EditWorkQueueForm
+        queue={mockWorkQueue}
+        onSave={onSave}
+        onCancel={() => {}}
+      />,
+    );
 
     const selects = screen.getAllByRole('combobox');
     const roleSelect = selects[1];
@@ -68,8 +82,12 @@ describe('EditWorkQueueForm thorough behaviors', () => {
     fireEvent.change(taskSelect, { target: { value: 'AML Alert' } });
 
     // Change name/description to ensure values propagate
-    fireEvent.change(screen.getByLabelText('Queue Name'), { target: { value: 'Submitted Queue' } });
-    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Submitted Desc' } });
+    fireEvent.change(screen.getByLabelText('Queue Name'), {
+      target: { value: 'Submitted Queue' },
+    });
+    fireEvent.change(screen.getByLabelText('Description'), {
+      target: { value: 'Submitted Desc' },
+    });
 
     fireEvent.click(screen.getByText('Save Changes'));
 
@@ -83,7 +101,13 @@ describe('EditWorkQueueForm thorough behaviors', () => {
 
   it('calls onCancel when Cancel is clicked', () => {
     const onCancel = vi.fn();
-    render(<EditWorkQueueForm queue={mockWorkQueue} onSave={() => {}} onCancel={onCancel} />);
+    render(
+      <EditWorkQueueForm
+        queue={mockWorkQueue}
+        onSave={() => {}}
+        onCancel={onCancel}
+      />,
+    );
 
     fireEvent.click(screen.getByText('Cancel'));
     expect(onCancel).toHaveBeenCalled();

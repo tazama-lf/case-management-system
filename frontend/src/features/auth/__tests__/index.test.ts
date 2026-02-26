@@ -29,4 +29,3 @@ describe('auth/index.ts exports', () => {
     expect(module.Login).toBeDefined();
   });
 });
-

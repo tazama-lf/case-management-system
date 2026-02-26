@@ -43,7 +43,6 @@ export class TaskLifecycleService {
         await this.flowableService.handleCaseStatusChanged({
           caseId: existingTask.case_id,
           newStatus: CaseStatus.STATUS_10_ASSIGNED,
-          reason: `Case assigned to investigator ${assignedUserId} by user ${userId}`,
         });
 
         if (updatedCase.parent_id) {
@@ -131,7 +130,6 @@ export class TaskLifecycleService {
         await this.flowableService.handleCaseStatusChanged({
           caseId: existingTask.case_id,
           newStatus: CaseStatus.STATUS_10_ASSIGNED,
-          reason: `Case assigned to investigator ${assignedUserId}`,
         });
 
         if (updatedCase.parent_id) {
@@ -202,6 +200,9 @@ export class TaskLifecycleService {
     tenantId: string,
     reason: string,
   ): Promise<Task & { unassignmentReason: string }> {
+    if (!reason || reason.trim() === '') {
+      throw new BadRequestException('Reason for unassigning task is required');
+    }
     const existingTask = await this.taskRepository.findTaskById(taskId, tenantId);
     if (!existingTask) {
       throw new NotFoundException(`Task ${taskId} not found`);
@@ -250,7 +251,6 @@ export class TaskLifecycleService {
       await this.flowableService.handleCaseStatusChanged({
         caseId: existingTask.case_id,
         newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-        reason: `Task unassigned. Reason: ${reason}`,
       });
       await this.flowableService.handleTaskUnassigned({
         taskId,

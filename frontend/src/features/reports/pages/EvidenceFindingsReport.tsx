@@ -2,7 +2,7 @@ import React, { useState, Suspense, useEffect } from 'react';
 import {
   ExclamationCircleIcon,
   FunnelIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import EvidenceFindingsStatsCards from '../components/EvidenceFindingsStatsCards';
 import { useEvidenceFindings } from '@/features/reports/hooks/useReports';
@@ -21,18 +21,18 @@ import EvidenceCard from '@/features/reports/components/EvidenceCard';
 import { formatDate } from '@/shared/utils/dateUtils';
 
 const PaginationControls = React.lazy(
-  () => import('../../../shared/PaginationControls'),
+  async () => await import('../../../shared/PaginationControls'),
 );
 
 interface EvidenceFindingsReportProps {
   dateRange?:
-  | 'today'
-  | 'yesterday'
-  | 'last7'
-  | 'last30'
-  | 'last90'
-  | 'thisMonth'
-  | 'lastYear';
+    | 'today'
+    | 'yesterday'
+    | 'last7'
+    | 'last30'
+    | 'last90'
+    | 'thisMonth'
+    | 'lastYear';
 }
 
 const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
@@ -49,31 +49,43 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
   >('All');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
-  const { investigators, supervisors, fetchInvestigatorsList, fetchSupervisorsList, complianceOfficers, fetchComplianceOfficersList } = useInvestigatorSupervisorList();
+  const {
+    investigators,
+    supervisors,
+    fetchInvestigatorsList,
+    fetchSupervisorsList,
+    complianceOfficers,
+    fetchComplianceOfficersList,
+  } = useInvestigatorSupervisorList();
   const [expandedCaseId, setExpandedCaseId] = useState<string | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
-
   useEffect(() => {
-    if (investigators.length === 0)
+    if (investigators.length === 0) {
       fetchInvestigatorsList();
-    if (supervisors.length === 0)
+    }
+    if (supervisors.length === 0) {
       fetchSupervisorsList();
-    if (complianceOfficers.length === 0)
+    }
+    if (complianceOfficers.length === 0) {
       fetchComplianceOfficersList();
-
-
+    }
   }, []);
 
   const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
-
-    const compliance = complianceOfficers.find(i => i.id === assigneeName || i.id === assignee);
+    const compliance = complianceOfficers.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
     if (compliance) return `${compliance.firstName} ${compliance.lastName}`;
 
-    const inv = investigators.find(i => i.id === assigneeName || i.id === assignee);
+    const inv = investigators.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
     if (inv) return `${inv.firstName} ${inv.lastName}`;
 
-    const sup = supervisors.find(i => i.id === assigneeName || i.id === assignee);
+    const sup = supervisors.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
     if (sup) return `${sup.firstName} ${sup.lastName}`;
 
     return '';
@@ -129,12 +141,18 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
     setViewingId(actualEvidenceId);
 
     try {
-      console.log('[Evidence View] Starting view for:', { actualEvidenceId, filename });
+      console.log('[Evidence View] Starting view for:', {
+        actualEvidenceId,
+        filename,
+      });
 
       // Fetch the encrypted blob from CouchDB
       const blob = await evidenceService.viewEvidence(actualEvidenceId);
 
-      console.log('[Evidence View] Blob received:', { size: blob.size, type: blob.type });
+      console.log('[Evidence View] Blob received:', {
+        size: blob.size,
+        type: blob.type,
+      });
 
       if (blob.size === 0) {
         throw new Error('Received empty file');
@@ -153,7 +171,7 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
         'text/plain',
         'text/html',
         'text/csv',
-      ].some(type => mimeType.includes(type));
+      ].some((type) => mimeType.includes(type));
 
       // Create blob URL
       const blobUrl = URL.createObjectURL(blob);
@@ -165,7 +183,7 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
       } else {
         // For non-previewable files, inform user and offer download
         const shouldDownload = confirm(
-          `This file type (${mimeType}) cannot be previewed in the browser.\n\nWould you like to download it instead?`
+          `This file type (${mimeType}) cannot be previewed in the browser.\n\nWould you like to download it instead?`,
         );
 
         if (shouldDownload) {
@@ -194,7 +212,8 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
       }
     } catch (err) {
       console.error('[Evidence View] Error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unknown error occurred';
       alert(`Failed to view evidence: ${errorMessage}`);
     } finally {
       setViewingId(null);
@@ -209,9 +228,13 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
 
       // First get the evidence metadata to get the real filename
       const metadata = await evidenceService.getEvidenceById(evidenceId);
-      const downloadFilename = metadata.fileName || metadata.attachments?.[0]?.fileName || 'evidence';
+      const downloadFilename =
+        metadata.fileName || metadata.attachments?.[0]?.fileName || 'evidence';
 
-      console.log('[Evidence Download] Fetching file blob for:', downloadFilename);
+      console.log(
+        '[Evidence Download] Fetching file blob for:',
+        downloadFilename,
+      );
 
       // Use evidenceService to download with proper auth handling
       const blob = await evidenceService.downloadEvidence(evidenceId);
@@ -220,7 +243,11 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
         throw new Error('Received empty file from server');
       }
 
-      console.log('[Evidence Download] Blob received, size:', blob.size, 'bytes');
+      console.log(
+        '[Evidence Download] Blob received, size:',
+        blob.size,
+        'bytes',
+      );
 
       // Create blob URL
       const blobUrl = window.URL.createObjectURL(blob);
@@ -246,7 +273,8 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
       console.log('[Evidence Download] ✓ Download started successfully');
     } catch (err) {
       console.error('[Evidence Download] Download failed:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unknown error occurred';
       alert(`Failed to download file: ${errorMessage}`);
     } finally {
       setDownloadingId(null);
@@ -269,7 +297,10 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
   const filteredFindings = (findings || []).filter((finding: FindingDetail) => {
     const matchesSearch =
       finding.finding.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      finding.caseId.toString().toLowerCase().includes(searchTerm.toLowerCase());
+      finding.caseId
+        .toString()
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === 'All' || finding.conclusion === statusFilter;
     return matchesSearch && matchesStatus;
@@ -307,9 +338,8 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
   };
 
   // Helper to generate unique ID for each finding
-  const getUniqueFindingId = (caseId: number, finding: string) => {
-    return `${caseId}-${finding}`;
-  };
+  const getUniqueFindingId = (caseId: number, finding: string) =>
+    `${caseId}-${finding}`;
 
   if (isLoading) {
     return (
@@ -449,7 +479,9 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                         type="text"
                         placeholder="Search findings, cases, or conclusions..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) => {
+                          setSearchTerm(e.target.value);
+                        }}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -458,7 +490,15 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                     <div className="relative">
                       <select
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value as 'All' | 'Confirmed' | 'Refuted' | 'Inconclusive')}
+                        onChange={(e) => {
+                          setStatusFilter(
+                            e.target.value as
+                              | 'All'
+                              | 'Confirmed'
+                              | 'Refuted'
+                              | 'Inconclusive',
+                          );
+                        }}
                         className="appearance-none bg-white border border-gray-300 rounded-lg py-2 pl-3 pr-8 text-sm leading-5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="All">All Statuses</option>
@@ -492,25 +532,39 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                 <div className="divide-y divide-gray-200">
                   {paginatedFindings.length > 0 ? (
                     paginatedFindings.map((finding) => {
-                      const caseUniqueId = getUniqueFindingId(finding.caseId, finding.finding);
+                      const caseUniqueId = getUniqueFindingId(
+                        finding.caseId,
+                        finding.finding,
+                      );
                       const isCaseExpanded = expandedCaseId === caseUniqueId;
 
                       return (
-                        <div key={caseUniqueId} className="p-6 hover:bg-gray-50/50 transition-colors">
+                        <div
+                          key={caseUniqueId}
+                          className="p-6 hover:bg-gray-50/50 transition-colors"
+                        >
                           {/* Case Header */}
                           <div
                             className="cursor-pointer flex justify-between items-start"
-                            onClick={() => setExpandedCaseId(isCaseExpanded ? null : caseUniqueId)}
+                            onClick={() => {
+                              setExpandedCaseId(
+                                isCaseExpanded ? null : caseUniqueId,
+                              );
+                            }}
                           >
                             <div>
-                              <h4 className="font-medium text-gray-900">{finding.finding}</h4>
+                              <h4 className="font-medium text-gray-900">
+                                {finding.finding}
+                              </h4>
                               <p className="text-xs text-gray-500 mt-1">
                                 Date: {formatDate(finding.dateIdentified)}
                               </p>
                             </div>
 
                             <div className="flex gap-4 items-center">
-                              <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(finding.conclusion)}`}>
+                              <span
+                                className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(finding.conclusion)}`}
+                              >
                                 {finding.conclusion}
                               </span>
                               <span className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded-full">
@@ -524,38 +578,54 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                             <div className="mt-4 space-y-4 border-t border-gray-200 pt-4">
                               {finding.tasks.map((task) => {
                                 const taskUniqueId = `task-${finding.caseId}-${task.taskId}`;
-                                const isTaskExpanded = expandedTaskId === taskUniqueId;
+                                const isTaskExpanded =
+                                  expandedTaskId === taskUniqueId;
 
                                 return (
                                   <div key={taskUniqueId} className="space-y-2">
                                     {/* Task Header */}
                                     <div
                                       className="cursor-pointer flex justify-between items-center bg-gray-100 p-2 rounded"
-                                      onClick={() =>
-                                        setExpandedTaskId(isTaskExpanded ? null : taskUniqueId)
-                                      }
+                                      onClick={() => {
+                                        setExpandedTaskId(
+                                          isTaskExpanded ? null : taskUniqueId,
+                                        );
+                                      }}
                                     >
-                                      <span className="text-sm font-medium">Task ID: {task.taskId}</span>
+                                      <span className="text-sm font-medium">
+                                        Task ID: {task.taskId}
+                                      </span>
                                       <span className="text-xs font-medium bg-gray-200 px-2 py-1 rounded">
-                                        {task.supportingEvidence.length} evidence
+                                        {task.supportingEvidence.length}{' '}
+                                        evidence
                                       </span>
                                     </div>
 
                                     {/* Expanded Task → Supporting Evidence */}
                                     {isTaskExpanded && (
                                       <div className="mt-2 space-y-3">
-                                        {task.supportingEvidence.map((evidence, idx) => (
-                                          <EvidenceCard
-                                            key={idx}
-                                            evidence={evidence}
-                                            viewingId={viewingId}
-                                            downloadingId={downloadingId}
-                                            handleViewEvidence={handleViewEvidence}
-                                            handleDownloadEvidence={handleDownloadEvidence}
-                                            getAssigneeFullName={getAssigneeFullName}
-                                            formatFileSize={evidenceService.formatFileSize}
-                                          />
-                                        ))}
+                                        {task.supportingEvidence.map(
+                                          (evidence, idx) => (
+                                            <EvidenceCard
+                                              key={idx}
+                                              evidence={evidence}
+                                              viewingId={viewingId}
+                                              downloadingId={downloadingId}
+                                              handleViewEvidence={
+                                                handleViewEvidence
+                                              }
+                                              handleDownloadEvidence={
+                                                handleDownloadEvidence
+                                              }
+                                              getAssigneeFullName={
+                                                getAssigneeFullName
+                                              }
+                                              formatFileSize={
+                                                evidenceService.formatFileSize
+                                              }
+                                            />
+                                          ),
+                                        )}
                                       </div>
                                     )}
                                   </div>

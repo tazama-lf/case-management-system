@@ -3,7 +3,7 @@ import { CaseRepository } from 'src/modules/repository/case.repository';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from 'src/modules/task/task.service';
-import { CaseStatus, TaskStatus } from '@prisma/client-cms';
+import { CaseCreationType, CaseStatus, TaskStatus } from '@prisma/client-cms';
 import { CANDIDATE_GROUPS, TASK_NAMES, VALIDATION_LENGTHS, REOPENABLE_CASE_STATUSES } from '../../../constants/case.constants';
 import { ConflictException } from '@nestjs/common/exceptions/conflict.exception';
 import { determineOriginalClosedStatus, isInvestigatorRole } from '../../../utils/helperFunction';
@@ -13,6 +13,7 @@ import { Outcome } from '../../../utils/types/outcome';
 import { FlowableService } from '../../flowable/flowable.service';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
+
 @Injectable()
 export class CaseReopeningService {
   constructor(
@@ -46,6 +47,16 @@ export class CaseReopeningService {
           `Reason for reopening case is required and must be at least ${VALIDATION_LENGTHS.MIN_REOPENING_REASON} characters`,
         );
       }
+
+      // If this is a child case, validate parent case is also reopenable
+      // if (existingCase.parent_id) {
+      //   const parentCase = await this.caseQueryService.retrieveCase(existingCase.parent_id, tenantId);
+      //   if (!REOPENABLE_CASE_STATUSES.includes(parentCase.status)) {
+      //     throw new BadRequestException(
+      //       `Cannot reopen child case ${caseId} because parent case ${existingCase.parent_id} is not in a valid reopenable state`,
+      //     );
+      //   }
+      // }
 
       const isSupervisor = role === 'CMS_SUPERVISOR';
 
@@ -82,10 +93,13 @@ export class CaseReopeningService {
           tenantId,
         );
 
-        this.flowableService.handleCaseStatusChanged({
+        this.flowableService.handleCaseCreated({
           caseId,
-          newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          reason: `Case reopening requested: ${reason}`,
+          tenantId,
+          caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          creationType: CaseCreationType.MANUAL,
+          creatorRole: 'SUPERVISOR',
+          isReopened: true,
         });
 
         await this.loggingOrchestrationService.logActionsWithHistory(
@@ -153,10 +167,13 @@ export class CaseReopeningService {
         return { case: updatedCase, approvalTask };
       });
 
-      this.flowableService.handleCaseStatusChanged({
+      this.flowableService.handleCaseCreated({
         caseId,
-        newStatus: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
-        reason: `Case reopening requested: ${reason}`,
+        tenantId,
+        caseStatus: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
+        creationType: CaseCreationType.MANUAL,
+        creatorRole: 'INVESTIGATOR',
+        isReopened: true,
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -193,7 +210,7 @@ export class CaseReopeningService {
       throw error;
     }
   }
-  c;
+
   async approveCaseReopening(caseId: number, supervisorId: string, tenantId: string) {
     try {
       this.logger.log(`Supervisor ${supervisorId} approving case reopening for ${caseId}`, CaseReopeningService.name);
@@ -322,7 +339,6 @@ export class CaseReopeningService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: newCaseStatus,
-        reason: 'Case reopening approved',
       });
 
       if (assignedUserId) {
@@ -488,7 +504,6 @@ export class CaseReopeningService {
       this.flowableService.handleCaseStatusChanged({
         caseId,
         newStatus: originalClosedStatus,
-        reason: `Case reopening rejected: ${rejectionReason}`,
       });
 
       if (requesterId) {

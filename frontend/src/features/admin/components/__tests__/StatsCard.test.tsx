@@ -21,4 +21,3 @@ describe('StatsCard', () => {
     expect(iconWrapper?.className).toContain('text-white');
   });
 });
-

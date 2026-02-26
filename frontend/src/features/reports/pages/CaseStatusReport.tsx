@@ -5,19 +5,33 @@ import ReportStatsCards from '@/features/reports/components/ReportStatsCards';
 import ReportFilters from '@/features/reports/components/ReportFilters';
 import ReportsTable from '@/features/reports/components/ReportsTable';
 import { useReports } from '@/features/reports/hooks/useReports';
-import { exportToExcel, exportToCSV, exportToPDF, formatDataForExport, getColumnsForReport } from '@/shared/utils/exportUtils';
+import {
+  exportToExcel,
+  exportToCSV,
+  exportToPDF,
+  formatDataForExport,
+  getColumnsForReport,
+} from '@/shared/utils/exportUtils';
 import { getCaseTypeColor } from '@/shared/utils/colors';
 
+const PieChart = lazy(
+  async () => await import('@/features/reports/components/PieChart'),
+);
+const BarChart = lazy(
+  async () => await import('@/features/reports/components/BarChart'),
+);
+const MultiBarChart = lazy(
+  async () => await import('@/features/reports/components/MultiBarChart'),
+);
 
-const PieChart = lazy(() => import('@/features/reports/components/PieChart'));
-const BarChart = lazy(() => import('@/features/reports/components/BarChart'));
-const MultiBarChart = lazy(() => import('@/features/reports/components/MultiBarChart'));
-
-
-const InvestigatorWorkloadReport = lazy(() => import('./InvestigatorWorkloadReport'));
-const AuditLogsReport = lazy(() => import('./AuditLogsReport'));
-const CaseAgeingReport = lazy(() => import('./CaseAgeingReport'));
-const EvidenceFindingsReport = lazy(() => import('./EvidenceFindingsReport'));
+const InvestigatorWorkloadReport = lazy(
+  async () => await import('./InvestigatorWorkloadReport'),
+);
+const AuditLogsReport = lazy(async () => await import('./AuditLogsReport'));
+const CaseAgeingReport = lazy(async () => await import('./CaseAgeingReport'));
+const EvidenceFindingsReport = lazy(
+  async () => await import('./EvidenceFindingsReport'),
+);
 
 type ReportType =
   | 'CASE_STATUS'
@@ -28,9 +42,25 @@ type ReportType =
 
 const Reports: React.FC = () => {
   const [reportType, setReportType] = useState<ReportType>('CASE_STATUS');
-  const [dateRange, setDateRange] = useState<'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastYear'>('last30');
-  const [filters, setFilters] = useState({ caseType: '', priority: '', investigator: '' });
-  const { data: reportsData, isLoading, error } = useReports(dateRange, filters);
+  const [dateRange, setDateRange] = useState<
+    | 'today'
+    | 'yesterday'
+    | 'last7'
+    | 'last30'
+    | 'last90'
+    | 'thisMonth'
+    | 'lastYear'
+  >('last30');
+  const [filters, setFilters] = useState({
+    caseType: '',
+    priority: '',
+    investigator: '',
+  });
+  const {
+    data: reportsData,
+    isLoading,
+    error,
+  } = useReports(dateRange, filters);
 
   const handleExportExcel = () => {
     try {
@@ -70,7 +100,11 @@ const Reports: React.FC = () => {
     }
   };
 
-  const handleApplyFilters = (newFilters: { caseType: string; priority: string; investigator: string }) => {
+  const handleApplyFilters = (newFilters: {
+    caseType: string;
+    priority: string;
+    investigator: string;
+  }) => {
     setFilters(newFilters);
   };
 
@@ -90,7 +124,6 @@ const Reports: React.FC = () => {
         return [];
     }
   };
-
 
   if (isLoading) {
     return (
@@ -122,16 +155,37 @@ const Reports: React.FC = () => {
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
           <div className="flex items-center">
             <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
-            <p className="text-red-700">Failed to load reports data. Please try again.</p>
+            <p className="text-red-700">
+              Failed to load reports data. Please try again.
+            </p>
           </div>
         </div>
       </PageContainer>
     );
   }
 
-  const { stats, statusDistribution, caseTypes, outcomes, monthlyTrend, statusDetails } = reportsData || {
-    stats: { totalCases: 0, closedCases: 0, openCases: 0, avgResolutionTime: 0 },
-    statusDistribution: { assigned: 0, inProgress: 0, draft: 0, suspended: 0, pendingApproval: 0, closed: 0 },
+  const {
+    stats,
+    statusDistribution,
+    caseTypes,
+    outcomes,
+    monthlyTrend,
+    statusDetails,
+  } = reportsData || {
+    stats: {
+      totalCases: 0,
+      closedCases: 0,
+      openCases: 0,
+      avgResolutionTime: 0,
+    },
+    statusDistribution: {
+      assigned: 0,
+      inProgress: 0,
+      draft: 0,
+      suspended: 0,
+      pendingApproval: 0,
+      closed: 0,
+    },
     caseTypes: [],
     outcomes: { resolved: 0, confirmed: 0, inconclusive: 0, pending: 0 },
     monthlyTrend: [],
@@ -139,13 +193,43 @@ const Reports: React.FC = () => {
   };
 
   const statusDistributionData = [
-    { label: 'ASSIGNED', value: statusDistribution.assigned, color: '#3b82f6', percentage: 0 },
-    { label: 'IN PROGRESS', value: statusDistribution.inProgress, color: '#10b981', percentage: 0 },
-    { label: 'DRAFT', value: statusDistribution.draft, color: '#f59e0b', percentage: 0 },
-    { label: 'SUSPENDED', value: statusDistribution.suspended, color: '#ef4444', percentage: 0 },
-    { label: 'PENDING APPROVAL', value: statusDistribution.pendingApproval, color: '#8b5cf6', percentage: 0 },
-    { label: 'CLOSED', value: statusDistribution.closed, color: '#6b7280', percentage: 0 }
-  ].map(item => ({
+    {
+      label: 'ASSIGNED',
+      value: statusDistribution.assigned,
+      color: '#3b82f6',
+      percentage: 0,
+    },
+    {
+      label: 'IN PROGRESS',
+      value: statusDistribution.inProgress,
+      color: '#10b981',
+      percentage: 0,
+    },
+    {
+      label: 'DRAFT',
+      value: statusDistribution.draft,
+      color: '#f59e0b',
+      percentage: 0,
+    },
+    {
+      label: 'SUSPENDED',
+      value: statusDistribution.suspended,
+      color: '#ef4444',
+      percentage: 0,
+    },
+    {
+      label: 'PENDING APPROVAL',
+      value: statusDistribution.pendingApproval,
+      color: '#8b5cf6',
+      percentage: 0,
+    },
+    {
+      label: 'CLOSED',
+      value: statusDistribution.closed,
+      color: '#6b7280',
+      percentage: 0,
+    },
+  ].map((item) => ({
     ...item,
     percentage:
       stats.totalCases > 0 ? (item.value / stats.totalCases) * 100 : 0,
@@ -156,15 +240,39 @@ const Reports: React.FC = () => {
   console.log('Debug - outcomes:', outcomes);
 
   // Improved outcome data processing with better fallbacks
-  const totalOutcomes = (outcomes?.resolved || 0) + (outcomes?.confirmed || 0) + (outcomes?.inconclusive || 0) + (outcomes?.pending || 0);
+  const totalOutcomes =
+    (outcomes?.resolved || 0) +
+    (outcomes?.confirmed || 0) +
+    (outcomes?.inconclusive || 0) +
+    (outcomes?.pending || 0);
   const outcomeData = [
-    { label: 'REFUTED', value: outcomes?.resolved || 0, color: '#10b981', percentage: 0 },
-    { label: 'CONFIRMED', value: outcomes?.confirmed || 0, color: '#ef4444', percentage: 0 },
-    { label: 'INCONCLUSIVE', value: outcomes?.inconclusive || 0, color: '#f59e0b', percentage: 0 },
-    { label: 'PENDING', value: outcomes?.pending || 0, color: '#3b82f6', percentage: 0 }
-  ].map(item => ({
+    {
+      label: 'REFUTED',
+      value: outcomes?.resolved || 0,
+      color: '#10b981',
+      percentage: 0,
+    },
+    {
+      label: 'CONFIRMED',
+      value: outcomes?.confirmed || 0,
+      color: '#ef4444',
+      percentage: 0,
+    },
+    {
+      label: 'INCONCLUSIVE',
+      value: outcomes?.inconclusive || 0,
+      color: '#f59e0b',
+      percentage: 0,
+    },
+    {
+      label: 'PENDING',
+      value: outcomes?.pending || 0,
+      color: '#3b82f6',
+      percentage: 0,
+    },
+  ].map((item) => ({
     ...item,
-    percentage: totalOutcomes > 0 ? (item.value / totalOutcomes) * 100 : 0
+    percentage: totalOutcomes > 0 ? (item.value / totalOutcomes) * 100 : 0,
   }));
 
   console.log('Debug - totalOutcomes:', totalOutcomes);
@@ -205,10 +313,7 @@ const Reports: React.FC = () => {
   };
 
   return (
-    <PageContainer
-      title={getPageTitle()}
-      subtitle={getPageSubtitle()}
-    >
+    <PageContainer title={getPageTitle()} subtitle={getPageSubtitle()}>
       <ReportFilters
         reportType={reportType}
         dateRange={dateRange}
@@ -220,19 +325,31 @@ const Reports: React.FC = () => {
         <>
           <ReportStatsCards stats={stats} />
           <div className="grid grid-cols-2 gap-8 mb-8">
-            <Suspense fallback={<div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center"><span className="text-gray-500">Loading chart...</span></div>}>
+            <Suspense
+              fallback={
+                <div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
+                  <span className="text-gray-500">Loading chart...</span>
+                </div>
+              }
+            >
               <PieChart
                 data={statusDistributionData}
                 title="Case Status Distribution"
                 isLoading={isLoading}
               />
             </Suspense>
-            <Suspense fallback={<div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center"><span className="text-gray-500">Loading chart...</span></div>}>
+            <Suspense
+              fallback={
+                <div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
+                  <span className="text-gray-500">Loading chart...</span>
+                </div>
+              }
+            >
               <BarChart
-                data={caseTypes.map(type => ({
+                data={caseTypes.map((type) => ({
                   label: type.name,
                   value: type.count,
-                  color: getCaseTypeColor(type.name)
+                  color: getCaseTypeColor(type.name),
                 }))}
                 title="Case Types"
                 isLoading={isLoading}
@@ -240,19 +357,31 @@ const Reports: React.FC = () => {
             </Suspense>
           </div>
           <div className="grid grid-cols-2 gap-8 mb-8">
-            <Suspense fallback={<div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center"><span className="text-gray-500">Loading chart...</span></div>}>
+            <Suspense
+              fallback={
+                <div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
+                  <span className="text-gray-500">Loading chart...</span>
+                </div>
+              }
+            >
               <PieChart
                 data={outcomeData}
                 title="Case Outcomes"
                 isLoading={isLoading}
               />
             </Suspense>
-            <Suspense fallback={<div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center"><span className="text-gray-500">Loading chart...</span></div>}>
+            <Suspense
+              fallback={
+                <div className="h-80 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
+                  <span className="text-gray-500">Loading chart...</span>
+                </div>
+              }
+            >
               <MultiBarChart
-                data={monthlyTrend.map(trend => ({
+                data={monthlyTrend.map((trend) => ({
                   label: trend.month,
                   casesCreated: trend.casesCreated,
-                  casesClosed: trend.casesClosed
+                  casesClosed: trend.casesClosed,
                 }))}
                 title="Monthly Case Trends"
                 isLoading={isLoading}
@@ -271,17 +400,13 @@ const Reports: React.FC = () => {
 
       {reportType === 'AUDIT_LOGS' && (
         <Suspense fallback={<div>Loading Audit Logs Report...</div>}>
-          <AuditLogsReport
-            dateRange={dateRange}
-          />
+          <AuditLogsReport dateRange={dateRange} />
         </Suspense>
       )}
 
       {reportType === 'CASE_AGEING' && (
         <Suspense fallback={<div>Loading Case Ageing Report...</div>}>
-          <CaseAgeingReport
-            dateRange={dateRange}
-          />
+          <CaseAgeingReport dateRange={dateRange} />
         </Suspense>
       )}
 

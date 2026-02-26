@@ -50,8 +50,8 @@ describe('Auth Types', () => {
         fullName: 'John Doe',
         tenantName: 'Test Tenant',
         validatedClaims: {
-          'CMS_INVESTIGATOR': true,
-          'CMS_SUPERVISOR': false,
+          CMS_INVESTIGATOR: true,
+          CMS_SUPERVISOR: false,
         },
       };
       expect(user.userId).toBe('user-1');
@@ -189,4 +189,3 @@ describe('Auth Types', () => {
     });
   });
 });
-

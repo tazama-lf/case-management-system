@@ -26,7 +26,12 @@ describe('ResolutionEfficiencyChart', () => {
   ];
 
   it('renders chart with data', () => {
-    render(<ResolutionEfficiencyChart data={mockData} title="Resolution Efficiency" />);
+    render(
+      <ResolutionEfficiencyChart
+        data={mockData}
+        title="Resolution Efficiency"
+      />,
+    );
 
     expect(screen.getByText('Resolution Efficiency')).toBeInTheDocument();
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
@@ -34,40 +39,74 @@ describe('ResolutionEfficiencyChart', () => {
   });
 
   it('renders empty state when data is empty', () => {
-    render(<ResolutionEfficiencyChart data={[]} title="Resolution Efficiency" />);
+    render(
+      <ResolutionEfficiencyChart data={[]} title="Resolution Efficiency" />,
+    );
 
     expect(screen.getByText('Resolution Efficiency')).toBeInTheDocument();
-    expect(screen.getByText('No efficiency data available')).toBeInTheDocument();
+    expect(
+      screen.getByText('No efficiency data available'),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('bar-chart')).not.toBeInTheDocument();
   });
 
   it('renders empty state when data is null', () => {
-    render(<ResolutionEfficiencyChart data={null as any} title="Resolution Efficiency" />);
+    render(
+      <ResolutionEfficiencyChart
+        data={null as any}
+        title="Resolution Efficiency"
+      />,
+    );
 
-    expect(screen.getByText('No efficiency data available')).toBeInTheDocument();
+    expect(
+      screen.getByText('No efficiency data available'),
+    ).toBeInTheDocument();
   });
 
   it('renders empty state when data is undefined', () => {
-    render(<ResolutionEfficiencyChart data={undefined as any} title="Resolution Efficiency" />);
+    render(
+      <ResolutionEfficiencyChart
+        data={undefined as any}
+        title="Resolution Efficiency"
+      />,
+    );
 
-    expect(screen.getByText('No efficiency data available')).toBeInTheDocument();
+    expect(
+      screen.getByText('No efficiency data available'),
+    ).toBeInTheDocument();
   });
 
   it('applies custom height', () => {
-    render(<ResolutionEfficiencyChart data={mockData} title="Resolution Efficiency" height={400} />);
+    render(
+      <ResolutionEfficiencyChart
+        data={mockData}
+        title="Resolution Efficiency"
+        height={400}
+      />,
+    );
 
     const container = screen.getByTestId('responsive-container');
     expect(container).toBeInTheDocument();
   });
 
   it('renders with default height when not provided', () => {
-    render(<ResolutionEfficiencyChart data={mockData} title="Resolution Efficiency" />);
+    render(
+      <ResolutionEfficiencyChart
+        data={mockData}
+        title="Resolution Efficiency"
+      />,
+    );
 
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
 
   it('renders all chart elements', () => {
-    render(<ResolutionEfficiencyChart data={mockData} title="Resolution Efficiency" />);
+    render(
+      <ResolutionEfficiencyChart
+        data={mockData}
+        title="Resolution Efficiency"
+      />,
+    );
 
     expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
     expect(screen.getByTestId('bar')).toBeInTheDocument();
@@ -77,4 +116,3 @@ describe('ResolutionEfficiencyChart', () => {
     expect(screen.getByTestId('tooltip')).toBeInTheDocument();
   });
 });
-

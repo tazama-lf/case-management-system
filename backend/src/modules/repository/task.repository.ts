@@ -11,47 +11,39 @@ export class TaskRepository extends BaseRepository {
 
   /* ------------------------------ Task Queries ------------------------------ */
   async findTaskById(taskId: number, tenantId: string, tx?: Prisma.TransactionClient): Promise<Task | null> {
-    try {
-      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
-      const task = await client.task.findUnique({
-        where: {
-          task_id: taskId,
-          tenant_id: tenantId,
-        },
-      });
-      return task;
-    } catch (error) {
-      throw error;
-    }
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
+    const task = await client.task.findUnique({
+      where: {
+        task_id: taskId,
+        tenant_id: tenantId,
+      },
+    });
+    return task;
   }
 
   async findTaskWithCase(taskId: number, tenantId: string, tx?: Prisma.TransactionClient) {
-    try {
-      const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
-      const task = await client.task.findUnique({
-        where: {
-          task_id: taskId,
-          tenant_id: tenantId,
-        },
-        include: {
-          case: {
-            select: {
-              case_id: true,
-              status: true,
-              case_owner_user_id: true,
-              priority: true,
-              created_at: true,
-            },
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
+    const task = await client.task.findUnique({
+      where: {
+        task_id: taskId,
+        tenant_id: tenantId,
+      },
+      include: {
+        case: {
+          select: {
+            case_id: true,
+            status: true,
+            case_owner_user_id: true,
+            priority: true,
+            created_at: true,
           },
-          comments: { orderBy: { created_at: 'desc' } },
         },
-      });
+        comments: { orderBy: { created_at: 'desc' } },
+      },
+    });
 
-      if (!task) throw new NotFoundException(`Task ${taskId} not found`);
-      return task;
-    } catch (error) {
-      throw error;
-    }
+    if (!task) throw new NotFoundException(`Task ${taskId} not found`);
+    return task;
   }
 
   async findTasks(

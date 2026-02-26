@@ -15,24 +15,26 @@ export class NatsStartupService implements OnModuleInit {
     private readonly processAlertService: ProcessAlertService,
   ) {}
 
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     try {
       const { StartupFactory } = await import('@tazama-lf/frms-coe-startup-lib');
       this.startupService = new StartupFactory();
       this.logger.log('NATS Relay Plugin initialized', NatsStartupService.name);
       await this.startupService.init(this.handleMessage.bind(this), this.logger);
     } catch (error) {
-      throw error as Error;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to initialize NATS Relay Plugin : ${errorMessage}`, NatsStartupService.name);
+      throw error;
     }
   }
 
-  async handleMessage(req: IngestAlertDto) {
+  async handleMessage(req: IngestAlertDto): Promise<void> {
     const tenantId = req.transaction.TenantId || 'DEFAULT';
-    const systemId = this.configService.get<string>('SYSTEM_UUID');
+    const systemId = this.configService.get<string>('SYSTEM_UUID') ?? 'f62edd31-3d72-4ec7-a0b7-cf2f0b0747a9';
     this.logger.log(`Request: ${JSON.stringify(req)}`, NatsStartupService.name);
 
     try {
-      await this.processAlertService.processIncomingAlert(req, 'NATS', systemId!, tenantId);
+      await this.processAlertService.processIncomingAlert(req, 'NATS', systemId, tenantId);
       this.logger.log(`Alert ingested from NATS for tenant: ${tenantId}`, NatsStartupService.name);
     } catch (err) {
       this.logger.error(

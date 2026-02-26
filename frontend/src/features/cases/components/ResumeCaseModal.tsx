@@ -13,7 +13,7 @@ const ResumeCaseModal: React.FC<ResumeCaseModalProps> = ({
   open,
   onClose,
   onResume,
-  caseData
+  caseData,
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,9 +57,7 @@ const ResumeCaseModal: React.FC<ResumeCaseModalProps> = ({
               <h3 className="text-lg font-semibold text-gray-900">
                 Resume Case
               </h3>
-              <p className="text-sm text-gray-600">
-                Case ID: {caseData?.id}
-              </p>
+              <p className="text-sm text-gray-600">Case ID: {caseData?.id}</p>
             </div>
           </div>
           <button
@@ -73,25 +71,35 @@ const ResumeCaseModal: React.FC<ResumeCaseModalProps> = ({
 
         <div className="px-6 pb-4">
           <p className="text-sm text-gray-700 mb-4">
-            Resuming this case will move it back to "In Progress" status.
-            The investigation task will be unblocked and assigned to the investigator.
+            Resuming this case will move it back to "In Progress" status. The
+            investigation task will be unblocked and assigned to the
+            investigator.
           </p>
 
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> All team members will be notified of the case resumption.
+              <strong>Note:</strong> All team members will be notified of the
+              case resumption.
             </p>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
-              <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for resumption <span className="text-red-500">*</span><span className="text-xs text-gray-500 ml-2">(minimum 4 characters)</span>
+              <label
+                htmlFor="reason"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Reason for resumption <span className="text-red-500">*</span>
+                <span className="text-xs text-gray-500 ml-2">
+                  (minimum 4 characters)
+                </span>
               </label>
               <textarea
                 id="reason"
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                onChange={(e) => {
+                  setReason(e.target.value);
+                }}
                 rows={4}
                 maxLength={500}
                 required
@@ -102,10 +110,11 @@ const ResumeCaseModal: React.FC<ResumeCaseModalProps> = ({
                 <p className="text-xs text-gray-500">
                   {reason.length}/4 characters minimum
                 </p>
-                <span className={`text-xs ${reason.length >= 500 ? 'text-red-500' : 'text-gray-500'}`}>
+                <span
+                  className={`text-xs ${reason.length >= 500 ? 'text-red-500' : 'text-gray-500'}`}
+                >
                   {reason.length}/500
                 </span>
-
               </div>
             </div>
 

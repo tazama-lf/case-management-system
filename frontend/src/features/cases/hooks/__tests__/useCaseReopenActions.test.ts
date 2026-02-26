@@ -26,7 +26,9 @@ describe('useCaseReopenActions', () => {
         case: { status: 'STATUS_10_ASSIGNED' },
         investigation_task: { task_id: 'TASK-123', assigned_to: 'user-1' },
       };
-      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(mockResponse);
+      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
@@ -35,7 +37,9 @@ describe('useCaseReopenActions', () => {
       await result.current.handleApproveReopenSubmit('CASE-123');
 
       await waitFor(() => {
-        expect(caseService.approveCaseReopening).toHaveBeenCalledWith('CASE-123');
+        expect(caseService.approveCaseReopening).toHaveBeenCalledWith(
+          'CASE-123',
+        );
         expect(mockSuccess).toHaveBeenCalledWith(
           'Case Reopening Approved',
           expect.stringContaining('STATUS_10_ASSIGNED'),
@@ -49,7 +53,9 @@ describe('useCaseReopenActions', () => {
         case: { status: 'STATUS_10_ASSIGNED' },
         investigation_task: { task_id: 'TASK-123' },
       };
-      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(mockResponse);
+      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
@@ -68,9 +74,14 @@ describe('useCaseReopenActions', () => {
     it('approves case reopening with STATUS_02_READY_FOR_ASSIGNMENT', async () => {
       const mockResponse = {
         case: { status: 'STATUS_02_READY_FOR_ASSIGNMENT' },
-        investigation_task: { task_id: 'TASK-123', candidateGroup: 'Investigations' },
+        investigation_task: {
+          task_id: 'TASK-123',
+          candidateGroup: 'Investigations',
+        },
       };
-      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(mockResponse);
+      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
@@ -91,7 +102,9 @@ describe('useCaseReopenActions', () => {
         case: { status: 'STATUS_31_REOPENED' },
         investigation_task: { task_id: 'TASK-123' },
       };
-      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(mockResponse);
+      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
@@ -111,7 +124,9 @@ describe('useCaseReopenActions', () => {
       const mockResponse = {
         case: { status: 'STATUS_10_ASSIGNED' },
       };
-      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(mockResponse);
+      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
@@ -125,7 +140,9 @@ describe('useCaseReopenActions', () => {
     });
 
     it('handles error when approval fails', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const error = new Error('Approval failed');
       (caseService.approveCaseReopening as vi.Mock).mockRejectedValue(error);
 
@@ -148,8 +165,12 @@ describe('useCaseReopenActions', () => {
     });
 
     it('handles non-Error rejection', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      (caseService.approveCaseReopening as vi.Mock).mockRejectedValue('String error');
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      (caseService.approveCaseReopening as vi.Mock).mockRejectedValue(
+        'String error',
+      );
 
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
@@ -175,7 +196,9 @@ describe('useCaseReopenActions', () => {
         case: { status: 'STATUS_82_CLOSED_CONFIRMED' },
         rejection_reason: 'Test reason',
       };
-      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(mockResponse);
+      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
@@ -184,7 +207,10 @@ describe('useCaseReopenActions', () => {
       await result.current.handleRejectReopenSubmit('CASE-123', 'Test reason');
 
       await waitFor(() => {
-        expect(caseService.rejectCaseReopening).toHaveBeenCalledWith('CASE-123', 'Test reason');
+        expect(caseService.rejectCaseReopening).toHaveBeenCalledWith(
+          'CASE-123',
+          'Test reason',
+        );
         expect(mockSuccess).toHaveBeenCalled();
         expect(mockRefreshCases).toHaveBeenCalled();
       });
@@ -195,7 +221,9 @@ describe('useCaseReopenActions', () => {
         case: { status: 'STATUS_82_CLOSED_CONFIRMED' },
         rejection_reason: 'Response reason',
       };
-      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(mockResponse);
+      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
@@ -216,7 +244,9 @@ describe('useCaseReopenActions', () => {
         case: { status: 'STATUS_82_CLOSED_CONFIRMED' },
         rejection_reason: 'Test reason',
       };
-      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(mockResponse);
+      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
@@ -237,7 +267,9 @@ describe('useCaseReopenActions', () => {
         case: { status: 'STATUS_71_AUTOCLOSED_CONFIRMED' },
         rejection_reason: 'Test reason',
       };
-      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(mockResponse);
+      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(
+        mockResponse,
+      );
 
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
@@ -254,7 +286,9 @@ describe('useCaseReopenActions', () => {
     });
 
     it('handles error when rejection fails', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const error = new Error('Rejection failed');
       (caseService.rejectCaseReopening as vi.Mock).mockRejectedValue(error);
 
@@ -277,8 +311,12 @@ describe('useCaseReopenActions', () => {
     });
 
     it('handles non-Error rejection', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      (caseService.rejectCaseReopening as vi.Mock).mockRejectedValue('String error');
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      (caseService.rejectCaseReopening as vi.Mock).mockRejectedValue(
+        'String error',
+      );
 
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
@@ -298,4 +336,3 @@ describe('useCaseReopenActions', () => {
     });
   });
 });
-

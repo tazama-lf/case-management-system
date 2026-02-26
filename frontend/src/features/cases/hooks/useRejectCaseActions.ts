@@ -1,4 +1,8 @@
-import { caseService, type RejectCaseCreationDto, type RejectCaseDto } from '../services/caseService';
+import {
+  caseService,
+  type RejectCaseCreationDto,
+  type RejectCaseDto,
+} from '../services/caseService';
 import { useToast } from '../../../shared/providers/ToastProvider';
 
 export const useRejectCaseActions = (refreshCases: () => Promise<void>) => {
@@ -7,23 +11,33 @@ export const useRejectCaseActions = (refreshCases: () => Promise<void>) => {
   const handleRejectCaseCreation = async (caseId: number, reason: string) => {
     try {
       const rejectCaseData: RejectCaseCreationDto = {
-        reason: reason.trim()
+        reason: reason.trim(),
       };
 
       await caseService.rejectCaseCreation(caseId, rejectCaseData);
 
-      success('Case Creation Rejected', `Case ${caseId} creation rejected. Reason: ${reason}`); await refreshCases();
+      success(
+        'Case Creation Rejected',
+        `Case ${caseId} creation rejected. Reason: ${reason}`,
+      );
+      await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not reject case creation.';
       const backendError = err instanceof Error ? err.message : '';
       if (backendError.includes('Approval task validation failed')) {
         errorMessage = `Cannot reject case creation. (${backendError})`;
-      } else if (backendError.includes('not found') || backendError.includes('404')) {
+      } else if (
+        backendError.includes('not found') ||
+        backendError.includes('404')
+      ) {
         errorMessage = `Case not found. (${backendError})`;
-      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+      } else if (
+        backendError.includes('Unauthorized') ||
+        backendError.includes('403')
+      ) {
         errorMessage = `Access denied. (${backendError})`;
       } else if (backendError) {
-        errorMessage = `${backendError}`;
+        errorMessage = backendError;
       }
       error('Reject Case Creation Failed', errorMessage);
       throw err;
@@ -33,45 +47,68 @@ export const useRejectCaseActions = (refreshCases: () => Promise<void>) => {
   const handleRejectCase = async (caseId: number, rejectionReason: string) => {
     try {
       const rejectCaseData: RejectCaseDto = {
-        rejectionReason: rejectionReason.trim()
+        rejectionReason: rejectionReason.trim(),
       };
 
       await caseService.rejectCase(caseId, rejectCaseData);
 
-      success('Case Rejected', `Case ${caseId} rejected. Reason: ${rejectionReason}`); await refreshCases();
+      success(
+        'Case Rejected',
+        `Case ${caseId} rejected. Reason: ${rejectionReason}`,
+      );
+      await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not reject case.';
       const backendError = err instanceof Error ? err.message : '';
       if (backendError.includes('Approval task validation failed')) {
         errorMessage = `Cannot reject case. (${backendError})`;
-      } else if (backendError.includes('not found') || backendError.includes('404')) {
+      } else if (
+        backendError.includes('not found') ||
+        backendError.includes('404')
+      ) {
         errorMessage = `Case not found. (${backendError})`;
-      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+      } else if (
+        backendError.includes('Unauthorized') ||
+        backendError.includes('403')
+      ) {
         errorMessage = `Access denied. (${backendError})`;
       } else if (backendError) {
-        errorMessage = `${backendError}`;
+        errorMessage = backendError;
       }
       error('Reject Case Failed', errorMessage);
       throw err;
     }
   };
 
-  const handleRejectReopening = async (caseId: number, rejectionReason: string) => {
+  const handleRejectReopening = async (
+    caseId: number,
+    rejectionReason: string,
+  ) => {
     try {
       await caseService.rejectCaseReopening(caseId, rejectionReason);
 
-      success('Case Reopening Rejected', `Case ${caseId} reopening rejected. Reason: ${rejectionReason}`); await refreshCases();
+      success(
+        'Case Reopening Rejected',
+        `Case ${caseId} reopening rejected. Reason: ${rejectionReason}`,
+      );
+      await refreshCases();
     } catch (err) {
       let errorMessage = 'Could not reject case reopening.';
       const backendError = err instanceof Error ? err.message : '';
       if (backendError.includes('Approval task validation failed')) {
         errorMessage = `Cannot reject case reopening. (${backendError})`;
-      } else if (backendError.includes('not found') || backendError.includes('404')) {
+      } else if (
+        backendError.includes('not found') ||
+        backendError.includes('404')
+      ) {
         errorMessage = `Case not found. (${backendError})`;
-      } else if (backendError.includes('Unauthorized') || backendError.includes('403')) {
+      } else if (
+        backendError.includes('Unauthorized') ||
+        backendError.includes('403')
+      ) {
         errorMessage = `Access denied. (${backendError})`;
       } else if (backendError) {
-        errorMessage = `${backendError}`;
+        errorMessage = backendError;
       }
       error('Reject Case Reopening Failed', errorMessage);
       throw err;

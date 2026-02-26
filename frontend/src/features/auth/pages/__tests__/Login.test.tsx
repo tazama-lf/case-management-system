@@ -50,13 +50,17 @@ describe('Login', () => {
 
     expect(screen.getByLabelText(/Login ID/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sign in/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Sign in/i }),
+    ).toBeInTheDocument();
   });
 
   it('renders Tazama branding', () => {
     renderLogin();
 
-    expect(screen.getByText('Tazama Case Management System')).toBeInTheDocument();
+    expect(
+      screen.getByText('Tazama Case Management System'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Investigation Platform')).toBeInTheDocument();
   });
 
@@ -110,7 +114,9 @@ describe('Login', () => {
     const user = userEvent.setup();
     renderLogin();
 
-    const passwordInput = screen.getByLabelText(/Password/i) as HTMLInputElement;
+    const passwordInput = screen.getByLabelText(
+      /Password/i,
+    ) as HTMLInputElement;
     const toggleButton = screen.getByRole('button', { name: '' }); // Icon button
 
     expect(passwordInput.type).toBe('password');
@@ -232,7 +238,9 @@ describe('Login', () => {
 
     renderLogin();
 
-    expect(screen.getByText(/Development Mode - Test Users/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Development Mode - Test Users/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Test User:/i)).toBeInTheDocument();
     expect(screen.getByText(/Supervisor:/i)).toBeInTheDocument();
 
@@ -263,7 +271,8 @@ describe('Login', () => {
   it('renders copyright notice', () => {
     renderLogin();
 
-    expect(screen.getByText(/© 2025 Tazama. All rights reserved./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/© 2025 Tazama. All rights reserved./i),
+    ).toBeInTheDocument();
   });
 });
-

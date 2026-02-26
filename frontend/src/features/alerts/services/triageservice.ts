@@ -11,8 +11,8 @@ import type {
 } from '../types/triage.types';
 
 class TriageService {
-  private baseUrl = '/api/v1/triage/alerts';
-  private alertBaseUrl = '/api/v1/alert';
+  private readonly baseUrl = '/api/v1/triage/alerts';
+  private readonly alertBaseUrl = '/api/v1/alert';
 
   private handleError(error: unknown, operation: string): Error {
     console.error(`TriageService Error - ${operation}:`, error);
@@ -85,7 +85,7 @@ class TriageService {
     const alerts = backendResponse.data || [];
 
     return {
-      alerts: alerts,
+      alerts,
       pagination: {
         currentPage: backendResponse.page || 1,
         totalPages: backendResponse.totalPages || 1,

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import InvestigatorPerformanceTable from '../InvestigatorPerformanceTable';
@@ -26,11 +27,12 @@ vi.mock('@/features/auth/services/authService', () => ({
 
 // Mock usePagination hook
 vi.mock('../../../shared/hooks/usePagination', () => {
-  const React = require('react');
   return {
     usePagination: ({ data, defaultItemsPerPage }: any) => {
       const [currentPage, setCurrentPage] = React.useState(1);
-      const [itemsPerPage, setItemsPerPage] = React.useState(defaultItemsPerPage || 10);
+      const [itemsPerPage, setItemsPerPage] = React.useState(
+        defaultItemsPerPage || 10,
+      );
       const totalPages = Math.ceil(data.length / itemsPerPage);
       const startIndex = (currentPage - 1) * itemsPerPage;
       const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
@@ -46,7 +48,10 @@ vi.mock('../../../shared/hooks/usePagination', () => {
         goToPreviousPage: () => setCurrentPage((p) => Math.max(p - 1, 1)),
         canGoNext: currentPage < totalPages,
         canGoPrevious: currentPage > 1,
-        pageRange: Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1),
+        pageRange: Array.from(
+          { length: Math.min(totalPages, 5) },
+          (_, i) => i + 1,
+        ),
       };
     },
   };
@@ -54,7 +59,6 @@ vi.mock('../../../shared/hooks/usePagination', () => {
 
 // Mock PaginationControls
 vi.mock('../../../shared/components/PaginationControls', () => {
-  const React = require('react');
   return {
     default: ({
       currentPage,
@@ -67,7 +71,9 @@ vi.mock('../../../shared/components/PaginationControls', () => {
         <button onClick={onPrevious} disabled={currentPage === 1}>
           Previous
         </button>
-        <span>Page {currentPage} of {totalPages}</span>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
         <button onClick={onNext} disabled={currentPage === totalPages}>
           Next
         </button>
@@ -118,7 +124,9 @@ describe('InvestigatorPerformanceTable', () => {
     );
 
     expect(screen.getByText('Investigator Performance')).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Investigator' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Investigator' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Role')).toBeInTheDocument();
     expect(screen.getByText('Active Cases')).toBeInTheDocument();
 
@@ -137,7 +145,9 @@ describe('InvestigatorPerformanceTable', () => {
     );
 
     expect(screen.getByText('Investigator Performance')).toBeInTheDocument();
-    expect(screen.getByText('No performance data available')).toBeInTheDocument();
+    expect(
+      screen.getByText('No performance data available'),
+    ).toBeInTheDocument();
   });
 
   it('renders empty state when data is null', () => {
@@ -149,7 +159,9 @@ describe('InvestigatorPerformanceTable', () => {
       />,
     );
 
-    expect(screen.getByText('No performance data available')).toBeInTheDocument();
+    expect(
+      screen.getByText('No performance data available'),
+    ).toBeInTheDocument();
   });
 
   it('displays investigator names from fetched data', async () => {
@@ -181,10 +193,10 @@ describe('InvestigatorPerformanceTable', () => {
     // Check for specific values in table cells
     const activeCasesCells = screen.getAllByText('10');
     expect(activeCasesCells.length).toBeGreaterThan(0);
-    
+
     const completedCasesCells = screen.getAllByText('25');
     expect(completedCasesCells.length).toBeGreaterThan(0);
-    
+
     expect(screen.getByText('12 days')).toBeInTheDocument();
     expect(screen.getByText('85%')).toBeInTheDocument();
   });
@@ -240,7 +252,9 @@ describe('InvestigatorPerformanceTable', () => {
       />,
     );
 
-    const exportButton = screen.getByRole('button', { name: /Export as Excel/i });
+    const exportButton = screen.getByRole('button', {
+      name: /Export as Excel/i,
+    });
     await user.click(exportButton);
 
     expect(onExportExcel).toHaveBeenCalledTimes(1);
@@ -308,7 +322,9 @@ describe('InvestigatorPerformanceTable', () => {
     });
 
     // Check for default role in table header, not in data
-    expect(screen.getByRole('columnheader', { name: 'Investigator' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Investigator' }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
     expect(screen.getByText('0 days')).toBeInTheDocument();
     expect(screen.getByText('0%')).toBeInTheDocument();
@@ -335,7 +351,9 @@ describe('InvestigatorPerformanceTable', () => {
         const pagination = screen.queryByTestId('pagination-controls');
         if (!pagination) {
           // If not found, verify the table rendered
-          expect(screen.getByText('Investigator Performance')).toBeInTheDocument();
+          expect(
+            screen.getByText('Investigator Performance'),
+          ).toBeInTheDocument();
         } else {
           expect(pagination).toBeInTheDocument();
         }
@@ -360,4 +378,3 @@ describe('InvestigatorPerformanceTable', () => {
     }
   });
 });
-

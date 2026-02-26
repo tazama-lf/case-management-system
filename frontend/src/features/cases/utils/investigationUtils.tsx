@@ -6,6 +6,7 @@ import { caseService } from '../services/caseService';
 import { commentService } from '../services/commentService';
 import { taskService } from '../services/taskService';
 import userService from '../services/userService';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 export interface EvidenceCategory {
     type: string;
@@ -74,45 +75,62 @@ export const fetchCasesAndEvidence = async (
     currentTaskId: number,
 ): Promise<{
     caseDetails: Case | null;
-    caseComments: TaskComment[];
     supervisorComments: TaskComment[];
     investigatorName: string;
     investigationTask: any;
     investigationNotes: string;
+    submittedDate: string;
 }> => {
     let caseDetails: Case | null = null;
-    let caseComments: TaskComment[] = [];
     let supervisorComments: TaskComment[] = [];
     let investigatorName = 'N/A';
+    let submittedDate = 'N/A';
     let investigationTask: any = null;
     let investigationNotes = '';
 
     try {
         caseDetails = await caseService.getCaseDetails(caseId);
-        caseComments = await commentService.getCommentsByCase(caseId) || [];
+        const tasks = await taskService.getTasksByCaseId(caseId);
+        investigationTask = tasks.find(t => t.task_id === currentTaskId);
 
-        if (caseComments.length > 0 && caseComments[0].user_id) {
-            const userDetails = await userService.getUserDetailsById(caseComments[0].user_id);
-            if (userDetails) {
-                investigatorName = userService.formatUserName(userDetails);
+        if (investigationTask) {
+            if (investigationTask.updated_at) {
+                submittedDate = investigationTask.updated_at ? formatDate(investigationTask.updated_at) : 'N/A';
+            }
+
+            if (investigationTask.investigationNotes) {
+                investigationNotes = investigationTask.investigationNotes;
+            }
+
+            if (investigationTask.assigned_user_id) {
+                const userDetails = await userService.getUserDetailsById(investigationTask.assigned_user_id);
+                if (userDetails) {
+                    investigatorName = userService.formatUserName(userDetails);
+                }
             }
         }
-
-        const tasks = await taskService.getTasksByCaseId(caseId);
 
         const approvalTask = tasks.find(t => t.name?.toLowerCase().includes('approve'));
         if (approvalTask) {
             supervisorComments = await commentService.getCommentsByTask(approvalTask.task_id) || [];
         }
 
-        investigationTask = tasks.find(t => t.task_id === currentTaskId);
-        if (investigationTask?.investigationNotes) {
-            investigationNotes = investigationTask.investigationNotes;
-        }
 
     } catch (error) {
         console.error('Error fetching case and evidence:', error);
     }
 
-    return { caseDetails, caseComments, supervisorComments, investigatorName, investigationTask, investigationNotes };
+    return { caseDetails, supervisorComments, investigatorName, investigationTask, investigationNotes, submittedDate };
 };
+
+
+
+
+
+
+
+
+
+
+
+

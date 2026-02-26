@@ -17,17 +17,13 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
   title,
   onExportExcel,
   onExportCSV,
-  onExportPDF
+  onExportPDF,
 }) => {
-  const {
-    currentPage,
-    totalPages,
-    paginatedData,
-    setCurrentPage,
-  } = usePagination({
-    data,
-    defaultItemsPerPage: 10,
-  });
+  const { currentPage, totalPages, paginatedData, setCurrentPage } =
+    usePagination({
+      data,
+      defaultItemsPerPage: 10,
+    });
 
   // Create pagination object for TablePagination
   const pagination: TablePaginationInfo = {
@@ -35,7 +31,7 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
     pageSize: 10, // Fixed page size since usePagination doesn't expose itemsPerPage in a way we need
     totalItems: data.length,
     totalPages,
-    onPageChange: setCurrentPage
+    onPageChange: setCurrentPage,
   };
 
   const getAgeColor = (age: number) => {
@@ -47,10 +43,14 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
-      case 'high': return 'text-red-600';
-      case 'medium': return 'text-yellow-600';
-      case 'low': return 'text-green-600';
-      default: return 'text-gray-600';
+      case 'high':
+        return 'text-red-600';
+      case 'medium':
+        return 'text-yellow-600';
+      case 'low':
+        return 'text-green-600';
+      default:
+        return 'text-gray-600';
     }
   };
 
@@ -124,7 +124,9 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
                 <td colSpan={8} className="px-6 py-12 text-center">
                   <div className="text-gray-500">
                     <p className="text-lg font-medium">No data available</p>
-                    <p className="mt-1">There are no case ageing records to display.</p>
+                    <p className="mt-1">
+                      There are no case ageing records to display.
+                    </p>
                   </div>
                 </td>
               </tr>
@@ -132,34 +134,48 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
               paginatedData.map((row, index) => (
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <div className="break-all font-mono text-sm" title={row.caseId || ''}>
+                    <div
+                      className="break-all font-mono text-sm"
+                      title={String(row.caseId) || ''}
+                    >
                       {row.caseId}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    <div className="break-words">
-                      {row.type}
-                    </div>
+                    <div className="break-words">{row.type}</div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    <div className="break-words">
-                      {row.status}
-                    </div>
+                    <div className="break-words">{row.status}</div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    <div className="break-words">
-                      {row.createdDate}
-                    </div>
+                    <div className="break-words">{row.createdDate}</div>
                   </td>
-                  <td className={`px-4 py-3 text-sm font-medium ${getAgeColor(row.ageDays)}`}>
+                  <td
+                    className={`px-4 py-3 text-sm font-medium ${getAgeColor(row.ageDays)}`}
+                  >
                     {row.ageDays}
                   </td>
-                  <td className={`px-4 py-3 text-sm font-medium ${getPriorityColor(row.priority)}`}>
+                  <td
+                    className={`px-4 py-3 text-sm font-medium ${getPriorityColor(row.priority)}`}
+                  >
                     {row.priority}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="break-all font-mono text-sm" title={(row as any).userId || (row as any).user_id || (row as any).assigneeId || (row as any).assignee_id || ''}>
-                      {(row as any).userId || (row as any).user_id || (row as any).assigneeId || (row as any).assignee_id || 'N/A'}
+                    <div
+                      className="break-all font-mono text-sm"
+                      title={
+                        (row as any).userId ||
+                        (row as any).user_id ||
+                        (row as any).assigneeId ||
+                        (row as any).assignee_id ||
+                        ''
+                      }
+                    >
+                      {(row as any).userId ||
+                        (row as any).user_id ||
+                        (row as any).assigneeId ||
+                        (row as any).assignee_id ||
+                        'N/A'}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
@@ -174,7 +190,10 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
         </table>
       </div>
 
-      <TablePagination pagination={pagination} itemLabel="case ageing records" />
+      <TablePagination
+        pagination={pagination}
+        itemLabel="case ageing records"
+      />
     </div>
   );
 };

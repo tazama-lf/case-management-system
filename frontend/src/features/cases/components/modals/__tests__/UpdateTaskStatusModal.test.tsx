@@ -92,7 +92,9 @@ describe('UpdateTaskStatusModal', () => {
     await user.selectOptions(statusSelect, 'In Progress');
 
     await waitFor(() => {
-      const submitButton = screen.getByRole('button', { name: /Update Status/i });
+      const submitButton = screen.getByRole('button', {
+        name: /Update Status/i,
+      });
       expect(submitButton).not.toBeDisabled();
     });
   });
@@ -139,4 +141,3 @@ describe('UpdateTaskStatusModal', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 });
-

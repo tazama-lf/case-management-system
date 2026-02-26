@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -7,7 +8,6 @@ import { server } from '../../../../test/mocks/server';
 
 // Mock FiltersPanel BEFORE importing ReportFilters
 vi.mock('../FiltersPanel', () => {
-  const React = require('react');
   return {
     default: ({
       caseType,
@@ -126,7 +126,9 @@ describe('ReportFilters', () => {
       />,
     );
 
-    const reportTypeButton = screen.getByText('Case Status Report').closest('button');
+    const reportTypeButton = screen
+      .getByText('Case Status Report')
+      .closest('button');
     expect(reportTypeButton).toBeInTheDocument();
 
     await user.click(reportTypeButton!);
@@ -184,7 +186,9 @@ describe('ReportFilters', () => {
       />,
     );
 
-    const reportTypeButton = screen.getByText('Case Status Report').closest('button');
+    const reportTypeButton = screen
+      .getByText('Case Status Report')
+      .closest('button');
     await user.click(reportTypeButton!);
 
     await waitFor(() => {
@@ -330,7 +334,9 @@ describe('ReportFilters', () => {
     await user.click(resetButton);
 
     // Filters should be reset
-    expect((screen.getByTestId('case-type-select') as HTMLSelectElement).value).toBe('');
+    expect(
+      (screen.getByTestId('case-type-select') as HTMLSelectElement).value,
+    ).toBe('');
   });
 
   it('closes one menu when opening another', async () => {
@@ -346,7 +352,9 @@ describe('ReportFilters', () => {
     );
 
     // Open report type menu
-    const reportTypeButton = screen.getByText('Case Status Report').closest('button');
+    const reportTypeButton = screen
+      .getByText('Case Status Report')
+      .closest('button');
     await user.click(reportTypeButton!);
 
     await waitFor(() => {
@@ -363,4 +371,3 @@ describe('ReportFilters', () => {
     });
   });
 });
-

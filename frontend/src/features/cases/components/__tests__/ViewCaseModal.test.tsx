@@ -57,7 +57,9 @@ describe('ViewCaseModal', () => {
         onRefreshCases={mockOnRefreshCases}
       />,
     );
-    expect(screen.queryByRole('heading', { name: /Case Details/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: /Case Details/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('does not render when row is null', () => {
@@ -69,7 +71,9 @@ describe('ViewCaseModal', () => {
         onRefreshCases={mockOnRefreshCases}
       />,
     );
-    expect(screen.queryByRole('heading', { name: /Case Details/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: /Case Details/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders modal with case details when open', () => {
@@ -82,7 +86,9 @@ describe('ViewCaseModal', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: /Case Details/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Case Details/i }),
+    ).toBeInTheDocument();
   });
 
   it('closes modal when close button is clicked', async () => {
@@ -113,7 +119,8 @@ describe('ViewCaseModal', () => {
     );
 
     // Check that tabs are present (they might be rendered by child components)
-    expect(screen.getByRole('heading', { name: /Case Details/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Case Details/i }),
+    ).toBeInTheDocument();
   });
 });
-

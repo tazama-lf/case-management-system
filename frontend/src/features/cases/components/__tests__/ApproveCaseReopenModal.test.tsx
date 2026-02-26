@@ -133,7 +133,10 @@ describe('ApproveCaseReopenModal component', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(onApprove).toHaveBeenCalledWith('CASE-123', 'Approved with additional context');
+      expect(onApprove).toHaveBeenCalledWith(
+        'CASE-123',
+        'Approved with additional context',
+      );
       expect(onClose).toHaveBeenCalled();
     });
   });
@@ -267,9 +270,7 @@ describe('ApproveCaseReopenModal component', () => {
       />,
     );
 
-    expect(
-      screen.getByText(/Reopening Workflow/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Reopening Workflow/i)).toBeInTheDocument();
     expect(
       screen.getByText(/Case must be in "PENDING CASE REOPENING APPROVAL"/i),
     ).toBeInTheDocument();

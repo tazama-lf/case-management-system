@@ -10,27 +10,33 @@ import type {
 } from '../types/evidence.types';
 
 export class EvidenceService {
-  private baseUrl = '/api/v1/evidence';
-
+  private readonly baseUrl = '/api/v1/evidence';
 
   private normalizeEvidenceData(evidence: any): any {
     if (!evidence) return evidence;
 
     const firstAttachment = evidence.attachments?.[0];
 
-    const totalFileSize = evidence.fileSize ??
-      (evidence.attachments?.reduce((sum: number, att: any) => sum + (att.fileSize || 0), 0) || 0);
+    const totalFileSize =
+      evidence.fileSize ??
+      (evidence.attachments?.reduce(
+        (sum: number, att: any) => sum + (att.fileSize || 0),
+        0,
+      ) ||
+        0);
 
     return {
       ...evidence,
       fileName: evidence.fileName || firstAttachment?.fileName || 'unknown',
       fileSize: evidence.fileSize ? evidence.fileSize : totalFileSize,
       file_size: evidence.file_size ? evidence.file_size : totalFileSize,
-      mimeType: evidence.mimeType || firstAttachment?.mimeType || 'application/octet-stream',
+      mimeType:
+        evidence.mimeType ||
+        firstAttachment?.mimeType ||
+        'application/octet-stream',
       hash: evidence.hash || firstAttachment?.hash || '',
     };
   }
-
 
   async uploadEvidence(
     data: UploadEvidenceDto,
@@ -53,7 +59,6 @@ export class EvidenceService {
         formData.append('comments', data.comments);
       }
 
-
       if (data.evidenceType === 'SANCTIONS') {
         if (data.screeningDate) {
           formData.append('screeningDate', data.screeningDate);
@@ -65,7 +70,6 @@ export class EvidenceService {
           formData.append('summaryDisposition', data.summaryDisposition);
         }
       }
-
 
       if (data.evidenceType === 'ADVERSE_MEDIA') {
         if (data.aggregator) {
@@ -93,15 +97,14 @@ export class EvidenceService {
     }
   }
 
-
   async getTaskEvidence(taskId: number): Promise<EvidenceListResponse> {
     try {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/task/${taskId}`,
       );
-      if (response.evidence) {
-        response.evidence = response.evidence.map(e => this.normalizeEvidenceData(e));
-      }
+      response.evidence &&= response.evidence.map((e) =>
+        this.normalizeEvidenceData(e),
+      );
       return response;
     } catch (error) {
       throw this.handleError(error, 'get task evidence');
@@ -113,9 +116,9 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/case/${caseId}`,
       );
-      if (response.evidence) {
-        response.evidence = response.evidence.map(e => this.normalizeEvidenceData(e));
-      }
+      response.evidence &&= response.evidence.map((e) =>
+        this.normalizeEvidenceData(e),
+      );
       return response;
     } catch (error) {
       throw this.handleError(error, 'get case evidence');
@@ -130,15 +133,14 @@ export class EvidenceService {
         `${this.baseUrl}/evidenceType/${evidenceType}`,
       );
 
-      if (response.evidence) {
-        response.evidence = response.evidence.map(e => this.normalizeEvidenceData(e));
-      }
+      response.evidence &&= response.evidence.map((e) =>
+        this.normalizeEvidenceData(e),
+      );
       return response;
     } catch (error) {
       throw this.handleError(error, 'get evidence by type');
     }
   }
-
 
   async getEvidenceById(evidenceId: string): Promise<Evidence> {
     try {
@@ -151,10 +153,7 @@ export class EvidenceService {
     }
   }
 
-
-  async verifyEvidence(
-    evidenceId: string,
-  ): Promise<VerifyEvidenceResponse> {
+  async verifyEvidence(evidenceId: string): Promise<VerifyEvidenceResponse> {
     try {
       const response = await apiClient.get<VerifyEvidenceResponse>(
         `${this.baseUrl}/${evidenceId}/verify`,
@@ -165,15 +164,15 @@ export class EvidenceService {
     }
   }
 
-
   async viewEvidence(evidenceId: string): Promise<Blob> {
-
-    return this.downloadEvidence(evidenceId);
+    return await this.downloadEvidence(evidenceId);
   }
 
   async deleteEvidence(evidenceId: string, fileName: string): Promise<void> {
     try {
-      await apiClient.delete<void>(`${this.baseUrl}/${evidenceId}/attachments/${encodeURIComponent(fileName)}`);
+      await apiClient.delete<void>(
+        `${this.baseUrl}/${evidenceId}/attachments/${encodeURIComponent(fileName)}`,
+      );
     } catch (error) {
       throw this.handleError(error, 'delete evidence');
     }
@@ -183,21 +182,23 @@ export class EvidenceService {
     const startTime = performance.now();
 
     try {
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      const token =
+        localStorage.getItem('authToken') ||
+        sessionStorage.getItem('authToken');
 
       if (!token) {
         throw new Error('No authentication token found. Please log in again.');
       }
 
-
-      const baseApiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
+      const baseApiUrl =
+        import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
       const url = `${baseApiUrl}${this.baseUrl}/${evidenceId}/download`;
 
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/octet-stream, */*',
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/octet-stream, */*',
         },
         credentials: 'include',
       });
@@ -217,7 +218,10 @@ export class EvidenceService {
             }
           }
         } catch (parseError) {
-          console.error('[Evidence Download] Error parsing error response:', parseError);
+          console.error(
+            '[Evidence Download] Error parsing error response:',
+            parseError,
+          );
         }
 
         console.error('[Evidence Download] Server error:', errorMessage);
@@ -225,7 +229,9 @@ export class EvidenceService {
         if (response.status === 401) {
           throw new Error('Authentication failed. Please log in again.');
         } else if (response.status === 403) {
-          throw new Error('You do not have permission to access this evidence.');
+          throw new Error(
+            'You do not have permission to access this evidence.',
+          );
         } else if (response.status === 404) {
           throw new Error('Evidence file not found.');
         } else {
@@ -237,7 +243,9 @@ export class EvidenceService {
       const downloadTime = performance.now() - startTime;
 
       if (blob.size === 0) {
-        throw new Error('Received empty file from server. The file may be corrupted or deleted.');
+        throw new Error(
+          'Received empty file from server. The file may be corrupted or deleted.',
+        );
       }
 
       if (!blob.type || blob.type === 'application/octet-stream') {
@@ -250,11 +258,15 @@ export class EvidenceService {
       return blob;
     } catch (error) {
       const downloadTime = performance.now() - startTime;
-      console.error('[Evidence Download] Failed after', downloadTime.toFixed(2), 'ms:', error);
+      console.error(
+        '[Evidence Download] Failed after',
+        downloadTime.toFixed(2),
+        'ms:',
+        error,
+      );
       throw this.handleError(error, 'download evidence');
     }
   }
-
 
   async calculateFileHash(file: File): Promise<string> {
     try {
@@ -271,12 +283,7 @@ export class EvidenceService {
     }
   }
 
-
-  validateFile(
-    file: File,
-    maxSizeMB: number = 50,
-  ): { valid: boolean; error?: string } {
-
+  validateFile(file: File, maxSizeMB = 50): { valid: boolean; error?: string } {
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       return {
@@ -284,7 +291,6 @@ export class EvidenceService {
         error: `File size exceeds ${maxSizeMB}MB limit. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`,
       };
     }
-
 
     const allowedTypes = [
       'application/pdf',
@@ -312,29 +318,30 @@ export class EvidenceService {
     return { valid: true };
   }
 
-
   formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    return `${Math.round((bytes / k ** i) * 100) / 100} ${sizes[i]}`;
   }
 
   async searchEvidence(
     filters: EvidenceSearchFilters,
-    page: number = 1,
-    limit: number = 20,
+    page = 1,
+    limit = 20,
   ): Promise<EvidenceListResponse> {
     try {
       const params = new URLSearchParams();
       params.append('page', page.toString());
       params.append('limit', limit.toString());
 
-      if (filters.evidenceType) params.append('evidenceType', filters.evidenceType);
+      if (filters.evidenceType)
+        {params.append('evidenceType', filters.evidenceType);}
       if (filters.taskId) params.append('taskId', filters.taskId.toString());
       if (filters.uploadedBy) params.append('uploadedBy', filters.uploadedBy);
-      if (filters.verified !== undefined) params.append('verified', filters.verified.toString());
+      if (filters.verified !== undefined)
+        {params.append('verified', filters.verified.toString());}
       if (filters.search) params.append('search', filters.search);
 
       const queryString = params.toString();
@@ -342,9 +349,9 @@ export class EvidenceService {
         `${this.baseUrl}/search?${queryString}`,
       );
 
-      if (response.evidence) {
-        response.evidence = response.evidence.map(e => this.normalizeEvidenceData(e));
-      }
+      response.evidence &&= response.evidence.map((e) =>
+        this.normalizeEvidenceData(e),
+      );
       return response;
     } catch (error) {
       throw this.handleError(error, 'search evidence');

@@ -52,9 +52,7 @@ describe('EvidenceItemsTable', () => {
   it('renders empty state when data is empty', () => {
     render(<EvidenceItemsTable data={[]} />);
 
-    expect(
-      screen.getByText('No evidence items found'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('No evidence items found')).toBeInTheDocument();
   });
 
   it('displays correct status badges with correct colors', () => {
@@ -92,4 +90,3 @@ describe('EvidenceItemsTable', () => {
     expect(document.querySelectorAll('.animate-pulse')).toHaveLength(0);
   });
 });
-

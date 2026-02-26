@@ -27,9 +27,7 @@ describe('useResumeCaseActions', () => {
     };
     (caseService.resumeCase as vi.Mock).mockResolvedValue(mockResumedCase);
 
-    const { result } = renderHook(() =>
-      useResumeCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useResumeCaseActions(mockRefreshCases));
 
     await result.current.handleResumeSubmit('CASE-123', 'Test reason');
 
@@ -49,9 +47,7 @@ describe('useResumeCaseActions', () => {
     };
     (caseService.resumeCase as vi.Mock).mockResolvedValue(mockResumedCase);
 
-    const { result } = renderHook(() =>
-      useResumeCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useResumeCaseActions(mockRefreshCases));
 
     await result.current.handleResumeSubmit('CASE-123', '  Test reason  ');
 
@@ -66,9 +62,7 @@ describe('useResumeCaseActions', () => {
     const error = new Error('not in a resumable state');
     (caseService.resumeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useResumeCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useResumeCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleResumeSubmit('CASE-123', 'Test reason'),
@@ -86,9 +80,7 @@ describe('useResumeCaseActions', () => {
     const error = new Error('Unauthorized');
     (caseService.resumeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useResumeCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useResumeCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleResumeSubmit('CASE-123', 'Test reason'),
@@ -106,9 +98,7 @@ describe('useResumeCaseActions', () => {
     const error = new Error('403');
     (caseService.resumeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useResumeCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useResumeCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleResumeSubmit('CASE-123', 'Test reason'),
@@ -126,9 +116,7 @@ describe('useResumeCaseActions', () => {
     const error = new Error('Case not found');
     (caseService.resumeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useResumeCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useResumeCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleResumeSubmit('CASE-123', 'Test reason'),
@@ -146,9 +134,7 @@ describe('useResumeCaseActions', () => {
     const error = new Error('404');
     (caseService.resumeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useResumeCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useResumeCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleResumeSubmit('CASE-123', 'Test reason'),
@@ -166,9 +152,7 @@ describe('useResumeCaseActions', () => {
     const error = new Error('Generic error message');
     (caseService.resumeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useResumeCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useResumeCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleResumeSubmit('CASE-123', 'Test reason'),
@@ -186,9 +170,7 @@ describe('useResumeCaseActions', () => {
     const error = new Error('');
     (caseService.resumeCase as vi.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() =>
-      useResumeCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useResumeCaseActions(mockRefreshCases));
 
     await expect(
       result.current.handleResumeSubmit('CASE-123', 'Test reason'),
@@ -202,4 +184,3 @@ describe('useResumeCaseActions', () => {
     });
   });
 });
-

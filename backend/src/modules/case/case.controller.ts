@@ -56,45 +56,6 @@ import { Audit } from '../audit/decorators/audit-log.decorator';
 export class CaseController {
   constructor(private readonly caseService: CaseService) {}
 
-  // @Get(':caseId/action-history')
-  // @RequireInvestigatorOrSupervisorRole()
-  // @ApiOperation({
-  //   summary: 'Get case action history',
-  //   description: 'Retrieve all actions taken on a specific case',
-  // })
-  // @ApiParam({
-  //   name: 'caseId',
-  //   type: 'string',
-  //   description: 'UUID of the case',
-  //   example: '123e4567-e89b-12d3-a456-426614174000',
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Action history retrieved successfully',
-  //   schema: {
-  //     type: 'array',
-  //     items: {
-  //       type: 'object',
-  //       properties: {
-  //         action_id: { type: 'string', format: 'uuid' },
-  //         action_type: { type: 'string' },
-  //         user_id: { type: 'string', format: 'uuid' },
-  //         note: { type: 'string' },
-  //         created_at: { type: 'string', format: 'date-time' },
-  //       },
-  //     },
-  //   },
-  // })
-  // @ApiResponse({ status: 401, description: 'Unauthorized' })
-  // @ApiResponse({ status: 404, description: 'Alert not found' })
-  // async getCaseActionHistory(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
-  //   const userId = req.user.token.clientId;
-  //   const tenantId = req.user.token.tenantId;
-  //   if (!tenantId) throw new BadRequestException('Missing tenantId');
-  //   if (!userId) throw new BadRequestException('Missing userId');
-  //   return this.caseService.getCaseActionHistory(caseId, tenantId, userId);
-  // }
-
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
   @Audit()
@@ -138,7 +99,11 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to reopen cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
-  async reopenCase(@Param('caseId') caseId: number, @Body() body: RequestReopenCaseDto, @Req() req: AuthenticatedRequest) {
+  async reopenCase(
+    @Param('caseId') caseId: number,
+    @Body() body: RequestReopenCaseDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<SimpleMessageResponseDto> {
     const { userId, tenantId, validateClaim } = extractUserData(req);
     return await this.caseService.reopenCase(caseId, body.reason, userId, tenantId, validateClaim);
   }
@@ -387,7 +352,7 @@ export class CaseController {
   @ApiResponse({ status: 403, description: 'Forbidden - Compliance officers can only access confirmed closed cases' })
   async getCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
     const { isComplianceOfficer, tenantId } = extractUserData(req);
-    return this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
+    return await this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
   }
 
   @Get('parentId/:caseId')
@@ -436,7 +401,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Case not found' })
   async completeCaseCreation(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, role } = extractUserData(req);
-    return this.caseService.completeCaseCreation(caseId, dto, userId, tenantId, role);
+    return await this.caseService.completeCaseCreation(caseId, dto, userId, tenantId, role);
   }
 
   @Put(':caseId/approve')
@@ -451,7 +416,7 @@ export class CaseController {
     **Validation Checks:**
     - Case exists and has complete information
     - Case status is STATUS_22_PENDING_FINAL_APPROVAL
-    - "Approve case closure" task exists and is unassigned
+    - Approve case closure task exists and is unassigned
     - All other tasks are completed
     - Investigation task is completed
     - Closure recommendation exists
@@ -514,7 +479,7 @@ export class CaseController {
   @ApiResponse({ status: 500, description: 'Internal Server Error - System error during approval', type: CaseErrorResponseDto })
   async approveCaseClosure(@Param('caseId') caseId: number, @Body() dto: ApproveCaseClosureDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
-    return this.caseService.approveCaseClosure(caseId, dto.finalOutcome, dto.supervisorComments, supervisorId, tenantId);
+    return await this.caseService.approveCaseClosure(caseId, dto.finalOutcome, dto.supervisorComments, supervisorId, tenantId);
   }
 
   @Put(':caseId/reject')
@@ -580,7 +545,7 @@ export class CaseController {
   })
   async rejectCaseClosure(@Param('caseId') caseId: number, @Body() dto: RejectCaseClosureDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
-    return this.caseService.rejectCaseClosure(caseId, dto.rejectionReason, supervisorId, tenantId);
+    return await this.caseService.rejectCaseClosure(caseId, dto.rejectionReason, supervisorId, tenantId);
   }
 
   @Put(':caseId/approve-creation')
@@ -780,8 +745,8 @@ export class CaseController {
   async rejectCaseReopening(@Param('caseId') caseId: number, @Body() dto: RejectCaseReopeningDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
 
-    if (!dto.rejectionReason || dto.rejectionReason.trim().length < 20) {
-      throw new BadRequestException('Rejection reason is required and must be at least 20 characters');
+    if (!dto.rejectionReason || dto.rejectionReason.trim().length < 4) {
+      throw new BadRequestException('Rejection reason is required and must be at least 4 characters');
     }
 
     return await this.caseService.rejectCaseReopening(caseId, dto.rejectionReason, supervisorId, tenantId);
@@ -821,7 +786,7 @@ export class CaseController {
   })
   async returnCaseForReview(@Param('caseId') caseId: number, @Body() dto: ReturnCaseForReviewDto, @Req() req: AuthenticatedRequest) {
     const { userId: supervisorId, tenantId } = extractUserData(req);
-    return this.caseService.returnCaseForReview(caseId, dto.reviewComments, supervisorId, tenantId);
+    return await this.caseService.returnCaseForReview(caseId, dto.reviewComments, supervisorId, tenantId);
   }
 
   @Post('save-as-draft')

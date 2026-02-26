@@ -70,9 +70,15 @@ describe('SanctionsScreeningTab', () => {
     (useCaseSanctionsStatistics as vi.Mock).mockReturnValue({
       data: mockStatistics,
     });
-    (useCreateSanctionsScreening as vi.Mock).mockReturnValue(mockCreateMutation);
-    (useDeleteSanctionsScreening as vi.Mock).mockReturnValue(mockDeleteMutation);
-    (useDownloadSanctionsReport as vi.Mock).mockReturnValue(mockDownloadMutation);
+    (useCreateSanctionsScreening as vi.Mock).mockReturnValue(
+      mockCreateMutation,
+    );
+    (useDeleteSanctionsScreening as vi.Mock).mockReturnValue(
+      mockDeleteMutation,
+    );
+    (useDownloadSanctionsReport as vi.Mock).mockReturnValue(
+      mockDownloadMutation,
+    );
   });
 
   it('renders sanctions screening tab', () => {
@@ -102,7 +108,10 @@ describe('SanctionsScreeningTab', () => {
 
   it('displays empty state when no screenings', () => {
     (useCaseSanctionsScreenings as vi.Mock).mockReturnValue({
-      data: { screenings: [], pagination: { page: 1, totalPages: 1, total: 0 } },
+      data: {
+        screenings: [],
+        pagination: { page: 1, totalPages: 1, total: 0 },
+      },
       isLoading: false,
     });
 
@@ -117,7 +126,9 @@ describe('SanctionsScreeningTab', () => {
     const uploadButton = screen.getByText('Upload Screening');
     fireEvent.click(uploadButton);
 
-    expect(screen.getByRole('heading', { name: 'Upload Sanctions Screening' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Upload Sanctions Screening' }),
+    ).toBeInTheDocument();
   });
 
   it('allows searching screenings', () => {
@@ -151,7 +162,9 @@ describe('SanctionsScreeningTab', () => {
     const viewDetailsButton = screen.getByText('View Details →');
     fireEvent.click(viewDetailsButton);
 
-    expect(screen.getByRole('heading', { name: 'Sanctions Screening Details' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Sanctions Screening Details' }),
+    ).toBeInTheDocument();
   });
 
   it('handles filter reset', async () => {
@@ -166,7 +179,9 @@ describe('SanctionsScreeningTab', () => {
 
     const dispositionSelects = screen.getAllByRole('combobox');
     if (dispositionSelects.length > 0) {
-      fireEvent.change(dispositionSelects[0], { target: { value: 'PENDING_REVIEW' } });
+      fireEvent.change(dispositionSelects[0], {
+        target: { value: 'PENDING_REVIEW' },
+      });
 
       const resetButton = screen.getByText('Reset');
       fireEvent.click(resetButton);
@@ -179,4 +194,3 @@ describe('SanctionsScreeningTab', () => {
     }
   });
 });
-

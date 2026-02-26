@@ -6,10 +6,12 @@ import {
 } from '@heroicons/react/24/outline';
 import type { AlertsSearchFilters } from '../types/alertsdashboard.types';
 import { filterService } from '../../cases/services/filterService';
-import type { CreateUserFilters, UserFilters } from '../../cases/services/filterService';
+import type {
+  CreateUserFilters,
+  UserFilters,
+} from '../../cases/services/filterService';
 import authService from '../../auth/services/authService';
 import { useToast } from '@/shared/providers/ToastProvider';
-
 
 interface AlertsSearchAndFiltersProps {
   searchFilters: AlertsSearchFilters;
@@ -19,13 +21,16 @@ interface AlertsSearchAndFiltersProps {
     startDate: string;
     endDate: string;
   };
-  onCustomDateRangeChange: (range: { startDate: string; endDate: string }) => void;
+  onCustomDateRangeChange: (range: {
+    startDate: string;
+    endDate: string;
+  }) => void;
   alertTypes?: string[];
   priorities?: string[];
   sources?: string[];
 }
 
-export type UserSavedFilter = {
+export interface UserSavedFilter {
   id: string;
   name: string;
   priority: string;
@@ -34,7 +39,7 @@ export type UserSavedFilter = {
   timeRange: string;
   startDate?: string;
   endDate?: string;
-};
+}
 
 interface FilterOptions {
   priorities: string[];
@@ -49,8 +54,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   customDateRange,
   onCustomDateRangeChange,
 
-  alertTypes
-  , priorities, sources
+  alertTypes,
+  priorities,
+  sources,
 }) => {
   const { success, error } = useToast();
   const [selectedSavedFilterId, setSelectedSavedFilterId] = React.useState('');
@@ -67,12 +73,20 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
   useEffect(() => {
     setFilterOptions({
-      priorities: (priorities && priorities.length > 0) ? priorities : ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
-      alertTypes: (alertTypes && alertTypes.length > 0) ? alertTypes : ['FRAUD', 'AML', 'FRAUD_AND_AML'],
-      sources: (sources && sources.length > 0) ? sources : ['System A', 'System B', 'External']
+      priorities:
+        priorities && priorities.length > 0
+          ? priorities
+          : ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
+      alertTypes:
+        alertTypes && alertTypes.length > 0
+          ? alertTypes
+          : ['FRAUD', 'AML', 'FRAUD_AND_AML'],
+      sources:
+        sources && sources.length > 0
+          ? sources
+          : ['System A', 'System B', 'External'],
     });
   }, [alertTypes, priorities, sources]);
-
 
   const hasActiveFilters = Object.entries(searchFilters).some(
     ([key, value]) => {
@@ -118,10 +132,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
       const userId = currentUser?.userId;
       if (!userId) return;
 
-      const response = await filterService.getFilters(
-        userId,
-        'Alert',
-      );
+      const response = await filterService.getFilters(userId, 'Alert');
 
       const mapped: UserSavedFilter[] = response.map((f: UserFilters) => {
         const parsed = JSON.parse(f.user_filters ?? '{}');
@@ -131,7 +142,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           parsed.priority || 'ALL PRIORITIES',
           parsed.source || 'ALL SOURCES',
           parsed.timeRange || 'ALL TIME',
-        ].join(' - ').toUpperCase();
+        ]
+          .join(' - ')
+          .toUpperCase();
 
         const datePart =
           parsed.startDate || parsed.endDate
@@ -142,15 +155,12 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           id: String(f.filter_Id),
           name: baseName + datePart,
 
-
           alertType: parsed.alertType ?? '',
           priority: parsed.priority ?? '',
           source: parsed.source ?? '',
           timeRange: parsed.timeRange ?? '',
           startDate: parsed.startDate ?? '',
           endDate: parsed.endDate ?? '',
-
-
         };
       });
 
@@ -165,8 +175,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     setSelectedSavedFilterId('');
   }, [fetchSavedFilters]);
 
-
-
   const handleSavedFilterSelect = (filterId: string) => {
     setSelectedSavedFilterId(filterId);
 
@@ -177,13 +185,10 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     onFilterChange('type', filter.alertType);
     onFilterChange('priority', filter.priority);
     onFilterChange('source', filter.source);
-  
   };
-
 
   const handleSaveCurrentFilters = async () => {
     try {
-
       const currentUser = authService.getUser();
       const currentUserId = currentUser?.userId;
       const setFilter = searchFilters;
@@ -196,30 +201,30 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           source: setFilter.source || '',
           timeRange: setFilter.timeRange || '',
           startDate: customDateRange.startDate || '',
-          endDate: customDateRange.endDate || ''
-
+          endDate: customDateRange.endDate || '',
         }),
       };
       const savedFilter = await filterService.createFilter(payload);
 
       console.log('Saved Filter:', savedFilter);
-      success('Filter Created', `Saved with: Alert Type: ${searchFilters.type || 'ALL'}, Priority: ${searchFilters.priority || 'ALL'},
-            Source: ${searchFilters.source || 'ALL'}, Time Range: ${searchFilters.timeRange || 'ALL'}, StarDate: ${customDateRange.startDate || 'None'}, EndDate: ${customDateRange.endDate || 'None'}`
+      success(
+        'Filter Created',
+        `Saved with: Alert Type: ${searchFilters.type || 'ALL'}, Priority: ${searchFilters.priority || 'ALL'},
+            Source: ${searchFilters.source || 'ALL'}, Time Range: ${searchFilters.timeRange || 'ALL'}, StarDate: ${customDateRange.startDate || 'None'}, EndDate: ${customDateRange.endDate || 'None'}`,
       );
     } catch (err: any) {
       console.error('Error saving filter:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save filter';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to save filter';
       error('Create Filter Failed', errorMessage);
     }
   };
-
-
 
   return (
     <div className="bg-white rounded-lg shadow mb-6">
       <div className="p-4">
         <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
-          { }
+          {}
           <div className="flex-1">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -227,15 +232,19 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                 type="text"
                 placeholder="Search by Alert ID, title, or keywords..."
                 value={searchFilters.query}
-                onChange={(e) => onFilterChange('query', e.target.value)}
+                onChange={(e) => {
+                  onFilterChange('query', e.target.value);
+                }}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
 
-          { }
+          {}
           <button
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={() => {
+              setShowFilters(!showFilters);
+            }}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <FunnelIcon className="h-5 w-5 mr-2" />
@@ -247,7 +256,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             )}
           </button>
 
-          { }
+          {}
           {hasActiveFilters && (
             <button
               onClick={onClearFilters}
@@ -260,7 +269,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
         </div>
       </div>
 
-      { }
+      {}
       {showFilters && (
         <div className="p-4 bg-gray-50 border-t border-gray-200">
           {loadingOptions ? (
@@ -272,18 +281,23 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-              { }
+              {}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Alert Type
                 </label>
                 <select
                   value={searchFilters.type || ''}
-                  onChange={(e) => onFilterChange('type', e.target.value)}
+                  onChange={(e) => {
+                    onFilterChange('type', e.target.value);
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Types</option>
-                  {(alertTypes && alertTypes.length > 0 ? alertTypes : filterOptions.alertTypes).map((type: string) => (
+                  {(alertTypes && alertTypes.length > 0
+                    ? alertTypes
+                    : filterOptions.alertTypes
+                  ).map((type: string) => (
                     <option key={type} value={type}>
                       {type}
                     </option>
@@ -291,14 +305,16 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                 </select>
               </div>
 
-              { }
+              {}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Priority
                 </label>
                 <select
                   value={searchFilters.priority}
-                  onChange={(e) => onFilterChange('priority', e.target.value)}
+                  onChange={(e) => {
+                    onFilterChange('priority', e.target.value);
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Priorities</option>
@@ -310,14 +326,16 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                 </select>
               </div>
 
-              { }
+              {}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Source
                 </label>
                 <select
                   value={searchFilters.source || ''}
-                  onChange={(e) => onFilterChange('source', e.target.value)}
+                  onChange={(e) => {
+                    onFilterChange('source', e.target.value);
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Sources</option>
@@ -329,14 +347,16 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                 </select>
               </div>
 
-              { }
+              {}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Time Range
                 </label>
                 <select
                   value={searchFilters.timeRange}
-                  onChange={(e) => handleTimeRangeChange(e.target.value)}
+                  onChange={(e) => {
+                    handleTimeRangeChange(e.target.value);
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Time</option>
@@ -350,11 +370,10 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   <option value="custom">Custom Range</option>
                 </select>
               </div>
-
             </div>
           )}
 
-          { }
+          {}
           {showCustomDatePicker && searchFilters.timeRange === 'custom' && (
             <div className="mt-4 p-4 bg-white border border-gray-200 rounded-md">
               <h4 className="text-sm font-medium text-gray-700 mb-3">
@@ -368,9 +387,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   <input
                     type="date"
                     value={customDateRange.startDate}
-                    onChange={(e) =>
-                      handleCustomDateChange('startDate', e.target.value)
-                    }
+                    onChange={(e) => {
+                      handleCustomDateChange('startDate', e.target.value);
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -381,9 +400,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   <input
                     type="date"
                     value={customDateRange.endDate}
-                    onChange={(e) =>
-                      handleCustomDateChange('endDate', e.target.value)
-                    }
+                    onChange={(e) => {
+                      handleCustomDateChange('endDate', e.target.value);
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -400,7 +419,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
               {savedFilters.length > 0 ? (
                 <select
                   value={selectedSavedFilterId}
-                  onChange={(e) => handleSavedFilterSelect(e.target.value)}
+                  onChange={(e) => {
+                    handleSavedFilterSelect(e.target.value);
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Select a saved filter</option>
@@ -431,7 +452,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             )}
           </div>
         </div>
-
       )}
     </div>
   );

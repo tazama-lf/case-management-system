@@ -13,7 +13,9 @@ describe('ErrorFallback', () => {
     render(<ErrorFallback />);
 
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
-    expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeInTheDocument();
+    expect(
+      screen.getByText('An unexpected error occurred. Please try again.'),
+    ).toBeInTheDocument();
   });
 
   it('renders custom title', () => {
@@ -39,14 +41,18 @@ describe('ErrorFallback', () => {
     const error = new Error('Network Error');
     render(<ErrorFallback error={error} />);
 
-    expect(screen.getByText(/Unable to connect to the server/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Unable to connect to the server/i),
+    ).toBeInTheDocument();
   });
 
   it('displays fetch error message', () => {
     const error = new Error('fetch failed');
     render(<ErrorFallback error={error} />);
 
-    expect(screen.getByText(/Unable to connect to the server/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Unable to connect to the server/i),
+    ).toBeInTheDocument();
   });
 
   it('displays 401 unauthorized error message', () => {
@@ -67,7 +73,9 @@ describe('ErrorFallback', () => {
     const error = new Error('404 Not Found');
     render(<ErrorFallback error={error} />);
 
-    expect(screen.getByText(/The requested resource was not found/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/The requested resource was not found/i),
+    ).toBeInTheDocument();
   });
 
   it('displays 500 server error message', () => {
@@ -81,20 +89,26 @@ describe('ErrorFallback', () => {
     const resetError = vi.fn();
     render(<ErrorFallback resetError={resetError} showRetry={true} />);
 
-    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Try Again/i }),
+    ).toBeInTheDocument();
   });
 
   it('does not show retry button when showRetry is false', () => {
     const resetError = vi.fn();
     render(<ErrorFallback resetError={resetError} showRetry={false} />);
 
-    expect(screen.queryByRole('button', { name: /Try Again/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Try Again/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('does not show retry button when resetError is not provided', () => {
     render(<ErrorFallback showRetry={true} />);
 
-    expect(screen.queryByRole('button', { name: /Try Again/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Try Again/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('calls resetError when retry button is clicked', async () => {
@@ -154,4 +168,3 @@ describe('ErrorFallback', () => {
     process.env.NODE_ENV = originalEnv;
   });
 });
-

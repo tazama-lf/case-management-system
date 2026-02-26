@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { PrismaService } from '../../../../prisma/prisma.service';
 import { FlowableTaskService } from './flowable-task.service';
 import { FlowableUtilitiesService } from './flowable-utilities.service';
 import { TaskStatus } from '@prisma/client-cms';

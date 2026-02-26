@@ -19,32 +19,48 @@ vi.mock('../../hooks/useReports', () => ({
 
 // Mock components
 vi.mock('../../components/InvestigatorStatsCards', () => ({
-  default: ({ stats }: any) => <div data-testid="investigator-stats-cards">{JSON.stringify(stats)}</div>,
+  default: ({ stats }: any) => (
+    <div data-testid="investigator-stats-cards">{JSON.stringify(stats)}</div>
+  ),
 }));
 
 vi.mock('../../components/WorkloadBarChart', () => ({
-  default: ({ data, title }: any) => <div data-testid="workload-bar-chart">{title}</div>,
+  default: ({ data, title }: any) => (
+    <div data-testid="workload-bar-chart">{title}</div>
+  ),
 }));
 
 vi.mock('../../components/CaseVolumeTrendChart', () => ({
-  default: ({ data, title }: any) => <div data-testid="case-volume-trend-chart">{title}</div>,
+  default: ({ data, title }: any) => (
+    <div data-testid="case-volume-trend-chart">{title}</div>
+  ),
 }));
 
 vi.mock('../../components/ResolutionEfficiencyChart', () => ({
-  default: ({ data, title }: any) => <div data-testid="resolution-efficiency-chart">{title}</div>,
+  default: ({ data, title }: any) => (
+    <div data-testid="resolution-efficiency-chart">{title}</div>
+  ),
 }));
 
 vi.mock('../../components/OutcomeDistributionChart', () => ({
-  default: ({ data, title }: any) => <div data-testid="outcome-distribution-chart">{title}</div>,
+  default: ({ data, title }: any) => (
+    <div data-testid="outcome-distribution-chart">{title}</div>
+  ),
 }));
 
 vi.mock('../../components/InvestigatorPerformanceTable', () => ({
   default: ({ data, onExportExcel, onExportCSV, onExportPDF }: any) => (
     <div data-testid="investigator-performance-table">
       <div data-testid="table-data">{JSON.stringify(data)}</div>
-      <button onClick={onExportExcel} data-testid="export-excel">Export Excel</button>
-      <button onClick={onExportCSV} data-testid="export-csv">Export CSV</button>
-      <button onClick={onExportPDF} data-testid="export-pdf">Export PDF</button>
+      <button onClick={onExportExcel} data-testid="export-excel">
+        Export Excel
+      </button>
+      <button onClick={onExportCSV} data-testid="export-csv">
+        Export CSV
+      </button>
+      <button onClick={onExportPDF} data-testid="export-pdf">
+        Export PDF
+      </button>
     </div>
   ),
 }));
@@ -83,12 +99,8 @@ describe('InvestigatorWorkloadReport', () => {
     workloadData: [
       { name: 'Investigator 1', activeCases: 10, pendingTasks: 5 },
     ],
-    volumeTrend: [
-      { month: '2024-01', investigators: { 'user-1': 10 } },
-    ],
-    efficiencyData: [
-      { name: 'Type A', avgDays: 12 },
-    ],
+    volumeTrend: [{ month: '2024-01', investigators: { 'user-1': 10 } }],
+    efficiencyData: [{ name: 'Type A', avgDays: 12 }],
     outcomeData: [
       { name: 'Type A', confirmed: 10, refuted: 5, inconclusive: 3 },
     ],
@@ -117,15 +129,25 @@ describe('InvestigatorWorkloadReport', () => {
   });
 
   it('renders investigator workload report with data', async () => {
-    render(<InvestigatorWorkloadReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<InvestigatorWorkloadReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
-      expect(screen.getByTestId('investigator-stats-cards')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('investigator-stats-cards'),
+      ).toBeInTheDocument();
       expect(screen.getByTestId('workload-bar-chart')).toBeInTheDocument();
       expect(screen.getByTestId('case-volume-trend-chart')).toBeInTheDocument();
-      expect(screen.getByTestId('resolution-efficiency-chart')).toBeInTheDocument();
-      expect(screen.getByTestId('outcome-distribution-chart')).toBeInTheDocument();
-      expect(screen.getByTestId('investigator-performance-table')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('resolution-efficiency-chart'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('outcome-distribution-chart'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('investigator-performance-table'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -137,10 +159,14 @@ describe('InvestigatorWorkloadReport', () => {
       isError: false,
     } as any);
 
-    render(<InvestigatorWorkloadReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<InvestigatorWorkloadReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
-    expect(screen.queryByTestId('investigator-stats-cards')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('investigator-stats-cards'),
+    ).not.toBeInTheDocument();
   });
 
   it('renders error state', () => {
@@ -151,14 +177,20 @@ describe('InvestigatorWorkloadReport', () => {
       isError: true,
     } as any);
 
-    render(<InvestigatorWorkloadReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<InvestigatorWorkloadReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
-    expect(screen.getByText(/Failed to load investigator workload data/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Failed to load investigator workload data/i),
+    ).toBeInTheDocument();
   });
 
   it('handles export to Excel', async () => {
     const user = userEvent.setup();
-    render(<InvestigatorWorkloadReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<InvestigatorWorkloadReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('export-excel')).toBeInTheDocument();
@@ -176,7 +208,9 @@ describe('InvestigatorWorkloadReport', () => {
 
   it('handles export to CSV', async () => {
     const user = userEvent.setup();
-    render(<InvestigatorWorkloadReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<InvestigatorWorkloadReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('export-csv')).toBeInTheDocument();
@@ -194,7 +228,9 @@ describe('InvestigatorWorkloadReport', () => {
 
   it('handles export to PDF', async () => {
     const user = userEvent.setup();
-    render(<InvestigatorWorkloadReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<InvestigatorWorkloadReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('export-pdf')).toBeInTheDocument();
@@ -219,7 +255,9 @@ describe('InvestigatorWorkloadReport', () => {
       throw new Error('Export failed');
     });
 
-    render(<InvestigatorWorkloadReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<InvestigatorWorkloadReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('export-excel')).toBeInTheDocument();
@@ -228,7 +266,9 @@ describe('InvestigatorWorkloadReport', () => {
     const exportButton = screen.getByTestId('export-excel');
     await user.click(exportButton);
 
-    expect(global.alert).toHaveBeenCalledWith('Export failed. Please try again.');
+    expect(global.alert).toHaveBeenCalledWith(
+      'Export failed. Please try again.',
+    );
   });
 
   it('handles missing data gracefully', async () => {
@@ -239,17 +279,22 @@ describe('InvestigatorWorkloadReport', () => {
       isError: false,
     } as any);
 
-    render(<InvestigatorWorkloadReport dateRange="last30" />, { wrapper: createWrapper() });
+    render(<InvestigatorWorkloadReport dateRange="last30" />, {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
-      expect(screen.getByTestId('investigator-stats-cards')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('investigator-stats-cards'),
+      ).toBeInTheDocument();
     });
   });
 
   it('passes correct dateRange to useInvestigatorWorkload', () => {
-    render(<InvestigatorWorkloadReport dateRange="last7" />, { wrapper: createWrapper() });
+    render(<InvestigatorWorkloadReport dateRange="last7" />, {
+      wrapper: createWrapper(),
+    });
 
     expect(useInvestigatorWorkload).toHaveBeenCalledWith('last7');
   });
 });
-

@@ -27,10 +27,17 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   // const [investigators, setInvestigators] = useState<Investigator[]>([]);
   // const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [currentUserInvestigator, setCurrentUserInvestigator] = useState<Investigator | null>(null);
+  const [currentUserInvestigator, setCurrentUserInvestigator] =
+    useState<Investigator | null>(null);
   const [isSupervisor, setIsSupervisor] = useState(false);
   const { hasComplianceOfficerRole } = useAuth();
-  const { fetchInvestigatorsList, loadingInvestigators, investigators, fetchComplianceOfficersList, complianceOfficers } = useInvestigatorSupervisorList();
+  const {
+    fetchInvestigatorsList,
+    loadingInvestigators,
+    investigators,
+    fetchComplianceOfficersList,
+    complianceOfficers,
+  } = useInvestigatorSupervisorList();
 
   useEffect(() => {
     setAssignee('');
@@ -48,7 +55,6 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
         }
 
         fetchCurrentUserAsInvestigator();
-
       } else {
         const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
         setIsSupervisor(isSupervisor);
@@ -58,8 +64,6 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
         }
         fetchCurrentUserAsInvestigator();
       }
-
-
     }
   }, [open]);
 
@@ -177,7 +181,9 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
             ) : (
               <select
                 value={assignee}
-                onChange={(e) => setAssignee(e.target.value)}
+                onChange={(e) => {
+                  setAssignee(e.target.value);
+                }}
                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
                 <option value="">Select</option>
@@ -191,14 +197,12 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
                   </option>
                 )}
                 {isSupervisor &&
-                  investigators.map((investigator) => {
-                    return (
-                      <option key={investigator.id} value={investigator.id}>
-                        {investigator.firstName} {investigator.lastName} (
-                        {investigator.name})
-                      </option>
-                    );
-                  })}
+                  investigators.map((investigator) => (
+                    <option key={investigator.id} value={investigator.id}>
+                      {investigator.firstName} {investigator.lastName} (
+                      {investigator.name})
+                    </option>
+                  ))}
               </select>
             )}
           </div>
@@ -209,7 +213,9 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
             </label>
             <textarea
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => {
+                setNotes(e.target.value);
+              }}
               rows={3}
               placeholder="Add any assignment notes or instructions..."
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"

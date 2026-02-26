@@ -1,11 +1,26 @@
 import React from 'react';
 import 'easymde/dist/easymde.min.css';
+import { CheckIcon } from '@heroicons/react/24/outline';
 import {
-  CheckIcon,
-} from '@heroicons/react/24/outline';
-import { taskService, type TaskForSupervisor } from '../../services/taskService';
+  taskService,
+  type TaskForSupervisor,
+} from '../../services/taskService';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
-import { BoldItalicUnderlineToggles, CreateLink, ListsToggle, MDXEditor, UndoRedo, headingsPlugin, linkDialogPlugin, linkPlugin, listsPlugin, markdownShortcutPlugin, quotePlugin, toolbarPlugin, BlockTypeSelect } from '@mdxeditor/editor';
+import {
+  BoldItalicUnderlineToggles,
+  CreateLink,
+  ListsToggle,
+  MDXEditor,
+  UndoRedo,
+  headingsPlugin,
+  linkDialogPlugin,
+  linkPlugin,
+  listsPlugin,
+  markdownShortcutPlugin,
+  quotePlugin,
+  toolbarPlugin,
+  BlockTypeSelect,
+} from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 import { TaskStatus } from '../../services/taskService';
 import { authService } from '@/features/auth';
@@ -27,18 +42,17 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   const [saving, setSaving] = React.useState(false);
   const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
 
-
   React.useEffect(() => {
     const handleLinkClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'A' && target.closest('.mdx-editor-container')) {
         e.preventDefault();
-        const href = (target as HTMLAnchorElement).href;
+        const { href } = target as HTMLAnchorElement;
         let url = href;
-        if (!href.match(/^https?:\/\//i) && !href.match(/^mailto:/i)) {
-          const match = href.match(/\/([^/]+)$/);
+        if (!/^https?:\/\//iu.exec(href) && !/^mailto:/iu.exec(href)) {
+          const match = /\/([^/]+)$/u.exec(href);
           if (match) {
-            url = 'https://' + match[1];
+            url = `https://${match[1]}`;
           }
         }
 
@@ -47,17 +61,18 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
     };
 
     document.addEventListener('click', handleLinkClick);
-    return () => document.removeEventListener('click', handleLinkClick);
+    return () => {
+      document.removeEventListener('click', handleLinkClick);
+    };
   }, []);
 
-  const transformMarkdownLinks = (markdown: string): string => {
-    return markdown.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
-      if (!url.match(/^(https?:\/\/|mailto:|#)/i)) {
+  const transformMarkdownLinks = (markdown: string): string =>
+    markdown.replace(/\[([^\]]+)\]\(([^)]+)\)/gu, (match, text, url) => {
+      if (!url.match(/^(https?:\/\/|mailto:|#)/iu)) {
         return `[${text}](https://${url})`;
       }
       return match;
     });
-  };
 
   const handleNotesChange = (value: string) => {
     const transformedValue = transformMarkdownLinks(value);
@@ -67,7 +82,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   const isUserAbleToSaveNotes = () => {
     const user = authService.getUser();
     return user?.userId === task?.assigned_user_id;
-  }
+  };
 
   const isUserCanEdit = isUserAbleToSaveNotes() && !isTaskCompleted;
 
@@ -82,7 +97,6 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
       showError(`Character limit exceeded (${CHAR_LIMIT} max).`);
       return;
     }
-
 
     setSaving(true);
     try {
@@ -119,7 +133,12 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
             <MDXEditor
               markdown={notes}
               onChange={handleNotesChange}
-              readOnly={!isUserCanEdit || saving || isTaskCompleted || task?.status === 'STATUS_21_BLOCKED'}
+              readOnly={
+                !isUserCanEdit ||
+                saving ||
+                isTaskCompleted ||
+                task?.status === 'STATUS_21_BLOCKED'
+              }
               className="mdx-editor"
               contentEditableClassName="prose"
               plugins={[
@@ -138,8 +157,9 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
                       <ListsToggle />
                       <CreateLink />
                     </>
-                  )
-                })]}
+                  ),
+                }),
+              ]}
             />
           </div>
 
@@ -159,7 +179,13 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
             <div className="flex justify-end gap-2">
               <button
                 onClick={handleSaveNotes}
-                disabled={saving || !notes.trim() || isTaskCompleted || task?.status === 'STATUS_21_BLOCKED' || getCharCount(notes) >= CHAR_LIMIT}
+                disabled={
+                  saving ||
+                  !notes.trim() ||
+                  isTaskCompleted ||
+                  task?.status === 'STATUS_21_BLOCKED' ||
+                  getCharCount(notes) >= CHAR_LIMIT
+                }
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-sm transition-all"
               >
                 <CheckIcon className="h-4 w-4" />

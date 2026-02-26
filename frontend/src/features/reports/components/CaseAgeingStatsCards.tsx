@@ -3,7 +3,7 @@ import {
   CalendarDaysIcon,
   ClockIcon,
   ExclamationTriangleIcon,
-  ExclamationCircleIcon
+  ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 import StatsCard from '../../dashboard/components/StatsCard';
 import type { CaseAgeingStats } from '../types/reports.types';
@@ -47,12 +47,12 @@ const DaysStatsCard: React.FC<{
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">
-            {formatDays(days)}
-          </p>
+          <p className="text-3xl font-bold text-gray-900">{formatDays(days)}</p>
           <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
         </div>
-        <div className={`p-3 rounded-lg ${colorClasses[color]} shadow-lg transition-transform duration-300 hover:scale-110`}>
+        <div
+          className={`p-3 rounded-lg ${colorClasses[color]} shadow-lg transition-transform duration-300 hover:scale-110`}
+        >
           {icon}
         </div>
       </div>
@@ -67,8 +67,9 @@ const DaysStatsCard: React.FC<{
   );
 };
 
-const CaseAgeingStatsCards: React.FC<CaseAgeingStatsCardsProps> = ({ stats }) => {
-
+const CaseAgeingStatsCards: React.FC<CaseAgeingStatsCardsProps> = ({
+  stats,
+}) => {
   const formatCount = (value: number | null | undefined): number => {
     if (value === null || value === undefined || isNaN(value)) {
       return 0;

@@ -5,6 +5,7 @@ export class CaseCreatedEvent {
     public readonly caseStatus: string,
     public readonly creationType: string,
     public readonly creatorRole: string,
+    public readonly isReopened: boolean,
   ) {}
 }
 
@@ -12,7 +13,6 @@ export class CaseStatusChangedEvent {
   constructor(
     public readonly caseId: number,
     public readonly newStatus: string,
-    public readonly reason?: string,
   ) {}
 }
 

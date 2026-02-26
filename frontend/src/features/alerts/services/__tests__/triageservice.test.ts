@@ -52,7 +52,9 @@ describe('triageService', () => {
         totalPages: 1,
       });
 
-      vi.spyOn(triageService, 'getAlertById').mockResolvedValue({ alert_id: 'ALERT-1' } as any);
+      vi.spyOn(triageService, 'getAlertById').mockResolvedValue({
+        alert_id: 'ALERT-1',
+      } as any);
 
       await triageService.getAlerts({
         priority: 'URGENT',
@@ -108,11 +110,15 @@ describe('triageService', () => {
         totalPages: 1,
       });
 
-      vi.spyOn(triageService, 'getAlertById').mockResolvedValue({ alert_id: 'ALERT-1' } as any);
+      vi.spyOn(triageService, 'getAlertById').mockResolvedValue({
+        alert_id: 'ALERT-1',
+      } as any);
 
       await triageService.getAlerts({});
 
-      expect(mockApi.get).toHaveBeenCalledWith('/api/v1/triage/alerts?includeData=true');
+      expect(mockApi.get).toHaveBeenCalledWith(
+        '/api/v1/triage/alerts?includeData=true',
+      );
     });
 
     it('handles failed detail fetch gracefully', async () => {
@@ -129,10 +135,15 @@ describe('triageService', () => {
 
       const getAlertSpy = vi
         .spyOn(triageService, 'getAlertById')
-        .mockResolvedValueOnce({ alert_id: 'ALERT-1', alert_type: 'AML' } as any)
+        .mockResolvedValueOnce({
+          alert_id: 'ALERT-1',
+          alert_type: 'AML',
+        } as any)
         .mockRejectedValueOnce(new Error('Failed to fetch'));
 
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleWarnSpy = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
 
       const result = await triageService.getAlerts({});
 
@@ -157,7 +168,9 @@ describe('triageService', () => {
       });
 
       const detailedAlert = { alert_id: 'ALERT-1', alert_type: 'FRAUD' };
-      vi.spyOn(triageService, 'getAlertById').mockResolvedValue(detailedAlert as any);
+      vi.spyOn(triageService, 'getAlertById').mockResolvedValue(
+        detailedAlert as any,
+      );
 
       const result = await triageService.getAlerts({});
 
@@ -179,14 +192,18 @@ describe('triageService', () => {
       const result = await triageService.getFilterOptions();
 
       expect(result).toEqual(mockOptions);
-      expect(mockApi.get).toHaveBeenCalledWith('/api/v1/triage/alerts/filter-options');
+      expect(mockApi.get).toHaveBeenCalledWith(
+        '/api/v1/triage/alerts/filter-options',
+      );
     });
 
     it('handles error when fetching filter options', async () => {
       const error = { response: { data: { message: 'Failed to fetch' } } };
       mockApi.get.mockRejectedValueOnce(error);
 
-      await expect(triageService.getFilterOptions()).rejects.toThrow('Failed to fetch');
+      await expect(triageService.getFilterOptions()).rejects.toThrow(
+        'Failed to fetch',
+      );
     });
   });
 
@@ -221,14 +238,18 @@ describe('triageService', () => {
       const error = { response: { data: { message: 'Not found' } } };
       mockApi.get.mockRejectedValueOnce(error);
 
-      await expect(triageService.getAlertById('ALERT-1')).rejects.toThrow('Not found');
+      await expect(triageService.getAlertById('ALERT-1')).rejects.toThrow(
+        'Not found',
+      );
     });
 
     it('handles error with message', async () => {
       const error = { message: 'Network error' };
       mockApi.get.mockRejectedValueOnce(error);
 
-      await expect(triageService.getAlertById('ALERT-1')).rejects.toThrow('Network error');
+      await expect(triageService.getAlertById('ALERT-1')).rejects.toThrow(
+        'Network error',
+      );
     });
 
     it('handles error without message or response', async () => {
@@ -252,16 +273,18 @@ describe('triageService', () => {
       const result = await triageService.getAlertActionHistory('ALERT-1');
 
       expect(result).toEqual(mockHistory);
-      expect(mockApi.get).toHaveBeenCalledWith('/api/v1/triage/alerts/ALERT-1/action-history');
+      expect(mockApi.get).toHaveBeenCalledWith(
+        '/api/v1/triage/alerts/ALERT-1/action-history',
+      );
     });
 
     it('handles error when fetching action history', async () => {
       const error = { response: { data: { message: 'Failed to fetch' } } };
       mockApi.get.mockRejectedValueOnce(error);
 
-      await expect(triageService.getAlertActionHistory('ALERT-1')).rejects.toThrow(
-        'Failed to fetch',
-      );
+      await expect(
+        triageService.getAlertActionHistory('ALERT-1'),
+      ).rejects.toThrow('Failed to fetch');
     });
   });
 
@@ -271,7 +294,10 @@ describe('triageService', () => {
       const mockResult = { alert_id: 'ALERT-1', case_id: 'CASE-1' };
       mockApi.patch.mockResolvedValueOnce(mockResult);
 
-      const result = await triageService.performManualTriage('ALERT-1', mockTriageData);
+      const result = await triageService.performManualTriage(
+        'ALERT-1',
+        mockTriageData,
+      );
 
       expect(result).toEqual(mockResult);
       expect(mockApi.patch).toHaveBeenCalledWith(
@@ -285,7 +311,10 @@ describe('triageService', () => {
       mockApi.patch.mockRejectedValueOnce(error);
 
       await expect(
-        triageService.performManualTriage('ALERT-1', { action: 'APPROVE', notes: 'Test' }),
+        triageService.performManualTriage('ALERT-1', {
+          action: 'APPROVE',
+          notes: 'Test',
+        }),
       ).rejects.toThrow('Failed to triage');
     });
   });
@@ -299,39 +328,52 @@ describe('triageService', () => {
       const result = await triageService.updateAlert('ALERT-1', mockUpdateData);
 
       expect(result).toEqual(mockResult);
-      expect(mockApi.patch).toHaveBeenCalledWith('/api/v1/triage/alerts/ALERT-1', mockUpdateData);
+      expect(mockApi.patch).toHaveBeenCalledWith(
+        '/api/v1/triage/alerts/ALERT-1',
+        mockUpdateData,
+      );
     });
 
     it('handles error when updating alert', async () => {
       const error = { response: { data: { message: 'Failed to update' } } };
       mockApi.patch.mockRejectedValueOnce(error);
 
-      await expect(triageService.updateAlert('ALERT-1', { priority: 'CRITICAL' })).rejects.toThrow(
-        'Failed to update',
-      );
+      await expect(
+        triageService.updateAlert('ALERT-1', { priority: 'CRITICAL' }),
+      ).rejects.toThrow('Failed to update');
     });
   });
 
   describe('closeAlert', () => {
     it('closes an alert with the correct payload', async () => {
-      mockApi.patch.mockResolvedValueOnce({ alert_id: 'ALERT-1', status: 'CLOSED' });
+      mockApi.patch.mockResolvedValueOnce({
+        alert_id: 'ALERT-1',
+        status: 'CLOSED',
+      });
 
-      const result = await triageService.closeAlert('ALERT-1', 'CLOSED' as any, 'Done');
+      const result = await triageService.closeAlert(
+        'ALERT-1',
+        'CLOSED' as any,
+        'Done',
+      );
 
       expect(result.alert_id).toBe('ALERT-1');
-      expect(mockApi.patch).toHaveBeenCalledWith('/api/v1/triage/alerts/ALERT-1/close', {
-        status: 'CLOSED',
-        reason: 'Done',
-      });
+      expect(mockApi.patch).toHaveBeenCalledWith(
+        '/api/v1/triage/alerts/ALERT-1/close',
+        {
+          status: 'CLOSED',
+          reason: 'Done',
+        },
+      );
     });
 
     it('handles error when closing alert', async () => {
       const error = { response: { data: { message: 'Failed to close' } } };
       mockApi.patch.mockRejectedValueOnce(error);
 
-      await expect(triageService.closeAlert('ALERT-1', 'CLOSED' as any, 'Done')).rejects.toThrow(
-        'Failed to close',
-      );
+      await expect(
+        triageService.closeAlert('ALERT-1', 'CLOSED' as any, 'Done'),
+      ).rejects.toThrow('Failed to close');
     });
   });
 
@@ -346,7 +388,12 @@ describe('triageService', () => {
         .spyOn(triageService, 'getAlerts')
         .mockResolvedValueOnce({
           alerts: mockAlerts,
-          pagination: { currentPage: 1, totalPages: 1, totalItems: 2, pageSize: 100 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 2,
+            pageSize: 100,
+          },
         });
 
       const result = await triageService.getNALTAlerts();
@@ -366,7 +413,12 @@ describe('triageService', () => {
         .spyOn(triageService, 'getAlerts')
         .mockResolvedValueOnce({
           alerts: mockAlerts,
-          pagination: { currentPage: 1, totalPages: 1, totalItems: 1, pageSize: 100 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 1,
+            pageSize: 100,
+          },
         });
 
       const result = await triageService.getNALTAlerts('test search');
@@ -385,9 +437,10 @@ describe('triageService', () => {
         .spyOn(triageService, 'getAlerts')
         .mockRejectedValueOnce(new Error('Failed to fetch'));
 
-      await expect(triageService.getNALTAlerts()).rejects.toThrow('Failed to fetch');
+      await expect(triageService.getNALTAlerts()).rejects.toThrow(
+        'Failed to fetch',
+      );
       expect(getAlertsSpy).toHaveBeenCalled();
     });
   });
 });
-

@@ -28,30 +28,24 @@ export const evidenceKeys = {
 export const useCaseEvidence = (
   caseId: number,
   filters?: EvidenceSearchFilters,
-  enabled: boolean = true,
-) => {
-  return useQuery({
+  enabled = true,
+) =>
+  useQuery({
     queryKey: evidenceKeys.list(caseId, filters),
-    queryFn: () =>
-      evidenceService.getCaseEvidence(caseId),
+    queryFn: async () => await evidenceService.getCaseEvidence(caseId),
     enabled: enabled && !!caseId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
-};
 
 /**
  * Hook to fetch evidence details
  */
-export const useEvidenceDetails = (
-  evidenceId: string,
-  enabled: boolean = true,
-) => {
-  return useQuery({
+export const useEvidenceDetails = (evidenceId: string, enabled = true) =>
+  useQuery({
     queryKey: evidenceKeys.detail(evidenceId),
-    queryFn: () => evidenceService.getEvidenceById(evidenceId),
+    queryFn: async () => await evidenceService.getEvidenceById(evidenceId),
     enabled: enabled && !!evidenceId,
   });
-};
 
 /**
  * Hook to fetch evidence statistics
@@ -115,8 +109,8 @@ export const useVerifyEvidence = (caseId: number) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: VerifyEvidenceDto) =>
-      evidenceService.verifyEvidence(data.evidenceId),
+    mutationFn: async (data: VerifyEvidenceDto) =>
+      await evidenceService.verifyEvidence(data.evidenceId),
     onSuccess: (response) => {
       queryClient.invalidateQueries({
         queryKey: evidenceKeys.detail(response.evidenceId),
@@ -218,14 +212,14 @@ export const useVerifyEvidence = (caseId: number) => {
  */
 export const useSearchEvidence = (
   filters: EvidenceSearchFilters,
-  page: number = 1,
-  limit: number = 20,
-  enabled: boolean = true,
-) => {
-  return useQuery({
+  page = 1,
+  limit = 20,
+  enabled = true,
+) =>
+  useQuery({
     queryKey: evidenceKeys.search(filters),
-    queryFn: () => evidenceService.searchEvidence(filters, page, limit),
+    queryFn: async () =>
+      await evidenceService.searchEvidence(filters, page, limit),
     enabled,
     staleTime: 2 * 60 * 1000,
   });
-};

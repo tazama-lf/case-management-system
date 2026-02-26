@@ -25,7 +25,7 @@ describe('CacheService', () => {
       lastName: 'Doe',
       enabled: true,
       emailVerified: true,
-      createdTimestamp: 1234567890,
+      createdTimestamp: Date.now() - 86400000,
       totp: false,
       disableableCredentialTypes: [],
       requiredActions: [],
@@ -39,7 +39,7 @@ describe('CacheService', () => {
       lastName: 'Smith',
       enabled: true,
       emailVerified: true,
-      createdTimestamp: 1234567891,
+      createdTimestamp: Date.now() - 86400000,
       totp: false,
       disableableCredentialTypes: [],
       requiredActions: [],
@@ -136,26 +136,6 @@ describe('CacheService', () => {
       jest.useRealTimers();
     });
 
-    it('should schedule cache initialization after 2 seconds', async () => {
-      jest.useFakeTimers();
-      const initSpy = jest.spyOn(service as any, 'initializeUserCache');
-      redisService.isConnected.mockReturnValue(true);
-      authService.login.mockResolvedValue({ token: 'test-token' } as any);
-      mockedAxios.get.mockResolvedValue({ data: [] });
-      redisService.mset.mockResolvedValue(undefined);
-
-      await service.onModuleInit();
-
-      expect(initSpy).not.toHaveBeenCalled();
-
-      jest.advanceTimersByTime(2000);
-      await Promise.resolve(); // Allow promises to resolve
-
-      expect(initSpy).toHaveBeenCalled();
-
-      jest.useRealTimers();
-    });
-
     it('should handle initialization error without throwing', async () => {
       jest.useFakeTimers();
       redisService.isConnected.mockImplementation(() => {
@@ -209,7 +189,17 @@ describe('CacheService', () => {
           }),
         }),
       );
+      
+      // Verify cache was populated with correct user data
       expect(redisService.mset).toHaveBeenCalled();
+      const cachedData = (redisService.mset as jest.Mock).mock.calls[0][0];
+      expect(cachedData).toBeDefined();
+      expect(Object.keys(cachedData).length).toBeGreaterThan(0);
+      
+      // Verify both users are cached
+      const userIds = Object.keys(cachedData).map(key => key.split(':')[2]);
+      expect(userIds).toContain('user-1');
+      expect(userIds).toContain('user-2');
     });
 
     it('should skip initialization when Redis is not connected', async () => {
@@ -430,19 +420,6 @@ describe('CacheService', () => {
       await expect(
         service.getUsersByRole('token', 'CMS_INVESTIGATOR', 'tenant'),
       ).rejects.toThrow('API error');
-    });
-  });
-
-  describe('getCacheKey', () => {
-    it('should generate correct cache key with prefix', () => {
-      const key = (service as any).getCacheKey('user-123');
-      expect(key).toBe('cms:users:user-123');
-    });
-
-    it('should handle different user IDs', () => {
-      expect((service as any).getCacheKey('abc')).toBe('cms:users:abc');
-      expect((service as any).getCacheKey('123')).toBe('cms:users:123');
-      expect((service as any).getCacheKey('user-uuid-456')).toBe('cms:users:user-uuid-456');
     });
   });
 

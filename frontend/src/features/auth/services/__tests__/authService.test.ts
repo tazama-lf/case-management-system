@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { LoginCredentials, User, LoginResponse, Investigator } from '../../types/auth.types';
+import type {
+  LoginCredentials,
+  User,
+  LoginResponse,
+  Investigator,
+} from '../../types/auth.types';
 import { server } from '@/test/mocks/server';
 import { http, HttpResponse } from 'msw';
 import authService from '../authService';
@@ -85,8 +90,10 @@ describe('authService', () => {
 
     it('handles fetch user profile failure gracefully', async () => {
       const mockToken = 'mock-jwt-token';
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
       server.use(
         http.post('*/v1/auth/login', () => {
           return HttpResponse.json({
@@ -159,7 +166,9 @@ describe('authService', () => {
     it('returns null when no token is available', async () => {
       localStorage.removeItem('authToken');
 
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const user = await authService.fetchUserProfile();
 
       expect(user).toBeNull();
@@ -179,7 +188,9 @@ describe('authService', () => {
         }),
       );
 
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const user = await authService.fetchUserProfile();
 
       expect(user).toBeNull();
@@ -406,9 +417,9 @@ describe('authService', () => {
     });
 
     it('hasAnyRole returns false when user has none of the roles', () => {
-      expect(authService.hasAnyRole(['CMS_ADMIN', 'CMS_COMPLIANCE_OFFICER'])).toBe(
-        false,
-      );
+      expect(
+        authService.hasAnyRole(['CMS_ADMIN', 'CMS_COMPLIANCE_OFFICER']),
+      ).toBe(false);
     });
 
     it('hasAllRoles returns true when user has all roles', () => {
@@ -558,7 +569,10 @@ describe('authService', () => {
 });
 
 // Helper function to create a mock JWT token
-function createMockToken(payload: { exp: number; [key: string]: unknown }): string {
+function createMockToken(payload: {
+  exp: number;
+  [key: string]: unknown;
+}): string {
   // Create proper JWT format: header.payload.signature
   // The token needs to have 3 parts separated by dots for the decoder to work
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
@@ -566,4 +580,3 @@ function createMockToken(payload: { exp: number; [key: string]: unknown }): stri
   // Ensure we have a valid 3-part token structure
   return `${header}.${body}.signature`;
 }
-

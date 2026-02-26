@@ -14,7 +14,7 @@ interface State {
 
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
-    hasError: false
+    hasError: false,
   };
 
   public static getDerivedStateFromError(error: Error): State {
@@ -22,14 +22,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-
     console.error('Uncaught error:', error, errorInfo);
   }
 
-  public render() {
+  public async render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        return this.props.fallback;
+        return await this.props.fallback;
       }
 
       return (
@@ -44,13 +43,18 @@ export class ErrorBoundary extends Component<Props, State> {
                   Something went wrong
                 </h3>
                 <div className="mt-2 text-sm text-gray-500">
-                  <p>We encountered an unexpected error. Please refresh the page or try again later.</p>
+                  <p>
+                    We encountered an unexpected error. Please refresh the page
+                    or try again later.
+                  </p>
                 </div>
                 <div className="mt-4">
                   <button
                     type="button"
                     className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                    onClick={() => window.location.reload()}
+                    onClick={() => {
+                      window.location.reload();
+                    }}
                   >
                     Refresh Page
                   </button>
@@ -62,7 +66,7 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    return await this.props.children;
   }
 }
 

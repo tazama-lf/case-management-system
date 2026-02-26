@@ -44,7 +44,10 @@ describe('systemConfigService', () => {
       confidenceThreshold: 95,
       interdictionEnabled: true,
     });
-    expect(consoleSpy).toHaveBeenCalledWith('Failed to fetch system config:', error);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Failed to fetch system config:',
+      error,
+    );
 
     consoleSpy.mockRestore();
   });
@@ -62,4 +65,3 @@ describe('systemConfigService', () => {
     consoleSpy.mockRestore();
   });
 });
-

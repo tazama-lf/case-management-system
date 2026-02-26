@@ -97,4 +97,3 @@ describe('options', () => {
     expect(REPORT_TYPE_LABELS.CASE_STATUS).toBe('Case Status Report');
   });
 });
-

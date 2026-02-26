@@ -258,40 +258,44 @@ The case may have been deleted or moved.`;
 
       if (errorString.includes('Cannot abandon case other than draft status')) {
         errorMessage =
-          `Case cannot be abandoned.\n\n` +
-          `This case may not meet the abandonment requirements:\n` +
-          `• Case must be in "DRAFT" status\n` +
-          `• Case must have a "Complete New Case" task\n\n` +
-          `Please check the case status and try again.`;
+          'Case cannot be abandoned.\n\n' +
+          'This case may not meet the abandonment requirements:\n' +
+          '• Case must be in "DRAFT" status\n' +
+          '• Case must have a "Complete New Case" task\n\n' +
+          'Please check the case status and try again.';
       } else if (errorString.includes('No complete new Case Task exists')) {
         errorMessage =
-          `Case cannot be abandoned.\n\n` +
-          `This case may not meet the abandonment requirements:\n` +
-          `• Case must be in "DRAFT" status\n` +
-          `• Case must have a "Complete New Case" task\n\n` +
-          `Please check the case status and try again.`;
+          'Case cannot be abandoned.\n\n' +
+          'This case may not meet the abandonment requirements:\n' +
+          '• Case must be in "DRAFT" status\n' +
+          '• Case must have a "Complete New Case" task\n\n' +
+          'Please check the case status and try again.';
       } else if (
         errorString.includes('Unauthorized') ||
         errorString.includes('403')
       ) {
         errorMessage =
-          `Access Denied.\n\n` +
-          `You don't have permission to abandon this case.\n` +
-          `Please ensure you have the appropriate role.`;
+          'Access Denied.\n\n' +
+          'You don\'t have permission to abandon this case.\n' +
+          'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage =
-          `Case Not Found.\n\n` + `The case may have been deleted or moved.`;
+          'Case Not Found.\n\n' + 'The case may have been deleted or moved.';
       }
 
       error('Abandon Case Failed', errorMessage);
     }
   };
 
-  const handleSuspendSubmit = async (caseId: number, reason: string, tasksIds: number[]) => {
+  const handleSuspendSubmit = async (
+    caseId: number,
+    reason: string,
+    tasksIds: number[],
+  ) => {
     try {
       const suspendCaseData: SuspendCaseDto = {
         reason: reason.trim(),
-        taskIds: tasksIds
+        taskIds: tasksIds,
       };
 
       const suspendedCase = await caseService.suspendCase(
@@ -315,24 +319,24 @@ The case has been suspended and all associated tasks have been blocked. Supervis
       let errorMessage = 'Failed to suspend case. Please try again.';
       const errorString = err instanceof Error ? err.message : '';
       const normalizedErrorString = (errorString || '')
-        .replace(/"Investigate case"/g, '"Investigate Case"')
-        .replace(/\bcase\b/g, 'Case');
+        .replace(/"Investigate case"/gu, '"Investigate Case"')
+        .replace(/\bcase\b/gu, 'Case');
 
       if (errorString.includes('not in a suspendable state')) {
         errorMessage =
-          `Case cannot be suspended.\n\n` +
-          `This case may not meet the suspension requirements:\n` +
-          `• Case must be in "IN PROGRESS" status\n` +
-          `• Case must not be already suspended or closed\n\n` +
-          `Please check the case status and try again.`;
+          'Case cannot be suspended.\n\n' +
+          'This case may not meet the suspension requirements:\n' +
+          '• Case must be in "IN PROGRESS" status\n' +
+          '• Case must not be already suspended or closed\n\n' +
+          'Please check the case status and try again.';
       } else if (
         errorString.includes('Unauthorized') ||
         errorString.includes('403')
       ) {
         errorMessage =
-          `Access Denied.\n\n` +
-          `You don't have permission to suspend this case.\n` +
-          `Please ensure you have the appropriate role.`;
+          'Access Denied.\n\n' +
+          'You don\'t have permission to suspend this case.\n' +
+          'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage = `Case Not Found.
 
@@ -381,7 +385,7 @@ The case has been moved back to "In Progress" status. All associated tasks have 
           `• Case must not be already closed or completed
 
 ` +
-          `Please check the case status and try again.`;
+          'Please check the case status and try again.';
       } else if (
         errorString.includes('Unauthorized') ||
         errorString.includes('403')
@@ -392,12 +396,12 @@ The case has been moved back to "In Progress" status. All associated tasks have 
 ` +
           `You don't have permission to resume this case.
 ` +
-          `Please ensure you have the appropriate role.`;
+          'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage =
           `Case Not Found.
 
-` + `The case may have been deleted or moved.`;
+` + 'The case may have been deleted or moved.';
       }
 
       error('Resume Case Failed', errorMessage);
@@ -446,7 +450,7 @@ The case has been returned to the investigator for additional work.`,
           `• Case must be pending final approval
 
 ` +
-          `Please check the case status and try again.`;
+          'Please check the case status and try again.';
       } else if (
         errorString.includes('Unauthorized') ||
         errorString.includes('403')
@@ -457,12 +461,12 @@ The case has been returned to the investigator for additional work.`,
 ` +
           `You don't have permission to reject this case.
 ` +
-          `Please ensure you have the appropriate role.`;
+          'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage =
           `Case Not Found.
 
-` + `The case may have been deleted or moved.`;
+` + 'The case may have been deleted or moved.';
       } else if (errorString.includes('Approval task validation failed')) {
         errorMessage = errorString;
       }
@@ -489,8 +493,8 @@ The case has been returned to the investigator for additional work.`,
 
 Final Outcome: ${data.finalOutcome
           .replace('STATUS_', '')
-          .replace(/_/g, ' ')
-          .replace(/\b\w/g, (l: string) => l.toUpperCase())}
+          .replace(/_/gu, ' ')
+          .replace(/\b\w/gu, (l: string) => l.toUpperCase())}
 Status: ${approvedCase.status}
 
 The case has been finalized with the selected outcome.`,

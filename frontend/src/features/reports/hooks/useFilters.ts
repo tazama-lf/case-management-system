@@ -12,13 +12,14 @@ export interface FiltersData {
   investigators: FilterOption[];
 }
 
-export const useFilters = () => {
-  return useQuery<FiltersData>({
+export const useFilters = () =>
+  useQuery<FiltersData>({
     queryKey: ['reports', 'filters'],
     queryFn: async () => {
-      const response = await apiClient.get<FiltersData>('/api/v1/reports/filters');
+      const response = await apiClient.get<FiltersData>(
+        '/api/v1/reports/filters',
+      );
       return response;
     },
     staleTime: 5 * 60 * 1000,
   });
-};

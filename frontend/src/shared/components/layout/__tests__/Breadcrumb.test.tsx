@@ -25,7 +25,7 @@ describe('Breadcrumb', () => {
     render(
       <MemoryRouter>
         <Breadcrumb />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
@@ -43,7 +43,7 @@ describe('Breadcrumb', () => {
     render(
       <MemoryRouter>
         <Breadcrumb items={items} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('Home')).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe('Breadcrumb', () => {
     const { container } = render(
       <MemoryRouter>
         <Breadcrumb items={[{ name: 'Dashboard', href: '/' }]} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(container.firstChild).toBeNull();
@@ -71,7 +71,7 @@ describe('Breadcrumb', () => {
     render(
       <MemoryRouter>
         <Breadcrumb items={items} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     const homeLink = screen.getByText('Home').closest('a');
@@ -87,7 +87,7 @@ describe('Breadcrumb', () => {
     render(
       <MemoryRouter>
         <Breadcrumb items={items} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     const currentItem = screen.getByText('Current');
@@ -99,7 +99,7 @@ describe('Breadcrumb', () => {
     const { container } = render(
       <MemoryRouter>
         <Breadcrumb className="custom-class" />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     const nav = container.querySelector('nav');
@@ -114,7 +114,7 @@ describe('Breadcrumb', () => {
     render(
       <MemoryRouter>
         <Breadcrumb />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('Case management')).toBeInTheDocument();

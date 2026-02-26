@@ -269,7 +269,7 @@ export class TaskEventListener {
         });
       }
 
-      await this.flowableTaskService.completeTask(task.id as number, completionVars);
+      await this.flowableTaskService.completeTask(task.id, completionVars);
 
       this.logger.log(`Completed Flowable task ${task.id}`, TaskEventListener.name);
     } catch (error) {

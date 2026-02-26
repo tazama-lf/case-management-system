@@ -1,12 +1,10 @@
-import { Injectable, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from '../task/task.service';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
 import { Priority, CaseStatus, CaseType, TaskStatus, Alert, Case, Task } from '@prisma/client-cms';
 import { AIPrediction, Prediction } from '../../utils/interfaces/Prediction';
-import { CaseStatusChangedEvent } from '../events/domain-events';
 import { FeatureExtractionService } from 'src/modules/feature-extraction/feature-extraction.service';
 import axios from 'axios';
 import { AlertService } from '../alert/alert.service';
@@ -19,6 +17,10 @@ import { ManualAlertUpdateDTO, IngestAlertDto, UpdateAlertDTO } from '../alert/d
 import { CaseCreationService } from '../case/services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { CommentRepository } from '../repository/comment.repository';
+import { PrismaService } from 'prisma/prisma.service';
+import { AlertNavigatorDto, TypologyDto, RuleDto, BlockStatusDto, RelatedLinksDto } from './dto/alert-navigator.dto';
+import { LinkDto, TransactionDetailDto, ChargeDto, CreditorDto, DebtorDto } from './dto/transaction-detail.dto';
+import { setTimeout } from 'node:timers/promises';
 
 @Injectable()
 export class TriageService {
@@ -39,38 +41,283 @@ export class TriageService {
     private readonly caseCreationService: CaseCreationApprovalService,
     private readonly taskService: TaskService,
     private readonly configService: ConfigService,
-    private readonly eventEmitter: EventEmitter2,
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly featureExtractionService: FeatureExtractionService,
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly prisma: PrismaService,
   ) {}
 
+  async getAlertNavigator(alertId: number, tenantId: string, userId: string): Promise<AlertNavigatorDto> {
+    this.logger.log(`Fetching alert navigator for alertId: ${alertId}, tenantId: ${tenantId}, userId: ${userId}`, TriageService.name);
+
+    const alert = await this.prisma.alert.findUnique({
+      where: { alert_id: alertId, tenant_id: tenantId },
+    });
+    if (!alert) {
+      this.logger.warn(`Alert not found: ${alertId} for tenant: ${tenantId}`, TriageService.name);
+      throw new NotFoundException('Alert not found');
+    }
+
+    this.logger.log(`Alert found: ${alertId}, processing data`, TriageService.name);
+
+    const alertReport = (alert.alert_data as any) ?? {};
+    const transactionData = (alert.transaction as any) ?? {};
+    const tadpReport = alertReport ?? {};
+
+    const typologies: TypologyDto[] = [];
+    const rules: RuleDto[] = [];
+
+    const typologyResults = tadpReport?.tadpResult?.typologyResult ?? [];
+    this.logger.log(`Processing ${typologyResults.length} typologies`, TriageService.name);
+
+    for (const typology of typologyResults) {
+      typologies.push({
+        id: typology.id,
+        score: typology.result ?? 0,
+        threshold: typology.workflow?.alertThreshold ?? 0,
+        rules:
+          typology.ruleResults?.map((rule) => ({
+            id: rule.id,
+            weight: rule.wght ?? 0,
+          })) ?? [],
+      });
+      if (Array.isArray(typology.ruleResults)) {
+        for (const rule of typology.ruleResults) {
+          rules.push({
+            id: rule.id,
+            weight: rule.wght ?? 0,
+          });
+        }
+      }
+    }
+
+    this.logger.log(`Extracted ${typologies.length} typologies and ${rules.length} rules`, TriageService.name);
+
+    const blockStatusValue = alert.block_status ?? alertReport?.block_status;
+    const blockReasonValue = alert.block_reason ?? alertReport?.block_reason;
+
+    const blockStatus: BlockStatusDto | null =
+      (blockStatusValue ?? blockReasonValue)
+        ? {
+            status: blockStatusValue ?? '',
+            reason: blockReasonValue ?? '',
+          }
+        : null;
+
+    const transactionId = transactionData?.FIToFIPmtSts?.GrpHdr?.MsgId ?? '';
+    const amount = {
+      value: transactionData?.FIToFIPmtSts?.TxInfAndSts?.Amt?.Amt ?? 0,
+      currency: transactionData?.FIToFIPmtSts?.TxInfAndSts?.Amt?.Ccy ?? '',
+    };
+    const relatedLinks: RelatedLinksDto = {
+      transactionDetail: `/triage/transaction-detail/${transactionId}`,
+      transactionHistory: `/api/v1/transactions/${transactionId}/history`,
+      conditionsView: `/api/v1/alerts/${alertId}/conditions`,
+      alertHistory: `/api/v1/triage/alerts/${alertId}/action-history`,
+      jupyterLab: `/notebooks/transaction-viz.ipynb?alertId=${alertId}`,
+    };
+
+    const links: LinkDto[] = [
+      {
+        rel: 'alert-navigator',
+        href: `/api/v1/triage/alerts/${alert.alert_id}/navigator`,
+      },
+      {
+        rel: 'transaction-history',
+        href: `/api/v1/transactions/${transactionId}/history`,
+      },
+    ];
+
+    this.logger.log(`Alert navigator data prepared for alertId: ${alertId}`, TriageService.name);
+
+    return {
+      alertId: alert.alert_id,
+      transactionId,
+      timestamp: transactionData?.FIToFIPmtSts?.GrpHdr?.CreDtTm ?? '',
+      transactionType: alert.txtp || '',
+      amount,
+      status: blockStatusValue ?? '',
+      reason: alert.message || '',
+      blockReason: blockReasonValue ?? '',
+      typologies,
+      rules,
+      blockStatus,
+      relatedLinks,
+      links,
+    };
+  }
+
+  async getTransactionDetail(transactionId: string, tenantId: string, userId: string): Promise<TransactionDetailDto> {
+    this.logger.log(
+      `Fetching transaction detail for transactionId: ${transactionId}, tenantId: ${tenantId}, userId: ${userId}`,
+      TriageService.name,
+    );
+
+    const alert = await this.prisma.alert.findFirst({
+      where: {
+        tenant_id: tenantId,
+        transaction: {
+          path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
+          equals: transactionId,
+        },
+      },
+    });
+
+    if (!alert) {
+      this.logger.warn(`Transaction not found: ${transactionId} for tenant: ${tenantId}`, TriageService.name);
+      throw new NotFoundException('Transaction not found');
+    }
+
+    const transactionData = (alert.transaction as any) ?? {};
+    const txInfAndSts = transactionData?.FIToFIPmtSts?.TxInfAndSts;
+
+    const debtor: DebtorDto = {
+      name: txInfAndSts?.Dbtr?.Nm,
+      account: {
+        iban: txInfAndSts?.Dbtr?.Acct?.Id?.IBAN,
+        type: txInfAndSts?.Dbtr?.Acct?.Tp,
+      },
+      bank: txInfAndSts?.Dbtr?.Agt?.FinInstnId?.Nm,
+      swiftCode: txInfAndSts?.Dbtr?.Agt?.FinInstnId?.BICFI,
+      address: txInfAndSts?.Dbtr?.Agt?.FinInstnId?.PstlAdr
+        ? `${txInfAndSts.Dbtr.Agt.FinInstnId.PstlAdr.StrtNm}, ${txInfAndSts.Dbtr.Agt.FinInstnId.PstlAdr.TwnNm}, ${txInfAndSts.Dbtr.Agt.FinInstnId.PstlAdr.Ctry} ${txInfAndSts.Dbtr.Agt.FinInstnId.PstlAdr.PstCd}`
+        : undefined,
+      accountType: txInfAndSts?.Dbtr?.Acct?.Tp,
+    };
+
+    const creditor: CreditorDto = {
+      name: txInfAndSts?.Cdtr?.Nm,
+      account: {
+        iban: txInfAndSts?.Cdtr?.Acct?.Id?.IBAN,
+        type: txInfAndSts?.Cdtr?.Acct?.Tp,
+      },
+      bank: txInfAndSts?.Cdtr?.Agt?.FinInstnId?.Nm,
+      swiftCode: txInfAndSts?.Cdtr?.Agt?.FinInstnId?.BICFI,
+      address: txInfAndSts?.Cdtr?.Agt?.FinInstnId?.PstlAdr
+        ? `${txInfAndSts.Cdtr.Agt.FinInstnId.PstlAdr.StrtNm}, ${txInfAndSts.Cdtr.Agt.FinInstnId.PstlAdr.TwnNm}, ${txInfAndSts.Cdtr.Agt.FinInstnId.PstlAdr.Ctry} ${txInfAndSts.Cdtr.Agt.FinInstnId.PstlAdr.PstCd}`
+        : undefined,
+      accountType: txInfAndSts?.Cdtr?.Acct?.Tp,
+    };
+
+    // Amount and currency
+    const amount = txInfAndSts?.Amt?.Amt ?? 0;
+    const exchangeRate = 0.79; // Example rate for USD to GBP
+    const convertedAmount = Math.round(amount * exchangeRate); // Rounded to nearests
+
+    // Charges
+    const charges: ChargeDto[] = (txInfAndSts?.ChrgsInf ?? []).map((charge: any) => ({
+      amount: charge.Amt?.Amt ?? 0,
+      currency: charge.Amt?.Ccy ?? 'USD',
+      agent: {
+        memberId: charge.Agt?.FinInstnId?.ClrSysMmbId?.MmbId ?? '',
+      },
+    }));
+
+    const totalCharges = charges.reduce((sum, charge) => sum + charge.amount, 0);
+
+    // Settlement details
+    const settlementDate = txInfAndSts?.SttlmInf?.SttlmDt;
+    const reference = txInfAndSts?.SttlmInf?.Ref;
+    const purpose = txInfAndSts?.SttlmInf?.Purp;
+
+    // Links
+    const links: LinkDto[] = [
+      {
+        rel: 'alert-navigator',
+        href: `/api/v1/triage/alerts/${alert.alert_id}/navigator`,
+      },
+      {
+        rel: 'transaction-history',
+        href: `/api/v1/transactions/${transactionId}/history`,
+      },
+    ];
+
+    // Visualization URL - placeholder, assuming JupyterLab endpoint
+    const visualizationUrl = `${this.configService.get('JUPYTERLAB_URL', 'http://localhost:8888')}/notebooks/transaction-viz.ipynb?transactionId=${transactionId}`;
+
+    this.logger.log(`Transaction detail prepared for transactionId: ${transactionId}`, TriageService.name);
+
+    return {
+      transactionOverview: {
+        transactionId,
+        transactionType: alert.txtp || '',
+        timestamp: transactionData?.FIToFIPmtSts?.GrpHdr?.CreDtTm ?? '',
+      },
+      transactionFlow: {
+        debtor: {
+          name: debtor.name ?? '',
+          account: debtor.account ?? { iban: '' },
+          bank: debtor.bank ?? '',
+        },
+        amount: {
+          amount,
+        },
+        creditor: {
+          name: creditor.name ?? '',
+          account: creditor.account ?? { iban: '' },
+          bankName: creditor.bank ?? '',
+        },
+      },
+      debtorProfile: debtor,
+      creditorProfile: creditor,
+      amountAndCurrency: [
+        {
+          originalAmount: amount,
+          exchangeRate,
+          convertedAmount,
+        },
+        {
+          senderCharges: charges.length > 0 ? [charges[0]] : [],
+          intermediaryCharges: charges.length > 1 ? [charges[1]] : [],
+          receiverCharges: charges.length > 2 ? [charges[2]] : [],
+        },
+        {
+          totalCharges,
+        },
+      ],
+      settlementDetails: {
+        settlementDate,
+        reference,
+        purpose,
+      },
+      links,
+      visualizationUrl,
+    };
+  }
+
   async handleManualTriage(alertId: number, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string): Promise<Alert> {
+    this.logger.log('Start - handleManualTriage', TriageService.name);
     const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
     if (triageType !== 'MANUAL') {
       throw new BadRequestException(`Cannot update alert ${alertId} when triageType is not MANUAL`);
     }
+    const updateAlertData = updateAlertDto;
+    const priorityScore = updateAlertDto.priorityScore ?? 0.33;
+    const priority = this.casePriorityUtil.determinePriority(priorityScore);
+    updateAlertData.priority = priority;
 
     try {
-      const updateAlertData = updateAlertDto;
-      const priorityScore = updateAlertDto.priorityScore ?? 0.33;
-      const priority = this.casePriorityUtil.determinePriority(priorityScore);
-      updateAlertData.priority = priority;
       const transactionResult = await this.alertRepository.transaction(async (tx) => {
         const existingAlert = await this.alertRepository.getAlertById(alertId, tx);
         const existingCase = await this.caseRepository.findCaseById(existingAlert.case_id!, tenantId);
-
         const completeNewCaseTask = existingCase.tasks.find((t) => t.name === 'Complete New Case');
 
         if (!completeNewCaseTask || completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
           throw new BadRequestException('Triage Already Complete');
         }
+        if (this.closableStatuses.includes(existingCase.status)) {
+          throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
+        }
 
         const alert = await this.alertService.updateAlert(
           alertId,
           userId,
-          { confidencePer: updateAlertData.confidence_per, priority_score: updateAlertData.priorityScore, ...updateAlertData },
+          {
+            confidencePer: updateAlertData.confidence_per,
+            priority_score: updateAlertData.priorityScore,
+            ...JSON.parse(JSON.stringify(updateAlertData)),
+          },
           tx,
         );
         if (!alert.case_id) {
@@ -95,34 +342,7 @@ export class TriageService {
           tx,
         );
 
-        if (this.closableStatuses.includes(existingCase.status)) {
-          throw new BadRequestException(`Case ${existingCase.case_id} linked with alert ${alertId} is already closed`);
-        }
-
         if (updateAlertDto.status && this.closableStatuses.includes(updateAlertDto.status)) {
-          await this.caseCreationService.updateCaseStatus(alert.case_id, updateAlertDto.status, userId, tenantId);
-
-          await this.flowableService.handleTaskCompleted({
-            caseId: existingCase.case_id,
-            newStatus: TaskStatus.STATUS_30_COMPLETED,
-            taskName: completeNewCaseTask.name!,
-            completionVariables: {
-              autoCloseEligible: true,
-              caseType: updateAlertDto.alertType,
-              casePriority: alert.priority,
-            },
-          });
-
-          await this.flowableService.handleTaskCompleted({
-            caseId: existingCase.case_id,
-            newStatus: TaskStatus.STATUS_30_COMPLETED,
-            taskName: 'Auto Close',
-            completionVariables: {
-              autoCloseType: updateAlertDto.status,
-              autoCloseReason: updateAlertDto.note,
-            },
-          });
-
           await this.caseCreationService.updateCaseStatus(
             alert.case_id,
             updateAlertDto.status,
@@ -131,41 +351,29 @@ export class TriageService {
             priority,
             updateAlertDto.alertType,
           );
-
-          this.logger.log(
-            `Manual triage handled for alert ${alertId}, case ${alert.case_id}. Outcome: Closed as ${updateAlertDto.status}`,
-            TriageService.name,
+        } else if (alert.alert_type) {
+          await this.caseCreationService.updateCaseStatus(
+            alert.case_id,
+            CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+            userId,
+            tenantId,
+            priority,
+            updateAlertDto.alertType,
           );
-        } else {
-          if (alert.alert_type) {
-            await this.caseCreationService.updateCaseStatus(
-              alert.case_id,
-              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              userId,
-              tenantId,
-              priority,
-              updateAlertDto.alertType,
-            );
-          }
-
           if (alert.alert_type === CaseType.FRAUD_AND_AML) {
             await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, alert.case_id, priority);
             await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, alert.case_id, priority);
           }
-
-          await this.flowableService.handleTaskCompleted({
-            caseId: existingCase.case_id,
-            newStatus: TaskStatus.STATUS_30_COMPLETED,
-            taskName: completeNewCaseTask.name!,
-            completionVariables: {
-              autoCloseEligible: false,
-              caseType: updateAlertDto.alertType,
-              casePriority: alert.priority,
-            },
-          });
         }
-        return { alert };
+        return { alert, completeNewCaseTask, existingCase };
       });
+
+      await this.executeFlowableOperations(
+        updateAlertData,
+        transactionResult.completeNewCaseTask,
+        transactionResult.existingCase,
+        transactionResult.alert,
+      );
 
       this.logger.log('End - handleManualTriage', TriageService.name);
       return transactionResult.alert;
@@ -177,8 +385,68 @@ export class TriageService {
     }
   }
 
+  private async executeFlowableOperations(
+    updateAlertDto: ManualAlertUpdateDTO,
+    completeNewCaseTask: Task,
+    existingCase: Case,
+    alert: Alert,
+    maxRetries = 3,
+  ): Promise<void> {
+    const flowableOperations = async (): Promise<void> => {
+      if (updateAlertDto.status && this.closableStatuses.includes(updateAlertDto.status)) {
+        await this.flowableService.handleTaskCompleted({
+          caseId: existingCase.case_id,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: completeNewCaseTask.name!,
+          completionVariables: {
+            autoCloseEligible: true,
+            caseType: updateAlertDto.alertType,
+            casePriority: alert.priority,
+          },
+        });
+
+        await this.flowableService.handleTaskCompleted({
+          caseId: existingCase.case_id,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: 'Auto Close',
+          completionVariables: {
+            autoCloseType: updateAlertDto.status,
+            autoCloseReason: updateAlertDto.note,
+          },
+        });
+      } else {
+        await this.flowableService.handleTaskCompleted({
+          caseId: existingCase.case_id,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: completeNewCaseTask.name!,
+          completionVariables: {
+            autoCloseEligible: false,
+            caseType: updateAlertDto.alertType,
+            casePriority: alert.priority,
+          },
+        });
+      }
+    };
+    await this.retry(flowableOperations, maxRetries);
+  }
+
+  private async retry(fn: () => Promise<void>, maxRetries: number, attempt = 1): Promise<void> {
+    try {
+      await fn();
+    } catch (error) {
+      if (attempt >= maxRetries) throw error;
+
+      await setTimeout(1000 * attempt);
+      await this.retry(fn, maxRetries, attempt + 1);
+    }
+  }
+
   async handleAITriage(alertId: number, caseId: number, dto: IngestAlertDto, userId: string, tenantId: string): Promise<unknown> {
-    this.logger.log(`Start - AI Triage for alert ${alertId}`, TriageService.name);
+    this.logger.log('Start - handleAITriage', TriageService.name);
+    const confidenceThreshold = this.configService.get<number>('CONFIDENCE_THRESHOLD', 100);
+    const interdictionEnabled = this.configService.get<boolean>('CLIENT_SYSTEM_INTERDICTION_ENABLED', true);
+    let transactionOccurred = true;
+    const { tadpResult } = dto.report;
     try {
       const triageTask = await this.taskService.createTask(
         {
@@ -194,13 +462,8 @@ export class TriageService {
       );
 
       const triageTaskId = triageTask.task_id;
-      const confidenceThreshold = this.configService.get<number>('CONFIDENCE_THRESHOLD', 100);
-      const interdictionEnabled = this.configService.get<boolean>('CLIENT_SYSTEM_INTERDICTION_ENABLED', true);
-      let transactionOccurred = true;
 
       if (interdictionEnabled) {
-        const { tadpResult } = dto.report;
-
         if (
           typeof tadpResult === 'object' &&
           'typologyResult' in tadpResult &&
@@ -422,10 +685,11 @@ export class TriageService {
 
       const updatedCase = await this.caseCreationService.updateCaseStatus(caseId, status, userId, tenantId, undefined, caseType);
 
-      this.eventEmitter.emit(
-        'case.status.changed',
-        new CaseStatusChangedEvent(caseId, status, customDescription ?? `Case automatically closed with status ${status}`),
-      );
+      this.flowableService.handleCaseStatusChanged({
+        caseId,
+        newStatus: status,
+      });
+      // this.eventEmitter.emit('case.status.changed', new CaseStatusChangedEvent(caseId, status));
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
@@ -573,7 +837,7 @@ export class TriageService {
   private async predictAlert(alert: IngestAlertDto): Promise<Prediction> {
     this.logger.log('Start - AI Prediction', TriageService.name);
     try {
-      const extractedFeatures = await this.featureExtractionService.extractFeatures(alert);
+      const extractedFeatures = this.featureExtractionService.extractFeatures(alert);
       const predictedResult = await axios.post<AIPrediction>(this.configService.get<string>('AI_MODEL_ENDPOINT')!, extractedFeatures);
       const confidence = predictedResult.data.confidence * 100;
 

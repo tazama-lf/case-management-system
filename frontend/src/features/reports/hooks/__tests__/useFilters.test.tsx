@@ -37,9 +37,7 @@ describe('useFilters', () => {
         { value: 'HIGH', label: 'High' },
         { value: 'MEDIUM', label: 'Medium' },
       ],
-      investigators: [
-        { value: 'user-1', label: 'John Doe' },
-      ],
+      investigators: [{ value: 'user-1', label: 'John Doe' }],
     };
 
     vi.mocked(apiClient.get).mockResolvedValue(mockData);
@@ -102,4 +100,3 @@ describe('useFilters', () => {
     expect(result.current).toBeDefined();
   });
 });
-

@@ -24,7 +24,9 @@ describe('UserService', () => {
 
       const result = await userService.getUsersByRole('CMS_INVESTIGATOR');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/v1/user/list-by-role/CMS_INVESTIGATOR');
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/v1/user/list-by-role/CMS_INVESTIGATOR',
+      );
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('user-1');
       expect(result[0].name).toBe('John Doe');
@@ -83,7 +85,9 @@ describe('UserService', () => {
     });
 
     it('handles errors gracefully', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('Network error'));
 
       const result = await userService.getUsersByRole('CMS_INVESTIGATOR');
@@ -108,7 +112,9 @@ describe('UserService', () => {
 
       const result = await userService.getUserDetailsById('user-1');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/v1/user/list-by-role/CMS_INVESTIGATOR');
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/v1/user/list-by-role/CMS_INVESTIGATOR',
+      );
       expect(result).toEqual(mockInvestigators[0]);
     });
 
@@ -128,8 +134,12 @@ describe('UserService', () => {
 
       const result = await userService.getUserDetailsById('user-1');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/v1/user/list-by-role/CMS_INVESTIGATOR');
-      expect(apiClient.get).toHaveBeenCalledWith('/v1/user/list-by-role/CMS_SUPERVISOR');
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/v1/user/list-by-role/CMS_INVESTIGATOR',
+      );
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/v1/user/list-by-role/CMS_SUPERVISOR',
+      );
       expect(result).toEqual(mockSupervisors[0]);
     });
 
@@ -144,7 +154,9 @@ describe('UserService', () => {
     });
 
     it('handles errors gracefully', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('Network error'));
 
       const result = await userService.getUserDetailsById('user-1');
@@ -217,7 +229,9 @@ describe('UserService', () => {
 
       const result = await userService.getInvestigators();
 
-      expect(apiClient.get).toHaveBeenCalledWith('/v1/user/list-by-role/CMS_INVESTIGATOR');
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/v1/user/list-by-role/CMS_INVESTIGATOR',
+      );
       expect(result).toHaveLength(1);
     });
   });
@@ -236,7 +250,9 @@ describe('UserService', () => {
 
       const result = await userService.getSupervisors();
 
-      expect(apiClient.get).toHaveBeenCalledWith('/v1/user/list-by-role/CMS_SUPERVISOR');
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/v1/user/list-by-role/CMS_SUPERVISOR',
+      );
       expect(result).toHaveLength(1);
     });
   });
@@ -325,7 +341,9 @@ describe('UserService', () => {
     });
 
     it('handles errors gracefully', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('Network error'));
 
       const result = await userService.getAllUsers();
@@ -336,4 +354,3 @@ describe('UserService', () => {
     });
   });
 });
-

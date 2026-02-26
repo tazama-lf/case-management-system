@@ -1,15 +1,28 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { XMarkIcon, ArrowUpTrayIcon, DocumentCheckIcon, TrashIcon, ArrowPathIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  ArrowUpTrayIcon,
+  DocumentCheckIcon,
+  TrashIcon,
+  ArrowPathIcon,
+  ArrowDownTrayIcon,
+} from '@heroicons/react/24/outline';
 import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, UploadEvidenceDto } from '../../types/evidence.types';
 import { useToast } from '../../../../shared/providers/ToastProvider';
-import type { UnifiedWorkQueueTask } from '@/features/workqueue/types/flowable.types';
-import { taskService, TaskStatus, type TaskStatusType } from '../../services/taskService';
+import type { UnifiedWorkQueueTask } from '../../types/task.types';
+import {
+  taskService,
+  TaskStatus,
+  type TaskStatusType,
+} from '../../services/taskService';
 import { useAuth } from '@/features/auth';
 import DeleteEvidenceModal from '../modals/DeleteEvidenceModal';
 import { formatDate } from '@/shared/utils/dateUtils';
 
-const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
+const CompleteTaskModal = lazy(
+  async () => await import('../modals/CompleteTaskModal'),
+);
 interface SarStrFilingModalProps {
   open: boolean;
   onClose: () => void;
@@ -19,7 +32,6 @@ interface SarStrFilingModalProps {
   onTaskUpdate?: () => void;
   task: UnifiedWorkQueueTask;
 }
-
 
 const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
   open,
@@ -53,10 +65,11 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
         const response = await evidenceService.getTaskEvidence(taskId);
 
         // Filter only SAR/STR filings
-        const sarStrEvidence = response.evidence.filter((evidence) =>
-          evidence.evidenceType === 'SAR_STR_FILING' ||
-          evidence.description?.includes('SAR/STR') ||
-          evidence.description?.includes('Regulatory Filing')
+        const sarStrEvidence = response.evidence.filter(
+          (evidence) =>
+            evidence.evidenceType === 'SAR_STR_FILING' ||
+            evidence.description?.includes('SAR/STR') ||
+            evidence.description?.includes('Regulatory Filing'),
         );
 
         setUploadedEvidence(sarStrEvidence);
@@ -80,29 +93,39 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
   }, [open]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
+    const { files } = event.target;
     if (!files || files.length === 0) return;
 
     const maxFiles = 5;
-    const totalExisting =
-      selectedFiles.length + uploadedEvidence.length;
+    const totalExisting = selectedFiles.length + uploadedEvidence.length;
 
     if (totalExisting + files.length > maxFiles) {
-      error(`Cannot attach files. Maximum ${maxFiles} files allowed for SAR/STR`);
+      error(
+        `Cannot attach files. Maximum ${maxFiles} files allowed for SAR/STR`,
+      );
       event.target.value = '';
       return;
     }
 
-    const allowedExtensions = ['pdf', 'docx', 'txt', 'ppt', 'epub', 'html', 'png', 'jpeg', 'jpg', 'tiff'];
+    const allowedExtensions = [
+      'pdf',
+      'docx',
+      'txt',
+      'ppt',
+      'epub',
+      'html',
+      'png',
+      'jpeg',
+      'jpg',
+      'tiff',
+    ];
 
     const sanitizedFiles: File[] = Array.from(files)
       .map(
         (file) =>
-          new File(
-            [file],
-            file.name.replace(/[^\w.\-() ]+/g, '_'),
-            { type: file.type }
-          )
+          new File([file], file.name.replace(/[^\w.\-() ]+/gu, '_'), {
+            type: file.type,
+          }),
       )
       .filter((file) => {
         const ext = file.name.split('.').pop()?.toLowerCase() || '';
@@ -127,18 +150,24 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
 
     setSelectedFiles((prev) => [...prev, ...sanitizedFiles]);
     event.target.value = '';
-
   };
 
   const handleRemoveFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-
-  const handleModalCompleteTask = async (task: UnifiedWorkQueueTask, notes?: string, recommendedOutcome?: string) => {
+  const handleModalCompleteTask = async (
+    task: UnifiedWorkQueueTask,
+    notes?: string,
+    recommendedOutcome?: string,
+  ) => {
     try {
-      const updateData: { status: TaskStatusType; recommendedOutcome?: string; finalNotes?: string } = {
-        status: TaskStatus.STATUS_30_COMPLETED
+      const updateData: {
+        status: TaskStatusType;
+        recommendedOutcome?: string;
+        finalNotes?: string;
+      } = {
+        status: TaskStatus.STATUS_30_COMPLETED,
       };
 
       // Add recommended outcome if provided (for AML/Fraud investigation tasks)
@@ -147,7 +176,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
       }
 
       // Add final notes if provided
-      if (notes && notes.trim()) {
+      if (notes?.trim()) {
         updateData.finalNotes = notes.trim();
       }
 
@@ -156,11 +185,15 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
       onClose();
       onTaskUpdate?.();
 
-
-
-      success('Task Completed Successfully', `Task ${task.id} has been completed successfully.`);
+      success(
+        'Task Completed Successfully',
+        `Task ${task.id} has been completed successfully.`,
+      );
     } catch (err) {
-      error('Complete Task Failed', error instanceof Error ? error.message : 'Failed to complete task');
+      error(
+        'Complete Task Failed',
+        error instanceof Error ? error.message : 'Failed to complete task',
+      );
     }
   };
 
@@ -172,7 +205,9 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
     setUploading(true);
     try {
       const metadata = 'SAR/STR Filing - Regulatory Filing';
-      const fullDescription = sarRemarks ? `${metadata}\n\nRemarks: ${sarRemarks}` : metadata;
+      const fullDescription = sarRemarks
+        ? `${metadata}\n\nRemarks: ${sarRemarks}`
+        : metadata;
 
       for (const file of selectedFiles) {
         const uploadDto: UploadEvidenceDto = {
@@ -195,10 +230,11 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
 
       // Reload evidence
       const response = await evidenceService.getTaskEvidence(taskId);
-      const sarStrEvidence = response.evidence.filter((evidence) =>
-        evidence.evidenceType === 'SAR_STR_FILING' ||
-        evidence.description?.includes('SAR/STR') ||
-        evidence.description?.includes('Regulatory Filing')
+      const sarStrEvidence = response.evidence.filter(
+        (evidence) =>
+          evidence.evidenceType === 'SAR_STR_FILING' ||
+          evidence.description?.includes('SAR/STR') ||
+          evidence.description?.includes('Regulatory Filing'),
       );
       setUploadedEvidence(sarStrEvidence);
 
@@ -228,7 +264,6 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
     } catch (err) {
       console.error('Failed to download evidence:', err);
       error('Failed to download evidence');
-
     } finally {
       setDownloadingId(null);
     }
@@ -247,12 +282,13 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                 SAR/STR Filing
               </h3>
               {caseName && (
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Case: {caseName}
-                </p>
+                <p className="text-xs text-gray-600 mt-0.5">Case: {caseName}</p>
               )}
               {hasSupervisorRole() && (
-                <p className="text-xs text-gray-600 mt-0.5">Only the Compliance Officer is authorized to fill and submit the SAR/STR.</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Only the Compliance Officer is authorized to fill and submit
+                  the SAR/STR.
+                </p>
               )}
             </div>
             <button
@@ -275,7 +311,8 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                 </h4>
               </div>
               <p className="text-xs text-black-800">
-                Upload required documents and add your comments for the SAR/STR filing process.
+                Upload required documents and add your comments for the SAR/STR
+                filing process.
               </p>
             </div>
 
@@ -370,7 +407,10 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                         className="flex items-center justify-between rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1.5"
                       >
                         <span className="text-xs text-gray-700 truncate flex-1">
-                          {file.name} <span className="text-gray-500">({(file.size / 1024).toFixed(2)} KB)</span>
+                          {file.name}{' '}
+                          <span className="text-gray-500">
+                            ({(file.size / 1024).toFixed(2)} KB)
+                          </span>
                         </span>
                         <button
                           type="button"
@@ -378,7 +418,9 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                             task.status.toLowerCase().includes('completed') ||
                             !hasComplianceOfficerRole()
                           }
-                          onClick={() => handleRemoveFile(index)}
+                          onClick={() => {
+                            handleRemoveFile(index);
+                          }}
                           className="ml-2 text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                           aria-label="Remove file"
                         >
@@ -390,7 +432,8 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                 )}
 
                 <p className="text-xs text-gray-500 mt-1">
-                  Supported formats: PDF, DOC, DOCX, , TXT, JPG, PNG, TIFF, PPT, EPUB, HTML
+                  Supported formats: PDF, DOC, DOCX, , TXT, JPG, PNG, TIFF, PPT,
+                  EPUB, HTML
                 </p>
               </div>
 
@@ -406,7 +449,9 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                 <textarea
                   id="sar-remarks"
                   value={sarRemarks}
-                  onChange={(e) => setSarRemarks(e.target.value)}
+                  onChange={(e) => {
+                    setSarRemarks(e.target.value);
+                  }}
                   rows={3}
                   maxLength={500}
                   placeholder="Add any comments about this SAR/STR filing..."
@@ -416,8 +461,11 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                 <div className="mt-1">
                   <div className="flex justify-between items-center">
                     <span
-                      className={`text-xs ${sarRemarks.length === 500 ? 'text-red-500' : 'text-gray-500'
-                        }`}
+                      className={`text-xs ${
+                        sarRemarks.length === 500
+                          ? 'text-red-500'
+                          : 'text-gray-500'
+                      }`}
                     >
                       {sarRemarks.length}/500
                     </span>
@@ -492,7 +540,8 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                               </p>
                             )}
                             <p className="text-xs text-gray-500 mt-1.5">
-                              Uploaded: {formatDate(evidence.uploadedAt)} by {evidence.uploadedBy}
+                              Uploaded: {formatDate(evidence.uploadedAt)} by{' '}
+                              {evidence.uploadedBy}
                             </p>
                           </div>
                           {/* <div className="ml-3 flex items-center gap-2">
@@ -511,12 +560,15 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                             </button>
                           </div> */}
                           <div className="ml-3 flex items-center gap-2">
-
                             {/* Download */}
                             <button
                               type="button"
-                              onClick={() => handleDownloadEvidence(evidence)}
-                              disabled={downloadingId === evidence.id.toString()}
+                              onClick={async () => {
+                                await handleDownloadEvidence(evidence);
+                              }}
+                              disabled={
+                                downloadingId === evidence.id.toString()
+                              }
                               className="rounded-md p-1 text-blue-600 hover:bg-blue-100 hover:text-blue-700 disabled:opacity-50"
                               title="Download Evidence"
                             >
@@ -529,12 +581,25 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
 
                             {/* Delete */}
                             <button
-                              hidden={task.status.toLowerCase().includes('completed') || !hasComplianceOfficerRole()}
-                              disabled={task.status.toLowerCase().includes('completed') || !hasComplianceOfficerRole()}
-                              type="button"
-                              onClick={() =>
-                                setEvidenceToDelete({ id: evidence.id, fileName: evidence.fileName })
+                              hidden={
+                                task.status
+                                  .toLowerCase()
+                                  .includes('completed') ||
+                                !hasComplianceOfficerRole()
                               }
+                              disabled={
+                                task.status
+                                  .toLowerCase()
+                                  .includes('completed') ||
+                                !hasComplianceOfficerRole()
+                              }
+                              type="button"
+                              onClick={() => {
+                                setEvidenceToDelete({
+                                  id: evidence.id,
+                                  fileName: evidence.fileName,
+                                });
+                              }}
                               className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
                               title="Delete Evidence"
                             >
@@ -563,7 +628,9 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
               !task.status.toLowerCase().includes('completed') && (
                 <button
                   type="button"
-                  onClick={() => setCompleteTaskModalOpen(true)}
+                  onClick={() => {
+                    setCompleteTaskModalOpen(true);
+                  }}
                   className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium shadow-sm border-green-600 bg-green-600 text-white hover:bg-green-700"
                 >
                   Mark as Complete
@@ -581,7 +648,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
           onDeleteSuccess={() => {
             // Remove deleted evidence from the flat array
             setUploadedEvidence((prev) =>
-              prev.filter((e) => e.id !== evidenceToDelete.id)
+              prev.filter((e) => e.id !== evidenceToDelete.id),
             );
             setEvidenceToDelete(null);
             success('Evidence deleted successfully');
@@ -603,7 +670,6 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
         </Suspense>
       )}
     </>
-
   );
 };
 
