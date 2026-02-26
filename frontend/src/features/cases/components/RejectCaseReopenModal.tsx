@@ -29,7 +29,7 @@ const RejectCaseReopenModal: React.FC<RejectCaseReopenModalProps> = ({
     setIsSubmitting(true);
     setError(null);
     try {
-      if (caseId == null) {
+      if (caseId === null) {
         setError('Case ID is missing');
         setIsSubmitting(false);
         return;

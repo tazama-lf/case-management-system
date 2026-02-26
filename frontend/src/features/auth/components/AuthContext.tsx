@@ -6,7 +6,6 @@ import type {
   User,
   LoginCredentials,
 } from '../types/auth.types';
-import { ACTIVE_SESSION_KEY } from '../services/sessionLock.ts';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

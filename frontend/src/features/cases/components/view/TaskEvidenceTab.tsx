@@ -6,7 +6,6 @@ import {
   XMarkIcon,
   CheckCircleIcon,
   TrashIcon,
-  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 import type { User } from '@/shared/interfaces/user.interface';
 import { evidenceService } from '../../services/evidenceService';
@@ -94,7 +93,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     Record<string, Evidence[]>
   >({});
   const [loading, setLoading] = React.useState(false);
-  const [uploading, setUploading] = React.useState<Record<string, boolean>>({});
+  const [ , setUploading] = React.useState<Record<string, boolean>>({});
   const [openSections, setOpenSections] = React.useState<
     Record<string, boolean>
   >({});
@@ -103,8 +102,8 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
   const [currentUser, setCurrentUser] = React.useState<User>();
   const [saving, setSaving] = React.useState(false);
-  const [saveSuccess, setSaveSuccess] = React.useState(false);
-  const [noEvidenceError, setNoEvidenceError] = React.useState(false);
+  // const [ , setSaveSuccess] = React.useState(false);
+  // const [ , setNoEvidenceError] = React.useState(false);
   const [showUploadConfirm, setShowUploadConfirm] = React.useState(false);
   const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
     id: string;
@@ -209,17 +208,17 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
       ([_, files]) => files.length > 0,
     );
 
-    if (sectionsToUpload.length === 0) {
-      setNoEvidenceError(true);
-      setTimeout(() => {
-        setNoEvidenceError(false);
-      }, 3000);
-      return;
-    }
+    // if (sectionsToUpload.length === 0) {
+    //   setNoEvidenceError(true);
+    //   setTimeout(() => {
+    //     setNoEvidenceError(false);
+    //   }, 3000);
+    //   return;
+    // }
 
     setSaving(true);
-    setSaveSuccess(false);
-    setNoEvidenceError(false);
+    // setSaveSuccess(false);
+    // setNoEvidenceError(false);
 
     try {
       const uploadPromises = sectionsToUpload.flatMap(([sectionKey, files]) => {
@@ -243,12 +242,12 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
 
       setSectionFiles({});
       setSectionComments({});
-      setSaveSuccess(true);
+      // setSaveSuccess(true);
       await loadEvidence();
       onUploadComplete?.();
       success('Evidence uploaded successfully');
       setTimeout(() => {
-        setSaveSuccess(false);
+        // setSaveSuccess(false);
       }, 3000);
     } catch (err) {
       error('Failed to upload evidence.');

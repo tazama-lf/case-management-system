@@ -259,7 +259,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [isCompleteNewCaseCompleted, setIsCompleteNewCaseCompleted] =
     useState(false);
 
-  const { data: caseDetails, refetch: refetchCase } = useCase(alert?.case_id);
+  const { data: caseDetails } = useCase(alert?.case_id);
 
   const canPerformActions = canActOnCase(caseDetails?.status);
 

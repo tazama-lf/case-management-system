@@ -543,7 +543,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
                 alertType: ((): AlertType => {
                   const t = (modalState.selectedRow.type || '').toUpperCase();
                   if (t.includes('FRAUD') && t.includes('AML'))
-                    return 'FRAUD_AND_AML';
+                    {return 'FRAUD_AND_AML';}
                   if (t.includes('AML')) return 'AML';
                   return 'FRAUD';
                 })(),

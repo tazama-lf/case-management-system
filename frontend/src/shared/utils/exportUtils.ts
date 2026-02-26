@@ -2,11 +2,8 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-import type { Task } from '@/features/cases/services/taskService';
 import type {
   FindingDetail,
-  SupportingEvidence,
-  TaskEvidence,
 } from '@/features/reports/types/reports.types';
 
 (pdfMake as any).vfs = (pdfFonts as any).vfs;

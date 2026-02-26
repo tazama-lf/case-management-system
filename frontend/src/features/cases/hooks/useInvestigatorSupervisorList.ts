@@ -26,8 +26,6 @@ export const useInvestigatorSupervisorList = () => {
 
   const [loadingInvestigators, setLoadingInvestigators] = useState(false);
   const [loadingSupervisors, setLoadingSupervisors] = useState(false);
-  const [loadingComplianceOfficers, setLoadingComplianceOfficers] =
-    useState(false);
 
   const fetchInvestigatorsList = async () => {
     setLoadingInvestigators(true);
@@ -55,7 +53,6 @@ export const useInvestigatorSupervisorList = () => {
   };
 
   const fetchComplianceOfficersList = async () => {
-    setLoadingComplianceOfficers(true);
     try {
       const cached = sessionStorage.getItem(complianceCacheKey);
       if (cached) {
@@ -74,8 +71,6 @@ export const useInvestigatorSupervisorList = () => {
     } catch (error) {
       console.error('Failed to fetch investigators:', error);
       setComplianceOfficers([]);
-    } finally {
-      setLoadingComplianceOfficers(false);
     }
   };
 

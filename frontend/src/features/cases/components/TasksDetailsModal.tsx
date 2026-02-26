@@ -40,15 +40,15 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [tasks, setTasks] = React.useState<TaskForSupervisor[]>([]);
   const [loadingTasks, setLoadingTasks] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
-  const [saveSuccess, setSaveSuccess] = React.useState(false);
-  const uploadEvidenceRef = React.useRef<(() => Promise<void>) | null>(null);
+  // const [saveSuccess, setSaveSuccess] = React.useState(false);
+
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
 
   React.useEffect(() => {
     if (open) {
       setTab('details');
       setShowCollaborate(false);
-      setSaveSuccess(false);
+      // setSaveSuccess(false);
       window.scrollTo({ top: 0 });
 
       // Fetch tasks for this case

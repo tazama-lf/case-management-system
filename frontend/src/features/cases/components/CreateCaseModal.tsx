@@ -111,9 +111,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const [availableAlerts, setAvailableAlerts] = React.useState<Alert[]>([]);
   const [selectedAlert, setSelectedAlert] = React.useState<Alert | null>(null);
   const [alertSearchTerm, setAlertSearchTerm] = React.useState('');
-  const [_isLoadingAlerts, setIsLoadingAlerts] = React.useState(false);
-  const [_showAlertDropdown, setShowAlertDropdown] = React.useState(false);
-  const [_alertSearchError, setAlertSearchError] = React.useState<string>('');
   const [alertsPagination, setAlertsPagination] = React.useState({
     currentPage: 1,
     totalPages: 0,
@@ -153,8 +150,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     if (!open) return;
 
     const loadNALTAlerts = async () => {
-      setIsLoadingAlerts(true);
-      setAlertSearchError('');
       try {
         const response = await triageService.getNALTAlerts(undefined, {
           page: alertsPagination.currentPage,
@@ -166,9 +161,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         setAlertsPagination(response.pagination);
       } catch (error) {
         console.error('Failed to load NALT alerts:', error);
-        setAlertSearchError('Failed to load available alerts');
-      } finally {
-        setIsLoadingAlerts(false);
       }
     };
 
@@ -209,7 +201,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
     const timeoutId = setTimeout(async () => {
       if (alertSearchTerm.length === 0) {
-        setIsLoadingAlerts(true);
         try {
           const response = await triageService.getNALTAlerts(undefined, {
             page: 1,
@@ -221,13 +212,8 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
           setAlertsPagination(response.pagination);
         } catch (error) {
           console.error('Failed to load alerts:', error);
-          setAlertSearchError('Failed to load alerts');
-        } finally {
-          setIsLoadingAlerts(false);
         }
       } else if (alertSearchTerm.length >= 1) {
-        setIsLoadingAlerts(true);
-        setAlertSearchError('');
         try {
           const response = await triageService.getNALTAlerts(alertSearchTerm, {
             page: 1,
@@ -239,9 +225,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
           setAlertsPagination(response.pagination);
         } catch (error) {
           console.error('Failed to search alerts:', error);
-          setAlertSearchError('Failed to search alerts');
-        } finally {
-          setIsLoadingAlerts(false);
         }
       }
     }, 300);
@@ -251,19 +234,19 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     };
   }, [alertSearchTerm, open]);
 
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (target && !target.closest('[data-alert-dropdown]')) {
-        setShowAlertDropdown(false);
-      }
-    };
+  // React.useEffect(() => {
+  //   const handleClickOutside = (event: MouseEvent) => {
+  //     const target = event.target as Element;
+  //     if (target && !target.closest('[data-alert-dropdown]')) {
+  //       setShowAlertDropdown(false);
+  //     }
+  //   };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+  //   document.addEventListener('mousedown', handleClickOutside);
+  //   return () => {
+  //     document.removeEventListener('mousedown', handleClickOutside);
+  //   };
+  // }, []);
 
   const isStatusLocked = alertType === 'AML' || alertType === 'FRAUD_AND_AML';
 

@@ -19,15 +19,13 @@ const ReopenCaseModal = lazy(async () => await import('../ReopenCaseModal'));
 const AbandonCaseModal = lazy(async () => await import('../AbandonCaseModal'));
 const SuspendCaseModal = lazy(async () => await import('../SuspendCaseModal'));
 const ResumeCaseModal = lazy(async () => await import('../ResumeCaseModal'));
-// const RejectCaseModal = lazy(() => import('../RejectCaseModal'));
-// const ApproveCaseModal = lazy(() => import('../ApproveCaseModal'));
 const ApproveCaseCreationModal = lazy(
   async () => await import('../ApproveCaseCreationModal'),
 );
 const RejectCaseCreationModal = lazy(
   async () => await import('../RejectCaseCreationModal'),
 );
-// const ReturnCaseForReviewModal = lazy(() => import('../ReturnCaseForReviewModal'));
+
 
 interface CaseModalsProps {
   isCloseCaseOpen: boolean;
@@ -101,11 +99,8 @@ const CaseModals: React.FC<CaseModalsProps> = ({
   isAbandonOpen,
   isSuspendOpen,
   isResumeOpen,
-  // isRejectOpen,
-  // isApproveOpen,
   isApproveCreationOpen,
   isRejectCreationOpen,
-  // isReturnForReviewOpen,
   isApproveReopenOpen,
   isRejectReopenOpen,
 
@@ -114,11 +109,8 @@ const CaseModals: React.FC<CaseModalsProps> = ({
   setIsAbandonOpen,
   setIsSuspendOpen,
   setIsResumeOpen,
-  // setIsRejectOpen,
-  // setIsApproveOpen,
   setIsApproveCreationOpen,
   setIsRejectCreationOpen,
-  // setIsReturnForReviewOpen,
   setIsApproveReopenOpen,
   setIsRejectReopenOpen,
 
@@ -129,11 +121,8 @@ const CaseModals: React.FC<CaseModalsProps> = ({
   handleAbandonSubmit,
   handleSuspendSubmit,
   handleResumeSubmit,
-  // handleRejectSubmit,
-  // handleApproveSubmit,
   handleApproveCreationSubmit,
   handleRejectCreationSubmit,
-  // handleReturnForReviewSubmit,
   handleApproveReopenSubmit,
   handleRejectReopenSubmit,
 }) => {
@@ -217,31 +206,6 @@ const CaseModals: React.FC<CaseModalsProps> = ({
         </Suspense>
       )}
 
-      {/* {isRejectOpen && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <RejectCaseModal
-            open={isRejectOpen}
-            onClose={() => setIsRejectOpen(false)}
-            caseId={selectedRow?.id || ''}
-            caseName={selectedRow ? `${selectedRow.type} Case` : ''}
-            onSubmit={handleRejectSubmit}
-          />
-        </Suspense>
-      )} */}
-
-      {/* {isApproveOpen && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <ApproveCaseModal
-            open={isApproveOpen}
-            onClose={() => setIsApproveOpen(false)}
-            caseId={selectedRow?.id || ''}
-            caseName={selectedRow ? `${selectedRow.type} Case` : ''}
-            recommendedOutcome={selectedRow?.status || ''}
-            onSubmit={handleApproveSubmit}
-          />
-        </Suspense>
-      )} */}
-
       {isApproveCreationOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <ApproveCaseCreationModal
@@ -271,17 +235,6 @@ const CaseModals: React.FC<CaseModalsProps> = ({
           />
         </Suspense>
       )}
-
-      {/* {isReturnForReviewOpen && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <ReturnCaseForReviewModal
-            open={isReturnForReviewOpen}
-            onClose={() => setIsReturnForReviewOpen(false)}
-            caseData={selectedRow}
-            onSubmit={(caseId: string, data: ReturnCaseForReviewDto) => handleReturnForReviewSubmit(caseId, data)}
-          />
-        </Suspense>
-      )} */}
 
       {isApproveReopenOpen && (
         <Suspense fallback={<ModalLoadingFallback />}>

@@ -240,7 +240,6 @@ export class EvidenceService {
       }
 
       const blob = await response.blob();
-      const downloadTime = performance.now() - startTime;
 
       if (blob.size === 0) {
         throw new Error(
@@ -337,11 +336,11 @@ export class EvidenceService {
       params.append('limit', limit.toString());
 
       if (filters.evidenceType)
-        params.append('evidenceType', filters.evidenceType);
+        {params.append('evidenceType', filters.evidenceType);}
       if (filters.taskId) params.append('taskId', filters.taskId.toString());
       if (filters.uploadedBy) params.append('uploadedBy', filters.uploadedBy);
       if (filters.verified !== undefined)
-        params.append('verified', filters.verified.toString());
+        {params.append('verified', filters.verified.toString());}
       if (filters.search) params.append('search', filters.search);
 
       const queryString = params.toString();
