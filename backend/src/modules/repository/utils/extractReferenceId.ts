@@ -19,6 +19,7 @@ export function extractReferenceId(obj: JsonValue, maxDepth = 10, currentDepth =
 
   for (const [key, value] of Object.entries(objAsRecord)) {
     if (key === referenceIdName) {
+      if (typeof value === 'string') return value;
       return String(value);
     }
   }

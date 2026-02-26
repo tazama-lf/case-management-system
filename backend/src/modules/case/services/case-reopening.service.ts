@@ -201,7 +201,7 @@ export class CaseReopeningService {
       throw error;
     }
   }
-  c;
+
   async approveCaseReopening(caseId: number, supervisorId: string, tenantId: string) {
     try {
       this.logger.log(`Supervisor ${supervisorId} approving case reopening for ${caseId}`, CaseReopeningService.name);

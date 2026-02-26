@@ -83,6 +83,7 @@ export class CaseCreationApprovalService {
           caseStatus,
           creationType: CaseCreationType.MANUAL,
           creatorRole: role,
+          isReopened: false,
         });
 
         const updatedAlert = await this.alertRepository.updateAlert(
@@ -225,6 +226,7 @@ export class CaseCreationApprovalService {
         caseStatus: CaseStatus.STATUS_00_DRAFT,
         creationType: CaseCreationType.MANUAL,
         creatorRole: role,
+        isReopened: false,
       });
 
       // Create "Complete New Case" task assigned to the creator
@@ -716,7 +718,7 @@ export class CaseCreationApprovalService {
 
   async createCase(createCaseDTO: CreateCaseDto, userId: string): Promise<Case> {
     try {
-      this.logger.log(`Start - Create Case`, CaseCreationApprovalService.name);
+      this.logger.log('Start - Create Case', CaseCreationApprovalService.name);
       const createdCase = await this.caseRepository.createCase({
         tenantId: createCaseDTO.tenantId,
         caseCreatorUserId: createCaseDTO.caseCreatorUserId,
@@ -734,6 +736,7 @@ export class CaseCreationApprovalService {
         caseStatus: createdCase.status,
         creationType: createCaseDTO.caseCreationType,
         creatorRole: 'SYSTEM',
+        isReopened: false,
       });
 
       this.logger.log(

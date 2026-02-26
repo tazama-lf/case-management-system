@@ -36,7 +36,7 @@ export class CaseService {
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any, role: string) {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
@@ -81,8 +81,8 @@ export class CaseService {
           }
         }
         const updatedTask = await Promise.all(
-          investigateTask.map((task) =>
-            this.taskService.updateTask(task.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId, tenantId),
+          investigateTask.map(
+            async (task) => await this.taskService.updateTask(task.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId, tenantId),
           ),
         );
         const createCommentDto = new CreateCommentDto();
@@ -199,8 +199,8 @@ export class CaseService {
         }
 
         const updatedTask = await Promise.all(
-          investigateTask.map((t) =>
-            this.taskService.updateTask(t.task_id, { status: TaskStatus.STATUS_20_IN_PROGRESS }, userId, tenantId),
+          investigateTask.map(
+            async (t) => await this.taskService.updateTask(t.task_id, { status: TaskStatus.STATUS_20_IN_PROGRESS }, userId, tenantId),
           ),
         );
         const createCommentDto = new CreateCommentDto();

@@ -342,9 +342,6 @@ export class TaskLifecycleService {
       throw new NotFoundException(`Task ${taskId} not found`);
     }
     const existingCase = await this.caseRepository.findCaseById(existingTask.case_id, tenantId);
-    if (!existingCase) {
-      throw new NotFoundException(`Case ${existingTask.case_id} not found`);
-    }
     const isInvestigationTask = existingTask.name === TASK_NAMES.INVESTIGATE_CASE;
     return { existingTask, existingCase, isInvestigationTask };
   }

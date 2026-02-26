@@ -34,13 +34,7 @@ export class CaseCreationService {
         caseCreationType: createCaseDTO.caseCreationType,
       });
 
-      this.flowableService.handleCaseCreated({
-        caseId: createdCase.case_id,
-        tenantId: createdCase.tenant_id,
-        caseStatus: createdCase.status,
-        creationType: createCaseDTO.caseCreationType,
-        creatorRole: 'SYSTEM',
-      });
+      await this.executeFlowableCaseCreationEvent(createdCase, createCaseDTO);
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
@@ -89,17 +83,7 @@ export class CaseCreationService {
         caseStatus: newCase.status,
         creationType: CaseCreationType.AUTOMATIC_SYSTEM,
         creatorRole: 'SYSTEM',
-      });
-
-      await this.flowableService.handleTaskCompleted({
-        caseId: newCase.case_id,
-        newStatus: TaskStatus.STATUS_30_COMPLETED,
-        taskName: 'Complete New Case',
-        completionVariables: {
-          autoCloseEligible: false,
-          caseType: newCase.case_type,
-          casePriority: newCase.priority,
-        },
+        isReopened: false,
       });
 
       await this.taskService.createTask(
@@ -136,6 +120,39 @@ export class CaseCreationService {
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.loggerService.error(`Failed to create ${alertType} case. Error: ${errorMessage}`, errorStack, CaseCreationService.name);
       throw new InternalServerErrorException(`Failed to create ${alertType} case`);
+    }
+  }
+
+  private async executeFlowableCaseCreationEvent(createdCase: Case, createCaseDTO: CreateCaseDto, maxAttempts = 3): Promise<void> {
+    const flowableCaseCreation = async () => {
+      this.flowableService.handleCaseCreated({
+        caseId: createdCase.case_id,
+        tenantId: createdCase.tenant_id,
+        caseStatus: createdCase.status,
+        creationType: createCaseDTO.caseCreationType,
+        creatorRole: 'SYSTEM',
+        isReopened: false,
+      });
+    };
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await flowableCaseCreation();
+        return;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        this.loggerService.error(
+          `Attempt ${attempt} - Failed to trigger Flowable case creation event for case ${createdCase.case_id}: ${errorMessage}`,
+          errorStack,
+          CaseCreationService.name,
+        );
+        if (attempt === maxAttempts) {
+          throw new InternalServerErrorException(
+            `Failed to trigger Flowable case creation event after ${maxAttempts} attempts for case ${createdCase.case_id}`,
+          );
+        }
+      }
     }
   }
 }

@@ -19,8 +19,11 @@
                 <flowable:formProperty id="caseStatus" name="Case Status" type="string" default="STATUS_00_DRAFT"/>
                 <flowable:formProperty id="creationType" name="Creation Type" type="string" required="true"/>
                 <flowable:formProperty id="creatorRole" name="Creator Role" type="string" default="SUPERVISOR"/>
+                <flowable:formProperty id="isReopened" name="Is Reopened" type="boolean"/>
             </extensionElements>
         </startEvent>
+
+        <exclusiveGateway id="caseReopenedGateway" name="Case Reopened Check"/>
 
         <!-- CASE ASSIGNMENT LOGIC -->
         <userTask id="completeCaseCreation" name="Complete New Case"
@@ -168,7 +171,20 @@
         <!-- SEQUENCE FLOWS -->
 
         <!-- Initial routing -->
-        <sequenceFlow id="flowStart" sourceRef="startEvent" targetRef="completeCaseCreation"/>
+        <sequenceFlow id="flowStart" sourceRef="startEvent" targetRef="caseReopenedGateway"/>
+
+            <!-- Reopened case goes to investigation -->
+        <sequenceFlow id="flowReopened" sourceRef="caseReopenedGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${isReopened == true}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowNotReopened" sourceRef="caseReopenedGateway" targetRef="completeCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${isReopened == false}
+            </conditionExpression>
+        </sequenceFlow>
 
         <!-- Complete Case Creation -> Creation Type Gateway -->
         <sequenceFlow id="flowToCreationTypeGateway" sourceRef="completeCaseCreation" targetRef="creationTypeGateway"/>

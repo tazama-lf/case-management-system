@@ -124,7 +124,7 @@ export class AlertService {
 
   async getAlertTransactionalData(
     alertId: number,
-  ): Promise<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }[]> {
+  ): Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>> {
     this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
     if (alertId === null) {
       throw new BadRequestException('AlertID is missing');

@@ -79,11 +79,6 @@ export class TaskService {
       const txResult = await this.taskRepository.transaction(async (tx) => {
         let updatedTask: Task;
         const existingTask = await this.taskRepository.findTaskWithCase(taskId, tenantId, tx);
-        
-        if (!existingTask) {
-          throw new NotFoundException(`Task ${taskId} not found`);
-        }
-
         const updateInput: Prisma.TaskUpdateInput = {
           status: updateData.status,
           assigned_user_id:

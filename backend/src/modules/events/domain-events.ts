@@ -5,6 +5,7 @@ export class CaseCreatedEvent {
     public readonly caseStatus: string,
     public readonly creationType: string,
     public readonly creatorRole: string,
+    public readonly isReopened: boolean,
   ) {}
 }
 
