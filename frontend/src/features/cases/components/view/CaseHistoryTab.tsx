@@ -106,15 +106,15 @@ const _mapOutcomeToEventOutcome = (
     lowerOutcome === 'completed' ||
     lowerOutcome === 'approved'
   )
-    return 'success';
+    {return 'success';}
   if (
     lowerOutcome === 'error' ||
     lowerOutcome === 'failed' ||
     lowerOutcome === 'denied'
   )
-    return 'error';
+    {return 'error';}
   if (lowerOutcome === 'warning' || lowerOutcome === 'pending')
-    return 'warning';
+    {return 'warning';}
   return 'info';
 };
 

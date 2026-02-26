@@ -277,13 +277,13 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
   const [executiveSummary, setExecutiveSummary] = useState(buildExecutiveSummary());
   const [keyFindings, setKeyFindings] = useState(
-    investigationNotes || ""
+    investigationNotes || ''
   );
   const [recommendations, setRecommendations] = useState(
-    "Based on the investigation findings and evidence review:\n\n1. Review investigator's recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure."
+    'Based on the investigation findings and evidence review:\n\n1. Review investigator\'s recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure.'
   );
   const [supervisorFeedback, setSupervisorFeedback] = useState(
-    supervisorComments?.[0]?.note || ""
+    supervisorComments?.[0]?.note || ''
   );
   const [reportOutcome, setReportOutcome] = useState<string | undefined>('');
   const [monitoringDuration, setMonitoringDuration] = useState<30 | 60 | 90 | 180>(30);
@@ -537,8 +537,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     setShowApprovalConfirm(true);
   };
 
-  const generatePdfFile = (docDefinition: any): Promise<File> => {
-    return new Promise((resolve, reject) => {
+  const generatePdfFile = async (docDefinition: any): Promise<File> => await new Promise((resolve, reject) => {
       try {
         const pdfDoc = (pdfMake as any).createPdf(docDefinition);
 
@@ -552,7 +551,6 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         reject(err);
       }
     });
-  };
 
   const handleGenerateReport = () => {
     if (!isReportReady) return;
@@ -592,7 +590,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         if (latestInvestigateTask && investigationNotes) {
           try {
             await taskService.updateTaskForSupervisor(latestInvestigateTask.task_id, {
-              investigationNotes: investigationNotes,
+              investigationNotes,
             });
           } catch {
             // Ignore task update errors
@@ -1087,7 +1085,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setShowApprovalConfirm(false)}
+                onClick={() => { setShowApprovalConfirm(false); }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Cancel

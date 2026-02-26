@@ -16,7 +16,7 @@ import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import type { TaskForSupervisor } from '../../services/taskService';
 import { formatDate } from '@/shared/utils/dateUtils';
 
-const CompleteTaskModal = lazy(() => import('../modals/CompleteTaskModal'));
+const CompleteTaskModal = lazy(async () => await import('../modals/CompleteTaskModal'));
 
 marked.setOptions({
   breaks: true,
@@ -56,8 +56,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [submittedDate, setSubmittedDate] = useState<string>('N/A');
 
-  const mapToUnifiedWorkQueueTask = (task: any, caseDetails: Case | null): UnifiedWorkQueueTask => {
-    return {
+  const mapToUnifiedWorkQueueTask = (task: any, caseDetails: Case | null): UnifiedWorkQueueTask => ({
       id: task.task_id,
       taskId: task.task_id,
       name: task.name || 'Unnamed Task',
@@ -71,9 +70,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       dueDate: task.sla_deadline || undefined,
       caseId: task.case_id,
 
-    };
-
-  };
+    });
 
   const loadEvidence = React.useCallback(async () => {
     if (!currentTaskId) return;
@@ -184,7 +181,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
 
       success(
         'Task Completed Successfully',
-        `Investigation task has been completed successfully.`,
+        'Investigation task has been completed successfully.',
       );
 
       if (onTaskUpdate) {
@@ -214,7 +211,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to download evidence:', error);
-      alert('Failed to download evidence: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      alert(`Failed to download evidence: ${  error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setDownloadingId(null);
     }
@@ -250,7 +247,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           const tasks = await taskService.getTasksByCaseId(caseId);
 
           const approvalTask = tasks.find(
-            (t) => t.name && t.name.toLowerCase().includes('approve')
+            (t) => t.name?.toLowerCase().includes('approve')
           );
 
           if (approvalTask) {
@@ -339,7 +336,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             {investigationTask && investigationTask.status !== 'STATUS_30_COMPLETED' && investigationTask.assigned_user_id === currentUserId && (
               <button
                 hidden={task.status === 'STATUS_21_BLOCKED'}
-                onClick={() => setShowCompleteModal(true)}
+                onClick={() => { setShowCompleteModal(true); }}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-green-800 shadow-sm transition-all"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -436,7 +433,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                 <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
                   {/* Category Header */}
                   <button
-                    onClick={() => toggleCategory(category.type)}
+                    onClick={() => { toggleCategory(category.type); }}
                     className="w-full flex items-center justify-between gap-3 p-4 hover:bg-gray-50 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3 flex-1">
@@ -490,7 +487,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                             </div>
                           </div>
                           <button
-                            onClick={() => handleDownloadEvidence(doc.id, doc.fileName || 'document')}
+                            onClick={async () => { await handleDownloadEvidence(doc.id, doc.fileName || 'document'); }}
                             disabled={downloadingId === doc.id.toString()}
                             className="ml-4 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                           >
@@ -540,7 +537,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         <Suspense fallback={<div>Loading...</div>}>
           <CompleteTaskModal
             open={showCompleteModal}
-            onClose={() => setShowCompleteModal(false)}
+            onClose={() => { setShowCompleteModal(false); }}
             onCompleteTask={handleCompleteTask}
             task={mapToUnifiedWorkQueueTask(investigationTask, caseDetails)}
           />

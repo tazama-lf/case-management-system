@@ -112,9 +112,9 @@ export const getTimeAgo = (
 
   if (diffMins < 1) return 'Just now';
   if (diffMins < 60)
-    return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+    {return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;}
   if (diffHours < 24)
-    return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    {return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;}
   if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
 
   return formatDateOnly(start);

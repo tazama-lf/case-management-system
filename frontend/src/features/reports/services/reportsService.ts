@@ -23,7 +23,7 @@ class ReportsService {
       if (filters?.caseType) params.append('caseType', filters.caseType);
       if (filters?.priority) params.append('priority', filters.priority);
       if (filters?.investigator)
-        params.append('investigator', filters.investigator);
+        {params.append('investigator', filters.investigator);}
 
       const response = await apiClient.get<ReportsData>(
         `/api/v1/reports/case-status?${params.toString()}`,
