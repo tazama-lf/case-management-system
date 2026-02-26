@@ -53,7 +53,7 @@ import { UserWorkloadResponseDto } from './dto/user-workload-response.dto';
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class CaseController {
-  constructor(private readonly caseService: CaseService) { }
+  constructor(private readonly caseService: CaseService) {}
 
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
@@ -329,7 +329,7 @@ export class CaseController {
 
   @Get('user/workload')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  @ApiOperation({ summary: 'Get case workload statistics', description: 'Get summary statistics of user\'s case workload' })
+  @ApiOperation({ summary: 'Get case workload statistics', description: "Get summary statistics of user's case workload" })
   @ApiResponse({ status: 200, description: 'Workload statistics retrieved successfully', type: UserWorkloadResponseDto })
   async getUserWorkload(@Req() req: AuthenticatedRequest) {
     const { userId, isComplianceOfficer } = extractUserData(req);

@@ -1,7 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { FlowableApiEndpoints, FlowableDefaults, FlowableTaskActions } from '../../../constants/flowable-api.constants';
+import { FlowableApiEndpoints, FlowableTaskActions } from '../../../constants/flowable-api.constants';
 import { CreateFlowableTaskDto, FlowableVariable } from '../dto/flowable.dto';
 import { FlowableUtilitiesService } from './flowable-utilities.service';
 import { FlowableClientFactory } from './flowable-client.factory';
@@ -74,13 +74,13 @@ export class FlowableTaskService {
         },
       });
 
-      const tasks = response.data.data || [];
+      const tasks = response.data.data ?? [];
 
       const tasksWithVariables = await Promise.all(
         tasks.map(async (task: any) => {
           try {
             const variablesResponse = await this.flowableClient.get(FlowableApiEndpoints.TASK_VARIABLES(task.id));
-            const variablesArray = variablesResponse.data || [];
+            const variablesArray = variablesResponse.data ?? [];
             const variablesObject: Record<string, any> = {};
 
             variablesArray.forEach((v: any) => {
@@ -239,7 +239,7 @@ export class FlowableTaskService {
         },
       });
 
-      const tasks = response.data.data || [];
+      const tasks = response.data.data ?? [];
 
       if (includeVariables && tasks.length > 0) {
         const enhancedTasks = await Promise.all(
@@ -277,7 +277,7 @@ export class FlowableTaskService {
         },
       });
 
-      const tasks = response.data.data || [];
+      const tasks = response.data.data ?? [];
 
       if (includeVariables && tasks.length > 0) {
         const enhancedTasks = await Promise.all(
@@ -384,7 +384,7 @@ export class FlowableTaskService {
   /**
    * Delete a task variable
    */
-  async deleteTaskVariable(taskId: number, variableName: string) {
+  async deleteTaskVariable(taskId: number, variableName: string): Promise<void> {
     try {
       await this.flowableClient.delete(FlowableApiEndpoints.TASK_VARIABLE(taskId, variableName));
       this.logger.log(`Variable ${variableName} deleted from task ${taskId}`, FlowableTaskService.name);
@@ -411,7 +411,7 @@ export class FlowableTaskService {
       }
       return {
         name,
-        value: String(value),
+        value,
         type: 'string',
       };
     });

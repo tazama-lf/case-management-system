@@ -35,6 +35,8 @@ import { FilterModule } from './modules/filter/filter.module';
 import { CaseHistoryModule } from './modules/case_history/caseHistory.module';
 import { TaskHistoryModule } from './modules/task_history/taskHistory.module';
 import { LoggingOrchestrationModule } from './modules/logging-orchestration/logging-orchestration.module';
+import { GoldLakehouseModule } from './modules/gold-lakehouse/gold-lakehouse.module';
+import { JupyterModule } from './modules/jupyter/jupyter.module';
 
 @Module({
   imports: [
@@ -73,6 +75,8 @@ import { LoggingOrchestrationModule } from './modules/logging-orchestration/logg
     CaseHistoryModule,
     TaskHistoryModule,
     LoggingOrchestrationModule,
+    GoldLakehouseModule,
+    JupyterModule,
   ],
   providers: [
     PrismaService,

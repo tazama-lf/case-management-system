@@ -21,7 +21,7 @@ export class ProcessAlertController {
   @ApiResponse({ status: 201, description: 'Alert processed successfully' })
   @ApiResponse({ status: 400, description: 'Bad Request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async processIncomingAlert(@Body() dto: CreateAlertDTO, @Req() req: AuthenticatedRequest) {
+  async processIncomingAlert(@Body() dto: CreateAlertDTO, @Req() req: AuthenticatedRequest): Promise<void> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     if (!tenantId || !userId) throw new BadRequestException('Missing tenantId or userId');
