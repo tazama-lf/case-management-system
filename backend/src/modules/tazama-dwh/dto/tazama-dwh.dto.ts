@@ -14,3 +14,51 @@ export class DWHAccountTransactionsResponseDto {
   tenantId: string;
   transactions: TransactionDto[];
 }
+
+export interface AddressDto {
+  street?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+}
+
+export interface AccountDto {
+  id: string;
+  accountType?: string;
+  openedDate?: string;
+  balance?: number;
+  riskRating?: string;
+  role?: string;
+  amount?: number;
+  currency?: string;
+}
+
+export interface CustomerDto {
+  customerId: string;
+  tenantId: string;
+  name?: string;
+  dateOfBirth?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface CustomerProfileByTransactionResponse {
+  customerDetails: CustomerDto[];
+  address: AddressDto[];
+  accountDetails: {
+    sender: AccountDto[];
+    receiver: AccountDto[];
+  };
+}
+
+export interface CustomerProfileWithAccountsResponse {
+  customerId: string;
+  tenantId: string;
+  name?: string;
+  dateOfBirth?: string;
+  email?: string;
+  phone?: string;
+  address?: AddressDto;
+  accounts: AccountDto[];
+}

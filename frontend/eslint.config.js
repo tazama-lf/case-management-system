@@ -72,7 +72,7 @@ export default [
       '@typescript-eslint/strict-boolean-expressions': 'off',
       '@stylistic/quotes': ['error', 'single'],
       complexity: ['warn', { max: 15 }],
-      'no-console': 'error',
+      'no-console': ['error', { allow: ['warn', 'error'] }],
       'no-unneeded-ternary': 'off',
       '@eslint-community/eslint-comments/require-description': [
         'error',

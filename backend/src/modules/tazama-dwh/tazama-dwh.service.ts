@@ -4,6 +4,8 @@ import { AuditLogService } from '../audit/auditLog.service';
 import { GenerateProfileDto } from './dto/generate-profile.dto';
 import { ProfileResponseDto, DetectedAnomalyDto } from './dto/profile-response.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
+import { Prisma } from '@prisma/client-dwh';
+import { CustomerProfileByTransactionResponse, CustomerProfileWithAccountsResponse } from './dto/tazama-dwh.dto';
 
 @Injectable()
 export class TazamaDwhService {
@@ -12,7 +14,24 @@ export class TazamaDwhService {
     private readonly logger: LoggerService,
     private readonly auditLog: AuditLogService,
   ) {}
-  private formatTransactionForTable(tx: any) {
+
+  private formatTransactionForTable = (tx: {
+    cre_dt_tm: string | null;
+    end_to_end_id: string;
+    tx_tp: string;
+    source: string;
+    destination: string;
+    role: string | null;
+    amt: Prisma.Decimal | null;
+  }): {
+    date: string | null;
+    transactionId: string;
+    type: string;
+    account: string;
+    counterparty: string;
+    role: string | null;
+    amount: number;
+  } => {
     return {
       date: tx.cre_dt_tm,
       transactionId: tx.end_to_end_id,
@@ -22,7 +41,7 @@ export class TazamaDwhService {
       role: tx.role,
       amount: tx.amt?.toNumber() ?? 0,
     };
-  }
+  };
 
   async generateProfile(dto: GenerateProfileDto, userId: string): Promise<ProfileResponseDto> {
     const now = new Date();
@@ -56,7 +75,7 @@ export class TazamaDwhService {
     const getGeography = (tx: any) => tx.geography ?? tx.transaction?.geography ?? tx.transaction?.TxTp ?? '';
     const peerBaseline = {
       avgVolume: peerTransactions.length,
-      avgValue: peerTransactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() || 0), 0) / (peerTransactions.length || 1),
+      avgValue: peerTransactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() ?? 0), 0) / (peerTransactions.length || 1),
       avgCrossBorder: peerTransactions.filter((tx) => getGeography(tx) === 'Cross-border').length,
     };
     const metrics = {
@@ -84,15 +103,15 @@ export class TazamaDwhService {
       description: (tx.amt?.toNumber() ?? 0) > peerBaseline.avgValue ? 'Large transaction flagged' : 'Cross-border anomaly',
       risk: (tx.amt?.toNumber() ?? 0) > 5000 ? 'High' : (tx.amt?.toNumber() ?? 0) > 2000 ? 'Medium' : 'Low',
     }));
-    if (this.auditLog) {
-      await this.auditLog.logAction({
-        userId,
-        operation: 'generate',
-        entityName: 'TransactionProfile',
-        actionPerformed: 'PROFILE_GENERATED',
-        outcome: 'SUCCESS',
-      });
-    }
+
+    await this.auditLog.logAction({
+      userId,
+      operation: 'generate',
+      entityName: 'TransactionProfile',
+      actionPerformed: 'PROFILE_GENERATED',
+      outcome: 'SUCCESS',
+    });
+
     return {
       tenantId: dto.tenantId,
       filters: dto.filters,
@@ -106,7 +125,27 @@ export class TazamaDwhService {
     };
   }
 
-  async getTransactionsByDebtorId(tenantId: string, debtorId: string) {
+  async getTransactionsByDebtorId(
+    tenantId: string,
+    debtorId: string,
+  ): Promise<
+    Array<{
+      transaction: Prisma.JsonValue;
+      end_to_end_id: string;
+      tx_tp: string;
+      tenant_id: string;
+      amt: Prisma.Decimal | null;
+      ccy: string | null;
+      msg_id: string | null;
+      cre_dt_tm: string | null;
+      tx_sts: string | null;
+      source: string;
+      destination: string;
+      role: string | null;
+      geography: string | null;
+      channel: string | null;
+    }>
+  > {
     const now = new Date();
     const dateTo = now.toISOString().slice(0, 10);
     const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -133,7 +172,27 @@ export class TazamaDwhService {
     }
   }
 
-  async getTransactionsByCreditorId(tenantId: string, creditorId: string) {
+  async getTransactionsByCreditorId(
+    tenantId: string,
+    creditorId: string,
+  ): Promise<
+    Array<{
+      transaction: Prisma.JsonValue;
+      end_to_end_id: string;
+      tx_tp: string;
+      tenant_id: string;
+      amt: Prisma.Decimal | null;
+      ccy: string | null;
+      msg_id: string | null;
+      cre_dt_tm: string | null;
+      tx_sts: string | null;
+      source: string;
+      destination: string;
+      role: string | null;
+      geography: string | null;
+      channel: string | null;
+    }>
+  > {
     const now = new Date();
     const dateTo = now.toISOString().slice(0, 10);
     const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -160,7 +219,7 @@ export class TazamaDwhService {
     }
   }
 
-  async getCustomerProfileByTransaction(transactionId: string) {
+  async getCustomerProfileByTransaction(transactionId: string): Promise<CustomerProfileByTransactionResponse> {
     try {
       const transaction = await this.prismaDwh.transaction.findFirst({
         where: { end_to_end_id: transactionId },
@@ -185,7 +244,6 @@ export class TazamaDwhService {
       }
 
       const senderCustomer = senderAccount.customer;
-      const receiverCustomer = receiverAccount.customer;
 
       const senderAddress = senderCustomer?.address as Record<string, string> | null;
       const sender = {
@@ -197,8 +255,6 @@ export class TazamaDwhService {
         amount: transaction.amt?.toNumber() ?? undefined,
         currency: transaction.ccy ?? undefined,
       };
-
-      const receiverAddress = receiverCustomer?.address as Record<string, string> | null;
       const receiver = {
         id: receiverAccount.id,
         accountType: receiverAccount.account_type ?? undefined,
@@ -245,7 +301,7 @@ export class TazamaDwhService {
     }
   }
 
-  async getCustomerProfileById(id: string) {
+  async getCustomerProfileById(id: string): Promise<CustomerProfileWithAccountsResponse> {
     try {
       const customer = await this.prismaDwh.customer.findFirst({
         where: { id },
@@ -264,8 +320,8 @@ export class TazamaDwhService {
             let debtorCount = 0;
             let creditorCount = 0;
             transactions.forEach((tx) => {
-              if (tx.source === acc.id) debtorCount++;
-              if (tx.destination === acc.id) creditorCount++;
+              if (tx.source === acc.id) debtorCount += 1;
+              if (tx.destination === acc.id) creditorCount += 1;
             });
 
             const role =
@@ -310,7 +366,7 @@ export class TazamaDwhService {
         };
       }
 
-      return this.getCustomerByAccountId(id);
+      return await this.getCustomerByAccountId(id);
     } catch (err) {
       if (err instanceof NotFoundException) {
         throw err;
@@ -320,7 +376,7 @@ export class TazamaDwhService {
     }
   }
 
-  async getCustomerProfile(customerId: string, tenantId?: string) {
+  async getCustomerProfile(customerId: string, tenantId?: string): Promise<CustomerProfileWithAccountsResponse> {
     try {
       const customer = tenantId
         ? await this.prismaDwh.customer.findUnique({
@@ -382,7 +438,7 @@ export class TazamaDwhService {
     }
   }
 
-  async getCustomerByAccountId(accountId: string) {
+  async getCustomerByAccountId(accountId: string): Promise<CustomerProfileWithAccountsResponse> {
     try {
       const account = await this.prismaDwh.account.findFirst({
         where: {
@@ -408,8 +464,8 @@ export class TazamaDwhService {
       let debtorCount = 0;
       let creditorCount = 0;
       transactions.forEach((tx) => {
-        if (tx.source === accountId) debtorCount++;
-        if (tx.destination === accountId) creditorCount++;
+        if (tx.source === accountId) debtorCount += 1;
+        if (tx.destination === accountId) creditorCount += 1;
       });
 
       const role =
@@ -452,7 +508,7 @@ export class TazamaDwhService {
 
       const customerProfile = await this.getCustomerProfile(extendedAccount.customer_id!, dwhTenantId);
 
-      if (role && customerProfile.accounts) {
+      if (role) {
         customerProfile.accounts = customerProfile.accounts.map((acc) => (acc.id === accountId ? { ...acc, role } : acc));
       }
 

@@ -164,11 +164,11 @@ const extractTypologyInfo = (alert: TriageAlert) => {
 
 const escapeHtml = (unsafe: string) =>
   unsafe
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/gu, '&amp;')
+    .replace(/</gu, '&lt;')
+    .replace(/>/gu, '&gt;')
+    .replace(/"/gu, '&quot;')
+    .replace(/'/gu, '&#039;');
 
 const syntaxHighlightJson = (obj: unknown) => {
   const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
@@ -176,21 +176,21 @@ const syntaxHighlightJson = (obj: unknown) => {
 
   const highlighted = escaped
     .replace(
-      /("(.*?)")(?=\s*:)/g,
+      /("(.*?)")(?=\s*:)/gu,
       '<span class="text-indigo-700 font-medium">$1</span>',
     )
-    .replace(/:\s*"(.*?)"/g, ': <span class="text-green-700">"$1"</span>')
+    .replace(/:\s*"(.*?)"/gu, ': <span class="text-green-700">"$1"</span>')
     .replace(
-      /(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/gi,
+      /(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/giu,
       '$1<span class="text-red-600">$2</span>',
     )
     .replace(
-      /(:\s*)(true|false)/gi,
+      /(:\s*)(true|false)/giu,
       '$1<span class="text-yellow-600">$2</span>',
     )
-    .replace(/(:\s*)(null)/gi, '$1<span class="text-gray-500">$2</span>');
+    .replace(/(:\s*)(null)/giu, '$1<span class="text-gray-500">$2</span>');
 
-  return highlighted.replace(/\n/g, '<br/>').replace(/ /g, '&nbsp;');
+  return highlighted.replace(/\n/gu, '<br/>').replace(/ /gu, '&nbsp;');
 };
 
 const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {

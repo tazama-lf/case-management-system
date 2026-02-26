@@ -423,7 +423,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     const sanitizedFiles: File[] = Array.from(fileList)
       .map(
         (file) =>
-          new File([file], file.name.replace(/[^\w.\-() ]+/g, '_'), {
+          new File([file], file.name.replace(/[^\w.\-() ]+/gu, '_'), {
             type: file.type,
           }),
       )

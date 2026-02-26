@@ -27,66 +27,50 @@ export class FlowableProcessService {
    */
   async startProcessInstance(processDefinitionKey: string, variables: Record<string, any>, businessKey: number, tenantId?: string) {
     this.logger.log(`Start - Start Process Instance With BusinessKey: ${businessKey}`, FlowableProcessService.name);
-    try {
-      const formattedVariables = this.formatVariables(variables);
-      const payload = {
-        processDefinitionKey,
-        variables: formattedVariables,
-        businessKey,
-      };
+    const formattedVariables = this.formatVariables(variables);
+    const payload = {
+      processDefinitionKey,
+      variables: formattedVariables,
+      businessKey,
+    };
 
-      const response = await this.flowableClient.post(FlowableApiEndpoints.PROCESS_INSTANCES, payload);
+    const response = await this.flowableClient.post(FlowableApiEndpoints.PROCESS_INSTANCES, payload);
 
-      this.logger.log(`End - Start Process Instance With BusinessKey: ${businessKey}`, FlowableProcessService.name);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    this.logger.log(`End - Start Process Instance With BusinessKey: ${businessKey}`, FlowableProcessService.name);
+    return response.data;
   }
 
   /**
    * Get a process instance by ID
    */
   async getProcessInstance(processInstanceId: string) {
-    try {
-      const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId));
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId));
+    return response.data;
   }
 
   /**
    * Get a process instance by business key
    */
   async getProcessInstanceByBusinessKey(businessKey: number) {
-    try {
-      const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCES, {
-        params: {
-          businessKey,
-        },
-      });
-      return response.data.data?.[0] || null;
-    } catch (error) {
-      throw error;
-    }
+    const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCES, {
+      params: {
+        businessKey,
+      },
+    });
+    return response.data.data?.[0] ?? null;
   }
 
   /**
    * Update a single process variable
    */
   async updateProcessVariable(processInstanceId: string, variableName: string, value: any): Promise<void> {
-    try {
-      await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE_VARIABLE(processInstanceId, variableName), {
-        name: variableName,
-        value: String(value),
-        type: typeof value === 'boolean' ? 'boolean' : 'string',
-      });
+    await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE_VARIABLE(processInstanceId, variableName), {
+      name: variableName,
+      value: String(value),
+      type: typeof value === 'boolean' ? 'boolean' : 'string',
+    });
 
-      this.logger.log(`Updated '${variableName}' for process ${processInstanceId}`, FlowableProcessService.name);
-    } catch (error) {
-      throw error;
-    }
+    this.logger.log(`Updated '${variableName}' for process ${processInstanceId}`, FlowableProcessService.name);
   }
 
   /**
@@ -115,89 +99,69 @@ export class FlowableProcessService {
    * Terminate a process instance
    */
   async terminateProcessInstance(processInstanceId: string, reason?: string) {
-    try {
-      const payload = {
-        action: 'delete',
-        deleteReason: reason || 'Process terminated by system',
-      };
+    const payload = {
+      action: 'delete',
+      deleteReason: reason ?? 'Process terminated by system',
+    };
 
-      const response = await this.flowableClient.delete(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), {
-        data: payload,
-      });
+    const response = await this.flowableClient.delete(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), {
+      data: payload,
+    });
 
-      this.logger.log(`Process instance terminated: ${processInstanceId}`, FlowableProcessService.name);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    this.logger.log(`Process instance terminated: ${processInstanceId}`, FlowableProcessService.name);
+    return response.data;
   }
 
   /**
    * Suspend a process instance
    */
   async suspendProcessInstance(processInstanceId: string) {
-    try {
-      const payload = {
-        action: FlowableTaskActions.SUSPEND,
-      };
+    const payload = {
+      action: FlowableTaskActions.SUSPEND,
+    };
 
-      const response = await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), payload);
+    const response = await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), payload);
 
-      this.logger.log(`Process instance suspended: ${processInstanceId}`, FlowableProcessService.name);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    this.logger.log(`Process instance suspended: ${processInstanceId}`, FlowableProcessService.name);
+    return response.data;
   }
 
   /**
    * Activate a process instance
    */
   async activateProcessInstance(processInstanceId: string) {
-    try {
-      const payload = {
-        action: FlowableTaskActions.ACTIVATE,
-      };
+    const payload = {
+      action: FlowableTaskActions.ACTIVATE,
+    };
 
-      const response = await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), payload);
+    const response = await this.flowableClient.put(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId), payload);
 
-      this.logger.log(`Process instance activated: ${processInstanceId}`, FlowableProcessService.name);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    this.logger.log(`Process instance activated: ${processInstanceId}`, FlowableProcessService.name);
+    return response.data;
   }
 
   /**
    * Get process definitions
    */
   async getProcessDefinitions(processDefinitionKey?: string, tenantId?: string) {
-    try {
-      const params: Record<string, unknown> = {};
-      if (processDefinitionKey) {
-        params.key = processDefinitionKey;
-      }
-      params.tenantId = tenantId;
-
-      const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_DEFINITIONS, {
-        params,
-      });
-      return response.data.data || [];
-    } catch (error) {
-      throw error;
+    const params: Record<string, unknown> = {};
+    if (processDefinitionKey) {
+      params.key = processDefinitionKey;
     }
+    params.tenantId = tenantId;
+
+    const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_DEFINITIONS, {
+      params,
+    });
+    return response.data.data ?? [];
   }
 
   /**
    * List all process definition keys
    */
   async listProcessDefinitions(): Promise<string> {
-    try {
-      const definitions = await this.getProcessDefinitions();
-      return definitions.map((def: any) => def.key).join(', ');
-    } catch (error) {
-      return 'Unable to list process definitions';
-    }
+    const definitions = await this.getProcessDefinitions();
+    return definitions.map((def: any) => def.key).join(', ');
   }
 
   /**
@@ -210,7 +174,7 @@ export class FlowableProcessService {
       }
       return {
         name,
-        value: String(value),
+        value,
         type: 'string',
       };
     });

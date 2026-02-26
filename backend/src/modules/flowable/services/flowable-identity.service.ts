@@ -42,7 +42,7 @@ export class FlowableIdentityService {
   /**
    * Remove a user from a Flowable identity group
    */
-  async removeUserFromGroup(groupId: string, userId: string) {
+  async removeUserFromGroup(groupId: string, userId: string): Promise<void> {
     try {
       await this.flowableClient.delete(FlowableApiEndpoints.GROUP_MEMBER(groupId, userId));
     } catch (error) {
@@ -102,7 +102,7 @@ export class FlowableIdentityService {
           start,
         },
       });
-      return response.data.data || [];
+      return response.data.data ?? [];
     } catch (error) {
       this.logger.error(`Failed to get candidate groups: ${error.message}`, error.stack, FlowableIdentityService.name);
       return [];
@@ -121,7 +121,7 @@ export class FlowableIdentityService {
           includeTaskLocalVariables: true,
         },
       });
-      return response.data.data || [];
+      return response.data.data ?? [];
     } catch (error) {
       this.logger.error(`Failed to get tasks for assignee ${assignee}: ${error.message}`, error.stack, FlowableIdentityService.name);
       throw new HttpException('Failed to get tasks for assignee', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -139,7 +139,7 @@ export class FlowableIdentityService {
     flowableClient: AxiosInstance,
     getCandidateGroupTasksFn: (group: string, includeVariables: boolean) => Promise<any[]>,
     candidateGroup?: string,
-  ) {
+  ): Promise<Record<string, unknown>> {
     try {
       const allGroups = candidateGroup ? [candidateGroup] : await this.getAllCandidateGroups();
       const groups = candidateGroup ? [candidateGroup] : allGroups.map((group: any) => group.id);

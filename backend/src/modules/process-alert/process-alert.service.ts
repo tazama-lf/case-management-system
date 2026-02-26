@@ -20,7 +20,7 @@ export class ProcessAlertService {
     private readonly alertService: AlertService,
   ) {}
 
-  async processIncomingAlert(req: IngestAlertDto, source: string, userId: string, tenantId: string) {
+  async processIncomingAlert(req: IngestAlertDto, source: string, userId: string, tenantId: string): Promise<void> {
     this.loggerService.log('Start - Processing Incoming Alert', ProcessAlertService.name);
     const submitAlertDto: IngestAlertDto = {
       message: req.message,

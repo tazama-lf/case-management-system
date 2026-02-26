@@ -1,7 +1,7 @@
 // Task-related types for Cases feature
 
 export interface UnifiedWorkQueueTask {
-  id: string | number;
+  id: number;
   taskId?: number;
   name: string;
   description?: string;

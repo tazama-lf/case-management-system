@@ -10,7 +10,7 @@ import {
 import { evidenceService } from '../../services/evidenceService';
 import type { Evidence, UploadEvidenceDto } from '../../types/evidence.types';
 import { useToast } from '../../../../shared/providers/ToastProvider';
-import type { UnifiedWorkQueueTask } from '@/features/workqueue/types/flowable.types';
+import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import {
   taskService,
   TaskStatus,
@@ -123,7 +123,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
     const sanitizedFiles: File[] = Array.from(files)
       .map(
         (file) =>
-          new File([file], file.name.replace(/[^\w.\-() ]+/g, '_'), {
+          new File([file], file.name.replace(/[^\w.\-() ]+/gu, '_'), {
             type: file.type,
           }),
       )

@@ -3,7 +3,6 @@ import { FlowableDefaults, CandidateGroups, FlowableApiEndpoints } from '../../.
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AxiosInstance } from 'axios';
 import { FlowableClientFactory } from './flowable-client.factory';
-import { CreateTaskDto } from 'src/modules/task/dto/create-task.dto';
 
 /**
  * Unified utility service for Flowable operations
@@ -122,7 +121,7 @@ export class FlowableUtilitiesService {
 
       // Check candidate group if specified
       if (candidateGroup) {
-        const taskCandidateGroups = task.candidateGroups || [];
+        const taskCandidateGroups = task.candidateGroups ?? [];
         const matchesGroup = taskCandidateGroups.some((g: string) => g.toLowerCase() === candidateGroup.toLowerCase());
         if (matchesGroup) {
           return task;

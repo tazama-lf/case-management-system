@@ -18,7 +18,6 @@ import { transformBackendCaseToUI } from '../casesTable.utils';
 import type { CaseRow } from '../casesTable.utils';
 import type { CaseWithTasksDto } from '../../services/caseService';
 import { caseService } from '../../services/caseService';
-import { evidenceService } from '../../services/evidenceService';
 
 const UnassignTaskModal = lazy(
   async () => await import('../modals/UnassignTaskModal'),
@@ -90,12 +89,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   const isInvestigatorOnly =
     hasInvestigatorRole() && !hasSupervisorRole() && !hasCMSAdminRole();
   const { tasks, loading, error, fetchTasks } = useCaseTasks(caseId);
-
-  // Function to trigger task refresh
-  // const refreshTasks = React.useCallback(() => {
-  //   setRefreshTrigger(prev => prev + 1);
-  // }, []);
-
+  
   useEffect(() => {
     const fetchData = async () => {
       await fetchTasks();
@@ -167,9 +161,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       priority: 'NEW',
       createdAt: backendTask.created_at,
       dueDate: undefined,
-      processInstanceId: '',
-      caseId: backendTask.case_id,
-      flowableData: undefined,
+      caseId: backendTask.case_id
     };
   };
 

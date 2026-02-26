@@ -21,7 +21,7 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className = '' }) => {
       const isLast = index === pathSegments.length - 1;
 
       const name =
-        segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
+        segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/gu, ' ');
 
       breadcrumbs.push({
         name,

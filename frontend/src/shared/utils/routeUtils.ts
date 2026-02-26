@@ -112,8 +112,8 @@ export const buildRoute = (
 };
 
 export const matchesRoute = (pathname: string, route: string): boolean => {
-  const routePattern = route.replace(/:[^/]+/g, '[^/]+');
-  const regex = new RegExp(`^${routePattern}$`);
+  const routePattern = route.replace(/:[^/]+/gu, '[^/]+');
+  const regex = new RegExp(`^${routePattern}$`, 'u');
   return regex.test(pathname);
 };
 
