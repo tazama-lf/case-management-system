@@ -47,9 +47,11 @@ export class AuditInterceptor implements NestInterceptor {
         // log successful operation (fire-and-forget)
         const auditData: IAuditLogBaseDto = {
           ...baseAuditData,
+          resourceId: this.extractResourceId(request, response),
           outcome: {
             executionTimeMs: Date.now() - startTime,
             responseSize: JSON.stringify(responseData ?? {}).length,
+            responseData: this.sanitizeResponseData(responseData),
           },
         };
 
@@ -127,7 +129,7 @@ export class AuditInterceptor implements NestInterceptor {
   private getDefaultUserData(body: any) {
     return {
       userId: body?.username ?? 'system',
-      fullName: body?.fullName ?? 'System User',
+      fullName: body?.username ?? 'System User',
       role: 'system',
       tenantId: 'default'
     };
@@ -137,11 +139,11 @@ export class AuditInterceptor implements NestInterceptor {
    * Extracts resource ID from request parameters
    * @private
    */
-  private extractResourceId(request: Request, response: Response): string | undefined {
+  private extractResourceId(request: Request, response: any): string | undefined {
     const params = request.params as Record<string, string>;
 
     // Common resource ID parameter names
-    return params.caseId || params.taskId || params.id || params.roleName || params.systemName || params.changeId;
+    return params.caseId || params.taskId || params.id || params.alertId || params.roleName || params.systemName || params.changeId || response._id || response.id;
   }
 
   /**
@@ -389,6 +391,27 @@ export class AuditInterceptor implements NestInterceptor {
     }
 
     return cleanBody;
+  }
+
+  /**
+   * Sanitizes response data to remove sensitive information
+   * @private
+   */
+  private sanitizeResponseData(data: any): any {
+    if (!data || typeof data !== 'object') {
+      return data;
+    }
+
+    // Remove sensitive fields from response
+    const { password, token, secret, accessToken, refreshToken, ...cleanData } = data;
+
+    // Truncate large payloads to prevent storage bloat
+    const serialized = JSON.stringify(cleanData);
+    if (serialized.length > 10000) {
+      return { _truncated: true, _originalSize: serialized.length };
+    }
+
+    return cleanData;
   }
 
   /**
