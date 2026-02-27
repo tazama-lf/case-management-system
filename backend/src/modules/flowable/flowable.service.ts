@@ -318,28 +318,19 @@ export class FlowableService implements OnModuleInit {
     const processInstance = await this.flowableProcessService.startProcessInstance(
       'caseManagementProcess',
       {
-        caseId: event.caseId,
+        caseId: String(event.caseId),
         tenantId: event.tenantId,
         creationType: event.creationType,
         caseStatus: event.caseStatus,
         creatorRole: event.creatorRole,
-        isReopened: event.isReopened,
+        isReopened: String(event.isReopened),
         // Required BPMN variables with safe defaults
-        caseType: (event as any).caseType ?? 'FRAUD',
-        casePriority: (event as any).priority ?? 'NEW',
-        autoCloseEligible: String((event as any).autoCloseEligible ?? false),
         readyForAssignment: 'true',
         // Investigation action variables with defaults
         investigationAction: 'pending',
-        fraudInvestigationAction: 'pending',
-        amlInvestigationAction: 'pending',
         // Additional required variables
         investigationNotes: '',
-        fraudInvestigationNotes: '',
-        amlInvestigationNotes: '',
-        recommendedOutcome: 'PENDING_INVESTIGATION',
-        fraudRecommendedOutcome: 'PENDING_INVESTIGATION',
-        amlRecommendedOutcome: 'PENDING_INVESTIGATION',
+        finalOutcome: 'PENDING_INVESTIGATION',
       },
       event.caseId,
       event.tenantId,
@@ -365,10 +356,6 @@ export class FlowableService implements OnModuleInit {
 
   async handleTaskUnassigned(event: TaskUnassignedEvent): Promise<void> {
     await this.taskEventListener.handleTaskUnassigned(event);
-  }
-
-  async handleSuspendCase(event: CaseSuspendedEvent): Promise<void> {
-    await this.caseEventListener.handleSuspendCase(event);
   }
 
   async handleGetTasksByAssignee(assignee: string) {

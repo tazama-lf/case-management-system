@@ -16,7 +16,7 @@ export class AlertController {
   constructor(
     private readonly alertStatisticsService: AlertStatisticsService,
     private readonly alertService: AlertService,
-  ) {}
+  ) { }
 
   @Get()
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
@@ -97,6 +97,11 @@ export class AlertController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUserAlerts(
     @Req() req: AuthenticatedRequest,
+    @Query('reportStatus') reportStatus?: string,
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+    @Query('sortBy') sortBy = 'created_at',
+    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
     @Query('priority') priority?: string,
     @Query('type') type?: string,
     @Query('alertType') alertType?: string,
@@ -134,8 +139,8 @@ export class AlertController {
       search,
       source,
       reportStatus,
-      page,
-      limit,
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
       sortBy,
       sortOrder,
     });

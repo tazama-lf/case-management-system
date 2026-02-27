@@ -393,8 +393,8 @@ export class TriageService {
     completeNewCaseTask: Task,
     existingCase: Case,
     alert: Alert,
-    maxRetries = 3,
   ): Promise<void> {
+    const maxRetries = 5;
     const flowableOperations = async (): Promise<void> => {
       if (updateAlertDto.status && this.closableStatuses.includes(updateAlertDto.status)) {
         await this.flowableService.handleTaskCompleted({
