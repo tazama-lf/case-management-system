@@ -157,6 +157,7 @@ export class EvidenceController {
 
   @Get(':id/download')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @Audit()
   async downloadEvidence(
     @Param('id') id: string,
     @Res() res: Response,

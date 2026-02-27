@@ -3,7 +3,6 @@ import { AuditLogController } from './auditLog.controller';
 import { AuditLogService } from './auditLog.service';
 import { PrismaModule } from '../../../prisma/prisma.module';
 import { createAuditProvider } from '@tazama-lf/audit-lib';
-import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditInterceptor } from '../../interpectors/audit-log.interceptor';
 
 @Global()
@@ -12,12 +11,9 @@ import { AuditInterceptor } from '../../interpectors/audit-log.interceptor';
   controllers: [AuditLogController],
   providers: [
     createAuditProvider('case-management-system'),
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: AuditInterceptor,
-    },
     AuditLogService,
+    AuditInterceptor,
   ],
-  exports: [AuditLogService, 'AUDIT_LOGGER'],
+  exports: [AuditLogService, 'AUDIT_LOGGER', AuditInterceptor],
 })
 export class AuditLogModule { }

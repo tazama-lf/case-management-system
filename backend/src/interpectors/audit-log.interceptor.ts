@@ -16,7 +16,9 @@ import { IAuditLogBaseDto } from '../modules/audit/dto/audit-log.dto';
 export class AuditInterceptor implements NestInterceptor {
   private readonly logger = new Logger(AuditInterceptor.name);
 
-  constructor(@Inject('AUDIT_LOGGER') private readonly auditService: IAuditService) { }
+  constructor(
+    @Inject('AUDIT_LOGGER') private readonly auditService: IAuditService,
+  ) { }
 
   /**
    * Intercepts HTTP requests to critical endpoints and logs audit information
@@ -26,9 +28,10 @@ export class AuditInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
     const startTime = Date.now();
+
+    // Generate correlationId once for all phases of this request
     const correlationId = randomUUID();
 
-    // from request context
     const baseAuditData = this.buildBaseAuditData(context, authenticatedRequest, response);
 
     // Log INTENT phase immediately (fire-and-forget)
@@ -37,7 +40,7 @@ export class AuditInterceptor implements NestInterceptor {
       outcome: {},
     };
 
-    this.logAuditAsync(auditData, EventPhase.INTENT);
+    this.logAuditAsync(auditData, EventPhase.INTENT, correlationId);
 
     return next.handle().pipe(
       tap((responseData) => {
@@ -45,13 +48,12 @@ export class AuditInterceptor implements NestInterceptor {
         const auditData: IAuditLogBaseDto = {
           ...baseAuditData,
           outcome: {
-            // statusCode: response.statusCode,
             executionTimeMs: Date.now() - startTime,
             responseSize: JSON.stringify(responseData ?? {}).length,
           },
         };
 
-        this.logAuditAsync(auditData, EventPhase.SUCCESS);
+        this.logAuditAsync(auditData, EventPhase.SUCCESS, correlationId);
       }),
       catchError((error) => {
         // Log failed operation (fire-and-forget)
@@ -64,10 +66,10 @@ export class AuditInterceptor implements NestInterceptor {
           },
         };
 
-        this.logAuditAsync(auditData, EventPhase.FAILED);
+        this.logAuditAsync(auditData, EventPhase.FAILED, correlationId);
 
-        // Re-throw the error - audit failure must not affect the main operation
-        throw new Error(error);
+        // Re-throw the original error - audit failure must not affect the main operation
+        throw error;
       }),
     );
   }
@@ -82,15 +84,21 @@ export class AuditInterceptor implements NestInterceptor {
     response: Response
   ): Omit<IAuditLogInput, 'outcome' | 'correlationId' | 'eventPhase'> {
     const { method, url, body, params, query, headers } = request;
-    const { userId, fullName, role, tenantId } = extractUserData(request);
+
+    // Extract user data with fallbacks
+    const userData = request.user 
+      ? extractUserData(request)
+      : this.getDefaultUserData(request.body);
+  
     const handler = context.getHandler().name;
     const controller = context.getClass().name;
+    const { description, eventType } = this.createDescriptionAndEventType(method, url, handler);
 
     return {
       // User identification
-      actorId: userId ?? 'anonymous',
-      actorRole: role ?? 'anonymous',
-      actorName: fullName ?? 'Anonymous User',
+      actorId: userData.userId ?? 'anonymous',
+      actorRole: userData.role ?? 'anonymous',
+      actorName: userData.fullName ?? 'Anonymous User',
 
       // Resource information
       resourceId: this.extractResourceId(request, response),
@@ -98,9 +106,9 @@ export class AuditInterceptor implements NestInterceptor {
 
       // Request metadata
       sourceIp: this.extractSourceIp(request),
-      description: this.createDescriptionAndEventType(method, url, handler).description,
-      eventType: this.createDescriptionAndEventType(method, url, handler).eventType,
-      tenantId: tenantId ?? 'default',
+      description,
+      eventType,
+      tenantId: userData.tenantId ?? 'default',
 
       actionPerformed: {
         method,
@@ -116,15 +124,24 @@ export class AuditInterceptor implements NestInterceptor {
     };
   }
 
+  private getDefaultUserData(body: any) {
+    return {
+      userId: body?.username ?? 'system',
+      fullName: body?.fullName ?? 'System User',
+      role: 'system',
+      tenantId: 'default'
+    };
+  }
+
   /**
    * Extracts resource ID from request parameters
    * @private
    */
   private extractResourceId(request: Request, response: Response): string | undefined {
     const params = request.params as Record<string, string>;
-console.log(response,"<<----response in audit log interceptor-->>")
+
     // Common resource ID parameter names
-    return params.caseId || params.taskId || params.id || params.resourceId;
+    return params.caseId || params.taskId || params.id || params.roleName || params.systemName || params.changeId;
   }
 
   /**
@@ -152,6 +169,7 @@ console.log(response,"<<----response in audit log interceptor-->>")
       TaskHistoryController: 'task-history',
       CaseHistoryController: 'case-history',
       FilterController: 'filter',
+      ProcessAlertController: 'process-alert',
     };
 
     return resourceMapping[controllerName] ?? 'unknown';
@@ -343,6 +361,10 @@ console.log(response,"<<----response in audit log interceptor-->>")
         description: 'Manual triage is performed',
         eventType: 'MANUAL_TRIAGE',
       },
+      downloadEvidence: {
+        description: 'Evidence is downloaded',
+        eventType: 'DOWNLOAD_EVIDENCE',
+      },
     };
 
     return actionMap[handler] || { description: `${method} request to ${url}`, eventType: 'UNKNOWN' };
@@ -373,11 +395,11 @@ console.log(response,"<<----response in audit log interceptor-->>")
    * Logs audit data asynchronously without blocking the main operation
    * @private
    */
-  private logAuditAsync(auditData: IAuditLogBaseDto, eventPhase: EventPhase): void {
+  private logAuditAsync(auditData: IAuditLogBaseDto, eventPhase: EventPhase, correlationId: string): void {
     // Fire-and-forget: Don't await this promise
     const auditInput: IAuditLogInput = {
       ...auditData,
-      correlationId: randomUUID(),
+      correlationId,
       eventPhase,
     };
 
