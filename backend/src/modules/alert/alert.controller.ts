@@ -107,11 +107,6 @@ export class AlertController {
     @Query('alertType') alertType?: string,
     @Query('search') search?: string,
     @Query('source') source?: string,
-    @Query('reportStatus') reportStatus?: string,
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-    @Query('sortBy') sortBy = 'created_at',
-    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
   ): Promise<{
     data: Array<{
       alert_id: number;
