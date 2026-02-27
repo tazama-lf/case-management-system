@@ -97,16 +97,16 @@ export class AlertController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUserAlerts(
     @Req() req: AuthenticatedRequest,
+    @Query('reportStatus') reportStatus?: string,
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+    @Query('sortBy') sortBy = 'created_at',
+    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
     @Query('priority') priority?: string,
     @Query('type') type?: string,
     @Query('alertType') alertType?: string,
     @Query('search') search?: string,
     @Query('source') source?: string,
-    @Query('reportStatus') reportStatus?: string,
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-    @Query('sortBy') sortBy = 'created_at',
-    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
   ) {
     const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
@@ -118,8 +118,8 @@ export class AlertController {
       search,
       source,
       reportStatus,
-      page: page,
-      limit: limit,
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
       sortBy,
       sortOrder,
     });
