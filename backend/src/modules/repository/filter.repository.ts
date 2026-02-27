@@ -21,7 +21,7 @@ export class FilterRepository extends BaseRepository {
     });
   }
 
-  async getFiltersByUserAndType(userId: string, filterType: string, tx?: Prisma.TransactionClient): Promise<filters[]> {
+  async getFiltersByUserAndType(userId: string, filterType: string, tx?: Prisma.TransactionClient): Promise<filters[] | null> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.filters.findMany({
       where: {

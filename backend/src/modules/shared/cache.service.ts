@@ -40,7 +40,7 @@ export class CacheService implements OnModuleInit {
   /**
    * Initialize user cache on module startup
    */
-  async onModuleInit() {
+  onModuleInit(): void {
     this.logger.log('Initializing CMS cache...', CacheService.name);
 
     // Add delay to ensure all services (especially Redis) are initialized
@@ -102,7 +102,7 @@ export class CacheService implements OnModuleInit {
             };
 
             cacheData[this.getCacheKey(user.id)] = userDetails;
-            totalUsers++;
+            totalUsers += 1;
           }
 
           this.logger.log(`Cached ${users.length} users with role: ${role}`, CacheService.name);
@@ -184,7 +184,7 @@ export class CacheService implements OnModuleInit {
    */
   async getUserEmailFromCache(userId: string): Promise<string | null> {
     const user = await this.getUserFromCache(userId);
-    return user?.email || null;
+    return user?.email ?? null;
   }
 
   /**

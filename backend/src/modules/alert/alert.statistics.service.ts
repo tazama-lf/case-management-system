@@ -22,7 +22,23 @@ export class AlertStatisticsService {
     limit: number;
     sortBy: string;
     sortOrder: 'asc' | 'desc';
-  }) {
+  }): Promise<{
+    data: Array<{
+      alert_id: number;
+      txtp: string;
+      priority: Priority | null;
+      confidence_per: number;
+      source: string | null;
+      alert_type: string | null;
+      created_at: Date;
+      transaction: Prisma.JsonValue;
+      alert_data: Prisma.JsonValue;
+    }>;
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  }> {
     const { tenantId, priority, type, alertType, search, source, reportStatus, page, limit, sortBy, sortOrder } = params;
 
     if (!Number.isInteger(page) || page < 1) {

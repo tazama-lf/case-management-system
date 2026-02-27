@@ -44,7 +44,7 @@ export class AsyncTaskService {
     await this.asyncTaskRepository.scheduleRetry(taskId, retryCount, nextRetryAt);
   }
 
-  async getPendingTasksForProcessing(limit = 10) {
+  async getPendingTasksForProcessing(limit = 10): Promise<AsyncTask[]> {
     return await this.asyncTaskRepository.getPendingTasksForProcessing(limit);
   }
 }

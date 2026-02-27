@@ -20,9 +20,9 @@ export class CaseReopeningService {
     private readonly caseRepository: CaseRepository,
     private readonly commentRepository: CommentRepository,
     private readonly notificationService: NotificationService,
-    private readonly prismaService: PrismaService,
+    // private readonly prismaService: PrismaService,
     private readonly taskService: TaskService,
-    private readonly logger: LoggerService,
+    private readonly loggerService: LoggerService,
     private readonly caseQueryService: CaseQueryService,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
@@ -34,18 +34,16 @@ export class CaseReopeningService {
 
   async reopenCase(caseId: number, reason: string, userId: string, tenantId: string, role: string) {
     try {
-      this.logger.log(`Investigator ${userId} reopening case ${caseId}`, CaseReopeningService.name);
-
-      const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
-
-      if (!REOPENABLE_CASE_STATUSES.includes(existingCase.status)) {
-        throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
-      }
-
+      this.loggerService.log(`Investigator ${userId} reopening case ${caseId}`, CaseReopeningService.name);
       if (!reason || reason.trim().length < VALIDATION_LENGTHS.MIN_REOPENING_REASON) {
         throw new BadRequestException(
           `Reason for reopening case is required and must be at least ${VALIDATION_LENGTHS.MIN_REOPENING_REASON} characters`,
         );
+      }
+
+      const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+      if (!REOPENABLE_CASE_STATUSES.includes(existingCase.status)) {
+        throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
       }
 
       // If this is a child case, validate parent case is also reopenable
@@ -58,10 +56,8 @@ export class CaseReopeningService {
       //   }
       // }
 
-      const isSupervisor = role === 'CMS_SUPERVISOR';
-
-      if (isSupervisor) {
-        const result = await this.prismaService.$transaction(async (tx) => {
+      if (role === 'CMS_SUPERVISOR') {
+        const result = await this.caseRepository.transaction(async (tx) => {
           const updatedCase = await tx.case.update({
             where: { case_id: caseId },
             data: {
@@ -77,21 +73,22 @@ export class CaseReopeningService {
             });
           }
 
-          return { case: updatedCase };
+          const investigationTask = await this.taskService.createTask(
+            {
+              caseId,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              name: TASK_NAMES.INVESTIGATE_CASE,
+              description: `Case reopened by supervisor for additional investigation. Reason: ${reason}`,
+              candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+            },
+            userId,
+            tenantId,
+            tx,
+          );
+          return { case: updatedCase, investigationTask };
         });
 
         // Create new investigation task for supervisor
-        const investigationTask = await this.taskService.createTask(
-          {
-            caseId,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: TASK_NAMES.INVESTIGATE_CASE,
-            description: `Case reopened by supervisor for additional investigation. Reason: ${reason}`,
-            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-          },
-          userId,
-          tenantId,
-        );
 
         this.flowableService.handleCaseCreated({
           caseId,
@@ -107,7 +104,7 @@ export class CaseReopeningService {
             userId,
             operation: 'reopenCase',
             entityName: CaseReopeningService.name,
-            actionPerformed: `Reopened case ${caseId} and created investigation task ${investigationTask.task_id}. Reason: ${reason}`,
+            actionPerformed: `Reopened case ${caseId} and created investigation task ${result.investigationTask.task_id}. Reason: ${reason}`,
             outcome: Outcome.SUCCESS,
           },
           caseId,
@@ -119,15 +116,15 @@ export class CaseReopeningService {
           message: 'Case reopened successfully',
           case: result.case,
           investigation_task: {
-            task_id: investigationTask.task_id,
-            name: investigationTask.name,
-            status: investigationTask.status,
+            task_id: result.investigationTask.task_id,
+            name: result.investigationTask.name,
+            status: result.investigationTask.status,
             assigned_to: userId,
           },
         };
       }
 
-      const result = await this.prismaService.$transaction(async (tx) => {
+      const result = await this.caseRepository.transaction(async (tx) => {
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
           data: {
@@ -146,6 +143,7 @@ export class CaseReopeningService {
           },
           userId,
           tenantId,
+          tx,
         );
 
         await this.commentRepository.createComment(
@@ -197,7 +195,7 @@ export class CaseReopeningService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to reopen case ${caseId}: ${errorMessage}`, errorStack, CaseReopeningService.name);
+      this.loggerService.error(`Failed to reopen case ${caseId}: ${errorMessage}`, errorStack, CaseReopeningService.name);
 
       await this.loggingOrchestrationService.logActions({
         userId,
@@ -213,7 +211,7 @@ export class CaseReopeningService {
 
   async approveCaseReopening(caseId: number, supervisorId: string, tenantId: string) {
     try {
-      this.logger.log(`Supervisor ${supervisorId} approving case reopening for ${caseId}`, CaseReopeningService.name);
+      this.loggerService.log(`Supervisor ${supervisorId} approving case reopening for ${caseId}`, CaseReopeningService.name);
 
       const caseData = await this.validateReopeningPreconditions(caseId, tenantId);
       // Step 2: Find the reopening approval task
@@ -237,7 +235,7 @@ export class CaseReopeningService {
         } catch (parseError) {
           const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
           const errorStack = parseError instanceof Error ? parseError.stack : undefined;
-          this.logger.warn(`Failed to parse reopening metadata: ${errorMessage}`, errorStack, CaseReopeningService.name);
+          this.loggerService.warn(`Failed to parse reopening metadata: ${errorMessage}`, errorStack, CaseReopeningService.name);
         }
       }
 
@@ -254,20 +252,20 @@ export class CaseReopeningService {
         assignedUserId = requesterId;
         candidateGroup = CANDIDATE_GROUPS.INVESTIGATIONS;
 
-        this.logger.log(`Reopening approved - assigning to original requester ${requesterId}`, CaseReopeningService.name);
+        this.loggerService.log(`Reopening approved - assigning to original requester ${requesterId}`, CaseReopeningService.name);
       } else {
         newCaseStatus = CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
         newTaskStatus = TaskStatus.STATUS_01_UNASSIGNED;
         assignedUserId = undefined;
         candidateGroup = CANDIDATE_GROUPS.INVESTIGATIONS;
 
-        this.logger.log(
+        this.loggerService.log(
           `Reopening approved - assigning to investigations queue (requester role: ${requesterRole ?? 'unknown'})`,
           CaseReopeningService.name,
         );
       }
 
-      const result = await this.prismaService.$transaction(async (tx) => {
+      const result = await this.caseRepository.transaction(async (tx) => {
         // Update case status
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
@@ -358,7 +356,7 @@ export class CaseReopeningService {
         } catch (notificationError) {
           const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
           const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
-          this.logger.warn(`Failed to send analyst notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
+          this.loggerService.warn(`Failed to send analyst notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
         }
       } else {
         try {
@@ -375,7 +373,7 @@ export class CaseReopeningService {
         } catch (notificationError) {
           const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
           const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
-          this.logger.warn(`Failed to send group notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
+          this.loggerService.warn(`Failed to send group notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
         }
       }
 
@@ -391,7 +389,7 @@ export class CaseReopeningService {
         caseData.tenant_id,
       );
 
-      this.logger.log(`Case ${caseId} reopening approved. Status: ${newCaseStatus}`, CaseReopeningService.name);
+      this.loggerService.log(`Case ${caseId} reopening approved. Status: ${newCaseStatus}`, CaseReopeningService.name);
 
       return {
         success: true,
@@ -417,7 +415,7 @@ export class CaseReopeningService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to approve case reopening: ${errorMessage}`, errorStack, CaseReopeningService.name);
+      this.loggerService.error(`Failed to approve case reopening: ${errorMessage}`, errorStack, CaseReopeningService.name);
 
       await this.loggingOrchestrationService.logActions({
         userId: supervisorId,
@@ -433,7 +431,7 @@ export class CaseReopeningService {
 
   async rejectCaseReopening(caseId: number, rejectionReason: string, supervisorId: string, tenantId: string) {
     try {
-      this.logger.log(`Supervisor ${supervisorId} rejecting case reopening for ${caseId}`, CaseReopeningService.name);
+      this.loggerService.log(`Supervisor ${supervisorId} rejecting case reopening for ${caseId}`, CaseReopeningService.name);
 
       if (!rejectionReason || rejectionReason.trim().length < VALIDATION_LENGTHS.MIN_REJECTION_REASON) {
         const errorMsg = `Rejection reason must be at least ${VALIDATION_LENGTHS.MIN_REJECTION_REASON} characters`;
@@ -463,13 +461,13 @@ export class CaseReopeningService {
         } catch (parseError) {
           const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
           const errorStack = parseError instanceof Error ? parseError.stack : undefined;
-          this.logger.warn(`Failed to parse reopening metadata: ${errorMessage}`, errorStack, CaseReopeningService.name);
+          this.loggerService.warn(`Failed to parse reopening metadata: ${errorMessage}`, errorStack, CaseReopeningService.name);
         }
       }
 
       const originalClosedStatus = this.determineOriginalClosedStatus(caseData);
 
-      const result = await this.prismaService.$transaction(async (tx) => {
+      const result = await this.caseRepository.transaction(async (tx) => {
         // Restore case to original closed status
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
@@ -523,7 +521,7 @@ export class CaseReopeningService {
         } catch (notificationError) {
           const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
           const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
-          this.logger.warn(`Failed to send rejection notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
+          this.loggerService.warn(`Failed to send rejection notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
         }
       }
 
@@ -539,7 +537,7 @@ export class CaseReopeningService {
         caseData.tenant_id,
       );
 
-      this.logger.log(`Case ${caseId} reopening rejected. Restored to ${originalClosedStatus}`, CaseReopeningService.name);
+      this.loggerService.log(`Case ${caseId} reopening rejected. Restored to ${originalClosedStatus}`, CaseReopeningService.name);
 
       return {
         success: true,
@@ -558,7 +556,7 @@ export class CaseReopeningService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to reject case reopening: ${errorMessage}`, errorStack, CaseReopeningService.name);
+      this.loggerService.error(`Failed to reject case reopening: ${errorMessage}`, errorStack, CaseReopeningService.name);
 
       await this.loggingOrchestrationService.logActions({
         userId: supervisorId,

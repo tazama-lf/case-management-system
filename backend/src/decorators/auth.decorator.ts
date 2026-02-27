@@ -9,24 +9,24 @@ export const AUTHENTICATED_ONLY_KEY = 'authenticatedOnly';
  * Decorator to specify required claims for a route
  * @param claims
  */
-export const RequireClaims = (...claims: string[]) => SetMetadata(CLAIMS_KEY, claims);
+export const RequireClaims = (...claims: string[]): ReturnType<typeof SetMetadata> => SetMetadata(CLAIMS_KEY, claims);
 
 /**
  * Decorator to specify claims where ANY of them can satisfy the requirement
  * @param claims
  */
-export const RequireAnyClaims = (...claims: string[]) => SetMetadata(ANY_CLAIMS_KEY, claims);
+export const RequireAnyClaims = (...claims: string[]): ReturnType<typeof SetMetadata> => SetMetadata(ANY_CLAIMS_KEY, claims);
 
 /**
  * Decorator to mark a route as public (no authentication required)
  */
-export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
+export const Public = (): ReturnType<typeof SetMetadata> => SetMetadata(IS_PUBLIC_KEY, true);
 
 /**
  * Decorator to specify a single claim requirement
  * @param claim
  */
-export const RequireClaim = (claim: string) => SetMetadata(CLAIMS_KEY, [claim]);
+export const RequireClaim = (claim: string): ReturnType<typeof SetMetadata> => SetMetadata(CLAIMS_KEY, [claim]);
 
 /**
  * Common Tazama claims for convenience
@@ -50,23 +50,25 @@ export const TazamaClaims = {
  * Convenience decorators for common Tazama roles
  */
 
-export const RequireAdminRole = () => RequireAnyClaims(TazamaClaims.CMS_ADMIN);
+export const RequireAdminRole = (): ReturnType<typeof RequireAnyClaims> => RequireAnyClaims(TazamaClaims.CMS_ADMIN);
 
-export const RequireAlertTriageRole = () => RequireAnyClaims(TazamaClaims.ALERT_TRIAGE, TazamaClaims.CMS_TEST_ROLE);
-export const RequireInvestigatorRole = () => RequireAnyClaims(TazamaClaims.CMS_INVESTIGATOR);
-export const RequireSupervisorRole = () => RequireAnyClaims(TazamaClaims.CMS_SUPERVISOR);
-export const RequireInvestigatorOrSupervisorRole = () => RequireAnyClaims(TazamaClaims.CMS_INVESTIGATOR, TazamaClaims.CMS_SUPERVISOR);
-export const RequireInvestigatorOrSupervisorRoleOrComplianceRole = () =>
+export const RequireAlertTriageRole = (): ReturnType<typeof RequireAnyClaims> =>
+  RequireAnyClaims(TazamaClaims.ALERT_TRIAGE, TazamaClaims.CMS_TEST_ROLE);
+export const RequireInvestigatorRole = (): ReturnType<typeof RequireAnyClaims> => RequireAnyClaims(TazamaClaims.CMS_INVESTIGATOR);
+export const RequireSupervisorRole = (): ReturnType<typeof RequireAnyClaims> => RequireAnyClaims(TazamaClaims.CMS_SUPERVISOR);
+export const RequireInvestigatorOrSupervisorRole = (): ReturnType<typeof RequireAnyClaims> =>
+  RequireAnyClaims(TazamaClaims.CMS_INVESTIGATOR, TazamaClaims.CMS_SUPERVISOR);
+export const RequireInvestigatorOrSupervisorRoleOrComplianceRole = (): ReturnType<typeof RequireAnyClaims> =>
   RequireAnyClaims(TazamaClaims.CMS_INVESTIGATOR, TazamaClaims.CMS_SUPERVISOR, TazamaClaims.CMS_COMPLIANCE_OFFICER);
 
-export const RequireCMSComplianceOfficerRole = () => RequireAnyClaims(TazamaClaims.CMS_COMPLIANCE_OFFICER);
-
+export const RequireCMSComplianceOfficerRole = (): ReturnType<typeof RequireAnyClaims> =>
+  RequireAnyClaims(TazamaClaims.CMS_COMPLIANCE_OFFICER);
 /**
  * Allows any authenticated user (no specific role required).
  * This is preferred over hardcoding specific roles.
  * If you need role-based access control, use specific role decorators instead.
  */
-export const RequireAuthenticated = () => SetMetadata(AUTHENTICATED_ONLY_KEY, []);
+export const RequireAuthenticated = (): ReturnType<typeof SetMetadata> => SetMetadata(AUTHENTICATED_ONLY_KEY, []);
 
 /**
  * @deprecated Use RequireAuthenticated() instead for any authenticated user,
@@ -74,7 +76,8 @@ export const RequireAuthenticated = () => SetMetadata(AUTHENTICATED_ONLY_KEY, []
  * for role-based access control. This decorator has a hardcoded list of roles
  * which requires maintenance and may become outdated.
  */
-export const RequireAnyValidRole = () =>
+export const RequireAnyValidRole = (): ReturnType<typeof RequireAnyClaims> =>
   RequireAnyClaims(TazamaClaims.ALERT_TRIAGE, TazamaClaims.CMS_TEST_ROLE, TazamaClaims.CMS_INVESTIGATOR, TazamaClaims.CMS_SUPERVISOR);
 
-export const RequireAccountManagement = () => RequireClaims(TazamaClaims.MANAGE_ACCOUNT, TazamaClaims.MANAGE_ACCOUNT_LINKS);
+export const RequireAccountManagement = (): ReturnType<typeof RequireClaims> =>
+  RequireClaims(TazamaClaims.MANAGE_ACCOUNT, TazamaClaims.MANAGE_ACCOUNT_LINKS);

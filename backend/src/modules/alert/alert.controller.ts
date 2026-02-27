@@ -8,7 +8,7 @@ import { AlertResponseDto } from './dto';
 import { AlertService } from './alert.service';
 import { AlertDetailsResponseDTO } from './dto/AlertDetailsResponse.dto';
 import { AlertActionHistoryDTO } from './dto/AlertActionHistory.dto';
-import { Prisma } from '@prisma/client-cms';
+import { Priority, Prisma } from '@prisma/client-cms';
 
 @Controller('api/v1/alert')
 @UseGuards(TazamaAuthGuard)
@@ -16,7 +16,7 @@ export class AlertController {
   constructor(
     private readonly alertStatisticsService: AlertStatisticsService,
     private readonly alertService: AlertService,
-  ) {}
+  ) { }
 
   @Get()
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
@@ -97,17 +97,33 @@ export class AlertController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUserAlerts(
     @Req() req: AuthenticatedRequest,
+    @Query('reportStatus') reportStatus?: string,
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+    @Query('sortBy') sortBy = 'created_at',
+    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
     @Query('priority') priority?: string,
     @Query('type') type?: string,
     @Query('alertType') alertType?: string,
     @Query('search') search?: string,
     @Query('source') source?: string,
-    @Query('reportStatus') reportStatus?: string,
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-    @Query('sortBy') sortBy = 'created_at',
-    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
-  ) {
+  ): Promise<{
+    data: Array<{
+      alert_id: number;
+      txtp: string;
+      priority: Priority | null;
+      confidence_per: number;
+      source: string | null;
+      alert_type: string | null;
+      created_at: Date;
+      transaction: Prisma.JsonValue;
+      alert_data: Prisma.JsonValue;
+    }>;
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  }> {
     const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
     return await this.alertStatisticsService.getAlertsForUser({
@@ -118,8 +134,8 @@ export class AlertController {
       search,
       source,
       reportStatus,
-      page: page,
-      limit: limit,
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
       sortBy,
       sortOrder,
     });
@@ -168,7 +184,27 @@ export class AlertController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
-  async getAlertDetails(@Param('alertId') alertId: number, @Req() req: AuthenticatedRequest) {
+  async getAlertDetails(
+    @Param('alertId') alertId: number,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    priority: Priority | null;
+    source: string | null;
+    created_at: Date;
+    alert_id: number | null;
+    priority_score: number | null;
+    alert_type: string | null;
+    prediction_outcome: string | null;
+    txtp: string;
+    message: string;
+    alert_data: Prisma.JsonValue;
+    transaction: Prisma.JsonValue;
+    network_map: Prisma.JsonValue;
+    confidence_per: number;
+    block_status: string | null;
+    block_reason: string | null;
+    case_id: number | null;
+  } | null> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');

@@ -51,7 +51,7 @@ export class EvidenceService {
     };
   }
 
-  private decrypt(enc: Buffer, key: string, iv: string, tag: string) {
+  private decrypt(enc: Buffer, key: string, iv: string, tag: string): Buffer {
     const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(key, 'base64'), Buffer.from(iv, 'base64'));
 
     decipher.setAuthTag(Buffer.from(tag, 'base64'));
@@ -270,14 +270,7 @@ export class EvidenceService {
   }
 
   async deleteEvidence(evidenceId: string, fileName: string, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
-    if (
-      evidenceId === null ||
-      evidenceId === undefined ||
-      evidenceId.trim() === '' ||
-      fileName === null ||
-      fileName === undefined ||
-      fileName.trim() === ''
-    ) {
+    if (evidenceId === undefined || evidenceId.trim() === '' || fileName === undefined || fileName.trim() === '') {
       this.logger.log(`Evidence Id  ${evidenceId} or fileName  ${fileName} is not found`);
       this.logger.error(`Evidence Id or fileName is not found: ${evidenceId} , ${fileName}`);
       throw new BadRequestException(`Evidence Id is not found: ${evidenceId}, or fileName is empty: ${fileName}`);
@@ -319,6 +312,7 @@ export class EvidenceService {
     if (userRole === 'CMS_INVESTIGATOR') {
       query.uploadedBy = userId;
     } else if (userRole === 'CMS_AUDITOR' || userRole === 'CMS_SUPERVISOR' || userRole === 'CMS_COMPLIANCE_OFFICER') {
+      //doNothing
     } else {
       throw new UnauthorizedException('Invalid role');
     }

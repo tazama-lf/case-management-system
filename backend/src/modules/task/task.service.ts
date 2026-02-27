@@ -21,7 +21,7 @@ export class TaskService {
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
-  async createTask(taskDTO: CreateTaskDto, userId: string, tenantId: string): Promise<Task> {
+  async createTask(taskDTO: CreateTaskDto, userId: string, tenantId: string, tx?: Prisma.TransactionClient): Promise<Task> {
     this.logger.log('Start - createTask', TaskService.name);
     try {
       const caseRecord = await this.taskRepository.findCaseBasic(taskDTO.caseId, tenantId);
@@ -29,20 +29,23 @@ export class TaskService {
         throw new NotFoundException(`Case ${taskDTO.caseId} not found`);
       }
 
-      const createdTask = await this.taskRepository.createTask({
-        case: {
-          connect: {
-            case_id: taskDTO.caseId,
+      const createdTask = await this.taskRepository.createTask(
+        {
+          case: {
+            connect: {
+              case_id: taskDTO.caseId,
+            },
           },
+          tenant_id: caseRecord.tenant_id,
+          name: taskDTO.name,
+          description: taskDTO.description,
+          candidateGroup: taskDTO.candidateGroup,
+          status: taskDTO.status,
+          assigned_user_id: taskDTO.assignedUserId,
+          investigationNotes: taskDTO.investigationNotes,
         },
-        tenant_id: caseRecord.tenant_id,
-        name: taskDTO.name,
-        description: taskDTO.description,
-        candidateGroup: taskDTO.candidateGroup,
-        status: taskDTO.status,
-        assigned_user_id: taskDTO.assignedUserId,
-        investigationNotes: taskDTO.investigationNotes,
-      });
+        tx,
+      );
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {

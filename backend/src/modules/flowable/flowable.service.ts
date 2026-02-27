@@ -58,7 +58,7 @@ export class FlowableService implements OnModuleInit {
 
     this.loggerService.log(`Attempting to connect to Flowable at: ${this.flowableUrl}`, FlowableService.name);
 
-    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+    for (let attempt = 1; attempt <= this.maxRetries; attempt += 1) {
       try {
         this.loggerService.log(`Initializing Flowable (attempt ${attempt}/${this.maxRetries})`, FlowableService.name);
 
@@ -281,7 +281,7 @@ export class FlowableService implements OnModuleInit {
     try {
       this.loggerService.log(`Testing connection to: ${this.flowableUrl}`, FlowableService.name);
 
-      const response = await this.flowableClient.get(FlowableApiEndpoints.DEPLOYMENTS, {
+      await this.flowableClient.get(FlowableApiEndpoints.DEPLOYMENTS, {
         params: { size: 1 },
       });
 
@@ -312,68 +312,50 @@ export class FlowableService implements OnModuleInit {
 
   /* Event Handlers to delegate to listeners */
 
-  async handleCaseCreated(event: CaseCreatedEvent) {
-    try {
-      this.loggerService.log(`Start - Process CaseID: ${event.caseId}`, CaseEventListener.name);
+  async handleCaseCreated(event: CaseCreatedEvent): Promise<void> {
+    this.loggerService.log(`Start - Process CaseID: ${event.caseId}`, CaseEventListener.name);
 
-      const processInstance = await this.flowableProcessService.startProcessInstance(
-        'caseManagementProcess',
-        {
-          caseId: event.caseId,
-          tenantId: event.tenantId,
-          creationType: event.creationType,
-          caseStatus: event.caseStatus,
-          creatorRole: event.creatorRole,
-          isReopened: event.isReopened,
-          // Required BPMN variables with safe defaults
-          caseType: (event as any).caseType ?? 'FRAUD',
-          casePriority: (event as any).priority ?? 'NEW',
-          autoCloseEligible: String((event as any).autoCloseEligible ?? false),
-          readyForAssignment: 'true',
-          // Investigation action variables with defaults
-          investigationAction: 'pending',
-          fraudInvestigationAction: 'pending',
-          amlInvestigationAction: 'pending',
-          // Additional required variables
-          investigationNotes: '',
-          fraudInvestigationNotes: '',
-          amlInvestigationNotes: '',
-          recommendedOutcome: 'PENDING_INVESTIGATION',
-          fraudRecommendedOutcome: 'PENDING_INVESTIGATION',
-          amlRecommendedOutcome: 'PENDING_INVESTIGATION',
-        },
-        event.caseId,
-        event.tenantId,
-      );
-
-      this.loggerService.log(`End - Started process ${processInstance.id} for case ${event.caseId}`, CaseEventListener.name);
-    } catch (error) {
-      throw error;
-    }
+    const processInstance = await this.flowableProcessService.startProcessInstance(
+      'caseManagementProcess',
+      {
+        caseId: String(event.caseId),
+        tenantId: event.tenantId,
+        creationType: event.creationType,
+        caseStatus: event.caseStatus,
+        creatorRole: event.creatorRole,
+        isReopened: String(event.isReopened),
+        // Required BPMN variables with safe defaults
+        readyForAssignment: 'true',
+        // Investigation action variables with defaults
+        investigationAction: 'pending',
+        // Additional required variables
+        investigationNotes: '',
+        finalOutcome: 'PENDING_INVESTIGATION',
+      },
+      event.caseId,
+      event.tenantId,
+    );
+    this.loggerService.log(`End - Started process ${processInstance.id} for case ${event.caseId}`, CaseEventListener.name);
   }
 
-  async handleCaseStatusChanged(event: CaseStatusChangedEvent) {
+  async handleCaseStatusChanged(event: CaseStatusChangedEvent): Promise<void> {
     await this.caseEventListener.handleCaseStatusChanged(event);
   }
 
-  async handleCaseAbandoned(event: CaseAbandonedEvent) {
+  async handleCaseAbandoned(event: CaseAbandonedEvent): Promise<void> {
     await this.caseEventListener.handleCaseAbandoned(event);
   }
 
-  async handleTaskCompleted(event: TaskCompletedEvent) {
+  async handleTaskCompleted(event: TaskCompletedEvent): Promise<void> {
     await this.taskEventListener.handleTaskCompleted(event);
   }
 
-  async handleTaskAssigned(event: TaskAssignedEvent) {
+  async handleTaskAssigned(event: TaskAssignedEvent): Promise<void> {
     await this.taskEventListener.handleTaskAssigned(event);
   }
 
-  async handleTaskUnassigned(event: TaskUnassignedEvent) {
+  async handleTaskUnassigned(event: TaskUnassignedEvent): Promise<void> {
     await this.taskEventListener.handleTaskUnassigned(event);
-  }
-
-  async handleSuspendCase(event: CaseSuspendedEvent) {
-    this.caseEventListener.handleSuspendCase(event);
   }
 
   async handleGetTasksByAssignee(assignee: string) {

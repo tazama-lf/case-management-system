@@ -15,7 +15,7 @@ export class TazamaDwhService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  private formatTransactionForTable = (tx: {
+  private readonly formatTransactionForTable = (tx: {
     cre_dt_tm: string | null;
     end_to_end_id: string;
     tx_tp: string;
@@ -31,17 +31,15 @@ export class TazamaDwhService {
     counterparty: string;
     role: string | null;
     amount: number;
-  } => {
-    return {
-      date: tx.cre_dt_tm,
-      transactionId: tx.end_to_end_id,
-      type: tx.tx_tp,
-      account: tx.source,
-      counterparty: tx.destination,
-      role: tx.role,
-      amount: tx.amt?.toNumber() ?? 0,
-    };
-  };
+  } => ({
+    date: tx.cre_dt_tm,
+    transactionId: tx.end_to_end_id,
+    type: tx.tx_tp,
+    account: tx.source,
+    counterparty: tx.destination,
+    role: tx.role,
+    amount: tx.amt?.toNumber() ?? 0,
+  });
 
   async generateProfile(dto: GenerateProfileDto, userId: string): Promise<ProfileResponseDto> {
     const now = new Date();
@@ -72,7 +70,7 @@ export class TazamaDwhService {
         cre_dt_tm: { gte: dateFrom, lte: dateTo },
       },
     });
-    const getGeography = (tx: any) => tx.geography ?? tx.transaction?.geography ?? tx.transaction?.TxTp ?? '';
+    const getGeography = (tx: any): string => tx.geography ?? tx.transaction?.geography ?? tx.transaction?.TxTp ?? '';
     const peerBaseline = {
       avgVolume: peerTransactions.length,
       avgValue: peerTransactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() ?? 0), 0) / (peerTransactions.length || 1),
@@ -507,10 +505,7 @@ export class TazamaDwhService {
       }
 
       const customerProfile = await this.getCustomerProfile(extendedAccount.customer_id!, dwhTenantId);
-
-      if (role) {
-        customerProfile.accounts = customerProfile.accounts.map((acc) => (acc.id === accountId ? { ...acc, role } : acc));
-      }
+      customerProfile.accounts = customerProfile.accounts.map((acc) => (acc.id === accountId ? { ...acc, role } : acc));
 
       return customerProfile;
     } catch (err) {

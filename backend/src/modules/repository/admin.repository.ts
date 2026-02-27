@@ -24,10 +24,6 @@ export class AdminRepository extends BaseRepository {
         data: idData,
       });
 
-      if (!referenceId) {
-        throw new Error('Failed to create ReferenceId');
-      }
-
       return referenceId;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

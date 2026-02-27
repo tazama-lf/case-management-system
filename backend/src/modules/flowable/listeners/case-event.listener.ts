@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CaseStatusChangedEvent, CaseAbandonedEvent } from '../../events/domain-events';
+import { CaseStatusChangedEvent, CaseAbandonedEvent, CaseSuspendedEvent } from '../../events/domain-events';
 import { FlowableProcessService } from '../services/flowable-process.service';
 
 @Injectable()
@@ -40,5 +40,10 @@ export class CaseEventListener {
     } else {
       this.logger.warn(`[CaseEventListener] No Flowable process found for abandoned case ${event.caseId}`, CaseEventListener.name);
     }
+  }
+
+  @OnEvent('case.suspended')
+  async handleSuspendCase(event: CaseSuspendedEvent) {
+    // Empty handler for future use
   }
 }

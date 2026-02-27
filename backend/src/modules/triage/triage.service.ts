@@ -300,6 +300,9 @@ export class TriageService {
     try {
       const transactionResult = await this.alertRepository.transaction(async (tx) => {
         const existingAlert = await this.alertRepository.getAlertById(alertId, tx);
+        if (!existingAlert) {
+          throw new NotFoundException(`Alert with id ${alertId} not found`);
+        }
         const existingCase = await this.caseRepository.findCaseById(existingAlert.case_id!, tenantId);
         const completeNewCaseTask = existingCase.tasks.find((t) => t.name === 'Complete New Case');
 
@@ -390,8 +393,8 @@ export class TriageService {
     completeNewCaseTask: Task,
     existingCase: Case,
     alert: Alert,
-    maxRetries = 3,
   ): Promise<void> {
+    const maxRetries = 5;
     const flowableOperations = async (): Promise<void> => {
       if (updateAlertDto.status && this.closableStatuses.includes(updateAlertDto.status)) {
         await this.flowableService.handleTaskCompleted({

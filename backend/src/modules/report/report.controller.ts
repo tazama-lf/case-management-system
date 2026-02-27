@@ -24,7 +24,8 @@ import {
 } from 'src/decorators/auth.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { UploadReportDto } from './dto/upload-report.dto';
-import { Multer } from 'multer';
+// import { Multer } from 'multer';
+import { Express } from 'express';
 import { FraudReport, FraudReportOutcome } from './report.model';
 
 @ApiTags('Reports')
@@ -86,7 +87,7 @@ export class ReportsController {
         fileIsRequired: true,
       }),
     )
-    file: Multer.File,
+    file: Express.Multer.File,
     @Body() dto: UploadReportDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<FraudReport> {

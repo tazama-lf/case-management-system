@@ -85,6 +85,7 @@ export default [
       'eslint-comments/no-duplicate-disable': 'off',
       'eslint-comments/no-unlimited-disable': 'off',
       'eslint-comments/no-unused-enable': 'off',
+      'require-unicode-regexp': ['error', { requireFlag: 'u' }],
     },
   },
 ];

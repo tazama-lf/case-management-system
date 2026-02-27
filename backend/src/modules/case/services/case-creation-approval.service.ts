@@ -38,34 +38,27 @@ export class CaseCreationApprovalService {
     return missing;
   }
 
-  async manualCaseCreate(
+  async manualCaseCreation(
     dto: ManualCreateCaseDto,
     userId: string,
     tenantId: string,
     role: string,
   ): Promise<{ success: boolean; case?: Case; alert?: Alert; message?: string }> {
     this.logger.log('Start - Manual Case Creation', CaseCreationApprovalService.name);
-
-    const existingAlert = await this.caseRepository.findAlert(dto.alertId, tenantId);
-
-    if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string })?.status !== 'NALT') {
-      throw new BadRequestException('Case Already Exists');
-    }
-
     const { priorityScore } = dto;
     const priority = this.casePriorityUtil.determinePriority(priorityScore);
     const caseType = dto.alertType;
-
-    if (!caseType) {
-      throw new BadRequestException('Valid alert type is required: FRAUD, AML, or FRAUD_AND_AML');
-    }
-
     const needsApproval = role !== 'SUPERVISOR';
     const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
     const caseOwnerId = needsApproval ? undefined : userId;
 
+    const existingAlert = await this.caseRepository.findAlert(dto.alertId, tenantId);
+    if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string })?.status !== 'NALT') {
+      throw new BadRequestException('Case Already Exists');
+    }
+
     try {
-      const result = await this.caseRepository.executeTransaction(async (tx) => {
+      const result = await this.caseRepository.transaction(async (tx) => {
         const caseDetail: CreateCaseDto = {
           tenantId,
           caseCreatorUserId: userId,
@@ -661,7 +654,7 @@ export class CaseCreationApprovalService {
     try {
       const result = await this.caseRepository.executeTransaction(async (tx) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, userId);
-        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];
+        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) || [];
         const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
         if (!completeNewCaseTask) throw new BadRequestException('No Complete New Case task found');
         if (completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
