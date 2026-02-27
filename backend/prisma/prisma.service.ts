@@ -13,10 +13,10 @@ export class PrismaService extends PrismaClientCMS implements OnModuleInit, OnMo
       },
     });
   }
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     await this.$connect();
   }
-  async onModuleDestroy() {
+  async onModuleDestroy(): Promise<void> {
     await this.$disconnect();
   }
 }

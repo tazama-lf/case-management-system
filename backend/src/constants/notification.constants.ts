@@ -6,7 +6,7 @@ export const EMAIL_TEMPLATES = {
     return `
       <p>Hello,</p>
       <p>Task <strong>${data.taskTitle}</strong> (ID: ${data.taskId}) has been assigned.</p>
-      <ul>${reason}${extra || ''}</ul>
+      <ul>${reason}${extra ?? ''}</ul>
       <p>Please check the Case Management System tFo take action.</p>
       <p>Regards,<br/>CMS Team</p>
     `;
@@ -31,7 +31,7 @@ export const EMAIL_TEMPLATES = {
     return `
       <p>Hello,</p>
       <p>Task <strong>${data.taskTitle}</strong> (ID: ${data.taskId}) has been reassigned.</p>
-      <ul>${reason}${extra || ''}</ul>
+      <ul>${reason}${extra ?? ''}</ul>
       <p>Please check the Case Management System to take action.</p>
       <p>Regards,<br/>CMS Team</p>
     `;
@@ -171,7 +171,7 @@ export const EMAIL_TEMPLATES = {
           </tr>
           <tr>
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Case Priority:</strong></td>
-            <td style="padding: 10px; border: 1px solid #dee2e6;"><span style="color: ${getPriorityColor(data.casePriority)};">${data.casePriority || 'NORMAL'}</span></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><span style="color: ${getPriorityColor(data.casePriority)};">${data.casePriority ?? 'NORMAL'}</span></td>
           </tr>
           <tr style="background-color: #f8f9fa;">
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Work Queue:</strong></td>
@@ -179,7 +179,7 @@ export const EMAIL_TEMPLATES = {
           </tr>
           <tr>
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Assigned To:</strong></td>
-            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.assignedUserId || 'Unassigned'}</td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.assignedUserId ?? 'Unassigned'}</td>
           </tr>
           <tr style="background-color: #fff3cd;">
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Time Remaining:</strong></td>
@@ -187,7 +187,7 @@ export const EMAIL_TEMPLATES = {
           </tr>
           <tr>
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>SLA Deadline:</strong></td>
-            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.deadline || 'N/A'}</td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.deadline ?? 'N/A'}</td>
           </tr>
         </table>
         
@@ -207,7 +207,7 @@ export const EMAIL_TEMPLATES = {
         MEDIUM: '#ffc107',
         LOW: '#6c757d',
         INFO: '#17a2b8',
-      }[data.severity] || '#dc3545';
+      }[data.severity] ?? '#dc3545';
 
     return `
       <div style="background-color: #f8d7da; border-left: 4px solid ${severityColor}; padding: 20px; margin: 10px 0;">
@@ -234,7 +234,7 @@ export const EMAIL_TEMPLATES = {
           </tr>
           <tr>
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Case Priority:</strong></td>
-            <td style="padding: 10px; border: 1px solid #dee2e6;"><span style="color: ${getPriorityColor(data.casePriority)};">${data.casePriority || 'NORMAL'}</span></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><span style="color: ${getPriorityColor(data.casePriority)};">${data.casePriority ?? 'NORMAL'}</span></td>
           </tr>
           <tr style="background-color: #f8f9fa;">
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Work Queue:</strong></td>
@@ -242,7 +242,7 @@ export const EMAIL_TEMPLATES = {
           </tr>
           <tr>
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Assigned To:</strong></td>
-            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.assignedUserId || 'Unassigned'}</td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.assignedUserId ?? 'Unassigned'}</td>
           </tr>
           <tr style="background-color: #f8d7da;">
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Breach Duration:</strong></td>
@@ -250,7 +250,7 @@ export const EMAIL_TEMPLATES = {
           </tr>
           <tr>
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>SLA Deadline Was:</strong></td>
-            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.deadline || 'N/A'}</td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.deadline ?? 'N/A'}</td>
           </tr>
         </table>
         
@@ -269,7 +269,7 @@ export const EMAIL_TEMPLATES = {
   },
 
   taskOverdue: (data: Record<string, any>): string => {
-    const hoursSinceCreation = data.hoursSinceCreation || 'Unknown';
+    const hoursSinceCreation = data.hoursSinceCreation ?? 'Unknown';
 
     return `
       <div style="background-color: #e2e3e5; border-left: 4px solid #6c757d; padding: 20px; margin: 10px 0;">
@@ -292,7 +292,7 @@ export const EMAIL_TEMPLATES = {
           </tr>
           <tr>
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Case Priority:</strong></td>
-            <td style="padding: 10px; border: 1px solid #dee2e6;"><span style="color: ${getPriorityColor(data.casePriority)};">${data.casePriority || 'NORMAL'}</span></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><span style="color: ${getPriorityColor(data.casePriority)};">${data.casePriority ?? 'NORMAL'}</span></td>
           </tr>
           <tr style="background-color: #f8f9fa;">
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Work Queue:</strong></td>
@@ -300,7 +300,7 @@ export const EMAIL_TEMPLATES = {
           </tr>
           <tr>
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Assigned To:</strong></td>
-            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.assignedUserId || 'Unassigned'}</td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.assignedUserId ?? 'Unassigned'}</td>
           </tr>
           <tr style="background-color: #e2e3e5;">
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Time Open:</strong></td>
@@ -308,7 +308,7 @@ export const EMAIL_TEMPLATES = {
           </tr>
           <tr>
             <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Created At:</strong></td>
-            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.createdAt || 'N/A'}</td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${data.createdAt ?? 'N/A'}</td>
           </tr>
         </table>
         

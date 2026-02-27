@@ -152,8 +152,8 @@ export class CaseClosureApprovalService {
                 (task.status === TaskStatus.STATUS_20_IN_PROGRESS || task.status === TaskStatus.STATUS_30_COMPLETED),
             )
             .sort((a, b) => {
-              const aTime = new Date(a.created_at ?? 0).getTime();
-              const bTime = new Date(b.created_at ?? 0).getTime();
+              const aTime = new Date(a.created_at || 0).getTime();
+              const bTime = new Date(b.created_at || 0).getTime();
               return bTime - aTime;
             })[0] || null;
 
@@ -426,7 +426,7 @@ export class CaseClosureApprovalService {
 
       this.flowableService.handleTaskCompleted({
         caseId,
-        taskName: approvalTask.name || 'Approve Case Closure',
+        taskName: approvalTask.name ?? 'Approve Case Closure',
         newStatus: TaskStatus.STATUS_30_COMPLETED,
         completionVariables: {
           approvalDecision: 'approve',

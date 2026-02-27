@@ -126,7 +126,7 @@ class EnvironmentVariables {
   GOLD_LAKEHOUSE_TIMEOUT?: string;
 }
 
-export const validate = (config: Record<string, unknown>) => {
+export const validate = (config: Record<string, unknown>): EnvironmentVariables => {
   const validatedConfig = plainToClass(EnvironmentVariables, config);
   const errors = validateSync(validatedConfig);
 

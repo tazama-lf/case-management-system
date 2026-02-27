@@ -15,7 +15,12 @@ export class AdminController {
   @Post('reference-id')
   @RequireAdminRole()
   @ApiBody({ description: 'EndToEndIdPathCreateInput', type: RegisterReferenceIdDto })
-  async registerReferenceId(@Body() idData: RegisterReferenceIdDto) {
+  async registerReferenceId(@Body() idData: RegisterReferenceIdDto): Promise<{
+    txTp: string;
+    referenceIdName: string;
+    createdAt: Date;
+    id: number;
+  }> {
     const result = await this.adminService.registerReferenceId(idData);
     return result;
   }
@@ -33,7 +38,7 @@ export class AdminController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Requires admin role' })
-  async getReferenceIds() {
+  async getReferenceIds(): Promise<ReferenceIdDetailsDto[]> {
     const result = await this.adminService.getReferenceIds();
     return result;
   }

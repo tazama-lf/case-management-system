@@ -10,7 +10,7 @@ export class TazamaAuthGuard implements CanActivate {
 
   constructor(private readonly reflector: Reflector) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     const logContext = 'TazamaAuthGuard.canActivate()';
 
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [context.getHandler(), context.getClass()]);
@@ -140,7 +140,7 @@ export class TazamaAuthGuard implements CanActivate {
       return {
         ...decoded,
         email: nestedDecoded.email,
-        firstName: nestedDecoded.firstName ? nestedDecoded.firstName : undefined,
+        firstName: nestedDecoded.firstName ?? undefined,
         lastName: nestedDecoded.lastName,
         fullName: nestedDecoded.name,
         tenantName,

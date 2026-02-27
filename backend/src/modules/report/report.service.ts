@@ -364,7 +364,7 @@ export class ReportsService {
     );
 
     const resolutionTrend: Array<{ month: string; avgResolutionTime: number; casesResolved: number }> = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = 5; i >= 0; i -= 1) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
 
@@ -658,7 +658,7 @@ export class ReportsService {
     const volumeTrend: Array<{ month: string; investigators: Record<string, number> }> = [];
     const now = new Date();
 
-    for (let i = 5; i >= 0; i--) {
+    for (let i = 5; i >= 0; i -= 1) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
       const monthLabel = monthStart.toLocaleString('default', { month: 'short', year: 'numeric' });
@@ -956,12 +956,12 @@ export class ReportsService {
 
     const caseDetails = casesWithAge.slice(0, 5).map((case_) => ({
       caseId: case_.case_id,
-      type: case_.case_type || 'NONE',
+      type: case_.case_type ?? 'NONE',
       status: this.formatStatusName(case_.status),
       createdDate: case_.created_at.toLocaleDateString('en-US'),
       ageDays: case_.ageDays,
       priority: case_.priority,
-      userId: case_.case_owner_user_id || null,
+      userId: case_.case_owner_user_id ?? null,
       investigator: case_.case_owner_user_id ? `User ${case_.case_owner_user_id}` : 'Unassigned',
     }));
 
@@ -1029,8 +1029,8 @@ export class ReportsService {
         label: ct.case_type ?? 'None',
       })),
       priorities: priorities.map((p) => ({
-        value: p.priority ?? 'NONE',
-        label: p.priority ?? 'None',
+        value: p.priority || 'NONE',
+        label: p.priority || 'None',
       })),
       investigators: investigators.map((i) => ({
         value: i.case_owner_user_id ?? '',
@@ -1067,7 +1067,7 @@ export class ReportsService {
 
     if (role === 'CMS_SUPERVISOR') {
       const caseTasks = await this.prisma.task.findMany({
-        where: { case_id: Number(dto.caseId) },
+        where: { case_id: dto.caseId },
       });
 
       const investigationTasks = caseTasks.filter((task) => task.name && task.name.toLowerCase().includes('investigate'));
@@ -1079,16 +1079,16 @@ export class ReportsService {
         throw new BadRequestException(`Cannot generate report: The following investigation tasks must be completed first: ${taskNames}`);
       }
     }
-    const caseData = await this.prisma.case.findUnique({ where: { case_id: Number(dto.caseId) } });
+    const caseData = await this.prisma.case.findUnique({ where: { case_id: dto.caseId } });
     if (!caseData) throw new Error('Case not found');
     const db = this.couchdbService.getDatabase();
     const existingReportsResult = await db.find({ selector: { caseId: dto.caseId, category: 'report' } });
     const existingReports = (existingReportsResult.docs as FraudReport[]) || [];
-    const nextVersion = existingReports.length > 0 ? Math.max(...existingReports.map((r) => r.version ?? 1)) + 1 : 1;
+    const nextVersion = existingReports.length > 0 ? Math.max(...existingReports.map((r) => r.version || 1)) + 1 : 1;
     const reportId = `${dto.caseId}-InvestigationReport-v${nextVersion}`;
     file.originalname = `${reportId}.pdf`;
     const evidenceResult = await this.evidenceService.getEvidenceByCaseId(
-      Number(dto.caseId),
+      dto.caseId,
       userId ?? '',
       tenantId ?? '',
       role ?? 'CMS_SUPERVISOR',
@@ -1133,11 +1133,9 @@ export class ReportsService {
       caseType: caseData.case_type ?? '',
       investigator: caseData.case_owner_user_id ?? '',
       supervisor: '',
-      description: dto.description || '',
+      description: dto.description ?? '',
       submittedAt: new Date().toISOString(),
     });
-
-    currentRev = attachmentResult.rev;
 
     await this.couchdbService.updateDocument(reportId, report);
 
@@ -1271,7 +1269,7 @@ export class ReportsService {
       performedAt: new Date(),
     });
     // Sort reports by version descending (latest first)
-    const reports = (result.docs as FraudReport[]).sort((a, b) => (b.version ?? 0) - (a.version ?? 0));
+    const reports = (result.docs as FraudReport[]).sort((a, b) => (b.version || 0) - (a.version || 0));
     return reports;
   }
 }

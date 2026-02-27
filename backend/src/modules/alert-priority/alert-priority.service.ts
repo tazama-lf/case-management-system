@@ -22,11 +22,11 @@ export class AlertPriorityService implements OnModuleInit {
     this.defaultSlaHours = parseInt(this.configService.get<string>('DEFAULT_SLA_HOURS', '72'), 10);
   }
 
-  onModuleInit() {
+  onModuleInit(): void {
     this.logger.log('Alert priority service initialized. Recalculation will run via configurable scheduled task.');
   }
 
-  async runRecalculation() {
+  async runRecalculation(): Promise<void> {
     this.logger.log('Starting alert priority recalculation job...');
     const alerts = await this.prisma.alert.findMany();
     if (!alerts.length) {

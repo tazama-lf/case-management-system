@@ -8,6 +8,7 @@ import { AlertResponseDto } from './dto';
 import { AlertService } from './alert.service';
 import { AlertDetailsResponseDTO } from './dto/AlertDetailsResponse.dto';
 import { AlertActionHistoryDTO } from './dto/AlertActionHistory.dto';
+import { Prisma } from '@prisma/client-cms';
 
 @Controller('api/v1/alert')
 @UseGuards(TazamaAuthGuard)
@@ -117,8 +118,8 @@ export class AlertController {
       search,
       source,
       reportStatus,
-      page: Number(page),
-      limit: Number(limit),
+      page: page,
+      limit: limit,
       sortBy,
       sortOrder,
     });
@@ -139,9 +140,12 @@ export class AlertController {
     description: 'alert Id',
     example: '1',
   })
-  async getAlertTransactionalData(@Req() req: AuthenticatedRequest, @Param('alertId') alertId: number) {
-    const user_id = req.user.token.clientId;
-    if (!user_id) throw new BadRequestException('Missing clientId');
+  async getAlertTransactionalData(
+    @Req() req: AuthenticatedRequest,
+    @Param('alertId') alertId: number,
+  ): Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>> {
+    const userId = req.user.token.clientId;
+    if (!userId) throw new BadRequestException('Missing clientId');
     return await this.alertService.getAlertTransactionalData(alertId);
   }
 
@@ -191,7 +195,23 @@ export class AlertController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
-  async getAlertActionHistory(@Param('alertId') alertId: number, @Req() req: AuthenticatedRequest) {
+  async getAlertActionHistory(
+    @Param('alertId') alertId: number,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    alertId: number;
+    tenantId: string;
+    userId: string;
+    history: {
+      event_log_id: number;
+      user_id: string;
+      operation: string;
+      entity_name: string;
+      action_performed: string;
+      outcome: string;
+      performed_at: Date;
+    } | null;
+  }> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');

@@ -2,8 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { FlowableTaskService } from './flowable-task.service';
 import { FlowableUtilitiesService } from './flowable-utilities.service';
-import { AuditLogService } from '../../audit/auditLog.service';
-import { TaskStatus } from '@prisma/client-cms';
 import { CaseRepository } from '../../repository/case.repository';
 import { TaskRepository } from 'src/modules/repository/task.repository';
 
@@ -82,11 +80,6 @@ export class BpmnSyncService {
         this.logger.error(`[BPMN-Sync] Database case ${caseId} not found for Flowable task ${taskId}`, BpmnSyncService.name);
         return;
       }
-
-      // Determine candidate group and status
-      const candidateGroup = this.utilitiesService.determineCandidateGroup(flowableTask.name, flowableTask.candidateGroups);
-
-      const taskStatus = flowableTask.assignee ? TaskStatus.STATUS_10_ASSIGNED : TaskStatus.STATUS_01_UNASSIGNED;
 
       // Create database task
       // const dbTask = await this.utilitiesService.createTask(

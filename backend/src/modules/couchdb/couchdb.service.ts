@@ -11,17 +11,17 @@ export class CouchdbService implements OnModuleInit {
   private readonly dbName: string;
 
   constructor(private readonly configService: ConfigService) {
-    const url = this.configService.get<string>('COUCHDB_URL') || 'http://10.10.80.16:5984';
-    const username = this.configService.get<string>('COUCHDB_USERNAME') || 'simon';
-    const password = this.configService.get<string>('COUCHDB_PASSWORD') || '1234';
-    this.dbName = this.configService.get<string>('COUCHDB_DATABASE') || 'cms-evidence';
+    const url = this.configService.get<string>('COUCHDB_URL') ?? 'http://10.10.80.16:5984';
+    const username = this.configService.get<string>('COUCHDB_USERNAME') ?? 'simon';
+    const password = this.configService.get<string>('COUCHDB_PASSWORD') ?? '1234';
+    this.dbName = this.configService.get<string>('COUCHDB_DATABASE') ?? 'cms-evidence';
 
     const urlWithAuth = url.replace('://', `://${username}:${password}@`);
 
     this.nanoInstance = nano(urlWithAuth);
   }
 
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     try {
       const dbList = await this.nanoInstance.db.list();
 
@@ -42,7 +42,7 @@ export class CouchdbService implements OnModuleInit {
     return this.db;
   }
 
-  async insertDocument(docId: string, metadata: any) {
+  async insertDocument(docId: string, metadata: any): Promise<nano.DocumentInsertResponse> {
     return await this.db.insert(metadata, docId);
   }
 
@@ -54,8 +54,7 @@ export class CouchdbService implements OnModuleInit {
       return { ok: true, id: evidenceId, rev: '' };
     } catch (error) {
       this.logger.error(`Failed to delete document: ${error.message}`, error.stack);
-      throw new Error(error.message || 'Failed to delete attachment');
-      throw error;
+      throw new Error(error.message ?? 'Failed to delete attachment');
     }
   }
 
@@ -161,7 +160,7 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
-  async updateDocument(docId: string, data: any) {
+  async updateDocument(docId: string, data: any): Promise<nano.DocumentInsertResponse> {
     const existing = await this.db.get(docId);
 
     const updated = {
@@ -186,7 +185,7 @@ export class CouchdbService implements OnModuleInit {
 
   async listDocuments(params?: nano.DocumentListParams): Promise<nano.DocumentListResponse<any>> {
     try {
-      return await this.db.list(params || {});
+      return await this.db.list(params ?? {});
     } catch (error) {
       this.logger.error(`Failed to list documents: ${error.message}`, error.stack);
       throw error;
@@ -216,7 +215,7 @@ export class CouchdbService implements OnModuleInit {
   }
 
   @Cron(CronExpression.EVERY_10_MINUTES)
-  async autoArchiveOldEvidence() {
+  async autoArchiveOldEvidence(): Promise<void> {
     const cutoff = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
 
     try {

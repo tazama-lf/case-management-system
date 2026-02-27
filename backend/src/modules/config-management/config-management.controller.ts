@@ -48,7 +48,7 @@ export class ConfigManagementController {
       throw new BadRequestException('User ID not found in token');
     }
 
-    return await this.configService.configureRole(roleName, body.permissions, body.description || '', userId, body.require2FA ?? true);
+    return await this.configService.configureRole(roleName, body.permissions, body.description ?? '', userId, body.require2FA ?? true);
   }
 
   @Get('roles')

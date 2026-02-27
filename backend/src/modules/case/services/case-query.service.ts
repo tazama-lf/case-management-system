@@ -3,7 +3,7 @@ import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
 import { GetAllCasesQueryDto } from '../dto/get-all-cases.dto';
-import { CaseStatus, TaskStatus } from '@prisma/client-cms';
+import { Case, CaseStatus, TaskStatus } from '@prisma/client-cms';
 import { TaskValidationUtil } from '../../shared/utils/task-validation.util';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { Outcome } from '../../../utils/types/outcome';
@@ -205,7 +205,7 @@ export class CaseQueryService {
       if (priority) baseFilters.priority = priority;
       if (caseType) baseFilters.case_type = caseType;
       if (tenantId) baseFilters.tenant_id = tenantId;
-      if (createdAfter || createdBefore) {
+      if (createdAfter ?? createdBefore) {
         baseFilters.created_at = {};
         if (createdAfter) baseFilters.created_at.gte = new Date(createdAfter);
         if (createdBefore) baseFilters.created_at.lte = new Date(createdBefore);
@@ -490,7 +490,7 @@ export class CaseQueryService {
           parent_id: caseItem?.parent_id,
           assigned_to:
             assignedUsers.length > 0
-              ? { user_id: caseItem.case_owner_user_id || assignedUsers[0], task_count: assignedUsers.length }
+              ? { user_id: caseItem.case_owner_user_id ?? assignedUsers[0], task_count: assignedUsers.length }
               : undefined,
         };
       });
@@ -651,7 +651,7 @@ export class CaseQueryService {
     return subCases;
   }
 
-  async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string) {
+  async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string): Promise<Case> {
     try {
       const updatedCase = await this.caseRepository.updateCase(caseId, {
         case_type: updateData.caseType,
