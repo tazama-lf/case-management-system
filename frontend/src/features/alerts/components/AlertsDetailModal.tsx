@@ -59,7 +59,7 @@ const getRiskScore = (alert: TriageAlert): number => {
     BREACH: 3,
   };
 
-  const baseScore = alert.confidence_per || 50;
+  const baseScore = alert.confidence_per ?? 50;
   const weight = priorityWeights[alert.priority] || 1;
   return Math.round(baseScore * weight * 10);
 };
@@ -81,7 +81,7 @@ const getRiskBreakdown = (alert: TriageAlert) => {
           if (Array.isArray(maybeRules)) {
             return maybeRules.map((r) => {
               const rec = r as Record<string, unknown>;
-              const id = (rec.id as string) || String(rec.ruleId || 'unknown');
+              const id = (rec.id as string) || String(rec.ruleId ?? 'unknown');
               const name = (rec.label as string) || (rec.name as string) || id;
               const type =
                 (rec.subRuleRef as string) ||
@@ -91,7 +91,7 @@ const getRiskBreakdown = (alert: TriageAlert) => {
               const wght =
                 typeof rec.wght === 'number'
                   ? rec.wght
-                  : Number(rec.weight || 0);
+                  : Number(rec.weight ?? 0);
               return { name, type, score: wght };
             });
           }
@@ -219,7 +219,7 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
       ? action.action_performed.replace(action.user_id, username)
       : action.action_performed;
 
-  const userDisplayName = username || action.user_id;
+  const userDisplayName = username ?? action.user_id;
 
   return (
     <>
@@ -373,7 +373,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
               Error Loading Alert
             </h3>
             <p className="mt-2 text-sm text-gray-600">
-              {error || 'An error occurred while loading the alert'}
+              {error ?? 'An error occurred while loading the alert'}
             </p>
             <div className="mt-6 flex justify-center space-x-3">
               <button
@@ -480,7 +480,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                         const showButton =
                           canPerformActions &&
                           onManualTriage &&
-                          (isManualMode || isDisabledMode) &&
+                          (isManualMode ?? isDisabledMode) &&
                           !isAIMode &&
                           !triageCompleted &&
                           !isCompleteNewCaseCompleted;
@@ -511,10 +511,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     </div>
                   </div>
                   <p className="text-lg text-gray-600 mb-1">
-                    {alert?.alert_data?.status || 'No message available'}
+                    {alert?.alert_data?.status ?? 'No message available'}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Alert ID: {alert.alert_id} • Source: {alert.source || 'N/A'}
+                    Alert ID: {alert.alert_id} • Source: {alert.source ?? 'N/A'}
                   </p>
                 </div>
               </div>
@@ -557,7 +557,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           Case Status:
                         </span>
                         <p className="text-sm text-gray-900">
-                          {caseDetails?.status || 'Loading...'}
+                          {caseDetails?.status ?? 'Loading...'}
                         </p>
                       </div>
                     </div>
@@ -660,7 +660,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                         <>
                           <span className="text-gray-500">Risk Category:</span>
                           <span className="font-medium text-gray-900">
-                            {typ.label || typ.id || 'Unknown'}
+                            {typ.label ?? typ.id ?? 'Unknown'}
                           </span>
                           <span className="text-gray-500">•</span>
                           <span className="text-gray-500">Risk Score:</span>

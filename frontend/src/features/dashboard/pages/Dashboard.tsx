@@ -72,7 +72,7 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  const { stats, recentAlerts, activeCases } = dashboardData || {
+  const { stats, recentAlerts, activeCases } = dashboardData ?? {
     stats: {
       totalAlerts: 0,
       highPriorityAlerts: 0,

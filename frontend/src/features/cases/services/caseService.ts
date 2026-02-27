@@ -298,7 +298,6 @@ export class CaseService {
   async SaveCaseAsDraft(
     manualCreateCaseData: ManualCreateCaseDto,
   ): Promise<Case> {
-    console.log('Saving case as draft with data:', manualCreateCaseData);
     try {
       const response = await apiClient.post<Case>(
         `${this.baseUrl}/save-as-draft`,

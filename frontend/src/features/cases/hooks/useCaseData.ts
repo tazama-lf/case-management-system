@@ -37,8 +37,8 @@ export const useCaseData = () => {
 
       if (isInvestigatorOnly) {
         response = await caseService.getUserAssignedCases({
-          status: statusFilter || undefined,
-          priority: priorityFilter || undefined,
+          status: statusFilter ?? undefined,
+          priority: priorityFilter ?? undefined,
           includeTaskAssignments: true,
           includeOwnedCases: true,
           sortBy: 'updated_at',
@@ -46,8 +46,8 @@ export const useCaseData = () => {
         });
       } else {
         response = await caseService.getAllCases({
-          status: statusFilter || undefined,
-          priority: priorityFilter || undefined,
+          status: statusFilter ?? undefined,
+          priority: priorityFilter ?? undefined,
           sortBy: 'updated_at',
           sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
         });
@@ -71,8 +71,8 @@ export const useCaseData = () => {
   ) => {
     try {
       const response = await caseService.getAllCases({
-        status: statusFilter || undefined,
-        priority: priorityFilter || undefined,
+        status: statusFilter ?? undefined,
+        priority: priorityFilter ?? undefined,
         sortBy: 'updated_at',
         sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
       });
@@ -165,7 +165,7 @@ export const useCaseActions = (
         status: 'STATUS_02_READY_FOR_ASSIGNMENT',
         priority: payload.priority,
         caseType: payload.alertType,
-        caseOwnerUserId: payload.assignee || user?.userId || 'system-user-id',
+        caseOwnerUserId: payload.assignee ?? user?.userId ?? 'system-user-id',
       };
 
       const updatedCase = await caseService.updateCase(caseId, updateCaseData);

@@ -43,10 +43,10 @@ export const useAlerts = (filters: AlertsFilter = {}) => {
   });
 
   return {
-    alerts: (data?.alerts || []).map((alert) =>
+    alerts: (data?.alerts ?? []).map((alert) =>
       transformBackendAlertToUI(alert),
     ),
-    pagination: data?.pagination || {
+    pagination: data?.pagination ?? {
       currentPage: 1,
       totalPages: 1,
       totalItems: 0,
@@ -95,7 +95,7 @@ export const useAlertActionHistory = (alertId: number | null) => {
   });
 
   return {
-    actionHistory: actionHistory || [],
+    actionHistory: actionHistory ?? [],
     isLoading,
     error,
   };
@@ -125,7 +125,7 @@ export const useAlertOperations = () => {
       );
 
       const caseId =
-        data.case_id ||
+        data.case_id ??
         queryClient.getQueryData<Alert>(
           alertsQueryKeys.detail(variables.alertId),
         )?.case_id;
@@ -134,7 +134,7 @@ export const useAlertOperations = () => {
       }
     },
     onError: (error: Error) => {
-      showError(error.message || 'Failed to close alert');
+      showError(error.message ?? 'Failed to close alert');
     },
   });
 
@@ -149,7 +149,6 @@ export const useAlertOperations = () => {
     onSuccess: (data, variables) => {
       // showSuccess('Alert updated successfully');
       // Invalidate all alert lists to refetch with latest data
-      console.log('Failed to refresh case data:');
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
       // Refetch the specific alert detail
       queryClient.invalidateQueries({
@@ -162,7 +161,7 @@ export const useAlertOperations = () => {
       );
 
       const caseId =
-        data.case_id ||
+        data.case_id ??
         queryClient.getQueryData<Alert>(
           alertsQueryKeys.detail(variables.alertId),
         )?.case_id;
@@ -171,7 +170,7 @@ export const useAlertOperations = () => {
       }
     },
     onError: (error: Error) => {
-      showError(error.message || 'Failed to update alert');
+      showError(error.message ?? 'Failed to update alert');
     },
   });
 

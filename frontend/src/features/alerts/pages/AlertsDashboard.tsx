@@ -360,7 +360,7 @@ const AlertsDashboard: React.FC = () => {
           setPage(1);
         }}
         customDateRange={
-          filters.customDateRange || { startDate: '', endDate: '' }
+          filters.customDateRange ?? { startDate: '', endDate: '' }
         }
         onCustomDateRangeChange={(range) => {
           setFilters({ ...filters, customDateRange: range });
@@ -401,7 +401,7 @@ const AlertsDashboard: React.FC = () => {
       {/* Alerts Detail Modal */}
       <Suspense fallback={null}>
         <AlertsDetailModal
-          alertId={selectedAlert?.alert_id || null}
+          alertId={selectedAlert?.alert_id ?? null}
           isOpen={showModal}
           onClose={handleCloseModal}
           onAlertUpdated={refreshAlerts}

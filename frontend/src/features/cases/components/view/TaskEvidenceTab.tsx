@@ -232,7 +232,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
               taskId,
               evidenceType: section.evidenceType,
               description:
-                sectionComments[sectionKey] || `${section.title} evidence`,
+                sectionComments[sectionKey] ?? `${section.title} evidence`,
               comments: sectionComments[sectionKey],
             }),
         );
@@ -427,7 +427,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
           }),
       )
       .filter((file) => {
-        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
         if (!allowedFileTypes[sectionKey]?.includes(ext)) {
           error(`File type not allowed for ${sectionKey}: ${file.name}`);
           return false;

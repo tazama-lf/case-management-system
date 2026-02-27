@@ -141,18 +141,8 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
     setViewingId(actualEvidenceId);
 
     try {
-      console.log('[Evidence View] Starting view for:', {
-        actualEvidenceId,
-        filename,
-      });
-
       // Fetch the encrypted blob from CouchDB
       const blob = await evidenceService.viewEvidence(actualEvidenceId);
-
-      console.log('[Evidence View] Blob received:', {
-        size: blob.size,
-        type: blob.type,
-      });
 
       if (blob.size === 0) {
         throw new Error('Received empty file');
@@ -179,7 +169,6 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
       if (isPreviewable) {
         // Open in new tab for previewable files
         window.open(blobUrl, '_blank', 'noopener,noreferrer');
-        console.log('[Evidence View] Opened in new tab:', blobUrl);
       } else {
         // For non-previewable files, inform user and offer download
         const shouldDownload = confirm(
@@ -194,7 +183,6 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          console.log('[Evidence View] File downloaded:', filename);
         }
 
         // Clean up immediately if not downloading
@@ -207,7 +195,6 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
       if (isPreviewable) {
         setTimeout(() => {
           URL.revokeObjectURL(blobUrl);
-          console.log('[Evidence View] Cleaned up blob URL');
         }, 30000); // 30 seconds should be enough for the browser to load it
       }
     } catch (err) {
@@ -224,17 +211,10 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
     setDownloadingId(evidenceId);
 
     try {
-      console.log('[Evidence Download] Starting download:', { evidenceId });
-
       // First get the evidence metadata to get the real filename
       const metadata = await evidenceService.getEvidenceById(evidenceId);
       const downloadFilename =
-        metadata.fileName || metadata.attachments?.[0]?.fileName || 'evidence';
-
-      console.log(
-        '[Evidence Download] Fetching file blob for:',
-        downloadFilename,
-      );
+        metadata.fileName ?? metadata.attachments?.[0]?.fileName ?? 'evidence';
 
       // Use evidenceService to download with proper auth handling
       const blob = await evidenceService.downloadEvidence(evidenceId);
@@ -242,12 +222,6 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
       if (blob.size === 0) {
         throw new Error('Received empty file from server');
       }
-
-      console.log(
-        '[Evidence Download] Blob received, size:',
-        blob.size,
-        'bytes',
-      );
 
       // Create blob URL
       const blobUrl = window.URL.createObjectURL(blob);
@@ -259,18 +233,13 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
       link.setAttribute('style', 'display: none');
       document.body.appendChild(link);
 
-      console.log('[Evidence Download] Triggering download:', downloadFilename);
       link.click();
 
       // Clean up
       setTimeout(() => {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(blobUrl);
-        console.log('[Evidence Download] Download completed and cleaned up');
       }, 100);
-
-      // Show success message briefly
-      console.log('[Evidence Download] ✓ Download started successfully');
     } catch (err) {
       console.error('[Evidence Download] Download failed:', err);
       const errorMessage =
@@ -291,7 +260,7 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
       inconclusiveFindings: 0,
     },
     findings = [],
-  } = displayData || {};
+  } = displayData ?? {};
 
   // Filter findings based on search and status
   const filteredFindings = (findings || []).filter((finding: FindingDetail) => {

@@ -171,11 +171,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     if (!open) return;
 
     setSelectedAlert(null);
-    setPriorityScore(initial?.priorityScore || 0.33);
-    setConfidence(initial?.confidence || 0);
+    setPriorityScore(initial?.priorityScore ?? 0.33);
+    setConfidence(initial?.confidence ?? 0);
     setStatus('STATUS_02_READY_FOR_ASSIGNMENT');
-    setAlertType(initial?.alertType || 'FRAUD');
-    setAssignee(initial?.assignee || '');
+    setAlertType(initial?.alertType ?? 'FRAUD');
+    setAssignee(initial?.assignee ?? '');
     setValidationErrors({});
     setNote('');
     setAlertSearchTerm('');
@@ -308,7 +308,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         predictionOutcome,
         note,
         status,
-        assignee: assignee || undefined,
+        assignee: assignee ?? undefined,
       });
     } else {
       const alertIdToUse = selectedAlert?.alert_id;
@@ -318,7 +318,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         priority,
         priorityScore,
         alertType,
-        assignee: assignee || undefined,
+        assignee: assignee ?? undefined,
         draft,
       });
     }
@@ -345,7 +345,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         confidence,
         status,
         note,
-        assignee: currentUserId || undefined,
+        assignee: currentUserId ?? undefined,
       });
     } else {
       const alertIdToUse = selectedAlert?.alert_id;
@@ -355,7 +355,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         priority,
         priorityScore,
         alertType,
-        assignee: assignee || undefined,
+        assignee: assignee ?? undefined,
         draft,
       });
     }
@@ -378,7 +378,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         confidence,
         status,
         note,
-        assignee: assignee || undefined,
+        assignee: assignee ?? undefined,
       });
     }
   };
@@ -401,7 +401,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
           {}
-          {(error || Object.keys(validationErrors).length > 0) && (
+          {(error ?? Object.keys(validationErrors).length > 0) && (
             <div className="rounded-md bg-red-50 p-4">
               <div className="flex">
                 <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
@@ -410,7 +410,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     {error ? 'Error' : 'Please fix the following errors'}
                   </h3>
                   <div className="mt-2 text-sm text-red-700">
-                    {error && <p>{error || 'An error occurred'}</p>}
+                    {error && <p>{error ?? 'An error occurred'}</p>}
                     {Object.entries(validationErrors).map(
                       ([field, message]) => (
                         <p key={field}>• {message}</p>
@@ -554,7 +554,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     Alert Type
                   </label>
                   <select
-                    value={alertType || ''}
+                    value={alertType ?? ''}
                     onChange={(e) => {
                       setAlertType(e.target.value as AlertType);
                     }}
@@ -611,11 +611,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     setStatus(e.target.value as CaseStatus);
                   }}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    loading || isStatusLocked
+                    loading ?? isStatusLocked
                       ? 'bg-gray-50 cursor-not-allowed'
                       : ''
                   }`}
-                  disabled={loading || isStatusLocked}
+                  disabled={loading ?? isStatusLocked}
                 >
                   <option value="STATUS_02_READY_FOR_ASSIGNMENT">
                     Ready for Assignment (Investigation)
@@ -858,7 +858,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               onClick={async () => {
                 mode === 'edit' ? await completeCase() : submit(false);
               }}
-              disabled={loading || !canSubmit}
+              disabled={loading ?? !canSubmit}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading

@@ -125,10 +125,10 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span
                       className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ring-1 ring-gray-200 ${getSarStrStatusColor(
-                        c.sarStrStatus || 'N/A',
+                        c.sarStrStatus ?? 'N/A',
                       )}`}
                     >
-                      {formatSarStrStatus(c.sarStrStatus || 'N/A')}
+                      {formatSarStrStatus(c.sarStrStatus ?? 'N/A')}
                     </span>
                   </td>
                 )}

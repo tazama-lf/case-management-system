@@ -23,9 +23,9 @@ interface CaseHistoryTabProps {
 const formatOperation = (operation: string): string =>
   // Convert camelCase or snake_case to Title Case
   operation
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/_/g, ' ')
-    .replace(/^./, (str) => str.toUpperCase())
+    .replace(/([A-Z])/gu, ' $1')
+    .replace(/_/gu, ' ')
+    .replace(/^./u, (str) => str.toUpperCase())
     .trim();
 
 const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
@@ -55,7 +55,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
 
             const operationLower = log.operation
               .toLowerCase()
-              .replace(/\s|_/g, '');
+              .replace(/\s|_/gu, '');
 
             if (
               operationLower.includes('createcase') ||
@@ -121,11 +121,11 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
 
           taskHistory.forEach((log) => {
             let action = formatOperation(log.operation);
-            const details = log.action_performed || 'Action performed';
+            const details = log.action_performed ?? 'Action performed';
 
             const operationLower = log.operation
               .toLowerCase()
-              .replace(/\s|_/g, '');
+              .replace(/\s|_/gu, '');
             const actionLower = (log.action_performed || '').toLowerCase();
 
             if (operationLower.includes('createtask')) {

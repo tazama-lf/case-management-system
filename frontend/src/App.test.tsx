@@ -18,7 +18,7 @@ describe('App', () => {
   it('renders skip to main content button', () => {
     render(<App />);
     expect(
-      screen.getByRole('button', { name: /skip to main content/i }),
+      screen.getByRole('button', { name: /skip to main content/iu }),
     ).toBeInTheDocument();
   });
 });

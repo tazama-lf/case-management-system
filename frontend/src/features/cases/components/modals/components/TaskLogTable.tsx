@@ -243,17 +243,17 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                       className={`text-xs break-words mt-1 ${isClickable ? 'text-blue-600 hover:underline' : 'text-gray-900'}`}
                       title={task.name || 'View task details'}
                     >
-                      {task.name || 'Unnamed Task'}
+                      {task.name ?? 'Unnamed Task'}
                     </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-xs text-gray-900 font-mono truncate max-w-[10rem]">
-                      {task.caseId || ''}
+                      {task.caseId ?? ''}
                     </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-sm text-gray-900 break-words">
-                      {task.candidateGroup || '-'}
+                      {task.candidateGroup ?? '-'}
                     </div>
                   </td>
                   <td className="px-4 py-3">{getStatusBadge(task.status)}</td>
@@ -268,9 +268,9 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                       {task.assignee ? (
                         <span
                           className="text-blue-600 truncate max-w-[10rem] inline-block align-middle"
-                          title={task.assigneeName || task.assignee}
+                          title={task.assigneeName ?? task.assignee}
                         >
-                          {task.assigneeName || task.assignee}
+                          {task.assigneeName ?? task.assignee}
                         </span>
                       ) : (
                         <span className="text-gray-400">Unassigned</span>

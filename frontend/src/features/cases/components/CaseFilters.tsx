@@ -172,7 +172,6 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
       };
       const savedFilter = await filterService.createFilter(payload);
 
-      console.log('Saved Filter:', savedFilter);
       success(
         'Filter Created',
         `Filter created successfully with status: ${statusFilter},

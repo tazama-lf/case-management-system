@@ -42,7 +42,7 @@ export const useSystemConfig = () => {
     loading,
     error,
     refetchConfig,
-    triageType: config?.triageType || 'MANUAL',
+    triageType: config?.triageType ?? 'MANUAL',
     isAIMode: config?.triageType === 'AI',
     isManualMode: config?.triageType === 'MANUAL',
     isDisabledMode: config?.triageType === 'DISABLED',

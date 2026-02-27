@@ -22,7 +22,7 @@ class TriageService {
       | undefined;
     if (err?.response?.data) {
       const apiError = err.response.data;
-      return new Error(apiError.message || `Failed to ${operation}`);
+      return new Error(apiError.message ?? `Failed to ${operation}`);
     }
 
     if (err?.message) {
@@ -61,7 +61,7 @@ class TriageService {
     if (filters.alertType) params.append('alertType', filters.alertType);
     if (filters.source) params.append('source', filters.source);
     if (filters.search) params.append('search', filters.search);
-    params.append('reportStatus', filters.reportStatus || 'ALRT');
+    params.append('reportStatus', filters.reportStatus ?? 'ALRT');
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.sortBy) params.append('sortBy', filters.sortBy);
@@ -82,15 +82,15 @@ class TriageService {
       totalPages: number;
     }>(url);
 
-    const alerts = backendResponse.data || [];
+    const alerts = backendResponse.data ?? [];
 
     return {
       alerts,
       pagination: {
-        currentPage: backendResponse.page || 1,
-        totalPages: backendResponse.totalPages || 1,
-        totalItems: backendResponse.total || 0,
-        pageSize: backendResponse.limit || 10,
+        currentPage: backendResponse.page ?? 1,
+        totalPages: backendResponse.totalPages ?? 1,
+        totalItems: backendResponse.total ?? 0,
+        pageSize: backendResponse.limit ?? 10,
       },
     };
   }
@@ -211,10 +211,10 @@ class TriageService {
     try {
       const filters: AlertsFilter = {
         reportStatus: 'NALT',
-        limit: pagination?.limit || 10,
-        page: pagination?.page || 1,
-        sortBy: pagination?.sortBy || 'created_at',
-        sortOrder: pagination?.sortOrder || 'desc',
+        limit: pagination?.limit ?? 10,
+        page: pagination?.page ?? 1,
+        sortBy: pagination?.sortBy ?? 'created_at',
+        sortOrder: pagination?.sortOrder ?? 'desc',
       };
 
       if (search) {

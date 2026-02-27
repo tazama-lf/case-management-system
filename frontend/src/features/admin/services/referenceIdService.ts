@@ -45,7 +45,7 @@ class ReferenceIdService {
 
     if (error.response?.data) {
       const apiError = error.response.data;
-      return new Error(apiError.message || `Failed to ${operation}`);
+      return new Error(apiError.message ?? `Failed to ${operation}`);
     }
 
     if (error.message) {

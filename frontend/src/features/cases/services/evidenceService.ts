@@ -20,21 +20,21 @@ export class EvidenceService {
     const totalFileSize =
       evidence.fileSize ??
       (evidence.attachments?.reduce(
-        (sum: number, att: any) => sum + (att.fileSize || 0),
+        (sum: number, att: any) => sum + (att.fileSize ?? 0),
         0,
-      ) ||
+      ) ??
         0);
 
     return {
       ...evidence,
-      fileName: evidence.fileName || firstAttachment?.fileName || 'unknown',
+      fileName: evidence.fileName ?? firstAttachment?.fileName ?? 'unknown',
       fileSize: evidence.fileSize ? evidence.fileSize : totalFileSize,
       file_size: evidence.file_size ? evidence.file_size : totalFileSize,
       mimeType:
-        evidence.mimeType ||
-        firstAttachment?.mimeType ||
+        evidence.mimeType ??
+        firstAttachment?.mimeType ??
         'application/octet-stream',
-      hash: evidence.hash || firstAttachment?.hash || '',
+      hash: evidence.hash ?? firstAttachment?.hash ?? '',
     };
   }
 
@@ -183,7 +183,7 @@ export class EvidenceService {
 
     try {
       const token =
-        localStorage.getItem('authToken') ||
+        localStorage.getItem('authToken') ??
         sessionStorage.getItem('authToken');
 
       if (!token) {
@@ -191,7 +191,7 @@ export class EvidenceService {
       }
 
       const baseApiUrl =
-        import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
+        import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3000';
       const url = `${baseApiUrl}${this.baseUrl}/${evidenceId}/download`;
 
       const response = await fetch(url, {
@@ -210,7 +210,7 @@ export class EvidenceService {
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const errorData = await response.json();
-            errorMessage = errorData.message || errorData.error || errorMessage;
+            errorMessage = errorData.message ?? errorData.error ?? errorMessage;
           } else {
             const errorText = await response.text();
             if (errorText) {
@@ -369,7 +369,7 @@ export class EvidenceService {
       message?: string;
     };
     if (err?.response?.data) {
-      return new Error(err.response.data.message || `Failed to ${operation}`);
+      return new Error(err.response.data.message ?? `Failed to ${operation}`);
     }
 
     if (err?.message) {

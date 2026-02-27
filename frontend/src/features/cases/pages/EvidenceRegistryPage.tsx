@@ -33,14 +33,14 @@ const EvidenceRegistryPage: React.FC = () => {
   );
 
   const { data: evidenceData, isLoading } = useSearchEvidence(
-    { ...filters, search: searchQuery || undefined },
+    { ...filters, search: searchQuery ?? undefined },
     page,
     20,
   );
   const downloadMutation = useDownloadEvidence();
   const verifyMutation = useVerifyEvidence(''); // No specific case ID for registry
 
-  const evidence = evidenceData?.evidence || [];
+  const evidence = evidenceData?.evidence ?? [];
   const pagination = evidenceData?.pagination;
 
   const handleVerify = (evidenceItem: Evidence) => {
@@ -121,12 +121,12 @@ const EvidenceRegistryPage: React.FC = () => {
               </label>
               <select
                 className="input"
-                value={filters.evidence_type || ''}
+                value={filters.evidence_type ?? ''}
                 onChange={(e) => {
                   setFilters({
                     ...filters,
                     evidence_type:
-                      (e.target.value as EvidenceType) || undefined,
+                      (e.target.value as EvidenceType) ?? undefined,
                   });
                 }}
               >
@@ -173,7 +173,7 @@ const EvidenceRegistryPage: React.FC = () => {
               <input
                 type="date"
                 className="input"
-                value={filters.date_from || ''}
+                value={filters.date_from ?? ''}
                 onChange={(e) => {
                   setFilters({ ...filters, date_from: e.target.value });
                 }}
@@ -186,7 +186,7 @@ const EvidenceRegistryPage: React.FC = () => {
               <input
                 type="date"
                 className="input"
-                value={filters.date_to || ''}
+                value={filters.date_to ?? ''}
                 onChange={(e) => {
                   setFilters({ ...filters, date_to: e.target.value });
                 }}
@@ -242,7 +242,7 @@ const EvidenceRegistryPage: React.FC = () => {
                         )}
                       </h3>
                       <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                        {item.description || 'No description'}
+                        {item.description ?? 'No description'}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -278,7 +278,7 @@ const EvidenceRegistryPage: React.FC = () => {
                     </span>
                     <span className="flex items-center gap-1">
                       <UserIcon className="h-4 w-4" />
-                      {item.uploader_name || item.uploader_id}
+                      {item.uploader_name ?? item.uploader_id}
                     </span>
                     <span className="flex items-center gap-1">
                       <ClockIcon className="h-4 w-4" />
@@ -418,7 +418,7 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
             <div>
               <p className="text-sm font-medium text-gray-500">Uploaded By</p>
               <p className="text-gray-900">
-                {evidence.uploader_name || evidence.uploader_id}
+                {evidence.uploader_name ?? evidence.uploader_id}
               </p>
             </div>
             <div>
@@ -448,7 +448,7 @@ const EvidenceDetailsModal: React.FC<EvidenceDetailsModalProps> = ({
               Description
             </p>
             <p className="text-gray-900">
-              {evidence.description || 'No description provided'}
+              {evidence.description ?? 'No description provided'}
             </p>
           </div>
 

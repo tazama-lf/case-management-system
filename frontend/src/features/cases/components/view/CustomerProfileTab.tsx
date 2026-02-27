@@ -20,17 +20,12 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
   const [manualId, setManualId] = React.useState('');
 
   React.useEffect(() => {
-    console.log('=== CustomerProfileTab Effect ===');
-    console.log('Received transactionId:', transactionId);
-
     if (!transactionId) {
-      console.log('No transactionId, clearing profile');
       setProfile(null);
       setLoading(false);
       return;
     }
 
-    console.log('Starting fetch for transaction ID:', transactionId);
     setLoading(true);
     setError(null);
 
@@ -42,7 +37,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
       })
       .catch((err) => {
         setError(
-          err.response?.data?.message || 'Failed to load customer profile',
+          err.response?.data?.message ?? 'Failed to load customer profile',
         );
         setProfile(null);
       })
@@ -65,7 +60,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
       })
       .catch((err) => {
         setError(
-          err.response?.data?.message || 'Failed to load customer profile',
+          err.response?.data?.message ?? 'Failed to load customer profile',
         );
       })
       .finally(() => {
@@ -201,7 +196,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
                 Customer ID
               </label>
               <p className="mt-1 text-sm text-gray-900">
-                {customerDetails?.customerId || '—'}
+                {customerDetails?.customerId ?? '—'}
               </p>
             </div>
             <div>
@@ -209,7 +204,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
                 Name
               </label>
               <p className="mt-1 text-sm text-gray-900">
-                {customerDetails?.name || '—'}
+                {customerDetails?.name ?? '—'}
               </p>
             </div>
             <div>
@@ -227,7 +222,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
                 Email Address
               </label>
               <p className="mt-1 text-sm text-gray-900">
-                {customerDetails?.email || '—'}
+                {customerDetails?.email ?? '—'}
               </p>
             </div>
             <div>
@@ -235,7 +230,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
                 Phone Number
               </label>
               <p className="mt-1 text-sm text-gray-900">
-                {customerDetails?.phone || '—'}
+                {customerDetails?.phone ?? '—'}
               </p>
             </div>
           </div>
@@ -255,7 +250,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
                 Account ID
               </label>
               <p className="mt-1 text-sm text-gray-900">
-                {senderAccount?.id || '—'}
+                {senderAccount?.id ?? '—'}
               </p>
             </div>
             <div>
@@ -263,7 +258,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
                 Account Type
               </label>
               <p className="mt-1 text-sm text-gray-900 capitalize">
-                {senderAccount?.accountType || '—'}
+                {senderAccount?.accountType ?? '—'}
               </p>
             </div>
             <div>
@@ -282,7 +277,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
               </label>
               <p className="mt-1 text-sm text-gray-900">
                 {senderAccount?.balance !== undefined
-                  ? `${senderAccount.currency || 'USD'} ${senderAccount.balance.toFixed(2)}`
+                  ? `${senderAccount.currency ?? 'USD'} ${senderAccount.balance.toFixed(2)}`
                   : '—'}
               </p>
             </div>
@@ -291,7 +286,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
                 Risk Rating
               </label>
               <p className="mt-1 text-sm text-gray-900 capitalize">
-                {senderAccount?.riskRating || '—'}
+                {senderAccount?.riskRating ?? '—'}
               </p>
             </div>
           </div>
@@ -308,7 +303,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
                 Account ID
               </label>
               <p className="mt-1 text-sm text-gray-900">
-                {receiverAccount?.id || '—'}
+                {receiverAccount?.id ?? '—'}
               </p>
             </div>
             <div>
@@ -316,7 +311,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
                 Account Type
               </label>
               <p className="mt-1 text-sm text-gray-900 capitalize">
-                {receiverAccount?.accountType || '—'}
+                {receiverAccount?.accountType ?? '—'}
               </p>
             </div>
             <div>
@@ -335,7 +330,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
               </label>
               <p className="mt-1 text-sm text-gray-900">
                 {receiverAccount?.balance !== undefined
-                  ? `${receiverAccount.currency || 'USD'} ${receiverAccount.balance.toFixed(2)}`
+                  ? `${receiverAccount.currency ?? 'USD'} ${receiverAccount.balance.toFixed(2)}`
                   : '—'}
               </p>
             </div>
@@ -344,7 +339,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
                 Risk Rating
               </label>
               <p className="mt-1 text-sm text-gray-900 capitalize">
-                {receiverAccount?.riskRating || '—'}
+                {receiverAccount?.riskRating ?? '—'}
               </p>
             </div>
           </div>
@@ -360,21 +355,21 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
               Street Address
             </label>
             <p className="mt-1 text-sm text-gray-900">
-              {address?.street || '—'}
+              {address?.street ?? '—'}
             </p>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500">
               City
             </label>
-            <p className="mt-1 text-sm text-gray-900">{address?.city || '—'}</p>
+            <p className="mt-1 text-sm text-gray-900">{address?.city ?? '—'}</p>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500">
               State/Province
             </label>
             <p className="mt-1 text-sm text-gray-900">
-              {address?.state || '—'}
+              {address?.state ?? '—'}
             </p>
           </div>
           <div>
@@ -382,7 +377,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
               Postal Code
             </label>
             <p className="mt-1 text-sm text-gray-900">
-              {address?.postalCode || '—'}
+              {address?.postalCode ?? '—'}
             </p>
           </div>
           <div>
@@ -390,7 +385,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
               Country
             </label>
             <p className="mt-1 text-sm text-gray-900">
-              {address?.country || '—'}
+              {address?.country ?? '—'}
             </p>
           </div>
         </div>

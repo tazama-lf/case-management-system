@@ -23,8 +23,8 @@ class WorkQueueService {
     try {
       const searchParams = new URLSearchParams();
       // Always include size and start parameters
-      searchParams.append('size', (params?.size || 10).toString());
-      searchParams.append('start', (params?.start || 0).toString());
+      searchParams.append('size', (params?.size ?? 10).toString());
+      searchParams.append('start', (params?.start ?? 0).toString());
 
       const url = `${this.baseEndpoint}/candidate-groups?${searchParams.toString()}`;
       const response = await apiClient.get<CandidateGroupData[]>(url);
@@ -59,7 +59,7 @@ class WorkQueueService {
 
     if (error.response?.data) {
       const apiError = error.response.data;
-      return new Error(apiError.message || `Failed to ${operation}`);
+      return new Error(apiError.message ?? `Failed to ${operation}`);
     }
 
     if (error.message) {

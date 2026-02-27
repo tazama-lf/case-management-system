@@ -314,19 +314,19 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getTypeBadge(
-                          alert.txtp || alert.alert_type || 'Unknown',
+                          alert.txtp ?? alert.alert_type ?? 'Unknown',
                         )}`}
                       >
-                        {alert.txtp || alert.alert_type || 'Unknown'}
+                        {alert.txtp ?? alert.alert_type ?? 'Unknown'}
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getRiskScoreBadge(
-                          alert.priority || 0,
+                          alert.priority ?? 0,
                         )}`}
                       >
-                        {alert.priority || 0}
+                        {alert.priority ?? 0}
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">

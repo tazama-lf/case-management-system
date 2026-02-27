@@ -100,8 +100,8 @@ export const transformBackendCaseToUI = (
   const sarStrTask =
     backendCase.tasks
       ?.filter((task) => task.name === 'SAR/STR Filing')
-      .sort((a, b) => (b.task_id ?? 0) - (a.task_id ?? 0))[0] || null;
-  const sarStrStatus = sarStrTask?.status || 'N/A';
+      .sort((a, b) => (b.task_id ?? 0) - (a.task_id ?? 0))[0] ?? null;
+  const sarStrStatus = sarStrTask?.status ?? 'N/A';
 
   return {
     id: backendCase.case_id,

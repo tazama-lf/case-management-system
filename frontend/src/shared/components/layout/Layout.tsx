@@ -60,7 +60,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumbs }) => {
 
         {}
         <main className="flex-1 overflow-auto">
-          <div className="h-full">{children || <Outlet />}</div>
+          <div className="h-full">{children ?? <Outlet />}</div>
         </main>
       </div>
     </div>

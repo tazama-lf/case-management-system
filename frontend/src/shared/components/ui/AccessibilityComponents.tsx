@@ -225,8 +225,8 @@ export const AccessibleButton: React.FC<AccessibleButtonProps> = ({
   return (
     <button
       {...props}
-      disabled={disabled || isLoading}
-      aria-disabled={disabled || isLoading}
+      disabled={disabled ?? isLoading}
+      aria-disabled={disabled ?? isLoading}
       className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
     >
       {isLoading ? (

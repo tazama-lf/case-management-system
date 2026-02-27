@@ -365,11 +365,11 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
           onClose={() => {
             setShowReportModal(false);
           }}
-          caseId={caseData?.id || Number(caseId)}
+          caseId={caseData?.id ?? Number(caseId)}
           caseStatus={caseData?.status}
-          caseTitle={`Case ${caseData?.id || caseId} - ${caseData?.type || 'Investigation'}`}
-          tasks={caseData?.tasks || undefined}
-          caseData={caseData || undefined}
+          caseTitle={`Case ${caseData?.id ?? caseId} - ${caseData?.type ?? 'Investigation'}`}
+          tasks={caseData?.tasks ?? undefined}
+          caseData={caseData ?? undefined}
           selectedFinalNotes={formData.finalNotes}
           selectedOutcome={formData.recommendedOutcome}
           onApproved={async () => {

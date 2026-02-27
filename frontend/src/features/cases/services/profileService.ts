@@ -62,7 +62,7 @@ export class ProfileService {
       if (user) {
         try {
           const userData = JSON.parse(user);
-          tenantId = userData.tenantId || request.tenantId;
+          tenantId = userData.tenantId ?? request.tenantId;
         } catch {
           // Ignore JSON parse errors and use the default tenantId
         }
@@ -90,7 +90,7 @@ export class ProfileService {
 
   private handleError(error: any, operation: string): Error {
     if (error.response?.data) {
-      return new Error(error.response.data.message || `Failed to ${operation}`);
+      return new Error(error.response.data.message ?? `Failed to ${operation}`);
     }
     return new Error(`Failed to ${operation}: ${error.message}`);
   }

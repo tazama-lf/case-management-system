@@ -31,10 +31,10 @@ export const exportToExcel = (
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
     if (data.length > 0) {
-      const colWidths = Object.keys(data[0] || {}).map((key) => ({
+      const colWidths = Object.keys(data[0] ?? {}).map((key) => ({
         wch: Math.max(
           key.length,
-          ...data.map((row) => String(row[key] || '').length),
+          ...data.map((row) => String(row[key] ?? '').length),
         ),
       }));
       worksheet['!cols'] = colWidths;
@@ -75,7 +75,7 @@ export const exportToCSV = (data: ExportData[], filename: string) => {
             ) {
               return `"${value.replace(/"/gu, '""')}"`;
             }
-            return value || '';
+            return value ?? '';
           })
           .join(','),
       ),
@@ -104,7 +104,7 @@ export const exportToPDF = async (
     // With margins [40, 60, 100, 60], available width = 841.89 - 140 = 701.89
     const availableWidth = 550;
     const totalRequestedWidth = columns.reduce(
-      (sum, col) => sum + (col.width || 100),
+      (sum, col) => sum + (col.width ?? 100),
       0,
     );
     const widthScale = availableWidth / totalRequestedWidth;
@@ -136,7 +136,7 @@ export const exportToPDF = async (
     ];
 
     const columnWidths = columns.map((col) => {
-      const requestedWidth = col.width || 100;
+      const requestedWidth = col.width ?? 100;
       const scaledWidth = Math.floor(requestedWidth * widthScale);
 
       if (col.key.toLowerCase().includes('id')) {
@@ -272,80 +272,80 @@ export const formatDataForExport = (
   switch (reportType) {
     case 'CASE_STATUS':
       return data.map((item) => ({
-        Status: item.status || '',
-        Count: item.count || 0,
-        Percentage: item.percentage || '0%',
-        'Avg Time in Status': item.avgTimeInStatus || '0 days',
-        'Current Trend Period': item.currentTrendPeriod || 'No trend',
+        Status: item.status ?? '',
+        Count: item.count ?? 0,
+        Percentage: item.percentage ?? '0%',
+        'Avg Time in Status': item.avgTimeInStatus ?? '0 days',
+        'Current Trend Period': item.currentTrendPeriod ?? 'No trend',
       }));
 
     case 'TASK_COMPLETION':
       return data.map((item) => ({
-        'Task Type': item.taskType || '',
-        Total: item.total || 0,
-        Completed: item.completed || 0,
-        'Completion Rate': `${item.completionRate || 0}%`,
-        'Avg Time (Days)': item.avgTime || 0,
-        Trend: `${item.trend > 0 ? '+' : ''}${item.trend || 0}%`,
+        'Task Type': item.taskType ?? '',
+        Total: item.total ?? 0,
+        Completed: item.completed ?? 0,
+        'Completion Rate': `${item.completionRate ?? 0}%`,
+        'Avg Time (Days)': item.avgTime ?? 0,
+        Trend: `${item.trend > 0 ? '+' : ''}${item.trend ?? 0}%`,
       }));
 
     case 'AUDIT_LOGS':
       return data.map((item) => ({
-        'Log ID': String(item.audit_log_id || item.logId || item.id || ''),
-        'User ID': String(item.user_id || item.userId || item.user || ''),
-        Operation: item.operation || '',
-        'Entity Name': item.entity_name || item.entityName || '',
+        'Log ID': String(item.audit_log_id ?? item.logId ?? item.id ?? ''),
+        'User ID': String(item.user_id ?? item.userId ?? item.user ?? ''),
+        Operation: item.operation ?? '',
+        'Entity Name': item.entity_name ?? item.entityName ?? '',
         'Action Performed':
-          item.action_performed || item.actionPerformed || item.action || '',
-        Outcome: item.outcome || '',
+          item.action_performed ?? item.actionPerformed ?? item.action ?? '',
+        Outcome: item.outcome ?? '',
         'Performed At':
-          item.performed_at || item.performedAt || item.timestamp || '',
-        Type: item.type || 'Info',
+          item.performed_at ?? item.performedAt ?? item.timestamp ?? '',
+        Type: item.type ?? 'Info',
       }));
 
     case 'CASE_AGEING':
       return data.map((item) => ({
-        'Case ID': String(item.caseId || item.case_id || item.id || ''),
-        Type: item.type || item.caseType || '',
-        Status: item.status || '',
+        'Case ID': String(item.caseId ?? item.case_id ?? item.id ?? ''),
+        Type: item.type ?? item.caseType ?? '',
+        Status: item.status ?? '',
         'Created Date':
-          item.createdDate || item.created_date || item.createdAt || '',
-        'Age (Days)': item.ageDays || item.age_days || item.age || 0,
-        Priority: item.priority || 'Normal',
+          item.createdDate ?? item.created_date ?? item.createdAt ?? '',
+        'Age (Days)': item.ageDays ?? item.age_days ?? item.age ?? 0,
+        Priority: item.priority ?? 'Normal',
         'User ID': String(
-          item.userId ||
-            item.user_id ||
-            item.assigneeId ||
-            item.assignee_id ||
+          item.userId ??
+            item.user_id ??
+            item.assigneeId ??
+            item.assignee_id ??
             '',
         ),
         Investigator:
-          item.investigator ||
-          item.assignee ||
-          item.assigned_to ||
+          item.investigator ??
+          item.assignee ??
+          item.assigned_to ??
           'Unassigned',
       }));
 
     case 'INVESTIGATOR_WORKLOAD':
       return data.map((item) => ({
         'Investigator ID': String(
-          item.investigatorId ||
-            item.investigator_id ||
-            item.userId ||
-            item.user_id ||
+          item.investigatorId ??
+            item.investigator_id ??
+            item.userId ??
+            item.user_id ??
             '',
         ),
         Investigator:
-          item.investigator || item.name || item.fullName || 'Unknown',
-        Role: item.role || 'Investigator',
-        'Active Cases': item.activeCases || item.active_cases || 0,
-        'Completed Cases': item.completedCases || item.completed_cases || 0,
+          item.investigator ?? item.name ?? item.fullName ?? 'Unknown',
+        Role: item.role ?? 'Investigator',
+        'Active Cases': item.activeCases ?? item.active_cases ?? 0,
+        'Completed Cases': item.completedCases ?? item.completed_cases ?? 0,
         'Avg Resolution Time (Days)':
-          item.avgResolutionTime || item.avg_resolution_time || 0,
+          item.avgResolutionTime ?? item.avg_resolution_time ?? 0,
         'Case Closure Rate (%)':
-          item.caseClosureRate || item.case_closure_rate || 0,
+          item.caseClosureRate ?? item.case_closure_rate ?? 0,
         'Performance Trend':
-          item.performanceTrend || item.performance_trend || 'Stable',
+          item.performanceTrend ?? item.performance_trend ?? 'Stable',
       }));
 
     case 'EVIDENCE_FINDINGS':
@@ -386,7 +386,7 @@ export const formatDataForExport = (
             key.toLowerCase().includes('id') ||
             key.toLowerCase().includes('case')
           ) {
-            formatted[key] = String(value || '');
+            formatted[key] = String(value ?? '');
           } else {
             formatted[key] = value;
           }

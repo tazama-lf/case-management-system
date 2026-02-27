@@ -33,12 +33,11 @@ class DashboardService {
       )) as any;
 
       return {
-        totalAlerts: response.stats?.totalCases || 0,
+        totalAlerts: response.stats?.totalCases ?? 0,
         highPriorityAlerts:
-          response.caseTypes?.find((ct: any) => ct.name === 'FRAUD')?.count ||
-          0,
-        openCases: response.stats?.openCases || 0,
-        casesResolvedThisWeek: response.stats?.closedCases || 0,
+          response.caseTypes?.find((ct: any) => ct.name === 'FRAUD')?.count ?? 0,
+        openCases: response.stats?.openCases ?? 0,
+        casesResolvedThisWeek: response.stats?.closedCases ?? 0,
       };
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error);
@@ -57,7 +56,7 @@ class DashboardService {
         '/api/v1/reports/case-status?dateRange=last7',
       )) as any;
 
-      const caseTypes = response.caseTypes || [];
+      const caseTypes = response.caseTypes ?? [];
 
       return caseTypes.map((caseType: any) => ({
         priority: this.mapCaseTypeToPriority(caseType.name),
@@ -91,22 +90,22 @@ class DashboardService {
       const response = (await apiClient.get(
         '/api/v1/reports/case-status?dateRange=last30',
       )) as any;
-      const statusDist = response.statusDistribution || {};
+      const statusDist = response.statusDistribution ?? {};
 
       return [
         {
           status: 'assigned',
-          count: statusDist.assigned || 0,
+          count: statusDist.assigned ?? 0,
           description: 'cases requiring your action',
         },
         {
           status: 'pending',
-          count: statusDist.pendingApproval || 0,
+          count: statusDist.pendingApproval ?? 0,
           description: 'cases awaiting your approval',
         },
         {
           status: 'closed',
-          count: statusDist.closed || 0,
+          count: statusDist.closed ?? 0,
           description: 'cases resolved recently',
         },
       ];

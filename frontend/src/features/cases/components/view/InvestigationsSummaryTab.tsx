@@ -59,15 +59,15 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const mapToUnifiedWorkQueueTask = (task: any, caseDetails: Case | null): UnifiedWorkQueueTask => ({
       id: task.task_id,
       taskId: task.task_id,
-      name: task.name || 'Unnamed Task',
+      name: task.name ?? 'Unnamed Task',
       description: task.description,
       assignee: task.assigned_user_id,
-      assigneeName: task.assignedUser?.username || task.assigned_user_id,
-      candidateGroup: task.candidateGroup || 'investigations',
+      assigneeName: task.assignedUser?.username ?? task.assigned_user_id,
+      candidateGroup: task.candidateGroup ?? 'investigations',
       status: task.status,
-      priority: caseDetails?.priority || 'NEW',
+      priority: caseDetails?.priority ?? 'NEW',
       created: task.created_at,
-      dueDate: task.sla_deadline || undefined,
+      dueDate: task.sla_deadline ?? undefined,
       caseId: task.case_id,
 
     });
@@ -81,7 +81,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
 
     if (evidenceResponse.evidence && Array.isArray(evidenceResponse.evidence)) {
       evidenceResponse.evidence.forEach((evidence) => {
-        const type = evidence.evidenceType || 'OTHER';
+        const type = evidence.evidenceType ?? 'OTHER';
         if (!groupedByType.has(type)) {
           groupedByType.set(type, []);
         }
@@ -166,7 +166,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
 
   const handleCompleteTask = async (task: any, _notes?: string) => {
     try {
-      const taskIdToComplete = task.task_id || task.id;
+      const taskIdToComplete = task.task_id ?? task.id;
       await taskService.updateTaskForSupervisor(taskIdToComplete, {
         status: TaskStatus.STATUS_30_COMPLETED,
       });
@@ -255,7 +255,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               approvalTask.task_id
             );
             setSupervisorComments(supervisorTaskComments || []);
-            console.log('Fetched supervisor comments:', supervisorTaskComments);
           }
 
           const investigationTask = tasks.find(
@@ -318,7 +317,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             <div className="grid grid-cols-3 gap-6">
               <div>
                 <p className="text-xs text-gray-600 font-medium mb-1">Type</p>
-                <p className="text-sm font-semibold text-gray-900">{caseDetails?.case_type || 'N/A'}</p>
+                <p className="text-sm font-semibold text-gray-900">{caseDetails?.case_type ?? 'N/A'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-600 font-medium mb-1">Investigator</p>
@@ -361,8 +360,8 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               <h3 className="text-sm font-semibold text-gray-700 mb-3">
                 Recommended Outcome
               </h3>
-              <div className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium ${getOutcomeColor(caseDetails?.status || '')}`}>
-                {getOutcomeLabel(caseDetails?.status || '')}
+              <div className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium ${getOutcomeColor(caseDetails?.status ?? '')}`}>
+                {getOutcomeLabel(caseDetails?.status ?? '')}
               </div>
             </div>
           )}
@@ -412,7 +411,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                     <div className="p-3 bg-green-50 border border-green-200 rounded">
                       <p className="text-xs text-green-600 font-medium mb-1">Supervisor Final Outcome</p>
                       <p className="text-sm font-semibold text-green-900">
-                        {caseDetails?.status || 'N/A'}
+                        {caseDetails?.status ?? 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -464,10 +463,10 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                             <DocumentTextIcon className="h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate">
-                                {doc.fileName || 'Untitled Document'}
+                                {doc.fileName ?? 'Untitled Document'}
                               </p>
                               <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                                <span>{evidenceService.formatFileSize(doc.fileSize || 0)}</span>
+                                <span>{evidenceService.formatFileSize(doc.fileSize ?? 0)}</span>
                                 <span>•</span>
                                 <span>{doc.evidenceType}</span>
                                 {doc.uploadedAt && (
@@ -487,7 +486,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                             </div>
                           </div>
                           <button
-                            onClick={async () => { await handleDownloadEvidence(doc.id, doc.fileName || 'document'); }}
+                            onClick={async () => { await handleDownloadEvidence(doc.id, doc.fileName ?? 'document'); }}
                             disabled={downloadingId === doc.id.toString()}
                             className="ml-4 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                           >
@@ -514,11 +513,11 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             </div>
             <div>
               <span className="font-medium text-gray-700">Priority:</span>
-              <span className="ml-2 text-gray-900">{caseDetails?.priority || 'N/A'}</span>
+              <span className="ml-2 text-gray-900">{caseDetails?.priority ?? 'N/A'}</span>
             </div>
             <div>
               <span className="font-medium text-gray-700">Case Type:</span>
-              <span className="ml-2 text-gray-900">{caseDetails?.case_type || 'N/A'}</span>
+              <span className="ml-2 text-gray-900">{caseDetails?.case_type ?? 'N/A'}</span>
             </div>
             <div>
               <span className="font-medium text-gray-700">Created:</span>

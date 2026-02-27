@@ -110,7 +110,7 @@ const GenerateTransactionProfileModal: React.FC<
 > = ({ open, onClose, caseId, onSaveProfile, initialProfile }) => {
   const [saving, setSaving] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [notes, setNotes] = React.useState(initialProfile?.notes || '');
+  const [notes, setNotes] = React.useState(initialProfile?.notes ?? '');
   const [profileData, setProfileData] =
     React.useState<TransactionProfile | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -126,7 +126,7 @@ const GenerateTransactionProfileModal: React.FC<
         .getProfile(caseId)
         .then((data) => {
           setProfileData(data);
-          setNotes(data.notes || '');
+          setNotes(data.notes ?? '');
           setStep('generated');
         })
         .catch(() => {
@@ -158,7 +158,7 @@ const GenerateTransactionProfileModal: React.FC<
       if (user) {
         try {
           const userData = JSON.parse(user);
-          tenantId = userData.tenantId || '';
+          tenantId = userData.tenantId ?? '';
         } catch {
           // Ignore JSON parse errors and use default tenantId
         }
@@ -182,14 +182,14 @@ const GenerateTransactionProfileModal: React.FC<
       if (onSaveProfile) {
         onSaveProfile({
           generatedAt: new Date().toLocaleString(),
-          totalVolume: `$${response.metrics?.totalValue?.toLocaleString() || '0'}`,
-          anomalies: response.detectedAnomalies?.length || 0,
-          riskLevel: determineRiskLevel(response.detectedAnomalies || []),
+          totalVolume: `$${response.metrics?.totalValue?.toLocaleString() ?? '0'}`,
+          anomalies: response.detectedAnomalies?.length ?? 0,
+          riskLevel: determineRiskLevel(response.detectedAnomalies ?? []),
           notes: response.notes,
         });
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to generate profile');
+      setError(err.message ?? 'Failed to generate profile');
     } finally {
       setSaving(false);
     }
@@ -197,7 +197,7 @@ const GenerateTransactionProfileModal: React.FC<
 
   const determineRiskLevel = (anomalies: Array<{ risk: string }>): string => {
     if (!anomalies || anomalies.length === 0) return 'Low';
-    const highRiskCount = anomalies.filter((a) => a.risk === 'High').length;
+    const highRiskCount = anomalies.filter(a => a.risk === 'High').length;
     if (highRiskCount > 0) return 'High';
     const mediumRiskCount = anomalies.filter((a) => a.risk === 'Medium').length;
     if (mediumRiskCount > 0) return 'Medium';
@@ -209,9 +209,9 @@ const GenerateTransactionProfileModal: React.FC<
       if (onSaveProfile) {
         onSaveProfile({
           generatedAt: new Date().toLocaleString(),
-          totalVolume: `$${profileData.metrics?.totalValue?.toLocaleString() || '0'}`,
-          anomalies: profileData.detectedAnomalies?.length || 0,
-          riskLevel: determineRiskLevel(profileData.detectedAnomalies || []),
+          totalVolume: `$${profileData.metrics?.totalValue?.toLocaleString() ?? '0'}`,
+          anomalies: profileData.detectedAnomalies?.length ?? 0,
+          riskLevel: determineRiskLevel(profileData.detectedAnomalies ?? []),
           notes,
         });
       }
@@ -219,7 +219,7 @@ const GenerateTransactionProfileModal: React.FC<
     onClose();
   };
 
-  const displayData = profileData || {
+  const displayData = profileData ?? {
     metrics: {
       totalVolume: 4,
       totalValue: 14200,
@@ -392,7 +392,7 @@ const GenerateTransactionProfileModal: React.FC<
                     Total Value
                   </h3>
                   <p className="mt-2 text-2xl font-bold text-gray-900">
-                    ${displayData.metrics?.totalValue?.toLocaleString() || '0'}
+                    ${displayData.metrics?.totalValue?.toLocaleString() ?? '0'}
                   </p>
                   <p className="mt-1 text-xs text-gray-500">Transaction sum</p>
                 </div>
@@ -416,11 +416,11 @@ const GenerateTransactionProfileModal: React.FC<
                   </h3>
                   <p className="mt-2 text-2xl font-bold text-gray-900">
                     $
-                    {displayData.metrics?.avgTicketSize?.toLocaleString() ||
+                    {displayData.metrics?.avgTicketSize?.toLocaleString() ??
                       '0'}
                   </p>
                   <p className="mt-1 text-xs text-gray-500">
-                    Cross-border: {displayData.metrics?.crossBorderCount || 0}
+                    Cross-border: {displayData.metrics?.crossBorderCount ?? 0}
                   </p>
                 </div>
 
@@ -430,11 +430,11 @@ const GenerateTransactionProfileModal: React.FC<
                     Anomalies Detected
                   </h3>
                   <p className="mt-2 text-2xl font-bold text-gray-900">
-                    {displayData.detectedAnomalies?.length || 0}
+                    {displayData.detectedAnomalies?.length ?? 0}
                   </p>
                   <p className="mt-1 text-xs text-orange-600">
                     Risk Level:{' '}
-                    {determineRiskLevel(displayData.detectedAnomalies || [])}
+                    {determineRiskLevel(displayData.detectedAnomalies ?? [])}
                   </p>
                 </div>
               </div>

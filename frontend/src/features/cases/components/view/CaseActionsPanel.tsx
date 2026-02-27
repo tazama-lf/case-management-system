@@ -86,7 +86,7 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
   const hasCompletedStrTask =
     tasks
       .filter((task) => task.name === 'SAR/STR Filing')
-      .sort((a, b) => (b.task_id ?? 0) - (a.task_id ?? 0))[0] || null;
+      .sort((a, b) => (b.task_id ?? 0) - (a.task_id ?? 0))[0] ?? null;
 
   // Compliance officers cannot perform any case actions
   if (hasComplianceOfficerRole()) {
@@ -121,7 +121,7 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
 
     // Close Case button - show for in-progress cases when ALL investigation tasks are completed and user is case owner
     const investigateTasks =
-      caseData?.tasks?.filter((t) => t.name.startsWith('Investigate')) || [];
+      caseData?.tasks?.filter((t) => t.name.startsWith('Investigate')) ?? [];
     const completedInvestigateTasks = investigateTasks.filter(
       (t) => t.status === 'STATUS_30_COMPLETED',
     );

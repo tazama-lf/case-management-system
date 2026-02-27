@@ -38,7 +38,7 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({
     const existing = data.find((item) => item.ageRange === range);
     return {
       ageRange: range,
-      count: existing?.count || 0,
+      count: existing?.count ?? 0,
     };
   });
 

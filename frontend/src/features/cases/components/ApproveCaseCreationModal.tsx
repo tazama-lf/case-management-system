@@ -193,7 +193,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
                               Alert Type
                             </label>
                             <span className="text-sm">
-                              {alertDetails.alert_type || 'N/A'}
+                              {alertDetails.alert_type ?? 'N/A'}
                             </span>
                           </div>
                           <div>
@@ -201,7 +201,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
                               Source
                             </label>
                             <span className="text-sm">
-                              {alertDetails.source || 'N/A'}
+                              {alertDetails.source ?? 'N/A'}
                             </span>
                           </div>
                           <div>

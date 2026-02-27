@@ -30,8 +30,8 @@ export const useCandidateGroups = (
   const [workQueues, setWorkQueues] = useState<WorkQueue[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(params?.currentPage || 1);
-  const [pageSize, setPageSize] = useState(params?.pageSize || 10);
+  const [currentPage, setCurrentPage] = useState(params?.currentPage ?? 1);
+  const [pageSize, setPageSize] = useState(params?.pageSize ?? 10);
   const [totalItems, setTotalItems] = useState(0);
 
   const fetchCandidateGroups = useCallback(async () => {

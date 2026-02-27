@@ -450,11 +450,11 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         const assignedTo = resp.investigation_task?.assigned_to
           ? ` and assigned to ${resp.investigation_task.assigned_to}`
           : '';
-        outcomeDetails = `\n\nStatus: STATUS_10_ASSIGNED\nAn "Investigate Case" task (${resp.investigation_task?.task_id || 'N/A'}) has been created${assignedTo}.`;
+        outcomeDetails = `\n\nStatus: STATUS_10_ASSIGNED\nAn "Investigate Case" task (${resp.investigation_task?.task_id ?? 'N/A'}) has been created${assignedTo}.`;
       } else if (updatedStatus === 'STATUS_02_READY_FOR_ASSIGNMENT') {
         const candidateGroup =
-          resp.investigation_task?.candidateGroup || 'Investigations';
-        outcomeDetails = `\n\nStatus: STATUS_02_READY_FOR_ASSIGNMENT\nAn "Investigate Case" task (${resp.investigation_task?.task_id || 'N/A'}) has been created in the ${candidateGroup} queue.`;
+          resp.investigation_task?.candidateGroup ?? 'Investigations';
+        outcomeDetails = `\n\nStatus: STATUS_02_READY_FOR_ASSIGNMENT\nAn "Investigate Case" task (${resp.investigation_task?.task_id ?? 'N/A'}) has been created in the ${candidateGroup} queue.`;
       } else if (updatedStatus === 'STATUS_31_REOPENED') {
         outcomeDetails =
           '\n\nStatus: STATUS_31_REOPENED\nAn "Investigate Case" task has been created.';
@@ -497,7 +497,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     try {
       const resp = await caseService.rejectCaseReopening(caseId, reason);
 
-      let outcomeDetails = `\n\nReason: ${resp.rejection_reason || reason}`;
+      let outcomeDetails = `\n\nReason: ${resp.rejection_reason ?? reason}`;
       const status = resp.case?.status;
       if (status?.startsWith('STATUS_8') || status?.startsWith('STATUS_7')) {
         outcomeDetails += `\nStatus: ${status}\nThe case remains closed.`;
@@ -535,20 +535,20 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         loading={modalState.createCaseLoading}
         error={modalState.createCaseError}
         mode={modalState.createModalMode}
-        existingCaseId={modalState.editingCaseId || undefined}
+        existingCaseId={modalState.editingCaseId ?? undefined}
         initial={
           modalState.selectedRow
             ? {
                 alertId: modalState.selectedRow.alertId,
                 alertType: ((): AlertType => {
-                  const t = (modalState.selectedRow.type || '').toUpperCase();
+                  const t = (modalState.selectedRow.type ?? '').toUpperCase();
                   if (t.includes('FRAUD') && t.includes('AML'))
                     {return 'FRAUD_AND_AML';}
                   if (t.includes('AML')) return 'AML';
                   return 'FRAUD';
                 })(),
                 priority:
-                  (modalState.selectedRow.priority?.toUpperCase() as Priority) ||
+                  (modalState.selectedRow.priority?.toUpperCase() as Priority) ??
                   'NEW',
                 priorityScore: 0.33,
               }
@@ -720,9 +720,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
             modalActions.setIsCaseClosureDecisionOpen(false);
           }}
           caseId={
-            modalState.selectedRow?.id != null
-              ? modalState.selectedRow.id
-              : null
+            modalState.selectedRow?.id ?? null
           }
           caseName={
             modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''
@@ -769,9 +767,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
             modalActions.setIsApproveReopenOpen(false);
           }}
           caseId={
-            modalState.selectedRow?.id != null
-              ? modalState.selectedRow.id
-              : null
+            modalState.selectedRow?.id ?? null
           }
           requesterRole={undefined}
           onApprove={handleApproveReopenSubmit}
@@ -785,9 +781,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
             modalActions.setIsRejectReopenOpen(false);
           }}
           caseId={
-            modalState.selectedRow?.id != null
-              ? modalState.selectedRow.id
-              : null
+            modalState.selectedRow?.id ?? null
           }
           onReject={handleRejectReopenSubmit}
         />

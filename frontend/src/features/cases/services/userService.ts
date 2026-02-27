@@ -35,8 +35,8 @@ class UserService {
       // Transform the response to match our UserOption interface
       return response
         .map((user: any) => ({
-          id: user.userId || user.id || '',
-          name: user.displayName || user.username || user.name || 'Unknown',
+          id: user.userId ?? user.id ?? '',
+          name: user.displayName ?? user.username ?? user.name ?? 'Unknown',
           role: user.role,
           firstName: user.firstName,
           lastName: user.lastName,

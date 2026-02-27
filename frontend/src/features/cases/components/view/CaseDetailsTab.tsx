@@ -49,7 +49,7 @@ const getPriorityColor = (priority: string): string => {
     CRITICAL: 'bg-orange-50 text-orange-700 ring-orange-200',
     BREACH: 'bg-red-50 text-red-700 ring-red-200',
   };
-  return priorityColors[priority] || 'bg-gray-50 text-gray-700 ring-gray-200';
+  return priorityColors[priority] ?? 'bg-gray-50 text-gray-700 ring-gray-200';
 };
 
 const getScoreColor = (score: number): string => {
@@ -200,7 +200,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       const latestByType: Record<string, LatestReport | null> = {};
 
       evidenceResponse.evidence.forEach((evidence) => {
-        const reportType = evidence.evidenceType || 'INVESTIGATION_REPORT';
+        const reportType = evidence.evidenceType ?? 'INVESTIGATION_REPORT';
         const { reportId } = evidence;
 
         const submittedAt = evidence.attachments?.[0]?.submittedAt
@@ -212,7 +212,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         if (!existing) {
           latestByType[reportType] = {
             reportType,
-            reportId: reportId ? reportId : '',
+            reportId: reportId ?? '',
           };
           return;
         }
@@ -228,7 +228,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         if (submittedAt > existingDate) {
           latestByType[reportType] = {
             reportType,
-            reportId: reportId ? reportId : '',
+            reportId: reportId ?? '',
           };
         }
       });
@@ -253,24 +253,15 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     setViewingId(actualReportId);
 
     try {
-      console.log('[Report View] Starting view for:', {
-        actualReportId,
-        reportId,
-      });
       // Fetch the encrypted blob from CouchDB
       const blob = await evidenceService.viewEvidence(actualReportId);
-
-      console.log('[Report View] Blob received:', {
-        size: blob.size,
-        type: blob.type,
-      });
 
       if (blob.size === 0) {
         throw new Error('Received empty file');
       }
 
       // Determine the best way to preview based on MIME type
-      const mimeType = blob.type || 'application/octet-stream';
+      const mimeType = blob.type ?? 'application/octet-stream';
       const isPreviewable = [
         'application/pdf',
         'image/jpeg',
@@ -290,7 +281,6 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       if (isPreviewable) {
         // Open in new tab for previewable files
         window.open(blobUrl, '_blank', 'noopener,noreferrer');
-        console.log('[Report View] Opened in new tab:', blobUrl);
       } else {
         // For non-previewable files, inform user and offer download
         const shouldDownload = confirm(
@@ -305,7 +295,6 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          console.log('[Report View] File downloaded:', reportId);
         }
 
         // Clean up immediately if not downloading
@@ -318,7 +307,6 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       if (isPreviewable) {
         setTimeout(() => {
           URL.revokeObjectURL(blobUrl);
-          console.log('[Report View] Cleaned up blob URL');
         }, 30000); // 30 seconds should be enough for the browser to load it
       }
     } catch (err) {
@@ -527,15 +515,15 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
                     Confidence Score
                   </div>
                   <div
-                    className={`inline-flex px-2 py-1 text-sm font-bold rounded-full ${getScoreColor(row.confidencePercent || 0)}`}
+                    className={`inline-flex px-2 py-1 text-sm font-bold rounded-full ${getScoreColor(row.confidencePercent ?? 0)}`}
                   >
-                    {row.confidencePercent || 0}%
+                    {row.confidencePercent ?? 0}%
                   </div>
                 </div>
                 <div className="col-span-2">
                   <div className="text-xs text-gray-500 uppercase">Message</div>
                   <div className="font-medium text-gray-900 mt-1">
-                    {row.alertMessage || 'N/A'}
+                    {row.alertMessage ?? 'N/A'}
                   </div>
                 </div>
               </div>

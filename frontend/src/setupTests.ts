@@ -106,7 +106,7 @@ afterAll(() => {
 // Catch and ignore specific unhandled rejections that arise from
 // environment differences (AbortSignal/undici and occasional window refs)
 const ignoreUnhandled = (reason: any) => {
-  const msg = reason?.message || String(reason);
+  const msg = reason?.message ?? String(reason);
   if (
     typeof msg === 'string' &&
     (msg.includes('Expected signal ("AbortSignal') ||

@@ -243,7 +243,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
             onClose={() => {
               setIsApproveReopenOpen(false);
             }}
-            caseId={selectedRow?.id != null ? selectedRow.id : null}
+            caseId={selectedRow?.id ?? null}
             requesterRole={undefined}
             onApprove={handleApproveReopenSubmit}
           />
@@ -257,7 +257,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
             onClose={() => {
               setIsRejectReopenOpen(false);
             }}
-            caseId={selectedRow?.id != null ? selectedRow.id : null}
+            caseId={selectedRow?.id ?? null}
             onReject={handleRejectReopenSubmit}
           />
         </Suspense>

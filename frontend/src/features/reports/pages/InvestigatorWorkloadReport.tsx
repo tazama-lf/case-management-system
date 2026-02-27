@@ -64,7 +64,7 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
     efficiencyData,
     outcomeData,
     performanceData,
-  } = workloadData || {
+  } = workloadData ?? {
     stats: {
       totalInvestigators: 0,
       avgCasesPerInvestigator: 0,

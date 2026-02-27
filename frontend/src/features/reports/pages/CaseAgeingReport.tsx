@@ -58,7 +58,7 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({ dateRange }) => {
     ageingDistribution,
     caseTypeResolution,
     caseDetails,
-  } = ageingData || {
+  } = ageingData ?? {
     stats: {
       avgCaseAge: 0,
       avgResolutionTime: 0,

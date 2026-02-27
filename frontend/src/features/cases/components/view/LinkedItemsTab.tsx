@@ -73,14 +73,14 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
         caseAlerts.forEach((alert) => {
           if (alert.transaction && typeof alert.transaction === 'object') {
             const txn = alert.transaction as Record<string, unknown>;
-            const txnId = (txn.TransactionID ||
-              txn.transaction_id ||
+            const txnId = (txn.TransactionID ??
+              txn.transaction_id ??
               txn.id) as string | undefined;
             if (txnId) {
               transactionIds.add(txnId);
               alertTransactionMap.set(txnId, {
-                label: alert.message || 'Transaction Alert',
-                description: alert.txtp || 'Suspicious activity detected',
+                label: alert.message ?? 'Transaction Alert',
+                description: alert.txtp ?? 'Suspicious activity detected',
               });
             }
           }
@@ -98,9 +98,9 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
           transactionIds,
         ).map((txnId) => ({
           id: txnId,
-          label: alertTransactionMap.get(txnId)?.label || 'Transaction',
+          label: alertTransactionMap.get(txnId)?.label ?? 'Transaction',
           description:
-            alertTransactionMap.get(txnId)?.description ||
+            alertTransactionMap.get(txnId)?.description ??
             'Related transaction',
         }));
 
