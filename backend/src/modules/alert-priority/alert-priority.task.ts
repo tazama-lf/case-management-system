@@ -14,8 +14,8 @@ export class AlertPriorityTask implements OnModuleInit {
     private readonly schedulerRegistry: SchedulerRegistry,
   ) {}
 
-  async onModuleInit() {
-    const expression = this.configService.get<string>('ALERT_PRIORITY_CRON_SCHEDULE') || '0 * * * *';
+  async onModuleInit(): Promise<void> {
+    const expression = this.configService.get<string>('ALERT_PRIORITY_CRON_SCHEDULE') ?? '0 * * * *';
     const job = new CronJob(expression, async () => {
       await this.handleAlertPriorityUpdate();
     });
@@ -23,7 +23,7 @@ export class AlertPriorityTask implements OnModuleInit {
     job.start();
   }
 
-  async handleAlertPriorityUpdate() {
+  async handleAlertPriorityUpdate(): Promise<void> {
     this.logger.log('Running alert priority update task...');
     await this.priorityService.runRecalculation();
     this.logger.log('Alert priority update task completed.');

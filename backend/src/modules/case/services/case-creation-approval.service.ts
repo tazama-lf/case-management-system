@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Outcome } from '../../../utils/types/outcome';
-import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, Alert } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, Alert, Task } from '@prisma/client-cms';
 import { ManualCreateCaseDto, CreateCaseDto } from '../dto';
 import { TaskService } from 'src/modules/task/task.service';
 import { TASK_NAMES, CANDIDATE_GROUPS, VALIDATION_LENGTHS } from '../../../constants/case.constants';
@@ -629,7 +629,11 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async completeCase(caseId: number, userId: string, tenantId: string) {
+  async completeCase(
+    caseId: number,
+    userId: string,
+    tenantId: string,
+  ): Promise<{ success: boolean; case: Case; completedTask: Task; newTask: Task }> {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) throw new BadRequestException('Only cases in DRAFT status can be completed');

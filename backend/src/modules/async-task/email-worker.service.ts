@@ -15,7 +15,7 @@ export class EmailWorkerService {
     private readonly asyncTaskService: AsyncTaskService,
     private readonly config: ConfigService,
   ) {
-    this.fromEmail = this.config.get<string>('MAIL_FROM') || '"CMS Notifications" <no-reply@cms.local>';
+    this.fromEmail = this.config.get<string>('MAIL_FROM') ?? '"CMS Notifications" <no-reply@cms.local>';
 
     const smtpHost = this.config.get<string>('SMTP_HOST');
     const smtpPort = this.config.get<string>('SMTP_PORT', '587');
@@ -147,7 +147,7 @@ export class EmailWorkerService {
   /**
    * Get worker statistics
    */
-  async getWorkerStats() {
+  getWorkerStats() {
     return {
       isProcessing: this.isProcessing,
       cronSchedule: 'Every 5 seconds',

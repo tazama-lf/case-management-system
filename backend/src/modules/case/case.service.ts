@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, InternalServerErrorException } from '@
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
-import { CaseStatus, CaseType, TaskStatus } from '@prisma/client-cms';
+import { Case, CaseStatus, CaseType, Task, TaskStatus } from '@prisma/client-cms';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -38,7 +38,15 @@ export class CaseService {
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
-  async suspendCase(caseId: number, reason: string, tasksIds: number[], userId: string, tenantId: string, authDetails: any, role: string) {
+  async suspendCase(
+    caseId: number,
+    reason: string,
+    tasksIds: number[],
+    userId: string,
+    tenantId: string,
+    authDetails: any,
+    role: string,
+  ): Promise<{ success: boolean; case: Case; task: Task[] }> {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (!role.toLowerCase().includes('supervisor')) {
@@ -52,7 +60,7 @@ export class CaseService {
     }
 
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
-    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];
+    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) || [];
 
     const investigateTask = allTasks.filter((task) => tasksIds.includes(task.task_id));
 
@@ -126,7 +134,7 @@ export class CaseService {
                 message: `Case ${caseId} has been suspended by ${caseAssignee}`,
                 metadata: {
                   caseId,
-                  actionBy: suspendedBy?.username || suspendedBy?.fullName,
+                  actionBy: suspendedBy?.username ?? suspendedBy?.fullName,
                   reason,
                 },
               });
@@ -150,7 +158,13 @@ export class CaseService {
     }
   }
 
-  async resumeCase(caseId: number, reason: string, userId: string, tenantId: string, authDetails: any) {
+  async resumeCase(
+    caseId: number,
+    reason: string,
+    userId: string,
+    tenantId: string,
+    authDetails: any,
+  ): Promise<{ success: boolean; case: Case; task: Task[] }> {
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
 
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
@@ -159,7 +173,7 @@ export class CaseService {
 
     if (existingCase.status !== CaseStatus.STATUS_21_SUSPENDED) throw new BadRequestException('Only suspended cases can be resumed');
 
-    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];
+    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) || [];
     this.logger.error(`All Tasks: ${JSON.stringify(allTasks)}`);
     // const investigateTask = allTasks.find((t) => t.name === (TASK_NAMES.INVESTIGATE_CASE || TASK_NAMES.INVESTIGATE_AML ||TASK_NAMES.INVESTIGATE_FRAUD));
     const investigateTask = allTasks.filter(
@@ -238,7 +252,7 @@ export class CaseService {
                 message: `Case ${caseId} has been resumed by ${caseAssignee}`,
                 metadata: {
                   caseId,
-                  actionBy: resumedBy?.username || resumedBy?.email,
+                  actionBy: resumedBy?.username ?? resumedBy?.email,
                   reason,
                 },
               });
@@ -264,13 +278,18 @@ export class CaseService {
     }
   }
 
-  async abandonCase(caseId: number, reason: string, userId: string, tenantId: string) {
+  async abandonCase(
+    caseId: number,
+    reason: string,
+    userId: string,
+    tenantId: string,
+  ): Promise<{ success: boolean; case: Case; task: Task }> {
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for abandonment is required');
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case doesn't exist for caseId ${caseId}`);
     if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) throw new BadRequestException('Cannot abandon case other than draft status');
 
-    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];
+    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) || [];
     const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
     if (!completeNewCaseTask) throw new BadRequestException('No complete new Case Task exists');
     if (completeNewCaseTask?.status === TaskStatus.STATUS_30_COMPLETED) {
@@ -360,7 +379,11 @@ export class CaseService {
     return await this.caseCreationApprovalService.rejectCaseCreation(caseId, supervisorId, tenantId, reason);
   }
 
-  async completeCase(caseId: number, userId: string, tenantId: string) {
+  async completeCase(
+    caseId: number,
+    userId: string,
+    tenantId: string,
+  ): Promise<{ success: boolean; case: Case; completedTask: Task; newTask: Task }> {
     return await this.caseCreationApprovalService.completeCase(caseId, userId, tenantId);
   }
 
@@ -420,7 +443,7 @@ export class CaseService {
           newStatus: targetStatus,
         });
 
-        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];
+        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) || [];
         const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
 
         if (!completeNewCaseTask) {
@@ -445,8 +468,8 @@ export class CaseService {
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
             autoCloseEligible: targetStatus === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT ? false : true,
-            caseType: updateData.caseType || existingCase.case_type!,
-            casePriority: updateData.priority || existingCase.priority,
+            caseType: updateData.caseType ?? existingCase.case_type!,
+            casePriority: updateData.priority ?? existingCase.priority,
           },
         });
 

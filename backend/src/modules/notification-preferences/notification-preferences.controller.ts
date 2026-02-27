@@ -64,10 +64,10 @@ export class NotificationPreferencesController {
     description: 'Successfully retrieved notification history',
     type: [NotificationHistoryDto],
   })
-  async getNotificationHistory(
+  getNotificationHistory(
     @User() user: JwtUser,
     @Query() query: NotificationHistoryQueryDto,
-  ): Promise<{ data: NotificationHistoryDto[]; total: number; page: number; limit: number }> {
+  ): { data: NotificationHistoryDto[]; total: number; page: number; limit: number } {
     return {
       data: [],
       total: 0,

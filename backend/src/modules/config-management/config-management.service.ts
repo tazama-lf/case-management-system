@@ -14,7 +14,7 @@ export class ConfigManagementService {
     private readonly auditLog: AuditLogService,
     private readonly logger: LoggerService,
   ) {
-    this.encryptionKey = process.env.CONFIG_ENCRYPTION_KEY || 'default-encryption-key';
+    this.encryptionKey = process.env.CONFIG_ENCRYPTION_KEY ?? 'default-encryption-key';
 
     if (this.encryptionKey.length !== 64) {
       this.logger.warn('CONFIG_ENCRYPTION_KEY should be 64 hex characters (32 bytes)');
@@ -439,7 +439,7 @@ export class ConfigManagementService {
     }
   }
 
-  private async testAlertTriageConnection(config: any): Promise<boolean> {
+  private testAlertTriageConnection(config: any): boolean {
     try {
       if (!config.endpoint_url) {
         return false;
@@ -452,7 +452,7 @@ export class ConfigManagementService {
     }
   }
 
-  private async testApiPortalConnection(config: any): Promise<boolean> {
+  private testApiPortalConnection(config: any): boolean {
     try {
       if (!config.endpoint_url) {
         return false;
@@ -465,7 +465,7 @@ export class ConfigManagementService {
     }
   }
 
-  private async testFlowableConnection(config: any): Promise<boolean> {
+  private testFlowableConnection(config: any): boolean {
     try {
       if (!config.endpoint_url) {
         return false;
@@ -478,7 +478,7 @@ export class ConfigManagementService {
     }
   }
 
-  private async testKeycloakConnection(config: any): Promise<boolean> {
+  private testKeycloakConnection(config: any): boolean {
     try {
       if (!config.endpoint_url) {
         return false;
@@ -491,7 +491,11 @@ export class ConfigManagementService {
     }
   }
 
-  async verify2FAAndApplyChange(changeId: number, twoFactorCode: string, userId: string) {
+  async verify2FAAndApplyChange(
+    changeId: number,
+    twoFactorCode: string,
+    userId: string,
+  ): Promise<{ message: string; changeId: number; config_key: string; status: string }> {
     const changeLog = await this.prisma.configurationChangeLog.findUnique({
       where: { id: changeId },
     });

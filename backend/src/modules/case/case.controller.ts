@@ -47,6 +47,7 @@ import {
 } from './dto';
 import { SimpleMessageResponseDto } from 'src/dtos/simple-message-response.dto';
 import { UserWorkloadResponseDto } from './dto/user-workload-response.dto';
+import { Case, Task } from '@prisma/client-cms';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -73,7 +74,11 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to abandon cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
-  async abandonCase(@Param('caseId') caseId: number, @Body() body: RequestAbandonCaseDto, @Req() req: AuthenticatedRequest) {
+  async abandonCase(
+    @Param('caseId') caseId: number,
+    @Body() body: RequestAbandonCaseDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ success: boolean; case: Case; task: Task }> {
     const { userId, tenantId } = extractUserData(req);
     return await this.caseService.abandonCase(caseId, body.reason, userId, tenantId);
   }
@@ -123,7 +128,11 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to suspend cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
-  async suspendCase(@Param('caseId') caseId: number, @Body() body: RequestSuspendCaseDto, @Req() req: AuthenticatedRequest) {
+  async suspendCase(
+    @Param('caseId') caseId: number,
+    @Body() body: RequestSuspendCaseDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ success: boolean; case: Case; task: Task[] }> {
     const { userId, tenantId, userInfo, role } = extractUserData(req);
     return await this.caseService.suspendCase(caseId, body.reason, body.taskIds, userId, tenantId, userInfo, role);
   }
@@ -146,7 +155,11 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid case state or missing reason' })
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to resume cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
-  async resumeCase(@Param('caseId') caseId: number, @Body() body: RequestResumeCaseDto, @Req() req: AuthenticatedRequest) {
+  async resumeCase(
+    @Param('caseId') caseId: number,
+    @Body() body: RequestResumeCaseDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ success: boolean; case: Case; task: Task[] }> {
     const { userId, tenantId, userInfo } = extractUserData(req);
     return await this.caseService.resumeCase(caseId, body.reason, userId, tenantId, userInfo);
   }
@@ -169,7 +182,10 @@ export class CaseController {
   @ApiResponse({ status: 401, description: 'Unauthorized - User lacks permission to complete cases' })
   @ApiResponse({ status: 404, description: 'Not Found - Case not found' })
   @ApiResponse({ status: 409, description: 'Conflict - Case is not in DRAFT state' })
-  async completeCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
+  async completeCase(
+    @Param('caseId') caseId: number,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ success: boolean; case: Case; completedTask: Task; newTask: Task }> {
     const { userId, tenantId } = extractUserData(req);
     return await this.caseService.completeCase(caseId, userId, tenantId);
   }
@@ -329,7 +345,7 @@ export class CaseController {
 
   @Get('user/workload')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  @ApiOperation({ summary: 'Get case workload statistics', description: "Get summary statistics of user's case workload" })
+  @ApiOperation({ summary: 'Get case workload statistics', description: 'Get summary statistics of user case workload' })
   @ApiResponse({ status: 200, description: 'Workload statistics retrieved successfully', type: UserWorkloadResponseDto })
   async getUserWorkload(@Req() req: AuthenticatedRequest) {
     const { userId, isComplianceOfficer } = extractUserData(req);

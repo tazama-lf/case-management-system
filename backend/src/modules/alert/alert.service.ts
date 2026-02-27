@@ -22,7 +22,6 @@ export class AlertService {
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationService,
     private readonly transactionDataRespository: TransactionDataRespository,
-    private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly eventLogService: EventLogService,
   ) {}
@@ -176,7 +175,24 @@ export class AlertService {
     }
   }
 
-  async getAlertActionHistory(alertId: number, tenantId: string, userId: string) {
+  async getAlertActionHistory(
+    alertId: number,
+    tenantId: string,
+    userId: string,
+  ): Promise<{
+    alertId: number;
+    tenantId: string;
+    userId: string;
+    history: {
+      event_log_id: number;
+      user_id: string;
+      operation: string;
+      entity_name: string;
+      action_performed: string;
+      outcome: string;
+      performed_at: Date;
+    } | null;
+  }> {
     const alert = await this.alertRepository.getAlertById(alertId);
 
     if (!alert) {

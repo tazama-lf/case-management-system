@@ -14,7 +14,7 @@ export class CommentService {
     private readonly commentRepository: CommentRepository,
   ) {}
 
-  async addComment(createCommentDto: CreateCommentDto, userId: string): Promise<Comment | void> {
+  async addComment(createCommentDto: CreateCommentDto, userId: string): Promise<Comment> {
     this.logger.log(`Adding comment : ${userId}`, CommentService.name);
 
     if (!createCommentDto.caseId && !createCommentDto.taskId) {
@@ -48,6 +48,7 @@ export class CommentService {
         outcome: Outcome.FAILURE,
         performedAt: new Date(),
       });
+      throw error;
     }
   }
 
