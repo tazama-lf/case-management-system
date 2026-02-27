@@ -363,10 +363,6 @@ export class FlowableService implements OnModuleInit {
     await this.taskEventListener.handleTaskUnassigned(event);
   }
 
-  async handleSuspendCase(event: CaseSuspendedEvent) {
-    this.caseEventListener.handleSuspendCase(event);
-  }
-
   async handleGetTasksByAssignee(assignee: string) {
     return await this.identityService.getTasksAssignedToUser(assignee);
   }

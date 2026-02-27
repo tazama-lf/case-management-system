@@ -13,9 +13,6 @@ export class CaseEventListener {
     // private readonly bpmnSyncService: BpmnSyncService,
   ) {}
 
-  @OnEvent('case.created')
-  async handleCaseCreated(event: CaseCreatedEvent) {}
-
   @OnEvent('case.status.changed')
   async handleCaseStatusChanged(event: CaseStatusChangedEvent) {
     this.logger.log(`Start - Update Case Status for case ${event.caseId} to status ${event.newStatus}`, CaseEventListener.name);
@@ -53,10 +50,5 @@ export class CaseEventListener {
     } catch (error) {
       throw error;
     }
-  }
-
-  @OnEvent('case.suspended')
-  async handleSuspendCase(event: CaseSuspendedEvent) {
-    // Empty handler for future use
   }
 }
