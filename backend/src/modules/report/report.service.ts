@@ -226,10 +226,10 @@ export class ReportsService {
       }
     });
 
-    const caseTypes = typeCounts.map(({ case_type, _count }) => ({
-      name: case_type ?? 'NONE',
+    const caseTypes = typeCounts.map(({ case_type: caseType, _count }) => ({
+      name: caseType ?? 'NONE',
       count: _count.case_id,
-      color: this.getCaseTypeColor(case_type),
+      color: this.getCaseTypeColor(caseType),
     }));
 
     const outcomeCountsWhere: any = {
@@ -433,13 +433,13 @@ export class ReportsService {
     });
 
     const workloadData = await Promise.all(
-      investigators.map(async ({ case_owner_user_id }) => {
-        if (!case_owner_user_id) return null;
+      investigators.map(async ({ case_owner_user_id: caseOwnerUserId }) => {
+        if (!caseOwnerUserId) return null;
 
         const [activeCases, pendingTasks] = await Promise.all([
           this.prisma.case.count({
             where: {
-              case_owner_user_id,
+              case_owner_user_id: caseOwnerUserId,
               created_at: {
                 gte: startDate,
                 lte: endDate,
@@ -457,7 +457,7 @@ export class ReportsService {
           }),
           this.prisma.task.count({
             where: {
-              assigned_user_id: case_owner_user_id,
+              assigned_user_id: caseOwnerUserId,
               status: {
                 in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
               },
@@ -466,8 +466,8 @@ export class ReportsService {
         ]);
 
         return {
-          investigatorId: case_owner_user_id,
-          name: `User ${case_owner_user_id}`,
+          investigatorId: caseOwnerUserId,
+          name: `User ${caseOwnerUserId}`,
           activeCases,
           pendingTasks,
         };
@@ -477,12 +477,12 @@ export class ReportsService {
     const validWorkloadData = workloadData.filter(Boolean);
 
     const efficiencyData = await Promise.all(
-      investigators.map(async ({ case_owner_user_id }) => {
-        if (!case_owner_user_id) return null;
+      investigators.map(async ({ case_owner_user_id: caseOwnerUserId }) => {
+        if (!caseOwnerUserId) return null;
 
         const cases = await this.prisma.case.findMany({
           where: {
-            case_owner_user_id,
+            case_owner_user_id: caseOwnerUserId,
             created_at: {
               gte: startDate,
               lte: endDate,
@@ -512,20 +512,20 @@ export class ReportsService {
             : 0;
 
         return {
-          name: case_owner_user_id,
+          name: caseOwnerUserId,
           avgDays: Math.round(avgResolutionDays),
         };
       }),
     );
 
     const outcomeData = await Promise.all(
-      investigators.map(async ({ case_owner_user_id }) => {
-        if (!case_owner_user_id) return null;
+      investigators.map(async ({ case_owner_user_id: caseOwnerUserId }) => {
+        if (!caseOwnerUserId) return null;
 
         const [confirmed, refuted, inconclusive] = await Promise.all([
           this.prisma.case.count({
             where: {
-              case_owner_user_id,
+              case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
               status: {
                 in: [CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED, CaseStatus.STATUS_82_CLOSED_CONFIRMED],
@@ -534,7 +534,7 @@ export class ReportsService {
           }),
           this.prisma.case.count({
             where: {
-              case_owner_user_id,
+              case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
               status: {
                 in: [CaseStatus.STATUS_72_AUTOCLOSED_REFUTED, CaseStatus.STATUS_81_CLOSED_REFUTED],
@@ -543,7 +543,7 @@ export class ReportsService {
           }),
           this.prisma.case.count({
             where: {
-              case_owner_user_id,
+              case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
               status: CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
             },
@@ -551,7 +551,7 @@ export class ReportsService {
         ]);
 
         return {
-          name: case_owner_user_id,
+          name: caseOwnerUserId,
           confirmed,
           refuted,
           inconclusive,
@@ -560,19 +560,19 @@ export class ReportsService {
     );
 
     const performanceData = await Promise.all(
-      investigators.map(async ({ case_owner_user_id }) => {
-        if (!case_owner_user_id) return null;
+      investigators.map(async ({ case_owner_user_id: caseOwnerUserId }) => {
+        if (!caseOwnerUserId) return null;
 
         const [totalCases, activeCases, closedCases, pendingTasks, closedCasesWithTimes] = await Promise.all([
           this.prisma.case.count({
             where: {
-              case_owner_user_id,
+              case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
             },
           }),
           this.prisma.case.count({
             where: {
-              case_owner_user_id,
+              case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
               status: {
                 notIn: [
@@ -587,7 +587,7 @@ export class ReportsService {
           }),
           this.prisma.case.count({
             where: {
-              case_owner_user_id,
+              case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
               status: {
                 in: [
@@ -602,7 +602,7 @@ export class ReportsService {
           }),
           this.prisma.task.count({
             where: {
-              assigned_user_id: case_owner_user_id,
+              assigned_user_id: caseOwnerUserId,
               status: {
                 in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
               },
@@ -610,7 +610,7 @@ export class ReportsService {
           }),
           this.prisma.case.findMany({
             where: {
-              case_owner_user_id,
+              case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
               status: {
                 in: [
@@ -640,8 +640,8 @@ export class ReportsService {
         const completionRate = totalCases > 0 ? Math.round((closedCases / totalCases) * 100) : 0;
 
         return {
-          investigatorId: case_owner_user_id,
-          investigator: `User ${case_owner_user_id}`,
+          investigatorId: caseOwnerUserId,
+          investigator: `User ${caseOwnerUserId}`,
           role: 'Investigator',
           totalCases,
           activeCases,
@@ -665,12 +665,12 @@ export class ReportsService {
 
       const monthData = { month: monthLabel, investigators: {} };
 
-      for (const { case_owner_user_id } of investigators) {
-        if (!case_owner_user_id) continue;
+      for (const { case_owner_user_id: caseOwnerUserId } of investigators) {
+        if (!caseOwnerUserId) continue;
 
         const caseCount = await this.prisma.case.count({
           where: {
-            case_owner_user_id,
+            case_owner_user_id: caseOwnerUserId,
             created_at: {
               gte: monthStart,
               lte: monthEnd,
@@ -678,7 +678,7 @@ export class ReportsService {
           },
         });
 
-        monthData.investigators[case_owner_user_id] = caseCount;
+        monthData.investigators[caseOwnerUserId] = caseCount;
       }
 
       volumeTrend.push(monthData);

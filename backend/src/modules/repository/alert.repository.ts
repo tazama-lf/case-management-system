@@ -71,7 +71,7 @@ export class AlertRepository extends BaseRepository {
     return transactionRecord;
   }
 
-  async getAlertById(alertId: number, tx?: Prisma.TransactionClient): Promise<Alert> {
+  async getAlertById(alertId: number, tx?: Prisma.TransactionClient): Promise<Alert | null> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     const alert = await client.alert.findUnique({
       where: { alert_id: alertId },

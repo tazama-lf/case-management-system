@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { IngestAlertDto } from './dto/IngestAlert.dto';
@@ -29,7 +29,7 @@ export class AlertService {
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number): Promise<Alert | null> {
     this.loggerService.log('Start - Alert Creation', AlertService.name);
     const txtp = alert.transaction.TxTp;
-    alert.message = alert.message ?? 'Suspicious activity detected';
+    const message = alert.message || 'Suspicious activity detected';
     try {
       await this.alertRepository.createTransaction(tenantId, alert.transaction);
       const newAlert = await this.alertRepository.createAlert({
@@ -37,7 +37,7 @@ export class AlertService {
         priority: Priority.NEW,
         source,
         txtp,
-        message: alert.message,
+        message,
         report: alert.report,
         transaction: alert.transaction,
         networkMap: alert.networkMap,
@@ -125,32 +125,45 @@ export class AlertService {
     alertId: number,
   ): Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>> {
     this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
-    if (alertId === null) {
-      throw new BadRequestException('AlertID is missing');
-    }
 
     const alert = await this.alertRepository.getAlertById(alertId);
-    this.loggerService.log(`alert:  ${JSON.stringify(alert)}`, AlertService.name);
-    if (alert) {
-      this.loggerService.log(`Alert txtp:  ${alert.txtp}`, AlertService.name);
-      const referenceIdData = await this.alertRepository.getReferenceId(alert.txtp);
-      this.loggerService.log(`ReferenceId:  ${referenceIdData.referenceIdName}`, AlertService.name);
-      const referenceId = extractReferenceId(alert.transaction as unknown as JsonValue, 10, 0, referenceIdData.referenceIdName);
-      if (!referenceId) {
-        throw new Error('ReferenceId not found in transaction data');
-      }
-      this.loggerService.log(`referenceId: ${referenceId}`, AlertService.name);
-      const transactionData = await this.transactionDataRespository.getTransactionalData(referenceId);
-      this.loggerService.log(`transactionData:  ${JSON.stringify(transactionData)}`, AlertService.name);
-      if (!transactionData) throw new InternalServerErrorException(`transactionData not found for AlertId ${alertId}`);
-
-      return transactionData;
-    } else {
+    if (!alert) {
       throw new InternalServerErrorException(`Unable to fetch details for AlertId ${alertId}`);
     }
+
+    const referenceIdData = await this.alertRepository.getReferenceId(alert.txtp);
+    const referenceId = extractReferenceId(alert.transaction as unknown as JsonValue, 10, 0, referenceIdData.referenceIdName);
+    if (!referenceId) {
+      throw new Error('ReferenceId not found in transaction data');
+    }
+    const transactionData = await this.transactionDataRespository.getTransactionalData(referenceId);
+    if (!transactionData) throw new InternalServerErrorException(`transactionData not found for AlertId ${alertId}`);
+
+    return transactionData;
   }
 
-  async getAlertDetails(alertId: number, tenantId: string, userId: string) {
+  async getAlertDetails(
+    alertId: number,
+    tenantId: string,
+    userId: string,
+  ): Promise<{
+    priority: Priority | null;
+    source: string | null;
+    created_at: Date;
+    alert_id: number | null;
+    priority_score: number | null;
+    alert_type: string | null;
+    prediction_outcome: string | null;
+    txtp: string;
+    message: string;
+    alert_data: Prisma.JsonValue;
+    transaction: Prisma.JsonValue;
+    network_map: Prisma.JsonValue;
+    confidence_per: number;
+    block_status: string | null;
+    block_reason: string | null;
+    case_id: number | null;
+  } | null> {
     try {
       const alert = await this.alertRepository.getAlertById(alertId);
 
@@ -164,7 +177,7 @@ export class AlertService {
 
       this.loggerService.log(`Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`, AlertService.name);
 
-      const { tenant_id, ...sanitizedAlert } = alert;
+      const { tenant_id: tenantIdDb, ...sanitizedAlert } = alert;
       return sanitizedAlert;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;

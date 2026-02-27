@@ -124,8 +124,8 @@ export class CaseCreationService {
   }
 
   private async executeFlowableCaseCreationEvent(createdCase: Case, createCaseDTO: CreateCaseDto, maxAttempts = 3): Promise<void> {
-    const flowableCaseCreation = () => {
-      this.flowableService.handleCaseCreated({
+    const flowableCaseCreation = (): Promise<void> => {
+      return this.flowableService.handleCaseCreated({
         caseId: createdCase.case_id,
         tenantId: createdCase.tenant_id,
         caseStatus: createdCase.status,

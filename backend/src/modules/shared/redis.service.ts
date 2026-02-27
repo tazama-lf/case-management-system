@@ -9,11 +9,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private readonly configService: ConfigService) {}
 
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     await this.connectRedis();
   }
 
-  async onModuleDestroy() {
+  async onModuleDestroy(): Promise<void> {
     if (this.client) {
       await this.client.disconnect();
       this.logger.log('Redis client disconnected', RedisService.name);
