@@ -349,8 +349,8 @@ export class CaseService {
     return await this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId, tenantId);
   }
 
-  async manualCaseCreate(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
-    return await this.caseCreationApprovalService.manualCaseCreate(dto, userId, tenantId, role);
+  async manualCaseCreation(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
+    return await this.caseCreationApprovalService.manualCaseCreation(dto, userId, tenantId, role);
   }
   async approveCaseCreation(caseId: number, supervisorId: string, tenantId: string) {
     return await this.caseCreationApprovalService.approveCaseCreation(caseId, supervisorId, tenantId);
