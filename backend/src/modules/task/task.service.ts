@@ -19,7 +19,7 @@ export class TaskService {
     private readonly eventEmitter: EventEmitter2,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+  ) { }
 
   async createTask(taskDTO: CreateTaskDto, userId: string, tenantId: string, tx?: Prisma.TransactionClient): Promise<Task> {
     this.logger.log('Start - createTask', TaskService.name);
@@ -85,7 +85,7 @@ export class TaskService {
         const updateInput: Prisma.TaskUpdateInput = {
           status: updateData.status,
           assigned_user_id:
-            updateData.assignedUserId === existingTask.assigned_user_id ? existingTask.assigned_user_id : updateData.assignedUserId,
+            updateData.assignedUserId === existingTask.assigned_user_id ? existingTask.assigned_user_id : userId,
           investigationNotes: updateData.investigationNotes,
         };
 
@@ -248,10 +248,10 @@ export class TaskService {
       const statusFilter = includeCompleted
         ? {}
         : {
-            status: {
-              not: TaskStatus.STATUS_30_COMPLETED,
-            },
-          };
+          status: {
+            not: TaskStatus.STATUS_30_COMPLETED,
+          },
+        };
 
       return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, tenantId, true);
     } catch (error) {
