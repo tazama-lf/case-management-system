@@ -15,7 +15,14 @@ import type { Priority, AlertType } from '../components/CreateCaseModal';
 import { useAuth } from '../../auth/components/AuthContext';
 import { useToast } from '../../../shared/providers/ToastProvider';
 
-export const useCaseData = () => {
+export const useCaseData = (): {
+  cases: CaseRow[];
+  setCases: React.Dispatch<React.SetStateAction<CaseRow[]>>;
+  loading: boolean;
+  errorState: string | null;
+  fetchCases: (statusFilter?: string, priorityFilter?: string, sortBy?: 'recent' | 'oldest') => Promise<void>;
+  refreshCases: (statusFilter?: string, priorityFilter?: string, sortBy?: 'recent' | 'oldest') => Promise<void>;
+} => {
   const { hasInvestigatorRole, hasSupervisorRole, hasAdminRole } = useAuth();
 
   const [cases, setCases] = useState<CaseRow[]>([]);
@@ -187,7 +194,7 @@ export const useCaseActions = (
     }
   };
 
-  const handleReopenSubmit = async (caseId: number, reason: string) => {
+  const handleReopenSubmit = async (caseId: number, reason: string): Promise<void> => {
     try {
       const reopenCaseData = {
         reason: reason.trim(),
@@ -233,7 +240,7 @@ The case may have been deleted or moved.`;
     }
   };
 
-  const handleAbandonSubmit = async (caseId: number, reason: string) => {
+  const handleAbandonSubmit = async (caseId: number, reason: string): Promise<void> => {
     try {
       const abandonCaseData: AbandonCaseDto = {
         reason: reason.trim(),
@@ -349,7 +356,7 @@ The case may have been deleted or moved.`;
     }
   };
 
-  const handleResumeSubmit = async (caseId: number, reason: string) => {
+  const handleResumeSubmit = async (caseId: number, reason: string): Promise<void> => {
     try {
       const resumeCaseData = {
         reason: reason.trim(),
@@ -544,7 +551,7 @@ Please verify that:
     }
   };
 
-  const handleApproveCreationSubmit = async (caseId: number) => {
+  const handleApproveCreationSubmit = async (caseId: number): Promise<void> => {
     try {
       const approvedCase = await caseService.approveCaseCreation(caseId);
 

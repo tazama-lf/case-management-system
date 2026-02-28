@@ -21,7 +21,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = (): void => {
       try {
         const storedToken = authService.getToken();
         const storedUser = authService.getUser();
@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
+    const handleStorageChange = (e: StorageEvent): void => {
       // Another tab logged out
       if (e.key === 'ACTIVE_SESSION_KEY' && !e.newValue) {
         logout();

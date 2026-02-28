@@ -4,7 +4,11 @@ import {
 } from '../services/caseService';
 import { useToast } from '../../../shared/providers/ToastProvider';
 
-export const useApproveCaseActions = (refreshCases: () => Promise<void>) => {
+export const useApproveCaseActions = (refreshCases: () => Promise<void>): {
+  handleApproveClosureSubmit: (caseId: number, finalOutcome: 'STATUS_81_CLOSED_REFUTED' | 'STATUS_82_CLOSED_CONFIRMED' | 'STATUS_83_CLOSED_INCONCLUSIVE', supervisorComments?: string) => Promise<void>;
+  handleApproveCreation: (caseId: number) => Promise<void>;
+  handleApproveReopening: (caseId: number) => Promise<void>;
+} => {
   const { success, error } = useToast();
 
   const handleApproveClosureSubmit = async (

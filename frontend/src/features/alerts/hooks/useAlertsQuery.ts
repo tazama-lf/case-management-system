@@ -9,6 +9,7 @@ import type {
   AlertsFilter,
   ManualTriageDto,
   AlertStatus,
+  ActionHistory,
 } from '../types/triage.types';
 
 export const alertsQueryKeys = {
@@ -23,7 +24,16 @@ export const alertsQueryKeys = {
   filterOptions: () => [...alertsQueryKeys.all, 'filterOptions'] as const,
 };
 
-export const useAlerts = (filters: AlertsFilter = {}) => {
+export const useAlerts = (filters: AlertsFilter = {}): {
+  alerts: Alert[];
+  pagination: { currentPage: number; totalPages: number; totalItems: number; pageSize: number };
+  isLoading: boolean;
+  isFetching: boolean;
+  isError: boolean;
+  error: Error | null;
+  refetch: () => void;
+  refreshAlerts: () => void;
+} => {
   const [debouncedSearch] = useDebounce(filters.search, 300);
 
   const debouncedFilters = useMemo(
@@ -61,7 +71,12 @@ export const useAlerts = (filters: AlertsFilter = {}) => {
   };
 };
 
-export const useAlertDetails = (alertId: number | null) => {
+export const useAlertDetails = (alertId: number | null): {
+  alert: Alert | undefined;
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => void;
+} => {
   const {
     data: alert,
     isLoading,
@@ -82,7 +97,11 @@ export const useAlertDetails = (alertId: number | null) => {
   };
 };
 
-export const useAlertActionHistory = (alertId: number | null) => {
+export const useAlertActionHistory = (alertId: number | null): {
+  actionHistory: ActionHistory[];
+  isLoading: boolean;
+  error: Error | null;
+} => {
   const {
     data: actionHistory,
     isLoading,
@@ -101,7 +120,15 @@ export const useAlertActionHistory = (alertId: number | null) => {
   };
 };
 
-export const useAlertOperations = () => {
+export const useAlertOperations = (): {
+  closeAlert: (variables: { alertId: number; status: AlertStatus; notes: string }) => void;
+  updateAlert: (variables: { alertId: number; data: Record<string, unknown> }) => void;
+  performManualTriage: (variables: { alertId: number; data: ManualTriageDto }) => void;
+  isClosingAlert: boolean;
+  isUpdatingAlert: boolean;
+  isPerformingManualTriage: boolean;
+  operationStates: { closingAlert: Set<string>; updatingAlert: Set<string>; performingManualTriage: Set<string>; loadingDetails: Set<string> };
+} => {
   const queryClient = useQueryClient();
   const { showError } = useNotifications();
 
@@ -147,8 +174,6 @@ export const useAlertOperations = () => {
       data: Record<string, unknown>;
     }) => await triageService.updateAlert(alertId, data),
     onSuccess: (data, variables) => {
-      // showSuccess('Alert updated successfully');
-      // Invalidate all alert lists to refetch with latest data
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
       // Refetch the specific alert detail
       queryClient.invalidateQueries({
@@ -214,7 +239,11 @@ export const useAlertOperations = () => {
   };
 };
 
-export const useAlertFilterOptions = () => {
+export const useAlertFilterOptions = (): {
+  filterOptions: { priorities: string[]; alertTypes: string[]; sources: string[] };
+  isLoading: boolean;
+  error: null;
+} => {
   const filterOptions = {
     priorities: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
     alertTypes: ['FRAUD', 'AML', 'FRAUD_AND_AML'],

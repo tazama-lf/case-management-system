@@ -12,7 +12,7 @@ export interface FiltersData {
   investigators: FilterOption[];
 }
 
-export const useFilters = () =>
+export const useFilters = (): ReturnType<typeof useQuery<FiltersData>> =>
   useQuery<FiltersData>({
     queryKey: ['reports', 'filters'],
     queryFn: async () => {

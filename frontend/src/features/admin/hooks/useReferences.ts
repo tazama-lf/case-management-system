@@ -3,7 +3,15 @@ import referenceIdService from '../services/referenceIdService';
 import type { ReferenceIdsData } from '../types/admindashboard.types';
 import { useToast } from '../../../shared/providers/ToastProvider';
 
-export const useReferenceLookup = () => {
+export const useReferenceLookup = (): {
+  results: ReferenceIdsData[];
+  loading: boolean;
+  pagination: { currentPage: number; pageSize: number; totalItems: number };
+  fetchReferences: () => Promise<void>;
+  addReference: (txnType: string, referenceId: string) => Promise<void>;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+} => {
   const [results, setResults] = useState<ReferenceIdsData[]>([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({
@@ -65,6 +73,7 @@ export const useReferenceLookup = () => {
     results,
     loading,
     pagination,
+    fetchReferences,
     addReference,
     onPageChange,
     onPageSizeChange,

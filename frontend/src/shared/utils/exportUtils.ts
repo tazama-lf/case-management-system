@@ -20,7 +20,7 @@ export const exportToExcel = (
   data: ExportData[],
   filename: string,
   sheetName = 'Data',
-) => {
+): void => {
   try {
     if (!data || data.length === 0) {
       throw new Error('No data to export');
@@ -54,7 +54,7 @@ export const exportToExcel = (
   }
 };
 
-export const exportToCSV = (data: ExportData[], filename: string) => {
+export const exportToCSV = (data: ExportData[], filename: string): void => {
   try {
     if (!data || data.length === 0) {
       throw new Error('No data to export');
@@ -94,7 +94,7 @@ export const exportToPDF = async (
   filename: string,
   title: string,
   columns: TableColumn[],
-) => {
+): Promise<void> => {
   try {
     if (!data || data.length === 0) {
       throw new Error('No data to export');

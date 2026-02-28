@@ -4,7 +4,9 @@ import {
 } from '../services/caseService';
 import { useToast } from '../../../shared/providers/ToastProvider';
 
-export const useReturnCaseActions = (refreshCases: () => Promise<void>) => {
+export const useReturnCaseActions = (refreshCases: () => Promise<void>): {
+  handleReturnForReview: (caseId: number, reviewComments: string) => Promise<void>;
+} => {
   const { success, error } = useToast();
 
   const handleReturnForReview = async (

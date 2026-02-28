@@ -5,7 +5,11 @@ import {
 } from '../services/caseService';
 import { useToast } from '../../../shared/providers/ToastProvider';
 
-export const useRejectCaseActions = (refreshCases: () => Promise<void>) => {
+export const useRejectCaseActions = (refreshCases: () => Promise<void>): {
+  handleRejectCaseCreation: (caseId: number, reason: string) => Promise<void>;
+  handleRejectCase: (caseId: number, rejectionReason: string) => Promise<void>;
+  handleRejectReopening: (caseId: number, rejectionReason: string) => Promise<void>;
+} => {
   const { success, error } = useToast();
 
   const handleRejectCaseCreation = async (caseId: number, reason: string) => {

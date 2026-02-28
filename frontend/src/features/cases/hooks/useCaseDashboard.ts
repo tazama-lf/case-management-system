@@ -42,7 +42,39 @@ export interface CaseDashboardState {
   permissions: CaseDashboardPermissions;
 }
 
-export const useCaseDashboard = () => {
+export const useCaseDashboard = (): {
+  dashboardState: CaseDashboardState;
+  modalState: CaseModalState;
+  dashboardActions: {
+    handleView: (row: CaseRow) => void;
+    handleComplete: (row: CaseRow) => void;
+    handleCloseCase: (row: CaseRow) => void;
+    handleReopenCase: (row: CaseRow) => void;
+    handleAbandonCase: (row: CaseRow) => void;
+    handleSuspendCase: (row: CaseRow) => void;
+    handleResumeCase: (row: CaseRow) => void;
+    handleRejectCase: (row: CaseRow) => void;
+    handleApproveCase: (row: CaseRow) => void;
+    handleApproveCaseCreation: (row: CaseRow) => void;
+    handleRejectCaseCreation: (row: CaseRow) => void;
+    handleApproveCaseReopen: (row: CaseRow) => void;
+    handleRejectCaseReopen: (row: CaseRow) => void;
+    handleCreateNew: () => void;
+  };
+  filterActions: {
+    setSearch: React.Dispatch<React.SetStateAction<string>>;
+    setSortBy: React.Dispatch<React.SetStateAction<'recent' | 'oldest'>>;
+    setStatusFilter: React.Dispatch<React.SetStateAction<string>>;
+    setPriorityFilter: React.Dispatch<React.SetStateAction<string>>;
+    setSarStrStatusFilter: React.Dispatch<React.SetStateAction<string>>;
+    setCaseTypeFilter: React.Dispatch<React.SetStateAction<'all' | 'draft' | 'closed'>>;
+  };
+  modalActions: CaseModalActions;
+  caseActions: ReturnType<typeof useCaseActions>;
+  setCurrentPage: (page: number) => void;
+  setPageSize: (size: number) => void;
+  refreshCases: () => Promise<void>;
+} => {
   const { hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole } = useAuth();
   const { error } = useToast();
   const { params, navigate } = useDynamicRoute();
@@ -163,17 +195,19 @@ export const useCaseDashboard = () => {
   }, [fetchCases]);
 
   useEffect(() => {
-    const caseId = Number(params.caseId);
-    if (caseId && cases.length > 0) {
-      const caseToView = cases.find((c) => c.id === caseId);
-      if (caseToView) {
-        setSelectedRow(caseToView);
-        setIsViewOpen(true);
-      } else {
-        navigate('/cases');
+    if (typeof params === 'object' && params && 'caseId' in params) {
+      const caseId = Number(params.caseId);
+      if (caseId && cases.length > 0) {
+        const caseToView = cases.find((c) => c.id === caseId);
+        if (caseToView) {
+          setSelectedRow(caseToView);
+          setIsViewOpen(true);
+        } else {
+          navigate('/cases');
+        }
       }
     }
-  }, [cases, params.caseId, navigate, error]);
+  }, [cases, params, navigate, error]);
 
   const totalItems = backendTotalItems;
   const totalPages = backendTotalPages;

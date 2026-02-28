@@ -54,18 +54,18 @@ export const usePagination = <T>({
     return range;
   }, [currentPage, totalPages]);
 
-  const setItemsPerPage = (items: number) => {
+  const setItemsPerPage = (items: number): void => {
     setItemsPerPageState(items);
     setCurrentPage(1);
   };
 
-  const goToFirstPage = () => {
+  const goToFirstPage = (): void => {
     setCurrentPage(1);
   };
-  const goToLastPage = () => {
+  const goToLastPage = ():void => {
     setCurrentPage(totalPages);
   };
-  const goToNextPage = () => {
+  const goToNextPage = (): void => {
     setCurrentPage(Math.min(currentPage + 1, totalPages));
   };
   const goToPreviousPage = () => {

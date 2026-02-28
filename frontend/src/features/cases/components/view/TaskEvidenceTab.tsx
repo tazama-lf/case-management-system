@@ -201,7 +201,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     [sectionFiles],
   );
 
-  const UploadEvidence = async () => {
+  const UploadEvidence = async (): Promise<void> => {
     if (!taskId) return;
 
     const sectionsToUpload = Object.entries(sectionFiles).filter(
@@ -256,11 +256,11 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     }
   };
 
-  const toggleSection = (key: string) => {
+  const toggleSection = (key: string): void => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const loadEvidence = React.useCallback(async () => {
+  const loadEvidence = React.useCallback(async (): Promise<void> => {
     if (!taskId) return;
 
     setLoading(true);
@@ -302,7 +302,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     loadEvidence();
   }, [loadEvidence]);
 
-  const handleUploadEvidence = async () => {
+  const handleUploadEvidence = async (): Promise<void> => {
     if (!taskId) {
       throw new Error('No task ID available');
     }
@@ -384,7 +384,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     }
   }, [onSaveRequest, sectionFiles, sectionComments, taskId]);
 
-  const handleAttachClick = (sectionKey: string) => {
+  const handleAttachClick = (sectionKey: string): void => {
     const input = fileInputRefs.current[sectionKey];
 
     if (input) {
@@ -421,12 +421,12 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
 
     const sanitizedFiles: File[] = Array.from(fileList)
       .map(
-        (file) =>
+        (file): File =>
           new File([file], file.name.replace(/[^\w.\-() ]+/gu, '_'), {
             type: file.type,
           }),
       )
-      .filter((file) => {
+      .filter((file): boolean => {
         const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
         if (!allowedFileTypes[sectionKey]?.includes(ext)) {
           error(`File type not allowed for ${sectionKey}: ${file.name}`);
@@ -450,7 +450,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const handleFileChange = (
     event: React.ChangeEvent<HTMLInputElement>,
     sectionKey: string,
-  ) => {
+  ): void => {
     if (event.target.files && event.target.files.length > 0) {
       handleFilesSelected(sectionKey, event.target.files);
 

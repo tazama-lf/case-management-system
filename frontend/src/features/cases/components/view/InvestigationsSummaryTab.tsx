@@ -72,7 +72,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
 
     });
 
-  const loadEvidence = React.useCallback(async () => {
+  const loadEvidence = React.useCallback(async (): Promise<void> => {
     if (!currentTaskId) return;
     const evidenceResponse = await evidenceService.getTaskEvidence(currentTaskId);
 
@@ -154,7 +154,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     return 'text-blue-700 bg-blue-50';
   };
 
-  const toggleCategory = (categoryType: string) => {
+  const toggleCategory = (categoryType: string): void => {
     const newExpanded = new Set(expandedCategories);
     if (newExpanded.has(categoryType)) {
       newExpanded.delete(categoryType);
@@ -164,7 +164,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     setExpandedCategories(newExpanded);
   };
 
-  const handleCompleteTask = async (task: any, _notes?: string) => {
+  const handleCompleteTask = async (task: any, _notes?: string): Promise<void> => {
     try {
       const taskIdToComplete = task.task_id ?? task.id;
       await taskService.updateTaskForSupervisor(taskIdToComplete, {
@@ -195,7 +195,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     }
   };
 
-  const handleDownloadEvidence = async (evidenceId: string, fileName: string) => {
+  const handleDownloadEvidence = async (evidenceId: string, fileName: string): Promise<void> => {
     try {
       setDownloadingId(evidenceId.toString());
       const blob = await evidenceService.downloadEvidence(evidenceId);
@@ -237,7 +237,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
 
   useEffect(() => {
     if (!currentTaskId) return;
-    const fetchCaseAndEvidence = async () => {
+    const fetchCaseAndEvidence = async (): Promise<void> => {
       try {
         setLoading(true);
         const details = await caseService.getCaseDetails(caseId);

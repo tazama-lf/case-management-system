@@ -111,7 +111,7 @@ export const FINAL_OUTCOMES = [
 
 export type FinalOutcomeType = typeof FINAL_OUTCOMES[number]['value'];
 
-const getUserRole = () => {
+const getUserRole = (): string => {
   try {
     const token = localStorage.getItem('authToken');
     if (token) {
@@ -236,7 +236,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   }, [selectedOutcome]);
 
   useEffect(() => {
-    const checkTaskCompletion = async () => {
+    const checkTaskCompletion = async (): Promise<void> => {
       if (!open || !caseId) return;
 
       setCheckingTasks(true);
@@ -267,7 +267,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     setExecutiveSummary(buildExecutiveSummary());
   }, [finalOutcome, caseData?.createdOn, caseData?.case_type]);
 
-  const buildExecutiveSummary = () => {
+  const buildExecutiveSummary = (): string => {
     const createdDate = caseData?.createdOn ? formatDate(caseData.createdOn) : 'N/A';
     const caseType = caseData?.case_type ?? 'Investigation';
     const outcome = finalOutcome ?? 'Under Review';
@@ -533,7 +533,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     },
   };
 
-  const handleApproveClick = () => {
+  const handleApproveClick = (): void => {
     setShowApprovalConfirm(true);
   };
 
@@ -552,7 +552,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       }
     });
 
-  const handleGenerateReport = () => {
+  const handleGenerateReport = (): void => {
     if (!isReportReady) return;
 
     setIsGenerating(true);
@@ -564,7 +564,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   };
 
 
-  const handleFinalize = async () => {
+  const handleFinalize = async (): Promise<void> => {
     setShowApprovalConfirm(false);
     setIsFinalizing(true);
 
@@ -624,7 +624,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     }
   };
 
-  const handleClose = () => {
+  const handleClose = (): void => {
     setStep('initial');
     setIsGenerating(false);
     onClose();

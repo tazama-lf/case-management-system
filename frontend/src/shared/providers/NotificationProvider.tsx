@@ -32,7 +32,7 @@ interface NotificationProviderProps {
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   children,
 }) => {
-  const showSuccess = (message: string, options?: ToastOptions) => {
+  const showSuccess = (message: string, options?: ToastOptions): void => {
     toast.success(message, {
       duration: 4000,
       position: 'top-right',
@@ -40,7 +40,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     });
   };
 
-  const showError = (message: string, options?: ToastOptions) => {
+  const showError = (message: string, options?: ToastOptions): void => {
     toast.error(message, {
       duration: 6000,
       position: 'top-right',
@@ -48,7 +48,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     });
   };
 
-  const showWarning = (message: string, options?: ToastOptions) => {
+  const showWarning = (message: string, options?: ToastOptions): void => {
     toast(message, {
       duration: 5000,
       position: 'top-right',
@@ -61,7 +61,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     });
   };
 
-  const showInfo = (message: string, options?: ToastOptions) => {
+  const showInfo = (message: string, options?: ToastOptions): void => {
     toast(message, {
       duration: 4000,
       position: 'top-right',
@@ -79,7 +79,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
       position: 'top-right',
     });
 
-  const dismiss = (toastId: string) => {
+  const dismiss = (toastId: string): void => {
     toast.dismiss(toastId);
   };
 

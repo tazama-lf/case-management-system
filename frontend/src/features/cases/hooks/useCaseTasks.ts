@@ -2,7 +2,12 @@ import { useState, useCallback, useEffect } from 'react';
 import { taskService } from '../services/taskService';
 import type { TaskForSupervisor } from '../services/taskService';
 
-export const useCaseTasks = (caseId?: number) => {
+export const useCaseTasks = (caseId?: number): {
+  tasks: TaskForSupervisor[];
+  loading: boolean;
+  error: string | null;
+  fetchTasks: () => Promise<void>;
+} => {
   const [tasks, setTasks] = useState<TaskForSupervisor[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

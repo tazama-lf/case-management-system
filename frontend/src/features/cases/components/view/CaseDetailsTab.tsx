@@ -100,7 +100,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   }, [row.id]);
 
   // Extract transaction data
-  const getTransactionData = () => {
+  const getTransactionData = (): Record<string, unknown> | null => {
     if (!row.transaction) return null;
 
     try {
@@ -130,7 +130,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     return typeof current === 'string' ? current : 'N/A';
   };
 
-  const escapeHtml = (unsafe: string) =>
+  const escapeHtml = (unsafe: string): string =>
     unsafe
       .replace(/&/gu, '&amp;')
       .replace(/</gu, '&lt;')
@@ -138,7 +138,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       .replace(/"/gu, '&quot;')
       .replace(/'/gu, '&#039;');
 
-  const syntaxHighlightJson = (obj: unknown) => {
+  const syntaxHighlightJson = (obj: unknown): string => {
     const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
     const escaped = escapeHtml(String(json));
 
@@ -162,7 +162,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   };
 
   React.useEffect(() => {
-    const fetchTransactionData = async () => {
+    const fetchTransactionData = async (): Promise<void> => {
       if (!row?.alertId) return;
 
       try {
@@ -245,7 +245,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     loadReport();
   }, [loadReport]);
 
-  const handleViewReport = async (reportId?: string) => {
+  const handleViewReport = async (reportId?: string): Promise<void> => {
     if (!reportId) {
       return;
     }

@@ -1,7 +1,16 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useMemo } from 'react';
 
-export const useDynamicRoute = () => {
+export const useDynamicRoute = (): {
+  params: ReturnType<typeof useParams>;
+  navigate: ReturnType<typeof useNavigate>;
+  location: ReturnType<typeof useLocation>;
+  goToCaseDetail: (caseId: number) => Promise<void>;
+  goToAlertDetail: (alertId: number) => Promise<void>;
+  goToReport: (reportType: string) => Promise<void>;
+  goBack: () => Promise<void>;
+  getCurrentRoute: () => { pathname: string; search: string; hash: string; state: unknown };
+} => {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,7 +42,14 @@ export const useDynamicRoute = () => {
   };
 };
 
-export const useUrlParams = () => {
+export const useUrlParams = (): {
+  searchParams: URLSearchParams;
+  getParam: (key: string) => string | null;
+  setParam: (key: string, value: string | null) => void;
+  removeParam: (key: string) => void;
+  updateParams: (newParams: Record<string, string | null>) => void;
+  getAllParams: () => Record<string, string>;
+} => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -42,7 +58,7 @@ export const useUrlParams = () => {
     [location.search],
   );
 
-  const updateParams = (newParams: Record<string, string | null>) => {
+  const updateParams = (newParams: Record<string, string | null>): void => {
     const updatedParams = new URLSearchParams(searchParams);
 
     Object.entries(newParams).forEach(([key, value]) => {
@@ -64,11 +80,11 @@ export const useUrlParams = () => {
 
   const getParam = (key: string): string | null => searchParams.get(key);
 
-  const setParam = (key: string, value: string | null) => {
+  const setParam = (key: string, value: string | null): void => {
     updateParams({ [key]: value });
   };
 
-  const removeParam = (key: string) => {
+  const removeParam = (key: string): void => {
     updateParams({ [key]: null });
   };
 
