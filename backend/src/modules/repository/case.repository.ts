@@ -4,6 +4,7 @@ import { CaseStatus, TaskStatus, Prisma, Case, Alert, Task } from '@prisma/clien
 import { BaseRepository } from './base.repository';
 import { CommentRepository } from './comment.repository';
 import { validate as isUuid } from 'uuid';
+import { CaseClosureOutcome } from 'src/utils/enums/case-enum';
 
 @Injectable()
 export class CaseRepository extends BaseRepository {
@@ -524,6 +525,7 @@ export class CaseRepository extends BaseRepository {
     status: CaseStatus,
     investigationTaskId: number | undefined,
     userId: string,
+    finalOutcome?: CaseClosureOutcome,
     comment?: { note: string; taskId?: number; tenantId: string },
   ): Promise<{ updatedCase: Case; completedTask?: Task }> {
     const txResult = await this.prisma.$transaction(async (tx) => {
@@ -544,7 +546,7 @@ export class CaseRepository extends BaseRepository {
 
       const updatedCase = await tx.case.update({
         where: { case_id: caseId },
-        data: { status, updated_at: new Date() },
+        data: { status, final_outcome: finalOutcome, updated_at: new Date() },
       });
 
       if (investigationTaskId) {
@@ -612,7 +614,7 @@ export class CaseRepository extends BaseRepository {
 
       const updatedCase = await tx.case.update({
         where: { case_id: caseId },
-        data: { status, updated_at: new Date() },
+        data: { status, updated_at: new Date(), final_outcome: status },
       });
 
       // Verify task belongs to same tenant
@@ -703,7 +705,7 @@ export class CaseRepository extends BaseRepository {
         {
           caseId,
           taskId: newInvestigationTask.task_id,
-          note: `Supervisor Feedback:\n${comments}\n\nAction Required: Address the concerns raised and resubmit for closure approval.`,
+          note: `Supervisor Feedback:\n${comments}\n\nAction Required: Address the concerns raised and resubmit it.`,
           tenantId,
         },
         tx,

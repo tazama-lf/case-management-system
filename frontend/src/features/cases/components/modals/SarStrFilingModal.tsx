@@ -461,11 +461,10 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                 <div className="mt-1">
                   <div className="flex justify-between items-center">
                     <span
-                      className={`text-xs ${
-                        sarRemarks.length === 500
-                          ? 'text-red-500'
-                          : 'text-gray-500'
-                      }`}
+                      className={`text-xs ${sarRemarks.length === 500
+                        ? 'text-red-500'
+                        : 'text-gray-500'
+                        }`}
                     >
                       {sarRemarks.length}/500
                     </span>
@@ -627,11 +626,12 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
             {hasComplianceOfficerRole() &&
               !task.status.toLowerCase().includes('completed') && (
                 <button
+                  disabled={uploadedEvidence.length === 0}
                   type="button"
                   onClick={() => {
                     setCompleteTaskModalOpen(true);
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium shadow-sm border-green-600 bg-green-600 text-white hover:bg-green-700"
+                  className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium shadow-sm border-green-600 bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Mark as Complete
                 </button>

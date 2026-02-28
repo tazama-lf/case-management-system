@@ -6,8 +6,7 @@ import { TaskService } from 'src/modules/task/task.service';
 import { CaseCreationType, CaseStatus, TaskStatus } from '@prisma/client-cms';
 import { CANDIDATE_GROUPS, TASK_NAMES, VALIDATION_LENGTHS, REOPENABLE_CASE_STATUSES } from '../../../constants/case.constants';
 import { ConflictException } from '@nestjs/common/exceptions/conflict.exception';
-import { determineOriginalClosedStatus, isInvestigatorRole } from '../../../utils/helperFunction';
-import { PrismaService } from 'prisma/prisma.service';
+import { isInvestigatorRole } from '../../../utils/helperFunction';
 import { CaseQueryService } from './case-query.service';
 import { Outcome } from '../../../utils/types/outcome';
 import { FlowableService } from '../../flowable/flowable.service';
@@ -26,11 +25,7 @@ export class CaseReopeningService {
     private readonly caseQueryService: CaseQueryService,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
-
-  private determineOriginalClosedStatus(caseData: any): CaseStatus {
-    return determineOriginalClosedStatus(caseData);
-  }
+  ) { }
 
   async reopenCase(caseId: number, reason: string, userId: string, tenantId: string, role: string) {
     try {
@@ -150,13 +145,7 @@ export class CaseReopeningService {
           userId,
           {
             caseId,
-            note: JSON.stringify({
-              requestedBy: userId,
-              requesterRole: role || 'UNKNOWN',
-              reason,
-              previousStatus: existingCase.status,
-              requestedAt: new Date().toISOString(),
-            }),
+            note: `Case reopen request initiated by investigator.\nReason: ${reason ?? 'Not specified'}, Current Status: ${existingCase.status}`,
             tenantId,
           },
           tx,
@@ -447,6 +436,8 @@ export class CaseReopeningService {
 
       const caseData = await this.validateReopeningPreconditions(caseId, tenantId);
 
+
+
       const reopeningTask = await this.caseRepository.findReopeningTaskForRejection(caseId, tenantId);
 
       if (!reopeningTask) {
@@ -465,7 +456,7 @@ export class CaseReopeningService {
         }
       }
 
-      const originalClosedStatus = this.determineOriginalClosedStatus(caseData);
+      const originalClosedStatus = caseData.final_outcome ? caseData.final_outcome : CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE;
 
       const result = await this.caseRepository.transaction(async (tx) => {
         // Restore case to original closed status
