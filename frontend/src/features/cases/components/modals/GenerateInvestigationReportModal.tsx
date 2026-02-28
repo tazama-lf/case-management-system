@@ -538,19 +538,19 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   };
 
   const generatePdfFile = async (docDefinition: any): Promise<File> => await new Promise((resolve, reject) => {
-      try {
-        const pdfDoc = (pdfMake as any).createPdf(docDefinition);
+    try {
+      const pdfDoc = (pdfMake as any).createPdf(docDefinition);
 
-        pdfDoc.getBlob((blob: Blob) => {
-          const file = new File([blob], 'report.pdf', {
-            type: 'application/pdf',
-          });
-          resolve(file);
+      pdfDoc.getBlob((blob: Blob) => {
+        const file = new File([blob], 'report.pdf', {
+          type: 'application/pdf',
         });
-      } catch (err) {
-        reject(err);
-      }
-    });
+        resolve(file);
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
 
   const handleGenerateReport = (): void => {
     if (!isReportReady) return;
@@ -1071,7 +1071,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               </p>
               <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
                 <li>Lock the report for editing</li>
-                <li>Set the case outcome to: <strong>{reportOutcome}</strong></li>
+                <li>Set the case outcome to: <strong>{finalOutcome}</strong></li>
                 {reportOutcome === 'Under Monitoring' && (
                   <li>Set monitoring duration to: <strong>{monitoringDuration} days</strong></li>
                 )}

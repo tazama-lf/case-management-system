@@ -88,7 +88,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   const [openTransactions, setOpenTransactions] = React.useState<
     Record<string, boolean>
   >({});
-  const [ , setViewingId] = useState<string | null>(null);
+  const [, setViewingId] = useState<string | null>(null);
   const [latestReports, setLatestReports] = useState<
     Record<string, LatestReport | null>
   >({});
@@ -408,14 +408,14 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
                 <div className="text-xs text-gray-500 uppercase">Assignee</div>
                 <div className="font-medium text-gray-900">{row.assignee || 'N/A'}</div>
               </div> */}
-              <div>
+              {/* <div>
                 <div className="text-xs text-gray-500 uppercase">
                   Total Tasks
                 </div>
                 <div className="font-medium text-gray-900">
                   {row.totalTasks}
                 </div>
-              </div>
+              </div> */}
             </div>
           </SectionCard>
         </div>
