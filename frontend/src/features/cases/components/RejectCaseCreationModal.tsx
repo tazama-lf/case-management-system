@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { XMarkIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import type { RejectCaseCreationDto } from '../services/caseService';
 import type { CaseRow } from './casesTable.utils';
+import type { Alert } from '@/features/alerts/types/triage.types';
+import { triageService } from '@/features/alerts';
 
 interface RejectCaseCreationModalProps {
   open: boolean;
@@ -19,8 +21,28 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loadingAlert, setLoadingAlert] = useState(false);
+  const [alertDetails, setAlertDetails] = useState<Alert | null>(null);
 
   const isReasonValid = reason.trim().length >= 4;
+
+  React.useEffect(() => {
+    const fetchAlertDetails = async () => {
+      if (open && caseData?.alertId) {
+        setLoadingAlert(true);
+        try {
+          const alert = await triageService.getAlertById(caseData.alertId);
+          setAlertDetails(alert);
+        } catch (error) {
+          console.error('Failed to fetch alert details:', error);
+        } finally {
+          setLoadingAlert(false);
+        }
+      }
+    };
+
+    fetchAlertDetails();
+  }, [open, caseData?.alertId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +80,13 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
       setErrors({});
     }
   };
+
+  const transactionData =
+    alertDetails?.transaction &&
+      typeof alertDetails.transaction === 'object' &&
+      alertDetails.transaction !== null
+      ? alertDetails.transaction
+      : null;
 
   if (!open || !caseData) return null;
 
@@ -150,36 +179,122 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
                   Associated Alert
                 </h4>
-                <div className="rounded-md border border-gray-300 p-3 bg-gray-50 max-h-64 overflow-y-auto">
-                  <div className="flex justify-between">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
-                        Alert ID
-                      </label>
-                      <span className="text-sm break-words">
-                        {caseData.alertId}
-                      </span>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
-                        Confidence Score
-                      </label>
-                      <span className="text-sm">
-                        {caseData.confidencePercent}%
+                {loadingAlert ? (
+                  <div className="rounded-md border border-gray-300 p-4 bg-gray-50">
+                    <div className="flex items-center justify-center">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div>
+                      <span className="ml-2 text-sm text-gray-500">
+                        Loading alert details...
                       </span>
                     </div>
                   </div>
-                  {caseData.alertMessage && (
-                    <div className="mt-2">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
-                        Alert Message
-                      </label>
-                      <p className="text-sm text-gray-700 break-words">
-                        {caseData.alertMessage}
-                      </p>
+                ) : (
+                  <div className="rounded-md border border-gray-300 p-3 bg-gray-50 max-h-64 overflow-y-auto space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Alert ID
+                        </label>
+                        <span className="text-sm break-words">
+                          {caseData.alertId}
+                        </span>
+                      </div>
+                      {alertDetails && (
+                        <>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Confidence Score
+                            </label>
+                            <span className="text-sm">
+                              {alertDetails.confidence_per?.toFixed(2)}%
+                            </span>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Alert Type
+                            </label>
+                            <span className="text-sm">
+                              {alertDetails.alert_type ?? 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Source
+                            </label>
+                            <span className="text-sm">
+                              {alertDetails.source ?? 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Priority
+                            </label>
+                            <span className="text-sm">
+                              {alertDetails.priority}
+                            </span>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Created At
+                            </label>
+                            <span className="text-sm">
+                              {new Date(
+                                alertDetails.created_at,
+                              ).toLocaleString()}
+                            </span>
+                          </div>
+                          {alertDetails.prediction_outcome && (
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Prediction Outcome
+                              </label>
+                              <span className="text-sm">
+                                {alertDetails.prediction_outcome}
+                              </span>
+                            </div>
+                          )}
+                          {alertDetails.txtp && (
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Transaction Type
+                              </label>
+                              <span className="text-sm">
+                                {alertDetails.txtp}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
-                  )}
-                </div>
+                    {alertDetails?.message && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Alert Message
+                        </label>
+                        <p className="text-sm text-gray-700 break-words">
+                          {alertDetails.message}
+                        </p>
+                      </div>
+                    )}
+                    {transactionData && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Transaction Data
+                        </label>
+                        <div className="rounded bg-gray-100 p-2">
+                          <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words">
+                            {JSON.stringify(transactionData, null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+                    {!alertDetails && !loadingAlert && (
+                      <div className="text-sm text-gray-500">
+                        Unable to load alert details
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -223,7 +338,7 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
               )}
             </div>
 
-            {}
+            { }
             {errors.submit && (
               <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
                 <p className="text-sm text-red-600">{errors.submit}</p>
@@ -232,7 +347,7 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
           </div>
         </form>
 
-        {}
+        { }
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
           <button
             type="button"
