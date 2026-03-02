@@ -324,6 +324,7 @@ export class FlowableService implements OnModuleInit {
         caseStatus: event.caseStatus,
         creatorRole: event.creatorRole,
         isReopened: String(event.isReopened),
+        isFraudNAML: String(event.isFraudNAML),
         // Required BPMN variables with safe defaults
         readyForAssignment: 'true',
         // Investigation action variables with defaults
@@ -335,6 +336,7 @@ export class FlowableService implements OnModuleInit {
       event.caseId,
       event.tenantId,
     );
+
     this.loggerService.log(`End - Started process ${processInstance.id} for case ${event.caseId}`, CaseEventListener.name);
   }
 

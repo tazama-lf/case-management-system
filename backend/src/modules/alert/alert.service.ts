@@ -98,24 +98,8 @@ export class AlertService {
         priority: Priority.NEW,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       };
-      const createdCase = await this.caseCreationService.createCase(caseDetail, userId, tenantId);
+      const createdCase = await this.caseCreationService.createCase(caseDetail, userId, tenantId, 'SUPERVISOR');
       this.loggerService.log(`handle AlertOrNALT CaseType: ${createdCase.case_type}`);
-      if (createdCase.case_type === CaseType.FRAUD_AND_AML) {
-        await this.caseCreationService.createCaseWithInvestigationTask(
-          CaseType.FRAUD,
-          userId,
-          tenantId,
-          createdCase.case_id,
-          createdCase.priority,
-        );
-        await this.caseCreationService.createCaseWithInvestigationTask(
-          CaseType.AML,
-          userId,
-          tenantId,
-          createdCase.case_id,
-          createdCase.priority,
-        );
-      }
       const createdAlert = await this.createNewAlert(data, tenantId, source, createdCase.case_id);
       return createdAlert;
     }

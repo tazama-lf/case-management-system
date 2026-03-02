@@ -20,11 +20,16 @@
                 <flowable:formProperty id="creationType" name="Creation Type" type="string" required="true"/>
                 <flowable:formProperty id="creatorRole" name="Creator Role" type="string" default="SUPERVISOR"/>
                 <flowable:formProperty id="isReopened" name="Is Reopened" type="boolean"/>
+                <flowable:formProperty id="isFraudNAML" name="Is Fraud and AML Case" type="boolean"/>
             </extensionElements>
         </startEvent>
 
+        <exclusiveGateway id="creationTypeGateway" name="Creation Type Check"/>
+        <exclusiveGateway id="isFraudNAMLGateway" name="Is Fraud and AML Case?"/>
+        <exclusiveGateway id="autoCloseGateway" name="Auto Close Check"/>
         <exclusiveGateway id="caseReopenedGateway" name="Case Reopened Check"/>
         <exclusiveGateway id="caseReopenRoleGateway" name="Case Status Check"/>
+        <exclusiveGateway id="roleGateway" name="Creator Role Check" default="flowManual"/>
 
         <userTask id="reopenApproval" name="Approve Case Reopening"
                   flowable:candidateGroups="supervisors">
@@ -60,12 +65,6 @@
             </extensionElements>
         </userTask>
 
-        <!-- Creation Type Gateway -->
-        <exclusiveGateway id="creationTypeGateway" name="Creation Type Check"/>
-
-        <!-- AUTOMATIC CREATION PATH -->
-        <exclusiveGateway id="autoCloseGateway" name="Auto Close Check"/>
-
         <!-- Autoclose Task (Manual completion in NestJS) -->
         <userTask id="performAutoclose" name="Auto Close"
                   flowable:assignee="system">
@@ -86,8 +85,6 @@
         <!-- CASE STATUS GATEWAY -->
         <!-- <exclusiveGateway id="caseStatusGateway" name="Case Status Check"/> -->
 
-        <!-- MANUAL CREATION PATH -->
-        <exclusiveGateway id="roleGateway" name="Creator Role Check" default="flowManual"/>
 
         <!-- SUPERVISOR APPROVAL PATH -->
         <userTask id="approveCaseCreation" name="Approve Case Creation"
@@ -184,26 +181,89 @@
         <endEvent id="endAbandoned" name="Case Abandoned"/>
 
         <!-- SEQUENCE FLOWS -->
-
         <!-- Initial routing -->
-        <sequenceFlow id="flowStart" sourceRef="startEvent" targetRef="caseReopenedGateway"/>
+        <sequenceFlow id="flowStart" sourceRef="startEvent" targetRef="creationTypeGateway"/>
 
-            <!-- Reopened case goes to investigation -->
+        <!-- Automatic creation path -->
+        <!-- Creation Type Auto -> Auto Close Gateway -->
+        <sequenceFlow id="flowAutomatic" sourceRef="creationTypeGateway" targetRef="isFraudNAMLGateway">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creationType == 'AUTOMATIC_SYSTEM'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowIsFraudNAML" sourceRef="isFraudNAMLGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${isFraudNAML == true}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowNotFraudNAML" sourceRef="isFraudNAMLGateway" targetRef="completeCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${isFraudNAML == false}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowToCreationTypeGateway" sourceRef="completeCaseCreation" targetRef="autoCloseGateway"/>
+
+        <!-- Auto Close Eligible -> Perform Auto Close -->
+        <sequenceFlow id="flowAutoclose" sourceRef="autoCloseGateway" targetRef="performAutoclose">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${autoCloseEligible == true}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Perform Auto Close -> End Process -->
+        <sequenceFlow id="flowAutocloseEnd" sourceRef="performAutoclose" targetRef="endAutoclose"/>
+
+        <!-- Auto Close Not Eligible -> isReopened -->
+        <sequenceFlow id="flowAutocloseToCreation" sourceRef="autoCloseGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${autoCloseEligible == false}
+            </conditionExpression>
+        </sequenceFlow>
+        
+        <!-- Manual creation path -->
+        <sequenceFlow id="flowManual" sourceRef="creationTypeGateway" targetRef="caseReopenedGateway">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creationType == 'MANUAL'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <!-- Reopened case goes to investigation -->
         <sequenceFlow id="flowReopened" sourceRef="caseReopenedGateway" targetRef="caseReopenRoleGateway">
             <conditionExpression xsi:type="tFormalExpression">
                 ${isReopened == true}
             </conditionExpression>
         </sequenceFlow>
-
+        
+        <sequenceFlow id="flowNotReopened" sourceRef="caseReopenedGateway" targetRef="roleGateway">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${isReopened == false}
+            </conditionExpression>
+        </sequenceFlow>
+        
         <sequenceFlow id="flowReopenRole" sourceRef="caseReopenRoleGateway" targetRef="investigateCase">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creatorRole == 'SUPERVISOR'}
             </conditionExpression>
         </sequenceFlow>
 
+        <sequenceFlow id="flowSupervisorNonDraft" sourceRef="roleGateway" targetRef="investigateCase">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creatorRole == 'SUPERVISOR' &amp;&amp; caseStatus != 'STATUS_00_DRAFT'}
+            </conditionExpression>
+        </sequenceFlow>
+
         <sequenceFlow id="flowReopenInvestigator" sourceRef="caseReopenRoleGateway" targetRef="reopenApproval">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creatorRole == 'INVESTIGATOR'}
+            </conditionExpression>
+        </sequenceFlow>
+        
+        <sequenceFlow id="flowInvestigatorNonDraft" sourceRef="roleGateway" targetRef="approveCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creatorRole == 'INVESTIGATOR' &amp;&amp; caseStatus != 'STATUS_00_DRAFT'}
             </conditionExpression>
         </sequenceFlow>
 
@@ -218,68 +278,6 @@
         <sequenceFlow id="flowReopenRejected" sourceRef="caseReopenApprovalDecisionGateway" targetRef="endRejected">
             <conditionExpression xsi:type="tFormalExpression">
                 ${reopenApprovalDecision == 'reject'}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <sequenceFlow id="flowNotReopened" sourceRef="caseReopenedGateway" targetRef="completeCaseCreation">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${isReopened == false}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <!-- Complete Case Creation -> Creation Type Gateway -->
-        <sequenceFlow id="flowToCreationTypeGateway" sourceRef="completeCaseCreation" targetRef="creationTypeGateway"/>
-
-        <!-- Automatic creation path -->
-        <!-- Creation Type Auto -> Auto Close Gateway -->
-        <sequenceFlow id="flowAutomatic" sourceRef="creationTypeGateway" targetRef="autoCloseGateway">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${creationType == 'AUTOMATIC_SYSTEM'}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <!-- Auto Close Eligible -> Perform Auto Close -->
-        <sequenceFlow id="flowAutoclose" sourceRef="autoCloseGateway" targetRef="performAutoclose">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${autoCloseEligible == true}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <!-- Perform Auto Close -> End Process -->
-        <sequenceFlow id="flowAutocloseEnd" sourceRef="performAutoclose" targetRef="endAutoclose"/>
-
-        <!-- Auto Close Not Eligible -> Investigate Case -->
-        <sequenceFlow id="flowAutocloseToCreation" sourceRef="autoCloseGateway" targetRef="investigateCase">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${autoCloseEligible == false}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <!-- Manual creation path -->
-        <sequenceFlow id="flowManual" sourceRef="creationTypeGateway" targetRef="roleGateway">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${creationType == 'MANUAL'}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <!-- DRAFT cases: All roles go directly to case creation (no approval needed) -->
-        <!-- <sequenceFlow id="flowDraftCases" sourceRef="roleGateway" targetRef="completeCaseCreation">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${caseStatus == 'STATUS_00_DRAFT'}
-            </conditionExpression>
-        </sequenceFlow> -->
-
-        <!-- NON-DRAFT cases: Supervisor goes directly to investigation -->
-        <sequenceFlow id="flowSupervisorNonDraft" sourceRef="roleGateway" targetRef="investigateCase">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${creatorRole == 'SUPERVISOR' &amp;&amp; caseStatus != 'STATUS_00_DRAFT'}
-            </conditionExpression>
-        </sequenceFlow>
-
-        <!-- NON-DRAFT cases: Investigator needs approval -->
-        <sequenceFlow id="flowInvestigatorNonDraft" sourceRef="roleGateway" targetRef="approveCaseCreation">
-            <conditionExpression xsi:type="tFormalExpression">
-                ${creatorRole == 'INVESTIGATOR' &amp;&amp; caseStatus != 'STATUS_00_DRAFT'}
             </conditionExpression>
         </sequenceFlow>
 

@@ -19,13 +19,12 @@ export class CaseReopeningService {
     private readonly caseRepository: CaseRepository,
     private readonly commentRepository: CommentRepository,
     private readonly notificationService: NotificationService,
-    // private readonly prismaService: PrismaService,
     private readonly taskService: TaskService,
     private readonly loggerService: LoggerService,
     private readonly caseQueryService: CaseQueryService,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+  ) { }
 
   async reopenCase(
     caseId: number,
@@ -112,6 +111,7 @@ export class CaseReopeningService {
           creationType: CaseCreationType.MANUAL,
           creatorRole: 'SUPERVISOR',
           isReopened: true,
+          isFraudNAML: false,
         });
 
         await this.loggingOrchestrationService.logActionsWithHistory(
@@ -181,6 +181,7 @@ export class CaseReopeningService {
         creationType: CaseCreationType.MANUAL,
         creatorRole: 'INVESTIGATOR',
         isReopened: true,
+        isFraudNAML: false,
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -470,15 +471,8 @@ export class CaseReopeningService {
   ): Promise<{
     success: boolean;
     message: string;
-    case: {
-      case_id: number;
-      status: CaseStatus;
-      updated_at: Date;
-    };
-    completed_task: {
-      task_id: number;
-      status: TaskStatus;
-    };
+    case: { case_id: number; status: CaseStatus; updated_at: Date };
+    completed_task: { task_id: number; status: TaskStatus };
     rejection_reason: string;
   }> {
     try {

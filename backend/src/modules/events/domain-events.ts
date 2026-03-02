@@ -6,6 +6,7 @@ export class CaseCreatedEvent {
     public readonly creationType: string,
     public readonly creatorRole: string,
     public readonly isReopened: boolean,
+    public readonly isFraudNAML: boolean,
   ) {}
 }
 

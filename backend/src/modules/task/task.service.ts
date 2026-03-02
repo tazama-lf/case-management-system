@@ -10,6 +10,7 @@ import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { CLOSED_CASE_STATUSES } from 'src/constants/case.constants';
+import { setTimeout } from 'node:timers/promises';
 
 @Injectable()
 export class TaskService {
@@ -101,12 +102,13 @@ export class TaskService {
           updatedTask = await this.promoteCaseToInProgress(taskId, updateInput, existingTask, tenantId, tx);
         } else {
           updatedTask = await this.taskRepository.updateTask(taskId, updateInput, tx);
-          await this.flowableService.handleTaskAssigned({
-            taskId: updatedTask.task_id,
-            caseId: updatedTask.case_id,
-            assignedUserId: updateData.assignedUserId ?? existingTask.assigned_user_id!,
-            taskName: existingTask.name!,
-          });
+          await this.executeFlowableOperation(updatedTask, updateData.assignedUserId ?? existingTask.assigned_user_id!);
+          // await this.flowableService.handleTaskAssigned({
+          //   taskId: updatedTask.task_id,
+          //   caseId: updatedTask.case_id,
+          //   assignedUserId: updateData.assignedUserId ?? existingTask.assigned_user_id!,
+          //   taskName: existingTask.name!,
+          // });
         }
 
         if (existingTask.status === updatedTask.status) {
@@ -292,12 +294,13 @@ export class TaskService {
         await this.promoteParentCaseToInProgress(updatedCase.parent_id, updatedCase, tx);
       }
 
-      await this.flowableService.handleTaskAssigned({
-        taskId: taskRecord.task_id,
-        caseId: taskRecord.case_id,
-        assignedUserId: taskRecord.assigned_user_id ?? existingTask.assigned_user_id!,
-        taskName: existingTask.name!,
-      });
+      await this.executeFlowableOperation(taskRecord, taskRecord.assigned_user_id ?? existingTask.assigned_user_id!);
+      // await this.flowableService.handleTaskAssigned({
+      //   taskId: taskRecord.task_id,
+      //   caseId: taskRecord.case_id,
+      //   assignedUserId: taskRecord.assigned_user_id ?? existingTask.assigned_user_id!,
+      //   taskName: existingTask.name!,
+      // });
 
       return taskRecord;
     } catch (error) {
@@ -353,5 +356,29 @@ export class TaskService {
     ];
 
     return eligibleStatuses.includes(status);
+  }
+
+  async executeFlowableOperation(updatedTask: Task, assignedUserId: string): Promise<void> {
+    const flowableOperation = async (): Promise<void> => {
+      await this.flowableService.handleTaskAssigned({
+        taskId: updatedTask.task_id,
+        caseId: updatedTask.case_id,
+        assignedUserId,
+        taskName: updatedTask.name!,
+      });
+    };
+
+    await this.retry(flowableOperation, 5);
+  }
+
+  private async retry(fn: () => Promise<void>, maxRetries: number, attempt = 1): Promise<void> {
+    try {
+      await fn();
+    } catch (error) {
+      if (attempt >= maxRetries) throw error;
+
+      await setTimeout(1000 * attempt);
+      await this.retry(fn, maxRetries, attempt + 1);
+    }
   }
 }

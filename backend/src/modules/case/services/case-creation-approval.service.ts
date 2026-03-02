@@ -29,7 +29,7 @@ export class CaseCreationApprovalService {
     private readonly caseQueryService: CaseQueryService,
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+  ) { }
 
   private validateCaseCompletionFields(existingCase: any): string[] {
     const missing: string[] = [];
@@ -38,131 +38,131 @@ export class CaseCreationApprovalService {
     return missing;
   }
 
-  async manualCaseCreation(
-    dto: ManualCreateCaseDto,
-    userId: string,
-    tenantId: string,
-    role: string,
-  ): Promise<{ success: boolean; case?: Case; alert?: Alert; message?: string }> {
-    this.logger.log('Start - Manual Case Creation', CaseCreationApprovalService.name);
-    const { priorityScore } = dto;
-    const priority = this.casePriorityUtil.determinePriority(priorityScore);
-    const caseType = dto.alertType;
-    const needsApproval = role !== 'SUPERVISOR';
-    const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
-    const caseOwnerId = needsApproval ? undefined : userId;
+  // async manualCaseCreation(
+  //   dto: ManualCreateCaseDto,
+  //   userId: string,
+  //   tenantId: string,
+  //   role: string,
+  // ): Promise<{ success: boolean; case?: Case; alert?: Alert; message?: string }> {
+  //   this.logger.log('Start - Manual Case Creation', CaseCreationApprovalService.name);
+  //   const { priorityScore } = dto;
+  //   const priority = this.casePriorityUtil.determinePriority(priorityScore);
+  //   const caseType = dto.alertType;
+  //   const needsApproval = role !== 'SUPERVISOR';
+  //   const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
+  //   const caseOwnerId = needsApproval ? undefined : userId;
 
-    const existingAlert = await this.caseRepository.findAlert(dto.alertId, tenantId);
-    if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string }).status !== 'NALT') {
-      throw new BadRequestException('Case Already Exists');
-    }
+  //   const existingAlert = await this.caseRepository.findAlert(dto.alertId, tenantId);
+  //   if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string })?.status !== 'NALT') {
+  //     throw new BadRequestException('Case Already Exists');
+  //   }
 
-    try {
-      const result = await this.caseRepository.transaction(async (tx) => {
-        const caseDetail: CreateCaseDto = {
-          tenantId,
-          caseCreatorUserId: userId,
-          caseOwnerUserId: caseOwnerId,
-          status: caseStatus,
-          caseType,
-          priority,
-          caseCreationType: CaseCreationType.MANUAL,
-        };
+  //   try {
+  //     const result = await this.caseRepository.transaction(async (tx) => {
+  //       const caseDetail: CreateCaseDto = {
+  //         tenantId,
+  //         caseCreatorUserId: userId,
+  //         caseOwnerUserId: caseOwnerId,
+  //         status: caseStatus,
+  //         caseType,
+  //         priority,
+  //         caseCreationType: CaseCreationType.MANUAL,
+  //       };
 
-        const createdCase = await this.caseRepository.createCase(caseDetail, tx);
-        await this.flowableService.handleCaseCreated({
-          caseId: createdCase.case_id,
-          tenantId,
-          caseStatus,
-          creationType: CaseCreationType.MANUAL,
-          creatorRole: role,
-          isReopened: false,
-        });
+  //       const createdCase = await this.caseRepository.createCase(caseDetail, tx);
+  //       await this.flowableService.handleCaseCreated({
+  //         caseId: createdCase.case_id,
+  //         tenantId,
+  //         caseStatus,
+  //         creationType: CaseCreationType.MANUAL,
+  //         creatorRole: role,
+  //         isReopened: false,
+  //       });
 
-        const updatedAlert = await this.alertRepository.updateAlert(
-          dto.alertId,
-          {
-            caseId: createdCase.case_id,
-            priority,
-            priority_score: priorityScore,
-            alertType: dto.alertType,
-          },
-          tx,
-        );
-        await this.flowableService.handleTaskCompleted({
-          caseId: createdCase.case_id,
-          newStatus: TaskStatus.STATUS_30_COMPLETED,
-          taskName: 'Complete New Case',
-          completionVariables: {
-            autoCloseEligible: false,
-            caseType: updatedAlert.alert_type,
-            casePriority: priority,
-          },
-        });
+  //       const updatedAlert = await this.alertRepository.updateAlert(
+  //         dto.alertId,
+  //         {
+  //           caseId: createdCase.case_id,
+  //           priority,
+  //           priority_score: priorityScore,
+  //           alertType: dto.alertType,
+  //         },
+  //         tx,
+  //       );
+  //       await this.flowableService.handleTaskCompleted({
+  //         caseId: createdCase.case_id,
+  //         newStatus: TaskStatus.STATUS_30_COMPLETED,
+  //         taskName: 'Complete New Case',
+  //         completionVariables: {
+  //           autoCloseEligible: false,
+  //           caseType: updatedAlert.alert_type,
+  //           casePriority: priority,
+  //         },
+  //       });
 
-        return { case: createdCase, alert: updatedAlert };
-      });
+  //       return { case: createdCase, alert: updatedAlert };
+  //     });
 
-      if (needsApproval) {
-        await this.taskService.createTask(
-          {
-            caseId: result.case.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Approve Case Creation',
-            description: `Manual Case Creation Approval For Case ${result.case.case_id}`,
-            candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
-          },
-          userId,
-          tenantId,
-        );
-      } else if (caseType === CaseType.FRAUD_AND_AML) {
-        await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, result.case.case_id, priority);
-        await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, result.case.case_id, priority);
+  //     if (needsApproval) {
+  //       await this.taskService.createTask(
+  //         {
+  //           caseId: result.case.case_id,
+  //           status: TaskStatus.STATUS_01_UNASSIGNED,
+  //           name: 'Approve Case Creation',
+  //           description: `Manual Case Creation Approval For Case ${result.case.case_id}`,
+  //           candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+  //         },
+  //         userId,
+  //         tenantId,
+  //       );
+  //     } else if (caseType === CaseType.FRAUD_AND_AML) {
+  //       await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, result.case.case_id, priority);
+  //       await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, result.case.case_id, priority);
 
-        // Flowable here
-      } else {
-        await this.taskService.createTask(
-          {
-            caseId: result.case.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate Case',
-            description: `Investigation task for manually created case ${result.case.case_id}`,
-            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-          },
-          userId,
-          tenantId,
-        );
-      }
+  //       // Flowable here
+  //     } else {
+  //       await this.taskService.createTask(
+  //         {
+  //           caseId: result.case.case_id,
+  //           status: TaskStatus.STATUS_01_UNASSIGNED,
+  //           name: 'Investigate Case',
+  //           description: `Investigation task for manually created case ${result.case.case_id}`,
+  //           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+  //         },
+  //         userId,
+  //         tenantId,
+  //       );
+  //     }
 
-      this.logger.log(
-        `[ManualCase] Manual case creation completed successfully for case ${result.case.case_id}`,
-        CaseCreationApprovalService.name,
-      );
+  //     this.logger.log(
+  //       `[ManualCase] Manual case creation completed successfully for case ${result.case.case_id}`,
+  //       CaseCreationApprovalService.name,
+  //     );
 
-      await this.loggingOrchestrationService.logActionsWithHistory(
-        {
-          userId,
-          actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ' (auto-approved)'}`,
-          entityName: CaseCreationApprovalService.name,
-          operation: 'createManualCase',
-          outcome: Outcome.SUCCESS,
-        },
-        result.case.case_id,
-        tenantId,
-      );
+  //     await this.loggingOrchestrationService.logActionsWithHistory(
+  //       {
+  //         userId,
+  //         actionPerformed: `Manual case ${result.case.case_id} created for alert ${dto.alertId} by ${role}${needsApproval ? ' (pending supervisor approval)' : ' (auto-approved)'}`,
+  //         entityName: CaseCreationApprovalService.name,
+  //         operation: 'createManualCase',
+  //         outcome: Outcome.SUCCESS,
+  //       },
+  //       result.case.case_id,
+  //       tenantId,
+  //     );
 
-      return {
-        success: true,
-        case: result.case,
-        alert: result.alert,
-      };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      const errorStack = err instanceof Error ? err.stack : undefined;
-      this.logger.error('[ManualCase] Manual case creation failed', { error: errorMessage, stack: errorStack, dto, userId, tenantId });
-      throw new InternalServerErrorException(`Failed to create case & link alert: ${errorMessage}`);
-    }
-  }
+  //     return {
+  //       success: true,
+  //       case: result.case,
+  //       alert: result.alert,
+  //     };
+  //   } catch (err) {
+  //     const errorMessage = err instanceof Error ? err.message : String(err);
+  //     const errorStack = err instanceof Error ? err.stack : undefined;
+  //     this.logger.error('[ManualCase] Manual case creation failed', { error: errorMessage, stack: errorStack, dto, userId, tenantId });
+  //     throw new InternalServerErrorException(`Failed to create case & link alert: ${errorMessage}`);
+  //   }
+  // }
 
   /**
    * Save a case as draft
@@ -220,6 +220,7 @@ export class CaseCreationApprovalService {
         creationType: CaseCreationType.MANUAL,
         creatorRole: role,
         isReopened: false,
+        isFraudNAML: caseType === CaseType.FRAUD_AND_AML,
       });
 
       // Create "Complete New Case" task assigned to the creator
@@ -456,6 +457,8 @@ export class CaseCreationApprovalService {
           tenantId,
           result.case.case_id,
           result.case.priority,
+          CaseCreationType.AUTOMATIC_SYSTEM,
+          'SUPERVISOR',
         );
         await this.caseCreateService.createCaseWithInvestigationTask(
           CaseType.FRAUD,
@@ -463,6 +466,8 @@ export class CaseCreationApprovalService {
           tenantId,
           result.case.case_id,
           result.case.priority,
+          CaseCreationType.AUTOMATIC_SYSTEM,
+          'SUPERVISOR',
         );
       } else {
         const investigationTask = await this.taskService.createTask(
@@ -724,54 +729,55 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async createCase(createCaseDTO: CreateCaseDto, userId: string): Promise<Case> {
-    try {
-      this.logger.log('Start - Create Case', CaseCreationApprovalService.name);
-      const createdCase = await this.caseRepository.createCase({
-        tenantId: createCaseDTO.tenantId,
-        caseCreatorUserId: createCaseDTO.caseCreatorUserId,
-        caseOwnerUserId: createCaseDTO.caseOwnerUserId,
-        status: createCaseDTO.status,
-        priority: createCaseDTO.priority,
-        parentId: createCaseDTO.parentId ?? null,
-        caseType: createCaseDTO.caseType,
-        caseCreationType: createCaseDTO.caseCreationType,
-      });
+  // async createCase(createCaseDTO: CreateCaseDto, userId: string): Promise<Case> {
+  //   try {
+  //     this.logger.log('Start - Create Case', CaseCreationApprovalService.name);
+  //     const createdCase = await this.caseRepository.createCase({
+  //       tenantId: createCaseDTO.tenantId,
+  //       caseCreatorUserId: createCaseDTO.caseCreatorUserId,
+  //       caseOwnerUserId: createCaseDTO.caseOwnerUserId,
+  //       status: createCaseDTO.status,
+  //       priority: createCaseDTO.priority,
+  //       parentId: createCaseDTO.parentId ?? null,
+  //       caseType: createCaseDTO.caseType,
+  //       caseCreationType: createCaseDTO.caseCreationType,
+  //     });
 
-      this.flowableService.handleCaseCreated({
-        caseId: createdCase.case_id,
-        tenantId: createdCase.tenant_id,
-        caseStatus: createdCase.status,
-        creationType: createCaseDTO.caseCreationType,
-        creatorRole: 'SYSTEM',
-        isReopened: false,
-      });
+  //     this.flowableService.handleCaseCreated({
+  //       caseId: createdCase.case_id,
+  //       tenantId: createdCase.tenant_id,
+  //       caseStatus: createdCase.status,
+  //       creationType: createCaseDTO.caseCreationType,
+  //       creatorRole: 'SYSTEM',
+  //       isReopened: false,
+  //       isFraudNAML: createCaseDTO.caseType === CaseType.FRAUD_AND_AML,
+  //     });
 
-      this.logger.log(
-        `[CaseWorkflow] Case ${createdCase.case_id} created with status ${createdCase.status}, emitting case.created event`,
-        CaseCreationApprovalService.name,
-      );
+  //     this.logger.log(
+  //       `[CaseWorkflow] Case ${createdCase.case_id} created with status ${createdCase.status}, emitting case.created event`,
+  //       CaseCreationApprovalService.name,
+  //     );
 
-      await this.loggingOrchestrationService.logActionsWithHistory(
-        {
-          userId,
-          operation: 'createCase',
-          entityName: 'CaseCreationApprovalService',
-          actionPerformed: `Case ${createdCase.case_id} created successfully`,
-          outcome: Outcome.SUCCESS,
-        },
-        createdCase.case_id,
-        createdCase.tenant_id,
-      );
+  //     await this.loggingOrchestrationService.logActionsWithHistory(
+  //       {
+  //         userId,
+  //         operation: 'createCase',
+  //         entityName: 'CaseCreationApprovalService',
+  //         actionPerformed: `Case ${createdCase.case_id} created successfully`,
+  //         outcome: Outcome.SUCCESS,
+  //       },
+  //       createdCase.case_id,
+  //       createdCase.tenant_id,
+  //     );
 
-      return createdCase;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`[CaseWorkflow] Error creating case: ${errorMessage}`, errorStack, CaseCreationApprovalService.name);
-      throw error;
-    }
-  }
+  //     return createdCase;
+  //   } catch (error) {
+  //     const errorMessage = error instanceof Error ? error.message : String(error);
+  //     const errorStack = error instanceof Error ? error.stack : undefined;
+  //     this.logger.error(`[CaseWorkflow] Error creating case: ${errorMessage}`, errorStack, CaseCreationApprovalService.name);
+  //     throw error;
+  //   }
+  // }
 
   async updateCaseStatus(
     caseId: number,

@@ -49,13 +49,17 @@ import { SimpleMessageResponseDto } from 'src/dtos/simple-message-response.dto';
 import { UserWorkloadResponseDto } from './dto/user-workload-response.dto';
 import { Alert, Case, CaseStatus, CaseType, Priority, Task, TaskStatus } from '@prisma/client-cms';
 import { JsonValue } from '@prisma/client-cms/runtime/library';
+import { CaseCreationService } from './services/case-creation.service';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class CaseController {
-  constructor(private readonly caseService: CaseService) {}
+  constructor(
+    private readonly caseService: CaseService,
+    private readonly caseCreationService: CaseCreationService,
+  ) { }
 
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
@@ -212,7 +216,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case?: Case; alert?: Alert; message?: string }> {
     const { userId, tenantId, role } = extractUserData(req);
-    return await this.caseService.manualCaseCreation(dto, userId, tenantId, role);
+    return await this.caseCreationService.manualCaseCreation(dto, userId, tenantId, role);
   }
 
   @Put(':caseId/close')
@@ -319,11 +323,11 @@ export class CaseController {
       } | null;
       parent_id: number | null;
       assigned_to:
-        | {
-            user_id: string | null;
-            task_count: number;
-          }
-        | undefined;
+      | {
+        user_id: string | null;
+        task_count: number;
+      }
+      | undefined;
     }>;
     pagination: {
       total: number;
@@ -339,12 +343,12 @@ export class CaseController {
       unassignedCases: number;
       averageTasksPerCase: number;
       oldestUnassignedCase:
-        | {
-            case_id: number;
-            created_at: Date;
-            days_old: number;
-          }
-        | undefined;
+      | {
+        case_id: number;
+        created_at: Date;
+        days_old: number;
+      }
+      | undefined;
     };
   }> {
     const { userId, tenantId, claims } = extractUserData(req);
@@ -393,13 +397,13 @@ export class CaseController {
       }>;
       total_tasks: number;
       alert:
-        | {
-            alert_id: number;
-            message: string;
-            confidence_per: number;
-            transaction: JsonValue;
-          }
-        | undefined;
+      | {
+        alert_id: number;
+        message: string;
+        confidence_per: number;
+        transaction: JsonValue;
+      }
+      | undefined;
       latest_comment_date: Date;
     }>;
     pagination: {
@@ -460,13 +464,13 @@ export class CaseController {
       }>;
       total_tasks: number;
       alert:
-        | {
-            alert_id: number;
-            message: string;
-            confidence_per: number;
-            transaction: JsonValue;
-          }
-        | undefined;
+      | {
+        alert_id: number;
+        message: string;
+        confidence_per: number;
+        transaction: JsonValue;
+      }
+      | undefined;
       latest_comment_date: Date;
     }>;
     pagination: {
