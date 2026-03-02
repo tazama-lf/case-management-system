@@ -53,7 +53,7 @@ export class CaseCreationApprovalService {
     const caseOwnerId = needsApproval ? undefined : userId;
 
     const existingAlert = await this.caseRepository.findAlert(dto.alertId, tenantId);
-    if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string })?.status !== 'NALT') {
+    if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string }).status !== 'NALT') {
       throw new BadRequestException('Case Already Exists');
     }
 
@@ -537,7 +537,17 @@ export class CaseCreationApprovalService {
     }
   }
 
-  async rejectCaseCreation(caseId: number, supervisorId: string, tenantId: string, reason: string) {
+  async rejectCaseCreation(
+    caseId: number,
+    supervisorId: string,
+    tenantId: string,
+    reason: string,
+  ): Promise<{
+    success: boolean;
+    case: Case;
+    completedTask: Task;
+    newTask: Task;
+  }> {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case creation for case ${caseId}`, CaseCreationApprovalService.name);
       await this.validateCaseCreationApprovalPreconditions(caseId, tenantId);
@@ -548,6 +558,7 @@ export class CaseCreationApprovalService {
         );
       }
       const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+      if (!existingCase) throw new NotFoundException(`Case not found for caseId ${caseId}`);
       const result = await this.caseRepository.executeTransaction(async (tx) => {
         const updatedCase = await this.caseRepository.updateCase(caseId, {
           status: CaseStatus.STATUS_00_DRAFT,

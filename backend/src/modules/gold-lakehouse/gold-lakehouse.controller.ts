@@ -379,7 +379,7 @@ export class GoldLakehouseController {
   @ApiOperation({
     summary: 'Get Transaction Perspectives by End-to-End ID',
     description:
-      "Returns all entity perspectives (Debtor Account, Creditor Account, Debtor Counterparty, Creditor Counterparty) for a single transaction. Shows how the transaction appears from each entity's viewpoint. Query by end_to_end_id (transaction UUID) to get complete transaction context.",
+      'Returns all entity perspectives (Debtor Account, Creditor Account, Debtor Counterparty, Creditor Counterparty) for a single transaction. Shows how the transaction appears from each entity\'s viewpoint. Query by end_to_end_id (transaction UUID) to get complete transaction context.',
   })
   @ApiParam({
     name: 'endToEndId',
@@ -612,7 +612,7 @@ export class GoldLakehouseController {
     @Query('endToEndId') endToEndId?: string,
     @Query('tenantId') tenantId?: string,
     @Query('dateRange') dateRange?: string,
-    @Query('granularity') granularity: string = 'day',
+    @Query('granularity') granularity = 'day',
   ) {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');

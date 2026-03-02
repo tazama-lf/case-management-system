@@ -1116,7 +1116,7 @@ export class ReportsService {
     };
     const insertResult = await this.couchdbService.insertDocument(reportId, report);
 
-    let currentRev = insertResult.rev;
+    const currentRev = insertResult.rev;
 
     const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
     const hash = this.sha256(encrypted);

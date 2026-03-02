@@ -71,6 +71,8 @@ export function validateCaseCompletionFields(existingCase: any): string[] {
 export function determineOriginalClosedStatus(caseData: any): CaseStatus {
   // Could check case history/audit logs here in future
   // For now, default to inconclusive as safe fallback
+  // const finalOutcome = caseData.final_outcome;
+
   return CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE;
 }
 

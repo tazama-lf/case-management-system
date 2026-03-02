@@ -160,7 +160,7 @@ export class EvidenceController {
     @Res() res: Response,
     @Query('attachmentName') attachmentName: string,
     @Req() req: AuthenticatedRequest,
-  ) {
+  ): Promise<void> {
     const { clientId, tenantId, claims } = req.user.token;
     const role =
       claims.includes(TazamaClaims.CMS_SUPERVISOR) || claims.includes(TazamaClaims.CMS_COMPLIANCE_OFFICER)

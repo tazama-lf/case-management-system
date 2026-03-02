@@ -35,7 +35,7 @@ export class CaseClosureApprovalService {
     private readonly commentService: CommentService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly taskValidationUtil: TaskValidationUtil,
-  ) { }
+  ) {}
 
   private async createSARFilingTask(caseId: number, tenantId: string, userId: string): Promise<void> {
     this.logger.log(`Start - Creating SAR_STR_FILING task for case ${caseId}`, CaseClosureApprovalService.name);
@@ -121,7 +121,7 @@ export class CaseClosureApprovalService {
             },
           });
 
-          if (subCase && subCase.length > 0) {
+          if (subCase.length > 0) {
             const areSubCasesClosable = subCase.every((c) => CLOSED_CASE_STATUSES.includes(c.status));
             this.logger.log(`areSubCasesClosable: ${areSubCasesClosable}`);
             if (!areSubCasesClosable) {
@@ -203,23 +203,23 @@ export class CaseClosureApprovalService {
           dto.recommendedOutcome,
           dto.finalNotes
             ? {
-              note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
-              tenantId,
-            }
+                note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
+                tenantId,
+              }
             : undefined,
         );
         if (!isFraudAndAmlCase) {
-          // await this.flowableService.handleTaskCompleted({
-          //   caseId,
-          //   taskName: 'Investigate Case',
-          //   newStatus: TaskStatus.STATUS_30_COMPLETED,
-          //   completionVariables: {
-          //     investigationAction: 'complete',
-          //     finalOutcome: dto.recommendedOutcome,
-          //     investigationNotes: dto.finalNotes,
-          //     userRole: role,
-          //   },
-          // });
+          await this.flowableService.handleTaskCompleted({
+            caseId,
+            taskName: 'Investigate Case',
+            newStatus: TaskStatus.STATUS_30_COMPLETED,
+            completionVariables: {
+              investigationAction: 'complete',
+              finalOutcome: dto.recommendedOutcome,
+              investigationNotes: dto.finalNotes,
+              userRole: role,
+            },
+          });
         }
 
         await this.loggingOrchestrationService.logActionsWithHistory(
@@ -289,31 +289,31 @@ export class CaseClosureApprovalService {
         dto.recommendedOutcome,
         dto.finalNotes
           ? {
-            note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
-            taskId: approvalTask.task_id,
-            tenantId,
-          }
+              note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
+              taskId: approvalTask.task_id,
+              tenantId,
+            }
           : undefined,
       );
 
       if (!isFraudAndAmlCase) {
-        // await this.flowableService.handleTaskCompleted({
-        //   caseId,
-        //   taskName: 'Investigate Case',
-        //   newStatus: TaskStatus.STATUS_30_COMPLETED,
-        //   completionVariables: {
-        //     investigationAction: 'requestClosure',
-        //     finalOutcome: dto.recommendedOutcome,
-        //     investigationNotes: dto.finalNotes,
-        //     userRole: role,
-        //   },
-        // });
+        await this.flowableService.handleTaskCompleted({
+          caseId,
+          taskName: 'Investigate Case',
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          completionVariables: {
+            investigationAction: 'requestClosure',
+            finalOutcome: dto.recommendedOutcome,
+            investigationNotes: dto.finalNotes,
+            userRole: role,
+          },
+        });
       }
 
-      // await this.flowableService.handleCaseStatusChanged({
-      //   caseId,
-      //   newStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-      // });
+      await this.flowableService.handleCaseStatusChanged({
+        caseId,
+        newStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+      });
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {

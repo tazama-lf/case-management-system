@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, Logger } from '@nestjs/common';
 import { AlertRepository } from './alert.repository';
 import { PrismaModule } from '../../../prisma/prisma.module';
 import { CaseRepository } from './case.repository';
@@ -24,6 +24,7 @@ import { BaseRepository } from './base.repository';
     AdminRepository,
     FilterRepository,
     TransactionDataRespository,
+    Logger,
   ],
   exports: [
     BaseRepository,

@@ -47,7 +47,8 @@ import {
 } from './dto';
 import { SimpleMessageResponseDto } from 'src/dtos/simple-message-response.dto';
 import { UserWorkloadResponseDto } from './dto/user-workload-response.dto';
-import { Case, Task } from '@prisma/client-cms';
+import { Alert, Case, CaseStatus, CaseType, Priority, Task, TaskStatus } from '@prisma/client-cms';
+import { JsonValue } from '@prisma/client-cms/runtime/library';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -206,7 +207,10 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Bad Request - Missing required fields or alert already has a case' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
-  async createCaseManually(@Body() dto: ManualCreateCaseDto, @Req() req: AuthenticatedRequest) {
+  async createCaseManually(
+    @Body() dto: ManualCreateCaseDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ success: boolean; case?: Case; alert?: Alert; message?: string }> {
     const { userId, tenantId, role } = extractUserData(req);
     return await this.caseService.manualCaseCreation(dto, userId, tenantId, role);
   }
@@ -259,7 +263,11 @@ export class CaseController {
     description: 'Internal Server Error - System error during closure',
     type: CaseErrorResponseDto,
   })
-  async closeCase(@Param('caseId') caseId: number, @Body() dto: CloseCaseDto, @Req() req: AuthenticatedRequest) {
+  async closeCase(
+    @Param('caseId') caseId: number,
+    @Body() dto: CloseCaseDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ message: string; closed_case: { case_id: number; status: string; updated_at: Date }; supervisor_closure?: boolean }> {
     const { userId, tenantId, validateClaim } = extractUserData(req);
     return await this.caseService.closeCase(caseId, dto, userId, tenantId, validateClaim);
   }
@@ -278,7 +286,67 @@ export class CaseController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Requires investigator or supervisor role' })
-  async getAllCases(@Query() query: GetAllCasesQueryDto, @Req() req: AuthenticatedRequest) {
+  async getAllCases(
+    @Query() query: GetAllCasesQueryDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    cases: Array<{
+      case_id: number;
+      tenant_id: string;
+      case_creator_user_id: string;
+      case_owner_user_id: string | null;
+      status: CaseStatus;
+      priority: Priority;
+      case_type: CaseType | null;
+      created_at: Date;
+      updated_at: Date;
+      total_tasks: number;
+      tasks: Array<{
+        name: string | null;
+        status: TaskStatus;
+        created_at: Date;
+        task_id: number;
+        assigned_user_id: string | null;
+      }>;
+      completed_tasks: number;
+      pending_tasks: number;
+      alert: {
+        alert_id: number;
+        alert_type: CaseType | null;
+        message: string;
+        transaction: JsonValue;
+        confidence_per: number;
+      } | null;
+      parent_id: number | null;
+      assigned_to:
+        | {
+            user_id: string | null;
+            task_count: number;
+          }
+        | undefined;
+    }>;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+    statistics: {
+      totalCases: number;
+      casesByStatus: Record<string, number>;
+      casesByPriority: Record<string, number>;
+      casesByType: Record<string, number>;
+      unassignedCases: number;
+      averageTasksPerCase: number;
+      oldestUnassignedCase:
+        | {
+            case_id: number;
+            created_at: Date;
+            days_old: number;
+          }
+        | undefined;
+    };
+  }> {
     const { userId, tenantId, claims } = extractUserData(req);
 
     // Check if user is investigator (not supervisor/admin)
@@ -305,7 +373,48 @@ export class CaseController {
     type: GetUserCasesResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getUserCases(@Query() query: GetUserCasesQueryDto, @Req() req: AuthenticatedRequest) {
+  async getUserCases(
+    @Query() query: GetUserCasesQueryDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    cases: Array<{
+      case_id: number;
+      status: CaseStatus;
+      priority: Priority;
+      case_type: CaseType | null;
+      created_at: Date;
+      updated_at: Date;
+      user_role: 'owner' | 'task_assignee' | 'both';
+      user_tasks: Array<{
+        task_id: number;
+        name: string | null;
+        status: TaskStatus;
+        created_at: Date | undefined;
+      }>;
+      total_tasks: number;
+      alert:
+        | {
+            alert_id: number;
+            message: string;
+            confidence_per: number;
+            transaction: JsonValue;
+          }
+        | undefined;
+      latest_comment_date: Date;
+    }>;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+    summary: {
+      totalOwnedCases: number;
+      totalTaskAssignments: number;
+      casesByStatus: Record<string, number>;
+      casesByPriority: Record<string, number>;
+    };
+  }> {
     const { userId, isComplianceOfficer } = extractUserData(req);
     return await this.caseService.getUserCases(userId, query, isComplianceOfficer);
   }
@@ -334,7 +443,45 @@ export class CaseController {
     @Param('userId') targetUserId: string,
     @Query() query: GetUserCasesQueryDto,
     @Req() req: AuthenticatedRequest,
-  ) {
+  ): Promise<{
+    cases: Array<{
+      case_id: number;
+      status: CaseStatus;
+      priority: Priority;
+      case_type: CaseType | null;
+      created_at: Date;
+      updated_at: Date;
+      user_role: 'owner' | 'task_assignee' | 'both';
+      user_tasks: Array<{
+        task_id: number;
+        name: string | null;
+        status: TaskStatus;
+        created_at: Date | undefined;
+      }>;
+      total_tasks: number;
+      alert:
+        | {
+            alert_id: number;
+            message: string;
+            confidence_per: number;
+            transaction: JsonValue;
+          }
+        | undefined;
+      latest_comment_date: Date;
+    }>;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+    summary: {
+      totalOwnedCases: number;
+      totalTaskAssignments: number;
+      casesByStatus: Record<string, number>;
+      casesByPriority: Record<string, number>;
+    };
+  }> {
     const { userId: requestingUserId } = extractUserData(req);
     if (requestingUserId !== targetUserId) {
       /* empty */
@@ -347,7 +494,24 @@ export class CaseController {
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Get case workload statistics', description: 'Get summary statistics of user case workload' })
   @ApiResponse({ status: 200, description: 'Workload statistics retrieved successfully', type: UserWorkloadResponseDto })
-  async getUserWorkload(@Req() req: AuthenticatedRequest) {
+  async getUserWorkload(@Req() req: AuthenticatedRequest): Promise<{
+    totalActiveCases: number;
+    totalPendingTasks: number;
+    casesByStatus: Record<string, number>;
+    casesByPriority: Record<string, number>;
+    oldestCase: {
+      case_id: number;
+      created_at: Date;
+      days_old: number;
+    } | null;
+    averageCaseAge: number;
+    upcomingTasks: Array<{
+      task_id: number;
+      name: string | null;
+      case_id: number;
+      days_old: number;
+    }>;
+  }> {
     const { userId, isComplianceOfficer } = extractUserData(req);
     return await this.caseService.getUserWorkloadStats(userId, isComplianceOfficer);
   }
@@ -358,7 +522,7 @@ export class CaseController {
   @ApiResponse({ status: 200, description: 'Case retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Case not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - Compliance officers can only access confirmed closed cases' })
-  async getCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
+  async getCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<Case | null> {
     const { isComplianceOfficer, tenantId } = extractUserData(req);
     return await this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
   }
@@ -372,7 +536,7 @@ export class CaseController {
   @ApiResponse({ status: 200, description: 'Case retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Case not found' })
   @ApiResponse({ status: 403, description: 'Forbidden - only relevant users can only access cases information' })
-  async getSubCasesDetails(@Param('caseId') caseId: number) {
+  async getSubCasesDetails(@Param('caseId') caseId: number): Promise<Case[]> {
     return await this.caseService.getSubCasesDetails(caseId);
   }
 
@@ -388,7 +552,7 @@ export class CaseController {
     description: 'Case updated successfully',
   })
   @ApiResponse({ status: 404, description: 'Case not found' })
-  async updateCase(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
+  async updateCase(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest): Promise<Case> {
     const { userId } = extractUserData(req);
     return await this.caseService.updateCase(caseId, dto, userId);
   }
@@ -405,7 +569,11 @@ export class CaseController {
     description: 'Case creation completed successfully',
   })
   @ApiResponse({ status: 404, description: 'Case not found' })
-  async completeCaseCreation(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest) {
+  async completeCaseCreation(
+    @Param('caseId') caseId: number,
+    @Body() dto: UpdateCaseDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ success: boolean; case: Case; completedTask: Task; message: string; requiresApproval: boolean }> {
     const { userId, tenantId, role } = extractUserData(req);
     return await this.caseService.completeCaseCreation(caseId, dto, userId, tenantId, role);
   }
@@ -482,7 +650,15 @@ export class CaseController {
     type: CaseConflictResponseDto,
   })
   @ApiResponse({ status: 500, description: 'Internal Server Error - System error during approval', type: CaseErrorResponseDto })
-  async approveCaseClosure(@Param('caseId') caseId: number, @Body() dto: ApproveCaseClosureDto, @Req() req: AuthenticatedRequest) {
+  async approveCaseClosure(
+    @Param('caseId') caseId: number,
+    @Body() dto: ApproveCaseClosureDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    message: string;
+    case: { case_id: number; status: string; updated_at: Date };
+    completed_task: { task_id: number; status: string };
+  }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
     return await this.caseService.approveCaseClosure(caseId, dto.finalOutcome, dto.supervisorComments, supervisorId, tenantId);
   }
@@ -547,7 +723,16 @@ export class CaseController {
     status: 409,
     description: 'Conflict - Case not in STATUS_22_PENDING_FINAL_APPROVAL state',
   })
-  async rejectCaseClosure(@Param('caseId') caseId: number, @Body() dto: RejectCaseClosureDto, @Req() req: AuthenticatedRequest) {
+  async rejectCaseClosure(
+    @Param('caseId') caseId: number,
+    @Body() dto: RejectCaseClosureDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    message: string;
+    case: { case_id: number; status: string; updated_at: Date };
+    completed_approval_task: { task_id: number; status: string };
+    investigation_task: { task_id: number; name: string | null; assigned_to: string; status: string };
+  }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
     return await this.caseService.rejectCaseClosure(caseId, dto.rejectionReason, supervisorId, tenantId);
   }
@@ -587,7 +772,10 @@ export class CaseController {
     description: 'Conflict - Case not in PENDING_CASE_CREATION_APPROVAL state',
     type: CaseCreationConflictResponseDto,
   })
-  async approveCaseCreation(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
+  async approveCaseCreation(
+    @Param('caseId') caseId: number,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ success: boolean; case: Case; message: string }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
 
     return await this.caseService.approveCaseCreation(caseId, supervisorId, tenantId);
@@ -628,7 +816,16 @@ export class CaseController {
     description: 'Conflict - Case not in PENDING_CASE_CREATION_APPROVAL state',
     type: CaseCreationConflictResponseDto,
   })
-  async rejectCaseCreation(@Param('caseId') caseId: number, @Body() body: RejectCaseCreationBodyDto, @Req() req: AuthenticatedRequest) {
+  async rejectCaseCreation(
+    @Param('caseId') caseId: number,
+    @Body() body: RejectCaseCreationBodyDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    success: boolean;
+    case: Case;
+    completedTask: Task;
+    newTask: Task;
+  }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
     return await this.caseService.rejectCaseCreation(caseId, supervisorId, tenantId, body.reason);
   }
@@ -677,7 +874,30 @@ export class CaseController {
     description: 'Conflict - Case is not in STATUS_31_REOPENED state',
     type: CaseReopeningConflictResponseDto,
   })
-  async approveCaseReopening(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest) {
+  async approveCaseReopening(
+    @Param('caseId') caseId: number,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    case: {
+      case_id: number;
+      status: CaseStatus;
+      case_owner_user_id: string | null;
+      updated_at: Date;
+    };
+    completed_approval_task: {
+      task_id: number;
+      status: TaskStatus;
+    };
+    investigation_task: {
+      task_id: number;
+      name: string | null;
+      status: TaskStatus;
+      assigned_to: string;
+      candidateGroup: string;
+    };
+  }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
     return await this.caseService.approveCaseReopening(caseId, supervisorId, tenantId);
   }
@@ -783,7 +1003,14 @@ export class CaseController {
     status: 404,
     description: 'Not Found - Case or approval task not found',
   })
-  async returnCaseForReview(@Param('caseId') caseId: number, @Body() dto: ReturnCaseForReviewDto, @Req() req: AuthenticatedRequest) {
+  async returnCaseForReview(
+    @Param('caseId') caseId: number,
+    @Body() dto: ReturnCaseForReviewDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    message: string;
+    case: { case_id: number; status: string; updated_at: Date };
+  }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
     return await this.caseService.returnCaseForReview(caseId, dto.reviewComments, supervisorId, tenantId);
   }
@@ -804,7 +1031,10 @@ export class CaseController {
   @ApiResponse({ status: 400, description: 'Bad Request - Missing required fields or alert already has a case' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
-  async saveCaseAsDraft(@Body() dto: ManualCreateCaseDto, @Req() req: AuthenticatedRequest) {
+  async saveCaseAsDraft(
+    @Body() dto: ManualCreateCaseDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ success: boolean; case?: Case; alert?: Alert; message: string }> {
     const { userId, tenantId, role } = extractUserData(req);
     return await this.caseService.saveCaseAsDraft(dto, userId, tenantId, role);
   }
