@@ -78,7 +78,6 @@ export class BpmnSyncService {
 
       if (!dbCase) {
         this.logger.error(`[BPMN-Sync] Database case ${caseId} not found for Flowable task ${taskId}`, BpmnSyncService.name);
-        return;
       }
 
       // Create database task
