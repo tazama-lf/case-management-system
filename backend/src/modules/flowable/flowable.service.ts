@@ -315,32 +315,29 @@ export class FlowableService implements OnModuleInit {
   async handleCaseCreated(event: CaseCreatedEvent): Promise<void> {
     this.loggerService.log(`Start - Process CaseID: ${event.caseId}`, CaseEventListener.name);
 
-      const processInstance = await this.flowableProcessService.startProcessInstance(
-        'caseManagementProcess',
-        {
-          caseId: String(event.caseId),
-          tenantId: event.tenantId,
-          creationType: event.creationType,
-          caseStatus: event.caseStatus,
-          creatorRole: event.creatorRole,
-          isReopened: String(event.isReopened),
-          isFraudNAML: String(event.isFraudNAML),
-          // Required BPMN variables with safe defaults
-          readyForAssignment: 'true',
-          // Investigation action variables with defaults
-          investigationAction: 'pending',
-          // Additional required variables
-          investigationNotes: '',
-          finalOutcome: 'PENDING_INVESTIGATION',
-        },
-        event.caseId,
-        event.tenantId,
-      );
+    const processInstance = await this.flowableProcessService.startProcessInstance(
+      'caseManagementProcess',
+      {
+        caseId: String(event.caseId),
+        tenantId: event.tenantId,
+        creationType: event.creationType,
+        caseStatus: event.caseStatus,
+        creatorRole: event.creatorRole,
+        isReopened: String(event.isReopened),
+        isFraudNAML: String(event.isFraudNAML),
+        // Required BPMN variables with safe defaults
+        readyForAssignment: 'true',
+        // Investigation action variables with defaults
+        investigationAction: 'pending',
+        // Additional required variables
+        investigationNotes: '',
+        finalOutcome: 'PENDING_INVESTIGATION',
+      },
+      event.caseId,
+      event.tenantId,
+    );
 
-      this.loggerService.log(`End - Started process ${processInstance.id} for case ${event.caseId}`, CaseEventListener.name);
-    } catch (error) {
-      throw error;
-    }
+    this.loggerService.log(`End - Started process ${processInstance.id} for case ${event.caseId}`, CaseEventListener.name);
   }
 
   async handleCaseStatusChanged(event: CaseStatusChangedEvent): Promise<void> {
