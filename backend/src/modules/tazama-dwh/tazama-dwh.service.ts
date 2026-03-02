@@ -15,7 +15,7 @@ export class TazamaDwhService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  private formatTransactionForTable = (tx: {
+  private readonly formatTransactionForTable = (tx: {
     cre_dt_tm: string | null;
     end_to_end_id: string;
     tx_tp: string;
@@ -31,17 +31,15 @@ export class TazamaDwhService {
     counterparty: string;
     role: string | null;
     amount: number;
-  } => {
-    return {
-      date: tx.cre_dt_tm,
-      transactionId: tx.end_to_end_id,
-      type: tx.tx_tp,
-      account: tx.source,
-      counterparty: tx.destination,
-      role: tx.role,
-      amount: tx.amt?.toNumber() ?? 0,
-    };
-  };
+  } => ({
+    date: tx.cre_dt_tm,
+    transactionId: tx.end_to_end_id,
+    type: tx.tx_tp,
+    account: tx.source,
+    counterparty: tx.destination,
+    role: tx.role,
+    amount: tx.amt?.toNumber() ?? 0,
+  });
 
   async generateProfile(dto: GenerateProfileDto, userId: string): Promise<ProfileResponseDto> {
     const now = new Date();

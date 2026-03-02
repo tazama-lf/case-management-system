@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from '../task/task.service';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
-import { Priority, CaseStatus, CaseType, TaskStatus, Alert, Case, Task } from '@prisma/client-cms';
+import { Priority, CaseStatus, CaseType, TaskStatus, Alert, Case, Task, CaseCreationType } from '@prisma/client-cms';
 import { AIPrediction, Prediction } from '../../utils/interfaces/Prediction';
 import { FeatureExtractionService } from 'src/modules/feature-extraction/feature-extraction.service';
 import axios from 'axios';
@@ -361,8 +361,24 @@ export class TriageService {
             updateAlertDto.alertType,
           );
           if (alert.alert_type === CaseType.FRAUD_AND_AML) {
-            await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, alert.case_id, priority);
-            await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, alert.case_id, priority);
+            await this.caseCreateService.createCaseWithInvestigationTask(
+              CaseType.FRAUD,
+              userId,
+              tenantId,
+              alert.case_id,
+              priority,
+              CaseCreationType.AUTOMATIC_SYSTEM,
+              'SUPERVISOR',
+            );
+            await this.caseCreateService.createCaseWithInvestigationTask(
+              CaseType.AML,
+              userId,
+              tenantId,
+              alert.case_id,
+              priority,
+              CaseCreationType.AUTOMATIC_SYSTEM,
+              'SUPERVISOR',
+            );
           }
         }
         return { alert, completeNewCaseTask, existingCase };
@@ -577,8 +593,24 @@ export class TriageService {
             priority,
             predictedAlertType,
           );
-          await this.caseCreateService.createCaseWithInvestigationTask(CaseType.FRAUD, userId, tenantId, caseId, priority);
-          await this.caseCreateService.createCaseWithInvestigationTask(CaseType.AML, userId, tenantId, caseId, priority);
+          await this.caseCreateService.createCaseWithInvestigationTask(
+            CaseType.FRAUD,
+            userId,
+            tenantId,
+            caseId,
+            priority,
+            CaseCreationType.AUTOMATIC_SYSTEM,
+            'SUPERVISOR',
+          );
+          await this.caseCreateService.createCaseWithInvestigationTask(
+            CaseType.AML,
+            userId,
+            tenantId,
+            caseId,
+            priority,
+            CaseCreationType.AUTOMATIC_SYSTEM,
+            'SUPERVISOR',
+          );
 
           return;
         }

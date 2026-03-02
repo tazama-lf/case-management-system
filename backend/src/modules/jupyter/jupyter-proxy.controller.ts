@@ -88,7 +88,7 @@ export class JupyterProxyController {
     @Query('endToEndId') endToEndId?: string,
     @Query('tenantId') tenantId?: string,
     @Query('dateRange') dateRange?: string,
-    @Query('granularity') granularity: string = 'day',
+    @Query('granularity') granularity = 'day',
     @Headers() headers?: Record<string, any>,
   ) {
     this.validateSecret(headers ?? {});

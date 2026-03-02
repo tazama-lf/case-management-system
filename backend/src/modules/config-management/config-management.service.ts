@@ -426,13 +426,13 @@ export class ConfigManagementService {
     // Implement actual integration testing based on system type
     switch (systemName) {
       case 'ALERT_TRIAGE':
-        return await this.testAlertTriageConnection(config);
+        return this.testAlertTriageConnection(config);
       case 'API_PORTAL':
-        return await this.testApiPortalConnection(config);
+        return this.testApiPortalConnection(config);
       case 'FLOWABLE':
-        return await this.testFlowableConnection(config);
+        return this.testFlowableConnection(config);
       case 'KEYCLOAK':
-        return await this.testKeycloakConnection(config);
+        return this.testKeycloakConnection(config);
       default:
         this.logger.warn(`No test implementation for ${systemName}`);
         return true;
