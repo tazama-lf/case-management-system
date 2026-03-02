@@ -193,19 +193,21 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
 
   const handleSaveCurrentFilters = async () => {
     try {
-      // const currentUser = authService.getUser();
-      // const currentUserId = currentUser?.userId;
+      const currentUser = authService.getUser();
+      const currentUserId = currentUser?.userId;
 
-      // const payload: CreateUserFilters = {
-      //   user_id: currentUserId,
-      //   filterType: 'Case',
-      //   userFilters: JSON.stringify({
-      //     status: statusFilter,
-      //     priority: priorityFilter,
-      //     sortBy,
-      //     sarStrStatus: sarStrStatusFilter,
-      //   }),
-      // };
+      const payload: CreateUserFilters = {
+        user_id: currentUserId,
+        filterType: 'Case',
+        userFilters: JSON.stringify({
+          status: statusFilter,
+          priority: priorityFilter,
+          sortBy,
+          sarStrStatus: sarStrStatusFilter,
+        }),
+      };
+
+      await filterService.createFilter(payload);
 
       success(
         'Filter Created',
