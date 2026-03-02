@@ -20,7 +20,7 @@ psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -tc "SELECT 1 FROM pg_database WHER
 psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -c "CREATE DATABASE tazama_cms"
 
 echo "Running DWH migrations..."
-npx prisma migrate deploy --schema=prismaDWH/schema.dwh.prisma
+npx prisma migrate dev --schema=prismaDWH/schema.dwh.prisma
 
 echo "Running CMS migrations..."
 npx prisma migrate deploy
