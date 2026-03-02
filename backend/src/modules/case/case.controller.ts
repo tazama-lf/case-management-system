@@ -48,13 +48,17 @@ import {
 import { SimpleMessageResponseDto } from 'src/dtos/simple-message-response.dto';
 import { UserWorkloadResponseDto } from './dto/user-workload-response.dto';
 import { Case, Task } from '@prisma/client-cms';
+import { CaseCreationService } from './services/case-creation.service';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class CaseController {
-  constructor(private readonly caseService: CaseService) {}
+  constructor(
+    private readonly caseService: CaseService,
+    private readonly caseCreationService: CaseCreationService,
+  ) {}
 
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
@@ -208,7 +212,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Alert not found' })
   async createCaseManually(@Body() dto: ManualCreateCaseDto, @Req() req: AuthenticatedRequest) {
     const { userId, tenantId, role } = extractUserData(req);
-    return await this.caseService.manualCaseCreation(dto, userId, tenantId, role);
+    return await this.caseCreationService.manualCaseCreation(dto, userId, tenantId, role);
   }
 
   @Put(':caseId/close')

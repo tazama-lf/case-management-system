@@ -20,7 +20,20 @@ export class CaseQueryService {
     private readonly taskValidationUtil: TaskValidationUtil,
   ) {}
 
-  async getUserCases(userId: string, query: GetUserCasesQueryDto, isComplianceOfficer?: boolean) {
+  async getUserCases(
+    userId: string,
+    query: GetUserCasesQueryDto,
+    isComplianceOfficer?: boolean,
+  ): Promise<{
+    cases: unknown[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+    summary: {
+      totalOwnedCases: number;
+      totalTaskAssignments: number;
+      casesByStatus: Record<string, number>;
+      casesByPriority: Record<string, number>;
+    };
+  }> {
     try {
       const {
         status,
@@ -627,9 +640,8 @@ export class CaseQueryService {
     }
   }
 
-  async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean) {
+  async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean): Promise<Case> {
     const retrievedCase = await this.caseRepository.findCaseById(caseId, tenantId);
-    if (!retrievedCase) throw new NotFoundException(`Case not found: ${caseId}`);
 
     // Compliance officers can only access STATUS_82_CLOSED_CONFIRMED cases
     if (isComplianceOfficer && retrievedCase.status !== 'STATUS_82_CLOSED_CONFIRMED') {
@@ -639,15 +651,12 @@ export class CaseQueryService {
     return retrievedCase;
   }
 
-  async getSubCasesDetails(caseId: number) {
+  async getSubCasesDetails(caseId: number): Promise<Case[]> {
     const subCases = await this.prismaService.case.findMany({
       where: {
         parent_id: caseId,
       },
     });
-    if (!subCases) {
-      throw new BadRequestException(`SubCases for Parent Case : ${caseId} does not exist.`);
-    }
     return subCases;
   }
 

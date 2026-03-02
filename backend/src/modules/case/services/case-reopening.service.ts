@@ -7,7 +7,6 @@ import { CaseCreationType, CaseStatus, TaskStatus } from '@prisma/client-cms';
 import { CANDIDATE_GROUPS, TASK_NAMES, VALIDATION_LENGTHS, REOPENABLE_CASE_STATUSES } from '../../../constants/case.constants';
 import { ConflictException } from '@nestjs/common/exceptions/conflict.exception';
 import { determineOriginalClosedStatus, isInvestigatorRole } from '../../../utils/helperFunction';
-import { PrismaService } from 'prisma/prisma.service';
 import { CaseQueryService } from './case-query.service';
 import { Outcome } from '../../../utils/types/outcome';
 import { FlowableService } from '../../flowable/flowable.service';
@@ -20,7 +19,6 @@ export class CaseReopeningService {
     private readonly caseRepository: CaseRepository,
     private readonly commentRepository: CommentRepository,
     private readonly notificationService: NotificationService,
-    // private readonly prismaService: PrismaService,
     private readonly taskService: TaskService,
     private readonly loggerService: LoggerService,
     private readonly caseQueryService: CaseQueryService,
@@ -97,6 +95,7 @@ export class CaseReopeningService {
           creationType: CaseCreationType.MANUAL,
           creatorRole: 'SUPERVISOR',
           isReopened: true,
+          isFraudNAML: false,
         });
 
         await this.loggingOrchestrationService.logActionsWithHistory(
@@ -172,6 +171,7 @@ export class CaseReopeningService {
         creationType: CaseCreationType.MANUAL,
         creatorRole: 'INVESTIGATOR',
         isReopened: true,
+        isFraudNAML: false,
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -429,7 +429,18 @@ export class CaseReopeningService {
     }
   }
 
-  async rejectCaseReopening(caseId: number, rejectionReason: string, supervisorId: string, tenantId: string) {
+  async rejectCaseReopening(
+    caseId: number,
+    rejectionReason: string,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    case: { case_id: number; status: CaseStatus; updated_at: Date };
+    completed_task: { task_id: number; status: TaskStatus };
+    rejection_reason: string;
+  }> {
     try {
       this.loggerService.log(`Supervisor ${supervisorId} rejecting case reopening for ${caseId}`, CaseReopeningService.name);
 

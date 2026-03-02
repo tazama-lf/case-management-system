@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, InternalServerErrorException } from '@
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
-import { Case, CaseStatus, CaseType, Task, TaskStatus } from '@prisma/client-cms';
+import { Case, CaseCreationType, CaseStatus, CaseType, Task, TaskStatus } from '@prisma/client-cms';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -368,9 +368,6 @@ export class CaseService {
     return await this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId, tenantId);
   }
 
-  async manualCaseCreation(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
-    return await this.caseCreationApprovalService.manualCaseCreation(dto, userId, tenantId, role);
-  }
   async approveCaseCreation(caseId: number, supervisorId: string, tenantId: string) {
     return await this.caseCreationApprovalService.approveCaseCreation(caseId, supervisorId, tenantId);
   }
@@ -511,6 +508,8 @@ export class CaseService {
             existingCase.tenant_id,
             caseId,
             result.case.priority,
+            CaseCreationType.AUTOMATIC_SYSTEM,
+            role,
           );
           await this.caseCreationService.createCaseWithInvestigationTask(
             CaseType.AML,
@@ -518,6 +517,8 @@ export class CaseService {
             existingCase.tenant_id,
             caseId,
             result.case.priority,
+            CaseCreationType.AUTOMATIC_SYSTEM,
+            role,
           );
         } else {
           nextTask = await this.taskService.createTask(
