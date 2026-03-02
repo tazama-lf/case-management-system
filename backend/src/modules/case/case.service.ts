@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, InternalServerErrorException } from '@
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
-import { Case, CaseCreationType, CaseStatus, CaseType, Task, TaskStatus } from '@prisma/client-cms';
+import { Alert, Case, CaseCreationType, CaseStatus, CaseType, Priority, Task, TaskStatus } from '@prisma/client-cms';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -18,6 +18,7 @@ import { CloseCaseDto, ManualCreateCaseDto, GetAllCasesQueryDto, GetUserCasesQue
 import { CacheService } from '../shared/cache.service';
 import { CaseCreationService } from './services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
+import { JsonValue } from '@prisma/client-cms/runtime/library';
 
 @Injectable()
 export class CaseService {
@@ -36,7 +37,7 @@ export class CaseService {
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+  ) { }
 
   async suspendCase(
     caseId: number,
@@ -48,7 +49,7 @@ export class CaseService {
     role: string,
   ): Promise<{ success: boolean; case: Case; task: Task[] }> {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
-    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+    if (existingCase === null) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     if (!role.toLowerCase().includes('supervisor')) {
       if (existingCase.case_owner_user_id !== userId) {
         throw new BadRequestException('Only Case owner can suspend a case');
@@ -60,11 +61,11 @@ export class CaseService {
     }
 
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for suspension is required');
-    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) || [];
+    const allTasks = await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId);
 
     const investigateTask = allTasks.filter((task) => tasksIds.includes(task.task_id));
 
-    if (!investigateTask) throw new BadRequestException('No "Investigate Case" task found for this case');
+    if (investigateTask.length > 0) throw new BadRequestException('No "Investigate Case" task found for this case');
 
     try {
       const result = await this.prismaService.$transaction(async (prisma) => {
@@ -114,7 +115,7 @@ export class CaseService {
         return { case: updatedCase, task: updatedTask };
       });
 
-      await new Promise((res) => setTimeout(res, 1000));
+      await new Promise<void>((resolve) => setTimeout(resolve, 1000));
 
       this.flowableService.handleCaseStatusChanged({
         caseId,
@@ -124,7 +125,7 @@ export class CaseService {
       try {
         const caseAssignee = investigateTask.map((t) => t.assigned_user_id?.trim()).filter((id): id is string => !!id);
         this.logger.error(`caseAssignee : ${JSON.stringify(caseAssignee)}`);
-        if (caseAssignee) {
+        if (caseAssignee.length > 0) {
           const suspendedBy = await this.cacheService.getUserFromCache(userId);
           await Promise.all(
             caseAssignee.map(async (id) => {
@@ -292,10 +293,10 @@ export class CaseService {
     const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) || [];
     const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
     if (!completeNewCaseTask) throw new BadRequestException('No complete new Case Task exists');
-    if (completeNewCaseTask?.status === TaskStatus.STATUS_30_COMPLETED) {
+    if (completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
       throw new BadRequestException(`Cannot update Complete New Case task ${completeNewCaseTask.task_id} as it is already completed`);
     }
-
+    this.logger.log(`Abandoning case ${caseId} with userId: ${userId}`, CaseService.name);
     try {
       const result = await this.prismaService.$transaction(async (prisma) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_99_ABANDONED }, userId);
@@ -336,43 +337,151 @@ export class CaseService {
     }
   }
 
-  async saveCaseAsDraft(dto: ManualCreateCaseDto, userId: string, tenantId: string, role: string) {
+  async saveCaseAsDraft(
+    dto: ManualCreateCaseDto,
+    userId: string,
+    tenantId: string,
+    role: string,
+  ): Promise<{ success: boolean; case?: Case; alert?: Alert; message: string }> {
     return await this.caseCreationApprovalService.saveCaseAsDraft(dto, userId, tenantId, role);
   }
 
-  async reopenCase(caseId: number, reason: string, userId: string, tenantId: string, role: string) {
+  async reopenCase(
+    caseId: number,
+    reason: string,
+    userId: string,
+    tenantId: string,
+    role: string,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    case: Case;
+    investigation_task?: {
+      task_id: number;
+      name: string | null;
+      status: TaskStatus;
+      assigned_to: string;
+    };
+    approvalTask?: Task;
+  }> {
     return await this.caseReopeningService.reopenCase(caseId, reason, userId, tenantId, role);
   }
 
-  async approveCaseReopening(caseId: number, supervisorId: string, tenantId: string) {
+  async approveCaseReopening(
+    caseId: number,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    case: {
+      case_id: number;
+      status: CaseStatus;
+      case_owner_user_id: string | null;
+      updated_at: Date;
+    };
+    completed_approval_task: {
+      task_id: number;
+      status: TaskStatus;
+    };
+    investigation_task: {
+      task_id: number;
+      name: string | null;
+      status: TaskStatus;
+      assigned_to: string;
+      candidateGroup: string;
+    };
+  }> {
     return await this.caseReopeningService.approveCaseReopening(caseId, supervisorId, tenantId);
   }
 
-  async rejectCaseReopening(caseId: number, rejectionReason: string, supervisorId: string, tenantId: string) {
+  async rejectCaseReopening(
+    caseId: number,
+    rejectionReason: string,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    case: {
+      case_id: number;
+      status: CaseStatus;
+      updated_at: Date;
+    };
+    completed_task: {
+      task_id: number;
+      status: TaskStatus;
+    };
+    rejection_reason: string;
+  }> {
     return await this.caseReopeningService.rejectCaseReopening(caseId, rejectionReason, supervisorId, tenantId);
   }
 
-  async closeCase(caseId: number, dto: CloseCaseDto, userId: string, tenantId: string, role: string) {
+  async closeCase(
+    caseId: number,
+    dto: CloseCaseDto,
+    userId: string,
+    tenantId: string,
+    role: string,
+  ): Promise<{ message: string; closed_case: { case_id: number; status: string; updated_at: Date }; supervisor_closure?: boolean }> {
     return await this.caseClosureApprovalService.closeCase(caseId, dto, userId, tenantId, role);
   }
 
-  async approveCaseClosure(caseId: number, finalOutcome: string, comments: string, supervisorId: string, tenantId: string) {
+  async approveCaseClosure(
+    caseId: number,
+    finalOutcome: string,
+    comments: string,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{
+    message: string;
+    case: { case_id: number; status: string; updated_at: Date };
+    completed_task: { task_id: number; status: string };
+  }> {
     return await this.caseClosureApprovalService.approveCaseClosure(caseId, finalOutcome, comments, supervisorId, tenantId);
   }
 
-  async rejectCaseClosure(caseId: number, comments: string, supervisorId: string, tenantId: string) {
+  async rejectCaseClosure(
+    caseId: number,
+    comments: string,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{
+    message: string;
+    case: { case_id: number; status: string; updated_at: Date };
+    completed_approval_task: { task_id: number; status: string };
+    investigation_task: { task_id: number; name: string | null; assigned_to: string; status: string };
+  }> {
     return await this.caseClosureApprovalService.rejectCaseClosure(caseId, comments, supervisorId, tenantId);
   }
 
-  async returnCaseForReview(caseId: number, comments: string, supervisorId: string, tenantId: string) {
+  async returnCaseForReview(
+    caseId: number,
+    comments: string,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{
+    message: string;
+    case: { case_id: number; status: string; updated_at: Date };
+  }> {
     return await this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId, tenantId);
   }
 
-  async approveCaseCreation(caseId: number, supervisorId: string, tenantId: string) {
+  async approveCaseCreation(caseId: number, supervisorId: string, tenantId: string): Promise<{ success: boolean; case: Case; message: string }> {
     return await this.caseCreationApprovalService.approveCaseCreation(caseId, supervisorId, tenantId);
   }
 
-  async rejectCaseCreation(caseId: number, supervisorId: string, tenantId: string, reason: string) {
+  async rejectCaseCreation(
+    caseId: number,
+    supervisorId: string,
+    tenantId: string,
+    reason: string,
+  ): Promise<{
+    success: boolean;
+    case: Case;
+    completedTask: Task;
+    newTask: Task;
+  }> {
     return await this.caseCreationApprovalService.rejectCaseCreation(caseId, supervisorId, tenantId, reason);
   }
 
@@ -384,23 +493,153 @@ export class CaseService {
     return await this.caseCreationApprovalService.completeCase(caseId, userId, tenantId);
   }
 
-  async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string, isComplianceOfficer?: boolean) {
+  async getAllCases(
+    query: GetAllCasesQueryDto,
+    tenantId: string,
+    investigatorUserId?: string,
+    isComplianceOfficer?: boolean,
+  ): Promise<{
+    cases: Array<{
+      case_id: number;
+      tenant_id: string;
+      case_creator_user_id: string;
+      case_owner_user_id: string | null;
+      status: CaseStatus;
+      priority: Priority;
+      case_type: CaseType | null;
+      created_at: Date;
+      updated_at: Date;
+      total_tasks: number;
+      tasks: Array<{
+        name: string | null;
+        status: TaskStatus;
+        created_at: Date;
+        task_id: number;
+        assigned_user_id: string | null;
+      }>;
+      completed_tasks: number;
+      pending_tasks: number;
+      alert: {
+        alert_id: number;
+        alert_type: CaseType | null;
+        message: string;
+        transaction: JsonValue;
+        confidence_per: number;
+      } | null;
+      parent_id: number | null;
+      assigned_to:
+      | {
+        user_id: string | null;
+        task_count: number;
+      }
+      | undefined;
+    }>;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+    statistics: {
+      totalCases: number;
+      casesByStatus: Record<string, number>;
+      casesByPriority: Record<string, number>;
+      casesByType: Record<string, number>;
+      unassignedCases: number;
+      averageTasksPerCase: number;
+      oldestUnassignedCase:
+      | {
+        case_id: number;
+        created_at: Date;
+        days_old: number;
+      }
+      | undefined;
+    };
+  }> {
     return await this.caseQueryService.getAllCases(query, tenantId, investigatorUserId, isComplianceOfficer);
   }
 
-  async getUserCases(userId: string, query: GetUserCasesQueryDto, isComplianceOfficer?: boolean) {
+  async getUserCases(
+    userId: string,
+    query: GetUserCasesQueryDto,
+    isComplianceOfficer?: boolean,
+  ): Promise<{
+    cases: Array<{
+      case_id: number;
+      status: CaseStatus;
+      priority: Priority;
+      case_type: CaseType | null;
+      created_at: Date;
+      updated_at: Date;
+      user_role: 'owner' | 'task_assignee' | 'both';
+      user_tasks: Array<{
+        task_id: number;
+        name: string | null;
+        status: TaskStatus;
+        created_at: Date | undefined;
+      }>;
+      total_tasks: number;
+      alert:
+      | {
+        alert_id: number;
+        message: string;
+        confidence_per: number;
+        transaction: JsonValue;
+      }
+      | undefined;
+      latest_comment_date: Date;
+    }>;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+    summary: {
+      totalOwnedCases: number;
+      totalTaskAssignments: number;
+      casesByStatus: Record<string, number>;
+      casesByPriority: Record<string, number>;
+    };
+  }> {
     return await this.caseQueryService.getUserCases(userId, query, isComplianceOfficer);
   }
 
-  async getUserWorkloadStats(userId: string, isComplianceOfficer?: boolean) {
+  async getUserWorkloadStats(
+    userId: string,
+    isComplianceOfficer?: boolean,
+  ): Promise<{
+    totalActiveCases: number;
+    totalPendingTasks: number;
+    casesByStatus: Record<string, number>;
+    casesByPriority: Record<string, number>;
+    oldestCase: {
+      case_id: number;
+      created_at: Date;
+      days_old: number;
+    } | null;
+    averageCaseAge: number;
+    upcomingTasks: Array<{
+      task_id: number;
+      name: string | null;
+      case_id: number;
+      days_old: number;
+    }>;
+  }> {
     return await this.caseQueryService.getUserWorkloadStats(userId, isComplianceOfficer);
   }
 
-  async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string) {
+  async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string): Promise<Case> {
     return await this.caseQueryService.updateCase(caseId, updateData, userId);
   }
 
-  async completeCaseCreation(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string, tenantId: string, role: string) {
+  async completeCaseCreation(
+    caseId: number,
+    updateData: Partial<UpdateCaseDto>,
+    userId: string,
+    tenantId: string,
+    role: string,
+  ): Promise<{ success: boolean; case: Case; completedTask: Task; message: string; requiresApproval: boolean }> {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
 
@@ -591,11 +830,11 @@ export class CaseService {
     }
   }
 
-  async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean) {
+  async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean): Promise<Case | null> {
     return await this.caseQueryService.retrieveCase(caseId, tenantId, isComplianceOfficer);
   }
 
-  async getSubCasesDetails(caseId: number) {
+  async getSubCasesDetails(caseId: number): Promise<Case[]> {
     return await this.caseQueryService.getSubCasesDetails(caseId);
   }
 }

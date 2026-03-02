@@ -48,6 +48,10 @@ export class TaskService {
         tx,
       );
 
+      if (createdTask === null) {
+        throw new Error('Failed to create task');
+      }
+
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
           userId,
@@ -83,6 +87,9 @@ export class TaskService {
       const txResult = await this.taskRepository.transaction(async (tx) => {
         let updatedTask: Task;
         const existingTask = await this.taskRepository.findTaskWithCase(taskId, tenantId, tx);
+        if (existingTask === null || existingTask.case === null) {
+          throw new NotFoundException(`Task ${taskId} not found`);
+        }
         const updateInput: Prisma.TaskUpdateInput = {
           status: updateData.status,
           assigned_user_id: updateData.assignedUserId === existingTask.assigned_user_id ? existingTask.assigned_user_id : userId,

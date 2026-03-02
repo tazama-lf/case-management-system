@@ -27,9 +27,9 @@ export class AdminRepository extends BaseRepository {
       return referenceId;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new Error('ReferenceId already exists');
+        throw new Error('ReferenceId already exists', { cause: error });
       }
-      throw new Error(`Failed to create ReferenceId: ${error.message}`);
+      throw new Error(`Failed to create ReferenceId: ${error.message}`, { cause: error });
     }
   }
 
@@ -45,7 +45,7 @@ export class AdminRepository extends BaseRepository {
       const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
       const referenceIds = await client.referenceId.findMany();
 
-      if (!referenceIds) {
+      if (referenceIds.length === 0) {
         throw new NotFoundException('No ReferenceIds found');
       }
 
@@ -54,7 +54,7 @@ export class AdminRepository extends BaseRepository {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new Error(`Failed to retrieve ReferenceIds: ${error.message}`);
+      throw new Error('Failed to retrieve ReferenceIds', { cause: error });
     }
   }
 }

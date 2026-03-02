@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { CaseStatus, TaskStatus, Prisma, Case, Alert, Task } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, Prisma, Case, Alert, Task, Priority, CaseType } from '@prisma/client-cms';
 import { BaseRepository } from './base.repository';
 import { CommentRepository } from './comment.repository';
 import { validate as isUuid } from 'uuid';
@@ -11,6 +11,7 @@ export class CaseRepository extends BaseRepository {
   constructor(
     private readonly prisma: PrismaService,
     private readonly commentRepository: CommentRepository,
+    private readonly logger: Logger,
   ) {
     super(prisma);
   }
@@ -217,7 +218,11 @@ export class CaseRepository extends BaseRepository {
     } else {
       // If userId is not a valid UUID, skip UUID column comparisons
       // Permission enforcement will be done at service layer through task assignment checks
-      console.log(`[findCaseWithPermissionCheck] Non-UUID userId detected: ${userId}. Skipping UUID-based permission checks.`);
+      this.logger.log(
+        `[findCaseWithPermissionCheck] Invalid UUID userId detected: ${userId}. Skipping UUID-based permission checks.`,
+        CaseRepository.name,
+      );
+      //console.log(`[findCaseWithPermissionCheck] Non-UUID userId detected: ${userId}. Skipping UUID-based permission checks.`);
       // Just return the case by caseId and tenantId (tenant isolation is still enforced)
     }
 
@@ -246,7 +251,26 @@ export class CaseRepository extends BaseRepository {
     });
   }
 
-  async findCaseForClosureApproval(caseId: number, tenantId: string) {
+  async findCaseForClosureApproval(
+    caseId: number,
+    tenantId: string,
+  ): Promise<
+    | (Case & {
+        tasks: Task[];
+        alert: Alert | null;
+        comments: Array<{
+          case_id: number | null;
+          tenant_id: string;
+          created_at: Date;
+          updated_at: Date;
+          task_id: number | null;
+          comment_id: number;
+          user_id: string;
+          note: string;
+        }>;
+      })
+    | null
+  > {
     return await this.prisma.case.findUnique({
       where: {
         case_id: caseId,
@@ -338,7 +362,25 @@ export class CaseRepository extends BaseRepository {
     whereClause: Prisma.CaseWhereInput,
     tenantId: string,
     options: { skip: number; limit: number; sortBy: string; sortOrder: 'asc' | 'desc' },
-  ) {
+  ): Promise<
+    Array<
+      Case & {
+        tasks: Array<{
+          task_id: number;
+          status: TaskStatus;
+          assigned_user_id: string | null;
+          name: string | null;
+        }>;
+        alert: {
+          alert_id: number;
+          message: string;
+          confidence_per: number;
+          alert_type: CaseType | null;
+          transaction: Prisma.JsonValue;
+        } | null;
+      }
+    >
+  > {
     return await this.prisma.case.findMany({
       where: {
         ...whereClause,
@@ -367,7 +409,25 @@ export class CaseRepository extends BaseRepository {
     whereConditions: Prisma.CaseWhereInput[],
     tenantId: string,
     options: { skip: number; limit: number; sortBy: string; sortOrder: 'asc' | 'desc' },
-  ) {
+  ): Promise<
+    Array<
+      Case & {
+        tasks: Task[];
+        alert: {
+          priority: Priority | null;
+          alert_id: number;
+          alert_type: CaseType | null;
+          message: string;
+          transaction: Prisma.JsonValue;
+          confidence_per: number;
+        } | null;
+        comments: Array<{
+          comment_id: number;
+          created_at: Date;
+        }>;
+      }
+    >
+  > {
     return await this.prisma.case.findMany({
       where: {
         tenant_id: tenantId,
@@ -540,7 +600,7 @@ export class CaseRepository extends BaseRepository {
       }
 
       // Verify tenant_id matches if comment has tenantId
-      if (comment && existingCase.tenant_id !== comment?.tenantId) {
+      if (comment && existingCase.tenant_id !== comment.tenantId) {
         throw new Error(`Tenant mismatch for case ${caseId}: expected ${existingCase.tenant_id}, got ${comment.tenantId}`);
       }
 

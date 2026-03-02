@@ -3,12 +3,13 @@ import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
 import { GetAllCasesQueryDto } from '../dto/get-all-cases.dto';
-import { Case, CaseStatus, TaskStatus } from '@prisma/client-cms';
+import { Case, CaseStatus, CaseType, Priority, TaskStatus } from '@prisma/client-cms';
 import { TaskValidationUtil } from '../../shared/utils/task-validation.util';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { Outcome } from '../../../utils/types/outcome';
 import { UpdateCaseDto } from '../dto';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
+import { JsonValue } from '@prisma/client-cms/runtime/library';
 
 @Injectable()
 export class CaseQueryService {
@@ -18,15 +19,44 @@ export class CaseQueryService {
     private readonly caseRepository: CaseRepository,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly taskValidationUtil: TaskValidationUtil,
-  ) {}
+  ) { }
 
   async getUserCases(
     userId: string,
     query: GetUserCasesQueryDto,
     isComplianceOfficer?: boolean,
   ): Promise<{
-    cases: unknown[];
-    pagination: { total: number; page: number; limit: number; totalPages: number };
+    cases: Array<{
+      case_id: number;
+      status: CaseStatus;
+      priority: Priority;
+      case_type: CaseType | null;
+      created_at: Date;
+      updated_at: Date;
+      user_role: 'owner' | 'task_assignee' | 'both';
+      user_tasks: Array<{
+        task_id: number;
+        name: string | null;
+        status: TaskStatus;
+        created_at: Date | undefined;
+      }>;
+      total_tasks: number;
+      alert:
+      | {
+        alert_id: number;
+        message: string;
+        confidence_per: number;
+        transaction: JsonValue;
+      }
+      | undefined;
+      latest_comment_date: Date;
+    }>;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
     summary: {
       totalOwnedCases: number;
       totalTaskAssignments: number;
@@ -110,11 +140,11 @@ export class CaseQueryService {
           total_tasks: caseItem.tasks.length,
           alert: caseItem.alert
             ? {
-                alert_id: caseItem.alert.alert_id,
-                message: caseItem.alert.message,
-                confidence_per: caseItem.alert.confidence_per,
-                transaction: caseItem.alert.transaction,
-              }
+              alert_id: caseItem.alert.alert_id,
+              message: caseItem.alert.message,
+              confidence_per: caseItem.alert.confidence_per,
+              transaction: caseItem.alert.transaction,
+            }
             : undefined,
           latest_comment_date: caseItem.comments[0]?.created_at,
         };
@@ -155,7 +185,69 @@ export class CaseQueryService {
     }
   }
 
-  async getAllCases(query: GetAllCasesQueryDto, tenantId: string, investigatorUserId?: string, isComplianceOfficer?: boolean) {
+  async getAllCases(
+    query: GetAllCasesQueryDto,
+    tenantId: string,
+    investigatorUserId?: string,
+    isComplianceOfficer?: boolean,
+  ): Promise<{
+    cases: Array<{
+      case_id: number;
+      tenant_id: string;
+      case_creator_user_id: string;
+      case_owner_user_id: string | null;
+      status: CaseStatus;
+      priority: Priority;
+      case_type: CaseType | null;
+      created_at: Date;
+      updated_at: Date;
+      total_tasks: number;
+      tasks: Array<{
+        name: string | null;
+        status: TaskStatus;
+        created_at: Date;
+        task_id: number;
+        assigned_user_id: string | null;
+      }>;
+      completed_tasks: number;
+      pending_tasks: number;
+      alert: {
+        alert_id: number;
+        alert_type: CaseType | null;
+        message: string;
+        transaction: JsonValue;
+        confidence_per: number;
+      } | null;
+      parent_id: number | null;
+      assigned_to:
+      | {
+        user_id: string | null;
+        task_count: number;
+      }
+      | undefined;
+    }>;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+    statistics: {
+      totalCases: number;
+      casesByStatus: Record<string, number>;
+      casesByPriority: Record<string, number>;
+      casesByType: Record<string, number>;
+      unassignedCases: number;
+      averageTasksPerCase: number;
+      oldestUnassignedCase:
+      | {
+        case_id: number;
+        created_at: Date;
+        days_old: number;
+      }
+      | undefined;
+    };
+  }> {
     try {
       const {
         status,
@@ -560,21 +652,41 @@ export class CaseQueryService {
     }
   }
 
-  async getUserWorkloadStats(userId: string, isComplianceOfficer?: boolean) {
+  async getUserWorkloadStats(
+    userId: string,
+    isComplianceOfficer?: boolean,
+  ): Promise<{
+    totalActiveCases: number;
+    totalPendingTasks: number;
+    casesByStatus: Record<string, number>;
+    casesByPriority: Record<string, number>;
+    oldestCase: {
+      case_id: number;
+      created_at: Date;
+      days_old: number;
+    } | null;
+    averageCaseAge: number;
+    upcomingTasks: Array<{
+      task_id: number;
+      name: string | null;
+      case_id: number;
+      days_old: number;
+    }>;
+  }> {
     try {
       // For compliance officers, filter to only STATUS_82_CLOSED_CONFIRMED cases
       const statusFilter = isComplianceOfficer
         ? { status: CaseStatus.STATUS_82_CLOSED_CONFIRMED }
         : {
-            status: {
-              notIn: [
-                CaseStatus.STATUS_81_CLOSED_REFUTED,
-                CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-                CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-                CaseStatus.STATUS_99_ABANDONED,
-              ],
-            },
-          };
+          status: {
+            notIn: [
+              CaseStatus.STATUS_81_CLOSED_REFUTED,
+              CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+              CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+              CaseStatus.STATUS_99_ABANDONED,
+            ],
+          },
+        };
       const [activeCases, pendingTasks, allUserCases] = await Promise.all([
         this.prismaService.case.count({
           where: {
@@ -640,7 +752,7 @@ export class CaseQueryService {
     }
   }
 
-  async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean): Promise<Case> {
+  async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean): Promise<Case | null> {
     const retrievedCase = await this.caseRepository.findCaseById(caseId, tenantId);
 
     // Compliance officers can only access STATUS_82_CLOSED_CONFIRMED cases

@@ -22,7 +22,7 @@ export class CaseCreationService {
     private readonly alertRepository: AlertRepository,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+  ) { }
 
   async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string, userRole: string): Promise<Case> {
     try {

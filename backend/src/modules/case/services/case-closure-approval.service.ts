@@ -121,7 +121,7 @@ export class CaseClosureApprovalService {
             },
           });
 
-          if (subCase && subCase.length > 0) {
+          if (subCase.length > 0) {
             const areSubCasesClosable = subCase.every((c) => CLOSED_CASE_STATUSES.includes(c.status));
             this.logger.log(`areSubCasesClosable: ${areSubCasesClosable}`);
             if (!areSubCasesClosable) {

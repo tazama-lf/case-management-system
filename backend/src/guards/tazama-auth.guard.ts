@@ -60,7 +60,7 @@ export class TazamaAuthGuard implements CanActivate {
     try {
       const token = authHeader.split(' ')[1];
 
-      const claimsToValidate = requiredClaims || anyRequiredClaims || [];
+      const claimsToValidate = (requiredClaims?.length ? requiredClaims : null) ?? (anyRequiredClaims?.length ? anyRequiredClaims : []);
 
       const validated: ClaimValidationResult = validateTokenAndClaims(token, claimsToValidate);
 
@@ -82,7 +82,7 @@ export class TazamaAuthGuard implements CanActivate {
         }
       } else if (anyRequiredClaims && anyRequiredClaims.length > 0) {
         const hasAnyClaim = anyRequiredClaims.some((claim) => validated[claim]);
-        validClaims = anyRequiredClaims.filter((claim) => validated[claim]);
+        // validClaims = anyRequiredClaims.filter((claim) => validated[claim]);
         invalidClaims = anyRequiredClaims.filter((claim) => !validated[claim]);
         hasValidAccess = hasAnyClaim;
 

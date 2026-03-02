@@ -13,11 +13,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.connectRedis();
   }
 
-  async onModuleDestroy(): Promise<void> {
-    if (this.client) {
-      await this.client.disconnect();
-      this.logger.log('Redis client disconnected', RedisService.name);
-    }
+  onModuleDestroy(): void {
+    this.client.disconnect();
+    this.logger.log('Redis client disconnected', RedisService.name);
   }
 
   private async connectRedis(): Promise<void> {
@@ -67,7 +65,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * Check if Redis is available
    */
   isConnected(): boolean {
-    return this.client?.status === 'ready';
+    return this.client.status === 'ready';
   }
 
   /**
@@ -154,7 +152,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       if (ttlSeconds) {
         const keys = Object.keys(data);
         const pipeline = this.client.pipeline();
-        keys.forEach((key) => pipeline.expire(key, ttlSeconds));
+        keys.map((key) => pipeline.expire(key, ttlSeconds));
         await pipeline.exec();
       }
     } catch (error) {
