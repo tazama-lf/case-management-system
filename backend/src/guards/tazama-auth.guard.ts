@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { validateTokenAndClaims } from '@tazama-lf/auth-lib';
+import * as jwt from 'jsonwebtoken';
 import type { AuthenticatedUser, ClaimValidationResult, CMSToken } from '../utils/types/auth.types';
 import { CLAIMS_KEY, IS_PUBLIC_KEY, ANY_CLAIMS_KEY, AUTHENTICATED_ONLY_KEY } from '../decorators/auth.decorator';
 
@@ -31,68 +32,49 @@ export class TazamaAuthGuard implements CanActivate {
       throw new UnauthorizedException('No Bearer token provided');
     }
 
-    // Handle authenticated-only case (no claims validation)
     if (authenticatedOnly) {
-      try {
-        const token = authHeader.split(' ')[1];
-        const decodedToken = this.extractTokenPayload(token);
-        const claims = validateTokenAndClaims(token, decodedToken.claims);
-
-        const authenticatedUser: AuthenticatedUser = {
-          token: decodedToken,
-          validatedClaims: claims,
-        };
-
-        request.user = authenticatedUser;
-        return true;
-      } catch (error) {
-        const err = error as Error;
-        this.logger.error(`Authentication failed: ${err.name}: ${err.message}`, logContext);
-        throw new UnauthorizedException('Token validation failed');
-      }
+      return this.handleAuthenticatedOnly(authHeader, request, logContext);
     }
 
-    if (!requiredClaims?.length && !anyRequiredClaims?.length) {
-      this.logger.warn('No required claims specified for protected route', logContext);
-      throw new UnauthorizedException('No required claims specified');
-    }
+    return this.handleClaimsValidation(authHeader, request, requiredClaims, anyRequiredClaims, logContext);
+  }
 
+  private handleAuthenticatedOnly(authHeader: string, request: any, logContext: string): boolean {
     try {
-      const token = authHeader.split(' ')[1];
+      const [, token] = authHeader.split(' ');
+      const decodedToken = this.extractTokenPayload(token);
+      const claims = validateTokenAndClaims(token, decodedToken.claims);
 
-      const claimsToValidate = (requiredClaims?.length ? requiredClaims : null) ?? (anyRequiredClaims?.length ? anyRequiredClaims : []);
+      const authenticatedUser: AuthenticatedUser = {
+        token: decodedToken,
+        validatedClaims: claims,
+      };
+
+      // eslint-disable-next-line no-param-reassign -- Attaching authenticated user to request
+      request.user = authenticatedUser;
+      return true;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(`Authentication failed: ${err.name}: ${err.message}`, logContext);
+      throw new UnauthorizedException('Token validation failed');
+    }
+  }
+
+  private handleClaimsValidation(
+    authHeader: string,
+    request: any,
+    requiredClaims: string[] | undefined,
+    anyRequiredClaims: string[] | undefined,
+    logContext: string,
+  ): boolean {
+    try {
+      const [, token] = authHeader.split(' ');
+
+      const claimsToValidate = requiredClaims?.length ? requiredClaims : anyRequiredClaims?.length ? anyRequiredClaims : [];
 
       const validated: ClaimValidationResult = validateTokenAndClaims(token, claimsToValidate);
 
-      let hasValidAccess = false;
-      let validClaims: string[] = [];
-      let invalidClaims: string[] = [];
-
-      if (requiredClaims && requiredClaims.length > 0) {
-        const hasAllClaims = requiredClaims.every((claim) => validated[claim]);
-        validClaims = requiredClaims.filter((claim) => validated[claim]);
-        invalidClaims = requiredClaims.filter((claim) => !validated[claim]);
-        hasValidAccess = hasAllClaims;
-
-        if (!hasAllClaims) {
-          this.logger.warn(
-            `User missing required claims. Required: [${requiredClaims.join(', ')}], Invalid: [${invalidClaims.join(', ')}]`,
-            logContext,
-          );
-        }
-      } else if (anyRequiredClaims && anyRequiredClaims.length > 0) {
-        const hasAnyClaim = anyRequiredClaims.some((claim) => validated[claim]);
-        // validClaims = anyRequiredClaims.filter((claim) => validated[claim]);
-        invalidClaims = anyRequiredClaims.filter((claim) => !validated[claim]);
-        hasValidAccess = hasAnyClaim;
-
-        if (!hasAnyClaim) {
-          this.logger.warn(
-            `User missing any required claims. Required (any of): [${anyRequiredClaims.join(', ')}], Invalid: [${invalidClaims.join(', ')}]`,
-            logContext,
-          );
-        }
-      }
+      const { hasValidAccess, invalidClaims } = this.validateClaims(validated, requiredClaims, anyRequiredClaims, logContext);
 
       if (!hasValidAccess) {
         throw new UnauthorizedException(`Missing or invalid claims: ${invalidClaims.join(', ')}`);
@@ -105,6 +87,7 @@ export class TazamaAuthGuard implements CanActivate {
         validatedClaims: validated,
       };
 
+      // eslint-disable-next-line no-param-reassign -- Attaching authenticated user to request
       request.user = authenticatedUser;
 
       this.logger.log('Authentication Successful', logContext);
@@ -121,30 +104,62 @@ export class TazamaAuthGuard implements CanActivate {
     }
   }
 
+  private validateClaims(
+    validated: ClaimValidationResult,
+    requiredClaims: string[] | undefined,
+    anyRequiredClaims: string[] | undefined,
+    logContext: string,
+  ): { hasValidAccess: boolean; invalidClaims: string[] } {
+    let hasValidAccess = false;
+    let invalidClaims: string[] = [];
+
+    if (requiredClaims?.length) {
+      const hasAllClaims = requiredClaims.every((claim) => validated[claim]);
+      invalidClaims = requiredClaims.filter((claim) => !validated[claim]);
+      hasValidAccess = hasAllClaims;
+
+      if (!hasAllClaims) {
+        this.logger.warn(
+          `User missing required claims. Required: [${requiredClaims.join(', ')}], Invalid: [${invalidClaims.join(', ')}]`,
+          logContext,
+        );
+      }
+    } else if (anyRequiredClaims?.length) {
+      const hasAnyClaim = anyRequiredClaims.some((claim) => validated[claim]);
+      invalidClaims = anyRequiredClaims.filter((claim) => !validated[claim]);
+      hasValidAccess = hasAnyClaim;
+
+      if (!hasAnyClaim) {
+        this.logger.warn(
+          `User missing any required claims. Required (any of): [${anyRequiredClaims.join(', ')}], Invalid: [${invalidClaims.join(', ')}]`,
+          logContext,
+        );
+      }
+    }
+
+    return { hasValidAccess, invalidClaims };
+  }
+
   private extractTokenPayload(token: string): CMSToken {
     try {
-      const jwt = require('jsonwebtoken');
-      const decoded = jwt.decode(token);
-      const nestedDecoded = jwt.decode(decoded.tokenString);
-
-      if (!decoded && !nestedDecoded) {
-        throw new Error('Failed to decode token');
-      }
+      const decoded = jwt.decode(token) as unknown as Record<string, unknown>;
+      const nestedDecoded = jwt.decode(decoded.tokenString as string) as unknown as Record<string, unknown>;
 
       if (!decoded.clientId && !decoded.tenantId && !decoded.claims) {
         throw new Error('Token missing details');
       }
 
-      const tenantName = this.extractTenantName(nestedDecoded?.tenant_details as string[]);
+      const tenantName = this.extractTenantName(nestedDecoded.tenant_details as string[]);
 
-      return {
-        ...decoded,
-        email: nestedDecoded.email,
-        firstName: nestedDecoded.firstName ?? undefined,
-        lastName: nestedDecoded.lastName,
-        fullName: nestedDecoded.name,
+      const result: CMSToken = {
+        ...(decoded as CMSToken),
+        email: nestedDecoded.email as string,
+        firstName: (nestedDecoded.firstName as string | undefined) ?? undefined,
+        lastName: nestedDecoded.lastName as string | undefined,
+        fullName: nestedDecoded.name as string | undefined,
         tenantName,
       };
+      return result;
     } catch (error) {
       const err = error as Error;
       this.logger.error(`Failed to extract token payload: ${err.message}`);
@@ -153,11 +168,8 @@ export class TazamaAuthGuard implements CanActivate {
   }
 
   private extractTenantName(tenantDetails: string[]): string {
-    if (!tenantDetails || tenantDetails.length === 0) {
-      this.logger.error('Tenant details array is empty or undefined');
-      throw new UnauthorizedException('Invalid tenant details');
-    }
-    const tenantName = tenantDetails[0].split('/').filter((part) => part.length > 0)[0];
-    return tenantName;
+    const [firstDetail] = tenantDetails;
+    const tenantName = firstDetail.split('/').find((part) => part.length > 0);
+    return tenantName ?? '';
   }
 }
