@@ -47,7 +47,7 @@ export const usePagination = <T>({
       startPage = Math.max(1, endPage - maxPagesToShow + 1);
     }
 
-    for (let i = startPage; i <= endPage; i++) {
+    for (let i = startPage; i <= endPage; i += 1) {
       range.push(i);
     }
 

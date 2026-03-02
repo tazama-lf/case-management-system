@@ -255,7 +255,9 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
               </div>
             </button>
             <button
-              onClick={() => !reportApproved && setActiveTab('reject')}
+              onClick={() => {
+                if (!reportApproved) setActiveTab('reject');
+              }}
               disabled={reportApproved}
               className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors
     ${
@@ -292,13 +294,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Investigator's Notes
                   </label>
-                  {!tasks.length ? (
-                    <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50 max-h-32 overflow-y-auto">
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
-                        No notes provided.
-                      </p>
-                    </div>
-                  ) : (
+                  {tasks.length ? (
                     <div className="space-y-3 max-h-40 overflow-y-auto">
                       {tasks.map((c) => (
                         <div
@@ -310,6 +306,12 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                           </div>
                         </div>
                       ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50 max-h-32 overflow-y-auto">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                        No notes provided.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -438,13 +440,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Investigator's Notes
                   </label>
-                  {!tasks.length ? (
-                    <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50 max-h-32 overflow-y-auto">
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
-                        No notes provided.
-                      </p>
-                    </div>
-                  ) : (
+                  {tasks.length ? (
                     <div className="space-y-3 max-h-40 overflow-y-auto">
                       {tasks.map((c) => (
                         <div
@@ -456,6 +452,12 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                           </div>
                         </div>
                       ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-gray-300 px-3 py-2 bg-gray-50 max-h-32 overflow-y-auto">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                        No notes provided.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -536,27 +538,6 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                   Generate Investigation Report
                 </button>
               )}
-
-            {/* {activeTab === 'approve' && hasSupervisorRole() && reportApproved && (
-              <button
-                type="button"
-                onClick={handleApproveSubmit}
-                disabled={isSubmitting || !reportApproved}
-                className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                    Approving...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircleIcon className="h-4 w-4" />
-                    Approve Case Closure
-                  </>
-                )}
-              </button>
-            )} */}
 
             {activeTab === 'reject' && (
               <button

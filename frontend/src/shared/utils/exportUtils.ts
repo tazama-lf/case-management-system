@@ -50,7 +50,7 @@ export const exportToExcel = (
     saveAs(blob, `${filename}.xlsx`);
   } catch (error) {
     console.error('Error exporting to Excel:', error);
-    throw new Error('Failed to export to Excel');
+    throw new Error('Failed to export to Excel', { cause: error });
   }
 };
 
@@ -85,7 +85,7 @@ export const exportToCSV = (data: ExportData[], filename: string): void => {
     saveAs(blob, `${filename}.csv`);
   } catch (error) {
     console.error('Error exporting to CSV:', error);
-    throw new Error('Failed to export to CSV');
+    throw new Error('Failed to export to CSV', { cause: error });
   }
 };
 
@@ -261,7 +261,7 @@ export const exportToPDF = async (
     pdfDoc.download(`${filename}.pdf`);
   } catch (error) {
     console.error('Error exporting to PDF:', error);
-    throw new Error('Failed to export to PDF');
+    throw new Error('Failed to export to PDF', { cause: error });
   }
 };
 

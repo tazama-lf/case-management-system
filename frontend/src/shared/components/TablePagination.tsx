@@ -23,14 +23,14 @@ const TablePagination: React.FC<TablePaginationProps> = ({
     const addEllipsis = () => pages.push('ellipsis');
 
     if (totalPages <= windowSize + 2) {
-      for (let p = 1; p <= totalPages; p++) addPage(p);
+      for (let p = 1; p <= totalPages; p += 1) addPage(p);
     } else {
       const start = Math.max(2, currentPage - half);
       const end = Math.min(totalPages - 1, currentPage + half);
 
       addPage(1);
       if (start > 2) addEllipsis();
-      for (let p = start; p <= end; p++) addPage(p);
+      for (let p = start; p <= end; p += 1) addPage(p);
       if (end < totalPages - 1) addEllipsis();
       addPage(totalPages);
     }

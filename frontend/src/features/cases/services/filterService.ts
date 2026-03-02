@@ -78,9 +78,9 @@ export class FilterService {
   private handleError(error: any, operation: string): Error {
     if (error.response?.data) {
       const apiError = error.response.data as ApiErrorResponse;
-      return new Error(apiError.message || `Failed to ${operation}`);
+      return new Error(apiError.message || `Failed to ${operation}`, { cause: error });
     }
-    return new Error(`Failed to ${operation}: ${error.message}`);
+    return new Error(`Failed to ${operation}: ${error.message}`, { cause: error });
   }
 }
 

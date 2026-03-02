@@ -177,7 +177,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
         {selectedAlerts.length > 0 && (
           <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
             {selectedAlerts.length} alert
-            {selectedAlerts.length !== 1 ? 's' : ''} selected
+            {selectedAlerts.length === 1 ? '' : 's'} selected
           </div>
         )}
       </div>
@@ -202,7 +202,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-blue-900">
               {selectedAlerts.length} alert
-              {selectedAlerts.length !== 1 ? 's' : ''} selected
+              {selectedAlerts.length === 1 ? '' : 's'} selected
             </span>
             <button
               onClick={() => {
@@ -395,7 +395,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                       const addEllipsis = () => pages.push('ellipsis');
 
                       if (totalPages <= windowSize + 2) {
-                        for (let p = 1; p <= totalPages; p++) addPage(p);
+                        for (let p = 1; p <= totalPages; p += 1) addPage(p);
                       } else {
                         const start = Math.max(2, currentPage - half);
                         const end = Math.min(
@@ -405,7 +405,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
 
                         addPage(1);
                         if (start > 2) addEllipsis();
-                        for (let p = start; p <= end; p++) addPage(p);
+                        for (let p = start; p <= end; p += 1) addPage(p);
                         if (end < totalPages - 1) addEllipsis();
                         addPage(totalPages);
                       }

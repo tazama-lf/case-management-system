@@ -74,7 +74,7 @@ export class CommentService {
       console.error('CommentService: Failed to add comment:', error);
       const message =
         error instanceof Error ? error.message : 'Failed to add comment';
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   }
 
@@ -88,7 +88,7 @@ export class CommentService {
       console.error('CommentService: Failed to get comment:', error);
       const message =
         error instanceof Error ? error.message : 'Failed to get comment';
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   }
 
@@ -102,7 +102,7 @@ export class CommentService {
       console.error('CommentService: Failed to get comments by case:', error);
       const message =
         error instanceof Error ? error.message : 'Failed to get comments';
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   }
 
@@ -119,7 +119,7 @@ export class CommentService {
       console.error('CommentService: Failed to get comments by task:', error);
       const message =
         error instanceof Error ? error.message : 'Failed to get comments';
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   }
 

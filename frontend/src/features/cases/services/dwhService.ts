@@ -45,7 +45,7 @@ export const dwhService = {
         `/api/v1/dwh/customer/profile/${transactionId}`,
       );
       const data = response;
-      return data as CustomerProfileResponse;
+      return data;
     } catch (error) {
       console.error('dwhService API error:', error);
       throw error;

@@ -121,8 +121,10 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           .split('_')
           .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
           .join(' ');
-      default:
-        return value;
+      default: {
+        const _exhaustiveCheck: never = type;
+        return _exhaustiveCheck;
+      }
     }
   };
 
@@ -203,7 +205,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           endDate: customDateRange.endDate || '',
         }),
       };
-      const savedFilter = await filterService.createFilter(payload);
+      await filterService.createFilter(payload);
 
       success(
         'Filter Created',

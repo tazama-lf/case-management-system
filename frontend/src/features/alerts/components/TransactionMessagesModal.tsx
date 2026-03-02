@@ -191,7 +191,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
                   ? 'Loading...'
                   : error
                     ? 'Error occurred'
-                    : `${messages.length} message${messages.length !== 1 ? 's' : ''} found`}
+                    : `${messages.length} message${messages.length === 1 ? '' : 's'} found`}
               </p>
               <button
                 onClick={onClose}

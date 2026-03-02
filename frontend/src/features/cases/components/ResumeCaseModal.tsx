@@ -26,7 +26,7 @@ const ResumeCaseModal: React.FC<ResumeCaseModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onResume(caseData.id, reason.trim());
+      onResume(caseData.id, reason.trim());
       setReason('');
       onClose();
     } catch (error) {

@@ -52,9 +52,6 @@ const extractData = (
     case LocalStorage:
       data = localStorage.getItem(key);
       break;
-
-    default:
-      return null;
   }
 
   if (!data) return null;

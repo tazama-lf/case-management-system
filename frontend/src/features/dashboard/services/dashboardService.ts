@@ -22,7 +22,7 @@ class DashboardService {
       };
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
-      throw new Error('Failed to load dashboard data');
+      throw new Error('Failed to load dashboard data', { cause: error });
     }
   }
 

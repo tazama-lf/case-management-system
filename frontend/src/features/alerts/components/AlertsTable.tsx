@@ -139,7 +139,9 @@ const AlertsTable = <T extends Record<string, unknown>>({
                         : 'text-left'
                   } ${column.sortable ? 'cursor-pointer hover:bg-gray-100' : ''}`}
                   style={{ width: column.width }}
-                  onClick={() => column.sortable && handleSort(column.key)}
+                  onClick={() => {
+                    if (column.sortable) handleSort(column.key);
+                  }}
                 >
                   <div className="flex items-center space-x-1">
                     <span>{column.header}</span>

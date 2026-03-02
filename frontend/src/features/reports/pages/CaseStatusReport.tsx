@@ -120,8 +120,10 @@ const Reports: React.FC = () => {
         return [];
       case 'EVIDENCE_FINDINGS':
         return [];
-      default:
-        return [];
+      default: {
+        const _exhaustiveCheck: never = reportType;
+        return _exhaustiveCheck;
+      }
     }
   };
 
@@ -283,8 +285,10 @@ const Reports: React.FC = () => {
         return 'Investigator Workload Report';
       case 'EVIDENCE_FINDINGS':
         return 'Evidence Findings Report';
-      default:
-        return 'Reports Dashboard';
+      default: {
+        const _exhaustiveCheck: never = reportType;
+        return _exhaustiveCheck;
+      }
     }
   };
 
@@ -300,8 +304,10 @@ const Reports: React.FC = () => {
         return 'Overview of investigator workloads and performance metrics';
       case 'EVIDENCE_FINDINGS':
         return 'Comprehensive view of all evidence items linked to investigation findings and conclusions';
-      default:
-        return 'Overview of cases by status, type, and outcome';
+      default: {
+        const _exhaustiveCheck: never = reportType;
+        return _exhaustiveCheck;
+      }
     }
   };
 

@@ -42,7 +42,7 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSuspend(caseData.id, reason.trim(), selectedTaskIds);
+      onSuspend(caseData.id, reason.trim(), selectedTaskIds);
       setReason('');
       setSelectedTaskIds([]);
       onClose();

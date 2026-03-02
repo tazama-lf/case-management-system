@@ -64,7 +64,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onUnassign(task.id, reason.trim());
+      onUnassign(task.id, reason.trim());
       setReason('');
       onClose();
     } catch (error) {

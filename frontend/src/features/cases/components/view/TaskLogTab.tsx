@@ -358,8 +358,10 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
           }
           break;
         }
-        default:
-          throw new Error(`Unknown operation: ${operation}`);
+        default: {
+          const _exhaustiveCheck: never = operation;
+          throw new Error(`Unknown operation: ${_exhaustiveCheck}`);
+        }
       }
 
       // Close modals and refresh tasks

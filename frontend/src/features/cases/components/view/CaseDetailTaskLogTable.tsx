@@ -254,7 +254,9 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       actions.push(
         createActionButton(
           'view',
-          () => isClickable && onTaskClick(task),
+          () => {
+            if (isClickable) onTaskClick(task);
+          },
           <EyeIcon className="h-4 w-4 mr-1" />,
           'View task',
           'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500',

@@ -33,7 +33,7 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
     setErrors({});
 
     try {
-      await onAbandon(caseData.id, reason.trim());
+      onAbandon(caseData.id, reason.trim());
       setReason('');
       onClose();
     } catch (error) {

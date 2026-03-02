@@ -229,7 +229,9 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                 >
                   <td
                     className="px-4 py-3"
-                    onClick={() => isClickable && onTaskClick(task)}
+                    onClick={() => {
+                      if (isClickable) onTaskClick(task);
+                    }}
                     tabIndex={isClickable ? 0 : undefined}
                   >
                     <div className="flex flex-col">
@@ -348,14 +350,14 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
                   const addEllipsis = () => pages.push('ellipsis');
 
                   if (totalPages <= windowSize + 2) {
-                    for (let p = 1; p <= totalPages; p++) addPage(p);
+                    for (let p = 1; p <= totalPages; p += 1) addPage(p);
                   } else {
                     const start = Math.max(2, currentPage - half);
                     const end = Math.min(totalPages - 1, currentPage + half);
 
                     addPage(1);
                     if (start > 2) addEllipsis();
-                    for (let p = start; p <= end; p++) addPage(p);
+                    for (let p = start; p <= end; p += 1) addPage(p);
                     if (end < totalPages - 1) addEllipsis();
                     addPage(totalPages);
                   }

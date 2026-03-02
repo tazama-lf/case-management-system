@@ -278,7 +278,7 @@ export class EvidenceService {
       return hashHex;
     } catch (error) {
       console.error('Error calculating file hash:', error);
-      throw new Error('Failed to calculate file hash');
+      throw new Error('Failed to calculate file hash', { cause: error });
     }
   }
 

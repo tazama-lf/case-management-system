@@ -147,7 +147,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
             onClose={() => {
               setIsCloseCaseOpen(false);
             }}
-            caseId={selectedRow?.id != null ? selectedRow.id.toString() : ''}
+            caseId={selectedRow?.id == null ? '' : selectedRow.id.toString()}
             caseName={selectedRow ? `${selectedRow.type} Case` : ''}
             onSubmit={handleCloseCaseSubmit}
           />

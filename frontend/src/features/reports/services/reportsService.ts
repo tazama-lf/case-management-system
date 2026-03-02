@@ -389,55 +389,55 @@ class ReportsService {
           totalEvidenceItems += caseEvidence.length;
 
           // Map evidence to include full object with all available fields
-          const supportingEvidence = caseEvidence.map(
-            (e: Record<string, unknown>) => {
-              const evidenceId =
-                (e.id as string) ||
-                (e.evidenceId as string) ||
-                (e.evidence_id as string) ||
-                `unknown_${Date.now()}`;
+          // const supportingEvidence = caseEvidence.map(
+          //   (e: Record<string, unknown>) => {
+          //     const evidenceId =
+          //       (e.id as string) ||
+          //       (e.evidenceId as string) ||
+          //       (e.evidence_id as string) ||
+          //       `unknown_${Date.now()}`;
 
-              // Extract fileName from attachments array if it exists there
-              const attachments = e.attachments as
-                | Array<Record<string, unknown>>
-                | undefined;
-              const firstAttachment = attachments?.[0];
+          //     // Extract fileName from attachments array if it exists there
+          //     const attachments = e.attachments as
+          //       | Array<Record<string, unknown>>
+          //       | undefined;
+          //     const firstAttachment = attachments?.[0];
 
-              const fileName =
-                (e.fileName as string) ||
-                (e.file_name as string) ||
-                (firstAttachment?.fileName as string) ||
-                'Unknown Document';
+          //     const fileName =
+          //       (e.fileName as string) ||
+          //       (e.file_name as string) ||
+          //       (firstAttachment?.fileName as string) ||
+          //       'Unknown Document';
 
-              const fileSize =
-                (e.fileSize as number) ||
-                (firstAttachment?.fileSize as number) ||
-                undefined;
+          //     const fileSize =
+          //       (e.fileSize as number) ||
+          //       (firstAttachment?.fileSize as number) ||
+          //       undefined;
 
-              const mimeType =
-                (e.mimeType as string) ||
-                (firstAttachment?.mimeType as string) ||
-                undefined;
+          //     const mimeType =
+          //       (e.mimeType as string) ||
+          //       (firstAttachment?.mimeType as string) ||
+          //       undefined;
 
-              const hash =
-                (e.hash as string) ||
-                (firstAttachment?.hash as string) ||
-                undefined;
+          //     const hash =
+          //       (e.hash as string) ||
+          //       (firstAttachment?.hash as string) ||
+          //       undefined;
 
-              return {
-                id: evidenceId,
-                fileName,
-                fileSize,
-                mimeType,
-                evidenceType: (e.evidenceType as string) || undefined,
-                uploadedBy: (e.uploadedBy as string) || undefined,
-                uploadedByName: (e.uploadedByName as string) || undefined,
-                uploadedAt: (e.uploadedAt as string) || undefined,
-                description: (e.description as string) || undefined,
-                hash,
-              };
-            },
-          );
+          //     return {
+          //       id: evidenceId,
+          //       fileName,
+          //       fileSize,
+          //       mimeType,
+          //       evidenceType: (e.evidenceType as string) || undefined,
+          //       uploadedBy: (e.uploadedBy as string) || undefined,
+          //       uploadedByName: (e.uploadedByName as string) || undefined,
+          //       uploadedAt: (e.uploadedAt as string) || undefined,
+          //       description: (e.description as string) || undefined,
+          //       hash,
+          //     };
+          //   },
+          // );
 
           const evidenceByTask: Record<string, Array<Record<string, any>>> = {};
           caseEvidence.forEach((e) => {
@@ -488,16 +488,16 @@ class ReportsService {
             status === 'STATUS_71_AUTOCLOSED_CONFIRMED'
           ) {
             conclusion = 'Confirmed';
-            confirmedCount++;
+            confirmedCount += 1;
           } else if (
             status === 'STATUS_81_CLOSED_REFUTED' ||
             status === 'STATUS_72_AUTOCLOSED_REFUTED'
           ) {
             conclusion = 'Refuted';
-            refutedCount++;
+            refutedCount += 1;
           } else if (status === 'STATUS_83_CLOSED_INCONCLUSIVE') {
             conclusion = 'Inconclusive';
-            inconclusiveCount++;
+            inconclusiveCount += 1;
           } else {
             conclusion = 'InProgress';
           }
