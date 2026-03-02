@@ -52,7 +52,7 @@ export class TazamaAuthGuard implements CanActivate {
       }
     }
 
-    if ((!requiredClaims || requiredClaims.length === 0) && (!anyRequiredClaims || anyRequiredClaims.length === 0)) {
+    if (!requiredClaims?.length && !anyRequiredClaims?.length) {
       this.logger.warn('No required claims specified for protected route', logContext);
       throw new UnauthorizedException('No required claims specified');
     }
