@@ -27,7 +27,7 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
     const container = containerRef.current;
     if (!container) return;
 
-    const getFocusableElements = () => {
+    const getFocusableElements = (): Element[] => {
       const focusableSelectors = [
         'button:not([disabled])',
         'input:not([disabled])',
@@ -48,7 +48,7 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
       firstElement.focus();
     }
 
-    const handleTabKey = (e: KeyboardEvent) => {
+    const handleTabKey = (e: KeyboardEvent): void => {
       if (!active || e.key !== 'Tab') return;
 
       const currentFocusableElements = getFocusableElements();
@@ -69,7 +69,7 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
       }
     };
 
-    const handleEscapeKey = (e: KeyboardEvent) => {
+    const handleEscapeKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape' && onEscape) {
         onEscape();
       }
@@ -110,7 +110,7 @@ export const SkipToContent: React.FC<SkipToContentProps> = ({
   targetId,
   className = '',
 }) => {
-  const handleSkip = () => {
+  const handleSkip = (): void => {
     const target = document.getElementById(targetId);
     if (target) {
       target.focus();
@@ -164,7 +164,10 @@ export const LiveRegion: React.FC<AnnouncementProps> = ({
   </div>
 );
 
-export const useAnnouncer = () => {
+export const useAnnouncer = (): {
+  announce: (message: string, priority?: 'polite' | 'assertive') => void;
+  announcement: { message: string; priority: 'polite' | 'assertive' } | null;
+} => {
   const [announcement, setAnnouncement] = React.useState<{
     message: string;
     priority: 'polite' | 'assertive';
@@ -225,8 +228,8 @@ export const AccessibleButton: React.FC<AccessibleButtonProps> = ({
   return (
     <button
       {...props}
-      disabled={disabled || isLoading}
-      aria-disabled={disabled || isLoading}
+      disabled={disabled ?? isLoading}
+      aria-disabled={disabled ?? isLoading}
       className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
     >
       {isLoading ? (

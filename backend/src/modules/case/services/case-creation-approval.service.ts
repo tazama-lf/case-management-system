@@ -533,7 +533,7 @@ export class CaseCreationApprovalService {
     try {
       const result = await this.caseRepository.executeTransaction(async (tx) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, userId);
-        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) ?? [];
+        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) || [];
         const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
         if (!completeNewCaseTask) throw new BadRequestException('No Complete New Case task found');
         if (completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {

@@ -11,7 +11,7 @@ const Card: React.FC<{
   right?: React.ReactNode;
 }> = ({ title, right, children }) => (
   <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-    {(title || right) && (
+    {(title ?? right) && (
       <div className="mb-3 flex items-center justify-between">
         {title ? (
           <div className="text-sm font-semibold text-gray-800">{title}</div>

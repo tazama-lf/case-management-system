@@ -91,13 +91,13 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   const { tasks, loading, error, fetchTasks } = useCaseTasks(caseId);
   
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchData = async (): Promise<void> => {
       await fetchTasks();
 
       const [fetchedCase] = await Promise.all([
         caseService
           .getUserCases({ limit: 1000 })
-          .then((response) => response.cases.find((c) => c.case_id === caseId)),
+          .then((response): CaseWithTasksDto | undefined => response.cases.find((c) => c.case_id === caseId)),
       ]);
       // Transform backend case data to CaseRow format if found
       if (fetchedCase) {
@@ -256,27 +256,27 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
 
   const transformedTasks = filteredTasks.map(transformBackendTaskToWorkQueue);
 
-  const handleAssign = (task: UnifiedWorkQueueTask) => {
+  const handleAssign = (task: UnifiedWorkQueueTask): void => {
     setSelectedTask(task);
     setAssignModalOpen(true);
   };
 
-  const handleUnassign = (task: UnifiedWorkQueueTask) => {
+  const handleUnassign = (task: UnifiedWorkQueueTask): void => {
     setSelectedTask(task);
     setUnassignModalOpen(true);
   };
 
-  const handleReassign = (task: UnifiedWorkQueueTask) => {
+  const handleReassign = (task: UnifiedWorkQueueTask): void => {
     setSelectedTask(task);
     setReassignModalOpen(true);
   };
 
-  const handleUpdateStatus = (task: UnifiedWorkQueueTask) => {
+  const handleUpdateStatus = (task: UnifiedWorkQueueTask): void => {
     setSelectedTask(task);
     setUpdateStatusModalOpen(true);
   };
 
-  const handleCompleteTask = (task: UnifiedWorkQueueTask) => {
+  const handleCompleteTask = (task: UnifiedWorkQueueTask): void => {
     setSelectedTask(task);
     setCompleteTaskModalOpen(true);
   };
@@ -408,7 +408,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     task: UnifiedWorkQueueTask,
     assignee: string,
     notes?: string,
-  ) => {
+  ): Promise<void> => {
     await handleTaskOperation('assign', { task, assignee, notes });
   };
 
@@ -416,11 +416,11 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     task: UnifiedWorkQueueTask,
     assignee: string,
     justification: string,
-  ) => {
+  ): Promise<void> => {
     await handleTaskOperation('reassign', { task, assignee, justification });
   };
 
-  const handleUnassignTask = async (_taskId: number, reason: string) => {
+  const handleUnassignTask = async (_taskId: number, reason: string): Promise<void> => {
     if (selectedTask) {
       await handleTaskOperation('unassign', { task: selectedTask, reason });
     }
@@ -430,7 +430,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     task: UnifiedWorkQueueTask,
     newStatus: string,
     notes?: string,
-  ) => {
+  ): Promise<void> => {
     await handleTaskOperation('updateStatus', { task, newStatus, notes });
   };
 
@@ -438,7 +438,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     task: UnifiedWorkQueueTask,
     notes?: string,
     recommendedOutcome?: string,
-  ) => {
+  ): Promise<void> => {
     try {
       const updateData: {
         status: TaskStatusType;
@@ -492,7 +492,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     );
   }
 
-  const handleViewTaskDetails = (task: UnifiedWorkQueueTask) => {
+  const handleViewTaskDetails = (task: UnifiedWorkQueueTask): void => {
     setSelectedTask(task);
 
     const hasRequiredRole = hasComplianceOfficerRole() || hasSupervisorRole();

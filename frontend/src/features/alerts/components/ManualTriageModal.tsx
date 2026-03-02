@@ -28,7 +28,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({
   const [confidence, setConfidence] = useState(alert.confidence_per);
   const [priorityScore, setPriorityScore] = useState<number>(0);
   const [alertType, setAlertType] = React.useState<AlertType | undefined>(
-    alert.alert_type || undefined,
+    alert.alert_type ?? undefined,
   );
   const [predictionOutcome, setPredictionOutcome] = useState<
     'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE'
@@ -88,7 +88,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({
     setPriority(alert.priority);
     setConfidence(alert.confidence_per);
     setPriorityScore(0);
-    setAlertType(alert.alert_type || undefined);
+    setAlertType(alert.alert_type ?? undefined);
     setNote('');
     setPredictionOutcome('FALSE_POSITIVE');
     setStatus('STATUS_81_CLOSED_REFUTED');
@@ -174,7 +174,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-                {error || 'An error occurred'}
+                {error ?? 'An error occurred'}
               </div>
             )}
 
@@ -309,7 +309,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({
                   </label>
 
                   <select
-                    value={alertType || ''}
+                    value={alertType ?? ''}
                     onChange={(e) => {
                       setAlertType(e.target.value as AlertType);
                     }}

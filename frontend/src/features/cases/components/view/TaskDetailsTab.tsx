@@ -104,10 +104,10 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
     if (task?.case?.priority) {
       return task.case.priority;
     }
-    return row.priority || 'NEW';
+    return row.priority ?? 'NEW';
   };
 
-  const formatTaskId = (taskId: number): any => taskId || 'No ID';
+  const formatTaskId = (taskId: number): any => taskId ?? 'No ID';
 
   const getCaseType = (): string => {
     if (task?.case?.case_type) {
@@ -212,8 +212,8 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
                     {loadingUser ? (
                       <span className="text-gray-400">Loading...</span>
                     ) : assignedUser ? (
-                      `${assignedUser.firstName} ${assignedUser.lastName}`.trim() ||
-                      assignedUser.username ||
+                      `${assignedUser.firstName} ${assignedUser.lastName}`.trim() ??
+                      assignedUser.username ??
                       'Unknown'
                     ) : task.assigned_user_id ? (
                       task.assigned_user_id.substring(0, 8)

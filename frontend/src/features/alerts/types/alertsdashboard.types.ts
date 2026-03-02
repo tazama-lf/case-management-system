@@ -5,7 +5,7 @@ import type { TablePaginationInfo } from '@/shared/types/pagination.types';
 export type { Alert, Priority, AlertType } from './triage.types';
 
 export interface TransactionMessage {
-  id: number;
+  id: number | string;
   type: string;
   description: string;
   timestamp: string;

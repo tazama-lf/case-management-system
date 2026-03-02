@@ -70,7 +70,7 @@ export class TazamaDwhService {
         cre_dt_tm: { gte: dateFrom, lte: dateTo },
       },
     });
-    const getGeography = (tx: any) => tx.geography ?? tx.transaction?.geography ?? tx.transaction?.TxTp ?? '';
+    const getGeography = (tx: any): string => tx.geography ?? tx.transaction?.geography ?? tx.transaction?.TxTp ?? '';
     const peerBaseline = {
       avgVolume: peerTransactions.length,
       avgValue: peerTransactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() ?? 0), 0) / (peerTransactions.length || 1),
@@ -505,10 +505,7 @@ export class TazamaDwhService {
       }
 
       const customerProfile = await this.getCustomerProfile(extendedAccount.customer_id!, dwhTenantId);
-
-      if (role) {
-        customerProfile.accounts = customerProfile.accounts.map((acc) => (acc.id === accountId ? { ...acc, role } : acc));
-      }
+      customerProfile.accounts = customerProfile.accounts.map((acc) => (acc.id === accountId ? { ...acc, role } : acc));
 
       return customerProfile;
     } catch (err) {

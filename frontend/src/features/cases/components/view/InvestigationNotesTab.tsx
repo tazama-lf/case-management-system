@@ -33,7 +33,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   onNotesUpdate,
 }) => {
   const CHAR_LIMIT = 32000;
-  const getCharCount = (text: string) => text.length;
+  const getCharCount = (text: string): number => text.length;
 
   const { showSuccess, showError } = useNotifications();
   const [notes, setNotes] = React.useState('');
@@ -42,7 +42,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
 
   React.useEffect(() => {
-    const handleLinkClick = (e: MouseEvent) => {
+    const handleLinkClick = (e: MouseEvent): void => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'A' && target.closest('.mdx-editor-container')) {
         e.preventDefault();
@@ -73,19 +73,19 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
       return match;
     });
 
-  const handleNotesChange = (value: string) => {
+  const handleNotesChange = (value: string): void => {
     const transformedValue = transformMarkdownLinks(value);
     setNotes(transformedValue);
   };
 
-  const isUserAbleToSaveNotes = () => {
+  const isUserAbleToSaveNotes = (): boolean => {
     const user = authService.getUser();
     return user?.userId === task?.assigned_user_id;
   };
 
   const isUserCanEdit = isUserAbleToSaveNotes() && !isTaskCompleted;
 
-  const handleSaveNotes = async () => {
+  const handleSaveNotes = async (): Promise<void> => {
     if (!task?.task_id || !notes.trim()) {
       showError('Please add investigation notes before saving.');
       return;

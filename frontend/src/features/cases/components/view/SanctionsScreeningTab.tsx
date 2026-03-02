@@ -62,9 +62,9 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({
   const { data: screeningsData, isLoading } = useCaseSanctionsScreenings(
     caseId,
     {
-      disposition: dispositionFilter || undefined,
-      tool_source: toolFilter || undefined,
-      search: searchQuery || undefined,
+      disposition: dispositionFilter ?? undefined,
+      tool_source: toolFilter ?? undefined,
+      search: searchQuery ?? undefined,
     },
   );
 
@@ -85,7 +85,7 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({
     setToolFilter('');
   };
 
-  const hasActiveFilters = searchQuery || dispositionFilter || toolFilter;
+  const hasActiveFilters = searchQuery ?? dispositionFilter ?? toolFilter;
 
   return (
     <div className="space-y-4">
@@ -306,7 +306,7 @@ const ScreeningCard: React.FC<ScreeningCardProps> = ({
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-${colorClass}-100 text-${colorClass}-800`}
             >
               <span className="text-base">{dispositionConfig?.icon}</span>
-              {dispositionConfig?.label || screening.disposition}
+              {dispositionConfig?.label ?? screening.disposition}
             </span>
             <span className="text-sm text-gray-500">
               <CalendarIcon className="inline h-4 w-4 mr-1" />
@@ -331,7 +331,7 @@ const ScreeningCard: React.FC<ScreeningCardProps> = ({
             <span>
               Matches:{' '}
               <span className="font-medium text-gray-900">
-                {screening.match_count || 0}
+                {screening.match_count ?? 0}
               </span>
             </span>
             {screening.file_name && (
@@ -341,7 +341,7 @@ const ScreeningCard: React.FC<ScreeningCardProps> = ({
               </span>
             )}
             <span>
-              By: {screening.investigator_name || screening.investigator_id}
+              By: {screening.investigator_name ?? screening.investigator_id}
             </span>
           </div>
         </div>
@@ -388,7 +388,7 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
 
     const validation = validateScreeningFile(selectedFile);
     if (!validation.valid) {
-      setFileError(validation.error || 'Invalid file');
+      setFileError(validation.error ?? 'Invalid file');
       setFile(null);
       return;
     }
@@ -412,12 +412,11 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
         tool_source: formData.tool_source,
         disposition: formData.disposition,
         summary: formData.summary,
-        reference_id: formData.reference_id || undefined,
+        reference_id: formData.reference_id ?? undefined,
         match_count: formData.match_count,
-        file: file || undefined,
+        file: file ?? undefined,
         metadata:
-          formData.entities_screened ||
-          formData.confidence_score ||
+          formData.entities_screened ?? formData.confidence_score ??
           formData.risk_level
             ? {
                 entities_screened: formData.entities_screened,
@@ -622,7 +621,7 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
                   <input
                     type="number"
                     min="0"
-                    value={formData.entities_screened || ''}
+                    value={formData.entities_screened ?? ''}
                     onChange={(e) => {
                       setFormData({
                         ...formData,
@@ -641,7 +640,7 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
                     type="number"
                     min="0"
                     max="100"
-                    value={formData.confidence_score || ''}
+                    value={formData.confidence_score ?? ''}
                     onChange={(e) => {
                       setFormData({
                         ...formData,
@@ -658,7 +657,7 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
                   Risk Level
                 </label>
                 <select
-                  value={formData.risk_level || ''}
+                  value={formData.risk_level ?? ''}
                   onChange={(e) => {
                     setFormData({
                       ...formData,
@@ -685,7 +684,7 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={formData.watchlists_checked || ''}
+                  value={formData.watchlists_checked ?? ''}
                   onChange={(e) => {
                     setFormData({
                       ...formData,
@@ -797,7 +796,7 @@ const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-${colorClass}-100 text-${colorClass}-800`}
             >
               <span className="text-xl">{dispositionConfig?.icon}</span>
-              {dispositionConfig?.label || screening.disposition}
+              {dispositionConfig?.label ?? screening.disposition}
             </span>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <ClockIcon className="h-4 w-4" />
@@ -836,7 +835,7 @@ const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({
                 Number of Matches
               </p>
               <p className="text-base text-gray-900">
-                {screening.match_count || 0}
+                {screening.match_count ?? 0}
               </p>
             </div>
             <div>
@@ -844,7 +843,7 @@ const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({
                 Investigator
               </p>
               <p className="text-base text-gray-900">
-                {screening.investigator_name || screening.investigator_id}
+                {screening.investigator_name ?? screening.investigator_id}
               </p>
             </div>
             {screening.file_name && (

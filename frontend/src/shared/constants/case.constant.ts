@@ -1,4 +1,4 @@
-export const getCaseStatusBadge = (status: string) => {
+export const getCaseStatusBadge = (status: string): string => {
   const statusMap = {
     STATUS_00_DRAFT: '00_DRAFT',
     STATUS_10_ASSIGNED: '10_ASSIGNED',

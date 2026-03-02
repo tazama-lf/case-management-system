@@ -44,7 +44,7 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({ dateRange }) => {
     );
   }
 
-  const { stats, auditLogs } = auditData || {
+  const { stats, auditLogs } = auditData ?? {
     stats: { totalLogs: 0, caseActions: 0, userSessions: 0, systemWarnings: 0 },
     auditLogs: [],
   };

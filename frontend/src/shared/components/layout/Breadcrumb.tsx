@@ -33,7 +33,7 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className = '' }) => {
     return breadcrumbs;
   };
 
-  const breadcrumbItems = items || generateBreadcrumbs();
+  const breadcrumbItems = items ?? generateBreadcrumbs();
 
   if (breadcrumbItems.length <= 1) {
     return null;

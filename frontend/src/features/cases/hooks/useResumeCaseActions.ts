@@ -1,7 +1,9 @@
 import { caseService, type ResumeCaseDto } from '../services/caseService';
 import { useToast } from '../../../shared/providers/ToastProvider';
 
-export const useResumeCaseActions = (refreshCases: () => Promise<void>) => {
+export const useResumeCaseActions = (refreshCases: () => Promise<void>): {
+  handleResumeSubmit: (caseId: number, reason: string) => Promise<void>;
+} => {
   const { success, error } = useToast();
 
   const handleResumeSubmit = async (caseId: number, reason: string) => {

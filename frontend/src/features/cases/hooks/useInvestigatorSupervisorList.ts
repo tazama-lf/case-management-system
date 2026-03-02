@@ -2,7 +2,17 @@ import { useState, useEffect } from 'react';
 import userService from '../services/userService';
 import type { UserOption } from '../services/userService';
 
-export const useInvestigatorSupervisorList = () => {
+export const useInvestigatorSupervisorList = (): {
+  supervisors: UserOption[];
+  investigators: UserOption[];
+  complianceOfficers: UserOption[];
+  loadingInvestigators: boolean;
+  loadingSupervisors: boolean;
+  fetchInvestigatorsList: () => Promise<void>;
+  fetchSupervisorsList: () => Promise<void>;
+  fetchComplianceOfficersList: () => Promise<void>;
+  clearCache: () => void;
+} => {
   const supervisorsCacheKey = 'supervisors';
   const investigatorsCacheKey = 'investigators';
   const complianceCacheKey = 'compliance';
@@ -27,7 +37,7 @@ export const useInvestigatorSupervisorList = () => {
   const [loadingInvestigators, setLoadingInvestigators] = useState(false);
   const [loadingSupervisors, setLoadingSupervisors] = useState(false);
 
-  const fetchInvestigatorsList = async () => {
+  const fetchInvestigatorsList = async (): Promise<void> => {
     setLoadingInvestigators(true);
     try {
       const cached = sessionStorage.getItem(investigatorsCacheKey);
@@ -52,7 +62,7 @@ export const useInvestigatorSupervisorList = () => {
     }
   };
 
-  const fetchComplianceOfficersList = async () => {
+  const fetchComplianceOfficersList = async (): Promise<void> => {
     try {
       const cached = sessionStorage.getItem(complianceCacheKey);
       if (cached) {
@@ -74,7 +84,7 @@ export const useInvestigatorSupervisorList = () => {
     }
   };
 
-  const fetchSupervisorsList = async () => {
+  const fetchSupervisorsList = async (): Promise<void> => {
     setLoadingSupervisors(true);
     try {
       const cached = sessionStorage.getItem(supervisorsCacheKey);
@@ -99,7 +109,7 @@ export const useInvestigatorSupervisorList = () => {
     }
   };
 
-  const clearCache = () => {
+  const clearCache = (): void => {
     sessionStorage.removeItem(investigatorsCacheKey);
     setInvestigators([]);
     sessionStorage.removeItem(supervisorsCacheKey);

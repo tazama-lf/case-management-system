@@ -138,16 +138,16 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
         const parsed = JSON.parse(f.user_filters ?? '{}');
 
         const baseName = [
-          parsed.alertType || 'ALL TYPES',
-          parsed.priority || 'ALL PRIORITIES',
-          parsed.source || 'ALL SOURCES',
-          parsed.timeRange || 'ALL TIME',
+          parsed.alertType ?? 'ALL TYPES',
+          parsed.priority ?? 'ALL PRIORITIES',
+          parsed.source ?? 'ALL SOURCES',
+          parsed.timeRange ?? 'ALL TIME',
         ]
           .join(' - ')
           .toUpperCase();
 
         const datePart =
-          parsed.startDate || parsed.endDate
+          parsed.startDate ?? parsed.endDate
             ? ` ${[parsed.startDate, parsed.endDate].filter(Boolean).join(' - ')}`
             : '';
 
@@ -181,7 +181,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     const filter = savedFilters.find((f) => f.id === filterId);
     if (!filter) return;
 
-    console.log(JSON.stringify(filter));
     onFilterChange('type', filter.alertType);
     onFilterChange('priority', filter.priority);
     onFilterChange('source', filter.source);
@@ -206,7 +205,6 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
       };
       const savedFilter = await filterService.createFilter(payload);
 
-      console.log('Saved Filter:', savedFilter);
       success(
         'Filter Created',
         `Saved with: Alert Type: ${searchFilters.type || 'ALL'}, Priority: ${searchFilters.priority || 'ALL'},

@@ -16,7 +16,7 @@ export class EventDeduplicator {
   /**
    * Emit an event only if it hasn't been emitted recently
    */
-  emitIfNotDuplicate<T>(eventEmitter: EventEmitter2, eventName: string, payload: T): boolean {
+  emitIfNotDuplicate(eventEmitter: EventEmitter2, eventName: string, payload: unknown): boolean {
     const eventKey = this.generateEventKey(eventName, payload);
     const now = Date.now();
     const lastEmitted = this.recentEvents.get(eventKey);
@@ -37,15 +37,18 @@ export class EventDeduplicator {
   /**
    * Generate a unique key for an event based on its name and payload
    */
-  private generateEventKey<T>(eventName: string, payload: T): string {
+  private generateEventKey(eventName: string, payload: unknown): string {
     const payloadString = JSON.stringify(payload, (key, value) => {
       if (typeof value === 'object' && value !== null) {
         return Object.keys(value)
           .sort()
-          .reduce<any>((sorted, k) => {
-            sorted[k] = value[k];
-            return sorted;
-          }, {});
+          .reduce<any>(
+            (acc, k) => ({
+              ...acc,
+              [k]: value[k],
+            }),
+            {},
+          );
       }
       return value;
     });

@@ -1,7 +1,6 @@
 import authService from '../features/auth/services/authService';
 
 async function testInvestigators() {
-  console.log('Testing investigators fetch...');
 
   try {
     const investigators = await authService.fetchAllInvestigators();

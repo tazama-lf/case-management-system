@@ -61,18 +61,18 @@ const Header: React.FC<HeaderComponentProps> = ({
               <span className="text-sm font-semibold text-white">
                 {user?.firstName && user?.lastName
                   ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
-                  : user?.username?.slice(0, 2).toUpperCase() || 'U'}
+                  : user?.username?.slice(0, 2).toUpperCase() ?? 'U'}
               </span>
             </div>
             <div className="text-sm leading-tight">
               <div className="font-semibold text-gray-900">
-                {user?.fullName ||
+                {user?.fullName ??
                   (user?.firstName && user?.lastName
                     ? `${user.firstName} ${user.lastName}`
-                    : user?.username || 'User')}
+                    : user?.username ?? 'User')}
               </div>
               <div className="text-xs text-gray-500">
-                {user?.email ||
+                {user?.email ??
                   (user?.roles && user.roles.length > 0
                     ? user.roles[0].replace(/_/gu, ' ').replace(/-/gu, ' ')
                     : 'User')}

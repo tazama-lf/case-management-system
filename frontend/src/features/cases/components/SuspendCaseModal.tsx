@@ -34,7 +34,7 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
       (t) =>
         t.status === 'STATUS_20_IN_PROGRESS' &&
         investigationTasks.includes(t.name),
-    ) || [];
+    ) ?? [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

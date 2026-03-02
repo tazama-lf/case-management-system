@@ -111,14 +111,14 @@ export const FINAL_OUTCOMES = [
 
 export type FinalOutcomeType = typeof FINAL_OUTCOMES[number]['value'];
 
-const getUserRole = () => {
+const getUserRole = (): string => {
   try {
     const token = localStorage.getItem('authToken');
     if (token) {
       const parts = token.split('.');
       if (parts.length === 3) {
         const decoded = JSON.parse(atob(parts[1]));
-        const claims = decoded.claims || [];
+        const claims = decoded.claims ?? [];
         if (claims.includes('CMS_SUPERVISOR')) return 'CMS_SUPERVISOR';
         if (claims.includes('CMS_INVESTIGATOR')) return 'CMS_INVESTIGATOR';
       }
@@ -155,7 +155,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   const [evidenceCategories, setEvidenceCategories] = useState<EvidenceCategory[]>([]);
   const [supervisorComments, setSupervisorComments] = useState<TaskComment[]>([]);
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
-  const [finalOutcome, setFinalOutcome] = useState<FinalOutcomeType | ''>((selectedOutcome as FinalOutcomeType) || '');
+  const [finalOutcome, setFinalOutcome] = useState<FinalOutcomeType | ''>((selectedOutcome as FinalOutcomeType) ?? '');
   const hasFetchedRef = React.useRef(false);
   const [evidenceLoaded, setEvidenceLoaded] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
@@ -236,7 +236,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   }, [selectedOutcome]);
 
   useEffect(() => {
-    const checkTaskCompletion = async () => {
+    const checkTaskCompletion = async (): Promise<void> => {
       if (!open || !caseId) return;
 
       setCheckingTasks(true);
@@ -250,7 +250,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           task => task.status !== 'STATUS_30_COMPLETED'
         );
 
-        setIncompleteTasks(incomplete.map(t => t.name || 'Unknown Task'));
+        setIncompleteTasks(incomplete.map(t => t.name ?? 'Unknown Task'));
         setTasksCompleted(incomplete.length === 0);
       } catch (error) {
         showError('Failed to check task status');
@@ -267,23 +267,23 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     setExecutiveSummary(buildExecutiveSummary());
   }, [finalOutcome, caseData?.createdOn, caseData?.case_type]);
 
-  const buildExecutiveSummary = () => {
+  const buildExecutiveSummary = (): string => {
     const createdDate = caseData?.createdOn ? formatDate(caseData.createdOn) : 'N/A';
-    const caseType = caseData?.case_type || 'Investigation';
-    const outcome = finalOutcome || 'Under Review';
+    const caseType = caseData?.case_type ?? 'Investigation';
+    const outcome = finalOutcome ?? 'Under Review';
 
-    return `This report summarizes the investigation of Case ${caseData?.case_id || caseId}, a ${caseType} case. The investigation was conducted and submitted on ${createdDate}. After thorough analysis of the evidence and findings, the investigator has recommended the outcome: ${outcome}.`;
+    return `This report summarizes the investigation of Case ${caseData?.case_id ?? caseId}, a ${caseType} case. The investigation was conducted and submitted on ${createdDate}. After thorough analysis of the evidence and findings, the investigator has recommended the outcome: ${outcome}.`;
   };
 
   const [executiveSummary, setExecutiveSummary] = useState(buildExecutiveSummary());
   const [keyFindings] = useState(
-    investigationNotes || ''
+    investigationNotes ?? ''
   );
   const [recommendations, setRecommendations] = useState(
     'Based on the investigation findings and evidence review:\n\n1. Review investigator\'s recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure.'
   );
   const [supervisorFeedback, setSupervisorFeedback] = useState(
-    supervisorComments?.[0]?.note || ''
+    supervisorComments?.[0]?.note ?? ''
   );
   const [reportOutcome] = useState<string | undefined>('');
   const [monitoringDuration, setMonitoringDuration] = useState<30 | 60 | 90 | 180>(30);
@@ -301,9 +301,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       {
         ul: category.evidence.map((doc) => ({
           text: [
-            { text: doc.fileName || 'Untitled Document', bold: true },
+            { text: doc.fileName ?? 'Untitled Document', bold: true },
             {
-              text: ` (${evidenceService.formatFileSize(doc.fileSize || 0)}`,
+              text: ` (${evidenceService.formatFileSize(doc.fileSize ?? 0)}`,
             },
             doc.uploadedAt
               ? { text: ` • ${formatDate(doc.uploadedAt)})` }
@@ -329,7 +329,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
         margin: [0, 0, 0, 10],
       },
       {
-        text: `Case ${caseData?.case_id || caseId} - ${caseData?.case_type || 'Investigation'}`,
+        text: `Case ${caseData?.case_id ?? caseId} - ${caseData?.case_type ?? 'Investigation'}`,
         style: 'subheader',
         margin: [0, 0, 0, 5],
       },
@@ -355,8 +355,8 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           {
             width: '50%',
             stack: [
-              { text: [{ text: 'Case ID: ', bold: true }, caseData?.case_id || caseId || 'N/A'], margin: [0, 0, 0, 5] },
-              { text: [{ text: 'Type: ', bold: true }, caseData?.case_type || 'Investigation'], margin: [0, 0, 0, 5] },
+              { text: [{ text: 'Case ID: ', bold: true }, caseData?.case_id ?? caseId ?? 'N/A'], margin: [0, 0, 0, 5] },
+              { text: [{ text: 'Type: ', bold: true }, caseData?.case_type ?? 'Investigation'], margin: [0, 0, 0, 5] },
             ]
           },
           {
@@ -400,15 +400,15 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
       ),
       { text: '', margin: [0, 0, 0, 12] },
 
-      ...((supervisorFeedback || selectedFinalNotes) ? [
+      ...((supervisorFeedback ?? selectedFinalNotes) ? [
         {
           text: 'SUPERVISOR FEEDBACK',
           style: 'sectionHeader',
           margin: [0, 0, 0, 10],
         },
-        ...(Array.isArray(convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || ''))
-          ? convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || '')
-          : [convertMarkdownToPdfMake(selectedFinalNotes || supervisorFeedback || '')]
+        ...(Array.isArray(convertMarkdownToPdfMake(selectedFinalNotes ?? supervisorFeedback ?? ''))
+          ? convertMarkdownToPdfMake(selectedFinalNotes ?? supervisorFeedback ?? '')
+          : [convertMarkdownToPdfMake(selectedFinalNotes ?? supervisorFeedback ?? '')]
         ),
         { text: '', margin: [0, 0, 0, 12] },
       ] : []),
@@ -533,26 +533,26 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     },
   };
 
-  const handleApproveClick = () => {
+  const handleApproveClick = (): void => {
     setShowApprovalConfirm(true);
   };
 
   const generatePdfFile = async (docDefinition: any): Promise<File> => await new Promise((resolve, reject) => {
-      try {
-        const pdfDoc = (pdfMake as any).createPdf(docDefinition);
+    try {
+      const pdfDoc = (pdfMake as any).createPdf(docDefinition);
 
-        pdfDoc.getBlob((blob: Blob) => {
-          const file = new File([blob], 'report.pdf', {
-            type: 'application/pdf',
-          });
-          resolve(file);
+      pdfDoc.getBlob((blob: Blob) => {
+        const file = new File([blob], 'report.pdf', {
+          type: 'application/pdf',
         });
-      } catch (err) {
-        reject(err);
-      }
-    });
+        resolve(file);
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
 
-  const handleGenerateReport = () => {
+  const handleGenerateReport = (): void => {
     if (!isReportReady) return;
 
     setIsGenerating(true);
@@ -564,7 +564,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
   };
 
 
-  const handleFinalize = async () => {
+  const handleFinalize = async (): Promise<void> => {
     setShowApprovalConfirm(false);
     setIsFinalizing(true);
 
@@ -624,7 +624,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     }
   };
 
-  const handleClose = () => {
+  const handleClose = (): void => {
     setStep('initial');
     setIsGenerating(false);
     onClose();
@@ -805,12 +805,12 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                   <div className="flex items-center gap-2">
                     <DocumentIcon className="h-4 w-4 text-gray-500" />
                     <span className="font-medium text-gray-700">Case ID:</span>
-                    <span className="text-gray-900">{caseData?.case_id || caseId || 'N/A'}</span>
+                    <span className="text-gray-900">{caseData?.case_id ?? caseId ?? 'N/A'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <ExclamationTriangleIcon className="h-4 w-4 text-gray-500" />
                     <span className="font-medium text-gray-700">Type:</span>
-                    <span className="text-gray-900">{caseData?.case_type || 'Investigation'}</span>
+                    <span className="text-gray-900">{caseData?.case_type ?? 'Investigation'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-700">Investigator:</span>
@@ -857,7 +857,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               </div>
 
               {/* Supervisor Feedback */}
-              {(selectedFinalNotes || (supervisorComments && supervisorComments.length > 0)) && (
+              {(selectedFinalNotes ?? (supervisorComments && supervisorComments.length > 0)) && (
                 <div className="space-y-3">
                   <h5 className="text-sm font-semibold text-gray-900">Supervisor Feedback</h5>
                   {selectedFinalNotes ? (
@@ -918,10 +918,10 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                                 >
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-gray-900 truncate">
-                                      {doc.fileName || 'Untitled Document'}
+                                      {doc.fileName ?? 'Untitled Document'}
                                     </p>
                                     <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                                      <span>{evidenceService.formatFileSize(doc.fileSize || 0)}</span>
+                                      <span>{evidenceService.formatFileSize(doc.fileSize ?? 0)}</span>
                                       <span>•</span>
                                       <span>{doc.evidenceType}</span>
                                       {doc.uploadedAt && (
@@ -963,7 +963,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
 
                 <div className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
                   {finalOutcome
-                    ? FINAL_OUTCOMES.find(o => o.value === finalOutcome)?.label || 'Not specified'
+                    ? FINAL_OUTCOMES.find(o => o.value === finalOutcome)?.label ?? 'Not specified'
                     : 'Not specified'
                   }
                 </div>
@@ -1071,7 +1071,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
               </p>
               <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
                 <li>Lock the report for editing</li>
-                <li>Set the case outcome to: <strong>{reportOutcome}</strong></li>
+                <li>Set the case outcome to: <strong>{finalOutcome}</strong></li>
                 {reportOutcome === 'Under Monitoring' && (
                   <li>Set monitoring duration to: <strong>{monitoringDuration} days</strong></li>
                 )}

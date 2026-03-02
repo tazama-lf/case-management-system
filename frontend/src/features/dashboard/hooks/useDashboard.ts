@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '../services/dashboardService';
 import type { DashboardData } from '../types/dashboard.types';
 
-export const useDashboard = () =>
+export const useDashboard = (): ReturnType<typeof useQuery<DashboardData>> =>
   useQuery<DashboardData>({
     queryKey: ['dashboard'],
     queryFn: async () => await dashboardService.getDashboardData(),
@@ -11,7 +11,7 @@ export const useDashboard = () =>
     refetchOnWindowFocus: true,
   });
 
-export const useDashboardStats = () =>
+export const useDashboardStats = (): ReturnType<typeof useQuery> =>
   useQuery({
     queryKey: ['dashboard', 'stats'],
     queryFn: async () => await dashboardService.getDashboardStats(),

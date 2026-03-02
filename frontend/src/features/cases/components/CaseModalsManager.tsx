@@ -148,11 +148,11 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
   const { performManualTriage } = useAlertOperations();
   const { success, error } = useToast();
   const { params, navigate } = useDynamicRoute();
-  const closeViewCaseModal = () => {
+  const closeViewCaseModal = (): void => {
     modalActions.setIsViewOpen(false);
     modalActions.setSelectedRow(null);
 
-    if (params.caseId) {
+    if (typeof params === 'object' && params && 'caseId' in params && params.caseId) {
       navigate('/cases');
     }
   };
@@ -161,7 +161,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
   const handleManualTriage = async (
     alert: Alert,
     triageData: ManualTriageDto,
-  ) => {
+  ): Promise<void> => {
     try {
       await performManualTriage({
         alertId: alert.alert_id,
@@ -198,7 +198,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     alertType: AlertType;
     assignee?: string;
     draft?: boolean;
-  }) => {
+  }): Promise<void> => {
     modalActions.setCreateCaseLoading(true);
     modalActions.setCreateCaseError('');
 
@@ -237,7 +237,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     alertType: AlertType;
     assignee?: string;
     draft?: boolean;
-  }) => {
+  }): Promise<void> => {
     modalActions.setCreateCaseLoading(true);
     modalActions.setCreateCaseError('');
 
@@ -278,7 +278,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       alertType: AlertType;
       assignee?: string;
     },
-  ) => {
+  ): Promise<void> => {
     modalActions.setCreateCaseLoading(true);
     modalActions.setCreateCaseError('');
 
@@ -323,7 +323,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       predictionOutcome?: PredictionOutcome;
       note: string;
     },
-  ) => {
+  ): Promise<void> => {
     modalActions.setCreateCaseLoading(true);
     modalActions.setCreateCaseError('');
 
@@ -364,20 +364,20 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     }
   };
 
-  const handleCloseCaseSubmit = async (data: CloseCaseDto) => {
+  const handleCloseCaseSubmit = async (data: CloseCaseDto): Promise<void> => {
     if (!modalState.selectedRow) return;
     await caseActions.handleCloseCaseSubmit(modalState.selectedRow.id, data);
     modalActions.setIsCloseCaseOpen(false);
     modalActions.setSelectedRow(null);
   };
 
-  const handleReopenSubmit = async (caseId: number, reason: string) => {
+  const handleReopenSubmit = async (caseId: number, reason: string): Promise<void> => {
     await caseActions.handleReopenSubmit(caseId, reason);
     modalActions.setIsReopenOpen(false);
     modalActions.setSelectedRow(null);
   };
 
-  const handleAbandonSubmit = async (caseId: number, reason: string) => {
+  const handleAbandonSubmit = async (caseId: number, reason: string): Promise<void> => {
     await caseActions.handleAbandonSubmit(caseId, reason);
     modalActions.setIsAbandonOpen(false);
     modalActions.setSelectedRow(null);
@@ -387,19 +387,19 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     caseId: number,
     reason: string,
     taskIds: number[],
-  ) => {
+  ): Promise<void> => {
     await caseActions.handleSuspendSubmit(caseId, reason, taskIds);
     modalActions.setIsSuspendOpen(false);
     modalActions.setSelectedRow(null);
   };
 
-  const handleResumeSubmit = async (caseId: number, reason: string) => {
+  const handleResumeSubmit = async (caseId: number, reason: string): Promise<void> => {
     await caseActions.handleResumeSubmit(caseId, reason);
     modalActions.setIsResumeOpen(false);
     modalActions.setSelectedRow(null);
   };
 
-  const handleRejectSubmit = async (rejectionReason: string) => {
+  const handleRejectSubmit = async (rejectionReason: string): Promise<void> => {
     if (!modalState.selectedRow) return;
     await caseActions.handleRejectCase(
       modalState.selectedRow.id,
@@ -409,7 +409,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     modalActions.setSelectedRow(null);
   };
 
-  const handleApproveSubmit = async (data: ApproveCaseClosureDto) => {
+  const handleApproveSubmit = async (data: ApproveCaseClosureDto): Promise<void> => {
     if (!modalState.selectedRow) return;
 
     const { finalOutcome } = data;
@@ -422,7 +422,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     modalActions.setSelectedRow(null);
   };
 
-  const handleApproveCreationSubmit = async (caseId: number) => {
+  const handleApproveCreationSubmit = async (caseId: number): Promise<void> => {
     await caseActions.handleApproveCreation(caseId);
     modalActions.setIsApproveCreationOpen(false);
     modalActions.setSelectedRow(null);
@@ -431,7 +431,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
   const handleRejectCreationSubmit = async (
     caseId: number,
     data: RejectCaseCreationDto,
-  ) => {
+  ): Promise<void> => {
     await caseActions.handleRejectCaseCreation(caseId, data.reason);
     modalActions.setIsRejectCreationOpen(false);
     modalActions.setSelectedRow(null);
@@ -440,7 +440,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
   const handleApproveReopenSubmit = async (
     caseId: number,
     comments?: string,
-  ) => {
+  ): Promise<void> => {
     try {
       const resp = await caseService.approveCaseReopening(caseId);
 
@@ -450,11 +450,11 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         const assignedTo = resp.investigation_task?.assigned_to
           ? ` and assigned to ${resp.investigation_task.assigned_to}`
           : '';
-        outcomeDetails = `\n\nStatus: STATUS_10_ASSIGNED\nAn "Investigate Case" task (${resp.investigation_task?.task_id || 'N/A'}) has been created${assignedTo}.`;
+        outcomeDetails = `\n\nStatus: STATUS_10_ASSIGNED\nAn "Investigate Case" task (${resp.investigation_task?.task_id ?? 'N/A'}) has been created${assignedTo}.`;
       } else if (updatedStatus === 'STATUS_02_READY_FOR_ASSIGNMENT') {
         const candidateGroup =
-          resp.investigation_task?.candidateGroup || 'Investigations';
-        outcomeDetails = `\n\nStatus: STATUS_02_READY_FOR_ASSIGNMENT\nAn "Investigate Case" task (${resp.investigation_task?.task_id || 'N/A'}) has been created in the ${candidateGroup} queue.`;
+          resp.investigation_task?.candidateGroup ?? 'Investigations';
+        outcomeDetails = `\n\nStatus: STATUS_02_READY_FOR_ASSIGNMENT\nAn "Investigate Case" task (${resp.investigation_task?.task_id ?? 'N/A'}) has been created in the ${candidateGroup} queue.`;
       } else if (updatedStatus === 'STATUS_31_REOPENED') {
         outcomeDetails =
           '\n\nStatus: STATUS_31_REOPENED\nAn "Investigate Case" task has been created.';
@@ -478,7 +478,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     }
   };
 
-  const openTriageModal = async () => {
+  const openTriageModal = async (): Promise<void> => {
     try {
       if (!modalState.selectedRow?.alertId) return;
 
@@ -493,11 +493,11 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     }
   };
 
-  const handleRejectReopenSubmit = async (caseId: number, reason: string) => {
+  const handleRejectReopenSubmit = async (caseId: number, reason: string): Promise<void> => {
     try {
       const resp = await caseService.rejectCaseReopening(caseId, reason);
 
-      let outcomeDetails = `\n\nReason: ${resp.rejection_reason || reason}`;
+      let outcomeDetails = `\n\nReason: ${resp.rejection_reason ?? reason}`;
       const status = resp.case?.status;
       if (status?.startsWith('STATUS_8') || status?.startsWith('STATUS_7')) {
         outcomeDetails += `\nStatus: ${status}\nThe case remains closed.`;
@@ -535,20 +535,20 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         loading={modalState.createCaseLoading}
         error={modalState.createCaseError}
         mode={modalState.createModalMode}
-        existingCaseId={modalState.editingCaseId || undefined}
+        existingCaseId={modalState.editingCaseId ?? undefined}
         initial={
           modalState.selectedRow
             ? {
                 alertId: modalState.selectedRow.alertId,
                 alertType: ((): AlertType => {
-                  const t = (modalState.selectedRow.type || '').toUpperCase();
+                  const t = (modalState.selectedRow.type ?? '').toUpperCase();
                   if (t.includes('FRAUD') && t.includes('AML'))
                     {return 'FRAUD_AND_AML';}
                   if (t.includes('AML')) return 'AML';
                   return 'FRAUD';
                 })(),
                 priority:
-                  (modalState.selectedRow.priority?.toUpperCase() as Priority) ||
+                  (modalState.selectedRow.priority?.toUpperCase() as Priority) ??
                   'NEW',
                 priorityScore: 0.33,
               }
@@ -720,9 +720,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
             modalActions.setIsCaseClosureDecisionOpen(false);
           }}
           caseId={
-            modalState.selectedRow?.id != null
-              ? modalState.selectedRow.id
-              : null
+            modalState.selectedRow?.id ?? null
           }
           caseName={
             modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''
@@ -769,9 +767,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
             modalActions.setIsApproveReopenOpen(false);
           }}
           caseId={
-            modalState.selectedRow?.id != null
-              ? modalState.selectedRow.id
-              : null
+            modalState.selectedRow?.id ?? null
           }
           requesterRole={undefined}
           onApprove={handleApproveReopenSubmit}
@@ -785,9 +781,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
             modalActions.setIsRejectReopenOpen(false);
           }}
           caseId={
-            modalState.selectedRow?.id != null
-              ? modalState.selectedRow.id
-              : null
+            modalState.selectedRow?.id ?? null
           }
           onReject={handleRejectReopenSubmit}
         />

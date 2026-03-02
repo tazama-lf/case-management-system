@@ -42,7 +42,39 @@ export interface CaseDashboardState {
   permissions: CaseDashboardPermissions;
 }
 
-export const useCaseDashboard = () => {
+export const useCaseDashboard = (): {
+  dashboardState: CaseDashboardState;
+  modalState: CaseModalState;
+  dashboardActions: {
+    handleView: (row: CaseRow) => void;
+    handleComplete: (row: CaseRow) => void;
+    handleCloseCase: (row: CaseRow) => void;
+    handleReopenCase: (row: CaseRow) => void;
+    handleAbandonCase: (row: CaseRow) => void;
+    handleSuspendCase: (row: CaseRow) => void;
+    handleResumeCase: (row: CaseRow) => void;
+    handleRejectCase: (row: CaseRow) => void;
+    handleApproveCase: (row: CaseRow) => void;
+    handleApproveCaseCreation: (row: CaseRow) => void;
+    handleRejectCaseCreation: (row: CaseRow) => void;
+    handleApproveCaseReopen: (row: CaseRow) => void;
+    handleRejectCaseReopen: (row: CaseRow) => void;
+    handleCreateNew: () => void;
+  };
+  filterActions: {
+    setSearch: React.Dispatch<React.SetStateAction<string>>;
+    setSortBy: React.Dispatch<React.SetStateAction<'recent' | 'oldest'>>;
+    setStatusFilter: React.Dispatch<React.SetStateAction<string>>;
+    setPriorityFilter: React.Dispatch<React.SetStateAction<string>>;
+    setSarStrStatusFilter: React.Dispatch<React.SetStateAction<string>>;
+    setCaseTypeFilter: React.Dispatch<React.SetStateAction<'all' | 'draft' | 'closed'>>;
+  };
+  modalActions: CaseModalActions;
+  caseActions: ReturnType<typeof useCaseActions>;
+  setCurrentPage: (page: number) => void;
+  setPageSize: (size: number) => void;
+  refreshCases: () => Promise<void>;
+} => {
   const { hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole } = useAuth();
   const { error } = useToast();
   const { params, navigate } = useDynamicRoute();
@@ -62,11 +94,8 @@ export const useCaseDashboard = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
   const [sarStrStatusFilter, setSarStrStatusFilter] = useState<string>('');
-  const [caseTypeFilter, setCaseTypeFilter] = useState<
-    'all' | 'draft' | 'closed'
-  >('all');
-
-  // Debounce search term to avoid excessive API calls
+  const [caseTypeFilter, setCaseTypeFilter] = useState<'all' | 'draft' | 'closed'>('all');
+  
   const debouncedSearch = useDebounce(search, 500);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -96,24 +125,24 @@ export const useCaseDashboard = () => {
     setErrorState(null);
 
     try {
-      // Determine backend filter parameters based on caseTypeFilter
       let finalStatusFilter = statusFilter;
       let excludeDraft = false;
       let excludeClosed = false;
       let closedOnly = false;
 
       if (caseTypeFilter === 'draft') {
-        // Show only draft cases
         finalStatusFilter = 'STATUS_00_DRAFT';
       } else if (caseTypeFilter === 'closed') {
-        // Show only closed cases - use backend closedOnly parameter
-        closedOnly = true;
-        finalStatusFilter = '';
+        if (!statusFilter) {
+          closedOnly = true;
+          finalStatusFilter = '';
+        }
       } else if (caseTypeFilter === 'all') {
-        // Show all cases except draft and closed - use backend exclusion parameters
-        excludeDraft = true;
-        excludeClosed = true;
-        finalStatusFilter = '';
+        if (!statusFilter) {
+          excludeDraft = true;
+          excludeClosed = true;
+          finalStatusFilter = '';
+        }
       }
 
       const response = await caseService.getAllCases({
@@ -163,17 +192,19 @@ export const useCaseDashboard = () => {
   }, [fetchCases]);
 
   useEffect(() => {
-    const caseId = Number(params.caseId);
-    if (caseId && cases.length > 0) {
-      const caseToView = cases.find((c) => c.id === caseId);
-      if (caseToView) {
-        setSelectedRow(caseToView);
-        setIsViewOpen(true);
-      } else {
-        navigate('/cases');
+    if (typeof params === 'object' && params && 'caseId' in params) {
+      const caseId = Number(params.caseId);
+      if (caseId && cases.length > 0) {
+        const caseToView = cases.find((c) => c.id === caseId);
+        if (caseToView) {
+          setSelectedRow(caseToView);
+          setIsViewOpen(true);
+        } else {
+          navigate('/cases');
+        }
       }
     }
-  }, [cases, params.caseId, navigate, error]);
+  }, [cases, params, navigate, error]);
 
   const totalItems = backendTotalItems;
   const totalPages = backendTotalPages;

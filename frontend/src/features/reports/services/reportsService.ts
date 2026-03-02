@@ -40,7 +40,7 @@ class ReportsService {
             0,
           ),
         },
-        statusDistribution: response.statusDistribution || {
+        statusDistribution: response.statusDistribution ?? {
           assigned: 0,
           inProgress: 0,
           draft: 0,
@@ -48,15 +48,15 @@ class ReportsService {
           pendingApproval: 0,
           closed: 0,
         },
-        caseTypes: response.caseTypes || [],
-        outcomes: response.outcomes || {
+        caseTypes: response.caseTypes ?? [],
+        outcomes: response.outcomes ?? {
           resolved: 0,
           confirmed: 0,
           inconclusive: 0,
           pending: 0,
         },
-        monthlyTrend: response.monthlyTrend || [],
-        statusDetails: response.statusDetails || [],
+        monthlyTrend: response.monthlyTrend ?? [],
+        statusDetails: response.statusDetails ?? [],
       };
 
       return processedResponse;
@@ -96,7 +96,7 @@ class ReportsService {
   ): Promise<InvestigatorWorkloadData> {
     try {
       const response = await apiClient.get<InvestigatorWorkloadData>(
-        `/api/v1/reports/investigator-workload?dateRange=${dateRange || 'last30'}`,
+        `/api/v1/reports/investigator-workload?dateRange=${dateRange ?? 'last30'}`,
       );
 
       const processedResponse: InvestigatorWorkloadData = {
@@ -119,11 +119,11 @@ class ReportsService {
             0,
           ),
         },
-        workloadData: response.workloadData || [],
-        volumeTrend: response.volumeTrend || [],
-        efficiencyData: response.efficiencyData || [],
-        outcomeData: response.outcomeData || [],
-        performanceData: response.performanceData || [],
+        workloadData: response.workloadData ?? [],
+        volumeTrend: response.volumeTrend ?? [],
+        efficiencyData: response.efficiencyData ?? [],
+        outcomeData: response.outcomeData ?? [],
+        performanceData: response.performanceData ?? [],
       };
 
       return processedResponse;
@@ -149,7 +149,7 @@ class ReportsService {
   async getTaskCompletionData(dateRange?: string): Promise<TaskCompletionData> {
     try {
       const response = await apiClient.get<TaskCompletionData>(
-        `/api/v1/reports/task-completion?dateRange=${dateRange || 'last30'}`,
+        `/api/v1/reports/task-completion?dateRange=${dateRange ?? 'last30'}`,
       );
 
       const processedResponse: TaskCompletionData = {
@@ -163,11 +163,11 @@ class ReportsService {
           ),
           overdueTasks: this.safeFallback(response.stats?.overdueTasks, 0),
         },
-        completionByType: response.completionByType || [],
-        avgCompletionTime: response.avgCompletionTime || [],
-        completionTrend: response.completionTrend || [],
-        statusDistribution: response.statusDistribution || [],
-        taskDetails: response.taskDetails || [],
+        completionByType: response.completionByType ?? [],
+        avgCompletionTime: response.avgCompletionTime ?? [],
+        completionTrend: response.completionTrend ?? [],
+        statusDistribution: response.statusDistribution ?? [],
+        taskDetails: response.taskDetails ?? [],
       };
 
       return processedResponse;
@@ -198,10 +198,10 @@ class ReportsService {
       formData.append('file', data.file);
       formData.append('caseId', data.caseId.toString());
       formData.append('reportType', data.reportType);
-      formData.append('investigatorInputs', data.investigatorInputs || '');
-      formData.append('supervisorRemarks', data.supervisorRemarks || '');
-      formData.append('outcome', data.outcome || '');
-      formData.append('description', data.description || '');
+      formData.append('investigatorInputs', data.investigatorInputs ?? '');
+      formData.append('supervisorRemarks', data.supervisorRemarks ?? '');
+      formData.append('outcome', data.outcome ?? '');
+      formData.append('description', data.description ?? '');
 
       const response = await apiClient.upload<UploadReportResponse>(
         '/api/v1/reports/fraud/generate',
@@ -217,7 +217,7 @@ class ReportsService {
   async getAuditLogsData(dateRange?: string): Promise<AuditLogsData> {
     try {
       const response = await apiClient.get<AuditLogsData>(
-        `/api/v1/reports/audit-logs?dateRange=${dateRange || 'last30'}`,
+        `/api/v1/reports/audit-logs?dateRange=${dateRange ?? 'last30'}`,
       );
 
       const processedResponse: AuditLogsData = {
@@ -228,7 +228,7 @@ class ReportsService {
           userSessions: this.safeFallback(response.stats?.userSessions, 0),
           systemWarnings: this.safeFallback(response.stats?.systemWarnings, 0),
         },
-        auditLogs: response.auditLogs || [],
+        auditLogs: response.auditLogs ?? [],
       };
 
       return processedResponse;
@@ -249,7 +249,7 @@ class ReportsService {
   async getCaseAgeingData(dateRange?: string): Promise<CaseAgeingData> {
     try {
       const response = await apiClient.get<CaseAgeingData>(
-        `/api/v1/reports/case-ageing?dateRange=${dateRange || 'last30'}`,
+        `/api/v1/reports/case-ageing?dateRange=${dateRange ?? 'last30'}`,
       );
 
       const processedResponse: CaseAgeingData = {
@@ -269,11 +269,11 @@ class ReportsService {
             0,
           ),
         },
-        ageingByStatus: response.ageingByStatus || [],
-        resolutionTrend: response.resolutionTrend || [],
-        ageingDistribution: response.ageingDistribution || [],
-        caseTypeResolution: response.caseTypeResolution || [],
-        caseDetails: response.caseDetails || [],
+        ageingByStatus: response.ageingByStatus ?? [],
+        resolutionTrend: response.resolutionTrend ?? [],
+        ageingDistribution: response.ageingDistribution ?? [],
+        caseTypeResolution: response.caseTypeResolution ?? [],
+        caseDetails: response.caseDetails ?? [],
       };
 
       return processedResponse;
@@ -304,7 +304,6 @@ class ReportsService {
       const casesResponse = await apiClient.get<
         Record<string, unknown> | Array<Record<string, unknown>>
       >('/api/v1/cases/all');
-      console.log('[Evidence Report] Cases Response:', casesResponse);
 
       const cases = Array.isArray(casesResponse)
         ? casesResponse
@@ -313,7 +312,6 @@ class ReportsService {
             (casesResponse.cases as Array<Record<string, unknown>>) ||
             []
           : [];
-      console.log('[Evidence Report] Cases:', cases);
 
       if (!cases || cases.length === 0) {
         console.warn(
@@ -359,18 +357,10 @@ class ReportsService {
         let caseEvidence: Array<Record<string, unknown>> = [];
 
         try {
-          console.log(
-            `[Evidence Report] Fetching evidence for case ${caseItem.case_id}`,
-          );
-
           // Query evidence for this case
           const caseEvidenceResponse = await apiClient.get<
             Record<string, unknown>
           >(`/api/v1/evidence/case/${caseItem.case_id}`);
-          console.log(
-            `[Evidence Report] Case evidence response for case ${caseItem.case_id}:`,
-            caseEvidenceResponse,
-          );
 
           if (
             caseEvidenceResponse &&
@@ -384,10 +374,6 @@ class ReportsService {
           } else if (Array.isArray(caseEvidenceResponse)) {
             caseEvidence = caseEvidenceResponse;
           }
-
-          console.log(
-            `[Evidence Report] Total evidence retrieved for case ${caseItem.case_id}: ${caseEvidence.length} items`,
-          );
         } catch (caseErr) {
           console.warn(
             `[Evidence Report] Failed to fetch evidence for case ${caseItem.case_id}:`,
@@ -438,10 +424,6 @@ class ReportsService {
                 (firstAttachment?.hash as string) ||
                 undefined;
 
-              console.log(
-                `[Evidence Report] Mapping evidence: ID=${evidenceId}, FileName=${fileName}, TaskID=${(e.taskId as string) || (e.task_id as string)}, UploadedBy=${e.uploadedBy as string}, UploadedAt=${e.uploadedAt as string}`,
-              );
-
               return {
                 id: evidenceId,
                 fileName,
@@ -455,10 +437,6 @@ class ReportsService {
                 hash,
               };
             },
-          );
-
-          console.log(
-            `[Evidence Report] Created ${supportingEvidence.length} supporting evidence items for case ${String(caseItem.case_id)}`,
           );
 
           const evidenceByTask: Record<string, Array<Record<string, any>>> = {};
@@ -477,22 +455,22 @@ class ReportsService {
 
                 return {
                   id:
-                    e.id?.toString() ||
-                    e.evidenceId?.toString() ||
+                    e.id?.toString() ??
+                    e.evidenceId?.toString() ??
                     `unknown_${Date.now()}`,
                   fileName:
-                    e.fileName ||
-                    e.file_name ||
-                    firstAttachment?.fileName ||
+                    e.fileName ??
+                    e.file_name ??
+                    firstAttachment?.fileName ??
                     'Unknown Document',
-                  fileSize: e.fileSize || firstAttachment?.fileSize,
-                  mimeType: e.mimeType || firstAttachment?.mimeType,
+                  fileSize: e.fileSize ?? firstAttachment?.fileSize,
+                  mimeType: e.mimeType ?? firstAttachment?.mimeType,
                   evidenceType: e.evidenceType,
                   uploadedBy: e.uploadedBy,
                   uploadedByName: e.uploadedByName,
                   uploadedAt: e.uploadedAt,
                   description: e.description,
-                  hash: e.hash || firstAttachment?.hash,
+                  hash: e.hash ?? firstAttachment?.hash,
                 };
               }),
             }),
@@ -534,14 +512,8 @@ class ReportsService {
             dateIdentified:
               (caseItem.created_at as string) || new Date().toISOString(),
           });
-        } else {
-          console.log(
-            `[Evidence Report] No evidence found for case ${String(caseItem.case_id)}`,
-          );
         }
       }
-
-      console.log('[Evidence Report] All Findings:', allFindings);
 
       const processedResponse: EvidenceFindingsData = {
         stats: {
@@ -562,7 +534,6 @@ class ReportsService {
         findings: allFindings.length > 0 ? allFindings : [],
       };
 
-      console.log('[Evidence Report] Final Response:', processedResponse);
       return processedResponse;
     } catch (error) {
       console.error(
@@ -628,7 +599,7 @@ class ReportsService {
       message?: string;
     };
     if (err?.response?.data) {
-      return new Error(err.response.data.message || `Failed to ${operation}`);
+      return new Error(err.response.data.message ?? `Failed to ${operation}`);
     }
 
     if (err?.message) {

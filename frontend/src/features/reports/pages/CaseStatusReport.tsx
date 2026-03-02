@@ -171,7 +171,7 @@ const Reports: React.FC = () => {
     outcomes,
     monthlyTrend,
     statusDetails,
-  } = reportsData || {
+  } = reportsData ?? {
     stats: {
       totalCases: 0,
       closedCases: 0,
@@ -235,10 +235,6 @@ const Reports: React.FC = () => {
       stats.totalCases > 0 ? (item.value / stats.totalCases) * 100 : 0,
   }));
 
-  // Debug outcomes data
-  console.log('Debug - reportsData:', reportsData);
-  console.log('Debug - outcomes:', outcomes);
-
   // Improved outcome data processing with better fallbacks
   const totalOutcomes =
     (outcomes?.resolved || 0) +
@@ -274,9 +270,6 @@ const Reports: React.FC = () => {
     ...item,
     percentage: totalOutcomes > 0 ? (item.value / totalOutcomes) * 100 : 0,
   }));
-
-  console.log('Debug - totalOutcomes:', totalOutcomes);
-  console.log('Debug - outcomeData:', outcomeData);
 
   const getPageTitle = () => {
     switch (reportType) {

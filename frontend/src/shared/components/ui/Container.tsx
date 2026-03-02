@@ -99,7 +99,7 @@ export const PageContainer: React.FC<PageContainerProps> = ({
 }) => (
   <div className={`min-h-screen bg-gray-50 ${className}`}>
     <Container>
-      {(title || subtitle || actions) && (
+      {(title ?? subtitle ?? actions) && (
         <div className="py-6">
           <div className="flex items-center justify-between">
             <div>
@@ -135,7 +135,7 @@ export const Section: React.FC<SectionProps> = ({
   className = '',
 }) => (
   <div className={`space-y-6 ${className}`}>
-    {(title || subtitle || actions) && (
+    {(title ?? subtitle ?? actions) && (
       <div className="flex items-center justify-between">
         <div>
           {title && (

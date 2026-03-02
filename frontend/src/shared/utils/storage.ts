@@ -13,7 +13,7 @@ const insertData = (
   type: StorageType = SessionStorage,
   encrypted = true,
   cookieOptions?: Cookies.CookieAttributes,
-) => {
+): void => {
   const value: string = encrypted ? encrypt(data) : JSON.stringify(data);
 
   switch (type) {
@@ -37,7 +37,7 @@ const extractData = (
   key: string,
   type: StorageType = SessionStorage,
   encrypted = true,
-) => {
+): any => {
   let data: string | null | undefined;
 
   switch (type) {
@@ -70,7 +70,7 @@ const removeData = (
   key: string,
   type: StorageType = SessionStorage,
   cookieOptions?: Cookies.CookieAttributes,
-) => {
+): void => {
   switch (type) {
     case CookieStorage:
       Cookies.remove(key, {
@@ -88,9 +88,9 @@ const removeData = (
   }
 };
 
-const getAuthToken = () => extractData('access_token');
+const getAuthToken = (): any => extractData('access_token');
 
-const resetData = () => {
+const resetData = (): void => {
   sessionStorage.clear();
   localStorage.clear();
   Object.keys(Cookies.get()).forEach((key) => {

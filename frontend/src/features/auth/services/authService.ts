@@ -66,7 +66,7 @@ class AuthService {
    */
   async fetchUserProfile(token?: string): Promise<User | null> {
     try {
-      const authToken = token || this.getToken();
+      const authToken = token ?? this.getToken();
       if (!authToken) {
         throw new Error('No authentication token available');
       }

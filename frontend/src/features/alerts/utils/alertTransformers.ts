@@ -61,9 +61,9 @@ function extractRiskScore(alertData: unknown): number {
 export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
   const transformedAlert: UIAlert = {
     alert_id: backendAlert.alert_id,
-    tenant_id: backendAlert.tenant_id || 'default-tenant',
+    tenant_id: backendAlert.tenant_id ?? 'default-tenant',
     priority: backendAlert.priority,
-    alert_type: extractAlertType(backendAlert) || undefined,
+    alert_type: extractAlertType(backendAlert) ?? undefined,
     source: backendAlert.source,
     txtp: backendAlert.txtp,
     message: backendAlert.message,
@@ -78,11 +78,11 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
     transactionId: extractTransactionId(backendAlert.transaction),
     title: backendAlert.message,
     description: backendAlert.message,
-    type: extractAlertType(backendAlert) || 'Unknown',
+    type: extractAlertType(backendAlert) ?? 'Unknown',
     severity: mapPriorityToSeverity(backendAlert.priority),
     riskScore:
-      extractRiskScore(backendAlert.alert_data) ||
-      backendAlert.confidence_per ||
+      extractRiskScore(backendAlert.alert_data) ??
+      backendAlert.confidence_per ??
       0,
     confidence: backendAlert.confidence_per,
     createdAt: backendAlert.created_at,
@@ -183,23 +183,23 @@ function extractTransactionId(transaction: unknown): string | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
   const txn = transaction as any;
-  return txn.transactionId || txn.txnId || txn.id || txn.TxId || undefined;
+  return txn.transactionId ?? txn.txnId ?? txn.id ?? txn.TxId ?? undefined;
 }
 
 function extractAmount(transaction: unknown): number | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
   const txn = transaction as any;
-  const amount = txn.amount || txn.AmtRaw || txn.TxAmt || txn.value;
+  const amount = txn.amount ?? txn.AmtRaw ?? txn.TxAmt ?? txn.value;
 
-  return typeof amount === 'number' ? amount : parseFloat(amount) || undefined;
+  return typeof amount === 'number' ? amount : parseFloat(amount) ?? undefined;
 }
 
 function extractCurrency(transaction: unknown): string | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
   const txn = transaction as any;
-  return txn.currency || txn.ccy || txn.CcyCode || txn.currencyCode || 'USD';
+  return txn.currency ?? txn.ccy ?? txn.CcyCode ?? txn.currencyCode ?? 'USD';
 }
 
 export function transformBackendAlertsToUI(

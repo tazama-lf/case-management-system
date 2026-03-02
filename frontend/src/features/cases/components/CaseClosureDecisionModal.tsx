@@ -68,7 +68,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     rejectionReason: string;
   }>({
     finalOutcome:
-      (recommendedOutcome as ApproveCaseClosureDto['finalOutcome']) ||
+      (recommendedOutcome as ApproveCaseClosureDto['finalOutcome']) ??
       'STATUS_83_CLOSED_INCONCLUSIVE',
     supervisorComments: '',
     rejectionReason: '',
@@ -88,7 +88,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
         )
       : undefined;
 
-    const taskId = approveClosureTask?.task_id || null;
+    const taskId = approveClosureTask?.task_id ?? null;
     if (!taskId) return;
 
     async function loadTasks() {
@@ -202,7 +202,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
       setActiveTab('approve');
       setFormData({
         finalOutcome:
-          (recommendedOutcome as ApproveCaseClosureDto['finalOutcome']) ||
+          (recommendedOutcome as ApproveCaseClosureDto['finalOutcome']) ??
           'STATUS_83_CLOSED_INCONCLUSIVE',
         supervisorComments: '',
         rejectionReason: '',
@@ -386,7 +386,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
                     </span>
                   </label>
                   <textarea
-                    value={formData.supervisorComments || ''}
+                    value={formData.supervisorComments ?? ''}
                     onChange={(e) => {
                       setFormData((prev) => ({
                         ...prev,

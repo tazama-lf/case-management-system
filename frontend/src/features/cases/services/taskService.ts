@@ -284,7 +284,7 @@ export class TaskService {
       const investigationTask = tasks.find((t) =>
         t.name?.toLowerCase().includes('investigation'),
       );
-      return investigationTask || null;
+      return investigationTask ?? null;
     } catch (error: any) {
       console.error(
         'TaskService: Failed to get investigation task for case:',

@@ -58,7 +58,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
   if (loading) {
     return (
       <div className={className}>
-        {loadingComponent || (
+        {loadingComponent ?? (
           <div className="flex items-center justify-center py-12">
             <SpinnerWithText text="Loading..." size="lg" />
           </div>
@@ -70,7 +70,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
   if (error) {
     return (
       <div className={className}>
-        {errorComponent || (
+        {errorComponent ?? (
           <div className="text-center py-12">
             <div className="text-red-600 mb-2">
               <svg
@@ -91,7 +91,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
               Error Loading Data
             </h3>
             <p className="text-gray-600">
-              {errorMessage || 'An unexpected error occurred'}
+              {errorMessage ?? 'An unexpected error occurred'}
             </p>
           </div>
         )}
@@ -102,7 +102,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
   if (empty) {
     return (
       <div className={className}>
-        {emptyComponent || (
+        {emptyComponent ?? (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-2">
               <svg

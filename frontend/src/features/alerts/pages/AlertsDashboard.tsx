@@ -117,7 +117,7 @@ const AlertsDashboard: React.FC = () => {
     useState<TransactionMessage | null>(null);
   const [selectedAlertForTransaction, setSelectedAlertForTransaction] =
     useState<Alert | null>(null);
-  const handleRowClick = async (alert: Alert) => {
+  const handleRowClick = async (alert: Alert): Promise<void> => {
     try {
       const detailedAlert = await triageService.getAlertById(alert.alert_id);
       setSelectedAlert(transformBackendAlertToUI(detailedAlert));
@@ -129,33 +129,33 @@ const AlertsDashboard: React.FC = () => {
     }
   };
 
-  const handleCloseModal = () => {
+  const handleCloseModal = (): void => {
     setShowModal(false);
     setSelectedAlert(null);
   };
 
-  const handleTransactionIdClick = (alert: Alert) => {
+  const handleTransactionIdClick = (alert: Alert): void => {
     setSelectedAlertForTransaction(alert);
     setShowTransactionMessages(true);
   };
 
-  const handleTransactionMessageClick = (message: TransactionMessage) => {
+  const handleTransactionMessageClick = (message: TransactionMessage): void => {
     setSelectedMessage(message);
     setShowTransactionMessages(false);
     setShowMessagePayload(true);
   };
 
-  const handleCloseTransactionMessages = () => {
+  const handleCloseTransactionMessages = (): void => {
     setShowTransactionMessages(false);
     setSelectedAlertForTransaction(null);
   };
 
-  const handleCloseMessagePayload = () => {
+  const handleCloseMessagePayload = (): void => {
     setShowMessagePayload(false);
     setSelectedMessage(null);
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string): string => {
     if (!priority) return 'text-gray-600 bg-gray-50';
     switch (priority.toLowerCase()) {
       case 'breach':
@@ -233,7 +233,7 @@ const AlertsDashboard: React.FC = () => {
       sortable: true,
       render: (value) => {
         const score = (value as number) || 0;
-        const getScoreColor = (score: number) => {
+        const getScoreColor = (score: number): string => {
           if (score >= 80) return 'text-red-600 bg-red-50';
           if (score >= 60) return 'text-orange-600 bg-orange-50';
           if (score >= 40) return 'text-yellow-600 bg-yellow-50';
@@ -294,7 +294,7 @@ const AlertsDashboard: React.FC = () => {
     },
   ];
 
-  const getSubtitle = () => {
+  const getSubtitle = (): string => {
     if (isAIMode) {
       return 'AI-automated triage with confidence-based routing and manual review for uncertain cases';
     } else if (isManualMode) {
@@ -360,7 +360,7 @@ const AlertsDashboard: React.FC = () => {
           setPage(1);
         }}
         customDateRange={
-          filters.customDateRange || { startDate: '', endDate: '' }
+          filters.customDateRange ?? { startDate: '', endDate: '' }
         }
         onCustomDateRangeChange={(range) => {
           setFilters({ ...filters, customDateRange: range });
@@ -401,7 +401,7 @@ const AlertsDashboard: React.FC = () => {
       {/* Alerts Detail Modal */}
       <Suspense fallback={null}>
         <AlertsDetailModal
-          alertId={selectedAlert?.alert_id || null}
+          alertId={selectedAlert?.alert_id ?? null}
           isOpen={showModal}
           onClose={handleCloseModal}
           onAlertUpdated={refreshAlerts}

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, JSX } from 'react';
 import { render, type RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { Toaster } from 'react-hot-toast';
 /**
  * Create a new QueryClient for testing with sensible defaults
  */
-export const createTestQueryClient = () => {
+export const createTestQueryClient = (): QueryClient => {
   return new QueryClient({
     defaultOptions: {
       queries: {
@@ -57,7 +57,7 @@ export const renderWithProviders = (
 ) => {
   const { queryClient, ...renderOptions } = options || {};
 
-  const Wrapper = ({ children }: { children: ReactNode }) => (
+  const Wrapper = ({ children }: { children: ReactNode }): JSX.Element => (
     <AllProviders queryClient={queryClient}>{children}</AllProviders>
   );
 
@@ -67,7 +67,7 @@ export const renderWithProviders = (
 /**
  * Mock data generators
  */
-export const mockCase = (overrides = {}) => ({
+export const mockCase = (overrides = {}): any => ({
   case_id: 'CASE-001',
   tenant_id: 'tenant-1',
   owner_id: 'user-1',
@@ -80,7 +80,7 @@ export const mockCase = (overrides = {}) => ({
   ...overrides,
 });
 
-export const mockAlert = (overrides = {}) => ({
+export const mockAlert = (overrides = {}): any => ({
   alert_id: 'ALERT-001',
   tenant_id: 'tenant-1',
   priority: 'CRITICAL',
@@ -92,7 +92,7 @@ export const mockAlert = (overrides = {}) => ({
   ...overrides,
 });
 
-export const mockUser = (overrides = {}) => ({
+export const mockUser = (overrides = {}): any => ({
   user_id: 'user-1',
   email: 'test@example.com',
   first_name: 'Test',
@@ -105,7 +105,7 @@ export const mockUser = (overrides = {}) => ({
 /**
  * Wait for loading states to resolve
  */
-export const waitForLoadingToFinish = () => {
+export const waitForLoadingToFinish = (): Promise<void> => {
   return new Promise((resolve) => setTimeout(resolve, 0));
 };
 

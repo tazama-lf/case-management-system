@@ -483,15 +483,15 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredTasks.map((task, index) => (
               <tr
-                key={task.id || `task-${index}`}
+                key={task.id ?? `task-${index}`}
                 className={'hover:bg-gray-50'}
               >
                 <td className="px-4 py-3">
                   <div
                     className="text-xs text-gray-900 font-mono break-all"
-                    title={task.taskId?.toString() || ''}
+                    title={task.taskId?.toString() ?? ''}
                   >
-                    TASK-{task.taskId || ''}
+                    TASK-{task.taskId ?? ''}
                   </div>
                 </td>
                 <td className="px-4 py-3">
@@ -499,9 +499,9 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                     {task.name && (
                       <div
                         className={'text-xs break-words mt-1 text-gray-900'}
-                        title={task.name || 'View task details'}
+                        title={task.name ?? 'View task details'}
                       >
-                        {task.name || 'Unnamed Task'}
+                        {task.name ?? 'Unnamed Task'}
                       </div>
                     )}
                   </div>
@@ -509,9 +509,9 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                 <td className="px-4 py-3">
                   <div
                     className="text-xs text-gray-900 font-mono break-all"
-                    title={task.caseId?.toString() || ''}
+                    title={task.caseId?.toString() ?? ''}
                   >
-                    CASE-{task.caseId || ''}
+                    CASE-{task.caseId ?? ''}
                   </div>
                 </td>
                 <td className="px-4 py-3">
@@ -522,7 +522,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                 <td className="px-4 py-3">{getStatusBadge(task.status)}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center text-sm text-gray-500">
-                    {formatDate(task.created || task.createdAt)}
+                    {formatDate(task.created ?? task.createdAt)}
                   </div>
                 </td>
                 <td className="px-4 py-3">

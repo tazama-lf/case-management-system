@@ -55,7 +55,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
     );
     if (sup) return `${sup.firstName} ${sup.lastName}`;
 
-    return assigneeName || assignee;
+    return assigneeName ?? assignee;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -122,7 +122,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
                   </div>
                   <div>
                     <strong>Current Assignee:</strong>{' '}
-                    {getAssigneeFullName(task.assignee, task.assigneeName) ||
+                    {getAssigneeFullName(task.assignee, task.assigneeName) ??
                       'Unassigned'}
                   </div>
                   <div>

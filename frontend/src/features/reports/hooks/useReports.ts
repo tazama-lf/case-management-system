@@ -12,7 +12,7 @@ import type {
 export const useReports = (
   dateRange?: string,
   filters?: { caseType: string; priority: string; investigator: string },
-) =>
+): ReturnType<typeof useQuery<ReportsData>> =>
   useQuery<ReportsData>({
     queryKey: ['reports', dateRange, filters],
     queryFn: async () =>
@@ -22,7 +22,7 @@ export const useReports = (
     refetchOnWindowFocus: true,
   });
 
-export const useCaseStatusStats = () =>
+export const useCaseStatusStats = (): ReturnType<typeof useQuery> =>
   useQuery({
     queryKey: ['reports', 'stats'],
     queryFn: async () => await reportsService.getReportsData(),
@@ -30,7 +30,7 @@ export const useCaseStatusStats = () =>
     refetchInterval: 1000 * 60 * 10,
   });
 
-export const useInvestigatorWorkload = (dateRange?: string) =>
+export const useInvestigatorWorkload = (dateRange?: string): ReturnType<typeof useQuery<InvestigatorWorkloadData>> =>
   useQuery<InvestigatorWorkloadData>({
     queryKey: ['reports', 'investigator-workload', dateRange],
     queryFn: async () =>
@@ -40,7 +40,7 @@ export const useInvestigatorWorkload = (dateRange?: string) =>
     refetchOnWindowFocus: true,
   });
 
-export const useTaskCompletion = (dateRange?: string) =>
+export const useTaskCompletion = (dateRange?: string): ReturnType<typeof useQuery<TaskCompletionData>> =>
   useQuery<TaskCompletionData>({
     queryKey: ['reports', 'task-completion', dateRange],
     queryFn: async () => await reportsService.getTaskCompletionData(dateRange),
@@ -49,7 +49,7 @@ export const useTaskCompletion = (dateRange?: string) =>
     refetchOnWindowFocus: true,
   });
 
-export const useAuditLogs = (dateRange?: string) =>
+export const useAuditLogs = (dateRange?: string): ReturnType<typeof useQuery<AuditLogsData>> =>
   useQuery<AuditLogsData>({
     queryKey: ['reports', 'audit-logs', dateRange],
     queryFn: async () => await reportsService.getAuditLogsData(dateRange),
@@ -59,7 +59,7 @@ export const useAuditLogs = (dateRange?: string) =>
     retry: 1,
   });
 
-export const useCaseAgeing = (dateRange?: string) =>
+export const useCaseAgeing = (dateRange?: string): ReturnType<typeof useQuery<CaseAgeingData>> =>
   useQuery<CaseAgeingData>({
     queryKey: ['reports', 'case-ageing', dateRange],
     queryFn: async () => await reportsService.getCaseAgeingData(dateRange),
@@ -68,7 +68,7 @@ export const useCaseAgeing = (dateRange?: string) =>
     refetchOnWindowFocus: true,
   });
 
-export const useEvidenceFindings = (dateRange?: string) =>
+export const useEvidenceFindings = (dateRange?: string): ReturnType<typeof useQuery<EvidenceFindingsData>> =>
   useQuery<EvidenceFindingsData>({
     queryKey: ['reports', 'evidence-findings', dateRange],
     queryFn: async () =>

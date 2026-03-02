@@ -205,21 +205,21 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
                 Alert Type
               </label>
               <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                {alert.alert_type || 'N/A'}
+                {alert.alert_type ?? 'N/A'}
               </span>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Source
               </label>
-              <p className="text-sm text-gray-900">{alert.source || 'N/A'}</p>
+              <p className="text-sm text-gray-900">{alert.source ?? 'N/A'}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Type
               </label>
               <p className="text-sm text-gray-900">
-                {alert.alert_type || 'N/A'}
+                {alert.alert_type ?? 'N/A'}
               </p>
             </div>
           </div>
@@ -244,7 +244,7 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
               <label className="block text-sm font-medium text-gray-700">
                 Case ID
               </label>
-              <p className="text-sm text-gray-900">{alert.case_id || 'N/A'}</p>
+              <p className="text-sm text-gray-900">{alert.case_id ?? 'N/A'}</p>
             </div>
           </div>
         </div>

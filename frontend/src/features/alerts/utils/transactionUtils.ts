@@ -75,9 +75,9 @@ export function extractTransactionIdFromAlert(alert: any): string {
       return alert.txtp;
     }
 
-    return alert.alert_id || 'Unknown';
+    return alert.alert_id ?? 'Unknown';
   } catch (error) {
     console.warn('Failed to extract transaction ID from alert:', error);
-    return alert.txtp || alert.alert_id || 'Unknown';
+    return alert.txtp ?? alert.alert_id ?? 'Unknown';
   }
 }

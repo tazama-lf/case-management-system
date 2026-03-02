@@ -1,4 +1,4 @@
-import type { UnifiedWorkQueueTask } from '../../../workqueue/types/flowable.types';
+import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import React, { useEffect, useState } from 'react';
 // import authService from '../../../auth/services/authService';
 import { useInvestigatorSupervisorList } from '../../../cases/hooks/useInvestigatorSupervisorList';
@@ -99,7 +99,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({
     );
     if (sup) return `${sup.firstName} ${sup.lastName}`;
 
-    return assigneeName || assignee;
+    return assigneeName ?? assignee;
   };
 
   // const useMockData = () => {
@@ -183,7 +183,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({
             <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
               {task.assigneeName && task.assignee
                 ? `${getAssigneeFullName(task.assigneeName, task.assignee)} (${task.assignee})`
-                : task.assigneeName || task.assignee || 'Unassigned'}
+                : task.assigneeName ?? task.assignee ?? 'Unassigned'}
             </div>
           </div>
 

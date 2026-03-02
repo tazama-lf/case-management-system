@@ -300,6 +300,9 @@ export class TriageService {
     try {
       const transactionResult = await this.alertRepository.transaction(async (tx) => {
         const existingAlert = await this.alertRepository.getAlertById(alertId, tx);
+        if (!existingAlert) {
+          throw new NotFoundException(`Alert with id ${alertId} not found`);
+        }
         const existingCase = await this.caseRepository.findCaseById(existingAlert.case_id!, tenantId);
         const completeNewCaseTask = existingCase.tasks.find((t) => t.name === 'Complete New Case');
 
