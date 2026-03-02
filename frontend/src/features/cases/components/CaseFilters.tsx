@@ -105,6 +105,42 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     sortBy !== 'recent' ||
     caseTypeFilter !== 'all';
 
+  // Filter status options based on caseTypeFilter
+  const filteredStatusOptions = React.useMemo(() => {
+    if (caseTypeFilter === 'closed') {
+      // Only show closed statuses
+      return statusOptions.filter(
+        (opt) =>
+          opt.value === '' ||
+          opt.value === 'STATUS_82_CLOSED_CONFIRMED' ||
+          opt.value === 'STATUS_83_CLOSED_INCONCLUSIVE' ||
+          opt.value === 'STATUS_81_CLOSED_REFUTED'
+      );
+    }
+    return statusOptions;
+  }, [caseTypeFilter]);
+
+  // Disable status filter when draft is selected
+  const isStatusFilterDisabled = caseTypeFilter === 'draft';
+
+  // Clear statusFilter when switching to draft or when it's invalid for closed
+  React.useEffect(() => {
+    if (caseTypeFilter === 'draft' && statusFilter) {
+      onStatusFilterChange('');
+    } else if (caseTypeFilter === 'closed' && statusFilter) {
+      // Clear if the selected status is not a closed status
+      const closedStatuses = [
+        'STATUS_82_CLOSED_CONFIRMED',
+        'STATUS_83_CLOSED_INCONCLUSIVE',
+        'STATUS_81_CLOSED_REFUTED',
+        'STATUS_99_ABANDONED',
+      ];
+      if (!closedStatuses.includes(statusFilter)) {
+        onStatusFilterChange('');
+      }
+    }
+  }, [caseTypeFilter, statusFilter, onStatusFilterChange]);
+
   const fetchSavedFilters = React.useCallback(async () => {
     try {
       const currentUser = authService.getUser();
@@ -157,20 +193,19 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
 
   const handleSaveCurrentFilters = async () => {
     try {
-      const currentUser = authService.getUser();
-      const currentUserId = currentUser?.userId;
+      // const currentUser = authService.getUser();
+      // const currentUserId = currentUser?.userId;
 
-      const payload: CreateUserFilters = {
-        user_id: currentUserId,
-        filterType: 'Case',
-        userFilters: JSON.stringify({
-          status: statusFilter,
-          priority: priorityFilter,
-          sortBy,
-          sarStrStatus: sarStrStatusFilter,
-        }),
-      };
-      const savedFilter = await filterService.createFilter(payload);
+      // const payload: CreateUserFilters = {
+      //   user_id: currentUserId,
+      //   filterType: 'Case',
+      //   userFilters: JSON.stringify({
+      //     status: statusFilter,
+      //     priority: priorityFilter,
+      //     sortBy,
+      //     sarStrStatus: sarStrStatusFilter,
+      //   }),
+      // };
 
       success(
         'Filter Created',
@@ -299,9 +334,10 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
                 onChange={(e) => {
                   onStatusFilterChange(e.target.value);
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                disabled={isStatusFilterDisabled}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-500"
               >
-                {statusOptions.map((o) => (
+                {filteredStatusOptions.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
