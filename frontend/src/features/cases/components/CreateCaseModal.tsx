@@ -360,7 +360,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
       });
     }
   };
-  const completeCase = async () => {
+  const completeCase = () => {
     const errors = validateForm();
 
     if (Object.keys(errors).length > 0) {

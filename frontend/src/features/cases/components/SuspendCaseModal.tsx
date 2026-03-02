@@ -36,7 +36,7 @@ const SuspendCaseModal: React.FC<SuspendCaseModalProps> = ({
         investigationTasks.includes(t.name),
     ) ?? [];
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!caseData || !isReasonValid) return;
 

@@ -172,7 +172,7 @@ const escapeHtml = (unsafe: string) =>
 
 const syntaxHighlightJson = (obj: unknown) => {
   const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
-  const escaped = escapeHtml(String(json));
+  const escaped = escapeHtml(json);
 
   const highlighted = escaped
     .replace(

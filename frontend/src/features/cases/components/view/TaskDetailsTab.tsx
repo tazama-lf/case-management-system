@@ -155,7 +155,7 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
                     Title
                   </div>
                   <div className="font-medium text-gray-900">
-                    {task.name || 'Unnamed Task'}
+                    {task.name ?? 'Unnamed Task'}
                   </div>
                 </div>
 
@@ -189,7 +189,7 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
                     Queue
                   </div>
                   <div className="font-medium text-gray-900">
-                    {task.candidateGroup || '-'}
+                    {task.candidateGroup ?? '-'}
                   </div>
                 </div>
 

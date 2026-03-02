@@ -58,7 +58,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
     return assigneeName ?? assignee;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!task || !reason.trim()) return;
 

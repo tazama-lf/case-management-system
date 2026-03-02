@@ -70,7 +70,7 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({
 
   const { data: statistics } = useCaseSanctionsStatistics(caseId);
 
-  const screenings = screeningsData?.screenings || [];
+  const screenings = screeningsData?.screenings ?? [];
 
   // View details
   const handleViewDetails = (screening: SanctionsScreening) => {

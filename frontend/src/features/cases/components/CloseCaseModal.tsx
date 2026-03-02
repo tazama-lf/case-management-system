@@ -64,7 +64,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     closeCase();
   };

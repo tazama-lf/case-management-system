@@ -137,7 +137,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     setShowReportModal(true);
   };
 
-  const handleApproveSubmit = async (e: React.FormEvent) => {
+  const handleApproveSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     approveCase();
   };
@@ -572,11 +572,11 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
           onClose={() => {
             setShowReportModal(false);
           }}
-          caseId={caseData?.id || Number(caseId)}
+          caseId={caseData?.id ?? Number(caseId)}
           caseStatus={caseData?.status}
-          caseTitle={`Case ${caseData?.id || caseId} - ${caseData?.type || 'Investigation'}`}
-          tasks={caseData?.tasks || undefined}
-          caseData={caseData || undefined}
+          caseTitle={`Case ${caseData?.id ?? caseId} - ${caseData?.type ?? 'Investigation'}`}
+          tasks={caseData?.tasks ?? undefined}
+          caseData={caseData ?? undefined}
           selectedOutcome={formData.finalOutcome}
           selectedFinalNotes={formData.supervisorComments}
           onApproved={async () => {

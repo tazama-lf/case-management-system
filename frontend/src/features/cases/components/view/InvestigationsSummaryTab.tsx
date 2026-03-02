@@ -197,7 +197,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
 
   const handleDownloadEvidence = async (evidenceId: string, fileName: string): Promise<void> => {
     try {
-      setDownloadingId(evidenceId.toString());
+      setDownloadingId(evidenceId);
       const blob = await evidenceService.downloadEvidence(evidenceId);
 
 
@@ -487,10 +487,10 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                           </div>
                           <button
                             onClick={async () => { await handleDownloadEvidence(doc.id, doc.fileName ?? 'document'); }}
-                            disabled={downloadingId === doc.id.toString()}
+                            disabled={downloadingId === doc.id}
                             className="ml-4 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                           >
-                            {downloadingId === doc.id.toString() ? 'Downloading...' : 'Download'}
+                            {downloadingId === doc.id ? 'Downloading...' : 'Download'}
                           </button>
                         </div>
                       ))}

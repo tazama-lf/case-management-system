@@ -67,7 +67,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     }
   }, [open]);
 
-  const fetchCurrentUserAsInvestigator = async () => {
+  const fetchCurrentUserAsInvestigator = () => {
     try {
       const user = authService.getUser();
       if (user && user.userId) {

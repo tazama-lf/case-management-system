@@ -28,8 +28,8 @@ export class EvidenceService {
     return {
       ...evidence,
       fileName: evidence.fileName ?? firstAttachment?.fileName ?? 'unknown',
-      fileSize: evidence.fileSize ? evidence.fileSize : totalFileSize,
-      file_size: evidence.file_size ? evidence.file_size : totalFileSize,
+      fileSize: evidence.fileSize ?? totalFileSize,
+      file_size: evidence.file_size ?? totalFileSize,
       mimeType:
         evidence.mimeType ??
         firstAttachment?.mimeType ??
