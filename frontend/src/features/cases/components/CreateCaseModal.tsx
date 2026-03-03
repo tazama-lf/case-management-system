@@ -827,7 +827,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               onClick={() => {
                 saveAsDraft(true);
               }}
-              disabled={loading}
+              disabled={loading || !selectedAlert}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
             >
               {loading ? 'Saving...' : 'Save as Draft'}
