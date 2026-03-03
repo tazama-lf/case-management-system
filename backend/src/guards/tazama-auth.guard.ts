@@ -8,7 +8,7 @@ import { CLAIMS_KEY, IS_PUBLIC_KEY, ANY_CLAIMS_KEY, AUTHENTICATED_ONLY_KEY } fro
 export class TazamaAuthGuard implements CanActivate {
   private readonly logger = new Logger(TazamaAuthGuard.name);
 
-  constructor(private readonly reflector: Reflector) {}
+  constructor(private readonly reflector: Reflector) { }
 
   canActivate(context: ExecutionContext): boolean {
     const logContext = 'TazamaAuthGuard.canActivate()';
@@ -65,12 +65,12 @@ export class TazamaAuthGuard implements CanActivate {
       const validated: ClaimValidationResult = validateTokenAndClaims(token, claimsToValidate);
 
       let hasValidAccess = false;
-      let validClaims: string[] = [];
+      //let validClaims: string[] = [];
       let invalidClaims: string[] = [];
 
       if (requiredClaims && requiredClaims.length > 0) {
         const hasAllClaims = requiredClaims.every((claim) => validated[claim]);
-        validClaims = requiredClaims.filter((claim) => validated[claim]);
+        //validClaims = requiredClaims.filter((claim) => validated[claim]);
         invalidClaims = requiredClaims.filter((claim) => !validated[claim]);
         hasValidAccess = hasAllClaims;
 
@@ -125,6 +125,7 @@ export class TazamaAuthGuard implements CanActivate {
     try {
       const jwt = require('jsonwebtoken');
       const decoded = jwt.decode(token);
+
       const nestedDecoded = jwt.decode(decoded.tokenString);
 
       if (!decoded && !nestedDecoded) {
@@ -153,11 +154,16 @@ export class TazamaAuthGuard implements CanActivate {
   }
 
   private extractTenantName(tenantDetails: string[]): string {
-    if (!tenantDetails || tenantDetails.length === 0) {
+    if (tenantDetails.length === 0) {
       this.logger.error('Tenant details array is empty or undefined');
       throw new UnauthorizedException('Invalid tenant details');
     }
-    const tenantName = tenantDetails[0].split('/').filter((part) => part.length > 0)[0];
+    // const tenantName = tenantDetails[0].split('/').filter((part) => part.length > 0)[0];
+    const tenantName = tenantDetails[0].split('/').find((part) => part.length > 0);
+    if (!tenantName) {
+      this.logger.error('Failed to extract tenant name from tenant details');
+      throw new UnauthorizedException('Invalid tenant details format');
+    }
     return tenantName;
   }
 }

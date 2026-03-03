@@ -2,7 +2,7 @@ import { Injectable, InternalServerErrorException, NotFoundException } from '@ne
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { IngestAlertDto } from './dto/IngestAlert.dto';
-import { Alert, CaseCreationType, CaseStatus, CaseType, Priority, Prisma } from '@prisma/client-cms';
+import { Alert, CaseCreationType, CaseStatus, Priority, Prisma } from '@prisma/client-cms';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { ConfigService } from '@nestjs/config';
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';

@@ -147,7 +147,7 @@ export class EmailWorkerService {
   /**
    * Get worker statistics
    */
-  getWorkerStats() {
+  getWorkerStats(): { isProcessing: boolean; cronSchedule: string } {
     return {
       isProcessing: this.isProcessing,
       cronSchedule: 'Every 5 seconds',

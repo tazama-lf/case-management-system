@@ -12,7 +12,6 @@ import {
   Verify2FADto,
   ConfigurationChangeLogDto,
 } from './dto/config.dto';
-import { JsonValue } from '../repository/utils/types/JsonValue';
 
 @ApiTags('System Configuration')
 @Controller('api/v1/config')

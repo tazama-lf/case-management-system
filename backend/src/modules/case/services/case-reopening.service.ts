@@ -24,7 +24,7 @@ export class CaseReopeningService {
     private readonly caseQueryService: CaseQueryService,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   async reopenCase(
     caseId: number,

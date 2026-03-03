@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
@@ -19,7 +19,7 @@ export class CaseQueryService {
     private readonly caseRepository: CaseRepository,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly taskValidationUtil: TaskValidationUtil,
-  ) { }
+  ) {}
 
   async getUserCases(
     userId: string,
@@ -42,13 +42,13 @@ export class CaseQueryService {
       }>;
       total_tasks: number;
       alert:
-      | {
-        alert_id: number;
-        message: string;
-        confidence_per: number;
-        transaction: JsonValue;
-      }
-      | undefined;
+        | {
+            alert_id: number;
+            message: string;
+            confidence_per: number;
+            transaction: JsonValue;
+          }
+        | undefined;
       latest_comment_date: Date;
     }>;
     pagination: {
@@ -140,11 +140,11 @@ export class CaseQueryService {
           total_tasks: caseItem.tasks.length,
           alert: caseItem.alert
             ? {
-              alert_id: caseItem.alert.alert_id,
-              message: caseItem.alert.message,
-              confidence_per: caseItem.alert.confidence_per,
-              transaction: caseItem.alert.transaction,
-            }
+                alert_id: caseItem.alert.alert_id,
+                message: caseItem.alert.message,
+                confidence_per: caseItem.alert.confidence_per,
+                transaction: caseItem.alert.transaction,
+              }
             : undefined,
           latest_comment_date: caseItem.comments[0]?.created_at,
         };
@@ -220,11 +220,11 @@ export class CaseQueryService {
       } | null;
       parent_id: number | null;
       assigned_to:
-      | {
-        user_id: string | null;
-        task_count: number;
-      }
-      | undefined;
+        | {
+            user_id: string | null;
+            task_count: number;
+          }
+        | undefined;
     }>;
     pagination: {
       total: number;
@@ -240,12 +240,12 @@ export class CaseQueryService {
       unassignedCases: number;
       averageTasksPerCase: number;
       oldestUnassignedCase:
-      | {
-        case_id: number;
-        created_at: Date;
-        days_old: number;
-      }
-      | undefined;
+        | {
+            case_id: number;
+            created_at: Date;
+            days_old: number;
+          }
+        | undefined;
     };
   }> {
     try {
@@ -678,15 +678,15 @@ export class CaseQueryService {
       const statusFilter = isComplianceOfficer
         ? { status: CaseStatus.STATUS_82_CLOSED_CONFIRMED }
         : {
-          status: {
-            notIn: [
-              CaseStatus.STATUS_81_CLOSED_REFUTED,
-              CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-              CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-              CaseStatus.STATUS_99_ABANDONED,
-            ],
-          },
-        };
+            status: {
+              notIn: [
+                CaseStatus.STATUS_81_CLOSED_REFUTED,
+                CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+                CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+                CaseStatus.STATUS_99_ABANDONED,
+              ],
+            },
+          };
       const [activeCases, pendingTasks, allUserCases] = await Promise.all([
         this.prismaService.case.count({
           where: {

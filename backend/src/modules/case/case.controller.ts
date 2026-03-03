@@ -59,7 +59,7 @@ export class CaseController {
   constructor(
     private readonly caseService: CaseService,
     private readonly caseCreationService: CaseCreationService,
-  ) { }
+  ) {}
 
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
@@ -323,11 +323,11 @@ export class CaseController {
       } | null;
       parent_id: number | null;
       assigned_to:
-      | {
-        user_id: string | null;
-        task_count: number;
-      }
-      | undefined;
+        | {
+            user_id: string | null;
+            task_count: number;
+          }
+        | undefined;
     }>;
     pagination: {
       total: number;
@@ -343,12 +343,12 @@ export class CaseController {
       unassignedCases: number;
       averageTasksPerCase: number;
       oldestUnassignedCase:
-      | {
-        case_id: number;
-        created_at: Date;
-        days_old: number;
-      }
-      | undefined;
+        | {
+            case_id: number;
+            created_at: Date;
+            days_old: number;
+          }
+        | undefined;
     };
   }> {
     const { userId, tenantId, claims } = extractUserData(req);
@@ -397,13 +397,13 @@ export class CaseController {
       }>;
       total_tasks: number;
       alert:
-      | {
-        alert_id: number;
-        message: string;
-        confidence_per: number;
-        transaction: JsonValue;
-      }
-      | undefined;
+        | {
+            alert_id: number;
+            message: string;
+            confidence_per: number;
+            transaction: JsonValue;
+          }
+        | undefined;
       latest_comment_date: Date;
     }>;
     pagination: {
@@ -464,13 +464,13 @@ export class CaseController {
       }>;
       total_tasks: number;
       alert:
-      | {
-        alert_id: number;
-        message: string;
-        confidence_per: number;
-        transaction: JsonValue;
-      }
-      | undefined;
+        | {
+            alert_id: number;
+            message: string;
+            confidence_per: number;
+            transaction: JsonValue;
+          }
+        | undefined;
       latest_comment_date: Date;
     }>;
     pagination: {
@@ -966,7 +966,24 @@ export class CaseController {
     status: 409,
     description: 'Conflict - Case is not in STATUS_31_REOPENED state',
   })
-  async rejectCaseReopening(@Param('caseId') caseId: number, @Body() dto: RejectCaseReopeningDto, @Req() req: AuthenticatedRequest) {
+  async rejectCaseReopening(
+    @Param('caseId') caseId: number,
+    @Body() dto: RejectCaseReopeningDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    case: {
+      case_id: number;
+      status: CaseStatus;
+      updated_at: Date;
+    };
+    completed_task: {
+      task_id: number;
+      status: TaskStatus;
+    };
+    rejection_reason: string;
+  }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
 
     if (!dto.rejectionReason || dto.rejectionReason.trim().length < 4) {

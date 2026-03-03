@@ -1271,7 +1271,17 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertHistorySummary(endToEndId?: string, tenantId?: string, dateRange?: string) {
+  async getAlertHistorySummary(
+    endToEndId?: string,
+    tenantId?: string,
+    dateRange?: string,
+  ): Promise<{
+    totalAlerts: number;
+    casesOpened: number;
+    investigations: number;
+    sarFilings: number;
+    totalValue: number;
+  }> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
@@ -1337,7 +1347,15 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertHistoryTimeline(endToEndId?: string, tenantId?: string, dateRange?: string, granularity = 'day') {
+  async getAlertHistoryTimeline(
+    endToEndId?: string,
+    tenantId?: string,
+    dateRange?: string,
+    granularity = 'day',
+  ): Promise<{
+    alertCountOverTime: any;
+    alertValueOverTime: any;
+  }> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
@@ -1413,7 +1431,21 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertHistoryAlerts(endToEndId?: string, tenantId?: string, dateRange?: string, page = 1, limit = 20) {
+  async getAlertHistoryAlerts(
+    endToEndId?: string,
+    tenantId?: string,
+    dateRange?: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{
+    alerts: any;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
@@ -1714,7 +1746,34 @@ export class GoldLakehouseService {
     return 'LOW';
   }
 
-  async getAccountNodeFullData(accountId: string, tenantId = 'DEFAULT', granularity: 'day' | 'month' | 'year' = 'month') {
+  async getAccountNodeFullData(
+    accountId: string,
+    tenantId = 'DEFAULT',
+    granularity: 'day' | 'month' | 'year' = 'month',
+  ): Promise<{
+    network: {
+      rootNodeId: string;
+      nodes: any[];
+      edges: any[];
+    };
+    accountDetails: {
+      accountId: string;
+      accountHolder: any;
+      relationship: string;
+      transactions: number;
+      totalValue: number;
+      velocity: string;
+      flags: {
+        alerted: boolean;
+        investigated: boolean;
+      };
+    };
+    meta: {
+      tenantId: string;
+      granularity: 'day' | 'month' | 'year';
+      generatedAt: string;
+    };
+  }> {
     try {
       const networkSql = `
       SELECT
@@ -1878,7 +1937,34 @@ export class GoldLakehouseService {
     }
   }
 
-  async getCounterpartyNodeFullData(counterpartyId: string, tenantId = 'DEFAULT', granularity: 'day' | 'month' | 'year' = 'month') {
+  async getCounterpartyNodeFullData(
+    counterpartyId: string,
+    tenantId = 'DEFAULT',
+    granularity: 'day' | 'month' | 'year' = 'month',
+  ): Promise<{
+    network: {
+      rootNodeId: string;
+      nodes: any[];
+      edges: any[];
+    };
+    counterpartyDetails: {
+      counterpartyId: string;
+      name: any;
+      type: string;
+      transactions: number;
+      totalValue: number;
+      velocity: string;
+      flags: {
+        alerted: boolean;
+        investigated: boolean;
+      };
+    };
+    meta: {
+      tenantId: string;
+      granularity: 'day' | 'month' | 'year';
+      generatedAt: string;
+    };
+  }> {
     try {
       const networkSql = `
       SELECT
@@ -2020,7 +2106,22 @@ export class GoldLakehouseService {
     }
   }
 
-  async getBenfordAnalysisByAccount(accountId: string, tenantId: string, fromDate: string, toDate: string) {
+  async getBenfordAnalysisByAccount(
+    accountId: string,
+    tenantId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<{
+    expected: Record<number, number>;
+    actual: Record<number, number>;
+    sampleSize: number;
+    meta: {
+      accountId: string;
+      tenantId: string;
+      fromDate: string;
+      toDate: string;
+    };
+  }> {
     try {
       this.logger.log(`Running Benford analysis for account ${accountId}, tenant ${tenantId}, range ${fromDate} → ${toDate}`);
 

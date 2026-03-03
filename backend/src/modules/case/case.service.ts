@@ -37,7 +37,7 @@ export class CaseService {
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   async suspendCase(
     caseId: number,
@@ -467,7 +467,11 @@ export class CaseService {
     return await this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId, tenantId);
   }
 
-  async approveCaseCreation(caseId: number, supervisorId: string, tenantId: string): Promise<{ success: boolean; case: Case; message: string }> {
+  async approveCaseCreation(
+    caseId: number,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{ success: boolean; case: Case; message: string }> {
     return await this.caseCreationApprovalService.approveCaseCreation(caseId, supervisorId, tenantId);
   }
 
@@ -528,11 +532,11 @@ export class CaseService {
       } | null;
       parent_id: number | null;
       assigned_to:
-      | {
-        user_id: string | null;
-        task_count: number;
-      }
-      | undefined;
+        | {
+            user_id: string | null;
+            task_count: number;
+          }
+        | undefined;
     }>;
     pagination: {
       total: number;
@@ -548,12 +552,12 @@ export class CaseService {
       unassignedCases: number;
       averageTasksPerCase: number;
       oldestUnassignedCase:
-      | {
-        case_id: number;
-        created_at: Date;
-        days_old: number;
-      }
-      | undefined;
+        | {
+            case_id: number;
+            created_at: Date;
+            days_old: number;
+          }
+        | undefined;
     };
   }> {
     return await this.caseQueryService.getAllCases(query, tenantId, investigatorUserId, isComplianceOfficer);
@@ -580,13 +584,13 @@ export class CaseService {
       }>;
       total_tasks: number;
       alert:
-      | {
-        alert_id: number;
-        message: string;
-        confidence_per: number;
-        transaction: JsonValue;
-      }
-      | undefined;
+        | {
+            alert_id: number;
+            message: string;
+            confidence_per: number;
+            transaction: JsonValue;
+          }
+        | undefined;
       latest_comment_date: Date;
     }>;
     pagination: {

@@ -10,7 +10,6 @@ import { CasePriorityUtil } from '../../shared/utils/case-priority.util';
 import { CaseQueryService } from './case-query.service';
 import { FlowableService } from '../..//flowable/flowable.service';
 import { TaskRepository } from 'src/modules/repository/task.repository';
-import { AlertRepository } from 'src/modules/repository/alert.repository';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
 import { CaseCreationService } from './case-creation.service';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
@@ -20,7 +19,6 @@ export class CaseCreationApprovalService {
   constructor(
     private readonly logger: LoggerService,
     private readonly taskService: TaskService,
-    private readonly alertRepository: AlertRepository,
     private readonly taskRepository: TaskRepository,
     private readonly caseRepository: CaseRepository,
     private readonly commentRepository: CommentRepository,
@@ -29,7 +27,7 @@ export class CaseCreationApprovalService {
     private readonly caseQueryService: CaseQueryService,
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   private validateCaseCompletionFields(existingCase: any): string[] {
     const missing: string[] = [];

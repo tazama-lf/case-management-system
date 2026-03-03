@@ -4,6 +4,7 @@ import { AuditLogService } from '../audit/auditLog.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import * as crypto from 'node:crypto';
 import { Outcome } from '../../utils/types/outcome';
+import { JsonValue } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class ConfigManagementService {
@@ -611,7 +612,29 @@ export class ConfigManagementService {
     };
   }
 
-  async exportConfigurationLogs(format: 'json' | 'csv', filters?: any) {
+  async exportConfigurationLogs(
+    format: 'json' | 'csv',
+    filters?: any,
+  ): Promise<
+    | string
+    | Array<{
+        created_at: Date;
+        config_id: number;
+        config_key: string;
+        old_value: JsonValue;
+        new_value: JsonValue;
+        change_type: string;
+        changed_by: string;
+        change_reason: string | null;
+        ip_address: string | null;
+        user_agent: string | null;
+        requires_2fa: boolean;
+        approved_by: string | null;
+        approval_date: Date | null;
+        change_status: string;
+        id: number;
+      }>
+  > {
     const { logs } = await this.getConfigurationChangeLogs({ ...filters, limit: 10000 });
 
     if (format === 'json') {

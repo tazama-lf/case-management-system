@@ -22,7 +22,7 @@ export class CaseCreationService {
     private readonly alertRepository: AlertRepository,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string, userRole: string): Promise<Case> {
     try {
@@ -156,7 +156,10 @@ export class CaseCreationService {
     };
 
     const existingAlert = await this.caseRepository.findAlert(dto.alertId, tenantId);
-    if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string })?.status !== 'NALT') {
+    if (!existingAlert) {
+      throw new BadRequestException('Alert Not Found');
+    }
+    if (existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string })?.status !== 'NALT') {
       throw new BadRequestException('Case Already Exists');
     }
 
