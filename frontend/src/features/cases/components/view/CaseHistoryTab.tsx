@@ -109,8 +109,8 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
               id: `event-${log.case_id}`,
               timestamp:
                 log.performed_at instanceof Date
-                  ? log.performed_at.toISOString()
-                  : new Date(log.performed_at).toISOString(),
+                  ? formatDate(log.performed_at.toISOString())
+                  : formatDate(new Date(log.performed_at).toISOString()),
               action,
               performedBy: log.entity_name === 'System' ? 'System' : 'User',
               userId: log.user_id,

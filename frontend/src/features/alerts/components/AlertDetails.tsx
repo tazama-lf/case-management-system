@@ -5,6 +5,7 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import type { Alert, ActionHistory } from '../types/triage.types';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 interface AlertDetailsContextType {
   alert: Alert | null;
@@ -174,14 +175,6 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
 
   if (!alert) return null;
 
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleString();
-    } catch {
-      return dateString;
-    }
-  };
-
   const renderJSONData = (data: unknown, title: string) => {
     if (!data) return null;
 
@@ -304,7 +297,7 @@ const AlertDetailsActions: React.FC<AlertDetailsActionsProps> = ({
             Update Alert
           </button>
         )}
-        {}
+        { }
         {canClose && (
           <button
             onClick={() => {
