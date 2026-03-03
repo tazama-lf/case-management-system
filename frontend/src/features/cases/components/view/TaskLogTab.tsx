@@ -143,20 +143,20 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     let assigneeName: string | undefined;
     if (backendTask.assigned_user_id) {
       assigneeName =
-        investigators[backendTask.assigned_user_id] ||
-        backendTask.assignedUser?.username ||
+        investigators[backendTask.assigned_user_id] ??
+        backendTask.assignedUser?.username ??
         backendTask.assigned_user_id;
     }
 
     return {
       id: backendTask.task_id,
       taskId: backendTask.task_id,
-      name: backendTask.name || 'Unnamed Task',
+      name: backendTask.name ?? 'Unnamed Task',
       description: backendTask.description,
       assignee: backendTask.assigned_user_id,
       assigneeName:
-        backendTask.assignedUser?.username || backendTask.assigned_user_id,
-      candidateGroup: backendTask.candidateGroup || 'investigations',
+        backendTask.assignedUser?.username ?? backendTask.assigned_user_id,
+      candidateGroup: backendTask.candidateGroup ?? 'investigations',
       status: mapTaskStatus(effectiveStatus),
       priority: 'NEW',
       createdAt: backendTask.created_at,
@@ -202,8 +202,8 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     }
 
     const filtered = tasks.filter((task) => {
-      const candidateGroup = (task.candidateGroup || '').toLowerCase();
-      const taskName = (task.name || '').toLowerCase();
+      const candidateGroup = (task.candidateGroup ?? '').toLowerCase();
+      const taskName = (task.name ?? '').toLowerCase();
 
       const supervisorTaskPatterns = [
         // Candidate group patterns
@@ -238,9 +238,9 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   }, [tasks, canViewSupervisorQueue]);
 
   const filteredTasks = visibleTasks.filter((task) => {
-    const taskId = task.task_id || '';
-    const taskName = task.name || '';
-    const taskDescription = task.description || '';
+    const taskId = task.task_id ?? '';
+    const taskName = task.name ?? '';
+    const taskDescription = task.description ?? '';
 
     const matchesSearch =
       !searchTerm ||
@@ -357,10 +357,6 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
             });
           }
           break;
-        }
-        default: {
-          const _exhaustiveCheck: never = operation;
-          throw new Error(`Unknown operation: ${_exhaustiveCheck}`);
         }
       }
 
@@ -651,7 +647,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
               setTaskDetailsModalOpen(false);
               setSelectedTask(null);
             }}
-            row={caseDetails || undefined}
+            row={caseDetails ?? undefined}
             onRefreshCases={onRefreshCases}
             onTaskUpdate={async () => {
               // Refresh tasks in TaskLogTab when investigation task is completed
@@ -685,8 +681,8 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
             }}
             taskId={selectedTask.id}
             task={selectedTask}
-            caseId={selectedTask.caseId || caseId}
-            caseName={selectedTask.name || 'Untitled Case'}
+            caseId={selectedTask.caseId ?? caseId}
+            caseName={selectedTask.name ?? 'Untitled Case'}
           />
         </Suspense>
       )}

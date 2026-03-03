@@ -23,7 +23,7 @@ interface CaseHistoryTabProps {
 const formatOperation = (operation: string): string =>
   // Convert camelCase or snake_case to Title Case
   operation
-    .replace(/([A-Z])/gu, ' $1')
+    .replace(/(?<upperChar>[A-Z])/gu, ' $<upperChar>')
     .replace(/_/gu, ' ')
     .replace(/^./u, (str) => str.toUpperCase())
     .trim();

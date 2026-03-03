@@ -211,7 +211,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to download evidence:', error);
-      alert(`Failed to download evidence: ${  error instanceof Error ? error.message : 'Unknown error'}`);
+      toastError(`Failed to download evidence: ${  error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setDownloadingId(null);
     }
@@ -376,8 +376,8 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
               className="markdown-content text-sm text-gray-700 bg-gray-50 p-4 rounded border border-gray-200"
               dangerouslySetInnerHTML={{
                 __html: (marked(investigationNotes) as string)
-                  .replace(/(<\/p>\s*<ol>)/gu, '</p><br><ol>')
-                  .replace(/(<\/p>\s*<ul>)/gu, '</p><br><ul>')
+                  .replace(/(?<pTagOl><\/p>\s*<ol>)/gu, '</p><br><ol>')
+                  .replace(/(?<pTagUl><\/p>\s*<ul>)/gu, '</p><br><ul>')
               }}
             />
           ) : (

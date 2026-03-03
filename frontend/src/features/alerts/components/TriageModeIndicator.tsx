@@ -26,10 +26,6 @@ const getTriageModeIcon = (triageType: TriageType) => {
       return <UserIcon className="h-4 w-4" />;
     case 'DISABLED':
       return <ForwardIcon className="h-4 w-4" />;
-    default: {
-      const _exhaustiveCheck: never = triageType;
-      return _exhaustiveCheck;
-    }
   }
 };
 

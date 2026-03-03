@@ -10,6 +10,7 @@ import {
   formatDataForExport,
   getColumnsForReport,
 } from '../../../shared/utils/exportUtils';
+import { useNotifications } from '@/shared/providers/NotificationProvider';
 
 interface AuditLogsReportProps {
   dateRange: string;
@@ -17,6 +18,7 @@ interface AuditLogsReportProps {
 
 const AuditLogsReport: React.FC<AuditLogsReportProps> = ({ dateRange }) => {
   const { data: auditData, isLoading, error } = useAuditLogs(dateRange);
+  const { showError } = useNotifications();
 
   if (isLoading) {
     return (
@@ -56,7 +58,7 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({ dateRange }) => {
       exportToExcel(formattedData, filename, 'Audit Logs Report');
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      showError('Export failed. Please try again.');
     }
   };
 
@@ -67,7 +69,7 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({ dateRange }) => {
       exportToCSV(formattedData, filename);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      showError('Export failed. Please try again.');
     }
   };
 
@@ -79,7 +81,7 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({ dateRange }) => {
       await exportToPDF(formattedData, filename, 'Audit Logs Report', columns);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      showError('Export failed. Please try again.');
     }
   };
 

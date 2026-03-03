@@ -49,9 +49,9 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
         const { href } = target as HTMLAnchorElement;
         let url = href;
         if (!/^https?:\/\//iu.exec(href) && !/^mailto:/iu.exec(href)) {
-          const match = /\/([^/]+)$/u.exec(href);
-          if (match) {
-            url = `https://${match[1]}`;
+          const match = /\/(?<lastSegment>[^/]+)$/u.exec(href);
+          if (match?.groups) {
+            url = `https://${match.groups.lastSegment}`;
           }
         }
 
@@ -66,8 +66,8 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   }, []);
 
   const transformMarkdownLinks = (markdown: string): string =>
-    markdown.replace(/\[([^\]]+)\]\(([^)]+)\)/gu, (match, text, url) => {
-      if (!url.match(/^(https?:\/\/|mailto:|#)/iu)) {
+    markdown.replace(/\[(?<linkText>[^\]]+)\]\((?<linkUrl>[^)]+)\)/gu, (match, text, url) => {
+      if (!url.match(/^(?<protocol>https?:\/\/|mailto:|#)/iu)) {
         return `[${text}](https://${url})`;
       }
       return match;

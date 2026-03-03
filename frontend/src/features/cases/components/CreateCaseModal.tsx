@@ -604,11 +604,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   onChange={(e) => {
                     setStatus(e.target.value as CaseStatus);
                   }}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${loading || isStatusLocked
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${loading ?? isStatusLocked
                     ? 'bg-gray-50 cursor-not-allowed'
                     : ''
                     }`}
-                  disabled={loading || isStatusLocked}
+                  disabled={loading ?? isStatusLocked}
                 >
                   <option value="STATUS_02_READY_FOR_ASSIGNMENT">
                     Ready for Assignment (Investigation)

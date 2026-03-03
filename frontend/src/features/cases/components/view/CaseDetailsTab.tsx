@@ -4,6 +4,7 @@ import CaseActionsPanel from './CaseActionsPanel';
 import { getCaseStatusBadge } from '@/shared/constants/case.constant';
 import type { TransactionHistoryDto } from '../../../alerts/types/triage.types';
 import triageService from '../../../alerts/services/triageservice';
+import { useNotifications } from '@/shared/providers/NotificationProvider';
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -93,6 +94,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     Record<string, LatestReport | null>
   >({});
   const [loading, setLoading] = useState(false);
+  const { showError } = useNotifications();
 
   useEffect(() => {
     setLatestReports({});
@@ -313,7 +315,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
       console.error('[Report View] Error:', err);
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred';
-      alert(`Failed to view Report: ${errorMessage}`);
+      showError(`Failed to view Report: ${errorMessage}`);
     } finally {
       setViewingId(null);
     }

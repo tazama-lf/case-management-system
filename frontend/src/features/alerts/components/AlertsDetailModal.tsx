@@ -176,19 +176,19 @@ const syntaxHighlightJson = (obj: unknown) => {
 
   const highlighted = escaped
     .replace(
-      /("(.*?)")(?=\s*:)/gu,
-      '<span class="text-indigo-700 font-medium">$1</span>',
+      /(?<fullKey>"(?<key>.*?)")(?=\s*:)/gu,
+      '<span class="text-indigo-700 font-medium">$<fullKey></span>',
     )
-    .replace(/:\s*"(.*?)"/gu, ': <span class="text-green-700">"$1"</span>')
+    .replace(/:\s*"(?<stringValue>.*?)"/gu, ': <span class="text-green-700">"$<stringValue>"</span>')
     .replace(
-      /(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/giu,
-      '$1<span class="text-red-600">$2</span>',
+      /(?<colonSpace>:\s*)(?<number>-?\d+\.?\d*(?:e[+-]?\d+)?)/giu,
+      '$<colonSpace><span class="text-red-600">$<number></span>',
     )
     .replace(
-      /(:\s*)(true|false)/giu,
-      '$1<span class="text-yellow-600">$2</span>',
+      /(?<colonSpace2>:\s*)(?<boolean>true|false)/giu,
+      '$<colonSpace2><span class="text-yellow-600">$<boolean></span>',
     )
-    .replace(/(:\s*)(null)/giu, '$1<span class="text-gray-500">$2</span>');
+    .replace(/(?<colonSpace3>:\s*)(?<nullValue>null)/giu, '$<colonSpace3><span class="text-gray-500">$<nullValue></span>');
 
   return highlighted.replace(/\n/gu, '<br/>').replace(/ /gu, '&nbsp;');
 };

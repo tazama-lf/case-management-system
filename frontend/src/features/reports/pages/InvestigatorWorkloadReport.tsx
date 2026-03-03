@@ -14,6 +14,7 @@ import {
   formatDataForExport,
   getColumnsForReport,
 } from '../../../shared/utils/exportUtils';
+import { useNotifications } from '@/shared/providers/NotificationProvider';
 
 interface InvestigatorWorkloadReportProps {
   dateRange: string;
@@ -27,6 +28,7 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
     isLoading,
     error,
   } = useInvestigatorWorkload(dateRange);
+    const { showError } = useNotifications();
 
   if (isLoading) {
     return (
@@ -88,7 +90,7 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
       exportToExcel(formattedData, filename, 'Investigator Workload Report');
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      showError('Export failed. Please try again.');
     }
   };
 
@@ -102,7 +104,7 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
       exportToCSV(formattedData, filename);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      showError('Export failed. Please try again.');
     }
   };
 
@@ -122,7 +124,7 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
       );
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      showError('Export failed. Please try again.');
     }
   };
 

@@ -8,7 +8,7 @@ import {
 interface EmptyStateProps {
   title: string;
   description?: string;
-  icon?: 'document' | 'folder' | 'exclamation' | React.ReactNode;
+  icon?: React.ReactNode;
   action?: {
     label: string;
     onClick: () => void;

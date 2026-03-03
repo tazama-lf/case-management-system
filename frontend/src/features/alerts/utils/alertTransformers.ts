@@ -109,10 +109,6 @@ function mapPriorityToSeverity(
       return 'high';
     case 'BREACH':
       return 'critical';
-    default: {
-      const _exhaustiveCheck: never = priority;
-      return _exhaustiveCheck;
-    }
   }
 }
 
@@ -128,10 +124,6 @@ export function mapSeverityToPriority(
       return 'CRITICAL';
     case 'critical':
       return 'BREACH';
-    default: {
-      const _exhaustiveCheck: never = severity;
-      return _exhaustiveCheck;
-    }
   }
 }
 
@@ -178,10 +170,6 @@ export function mapUIStatusToAlertStatus(
       return 'AUTOCLOSED_REFUTED';
     case 'sent_for_investigation':
       return 'SENT_FOR_INVESTIGATION';
-    default: {
-      const _exhaustiveCheck: never = status;
-      return _exhaustiveCheck;
-    }
   }
 }
 

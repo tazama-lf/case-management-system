@@ -102,16 +102,12 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
   const [currentUser, setCurrentUser] = React.useState<User>();
   const [saving, setSaving] = React.useState(false);
-  // const [ , setSaveSuccess] = React.useState(false);
-  // const [ , setNoEvidenceError] = React.useState(false);
   const [showUploadConfirm, setShowUploadConfirm] = React.useState(false);
   const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
     id: string;
     fileName: string;
   } | null>(null);
   const { success, error } = useToast();
-  // const [showProfileModal, setShowProfileModal] = React.useState(false);
-  // const [transactionProfile, setTransactionProfile] = React.useState<any>(null);
   const allowedFileTypes: Record<string, string[]> = {
     sanctions: [
       'pdf',
@@ -439,7 +435,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
         return true;
       });
 
-    if (sanitizedFiles.length === 0) return; // nothing to add
+    if (sanitizedFiles.length === 0) return; 
 
     setSectionFiles((prev) => ({
       ...prev,
@@ -473,55 +469,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* <section className="rounded-lg border border-purple-300 bg-purple-50/30 p-4 shadow-sm">
-        {transactionProfile ? (
-          <div className="rounded-xl border border-purple-200 bg-purple-50/60 p-4 shadow flex items-center gap-4">
-            <div className="flex items-center gap-2 min-w-[220px]">
-              <ChartBarIcon className="h-6 w-6 text-purple-500" aria-hidden="true" />
-              <div>
-                <div className="font-semibold text-sm text-purple-900">Transaction Profile Analysis</div>
-                <div className="text-xs text-purple-600">Transaction profile generated on {transactionProfile.generatedAt}</div>
-              </div>
-            </div>
-            <div className="flex-1 flex flex-wrap items-center gap-x-8 gap-y-1 text-sm">
-              <span className="text-purple-700">Total Volume: <span className="font-semibold">{transactionProfile.totalVolume}</span></span>
-              <span className="text-purple-700">Anomalies: <span className="font-semibold">{transactionProfile.anomalies}</span></span>
-              <span className="text-purple-700">Risk Level: <span className={
-                transactionProfile.riskLevel === 'High' ? 'font-semibold text-red-500' :
-                  transactionProfile.riskLevel === 'Medium' ? 'font-semibold text-orange-500' :
-                    'font-semibold text-green-600'
-              }>{transactionProfile.riskLevel}</span></span>
-            </div>
-            <div className="ml-auto">
-              <button
-                type="button"
-                onClick={() => setShowProfileModal(true)}
-                className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-purple-700 focus:ring-2 focus:ring-purple-400"
-              >
-                <ChartBarIcon className="h-4 w-4" aria-hidden="true" />
-                View Profile
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900">Transaction Profile Analysis</h3>
-              <p className="mt-1 text-xs text-gray-600">
-                Generate a 90-day transaction profile to analyze behavioral patterns, identify anomalies, and compare against peer averages.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowProfileModal(true)}
-              className="inline-flex items-center gap-2 rounded-md border border-purple-600 bg-purple-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-purple-700 focus:ring-1 focus:ring-purple-600"
-            >
-              <ChartBarIcon className="h-4 w-4" aria-hidden="true" />
-              Generate Profile
-            </button>
-          </div>
-        )}
-      </section> */}
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-gray-900">
           Evidence & Documents
@@ -693,12 +640,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                                 >
                                   {evidence.fileName}
                                 </p>
-
-                                {/* {section.key === 'kyc-edd' && (
-                                  <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                                    {evidence.evidenceType}
-                                  </span>
-                                )} */}
                               </div>
 
                               <p className="text-xs text-gray-500">
@@ -855,17 +796,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
           }}
         />
       )}
-      {/* Generate Transaction Profile Modal */}
-      {/* <GenerateTransactionProfileModal
-        open={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        caseId={caseId}
-        onSaveProfile={(profileData: any) => {
-          setTransactionProfile(profileData);
-          setShowProfileModal(false);
-        }}
-        initialProfile={transactionProfile}
-      /> */}
     </div>
   );
 };

@@ -114,8 +114,6 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
           currentPage: 1,
         },
       };
-    default:
-      return state;
   }
 };
 

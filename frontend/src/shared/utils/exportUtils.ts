@@ -89,12 +89,12 @@ export const exportToCSV = (data: ExportData[], filename: string): void => {
   }
 };
 
-export const exportToPDF = async (
+export const exportToPDF = (
   data: ExportData[],
   filename: string,
   title: string,
   columns: TableColumn[],
-): Promise<void> => {
+): void => {
   try {
     if (!data || data.length === 0) {
       throw new Error('No data to export');

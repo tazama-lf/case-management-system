@@ -14,6 +14,7 @@ import {
   formatDataForExport,
   getColumnsForReport,
 } from '../../../shared/utils/exportUtils';
+import { useNotifications } from '@/shared/providers/NotificationProvider';
 
 interface CaseAgeingReportProps {
   dateRange: string;
@@ -79,7 +80,7 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({ dateRange }) => {
       exportToExcel(formattedData, filename, 'Case Ageing Report');
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      showError('Export failed. Please try again.');
     }
   };
 
@@ -90,7 +91,7 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({ dateRange }) => {
       exportToCSV(formattedData, filename);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      showError('Export failed. Please try again.');
     }
   };
 
@@ -102,7 +103,7 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({ dateRange }) => {
       await exportToPDF(formattedData, filename, 'Case Ageing Report', columns);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      showError('Export failed. Please try again.');
     }
   };
 

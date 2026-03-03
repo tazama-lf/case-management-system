@@ -7,6 +7,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../components/AuthContext';
 import type { LoginCredentials } from '../types/auth.types';
+import { useNotifications } from '@/shared/providers/NotificationProvider';
 
 interface LoginProps {
   onLoginSuccess?: () => void;
@@ -15,6 +16,7 @@ interface LoginProps {
 const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
   const { login, loading, error, isAuthenticated, clearError } = useAuth();
+  const { showError } = useNotifications();
 
   const [credentials, setCredentials] = useState<LoginCredentials>({
     username: '',
@@ -42,7 +44,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
     const activeSession = localStorage.getItem('ACTIVE_AUTH_SESSION');
     if (activeSession) {
-      alert('Another user is already logged in in this browser.');
+      showError('Another user is already logged in in this browser.');
       return;
     }
 

@@ -6,7 +6,12 @@ import {
   XMarkIcon,
   DocumentIcon,
 } from '@heroicons/react/24/outline';
-import type { FindingDetail } from '../types/reports.types';
+import type { FindingDetail as BaseFindingDetail } from '../types/reports.types';
+
+interface FindingDetail extends BaseFindingDetail {
+  supportingEvidence: string[];
+}
+import { useNotifications } from '@/shared/providers/NotificationProvider';
 
 interface FindingsDetailsTableProps {
   data: FindingDetail[];
@@ -33,6 +38,8 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({
     filename: '',
     description: '',
   });
+  const { showError } = useNotifications();
+
 
   const toggleExpanded = (index: number) => {
     const newExpanded = new Set(expandedRows);
@@ -64,7 +71,7 @@ const FindingsDetailsTable: React.FC<FindingsDetailsTableProps> = ({
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download failed:', err);
-      alert('Failed to download document. Please try again.');
+      showError('Failed to download document. Please try again.');
     }
   };
 

@@ -62,7 +62,7 @@ const SanctionsScreeningTab: React.FC<SanctionsScreeningTabProps> = ({
   const { data: screeningsData, isLoading } = useCaseSanctionsScreenings(
     caseId,
     {
-      disposition: dispositionFilter ?? undefined,
+      disposition: dispositionFilter ||undefined,
       tool_source: toolFilter ?? undefined,
       search: searchQuery ?? undefined,
     },

@@ -13,6 +13,7 @@ import {
   getColumnsForReport,
 } from '@/shared/utils/exportUtils';
 import { getCaseTypeColor } from '@/shared/utils/colors';
+import { useNotifications } from '@/shared/providers/NotificationProvider';
 
 const PieChart = lazy(
   async () => await import('@/features/reports/components/PieChart'),
@@ -61,7 +62,8 @@ const Reports: React.FC = () => {
     isLoading,
     error,
   } = useReports(dateRange, filters);
-
+  const { showError } = useNotifications();
+  
   const handleExportExcel = () => {
     try {
       const data = getCurrentReportData();
@@ -70,7 +72,7 @@ const Reports: React.FC = () => {
       exportToExcel(formattedData, filename, `${reportType} Report`);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      showError('Export failed. Please try again.');
     }
   };
 
@@ -82,7 +84,7 @@ const Reports: React.FC = () => {
       exportToCSV(formattedData, filename);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      showError('Export failed. Please try again.');
     }
   };
 
@@ -96,7 +98,7 @@ const Reports: React.FC = () => {
       await exportToPDF(formattedData, filename, title, columns);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      showError('Export failed. Please try again.');
     }
   };
 
@@ -120,10 +122,6 @@ const Reports: React.FC = () => {
         return [];
       case 'EVIDENCE_FINDINGS':
         return [];
-      default: {
-        const _exhaustiveCheck: never = reportType;
-        return _exhaustiveCheck;
-      }
     }
   };
 
@@ -285,10 +283,6 @@ const Reports: React.FC = () => {
         return 'Investigator Workload Report';
       case 'EVIDENCE_FINDINGS':
         return 'Evidence Findings Report';
-      default: {
-        const _exhaustiveCheck: never = reportType;
-        return _exhaustiveCheck;
-      }
     }
   };
 
@@ -304,10 +298,6 @@ const Reports: React.FC = () => {
         return 'Overview of investigator workloads and performance metrics';
       case 'EVIDENCE_FINDINGS':
         return 'Comprehensive view of all evidence items linked to investigation findings and conclusions';
-      default: {
-        const _exhaustiveCheck: never = reportType;
-        return _exhaustiveCheck;
-      }
     }
   };
 
