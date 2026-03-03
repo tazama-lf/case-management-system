@@ -21,7 +21,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
   onSelectionChange,
   rowKey = 'id' as keyof T,
   onRowClick,
-}: AlertsTableProps<T>) => {
+}: AlertsTableProps<T>): React.ReactElement => {
   const getRowKey = (row: T, index: number): string | number => {
     if (typeof rowKey === 'function') {
       return rowKey(row);
@@ -32,7 +32,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
       : index;
   };
 
-  const handleSort = (column: keyof T | string) => {
+  const handleSort = (column: keyof T | string): void => {
     if (!onSort) return;
 
     const newDirection =
@@ -40,7 +40,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
     onSort(column, newDirection);
   };
 
-  const handleSelectAll = (checked: boolean) => {
+  const handleSelectAll = (checked: boolean): void => {
     if (!onSelectionChange) return;
 
     if (checked) {
@@ -53,7 +53,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
     }
   };
 
-  const handleRowSelect = (rowKey: string | number, checked: boolean) => {
+  const handleRowSelect = (rowKey: string | number, checked: boolean): void => {
     if (!onSelectionChange) return;
 
     const newSelection = new Set(selectedRows);
@@ -82,7 +82,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
     return String(value);
   };
 
-  const getSortIcon = (column: AlertsTableColumn<T>) => {
+  const getSortIcon = (column: AlertsTableColumn<T>): React.ReactElement | null => {
     if (!column.sortable || sortColumn !== column.key) {
       return null;
     }

@@ -7,7 +7,7 @@ export const useCaseReopenActions = (refreshCases: () => Promise<void>): {
 } => {
   const { success, error } = useToast();
 
-  const handleApproveReopenSubmit = async (caseId: number) => {
+  const handleApproveReopenSubmit = async (caseId: number): Promise<void> => {
     try {
       await caseService.approveCaseReopening(caseId);
       success('Case Reopening Approved', `Case ${caseId} reopening approved.`);
@@ -20,7 +20,7 @@ export const useCaseReopenActions = (refreshCases: () => Promise<void>): {
     }
   };
 
-  const handleRejectReopenSubmit = async (caseId: number, reason: string) => {
+  const handleRejectReopenSubmit = async (caseId: number, reason: string): Promise<void> => {
     try {
       await caseService.rejectCaseReopening(caseId, reason);
       success(

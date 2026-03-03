@@ -1,4 +1,5 @@
-/// <reference types="vite/client" />
+// Vite client types  
+import 'vite/client';
 
 declare module '*.css' {
   const content: string;

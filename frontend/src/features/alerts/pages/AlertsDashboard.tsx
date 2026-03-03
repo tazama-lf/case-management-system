@@ -80,7 +80,7 @@ const AlertsDashboard: React.FC = () => {
   const handleManualTriage = async (
     alert: Alert,
     triageData: ManualTriageDto,
-  ) => {
+  ): Promise<void> => {
     try {
       await performManualTriage({
         alertId: alert.alert_id,
@@ -318,9 +318,7 @@ const AlertsDashboard: React.FC = () => {
       <PageContainer title="Alerts Dashboard" subtitle={getSubtitle()}>
         <ErrorFallback
           error={error ? new Error(error) : undefined}
-          resetError={async () => {
-            await refreshAlerts();
-          }}
+          resetError={() => { void refreshAlerts(); }}
           title="Failed to load alerts"
           showRetry={true}
         />
@@ -392,7 +390,7 @@ const AlertsDashboard: React.FC = () => {
           }}
           sortColumn={sort.column}
           sortDirection={sort.direction}
-          onRowClick={handleRowClick}
+          onRowClick={(alert) => { void handleRowClick(alert); }}
           emptyMessage="No alerts match your current filters. Try adjusting your search criteria."
           pagination={tablePagination}
         />
@@ -404,7 +402,7 @@ const AlertsDashboard: React.FC = () => {
           alertId={selectedAlert?.alert_id ?? null}
           isOpen={showModal}
           onClose={handleCloseModal}
-          onAlertUpdated={refreshAlerts}
+          onAlertUpdated={() => { refreshAlerts(); }}
           onManualTriage={(alert: Alert) => {
             setSelectedAlert(alert);
             setShowModal(false);
@@ -423,9 +421,7 @@ const AlertsDashboard: React.FC = () => {
               setShowManualTriageModal(false);
               setSelectedAlert(null);
             }}
-            onSubmit={async (triageData: ManualTriageDto) => {
-              await handleManualTriage(selectedAlert, triageData);
-            }}
+            onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
           />
         </Suspense>
       )}

@@ -92,7 +92,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
     }
   }, [open]);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const { files } = event.target;
     if (!files || files.length === 0) return;
 
@@ -152,7 +152,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
     event.target.value = '';
   };
 
-  const handleRemoveFile = (index: number) => {
+  const handleRemoveFile = (index: number): void => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -488,7 +488,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
               <div className="flex justify-end pt-1">
                 <button
                   type="button"
-                  onClick={handleUpload}
+                  onClick={() => { void handleUpload(); }}
                   disabled={
                     uploading ||
                     selectedFiles.length === 0 ||
@@ -562,9 +562,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                             {/* Download */}
                             <button
                               type="button"
-                              onClick={async () => {
-                                await handleDownloadEvidence(evidence);
-                              }}
+                              onClick={() => { void handleDownloadEvidence(evidence); }}
                               disabled={
                                 downloadingId === evidence.id.toString()
                               }
@@ -664,7 +662,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
             onClose={() => {
               setCompleteTaskModalOpen(false);
             }}
-            onCompleteTask={handleModalCompleteTask}
+            onCompleteTask={(...args) => { void handleModalCompleteTask(...args); }}
             task={task}
           />
         </Suspense>

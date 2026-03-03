@@ -107,7 +107,7 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
     return row.priority ?? 'NEW';
   };
 
-  const formatTaskId = (taskId: number): any => taskId ?? 'No ID';
+  const formatTaskId = (taskId: number): number | string => taskId ?? 'No ID';
 
   const getCaseType = (): string => {
     if (task?.case?.case_type) {

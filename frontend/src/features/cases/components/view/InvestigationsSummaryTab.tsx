@@ -50,13 +50,13 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
-  const [investigationTask, setInvestigationTask] = useState<any>(null);
+  const [investigationTask, setInvestigationTask] = useState<TaskForSupervisor | null>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   // const [isSupervisor, setIsSupervisor] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [submittedDate, setSubmittedDate] = useState<string>('N/A');
 
-  const mapToUnifiedWorkQueueTask = (task: any, caseDetails: Case | null): UnifiedWorkQueueTask => ({
+  const mapToUnifiedWorkQueueTask = (task: TaskForSupervisor, caseDetails: Case | null): UnifiedWorkQueueTask => ({
       id: task.task_id,
       taskId: task.task_id,
       name: task.name ?? 'Unnamed Task',
@@ -164,7 +164,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     setExpandedCategories(newExpanded);
   };
 
-  const handleCompleteTask = async (task: any, _notes?: string): Promise<void> => {
+  const handleCompleteTask = async (task: TaskForSupervisor, _notes?: string): Promise<void> => {
     try {
       const taskIdToComplete = task.task_id ?? task.id;
       await taskService.updateTaskForSupervisor(taskIdToComplete, {
@@ -486,7 +486,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                             </div>
                           </div>
                           <button
-                            onClick={async () => { await handleDownloadEvidence(doc.id, doc.fileName ?? 'document'); }}
+                            onClick={() => { void handleDownloadEvidence(doc.id, doc.fileName ?? 'document'); }}
                             disabled={downloadingId === doc.id}
                             className="ml-4 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                           >
@@ -537,7 +537,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
           <CompleteTaskModal
             open={showCompleteModal}
             onClose={() => { setShowCompleteModal(false); }}
-            onCompleteTask={handleCompleteTask}
+            onCompleteTask={(task, notes) => { void handleCompleteTask(task, notes); }}
             task={mapToUnifiedWorkQueueTask(investigationTask, caseDetails)}
           />
         </Suspense>

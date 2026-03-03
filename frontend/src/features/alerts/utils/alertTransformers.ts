@@ -7,10 +7,20 @@ import type {
 } from '../types/triage.types';
 import type { Alert as UIAlert } from '../types/alertsdashboard.types';
 
+interface BackendAlertShape {
+  alert_type?: string | null;
+  alert_data?: {
+    tadpResult?: {
+      typologyResult?: Array<{ id?: string }>;
+    };
+  };
+  txtp?: string;
+}
+
 function extractAlertType(backendAlert: unknown): AlertType | null {
-  const alert = backendAlert as any;
+  const alert = backendAlert as BackendAlertShape;
   if (alert.alert_type) {
-    const validTypes = ['FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE'];
+    const validTypes: string[] = ['FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE'];
     if (validTypes.includes(alert.alert_type)) {
       return alert.alert_type as AlertType;
     }
@@ -43,9 +53,15 @@ function extractAlertType(backendAlert: unknown): AlertType | null {
   return 'FRAUD';
 }
 
+interface AlertDataShape {
+  tadpResult?: {
+    typologyResult?: Array<{ result?: number }>;
+  };
+}
+
 function extractRiskScore(alertData: unknown): number {
   try {
-    const data = alertData as any;
+    const data = alertData as AlertDataShape;
     const typologyResults = data?.tadpResult?.typologyResult;
     if (Array.isArray(typologyResults) && typologyResults.length > 0) {
       const result = typologyResults[0]?.result;
@@ -132,7 +148,7 @@ export function transformUIAlertToBackend(uiAlert: UIAlert): TriageAlert {
     alert_id: uiAlert.alert_id,
     tenant_id: uiAlert.tenant_id,
     priority: uiAlert.priority,
-    alert_type: uiAlert.alert_type as any,
+    alert_type: uiAlert.alert_type ?? null,
     source: uiAlert.source,
     txtp: uiAlert.txtp,
     message: uiAlert.message,
@@ -173,26 +189,46 @@ export function mapUIStatusToAlertStatus(
   }
 }
 
+interface TransactionShape {
+  transactionId?: string;
+  txnId?: string;
+  id?: string;
+  TxId?: string;
+  amount?: number;
+  AmtRaw?: number;
+  TxAmt?: number;
+  value?: number | string;
+  currency?: string;
+  ccy?: string;
+  CcyCode?: string;
+  currencyCode?: string;
+}
+
 function extractTransactionId(transaction: unknown): string | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
-  const txn = transaction as any;
-  return txn.transactionId ?? txn.txnId ?? txn.id ?? txn.TxId ?? undefined;
+  const txn = transaction as TransactionShape;
+  return txn.transactionId ?? txn.txnId ?? txn.id ?? txn.TxId;
 }
 
 function extractAmount(transaction: unknown): number | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
-  const txn = transaction as any;
+  const txn = transaction as TransactionShape;
   const amount = txn.amount ?? txn.AmtRaw ?? txn.TxAmt ?? txn.value;
 
-  return typeof amount === 'number' ? amount : parseFloat(amount) ?? undefined;
+  if (typeof amount === 'number') return amount;
+  if (typeof amount === 'string') {
+    const parsed = parseFloat(amount);
+    return isNaN(parsed) ? undefined : parsed;
+  }
+  return undefined;
 }
 
 function extractCurrency(transaction: unknown): string | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
-  const txn = transaction as any;
+  const txn = transaction as TransactionShape;
   return txn.currency ?? txn.ccy ?? txn.CcyCode ?? txn.currencyCode ?? 'USD';
 }
 

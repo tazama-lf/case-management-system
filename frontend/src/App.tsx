@@ -7,7 +7,7 @@ import { SkipToContent } from './shared/components/ui/AccessibilityComponents';
 import { router } from './router';
 import './index.css';
 
-function App() {
+function App(): JSX.Element {
   return (
     <QueryProvider>
       <NotificationProvider>

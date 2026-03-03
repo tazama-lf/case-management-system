@@ -8,6 +8,7 @@ import InvestigationNotesTab from './view/InvestigationNotesTab';
 import InvestigationSummaryTab from './view/InvestigationsSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
+import type { UnifiedWorkQueueTask } from '../types/task.types';
 
 type ViewTabKey =
   | 'details'
@@ -19,7 +20,7 @@ type ViewTabKey =
   | 'summary';
 
 interface TaskDetailsModalProps {
-  selectedTask: any;
+  selectedTask: UnifiedWorkQueueTask | null;
   open: boolean;
   onClose: () => void;
   row?: CaseRow | null;

@@ -439,10 +439,13 @@ class ReportsService {
           //   },
           // );
 
-          const evidenceByTask: Record<string, Array<Record<string, any>>> = {};
+          const evidenceByTask: Record<string, Array<Record<string, unknown>>> = {};
           caseEvidence.forEach((e) => {
-            const taskId = (e.taskId ?? e.task_id ?? 'unknown_task').toString();
-            evidenceByTask[taskId] ||= [];
+            const taskIdValue = e.taskId ?? e.task_id;
+            const taskId = typeof taskIdValue === 'string' || typeof taskIdValue === 'number'
+              ? String(taskIdValue)
+              : 'unknown_task';
+            evidenceByTask[taskId] ??= [];
             evidenceByTask[taskId].push(e);
           });
 
@@ -450,27 +453,29 @@ class ReportsService {
             ([taskId, evidences]) => ({
               taskId: taskId === 'unknown_task' ? undefined : Number(taskId),
               supportingEvidence: evidences.map((e) => {
-                const attachments = e.attachments as any[] | undefined;
+                const attachments = e.attachments as Array<Record<string, unknown>> | undefined;
                 const firstAttachment = attachments?.[0];
 
+                const id = e.id ?? e.evidenceId;
+                const idString = typeof id === 'string' || typeof id === 'number' 
+                  ? String(id) 
+                  : `unknown_${Date.now()}`;
+
                 return {
-                  id:
-                    e.id?.toString() ??
-                    e.evidenceId?.toString() ??
-                    `unknown_${Date.now()}`,
+                  id: idString,
                   fileName:
-                    e.fileName ??
-                    e.file_name ??
-                    firstAttachment?.fileName ??
+                    (e.fileName as string | undefined) ??
+                    (e.file_name as string | undefined) ??
+                    (firstAttachment?.fileName as string | undefined) ??
                     'Unknown Document',
-                  fileSize: e.fileSize ?? firstAttachment?.fileSize,
-                  mimeType: e.mimeType ?? firstAttachment?.mimeType,
-                  evidenceType: e.evidenceType,
-                  uploadedBy: e.uploadedBy,
-                  uploadedByName: e.uploadedByName,
-                  uploadedAt: e.uploadedAt,
-                  description: e.description,
-                  hash: e.hash ?? firstAttachment?.hash,
+                  fileSize: (e.fileSize as number | undefined) ?? (firstAttachment?.fileSize as number | undefined),
+                  mimeType: (e.mimeType as string | undefined) ?? (firstAttachment?.mimeType as string | undefined),
+                  evidenceType: e.evidenceType as string | undefined,
+                  uploadedBy: e.uploadedBy as string | undefined,
+                  uploadedByName: e.uploadedByName as string | undefined,
+                  uploadedAt: e.uploadedAt as string | undefined,
+                  description: e.description as string | undefined,
+                  hash: (e.hash as string | undefined) ?? (firstAttachment?.hash as string | undefined),
                 };
               }),
             }),
@@ -536,9 +541,10 @@ class ReportsService {
 
       return processedResponse;
     } catch (error) {
+      const err = this.handleError(error, 'fetch evidence findings data');
       console.error(
         '[Evidence Report] Error in getEvidenceFindingsData:',
-        error,
+        err,
       );
       return {
         stats: {

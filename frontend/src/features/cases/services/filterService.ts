@@ -20,25 +20,55 @@ export interface UserDefinedFilters extends UserFilters {
   filters: UserFilters[];
 }
 
+const HTTP_CONFLICT = 409;
+
 export class FilterService {
   private readonly baseUrl = '/api/v1/filter';
 
+  private static validateFilterResponse(data: unknown): UserFilters {
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid filter data received');
+    }
+
+    if ('filter_Id' in data) {
+      return data as UserFilters;
+    }
+
+    return data as UserFilters;
+  }
+
+  private static handleError(error: unknown, operation: string): Error {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error &&
+      typeof (error as { response?: unknown }).response === 'object' &&
+      (error as { response?: { data?: ApiErrorResponse } }).response?.data
+    ) {
+      const apiError = (error as { response: { data: ApiErrorResponse } }).response.data;
+      return new Error(apiError.message || `Failed to ${operation}`);
+    }
+    if (error instanceof Error) {
+      return new Error(`Failed to ${operation}: ${error.message}`);
+    }
+    return new Error(`Failed to ${operation}`);
+  }
   async getFilters(
-    user_id: string,
+    userId: string,
     filterType: string,
   ): Promise<UserDefinedFilters[]> {
     try {
       const response = await apiClient.get<UserDefinedFilters[]>(
-        `${this.baseUrl}/user/${user_id}/filterType/${filterType}`,
+        `${this.baseUrl}/user/${userId}/filterType/${filterType}`,
       );
       return Array.isArray(response) ? response : [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         'FilterService: Failed to get filters for user:',
-        user_id,
+        userId,
         error,
       );
-      throw this.handleError(error, 'get user defined filter failed');
+      throw FilterService.handleError(error, 'get user defined filter failed');
     }
   }
 
@@ -48,39 +78,21 @@ export class FilterService {
         `${this.baseUrl}/create`,
         createFilterDTO,
       );
-      return this.validateFilterResponse(response);
-    } catch (error: any) {
+      return FilterService.validateFilterResponse(response);
+    } catch (error: unknown) {
       // Check for 409 Conflict - duplicate filter
-      if (error.response?.status === 409) {
-        throw new Error('FILTER_ALREADY_EXISTS');
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: unknown }).response === 'object' &&
+        (error as { response?: { status?: number } }).response?.status === HTTP_CONFLICT
+      ) {
+        throw new Error('FILTER_ALREADY_EXISTS', { cause: error });
       }
 
-      throw this.handleError(error, 'create filter');
+      throw FilterService.handleError(error, 'create filter');
     }
-  }
-
-  private validateFilterResponse(data: unknown): UserFilters {
-    if (!data || typeof data !== 'object') {
-      throw new Error('Invalid filter data received');
-    }
-
-    if ('filter_Id' in data) {
-      return data as UserFilters;
-    }
-
-    if (typeof data === 'object' && data !== null) {
-      return data as UserFilters;
-    }
-
-    throw new Error('Filter ID is missing from response');
-  }
-
-  private handleError(error: any, operation: string): Error {
-    if (error.response?.data) {
-      const apiError = error.response.data as ApiErrorResponse;
-      return new Error(apiError.message || `Failed to ${operation}`, { cause: error });
-    }
-    return new Error(`Failed to ${operation}: ${error.message}`, { cause: error });
   }
 }
 

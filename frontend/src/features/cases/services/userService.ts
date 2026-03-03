@@ -28,13 +28,23 @@ class UserService {
 
   async getUsersByRole(role: string): Promise<UserOption[]> {
     try {
-      const response = await apiClient.get<any[]>(
+      interface RawUser {
+        userId?: string;
+        id?: string;
+        displayName?: string;
+        username?: string;
+        name?: string;
+        role?: string;
+        firstName: string;
+        lastName: string;
+      }
+      const response = await apiClient.get<RawUser[]>(
         `${this.baseUrl}/list-by-role/${role}`,
       );
 
       // Transform the response to match our UserOption interface
       return response
-        .map((user: any) => ({
+        .map((user) => ({
           id: user.userId ?? user.id ?? '',
           name: user.displayName ?? user.username ?? user.name ?? 'Unknown',
           role: user.role,

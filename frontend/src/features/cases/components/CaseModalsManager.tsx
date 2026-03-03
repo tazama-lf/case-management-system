@@ -175,7 +175,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         'The alert has been triaged successfully.',
       );
       // Brief delay to ensure backend has processed the triage and created new tasks
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise<void>((resolve) => { setTimeout(resolve, 500); });
 
       // Refresh tasks to show updated "Complete New Case" status and new "Investigate" task
       if (onRefreshCases) {
@@ -528,10 +528,10 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           modalActions.setCreateModalMode('create');
           modalActions.setEditingCaseId(null);
         }}
-        onCompleteCase={handleCompleteCase}
-        onCreate={handleCreate}
-        onSaveDraft={handleSaveDraft}
-        onUpdate={handleUpdate}
+        onCompleteCase={(...args) => { void handleCompleteCase(...args); }}
+        onCreate={(...args) => { void handleCreate(...args); }}
+        onSaveDraft={(...args) => { void handleSaveDraft(...args); }}
+        onUpdate={(...args) => { void handleUpdate(...args); }}
         loading={modalState.createCaseLoading}
         error={modalState.createCaseError}
         mode={modalState.createModalMode}
@@ -675,7 +675,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           onClose={() => {
             modalActions.setIsReopenOpen(false);
           }}
-          onReopen={handleReopenSubmit}
+          onReopen={(...args) => { void handleReopenSubmit(...args); }}
           caseData={modalState.selectedRow}
         />
       </Suspense>
@@ -686,7 +686,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           onClose={() => {
             modalActions.setIsAbandonOpen(false);
           }}
-          onAbandon={handleAbandonSubmit}
+          onAbandon={(...args) => { void handleAbandonSubmit(...args); }}
           caseData={modalState.selectedRow}
         />
       </Suspense>
@@ -697,7 +697,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           onClose={() => {
             modalActions.setIsSuspendOpen(false);
           }}
-          onSuspend={handleSuspendSubmit}
+          onSuspend={(...args) => { void handleSuspendSubmit(...args); }}
           caseData={modalState.selectedRow}
         />
       </Suspense>
@@ -708,7 +708,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           onClose={() => {
             modalActions.setIsResumeOpen(false);
           }}
-          onResume={handleResumeSubmit}
+          onResume={(...args) => { void handleResumeSubmit(...args); }}
           caseData={modalState.selectedRow}
         />
       </Suspense>

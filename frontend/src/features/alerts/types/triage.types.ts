@@ -99,7 +99,7 @@ export interface Alert extends Record<string, unknown> {
   alert_data?: AlertData;
   transaction: unknown;
   network_map: unknown;
-  confidence_per: number;
+  confidence_per?: number;
   created_at: string;
   case_id?: number;
   prediction_outcome?: string;

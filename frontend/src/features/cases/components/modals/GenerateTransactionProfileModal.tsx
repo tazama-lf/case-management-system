@@ -143,7 +143,7 @@ const GenerateTransactionProfileModal: React.FC<
 
   const isViewMode = !!initialProfile || !!profileData;
 
-  const handleGenerateProfile = async () => {
+  const handleGenerateProfile = async (): Promise<void> => {
     if (!caseId) {
       setError('Case ID is required to generate profile');
       return;
@@ -188,8 +188,8 @@ const GenerateTransactionProfileModal: React.FC<
           notes: response.notes,
         });
       }
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to generate profile');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to generate profile');
     } finally {
       setSaving(false);
     }
@@ -204,7 +204,7 @@ const GenerateTransactionProfileModal: React.FC<
     return 'Low';
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = (): void => {
     if (profileData) {
       if (onSaveProfile) {
         onSaveProfile({
@@ -376,7 +376,7 @@ const GenerateTransactionProfileModal: React.FC<
                 </button>
                 <button
                   type="button"
-                  onClick={handleGenerateProfile}
+                  onClick={() => { void handleGenerateProfile(); }}
                   className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-6 py-2 text-base font-semibold text-white shadow-sm hover:bg-blue-700"
                   disabled={saving}
                 >
@@ -586,7 +586,7 @@ const GenerateTransactionProfileModal: React.FC<
           {step === 'initial' && (
             <button
               type="button"
-              onClick={handleGenerateProfile}
+              onClick={() => { void handleGenerateProfile(); }}
               className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
               disabled={saving || !caseId}
             >

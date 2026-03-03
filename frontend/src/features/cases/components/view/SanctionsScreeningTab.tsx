@@ -457,7 +457,7 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={(e) => { void handleSubmit(e); }} className="p-6 space-y-4">
           {/* File Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -931,7 +931,7 @@ const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({
           {/* Actions */}
           <div className="flex justify-between gap-3 pt-4 border-t">
             <button
-              onClick={handleDelete}
+              onClick={() => { void handleDelete(); }}
               disabled={deleteMutation.isPending}
               className="inline-flex items-center gap-2 rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -940,7 +940,7 @@ const ScreeningDetailsModal: React.FC<ScreeningDetailsModalProps> = ({
             <div className="flex gap-3">
               {screening.evidence_id && (
                 <button
-                  onClick={handleDownload}
+                  onClick={() => { void handleDownload(); }}
                   disabled={downloadMutation.isPending}
                   className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

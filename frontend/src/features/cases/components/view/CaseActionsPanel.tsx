@@ -63,7 +63,7 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
   const { tasks, fetchTasks } = useCaseTasks(caseData.id);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchData = async (): Promise<void> => {
       await fetchTasks();
     };
     fetchData();
@@ -71,7 +71,7 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
 
   // Fetch case details to get case_owner_user_id
   useEffect(() => {
-    const fetchCaseDetails = async () => {
+    const fetchCaseDetails = async (): Promise<void> => {
       try {
         const details = await caseService.getCaseDetails(caseData.id);
         setCaseDetails(details);
@@ -100,7 +100,7 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     return user.userId === caseDetails.case_owner_user_id;
   };
 
-  const getAvailableActions = () => {
+  const getAvailableActions = (): React.ReactNode[] => {
     const actions: React.ReactNode[] = [];
 
     // Complete action

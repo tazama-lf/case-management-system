@@ -431,7 +431,7 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                         Export as CSV
                       </button>
                       <button
-                        onClick={handleExportPDF}
+                        onClick={() => { void handleExportPDF(); }}
                         className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm rounded-md text-gray-700 bg-white hover:bg-gray-50"
                       >
                         Export as PDF
@@ -580,12 +580,8 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                                               evidence={evidence}
                                               viewingId={viewingId}
                                               downloadingId={downloadingId}
-                                              handleViewEvidence={
-                                                handleViewEvidence
-                                              }
-                                              handleDownloadEvidence={
-                                                handleDownloadEvidence
-                                              }
+                                              handleViewEvidence={(fileName, id) => { void handleViewEvidence(fileName, id); }}
+                                              handleDownloadEvidence={(id) => { void handleDownloadEvidence(id); }}
                                               getAssigneeFullName={
                                                 getAssigneeFullName
                                               }

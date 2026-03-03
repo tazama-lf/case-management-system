@@ -16,7 +16,7 @@ const MessagePayloadModal: React.FC<MessagePayloadModalProps> = ({
   transactionData,
 }) => {
   // Format the transaction data as JSON for display
-  const getPayloadContent = () => {
+  const getPayloadContent = (): string => {
     if (transactionData) {
       // Display the actual transaction data as formatted JSON
       return JSON.stringify(transactionData, null, 2);
@@ -26,7 +26,7 @@ const MessagePayloadModal: React.FC<MessagePayloadModalProps> = ({
     return 'No transaction data available';
   };
 
-  const handleDownload = () => {
+  const handleDownload = (): void => {
     if (!message || !transactionData) return;
 
     const payloadContent = getPayloadContent();

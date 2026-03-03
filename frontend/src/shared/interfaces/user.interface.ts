@@ -4,5 +4,5 @@ export interface User {
   email: string;
   fullName: string;
   tenantName: string;
-  validatedClaims: Record<string, any>;
+  validatedClaims: Record<string, unknown>;
 }

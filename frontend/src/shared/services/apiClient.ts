@@ -91,7 +91,7 @@ class ApiClient {
 
   async post<T>(
     endpoint: string,
-    data?: any,
+    data?: unknown,
     options?: ApiRequestOptions,
   ): Promise<T> {
     return await this.request<T>(endpoint, {
@@ -103,7 +103,7 @@ class ApiClient {
 
   async put<T>(
     endpoint: string,
-    data?: any,
+    data?: unknown,
     options?: ApiRequestOptions,
   ): Promise<T> {
     return await this.request<T>(endpoint, {
@@ -115,7 +115,7 @@ class ApiClient {
 
   async patch<T>(
     endpoint: string,
-    data?: any,
+    data?: unknown,
     options?: ApiRequestOptions,
   ): Promise<T> {
     return await this.request<T>(endpoint, {

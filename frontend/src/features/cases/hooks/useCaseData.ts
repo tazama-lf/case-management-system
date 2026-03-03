@@ -32,7 +32,7 @@ export const useCaseData = (): {
     statusFilter?: string,
     priorityFilter?: string,
     sortBy?: 'recent' | 'oldest',
-  ) => {
+  ): Promise<void> => {
     setLoading(true);
     setErrorState(null);
 
@@ -75,7 +75,7 @@ export const useCaseData = (): {
     statusFilter?: string,
     priorityFilter?: string,
     sortBy?: 'recent' | 'oldest',
-  ) => {
+  ): Promise<void> => {
     try {
       const response = await caseService.getAllCases({
         status: statusFilter ?? undefined,
@@ -119,7 +119,7 @@ export const useCaseActions = (
     alertType: AlertType;
     assignee?: string;
     draft?: boolean;
-  }) => {
+  }): Promise<void> => {
     setCreateCaseLoading(true);
     setCreateCaseError('');
 
@@ -163,7 +163,7 @@ export const useCaseActions = (
       alertType: AlertType;
       assignee?: string;
     },
-  ) => {
+  ): Promise<void> => {
     setCreateCaseLoading(true);
     setCreateCaseError('');
 
@@ -298,7 +298,7 @@ The case may have been deleted or moved.`;
     caseId: number,
     reason: string,
     tasksIds: number[],
-  ) => {
+  ): Promise<void> => {
     try {
       const suspendCaseData: SuspendCaseDto = {
         reason: reason.trim(),
@@ -418,7 +418,7 @@ The case has been moved back to "In Progress" status. All associated tasks have 
   const handleRejectSubmit = async (
     rejectionReason: string,
     selectedRow: CaseRow | null,
-  ) => {
+  ): Promise<void> => {
     if (!selectedRow) return;
 
     try {
@@ -485,7 +485,7 @@ The case has been returned to the investigator for additional work.`,
   const handleApproveSubmit = async (
     data: ApproveCaseClosureDto,
     selectedRow: CaseRow | null,
-  ) => {
+  ): Promise<void> => {
     if (!selectedRow) return;
 
     try {
@@ -600,7 +600,7 @@ The case may have been deleted or moved.`;
   const handleRejectCreationSubmit = async (
     caseId: number,
     data: RejectCaseCreationDto,
-  ) => {
+  ): Promise<void> => {
     try {
       const rejectedCase = await caseService.rejectCaseCreation(caseId, data);
 
@@ -650,7 +650,7 @@ The case may have been deleted or moved.`;
   const handleReturnForReviewSubmit = async (
     caseId: number,
     data: ReturnCaseForReviewDto,
-  ) => {
+  ): Promise<void> => {
     try {
       const returnedCase = await caseService.returnCaseForReview(caseId, data);
 

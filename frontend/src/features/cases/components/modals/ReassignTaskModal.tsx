@@ -83,7 +83,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({
     }
   }, [open]);
 
-  const getAssigneeFullName = (assigneeName: string, assignee?: string) => {
+  const getAssigneeFullName = (assigneeName: string, assignee?: string): string | undefined => {
     const compliance = complianceOfficers.find(
       (i) => i.id === assigneeName || i.id === assignee,
     );
@@ -296,7 +296,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({
               Cancel
             </button>
             <button
-              onClick={handleSubmit}
+              onClick={() => { void handleSubmit(); }}
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
               disabled={!canConfirm || isSubmitting}
             >

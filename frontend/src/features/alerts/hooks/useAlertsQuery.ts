@@ -44,7 +44,7 @@ export const useAlerts = (filters: AlertsFilter = {}): {
     [filters, debouncedSearch],
   );
 
-  const { data, isLoading, error, refetch, isFetching, isError } = useQuery({
+  const { data, isLoading, error, refetch: queryRefetch, isFetching, isError } = useQuery({
     queryKey: alertsQueryKeys.list(debouncedFilters),
     queryFn: async () => await triageService.getAlerts(debouncedFilters),
     enabled: true,
@@ -66,8 +66,8 @@ export const useAlerts = (filters: AlertsFilter = {}): {
     isFetching,
     isError,
     error,
-    refetch,
-    refreshAlerts: refetch,
+    refetch: () => { void queryRefetch(); },
+    refreshAlerts: () => { void queryRefetch(); },
   };
 };
 
@@ -81,7 +81,7 @@ export const useAlertDetails = (alertId: number | null): {
     data: alert,
     isLoading,
     error,
-    refetch,
+    refetch: queryRefetchDetail,
   } = useQuery({
     queryKey: alertsQueryKeys.detail(alertId!),
     queryFn: async () => await triageService.getAlertById(alertId!),
@@ -93,7 +93,7 @@ export const useAlertDetails = (alertId: number | null): {
     alert,
     isLoading,
     error,
-    refetch,
+    refetch: () => { void queryRefetchDetail(); },
   };
 };
 

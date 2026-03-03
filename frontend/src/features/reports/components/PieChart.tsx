@@ -73,7 +73,7 @@ const PieChart: React.FC<PieChartProps> = ({
     color: item.color,
   }));
 
-  const renderLabel = ({ percentage }: any) => `${percentage}%`;
+  const renderLabel = ({ percentage }: { percentage: string | number }) => `${percentage}%`;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">

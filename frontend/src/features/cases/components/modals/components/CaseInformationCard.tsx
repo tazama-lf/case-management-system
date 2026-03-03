@@ -14,7 +14,7 @@ interface CaseInformationCardProps {
 const CaseInformationCard: React.FC<CaseInformationCardProps> = ({
   caseInformation,
 }) => {
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string): string => {
     const priorityColors = {
       high: 'text-red-600',
       medium: 'text-yellow-600',
@@ -26,7 +26,7 @@ const CaseInformationCard: React.FC<CaseInformationCardProps> = ({
     );
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): string => {
     const statusColors = {
       investigation: 'bg-blue-100 text-blue-800',
       closed: 'bg-gray-100 text-gray-800',

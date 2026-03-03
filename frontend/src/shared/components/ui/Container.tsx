@@ -6,7 +6,7 @@ interface ContainerProps {
   className?: string;
 }
 
-const getContainerSize = (size: string) => {
+const getContainerSize = (size: string) : string => {
   const sizes = {
     sm: 'max-w-3xl',
     md: 'max-w-5xl',
@@ -37,7 +37,7 @@ interface CardProps {
   rounded?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
 }
 
-const getPaddingClass = (padding: string) => {
+const getPaddingClass = (padding: string) : string => {
   const paddings = {
     none: '',
     sm: 'p-4',
@@ -47,7 +47,7 @@ const getPaddingClass = (padding: string) => {
   return paddings[padding as keyof typeof paddings] || paddings.md;
 };
 
-const getShadowClass = (shadow: string) => {
+const getShadowClass = (shadow: string) : string => {
   const shadows = {
     none: '',
     sm: 'shadow-sm',
@@ -57,7 +57,7 @@ const getShadowClass = (shadow: string) => {
   return shadows[shadow as keyof typeof shadows] || shadows.sm;
 };
 
-const getRoundedClass = (rounded: string) => {
+const getRoundedClass = (rounded: string) : string => {
   const rounds = {
     none: '',
     sm: 'rounded-sm',

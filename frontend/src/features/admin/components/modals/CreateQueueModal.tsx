@@ -31,7 +31,7 @@ const CreateQueueModal: React.FC<CreateQueueModalProps> = ({
 
   const canConfirm = Boolean(id.trim() && name.trim());
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (!canConfirm || isLoading) return;
 
@@ -73,7 +73,7 @@ const CreateQueueModal: React.FC<CreateQueueModalProps> = ({
         </div>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={(e) => { void handleSubmit(e); }}
           className="px-6 py-4 space-y-4 overflow-y-auto flex-1"
         >
           <div>

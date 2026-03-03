@@ -41,11 +41,11 @@ interface TaskLogTabProps {
   onRefreshCases?: () => Promise<void>;
   alertId?: number;
   canManageSupervisorActions?: boolean;
-  caseData?: any;
-  onApproveCase?: (caseData: any) => void;
-  onApproveCaseCreation?: (caseData: any) => void;
-  onRejectCaseCreation?: (caseData: any) => void;
-  onAbandonCase?: (caseData: any) => void;
+  caseData?: CaseWithTasksDto;
+  onApproveCase?: (caseData: CaseWithTasksDto) => void;
+  onApproveCaseCreation?: (caseData: CaseWithTasksDto) => void;
+  onRejectCaseCreation?: (caseData: CaseWithTasksDto) => void;
+  onAbandonCase?: (caseData: CaseWithTasksDto) => void;
   onAfterTaskReassign?: () => void;
 }
 
@@ -550,12 +550,12 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
           onUpdateStatus={handleUpdateStatus}
           onComplete={handleCompleteTask}
           onTaskClick={handleViewTaskDetails}
-          onRefreshCases={async () => {
+          onRefreshCases={() => {
             // Trigger local task refresh
             fetchTasks();
             // Call parent refresh
             if (onRefreshCases) {
-              await onRefreshCases();
+              void onRefreshCases();
             }
           }}
           canManageSupervisorActions={canManageSupervisorActions}
@@ -604,7 +604,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
               setUnassignModalOpen(false);
               setSelectedTask(null);
             }}
-            onUnassign={handleUnassignTask}
+            onUnassign={(taskId, reason) => { void handleUnassignTask(taskId, reason); }}
             task={selectedTask}
           />
         </Suspense>
@@ -618,7 +618,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
               setUpdateStatusModalOpen(false);
               setSelectedTask(null);
             }}
-            onUpdateStatus={handleModalUpdateStatus}
+            onUpdateStatus={(task, newStatus, notes) => { void handleModalUpdateStatus(task, newStatus, notes); }}
             task={selectedTask}
           />
         </Suspense>
@@ -632,7 +632,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
               setCompleteTaskModalOpen(false);
               setSelectedTask(null);
             }}
-            onCompleteTask={handleModalCompleteTask}
+            onCompleteTask={(task, notes, recommendedOutcome) => { void handleModalCompleteTask(task, notes, recommendedOutcome); }}
             task={selectedTask}
           />
         </Suspense>
@@ -649,17 +649,13 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
             }}
             row={caseDetails ?? undefined}
             onRefreshCases={onRefreshCases}
-            onTaskUpdate={async () => {
+            onTaskUpdate={() => {
               // Refresh tasks in TaskLogTab when investigation task is completed
               if (caseId) {
-                try {
-                  fetchTasks();
-                  // Also refresh the case data to update the Close Case button visibility
-                  if (onRefreshCases) {
-                    await onRefreshCases();
-                  }
-                } catch (err) {
-                  console.error('Failed to refresh tasks:', err);
+                fetchTasks();
+                // Also refresh the case data to update the Close Case button visibility
+                if (onRefreshCases) {
+                  void onRefreshCases();
                 }
               }
             }}
@@ -671,12 +667,12 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
         <Suspense fallback={<div>Loading...</div>}>
           <SarStrFilingModal
             open={sarStrFilingModalOpen}
-            onClose={async () => {
+            onClose={() => {
               setSarStrFilingModalOpen(false);
               setSelectedTask(null);
               fetchTasks();
               if (onRefreshCases) {
-                await onRefreshCases();
+                void onRefreshCases();
               }
             }}
             taskId={selectedTask.id}

@@ -5,6 +5,7 @@ import { evidenceService } from '../services/evidenceService';
 import { caseService } from '../services/caseService';
 import { commentService } from '../services/commentService';
 import { taskService } from '../services/taskService';
+import type { TaskForSupervisor } from '../services/taskService';
 import userService from '../services/userService';
 import { formatDate } from '@/shared/utils/dateUtils';
 
@@ -77,7 +78,7 @@ export const fetchCasesAndEvidence = async (
     caseDetails: Case | null;
     supervisorComments: TaskComment[];
     investigatorName: string;
-    investigationTask: any;
+    investigationTask: TaskForSupervisor | undefined;
     investigationNotes: string;
     submittedDate: string;
 }> => {
@@ -85,7 +86,7 @@ export const fetchCasesAndEvidence = async (
     let supervisorComments: TaskComment[] = [];
     let investigatorName = 'N/A';
     let submittedDate = 'N/A';
-    let investigationTask: any = null;
+    let investigationTask: TaskForSupervisor | undefined = undefined;
     let investigationNotes = '';
 
     try {

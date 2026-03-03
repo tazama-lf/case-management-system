@@ -24,7 +24,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
   const [loadingAlert, setLoadingAlert] = useState(false);
 
   useEffect(() => {
-    const fetchAlertDetails = async () => {
+    const fetchAlertDetails = async (): Promise<void> => {
       if (open && caseData?.alertId) {
         setLoadingAlert(true);
         try {
@@ -41,7 +41,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
     fetchAlertDetails();
   }, [open, caseData?.alertId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) : Promise<void> => {
     e.preventDefault();
 
     if (!caseData) return;
@@ -62,7 +62,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
     }
   };
 
-  const handleClose = () => {
+  const handleClose = () : void => {
     if (!isSubmitting) {
       onClose();
       setErrors({});
@@ -72,8 +72,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
 
   const transactionData =
     alertDetails?.transaction &&
-    typeof alertDetails.transaction === 'object' &&
-    alertDetails.transaction !== null
+    typeof alertDetails.transaction === 'object'
       ? alertDetails.transaction
       : null;
 
@@ -105,7 +104,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
         </div>
 
         {}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+        <form onSubmit={(e) => { void handleSubmit(e); }} className="flex-1 overflow-y-auto">
           <div className="p-6">
             {}
 
@@ -185,7 +184,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
                               Confidence Score
                             </label>
                             <span className="text-sm">
-                              {alertDetails.confidence_per?.toFixed(2)}%
+                              {alertDetails.confidence_per.toFixed(2)}%
                             </span>
                           </div>
                           <div>
@@ -267,7 +266,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
                         </div>
                       </div>
                     )}
-                    {!alertDetails && !loadingAlert && (
+                    {!alertDetails && (
                       <div className="text-sm text-gray-500">
                         Unable to load alert details
                       </div>
@@ -298,7 +297,6 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
           </button>
           <button
             type="submit"
-            onClick={handleSubmit}
             disabled={isSubmitting}
             className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >

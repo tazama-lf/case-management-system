@@ -159,7 +159,7 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
         title="Investigator Performance Details"
         onExportExcel={handleExportExcel}
         onExportCSV={handleExportCSV}
-        onExportPDF={handleExportPDF}
+        onExportPDF={() => { void handleExportPDF(); }}
       />
     </>
   );

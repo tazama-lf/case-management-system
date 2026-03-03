@@ -18,7 +18,7 @@ interface TriageModeIndicatorProps {
   compact?: boolean;
 }
 
-const getTriageModeIcon = (triageType: TriageType) => {
+const getTriageModeIcon = (triageType: TriageType): React.ReactElement => {
   switch (triageType) {
     case 'AI':
       return <CpuChipIcon className="h-4 w-4" />;

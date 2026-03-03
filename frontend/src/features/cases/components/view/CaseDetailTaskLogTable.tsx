@@ -10,6 +10,7 @@ import {
 import { formatDate } from '../../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../../types/task.types';
+import type { CaseWithTasksDto } from '../../services/caseService';
 import { useAlertOperations } from '@/features/alerts/hooks/useAlertsQuery';
 import authService from '@/features/auth/services/authService';
 import type { User } from '@/shared/interfaces/user.interface';
@@ -27,11 +28,11 @@ interface CaseDetailTaskLogTableProps {
   onUpdateStatus?: (task: UnifiedWorkQueueTask) => void;
   onRefreshCases?: () => void;
   canManageSupervisorActions?: boolean;
-  caseData?: any;
-  onApproveCase?: (caseData: any) => void;
-  onApproveCaseCreation?: (caseData: any) => void;
-  onRejectCaseCreation?: (caseData: any) => void;
-  onAbandonCase?: (caseData: any) => void;
+  caseData?: CaseWithTasksDto;
+  onApproveCase?: (caseData: CaseWithTasksDto) => void;
+  onApproveCaseCreation?: (caseData: CaseWithTasksDto) => void;
+  onRejectCaseCreation?: (caseData: CaseWithTasksDto) => void;
+  onAbandonCase?: (caseData: CaseWithTasksDto) => void;
   onCaseIdClick?: (caseId: string) => void;
   pagination?: {
     currentPage: number;
@@ -96,7 +97,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     { key: 'assignedTo', label: 'Assigned To', width: 'w-48' },
     { key: 'actions', label: 'Actions', width: 'w-40', align: 'left' },
   ];
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string): JSX.Element => {
     const statusConfig = {
       UNASSIGNED: { color: 'bg-gray-100 text-gray-800', label: 'Unassigned' },
       ASSIGNED: { color: 'bg-blue-100 text-blue-800', label: 'Assigned' },
@@ -155,7 +156,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     title: string,
     colorClasses: string,
     disabled = false,
-  ) => (
+  ): JSX.Element => (
     <button
       key={key}
       onClick={onClick}
@@ -168,21 +169,21 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   );
 
   /** Check if the current logged-in user is assigned to this task */
-  const isCurrentUserAssigned = (task: UnifiedWorkQueueTask) =>
+  const isCurrentUserAssigned = (task: UnifiedWorkQueueTask): boolean =>
     task.assignee === currentUser?.userId;
   /** Check if a task can be assigned (unassigned + not special approval tasks) */
-  const canAssignTask = (task: UnifiedWorkQueueTask) =>
+  const canAssignTask = (task: UnifiedWorkQueueTask): boolean =>
     !task.assignee &&
     task.name !== 'Approve Case Closure' &&
     task.name !== 'Approve Case Creation' &&
     task.name !== 'Approve Case Reopening';
   /** Check if a task can be reassigned (has assignee + callback exists) */
-  const canReassignTask = (task: UnifiedWorkQueueTask) =>
-    task.assignee && onReassign;
+  const canReassignTask = (task: UnifiedWorkQueueTask): boolean =>
+    Boolean(task.assignee && onReassign);
 
   /** Check if a task can be unassigned (has assignee + callback exists) */
-  const canUnassignTask = (task: UnifiedWorkQueueTask) =>
-    task.assignee && onUnassign;
+  const canUnassignTask = (task: UnifiedWorkQueueTask): boolean =>
+    Boolean(task.assignee && onUnassign);
 
   const addAssignAction = (
     actions: React.ReactNode[],

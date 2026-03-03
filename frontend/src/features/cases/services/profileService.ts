@@ -61,7 +61,7 @@ export class ProfileService {
       let { tenantId } = request;
       if (user) {
         try {
-          const userData = JSON.parse(user);
+          const userData = JSON.parse(user) as { tenantId?: string };
           tenantId = userData.tenantId ?? request.tenantId;
         } catch {
           // Ignore JSON parse errors and use the default tenantId
@@ -72,7 +72,7 @@ export class ProfileService {
         { ...request, tenantId },
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'generate transaction profile');
     }
   }
@@ -83,16 +83,26 @@ export class ProfileService {
         `${this.baseUrl}/${caseId}`,
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get transaction profile');
     }
   }
 
-  private handleError(error: any, operation: string): Error {
-    if (error.response?.data) {
-      return new Error(error.response.data.message ?? `Failed to ${operation}`);
+  private handleError(error: unknown, operation: string): Error {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error &&
+      typeof (error as { response?: unknown }).response === 'object' &&
+      (error as { response?: { data?: { message?: string } } }).response?.data
+    ) {
+      const data = (error as { response: { data: { message?: string } } }).response.data;
+      return new Error(data.message ?? `Failed to ${operation}`);
     }
-    return new Error(`Failed to ${operation}: ${error.message}`);
+    if (error instanceof Error) {
+      return new Error(`Failed to ${operation}: ${error.message}`);
+    }
+    return new Error(`Failed to ${operation}`);
   }
 }
 

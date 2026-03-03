@@ -382,7 +382,7 @@ const Reports: React.FC = () => {
             title="Case Status Details"
             onExportExcel={handleExportExcel}
             onExportCSV={handleExportCSV}
-            onExportPDF={handleExportPDF}
+            onExportPDF={() => { void handleExportPDF(); }}
           />
         </>
       )}

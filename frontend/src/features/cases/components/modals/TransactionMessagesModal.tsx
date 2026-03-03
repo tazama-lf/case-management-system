@@ -28,7 +28,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
   const [selectedMessage, setSelectedMessage] =
     useState<TransactionMessage | null>(null);
 
-  const handleMessageClick = (message: TransactionMessage) => {
+  const handleMessageClick = (message: TransactionMessage): void => {
     setSelectedMessage(message);
     setPayloadModalOpen(true);
   };

@@ -127,7 +127,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleGenerateReport = () => {
+  const handleGenerateReport = (): void => {
     const isValid = validateForm();
 
     if (!isValid) {
@@ -137,12 +137,12 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     setShowReportModal(true);
   };
 
-  const handleApproveSubmit = (e: React.FormEvent) => {
+  const handleApproveSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     approveCase();
   };
 
-  const approveCase = async () => {
+  const approveCase = async (): Promise<void> => {
     if (!validateForm()) return;
 
     setIsSubmitting(true);
@@ -173,7 +173,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     }
   }, [open]);
 
-  const handleRejectSubmit = async (e: React.FormEvent) => {
+  const handleRejectSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -196,7 +196,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     }
   };
 
-  const handleClose = () => {
+  const handleClose = (): void => {
     if (!isSubmitting) {
       onClose();
       setActiveTab('approve');
@@ -424,7 +424,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
 
             {/* Reject Tab Content */}
             {activeTab === 'reject' && (
-              <form onSubmit={handleRejectSubmit} className="space-y-6">
+              <form onSubmit={(e) => { void handleRejectSubmit(e); }} className="space-y-6">
                 {/* Info Box */}
                 <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
                   <p className="text-sm text-yellow-800">
@@ -542,7 +542,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
             {activeTab === 'reject' && (
               <button
                 type="button"
-                onClick={handleRejectSubmit}
+                onClick={(e) => { void handleRejectSubmit(e as unknown as React.FormEvent); }}
                 disabled={
                   isSubmitting || formData.rejectionReason.trim().length < 4
                 }
@@ -579,10 +579,12 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
           caseData={caseData ?? undefined}
           selectedOutcome={formData.finalOutcome}
           selectedFinalNotes={formData.supervisorComments}
-          onApproved={async () => {
-            await approveCase();
-            setReportApproved(true);
-            setShowReportModal(false);
+          onApproved={() => {
+            void (async () => {
+              await approveCase();
+              setReportApproved(true);
+              setShowReportModal(false);
+            })();
           }}
         />
       </Suspense>

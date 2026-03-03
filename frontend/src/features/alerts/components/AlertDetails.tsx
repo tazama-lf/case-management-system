@@ -17,7 +17,7 @@ interface AlertDetailsContextType {
 
 const AlertDetailsContext = createContext<AlertDetailsContextType | null>(null);
 
-const useAlertDetailsContext = () => {
+const useAlertDetailsContext = (): AlertDetailsContextType => {
   const context = useContext(AlertDetailsContext);
   if (!context) {
     throw new Error(
@@ -94,7 +94,7 @@ const AlertDetailsHeader: React.FC<AlertDetailsHeaderProps> = ({
 
   if (!alert) return null;
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string): string => {
     switch (priority?.toUpperCase()) {
       case 'BREACH':
         return 'text-red-600 bg-red-100';
@@ -174,7 +174,7 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
 
   if (!alert) return null;
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string): string => {
     try {
       return new Date(dateString).toLocaleString();
     } catch {
@@ -182,7 +182,7 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
     }
   };
 
-  const renderJSONData = (data: unknown, title: string) => {
+  const renderJSONData = (data: unknown, title: string): React.ReactElement | null => {
     if (!data) return null;
 
     return (

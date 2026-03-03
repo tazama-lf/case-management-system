@@ -25,7 +25,7 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
 
   const isReasonValid = reason.trim().length >= 4;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     if (!caseData || !isReasonValid) return;
 
@@ -48,7 +48,7 @@ const AbandonCaseModal: React.FC<AbandonCaseModalProps> = ({
     }
   };
 
-  const handleClose = () => {
+  const handleClose = (): void => {
     if (!isSubmitting) {
       setReason('');
       setErrors({});

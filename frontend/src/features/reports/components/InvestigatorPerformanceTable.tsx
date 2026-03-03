@@ -170,17 +170,17 @@ const InvestigatorPerformanceTable: React.FC<
                     <div
                       className="break-all"
                       title={
-                        (row as any).investigatorId ??
-                        (row as any).investigator_id ??
-                        (row as any).userId ??
-                        (row as any).user_id ??
+                        row.investigatorId ??
+                        row.investigator_id ??
+                        row.userId ??
+                        row.user_id ??
                         ''
                       }
                     >
-                      {(row as any).investigatorId ??
-                        (row as any).investigator_id ??
-                        (row as any).userId ??
-                        (row as any).user_id ??
+                      {row.investigatorId ??
+                        row.investigator_id ??
+                        row.userId ??
+                        row.user_id ??
                         'N/A'}
                     </div>
                   </td>

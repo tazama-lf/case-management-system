@@ -180,7 +180,7 @@ class TriageService {
     }
   }
 
-  async getAlertTransactionalData(alertId: number) {
+  async getAlertTransactionalData(alertId: number): Promise<TransactionHistoryDto[]> {
     try {
       const response = await apiClient.get<TransactionHistoryDto[]>(
         `${this.alertBaseUrl}/${alertId}/transaction-data`,

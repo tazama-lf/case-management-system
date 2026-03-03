@@ -117,7 +117,15 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
   }
 };
 
-export const useAlerts = () => {
+export const useAlerts = (): AlertsState & {
+  pagination: AlertsState['pagination'];
+  paginatedAlerts: Alert[];
+  setFilters: (filters: Partial<AlertsSearchFilters>) => void;
+  setSort: (column: keyof Alert | string, direction: 'asc' | 'desc') => void;
+  setPage: (page: number) => void;
+  setPageSize: (pageSize: number) => void;
+  refreshAlerts: () => Promise<void>;
+} => {
   const [state, dispatch] = useReducer(alertsReducer, initialState);
 
   const fetchAlerts = useCallback(async () => {
@@ -172,19 +180,19 @@ export const useAlerts = () => {
     }
   }, [state.filters.query]);
 
-  const setFilters = (filters: Partial<AlertsSearchFilters>) => {
+  const setFilters = (filters: Partial<AlertsSearchFilters>): void => {
     dispatch({ type: 'SET_FILTERS', payload: filters });
   };
 
-  const setSort = (column: keyof Alert | string, direction: 'asc' | 'desc') => {
+  const setSort = (column: keyof Alert | string, direction: 'asc' | 'desc'): void => {
     dispatch({ type: 'SET_SORT', payload: { column, direction } });
   };
 
-  const setPage = (page: number) => {
+  const setPage = (page: number): void => {
     dispatch({ type: 'SET_PAGE', payload: page });
   };
 
-  const setPageSize = (pageSize: number) => {
+  const setPageSize = (pageSize: number): void => {
     dispatch({ type: 'SET_PAGE_SIZE', payload: pageSize });
   };
 

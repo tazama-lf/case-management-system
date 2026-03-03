@@ -18,7 +18,7 @@ export const useApproveCaseActions = (refreshCases: () => Promise<void>): {
       | 'STATUS_82_CLOSED_CONFIRMED'
       | 'STATUS_83_CLOSED_INCONCLUSIVE',
     supervisorComments?: string,
-  ) => {
+  ): Promise<void> => {
     try {
       const approveCaseData: ApproveCaseClosureDto = {
         finalOutcome,
@@ -56,7 +56,7 @@ export const useApproveCaseActions = (refreshCases: () => Promise<void>): {
     }
   };
 
-  const handleApproveCreation = async (caseId: number) => {
+  const handleApproveCreation = async (caseId: number): Promise<void> => {
     try {
       await caseService.approveCaseCreation(caseId);
 
@@ -85,7 +85,7 @@ export const useApproveCaseActions = (refreshCases: () => Promise<void>): {
     }
   };
 
-  const handleApproveReopening = async (caseId: number) => {
+  const handleApproveReopening = async (caseId: number): Promise<void> => {
     try {
       await caseService.approveCaseReopening(caseId);
 

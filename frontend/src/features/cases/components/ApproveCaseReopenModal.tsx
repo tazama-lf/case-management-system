@@ -22,7 +22,7 @@ const ApproveCaseReopenModal: React.FC<ApproveCaseReopenModalProps> = ({
 
   if (!open) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
@@ -69,7 +69,7 @@ const ApproveCaseReopenModal: React.FC<ApproveCaseReopenModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={(e) => { void handleSubmit(e); }} className="p-6">
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Supervisor Comments (optional)

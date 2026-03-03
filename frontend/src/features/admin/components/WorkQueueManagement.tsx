@@ -32,7 +32,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
   const { searchTerm, setSearchTerm, filteredQueues } =
     useWorkQueueFilter(workQueues);
 
-  const handleCreateQueue = () => {
+  const handleCreateQueue = (): void => {
     setCreateModalOpen(true);
   };
 
@@ -46,9 +46,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
           <p className="font-semibold">Error loading work queues</p>
           <p className="text-sm mt-1">{error || 'An error occurred'}</p>
           <button
-            onClick={async () => {
-              await refetch();
-            }}
+            onClick={() => { void refetch(); }}
             className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
             Retry
@@ -124,7 +122,7 @@ const WorkQueueManagement: React.FC<WorkQueueManagementProps> = ({
         onClose={() => {
           setCreateModalOpen(false);
         }}
-        onCreate={refetch}
+        onCreate={() => { void refetch(); }}
       />
     </PageContainer>
   );

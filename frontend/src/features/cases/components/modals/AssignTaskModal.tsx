@@ -67,7 +67,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     }
   }, [open]);
 
-  const fetchCurrentUserAsInvestigator = () => {
+  const fetchCurrentUserAsInvestigator = (): void => {
     try {
       const user = authService.getUser();
       if (user && user.userId) {
@@ -231,7 +231,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
               Cancel
             </button>
             <button
-              onClick={handleAssign}
+              onClick={() => { void handleAssign(); }}
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!canConfirm || submitting}
             >

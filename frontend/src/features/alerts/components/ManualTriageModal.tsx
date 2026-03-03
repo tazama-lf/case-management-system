@@ -53,7 +53,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({
     setPriority(newPriority);
   }, [priorityScore]);
 
-  const validateForm = () => {
+  const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
     if (!note.trim()) {
@@ -104,7 +104,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({
     }
   }, [alertType]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -178,7 +178,7 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({
               </div>
             )}
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={(e) => { void handleSubmit(e); }}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {}
                 <div className="mb-4">

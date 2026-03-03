@@ -67,7 +67,7 @@ const ConfirmUploadEvidenceModal: React.FC<ConfirmUploadEvidenceModalProps> = ({
           </button>
 
           <button
-            onClick={onConfirm}
+            onClick={() => { void onConfirm(); }}
             disabled={isUploading}
             className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
           >

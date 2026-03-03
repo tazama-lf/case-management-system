@@ -24,7 +24,7 @@ const DeleteEvidenceModal = <
 }: DeleteEvidenceModalProps<T>) => {
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async (): Promise<void> => {
     if (!evidenceToDelete) return;
 
     try {
@@ -88,7 +88,7 @@ const DeleteEvidenceModal = <
             </button>
 
             <button
-              onClick={handleConfirmDelete}
+              onClick={() => { void handleConfirmDelete(); }}
               className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               disabled={isDeleting}
             >

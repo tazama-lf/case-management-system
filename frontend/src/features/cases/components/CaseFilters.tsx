@@ -141,7 +141,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     }
   }, [caseTypeFilter, statusFilter, onStatusFilterChange]);
 
-  const fetchSavedFilters = React.useCallback(async () => {
+  const fetchSavedFilters = React.useCallback(async (): Promise<void> => {
     try {
       const currentUser = authService.getUser();
       const userId = currentUser?.userId;
@@ -179,7 +179,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     fetchSavedFilters();
   }, [fetchSavedFilters]);
 
-  const handleSavedFilterSelect = (filterId: string) => {
+  const handleSavedFilterSelect = (filterId: string): void => {
     setSelectedSavedFilterId(filterId);
 
     const filter = savedFilters.find((f) => f.id === filterId);
@@ -191,7 +191,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     onSarStrStatusFilterChange(filter.sarStrStatus);
   };
 
-  const handleSaveCurrentFilters = async () => {
+  const handleSaveCurrentFilters = async (): Promise<void> => {
     try {
       const currentUser = authService.getUser();
       const currentUserId = currentUser?.userId;
@@ -219,7 +219,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
 
       // Refresh the saved filters list to show the newly created filter
       await fetchSavedFilters();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error saving filter:', err);
 
       // Check if it's a duplicate filter error
@@ -420,7 +420,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
 
             {hasActiveFilters && (
               <button
-                onClick={handleSaveCurrentFilters}
+                onClick={() => { void handleSaveCurrentFilters(); }}
                 className="px-4 py-2 rounded-md bg-indigo-600 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
               >
                 Save Current Filters

@@ -6,6 +6,16 @@ import type {
   CaseSummary,
 } from '../types/dashboard.types';
 
+interface CaseStatusResponse {
+  stats?: {
+    totalCases?: number;
+    openCases?: number;
+    closedCases?: number;
+  };
+  caseTypes?: Array<{ name: string; count: number }>;
+  statusDistribution?: Record<string, number>;
+}
+
 class DashboardService {
   async getDashboardData(): Promise<DashboardData> {
     try {
@@ -28,14 +38,14 @@ class DashboardService {
 
   async getDashboardStats(): Promise<DashboardStats> {
     try {
-      const response = (await apiClient.get(
+      const response = await apiClient.get<CaseStatusResponse>(
         '/api/v1/reports/case-status?dateRange=last30',
-      )) as any;
+      );
 
       return {
         totalAlerts: response.stats?.totalCases ?? 0,
         highPriorityAlerts:
-          response.caseTypes?.find((ct: any) => ct.name === 'FRAUD')?.count ?? 0,
+          response.caseTypes?.find((ct) => ct.name === 'FRAUD')?.count ?? 0,
         openCases: response.stats?.openCases ?? 0,
         casesResolvedThisWeek: response.stats?.closedCases ?? 0,
       };
@@ -52,13 +62,13 @@ class DashboardService {
 
   async getRecentAlerts(): Promise<AlertSummary[]> {
     try {
-      const response = (await apiClient.get(
+      const response = await apiClient.get<CaseStatusResponse>(
         '/api/v1/reports/case-status?dateRange=last7',
-      )) as any;
+      );
 
       const caseTypes = response.caseTypes ?? [];
 
-      return caseTypes.map((caseType: any) => ({
+      return caseTypes.map((caseType) => ({
         priority: this.mapCaseTypeToPriority(caseType.name),
         count: caseType.count,
         description: `${caseType.name.toLowerCase()} cases requiring attention`,
@@ -87,9 +97,9 @@ class DashboardService {
 
   async getActiveCases(): Promise<CaseSummary[]> {
     try {
-      const response = (await apiClient.get(
+      const response = await apiClient.get<CaseStatusResponse>(
         '/api/v1/reports/case-status?dateRange=last30',
-      )) as any;
+      );
       const statusDist = response.statusDistribution ?? {};
 
       return [

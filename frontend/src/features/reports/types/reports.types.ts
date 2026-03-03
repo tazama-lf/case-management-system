@@ -91,6 +91,9 @@ export interface OutcomeDistribution {
 export interface InvestigatorPerformance {
   investigator: string;
   investigatorId: string;
+  investigator_id?: string;
+  userId?: string;
+  user_id?: string;
   role: string;
   activeCases: number;
   completedCases: number;
@@ -220,6 +223,10 @@ export interface CaseAgeingDetail {
   ageDays: number;
   priority: string;
   investigator: string;
+  userId?: string;
+  user_id?: string;
+  assigneeId?: string;
+  assignee_id?: string;
 }
 
 export interface CaseAgeingData {

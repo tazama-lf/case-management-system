@@ -27,7 +27,7 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
   const isReasonValid = reason.trim().length >= 4;
 
   React.useEffect(() => {
-    const fetchAlertDetails = async () => {
+    const fetchAlertDetails = async (): Promise<void> => {
       if (open && caseData?.alertId) {
         setLoadingAlert(true);
         try {
@@ -117,7 +117,7 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
         </div>
 
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+        <form onSubmit={(e) => { void handleSubmit(e); }} className="flex-1 overflow-y-auto">
           <div className="p-6">
             {/* Workflow Information */}
             <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
@@ -359,7 +359,7 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
           </button>
           <button
             type="submit"
-            onClick={handleSubmit}
+            onClick={(e) => { void handleSubmit(e as unknown as React.FormEvent); }}
             disabled={isSubmitting || !isReasonValid}
             className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >

@@ -42,12 +42,21 @@ export class CaseHistoryService {
     }
   }
 
-  private handleError(error: any, operation: string): Error {
-    if (error.response?.data) {
-      const apiError = error.response.data as ApiErrorResponse;
+  private handleError(error: unknown, operation: string): Error {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error &&
+      typeof (error as { response?: unknown }).response === 'object' &&
+      (error as { response?: { data?: ApiErrorResponse } }).response?.data
+    ) {
+      const apiError = (error as { response: { data: ApiErrorResponse } }).response.data;
       return new Error(apiError.message || `Failed to ${operation}`);
     }
-    return new Error(`Failed to ${operation}: ${error.message}`);
+    if (error instanceof Error) {
+      return new Error(`Failed to ${operation}: ${error.message}`);
+    }
+    return new Error(`Failed to ${operation}`);
   }
 }
 

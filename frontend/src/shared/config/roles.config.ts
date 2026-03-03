@@ -100,7 +100,7 @@ export function getEffectiveRoles(userRoles: string[]): string[] {
 
   userRoles.forEach((role) => {
     const hierarchy = ROLE_HIERARCHY[role as Role] || [role];
-    hierarchy.forEach((inheritedRole) => effectiveRoles.add(inheritedRole));
+    hierarchy.forEach((inheritedRole) => { effectiveRoles.add(inheritedRole); });
   });
 
   return Array.from(effectiveRoles);

@@ -95,7 +95,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     },
   );
 
-  const handleTimeRangeChange = (value: string) => {
+  const handleTimeRangeChange = (value: string): void => {
     onFilterChange('timeRange', value);
     if (value === 'custom') {
       setShowCustomDatePicker(true);
@@ -107,12 +107,12 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
   const handleCustomDateChange = (
     field: 'startDate' | 'endDate',
     value: string,
-  ) => {
+  ): void => {
     const newRange = { ...customDateRange, [field]: value };
     onCustomDateRangeChange(newRange);
   };
 
-  const formatDisplayValue = (value: string, type: 'priority' | 'status') => {
+  const formatDisplayValue = (value: string, type: 'priority' | 'status'): string => {
     switch (type) {
       case 'priority':
         return value.charAt(0) + value.slice(1).toLowerCase();
@@ -173,7 +173,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     setSelectedSavedFilterId('');
   }, [fetchSavedFilters]);
 
-  const handleSavedFilterSelect = (filterId: string) => {
+  const handleSavedFilterSelect = (filterId: string): void => {
     setSelectedSavedFilterId(filterId);
 
     const filter = savedFilters.find((f) => f.id === filterId);
@@ -184,7 +184,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     onFilterChange('source', filter.source);
   };
 
-  const handleSaveCurrentFilters = async () => {
+  const handleSaveCurrentFilters = async (): Promise<void> => {
     try {
       const currentUser = authService.getUser();
       const currentUserId = currentUser?.userId;
@@ -208,7 +208,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
         `Saved with: Alert Type: ${searchFilters.type || 'ALL'}, Priority: ${searchFilters.priority || 'ALL'},
             Source: ${searchFilters.source || 'ALL'}, Time Range: ${searchFilters.timeRange || 'ALL'}, StarDate: ${customDateRange.startDate || 'None'}, EndDate: ${customDateRange.endDate || 'None'}`,
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error saving filter:', err);
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to save filter';
@@ -440,7 +440,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             {/* Save Current Filters Button */}
             {hasActiveFilters && (
               <button
-                onClick={handleSaveCurrentFilters}
+                onClick={() => { void handleSaveCurrentFilters(); }}
                 className="px-6 py-2 rounded-md bg-indigo-600 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
               >
                 Save Current Filters

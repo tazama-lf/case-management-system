@@ -148,7 +148,7 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({ dateRange }) => {
         title="Case Ageing Details"
         onExportExcel={handleExportExcel}
         onExportCSV={handleExportCSV}
-        onExportPDF={handleExportPDF}
+        onExportPDF={() => { void handleExportPDF(); }}
       />
     </>
   );

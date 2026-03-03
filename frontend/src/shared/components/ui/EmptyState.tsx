@@ -24,7 +24,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   action,
   className = '',
 }) => {
-  const renderIcon = () => {
+  const renderIcon = () : React.ReactNode => {
     if (React.isValidElement(icon)) {
       return icon;
     }
@@ -42,7 +42,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
     }
   };
 
-  const getActionClasses = () => {
+  const getActionClasses = () : string => {
     const baseClasses =
       'inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium';
 

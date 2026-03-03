@@ -30,7 +30,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     setCredentials((prev) => ({
       ...prev,
@@ -39,7 +39,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     if (error) clearError();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
 
     const activeSession = localStorage.getItem('ACTIVE_AUTH_SESSION');
@@ -59,7 +59,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const togglePasswordVisibility = () => {
+  const togglePasswordVisibility = (): void => {
     setShowPassword(!showPassword);
   };
 
@@ -92,7 +92,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4">
               {}
               <div>
                 <label htmlFor="username" className="form-label">

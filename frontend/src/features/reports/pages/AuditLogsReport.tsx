@@ -93,7 +93,7 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({ dateRange }) => {
         data={auditLogs}
         onExportExcel={handleExportExcel}
         onExportCSV={handleExportCSV}
-        onExportPDF={handleExportPDF}
+        onExportPDF={() => { void handleExportPDF(); }}
         isLoading={isLoading}
       />
     </>

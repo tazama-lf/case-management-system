@@ -6,7 +6,7 @@ export const useAbandonCaseActions = (refreshCases: () => Promise<void>): {
 } => {
   const { success, error } = useToast();
 
-  const handleAbandonSubmit = async (caseId: number, reason: string) => {
+  const handleAbandonSubmit = async (caseId: number, reason: string): Promise<void> => {
     try {
       const abandonCaseData: AbandonCaseDto = {
         reason: reason.trim(),

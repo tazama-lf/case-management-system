@@ -81,7 +81,8 @@ const getRiskBreakdown = (alert: TriageAlert) => {
           if (Array.isArray(maybeRules)) {
             return maybeRules.map((r) => {
               const rec = r as Record<string, unknown>;
-              const id = (rec.id as string) || String(rec.ruleId ?? 'unknown');
+              const ruleId = typeof rec.ruleId === 'string' ? rec.ruleId : typeof rec.ruleId === 'number' ? String(rec.ruleId) : 'unknown';
+              const id = (rec.id as string) || ruleId;
               const name = (rec.label as string) || (rec.name as string) || id;
               const type =
                 (rec.subRuleRef as string) ||
@@ -135,7 +136,7 @@ const getRiskBreakdown = (alert: TriageAlert) => {
   return components;
 };
 
-const extractTypologyInfo = (alert: TriageAlert) => {
+const extractTypologyInfo = (alert: TriageAlert): { id: string | undefined; label: string | undefined; result: number | undefined } => {
   try {
     const maybe = alert.alert_data as unknown;
     if (maybe && typeof maybe === 'object') {
@@ -162,7 +163,7 @@ const extractTypologyInfo = (alert: TriageAlert) => {
   return { id: undefined, label: undefined, result: undefined };
 };
 
-const escapeHtml = (unsafe: string) =>
+const escapeHtml = (unsafe: string): string =>
   unsafe
     .replace(/&/gu, '&amp;')
     .replace(/</gu, '&lt;')
@@ -170,7 +171,7 @@ const escapeHtml = (unsafe: string) =>
     .replace(/"/gu, '&quot;')
     .replace(/'/gu, '&#039;');
 
-const syntaxHighlightJson = (obj: unknown) => {
+const syntaxHighlightJson = (obj: unknown): string => {
   const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
   const escaped = escapeHtml(json);
 
@@ -197,7 +198,7 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
   const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUsername = async () => {
+    const fetchUsername = async (): Promise<void> => {
       try {
         const userDetails = await userService.getUserDetailsById(
           action.user_id,
@@ -264,7 +265,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const canPerformActions = canActOnCase(caseDetails?.status);
 
   useEffect(() => {
-    const fetchAlertDetails = async () => {
+    const fetchAlertDetails = async (): Promise<void> => {
       if (!alertId || !isOpen) {
         setAlert(null);
         return;
@@ -275,7 +276,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       setError(null);
 
       try {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise<void>(resolve => { setTimeout(resolve, 500); });
         const alertDetails = await triageService.getAlertById(alertId);
         setAlert(alertDetails);
 
@@ -308,7 +309,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
   // Check if Complete New Case task is completed
   useEffect(() => {
-    const checkCompleteNewCaseStatus = async () => {
+    const checkCompleteNewCaseStatus = async (): Promise<void> => {
       if (!alert?.case_id) {
         setIsCompleteNewCaseCompleted(false);
         return;
@@ -401,7 +402,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     return null;
   }
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string): string => {
     switch (priority?.toLowerCase()) {
       case 'critical':
         return 'text-red-600 bg-red-50';

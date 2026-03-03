@@ -77,12 +77,16 @@ const CaseVolumeTrendChart: React.FC<CaseVolumeTrendChartProps> = ({
     ...item.investigators,
   }));
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: {
+    active?: boolean;
+    payload?: Array<{ name: string; value: number; color: string }>;
+    label?: string;
+  }) => {
     if (active && payload?.length) {
       return (
         <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-3">
           <p className="font-semibold text-gray-700 mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index: number) => (
             <p key={index} style={{ color: entry.color }} className="text-sm">
               {entry.name} : {entry.value}
             </p>

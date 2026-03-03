@@ -1,6 +1,7 @@
 import apiClient from '../../../shared/services/apiClient';
 import type {
   Evidence,
+  EvidenceAttachment,
   UploadEvidenceDto,
   UploadEvidenceResponse,
   VerifyEvidenceResponse,
@@ -12,15 +13,15 @@ import type {
 export class EvidenceService {
   private readonly baseUrl = '/api/v1/evidence';
 
-  private normalizeEvidenceData(evidence: any): any {
+  private normalizeEvidenceData(evidence: Evidence): Evidence {
     if (!evidence) return evidence;
 
     const firstAttachment = evidence.attachments?.[0];
 
-    const totalFileSize =
+    const totalFileSize: number =
       evidence.fileSize ??
       (evidence.attachments?.reduce(
-        (sum: number, att: any) => sum + (att.fileSize ?? 0),
+        (sum: number, att: EvidenceAttachment) => sum + (att.fileSize ?? 0),
         0,
       ) ??
         0);
@@ -28,8 +29,7 @@ export class EvidenceService {
     return {
       ...evidence,
       fileName: evidence.fileName ?? firstAttachment?.fileName ?? 'unknown',
-      fileSize: evidence.fileSize ?? totalFileSize,
-      file_size: evidence.file_size ?? totalFileSize,
+      fileSize: evidence.fileSize ? evidence.fileSize : totalFileSize,
       mimeType:
         evidence.mimeType ??
         firstAttachment?.mimeType ??
@@ -190,8 +190,8 @@ export class EvidenceService {
         throw new Error('No authentication token found. Please log in again.');
       }
 
-      const baseApiUrl =
-        import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3000';
+      const baseApiUrl: string =
+        (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://127.0.0.1:3000';
       const url = `${baseApiUrl}${this.baseUrl}/${evidenceId}/download`;
 
       const response = await fetch(url, {
@@ -209,7 +209,7 @@ export class EvidenceService {
         try {
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
-            const errorData = await response.json();
+            const errorData = await response.json() as { message?: string; error?: string };
             errorMessage = errorData.message ?? errorData.error ?? errorMessage;
           } else {
             const errorText = await response.text();

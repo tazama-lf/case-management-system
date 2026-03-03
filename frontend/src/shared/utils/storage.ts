@@ -37,7 +37,7 @@ const extractData = (
   key: string,
   type: StorageType = SessionStorage,
   encrypted = true,
-): any => {
+): unknown => {
   let data: string | null | undefined;
 
   switch (type) {
@@ -60,7 +60,7 @@ const extractData = (
     return decrypt(data);
   }
 
-  return JSON.parse(data);
+  return JSON.parse(data) as unknown;
 };
 
 const removeData = (
@@ -85,12 +85,13 @@ const removeData = (
   }
 };
 
-const getAuthToken = (): any => extractData('access_token');
+const getAuthToken = (): unknown => extractData('access_token');
 
 const resetData = (): void => {
   sessionStorage.clear();
   localStorage.clear();
-  Object.keys(Cookies.get()).forEach((key) => {
+  const allCookies = Cookies.get();
+  Object.keys(allCookies).forEach((key) => {
     Cookies.remove(key);
   });
 };

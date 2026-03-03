@@ -34,7 +34,7 @@ const UpdateTaskStatusModal: React.FC<UpdateTaskStatusModalProps> = ({
     { value: 'In Progress', label: 'In Progress', color: 'text-yellow-700' },
   ];
 
-  const getStatusDescription = (status: string) => {
+  const getStatusDescription = (status: string): string => {
     const descriptions = {
       'In Progress': 'Task is actively being worked on',
     };

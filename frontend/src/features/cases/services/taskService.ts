@@ -22,6 +22,7 @@ export interface TaskForSupervisor {
   investigationNotes?: string;
   created_at: string;
   updated_at: string;
+  sla_deadline?: string;
 
   assignedUser?: {
     user_id: string;
@@ -97,9 +98,9 @@ export class TaskService {
     try {
       const params = new URLSearchParams();
       if (filters) {
-        Object.entries(filters).forEach(([key, value]) => {
+        (Object.entries(filters) as [string, string | number | undefined][]).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
-            params.append(key, value.toString());
+            params.append(key, String(value));
           }
         });
       }
@@ -108,7 +109,7 @@ export class TaskService {
         `${this.baseUrl}?${params}`,
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get tasks');
     }
   }
@@ -125,7 +126,7 @@ export class TaskService {
 
       const response = await apiClient.get<TaskForSupervisor[]>(url);
       return Array.isArray(response) ? response : [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         'TaskService: Failed to get all tasks from backend:',
         error,
@@ -138,7 +139,7 @@ export class TaskService {
     try {
       const response = await apiClient.get<Task>(`${this.baseUrl}/${taskId}`);
       return this.validateTaskResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get task details');
     }
   }
@@ -158,7 +159,7 @@ export class TaskService {
       );
 
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('TaskService: Task assignment failed:', error);
       throw this.handleError(error, 'assign task to investigator');
     }
@@ -179,7 +180,7 @@ export class TaskService {
       });
 
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('TaskService: Task reassignment failed:', error);
       throw this.handleError(error, 'reassign task');
     }
@@ -195,7 +196,7 @@ export class TaskService {
         message: string;
       }>(`${this.baseUrl}/${taskId}/assign`, data);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'assign task');
     }
   }
@@ -210,7 +211,7 @@ export class TaskService {
         message: string;
       }>(`${this.baseUrl}/${taskId}/unassign`, data);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'unassign task');
     }
   }
@@ -222,7 +223,7 @@ export class TaskService {
         data,
       );
       return this.validateTaskResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'update task');
     }
   }
@@ -243,7 +244,7 @@ export class TaskService {
         data,
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'update task for supervisor');
     }
   }
@@ -254,7 +255,7 @@ export class TaskService {
     try {
       const response = await apiClient.post<Task>(this.baseUrl, data);
       return this.validateTaskResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'create task');
     }
   }
@@ -265,7 +266,7 @@ export class TaskService {
 
       const response = await apiClient.get<TaskForSupervisor[]>(url);
       return Array.isArray(response) ? response : [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         'TaskService: Failed to get tasks for case:',
         caseId,
@@ -285,7 +286,7 @@ export class TaskService {
         t.name?.toLowerCase().includes('investigation'),
       );
       return investigationTask ?? null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         'TaskService: Failed to get investigation task for case:',
         caseId,
@@ -309,7 +310,7 @@ export class TaskService {
         success: true,
         message: 'Task completed successfully',
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'complete task');
     }
   }
@@ -329,7 +330,7 @@ export class TaskService {
         success: true,
         message: 'Task closed successfully',
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'close task');
     }
   }
@@ -365,12 +366,21 @@ export class TaskService {
     return task;
   }
 
-  private handleError(error: any, operation: string): Error {
-    if (error.response?.data) {
-      const apiError = error.response.data as ApiErrorResponse;
+  private handleError(error: unknown, operation: string): Error {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error &&
+      typeof (error as { response?: unknown }).response === 'object' &&
+      (error as { response?: { data?: ApiErrorResponse } }).response?.data
+    ) {
+      const apiError = (error as { response: { data: ApiErrorResponse } }).response.data;
       return new Error(apiError.message || `Failed to ${operation}`);
     }
-    return new Error(`Failed to ${operation}: ${error.message}`);
+    if (error instanceof Error) {
+      return new Error(`Failed to ${operation}: ${error.message}`);
+    }
+    return new Error(`Failed to ${operation}`);
   }
 }
 

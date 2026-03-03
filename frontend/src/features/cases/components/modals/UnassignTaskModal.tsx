@@ -39,7 +39,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
     }
   }, []);
 
-  const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
+  const getAssigneeFullName = (assigneeName?: string, assignee?: string): string | undefined => {
     const compliance = complianceOfficers.find(
       (i) => i.id === assigneeName || i.id === assignee,
     );
@@ -58,7 +58,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
     return assigneeName ?? assignee;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     if (!task || !reason.trim()) return;
 
@@ -74,7 +74,7 @@ const UnassignTaskModal: React.FC<UnassignTaskModalProps> = ({
     }
   };
 
-  const handleClose = () => {
+  const handleClose = (): void => {
     if (!isSubmitting) {
       setReason('');
       onClose();

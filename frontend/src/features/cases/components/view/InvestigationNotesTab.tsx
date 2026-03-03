@@ -177,7 +177,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
           {isUserAbleToSaveNotes() && (
             <div className="flex justify-end gap-2">
               <button
-                onClick={handleSaveNotes}
+                onClick={() => { void handleSaveNotes(); }}
                 disabled={
                   saving ||
                   !notes.trim() ||

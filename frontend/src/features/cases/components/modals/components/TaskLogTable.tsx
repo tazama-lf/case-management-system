@@ -52,7 +52,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
     { key: 'assignedTo', label: 'Assigned To', width: 'w-48' },
     { key: 'actions', label: 'Actions', width: 'w-40', align: 'right' },
   ];
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string): JSX.Element => {
     const statusConfig = {
       UNASSIGNED: {
         color: 'bg-gray-100 text-gray-800',
@@ -88,7 +88,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
     );
   };
 
-  const getAvailableActions = (task: UnifiedWorkQueueTask) => {
+  const getAvailableActions = (task: UnifiedWorkQueueTask): React.ReactNode[] => {
     const actions: React.ReactNode[] = [];
 
     // Don't show action buttons for completed tasks

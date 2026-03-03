@@ -126,7 +126,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
   handleApproveReopenSubmit,
   handleRejectReopenSubmit,
 }) => {
-  const ModalLoadingFallback = () => (
+  const ModalLoadingFallback = (): JSX.Element => (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
         <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
@@ -161,7 +161,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
             onClose={() => {
               setIsReopenOpen(false);
             }}
-            onReopen={handleReopenSubmit}
+            onReopen={(...args) => { void handleReopenSubmit(...args); }}
             caseData={selectedRow}
           />
         </Suspense>
@@ -174,7 +174,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
             onClose={() => {
               setIsAbandonOpen(false);
             }}
-            onAbandon={handleAbandonSubmit}
+            onAbandon={(...args) => { void handleAbandonSubmit(...args); }}
             caseData={selectedRow}
           />
         </Suspense>
@@ -187,7 +187,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
             onClose={() => {
               setIsSuspendOpen(false);
             }}
-            onSuspend={handleSuspendSubmit}
+            onSuspend={(...args) => { void handleSuspendSubmit(...args); }}
             caseData={selectedRow}
           />
         </Suspense>
@@ -200,7 +200,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
             onClose={() => {
               setIsResumeOpen(false);
             }}
-            onResume={handleResumeSubmit}
+            onResume={(...args) => { void handleResumeSubmit(...args); }}
             caseData={selectedRow}
           />
         </Suspense>

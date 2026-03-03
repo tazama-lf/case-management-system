@@ -20,7 +20,7 @@ const ReferenceDashboardContent: React.FC = () => {
 
   const canAdd = txnType && referenceId;
 
-  const handleAddReference = async () => {
+  const handleAddReference = async (): Promise<void> => {
     await addReference(txnType, referenceId);
     setTxnType('');
     setReferenceId('');
@@ -62,7 +62,7 @@ const ReferenceDashboardContent: React.FC = () => {
 
             <button
               disabled={!canAdd}
-              onClick={handleAddReference}
+              onClick={() => { void handleAddReference(); }}
               className={`h-10 min-w-[160px] inline-flex items-center justify-center gap-2 px-4 rounded-xl text-white font-medium
         ${canAdd ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-400 cursor-not-allowed'}
       `}

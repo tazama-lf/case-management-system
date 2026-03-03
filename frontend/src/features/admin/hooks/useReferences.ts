@@ -21,7 +21,7 @@ export const useReferenceLookup = (): {
   });
   const { success, error } = useToast();
 
-  const fetchReferences = async () => {
+  const fetchReferences = async (): Promise<void> => {
     setLoading(true);
     try {
       const response = await referenceIdService.getReferenceIds();
@@ -30,14 +30,14 @@ export const useReferenceLookup = (): {
         ...prev,
         totalItems: response.totalCount,
       }));
-    } catch (err: any) {
-      error(err.message);
+    } catch (err: unknown) {
+      error(err instanceof Error ? err.message : 'Failed to fetch references');
     } finally {
       setLoading(false);
     }
   };
 
-  const addReference = async (txnType: string, referenceId: string) => {
+  const addReference = async (txnType: string, referenceId: string): Promise<void> => {
     if (!txnType || !referenceId) return;
 
     setLoading(true);
@@ -51,17 +51,17 @@ export const useReferenceLookup = (): {
         `Reference ID: ${txnType} ${referenceId} added successfully.`,
       );
       await fetchReferences();
-    } catch (err: any) {
-      error('Failed to add Reference', err.message);
+    } catch (err: unknown) {
+      error('Failed to add Reference', err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
 
-  const onPageChange = (page: number) => {
+  const onPageChange = (page: number): void => {
     setPagination((prev) => ({ ...prev, currentPage: page }));
   };
-  const onPageSizeChange = (size: number) => {
+  const onPageSizeChange = (size: number): void => {
     setPagination((prev) => ({ ...prev, pageSize: size }));
   };
 

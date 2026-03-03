@@ -248,12 +248,12 @@ export const AccessibleButton: React.FC<AccessibleButtonProps> = ({
   );
 };
 
-export const useKeyboardNavigation = (
-  items: any[],
+export const useKeyboardNavigation = <T = unknown>(
+  items: T[],
   options: {
     initialIndex?: number;
     loop?: boolean;
-    onSelect?: (index: number, item: any) => void;
+    onSelect?: (index: number, item: T) => void;
     onEscape?: () => void;
   } = {},
 ) => {

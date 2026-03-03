@@ -56,13 +56,13 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
       }
     };
 
-    const timeoutId = setTimeout(loadNALTAlerts, 300);
+    const timeoutId = setTimeout(() => { void loadNALTAlerts(); }, 300);
     return () => {
       clearTimeout(timeoutId);
     };
   }, [isVisible, searchTerm, pagination.pageSize]);
 
-  const handleAlertToggle = (alert: Alert) => {
+  const handleAlertToggle = (alert: Alert): void => {
     const isSelected = selectedAlerts.some(
       (a) => a.alert_id === alert.alert_id,
     );
@@ -76,14 +76,14 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
   };
 
   const handlePageChange = useCallback(
-    (newPage: number) => {
+    (newPage: number): void => {
       setPagination((prev) => ({ ...prev, currentPage: newPage }));
       loadAlertsWithPagination(newPage, pagination.pageSize);
     },
     [pagination.pageSize],
   );
 
-  const handlePageSizeChange = useCallback((newPageSize: number) => {
+  const handlePageSizeChange = useCallback((newPageSize: number): void => {
     setPagination((prev) => ({
       ...prev,
       pageSize: newPageSize,
@@ -93,7 +93,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
   }, []);
 
   const loadAlertsWithPagination = useCallback(
-    async (page: number, limit: number) => {
+    async (page: number, limit: number): Promise<void> => {
       setIsLoading(true);
       try {
         const response = await triageService.getNALTAlerts(
@@ -116,7 +116,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
     [searchTerm],
   );
 
-  const isAlertSelected = (alert: Alert) =>
+  const isAlertSelected = (alert: Alert): boolean =>
     selectedAlerts.some((a) => a.alert_id === alert.alert_id);
 
   const filteredAlerts = React.useMemo(
@@ -124,7 +124,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
     [availableAlerts],
   );
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string): string => {
     try {
       return new Date(dateString).toLocaleDateString('en-US', {
         day: '2-digit',
@@ -136,7 +136,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
     }
   };
 
-  const getRiskScoreBadge = (score: number | string) => {
+  const getRiskScoreBadge = (score: number | string): string => {
     const numScore = typeof score === 'string' ? parseInt(score, 10) : score;
     if (numScore >= 800) return 'bg-red-100 text-red-800';
     if (numScore >= 600) return 'bg-orange-100 text-orange-800';
@@ -144,7 +144,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
     return 'bg-green-100 text-green-800';
   };
 
-  const getTypeBadge = (type: string) => {
+  const getTypeBadge = (type: string): string => {
     switch (type?.toLowerCase()) {
       case 'fraud':
         return 'bg-red-100 text-red-800';

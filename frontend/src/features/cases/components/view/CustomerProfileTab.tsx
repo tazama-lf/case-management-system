@@ -113,7 +113,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
             onChange={(e) => {
               setManualId(e.target.value);
             }}
-            onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
+            onKeyDown={(e) => { if (e.key === 'Enter') { handleManualSearch(); } }}
             placeholder="Try a different transaction ID (e.g., TXN-002-02)"
             className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
@@ -154,7 +154,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
             onChange={(e) => {
               setManualId(e.target.value);
             }}
-            onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
+            onKeyDown={(e) => { if (e.key === 'Enter') { handleManualSearch(); } }}
             placeholder="Enter transaction ID (e.g., TXN-002-02)"
             className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />

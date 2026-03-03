@@ -44,7 +44,7 @@ const CompleteTaskModal: React.FC<CompleteTaskModalProps> = ({
 
   if (!open || !task) return null;
 
-  const handleComplete = () => {
+  const handleComplete = (): void => {
     const completionData = {
       notes: notes || undefined,
       ...(requiresOutcomeDropdown && { recommendedOutcome }),

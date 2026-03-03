@@ -84,7 +84,7 @@ const ReopenCaseModal: React.FC<ReopenCaseModalProps> = ({
               : 'Request reopening of a previously closed case for further investigation or correction.'}
           </p>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={(e) => { void handleSubmit(e); }}>
             <div className="mb-6">
               <label
                 htmlFor="reason"

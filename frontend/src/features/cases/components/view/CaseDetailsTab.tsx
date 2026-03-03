@@ -347,8 +347,8 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
               {row.status.toLowerCase().includes('closed') &&
                 latestReports.INVESTIGATION_REPORT?.reportId && (
                   <button
-                    onClick={async () => {
-                      await handleViewReport(
+                    onClick={() => {
+                      void handleViewReport(
                         latestReports.INVESTIGATION_REPORT!.reportId,
                       );
                     }}

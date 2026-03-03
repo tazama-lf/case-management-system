@@ -199,7 +199,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   React.useEffect(() => {
     if (!open) return;
 
-    const timeoutId = setTimeout(async () => {
+    const timeoutId = setTimeout(() => { void (async () => {
       if (alertSearchTerm.length === 0) {
         try {
           const response = await triageService.getNALTAlerts(undefined, {
@@ -227,7 +227,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
           console.error('Failed to search alerts:', error);
         }
       }
-    }, 300);
+    })(); }, 300);
 
     return () => {
       clearTimeout(timeoutId);
@@ -290,7 +290,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     priority && alertType && (mode === 'edit' || selectedAlert),
   );
 
-  const saveAsDraft = (draft = false) => {
+  const saveAsDraft = (draft = false): void => {
     const errors = validateForm();
 
     if (Object.keys(errors).length > 0 && !draft) {
@@ -324,7 +324,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     }
   };
 
-  const submit = (draft = false) => {
+  const submit = (draft = false): void => {
     const errors = validateForm();
 
     if (Object.keys(errors).length > 0 && !draft) {
@@ -360,7 +360,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
       });
     }
   };
-  const completeCase = () => {
+  const completeCase = (): void => {
     const errors = validateForm();
 
     if (Object.keys(errors).length > 0) {
@@ -843,9 +843,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
               Cancel
             </button>
             <button
-              onClick={async () => {
-                mode === 'edit' ? await completeCase() : submit(false);
-              }}
+              onClick={() => { void (async () => { mode === 'edit' ? await completeCase() : submit(false); })(); }}
               disabled={loading ?? !canSubmit}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >

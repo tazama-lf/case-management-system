@@ -40,7 +40,7 @@ export class CommentService {
         `${this.baseUrl}/case/${caseId}/comment`,
       );
       return Array.isArray(response) ? response : [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         'CommentService: Failed to get tasks with comments for case:',
         caseId,
@@ -56,7 +56,7 @@ export class CommentService {
         `${this.baseUrl}/task/${taskId}/comment`,
       );
       return Array.isArray(response) ? response : [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         'CommentService: Failed to get tasks with comments for task:',
         taskId,
@@ -123,12 +123,21 @@ export class CommentService {
     }
   }
 
-  private handleError(error: any, operation: string): Error {
-    if (error.response?.data) {
-      const apiError = error.response.data as ApiErrorResponse;
+  private handleError(error: unknown, operation: string): Error {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error &&
+      typeof (error as { response?: unknown }).response === 'object' &&
+      (error as { response?: { data?: ApiErrorResponse } }).response?.data
+    ) {
+      const apiError = (error as { response: { data: ApiErrorResponse } }).response.data;
       return new Error(apiError.message || `Failed to ${operation}`);
     }
-    return new Error(`Failed to ${operation}: ${error.message}`);
+    if (error instanceof Error) {
+      return new Error(`Failed to ${operation}: ${error.message}`);
+    }
+    return new Error(`Failed to ${operation}`);
   }
 }
 

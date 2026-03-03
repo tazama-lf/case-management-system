@@ -164,17 +164,17 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
                     <div
                       className="break-all font-mono text-sm"
                       title={
-                        (row as any).userId ??
-                        (row as any).user_id ??
-                        (row as any).assigneeId ??
-                        (row as any).assignee_id ??
+                        row.userId ??
+                        row.user_id ??
+                        row.assigneeId ??
+                        row.assignee_id ??
                         ''
                       }
                     >
-                      {(row as any).userId ??
-                        (row as any).user_id ??
-                        (row as any).assigneeId ??
-                        (row as any).assignee_id ??
+                      {row.userId ??
+                        row.user_id ??
+                        row.assigneeId ??
+                        row.assignee_id ??
                         'N/A'}
                     </div>
                   </td>

@@ -64,12 +64,12 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     closeCase();
   };
 
-  const closeCase = async () => {
+  const closeCase = async (): Promise<void> => {
     if (!validateForm()) {
       return;
     }
@@ -107,7 +107,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
     }
   }, [caseData?.type, subCasesDetails]);
 
-  const handleClose = () => {
+  const handleClose = (): void => {
     if (!isSubmitting) {
       onClose();
       setErrors({});
@@ -372,11 +372,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
           caseData={caseData ?? undefined}
           selectedFinalNotes={formData.finalNotes}
           selectedOutcome={formData.recommendedOutcome}
-          onApproved={async () => {
-            await closeCase();
-            setReportApproved(true);
-            setShowReportModal(false);
-          }}
+          onApproved={() => { void (async () => { await closeCase(); setReportApproved(true); setShowReportModal(false); })(); }}
         />
       </Suspense>
     </>

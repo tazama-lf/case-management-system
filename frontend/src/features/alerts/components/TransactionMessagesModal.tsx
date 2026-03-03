@@ -24,7 +24,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const extractMessages = () => {
+    const extractMessages = (): void => {
       if (!isOpen || !alert) {
         setMessages([]);
         return;
