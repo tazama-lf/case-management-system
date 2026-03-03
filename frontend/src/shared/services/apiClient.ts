@@ -134,7 +134,7 @@ class ApiClient {
     formData: FormData,
     options?: ApiRequestOptions,
   ): Promise<T> {
-    const { skipAuth = false, ...fetchOptions } = options || {};
+    const { skipAuth = false, ...fetchOptions } = options ?? {};
 
     const url = `${this.baseUrl}${endpoint}`;
 
