@@ -41,7 +41,7 @@ export class ConfigManagementController {
     status: 403,
     description: 'Forbidden - Cannot modify system roles or insufficient privileges',
   })
-  async configureRole(@Param('roleName') roleName: string, @Body() body: ConfigureRoleDto, @Req() req: AuthenticatedRequest) {
+  async configureRole(@Param('roleName') roleName: string, @Body() body: ConfigureRoleDto, @Req() req: AuthenticatedRequest): Promise<unknown> {
     const userId = req.user.token.clientId;
 
     if (!userId) {
@@ -62,7 +62,7 @@ export class ConfigManagementController {
     description: 'Roles retrieved successfully',
     type: [RoleDto],
   })
-  async listRoles() {
+  async listRoles(): Promise<unknown> {
     return await this.configService.listAllRoles();
   }
 
@@ -77,7 +77,7 @@ export class ConfigManagementController {
     description: 'Name of the role',
     example: 'CMS_SUPERVISOR',
   })
-  async getRolePermissions(@Param('roleName') roleName: string) {
+  async getRolePermissions(@Param('roleName') roleName: string): Promise<unknown> {
     return await this.configService.getRolePermissions(roleName);
   }
 
@@ -103,7 +103,7 @@ export class ConfigManagementController {
     @Param('systemName') systemName: string,
     @Body() config: ConfigureIntegrationDto,
     @Req() req: AuthenticatedRequest,
-  ) {
+  ): Promise<unknown> {
     const userId = req.user.token.clientId;
 
     if (!userId) {
@@ -130,7 +130,7 @@ export class ConfigManagementController {
     description: 'Integration test completed',
     type: IntegrationTestResultDto,
   })
-  async testIntegration(@Param('systemName') systemName: string, @Req() req: AuthenticatedRequest) {
+  async testIntegration(@Param('systemName') systemName: string, @Req() req: AuthenticatedRequest): Promise<unknown> {
     const userId = req.user.token.clientId;
 
     if (!userId) {
@@ -154,7 +154,7 @@ export class ConfigManagementController {
     format: 'uuid',
   })
   @ApiBody({ type: Verify2FADto })
-  async verify2FA(@Param('changeId') changeId: number, @Body() body: Verify2FADto, @Req() req: AuthenticatedRequest) {
+  async verify2FA(@Param('changeId') changeId: number, @Body() body: Verify2FADto, @Req() req: AuthenticatedRequest): Promise<unknown> {
     const userId = req.user.token.clientId;
 
     if (!userId) {
@@ -207,7 +207,7 @@ export class ConfigManagementController {
     @Query('endDate') endDate?: string,
     @Query('changedBy') changedBy?: string,
     @Query('configType') configType?: string,
-  ) {
+  ): Promise<unknown> {
     const filters = {
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,
@@ -251,7 +251,7 @@ export class ConfigManagementController {
     @Query('format') format: 'json' | 'csv' = 'json',
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
-  ) {
+  ): Promise<unknown> {
     const filters = {
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,

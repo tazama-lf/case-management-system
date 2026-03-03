@@ -35,7 +35,12 @@ export class EvidenceService {
     return crypto.createHash('sha256').update(buffer).digest('hex');
   }
 
-  private encrypt(buffer: Buffer) {
+  private encrypt(buffer: Buffer): {
+    encrypted: Buffer;
+    key: string;
+    iv: string;
+    authTag: string;
+  } {
     const key = crypto.randomBytes(32);
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);

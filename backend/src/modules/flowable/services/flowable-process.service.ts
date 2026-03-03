@@ -25,7 +25,12 @@ export class FlowableProcessService {
   /**
    * Start a new process instance
    */
-  async startProcessInstance(processDefinitionKey: string, variables: Record<string, any>, businessKey: number, tenantId?: string) {
+  async startProcessInstance(
+    processDefinitionKey: string,
+    variables: Record<string, any>,
+    businessKey: number,
+    tenantId?: string,
+  ): Promise<{ id: string }> {
     this.logger.log(`Start - Start Process Instance With BusinessKey: ${businessKey}`, FlowableProcessService.name);
     const formattedVariables = this.formatVariables(variables);
     const payload = {
@@ -43,7 +48,7 @@ export class FlowableProcessService {
   /**
    * Get a process instance by ID
    */
-  async getProcessInstance(processInstanceId: string) {
+  async getProcessInstance(processInstanceId: string): Promise<unknown> {
     const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCE(processInstanceId));
     return response.data;
   }
@@ -51,7 +56,7 @@ export class FlowableProcessService {
   /**
    * Get a process instance by business key
    */
-  async getProcessInstanceByBusinessKey(businessKey: number) {
+  async getProcessInstanceByBusinessKey(businessKey: number): Promise<{ id: string } | null> {
     const response = await this.flowableClient.get(FlowableApiEndpoints.PROCESS_INSTANCES, {
       params: {
         businessKey,
@@ -76,7 +81,7 @@ export class FlowableProcessService {
   /**
    * Set multiple process variables at once
    */
-  async setProcessVariables(processInstanceId: string, variables: Record<string, string>) {
+  async setProcessVariables(processInstanceId: string, variables: Record<string, string>): Promise<unknown> {
     try {
       const formattedVariables = this.formatVariables(variables);
 
@@ -98,7 +103,7 @@ export class FlowableProcessService {
   /**
    * Terminate a process instance
    */
-  async terminateProcessInstance(processInstanceId: string, reason?: string) {
+  async terminateProcessInstance(processInstanceId: string, reason?: string): Promise<unknown> {
     const payload = {
       action: 'delete',
       deleteReason: reason ?? 'Process terminated by system',
@@ -115,7 +120,7 @@ export class FlowableProcessService {
   /**
    * Suspend a process instance
    */
-  async suspendProcessInstance(processInstanceId: string) {
+  async suspendProcessInstance(processInstanceId: string): Promise<unknown> {
     const payload = {
       action: FlowableTaskActions.SUSPEND,
     };
@@ -129,7 +134,7 @@ export class FlowableProcessService {
   /**
    * Activate a process instance
    */
-  async activateProcessInstance(processInstanceId: string) {
+  async activateProcessInstance(processInstanceId: string): Promise<unknown> {
     const payload = {
       action: FlowableTaskActions.ACTIVATE,
     };
