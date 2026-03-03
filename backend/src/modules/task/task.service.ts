@@ -103,12 +103,6 @@ export class TaskService {
         } else {
           updatedTask = await this.taskRepository.updateTask(taskId, updateInput, tx);
           await this.executeFlowableOperation(updatedTask, updateData.assignedUserId ?? existingTask.assigned_user_id!);
-          // await this.flowableService.handleTaskAssigned({
-          //   taskId: updatedTask.task_id,
-          //   caseId: updatedTask.case_id,
-          //   assignedUserId: updateData.assignedUserId ?? existingTask.assigned_user_id!,
-          //   taskName: existingTask.name!,
-          // });
         }
 
         if (existingTask.status === updatedTask.status) {
@@ -295,12 +289,6 @@ export class TaskService {
       }
 
       await this.executeFlowableOperation(taskRecord, taskRecord.assigned_user_id ?? existingTask.assigned_user_id!);
-      // await this.flowableService.handleTaskAssigned({
-      //   taskId: taskRecord.task_id,
-      //   caseId: taskRecord.case_id,
-      //   assignedUserId: taskRecord.assigned_user_id ?? existingTask.assigned_user_id!,
-      //   taskName: existingTask.name!,
-      // });
 
       return taskRecord;
     } catch (error) {
