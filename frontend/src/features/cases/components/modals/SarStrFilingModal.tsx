@@ -318,57 +318,6 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
 
             {/* Upload Form */}
             <div className="space-y-3.5">
-              {/* Submission Metadata Fields - Commented out for now */}
-              {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="sar-submission-date" className="block text-sm font-medium text-gray-700 mb-1">
-                  Date of Submission <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  id="sar-submission-date"
-                  value={sarSubmissionDate}
-                  onChange={(e) => setSarSubmissionDate(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="sar-ack-number" className="block text-sm font-medium text-gray-700 mb-1">
-                  Acknowledgment/Reference Number <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="sar-ack-number"
-                  value={sarAckNumber}
-                  onChange={(e) => setSarAckNumber(e.target.value)}
-                  placeholder="e.g., FIU/2025/12345"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  required
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label htmlFor="sar-submission-channel" className="block text-sm font-medium text-gray-700 mb-1">
-                  Submission Channel <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="sar-submission-channel"
-                  value={sarSubmissionChannel}
-                  onChange={(e) => setSarSubmissionChannel(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select submission channel...</option>
-                  <option value="goAML Portal">goAML Portal</option>
-                  <option value="Email">Email</option>
-                  <option value="FIU Web Portal">FIU Web Portal</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-            </div> */}
-
               {/* File Upload Section */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
