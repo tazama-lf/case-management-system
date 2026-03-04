@@ -203,7 +203,7 @@ export class TaskEventListener {
 
           this.logger.log(`[TaskEventListener] Process instance still active: ${updatedProcessInstance.id}`, TaskEventListener.name);
 
-          await this.bpmnSyncService.syncAllTasksForCase(event.caseId, processInstance.id as string);
+          await this.bpmnSyncService.syncAllTasksForCase(event.caseId, processInstance.id);
 
           this.logger.log(`[TaskEventListener] BPMN task sync completed for case ${event.caseId}`, TaskEventListener.name);
         } catch (syncError) {

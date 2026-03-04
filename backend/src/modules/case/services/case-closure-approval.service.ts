@@ -193,9 +193,11 @@ export class CaseClosureApprovalService {
 
       // SUPERVISOR DIRECT CLOSURE PATH
       if (role === 'CMS_SUPERVISOR') {
-
         const finalStatus = dto.recommendedOutcome as CaseStatus;
-        this.logger.log(`recommendedOutcome: ${dto.recommendedOutcome} finalStatus: ${finalStatus} directly without approval`, CaseClosureApprovalService.name);
+        this.logger.log(
+          `recommendedOutcome: ${dto.recommendedOutcome} finalStatus: ${finalStatus} directly without approval`,
+          CaseClosureApprovalService.name,
+        );
 
         const result = await this.caseRepository.updateCaseStatusAndCompleteTask(
           caseId,
@@ -439,15 +441,14 @@ export class CaseClosureApprovalService {
         },
       });
 
-      await this.commentService.addComment(
-        {
-          caseId,
-          taskId: approvalTask.task_id,
-          note: `Supervisor Approval:\n${comments}\n\nFinal Outcome: ${finalOutcome}`,
-          tenantId,
-        } as CreateCommentDto,
-        supervisorId,
-      );
+      const comment: CreateCommentDto = {
+        caseId,
+        taskId: approvalTask.task_id,
+        note: `Supervisor Approval:\n${comments}\n\nFinal Outcome: ${finalOutcome}`,
+        tenantId,
+      };
+
+      await this.commentService.addComment(comment, supervisorId);
 
       // Auto-generate SAR/STR Filing task if case is confirmed
       if (finalOutcome === 'STATUS_82_CLOSED_CONFIRMED') {
@@ -577,7 +578,7 @@ export class CaseClosureApprovalService {
       }
 
       const originalInvestigationTask = caseDetails.tasks[0];
-      const originalInvestigatorId = originalInvestigationTask?.assigned_user_id;
+      const originalInvestigatorId = originalInvestigationTask.assigned_user_id;
 
       if (!originalInvestigatorId) {
         throw new BadRequestException('Cannot determine original investigator for case reassignment');

@@ -15,7 +15,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
     private readonly cacheService: CacheService,
-  ) { }
+  ) {}
 
   async login(username: string, password: string): Promise<{ message: string; token: string; expiresIn: number | null }> {
     const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');

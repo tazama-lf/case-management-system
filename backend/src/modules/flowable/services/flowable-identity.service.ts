@@ -137,7 +137,7 @@ export class FlowableIdentityService {
    */
   async getWorkQueueStatistics(
     flowableClient: AxiosInstance,
-    getCandidateGroupTasksFn: (group: string, includeVariables: boolean) => Promise<Record<string, unknown>[]>,
+    getCandidateGroupTasksFn: (group: string, includeVariables: boolean) => Promise<Array<Record<string, unknown>>>,
     candidateGroup?: string,
   ): Promise<Record<string, unknown>> {
     try {

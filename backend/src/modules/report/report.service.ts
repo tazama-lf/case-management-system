@@ -1086,7 +1086,7 @@ export class ReportsService {
     const existingReports = (existingReportsResult.docs as FraudReport[]) || [];
     const nextVersion = existingReports.length > 0 ? Math.max(...existingReports.map((r) => r.version || 1)) + 1 : 1;
     const reportId = `${dto.caseId}-InvestigationReport-v${nextVersion}`;
-    file.originalname = `${reportId}.pdf`;
+    const fileName = `${reportId}.pdf`;
     const evidenceResult = await this.evidenceService.getEvidenceByCaseId(
       dto.caseId,
       userId ?? '',
@@ -1121,10 +1121,10 @@ export class ReportsService {
     const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
     const hash = this.sha256(encrypted);
 
-    const attachmentResult = await this.couchdbService.insertAttachment(reportId, currentRev, file.originalname, encrypted, file.mimetype);
+    const attachmentResult = await this.couchdbService.insertAttachment(reportId, currentRev, fileName, encrypted, file.mimetype);
 
     report.metadata.push({
-      fileName: file.originalname,
+      fileName,
       fileSize: file.size,
       filePath: attachmentResult.filePath,
       mimeType: file.mimetype,

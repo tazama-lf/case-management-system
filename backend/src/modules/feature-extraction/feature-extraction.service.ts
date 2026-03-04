@@ -54,7 +54,7 @@ export class FeatureExtractionService {
       }
 
       const typologyResults = alert.report.tadpResult.typologyResult[0];
-      const ruleResults = typologyResults.ruleResults;
+      const { ruleResults } = typologyResults;
       features[0] = typologyResults.result;
 
       for (const ruleResult of ruleResults) {

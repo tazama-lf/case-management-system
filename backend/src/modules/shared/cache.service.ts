@@ -1,7 +1,6 @@
-import { Injectable, OnModuleInit, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../shared/redis.service';
-import { AuthService } from '../auth/auth.service';
 import axios from 'axios';
 import { UserGroupDetails } from '../../utils/types/UserList';
 
@@ -31,8 +30,6 @@ export class CacheService implements OnModuleInit {
   constructor(
     private readonly redisService: RedisService,
     private readonly configService: ConfigService,
-    @Inject(forwardRef(() => AuthService))
-    private readonly authService: AuthService,
   ) {
     this.AuthBaseUrl = this.configService.get<string>('TAZAMA_AUTH_URL')!;
   }
@@ -59,7 +56,7 @@ export class CacheService implements OnModuleInit {
   /**
    * Initialize cache with CMS_INVESTIGATOR and CMS_SUPERVISOR users
    */
-  public async initializeUserCache(retryCount = 0, token: string,): Promise<void> {
+  public async initializeUserCache(retryCount = 0, token: string): Promise<void> {
     const maxRetries = 3;
     this.logger.log(`InitializeUserCache called (attempt ${retryCount + 1}/${maxRetries + 1})`, CacheService.name);
 
@@ -87,7 +84,6 @@ export class CacheService implements OnModuleInit {
       for (const role of this.CACHE_ROLES) {
         try {
           this.logger.log(`Fetching users with role: ${role}`, CacheService.name);
-
 
           const users = await this.getUsersByRole(token, role, this.configService.get<string>('KEYCLOAK_GROUP_NAME') ?? '');
 

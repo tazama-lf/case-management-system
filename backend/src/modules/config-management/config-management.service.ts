@@ -216,7 +216,7 @@ export class ConfigManagementService {
     });
   }
 
-  async deleteRole(roleName: string, userId: string) {
+  async deleteRole(roleName: string, userId: string): Promise<{ message: string }> {
     const role = await this.prisma.rolePermission.findUnique({
       where: { role_name: roleName },
     });
@@ -369,7 +369,22 @@ export class ConfigManagementService {
     }
   }
 
-  async getIntegrationConfig(systemName: string) {
+  async getIntegrationConfig(systemName: string): Promise<{
+    api_key: string | null;
+    api_secret: string | null;
+    id: number;
+    system_name: string;
+    endpoint_url: string | null;
+    config_data: string | number | boolean | JsonObject | JsonArray | null;
+    auth_type: string | null;
+    is_enabled: boolean;
+    last_tested_at: Date | null;
+    test_status: string | null;
+    created_by: string;
+    updated_by: string;
+    created_at: Date;
+    updated_at: Date;
+  }> {
     const config = await this.prisma.integrationConfig.findUnique({
       where: { system_name: systemName },
     });
@@ -385,7 +400,24 @@ export class ConfigManagementService {
     };
   }
 
-  async listAllIntegrations() {
+  async listAllIntegrations(): Promise<
+    Array<{
+      api_key: string | null;
+      api_secret: string | null;
+      id: number;
+      system_name: string;
+      endpoint_url: string | null;
+      config_data: string | number | boolean | JsonObject | JsonArray | null;
+      auth_type: string | null;
+      is_enabled: boolean;
+      last_tested_at: Date | null;
+      test_status: string | null;
+      created_by: string;
+      updated_by: string;
+      created_at: Date;
+      updated_at: Date;
+    }>
+  > {
     const configs = await this.prisma.integrationConfig.findMany({
       orderBy: { system_name: 'asc' },
     });
@@ -397,7 +429,7 @@ export class ConfigManagementService {
     }));
   }
 
-  async toggleIntegration(systemName: string, enabled: boolean, userId: string) {
+  async toggleIntegration(systemName: string, enabled: boolean, userId: string): Promise<{ message: string }> {
     const config = await this.prisma.integrationConfig.findUnique({
       where: { system_name: systemName },
     });
@@ -757,7 +789,19 @@ export class ConfigManagementService {
     return csvContent;
   }
 
-  async getSystemConfiguration(configKey: string) {
+  async getSystemConfiguration(configKey: string): Promise<{
+    id: number;
+    config_key: string;
+    config_value: JsonValue;
+    config_type: string;
+    description: string | null;
+    is_active: boolean;
+    created_by: string;
+    updated_by: string;
+    created_at: Date;
+    updated_at: Date;
+    version: number;
+  }> {
     const config = await this.prisma.systemConfiguration.findUnique({
       where: { config_key: configKey },
     });
@@ -769,7 +813,24 @@ export class ConfigManagementService {
     return config;
   }
 
-  async updateSystemConfiguration(configKey: string, configValue: any, userId: string, description?: string) {
+  async updateSystemConfiguration(
+    configKey: string,
+    configValue: any,
+    userId: string,
+    description?: string,
+  ): Promise<{
+    id: number;
+    config_key: string;
+    config_value: JsonValue;
+    config_type: string;
+    description: string | null;
+    is_active: boolean;
+    created_by: string;
+    updated_by: string;
+    created_at: Date;
+    updated_at: Date;
+    version: number;
+  }> {
     const existingConfig = await this.prisma.systemConfiguration.findUnique({
       where: { config_key: configKey },
     });

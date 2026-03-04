@@ -4,7 +4,7 @@ import { Outcome } from '../../../utils/types/outcome';
 import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, Alert, Task } from '@prisma/client-cms';
 import { ManualCreateCaseDto, CreateCaseDto } from '../dto';
 import { TaskService } from 'src/modules/task/task.service';
-import { TASK_NAMES, CANDIDATE_GROUPS, VALIDATION_LENGTHS } from '../../../constants/case.constants';
+import { TASK_NAMES, CANDIDATE_GROUPS } from '../../../constants/case.constants';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { CasePriorityUtil } from '../../shared/utils/case-priority.util';
 import { CaseQueryService } from './case-query.service';
@@ -331,7 +331,7 @@ export class CaseCreationApprovalService {
         taskName: 'Approve Case Creation',
         completionVariables: {
           creationApproval: 'reject',
-          creationComments: `Case creation rejected by supervisor.`,
+          creationComments: 'Case creation rejected by supervisor.',
         },
       });
 
