@@ -19,6 +19,7 @@ import { CacheService } from '../shared/cache.service';
 import { CaseCreationService } from './services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { JsonValue } from '@prisma/client-cms/runtime/library';
+import { setTimeout as delay } from 'node:timers/promises';
 
 @Injectable()
 export class CaseService {
@@ -37,7 +38,7 @@ export class CaseService {
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   async suspendCase(
     caseId: number,
@@ -64,7 +65,7 @@ export class CaseService {
     const allTasks = await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId);
     const investigateTask = allTasks.filter((task) => tasksIds.includes(task.task_id));
 
-    if (!investigateTask) throw new BadRequestException('No "Investigate Case" task found for this case');
+    if (investigateTask.length === 0) throw new BadRequestException('No "Investigate Case" task found for this case');
 
     try {
       const result = await this.prismaService.$transaction(async (prisma) => {
@@ -114,7 +115,7 @@ export class CaseService {
         return { case: updatedCase, task: updatedTask };
       });
 
-      await new Promise<void>((resolve) => setTimeout(resolve, 1000));
+      await delay(1000);
 
       this.flowableService.handleCaseStatusChanged({
         caseId,
@@ -131,7 +132,7 @@ export class CaseService {
               await this.notificationService.sendNotification({
                 userId: id,
                 type: 'CASE_SUSPENDED',
-                message: `Case ${caseId} has been suspended by ${caseAssignee}`,
+                message: `Case ${caseId} has been suspended by ${Array.isArray(caseAssignee) ? caseAssignee.join(', ') : caseAssignee}`,
                 metadata: {
                   caseId,
                   actionBy: suspendedBy?.username ?? suspendedBy?.fullName,
@@ -183,7 +184,7 @@ export class CaseService {
         t.status === TaskStatus.STATUS_21_BLOCKED,
     );
     this.logger.error(`investigateTask: ${JSON.stringify(investigateTask)}`);
-    if (!investigateTask) throw new BadRequestException('No "Investigate case" task found for this case');
+    if (investigateTask.length === 0) throw new BadRequestException('No "Investigate case" task found for this case');
 
     try {
       this.flowableService.handleCaseStatusChanged({
@@ -242,14 +243,14 @@ export class CaseService {
         // const caseAssignee = investigateTask.assigned_user_id;
         const caseAssignee = investigateTask.map((t) => t.assigned_user_id?.trim()).filter((id): id is string => !!id);
         this.logger.error(`caseAssignee : ${JSON.stringify(caseAssignee)}`);
-        if (caseAssignee) {
+        if (caseAssignee.length > 0) {
           const resumedBy = await this.cacheService.getUserFromCache(userId);
           await Promise.all(
             caseAssignee.map(async (id) => {
               await this.notificationService.sendNotification({
                 userId: id,
                 type: 'CASE_RESUMED',
-                message: `Case ${caseId} has been resumed by ${caseAssignee}`,
+                message: `Case ${caseId} has been resumed by ${Array.isArray(caseAssignee) ? caseAssignee.join(', ') : caseAssignee}`,
                 metadata: {
                   caseId,
                   actionBy: resumedBy?.username ?? resumedBy?.email,
@@ -531,11 +532,11 @@ export class CaseService {
       } | null;
       parent_id: number | null;
       assigned_to:
-      | {
-        user_id: string | null;
-        task_count: number;
-      }
-      | undefined;
+        | {
+            user_id: string | null;
+            task_count: number;
+          }
+        | undefined;
     }>;
     pagination: {
       total: number;
@@ -551,12 +552,12 @@ export class CaseService {
       unassignedCases: number;
       averageTasksPerCase: number;
       oldestUnassignedCase:
-      | {
-        case_id: number;
-        created_at: Date;
-        days_old: number;
-      }
-      | undefined;
+        | {
+            case_id: number;
+            created_at: Date;
+            days_old: number;
+          }
+        | undefined;
     };
   }> {
     return await this.caseQueryService.getAllCases(query, tenantId, investigatorUserId, isComplianceOfficer);
@@ -583,13 +584,13 @@ export class CaseService {
       }>;
       total_tasks: number;
       alert:
-      | {
-        alert_id: number;
-        message: string;
-        confidence_per: number;
-        transaction: JsonValue;
-      }
-      | undefined;
+        | {
+            alert_id: number;
+            message: string;
+            confidence_per: number;
+            transaction: JsonValue;
+          }
+        | undefined;
       latest_comment_date: Date;
     }>;
     pagination: {
@@ -741,46 +742,45 @@ export class CaseService {
         );
 
         this.logger.log(`[CompleteCaseCreation] Approval task ${nextTask.task_id} created for supervisor review`, CaseService.name);
-      } else {
+      } else if (result.case.case_type === CaseType.FRAUD_AND_AML) {
         // Supervisor: Create investigation task directly
-        if (result.case.case_type === CaseType.FRAUD_AND_AML) {
-          await this.caseCreationService.createCaseWithInvestigationTask(
-            CaseType.FRAUD,
-            userId,
-            existingCase.tenant_id,
-            caseId,
-            result.case.priority,
-            CaseCreationType.AUTOMATIC_SYSTEM,
-            role,
-          );
-          await this.caseCreationService.createCaseWithInvestigationTask(
-            CaseType.AML,
-            userId,
-            existingCase.tenant_id,
-            caseId,
-            result.case.priority,
-            CaseCreationType.AUTOMATIC_SYSTEM,
-            role,
-          );
-        } else {
-          nextTask = await this.taskService.createTask(
-            {
-              caseId,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: TASK_NAMES.INVESTIGATE_CASE,
-              description: `Task to investigate: ${caseId}`,
-              candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-            },
-            userId,
-            tenantId,
-          );
-        }
 
-        // this.logger.log(
-        //   `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
-        //   CaseService.name,
-        // );
+        await this.caseCreationService.createCaseWithInvestigationTask(
+          CaseType.FRAUD,
+          userId,
+          existingCase.tenant_id,
+          caseId,
+          result.case.priority,
+          CaseCreationType.AUTOMATIC_SYSTEM,
+          role,
+        );
+        await this.caseCreationService.createCaseWithInvestigationTask(
+          CaseType.AML,
+          userId,
+          existingCase.tenant_id,
+          caseId,
+          result.case.priority,
+          CaseCreationType.AUTOMATIC_SYSTEM,
+          role,
+        );
+      } else {
+        nextTask = await this.taskService.createTask(
+          {
+            caseId,
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            name: TASK_NAMES.INVESTIGATE_CASE,
+            description: `Task to investigate: ${caseId}`,
+            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+          },
+          userId,
+          tenantId,
+        );
       }
+
+      // this.logger.log(
+      //   `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
+      //   CaseService.name,
+      // );
 
       const getAlertIdByCaseId = await this.alertRepository.getAlertByCaseId(caseId);
       if (getAlertIdByCaseId) {

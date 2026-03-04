@@ -10,8 +10,7 @@ export class AsyncTaskService {
 
   async createEmailTask(to: string, subject: string, html: string, metadata?: Record<string, any>): Promise<string> {
     const task = await this.asyncTaskRepository.createEmailTask(to, subject, html, metadata);
-
-    this.logger.log(`Email task created: ${task} for ${to} - Subject: ${subject}`);
+    this.logger.log(`Email task created: ${JSON.stringify(task)} for ${to} - Subject: ${subject}`);
     return task.id;
   }
 

@@ -187,7 +187,8 @@ export class AuthService {
       throw new ServiceUnavailableException('Authentication service configuration missing');
     }
     // Remove /v1/auth/login suffix if present and replace with base path
-    const baseUrl = authUrl.replace(/\/v1\/auth\/login\/?$/, '');
+
+    const baseUrl = authUrl.replace(/\/v1\/auth\/login\/?$/u, '');
     return baseUrl;
   }
 
