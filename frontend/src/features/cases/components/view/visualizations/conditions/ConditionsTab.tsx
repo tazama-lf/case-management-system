@@ -87,12 +87,12 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
     ],
   };
 
-  const mockDataBySide: Record<'DEBTOR' | 'CREDITOR', ConditionsData> = {
+  const mockEntityDataBySide: Record<'DEBTOR' | 'CREDITOR', ConditionsData> = {
     DEBTOR: {
-      metrics: { active: 1, blocked: 1, overridden: 0, future: 1 },
+      metrics: { active: 1, blocked: 1, overridden: 0, future: 0 },
       activeConditions: [
         {
-          id: 'COND-PEP-SANCTIONS',
+          id: 'COND-ENTITY-PEP',
           title: 'PEP Sanctions List',
           type: 'BLOCK',
           startDate: '2023-01-01T00:00:00.000Z',
@@ -104,39 +104,15 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
           action: 'BLOCK',
         },
       ],
-      expiredConditions: [
-        {
-          id: 'COND-HIGH-RISK-JURIS',
-          title: 'High Risk Jurisdiction',
-          type: 'EXPIRED',
-          startDate: '2023-06-15T00:00:00.000Z',
-          endDate: '2023-12-31T23:59:00.000Z',
-          status: 'EXPIRED',
-          severity: 'low',
-          createdBy: 'Internal Risk Policy',
-          notes: 'Entity operates in high-risk region',
-        },
-      ],
-      futureConditions: [
-        {
-          id: 'COND-TEMP-FREEZE',
-          title: 'Temporary Freeze',
-          type: 'FUTURE',
-          startDate: '2024-01-16T00:00:00.000Z',
-          endDate: null,
-          status: 'FUTURE',
-          severity: 'medium',
-          createdBy: 'Fraud Operations',
-          notes: 'Pending investigation',
-        },
-      ],
+      expiredConditions: [],
+      futureConditions: [],
       evaluatedTransactions: [],
     },
     CREDITOR: {
-      metrics: { active: 1, blocked: 0, overridden: 0, future: 0 },
+      metrics: { active: 1, blocked: 0, overridden: 1, future: 0 },
       activeConditions: [
         {
-          id: 'COND-NEW-ENTITY-PROB',
+          id: 'COND-ENTITY-PROBATION',
           title: 'New Entity Probation',
           type: 'OVERRIDE',
           startDate: '2024-01-10T00:00:00.000Z',
@@ -151,6 +127,111 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
       expiredConditions: [],
       futureConditions: [],
       evaluatedTransactions: [],
+    },
+  };
+
+  const mockAccountDataBySide: Record<'DEBTOR' | 'CREDITOR', Record<string, ConditionsData>> = {
+    DEBTOR: {
+      'ACC-5678-9812': {
+        metrics: { active: 1, blocked: 1, overridden: 0, future: 0 },
+        activeConditions: [
+          {
+            id: 'COND-TAX-HOLD',
+            title: 'Tax Hold',
+            type: 'BLOCK',
+            startDate: '2024-01-10T00:00:00.000Z',
+            endDate: '2024-01-20T00:00:00.000Z',
+            status: 'ACTIVE',
+            severity: 'high',
+            createdBy: 'Compliance Department',
+            notes: 'Pending tax documentation verification',
+            action: 'BLOCK',
+          },
+        ],
+        expiredConditions: [],
+        futureConditions: [],
+        evaluatedTransactions: [],
+      },
+      'ACC-9999-1234': {
+        metrics: { active: 0, blocked: 0, overridden: 0, future: 1 },
+        activeConditions: [],
+        expiredConditions: [],
+        futureConditions: [
+          {
+            id: 'COND-REVIEW-SCHEDULED',
+            title: 'Scheduled Account Review',
+            type: 'FUTURE',
+            startDate: '2024-02-05T00:00:00.000Z',
+            endDate: null,
+            status: 'FUTURE',
+            severity: 'low',
+            createdBy: 'Business Account Policy',
+            notes: 'Periodic review due',
+          },
+        ],
+        evaluatedTransactions: [],
+      },
+      'ACC-1234-7777': {
+        metrics: { active: 2, blocked: 1, overridden: 1, future: 0 },
+        activeConditions: [
+          {
+            id: 'COND-LARGE-TXN-REVIEW',
+            title: 'Large Transaction Review',
+            type: 'OVERRIDE',
+            startDate: '2024-01-01T00:00:00.000Z',
+            endDate: null,
+            status: 'ACTIVE',
+            severity: 'medium',
+            createdBy: 'Business Account Policy',
+            notes: 'Transactions > $50,000 require manual review',
+            action: 'OVERRIDE',
+          },
+          {
+            id: 'COND-PEP-SANCTIONS',
+            title: 'PEP Sanctions List',
+            type: 'BLOCK',
+            startDate: '2023-01-01T00:00:00.000Z',
+            endDate: null,
+            status: 'ACTIVE',
+            severity: 'high',
+            createdBy: 'External Watchlist Provider',
+            notes: 'Confirmed match on name and DOB',
+            action: 'BLOCK',
+          },
+        ],
+        expiredConditions: [],
+        futureConditions: [],
+        evaluatedTransactions: [],
+      },
+    },
+    CREDITOR: {
+      'ACC-0000-2222': {
+        metrics: { active: 1, blocked: 0, overridden: 1, future: 0 },
+        activeConditions: [
+          {
+            id: 'COND-CRED-LIMIT',
+            title: 'Creditor Limit Control',
+            type: 'OVERRIDE',
+            startDate: '2024-01-12T00:00:00.000Z',
+            endDate: null,
+            status: 'ACTIVE',
+            severity: 'medium',
+            createdBy: 'Risk Ops',
+            notes: 'Manual review required for high-value payouts',
+            action: 'OVERRIDE',
+          },
+        ],
+        expiredConditions: [],
+        futureConditions: [],
+        evaluatedTransactions: [],
+      },
+      'ACC-0000-3333': {
+        metrics: { active: 0, blocked: 0, overridden: 0, future: 0 },
+        activeConditions: [],
+        expiredConditions: [],
+        futureConditions: [],
+        evaluatedTransactions: [],
+      },
     },
   };
 
@@ -187,13 +268,24 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
 
       setSubjectDetails(mockedSubjectDetails);
 
-      const mock = mockDataBySide[subjectSide];
-      setData(mock);
+      if (subjectLevel === 'ACCOUNT') {
+        const byAccount = mockAccountDataBySide[subjectSide] || {};
+        const mock = byAccount[resolvedAccountId] || {
+          metrics: { active: 0, blocked: 0, overridden: 0, future: 0 },
+          activeConditions: [],
+          expiredConditions: [],
+          futureConditions: [],
+          evaluatedTransactions: [],
+        };
+        setData(mock);
+      } else {
+        setData(mockEntityDataBySide[subjectSide]);
+      }
       setLoading(false);
     };
 
     fetchData();
-  }, [caseId, transactionId, timeRange, subjectSide, selectedAccountId]);
+  }, [caseId, transactionId, timeRange, subjectSide, selectedAccountId, subjectLevel]);
 
   if (loading) {
     return (
