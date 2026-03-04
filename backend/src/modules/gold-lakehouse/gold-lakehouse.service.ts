@@ -1128,15 +1128,15 @@ export class GoldLakehouseService {
       return {
         summary: {
           totalVolume: Math.round(totalVolume * 100) / 100,
-          totalTransactions: events.length,
-          transactionCount: events.length,
+          totalTransactions: Number(events.length),
+          transactionCount: Number(events.length),
           alertsTriggered,
-          alertsPercentage: (alertsTriggered / events.length) * 100,
+          alertsPercentage: (alertsTriggered / Number(events.length)) * 100,
           investigated: investigatedCount,
-          investigatedPercentage: (investigatedCount / events.length) * 100,
-          avgTransactionsPerDay: events.length, // Since it's one day effectively
+          investigatedPercentage: (investigatedCount / Number(events.length)) * 100,
+          avgTransactionsPerDay: Number(events.length), // Since it's one day effectively
           durationDays: 1,
-          perspectiveCount: events.length,
+          perspectiveCount: Number(events.length),
         },
         timeline,
         cumulative,
@@ -2153,7 +2153,7 @@ export class GoldLakehouseService {
       let total = 0;
 
       for (const value of amounts) {
-        const s = value.toString().replace('.', '').replace(/^0+/, '');
+        const s = value.toString().replace('.', '').replace(/^0+/u, '');
         if (!s) continue;
 
         const digit = parseInt(s[0], 10);

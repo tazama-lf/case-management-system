@@ -592,7 +592,7 @@ export class CaseQueryService {
           completed_tasks: taskCounts.completed,
           pending_tasks: taskCounts.pending,
           alert: caseItem.alert,
-          parent_id: caseItem?.parent_id,
+          parent_id: caseItem.parent_id,
           assigned_to:
             assignedUsers.length > 0
               ? { user_id: caseItem.case_owner_user_id ?? assignedUsers[0], task_count: assignedUsers.length }

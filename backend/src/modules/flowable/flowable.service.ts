@@ -21,7 +21,6 @@ import {
   CaseCreatedEvent,
   CaseStatusChangedEvent,
   TaskCompletedEvent,
-  CaseSuspendedEvent,
 } from '../events/domain-events';
 
 @Injectable()
@@ -47,7 +46,7 @@ export class FlowableService implements OnModuleInit {
     this.flowableUrl = this.clientFactory.getBaseUrl();
   }
 
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     // Check if Flowable is enabled
     const flowableEnabled = this.configService.get<boolean>('FLOWABLE_ENABLED', true);
 
@@ -150,7 +149,7 @@ export class FlowableService implements OnModuleInit {
   /**
    * Remove a user from a Flowable identity group
    */
-  async removeUserFromGroup(groupId: string, userId: string) {
+  async removeUserFromGroup(groupId: string, userId: string): Promise<void> {
     await this.identityService.removeUserFromGroup(groupId, userId);
   }
 
@@ -249,7 +248,7 @@ export class FlowableService implements OnModuleInit {
     return await this.taskService.updateTaskVariable(taskId, variableName, value);
   }
 
-  async deleteTaskVariable(taskId: number, variableName: string) {
+  async deleteTaskVariable(taskId: number, variableName: string): Promise<void> {
     await this.taskService.deleteTaskVariable(taskId, variableName);
   }
 

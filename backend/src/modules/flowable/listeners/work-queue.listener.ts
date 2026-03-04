@@ -26,7 +26,7 @@ export class FlowableWorkQueueListener {
   ) {}
 
   @OnEvent('workQueue.created')
-  async handleWorkQueueCreated(payload: WorkQueueBaseEvent) {
+  async handleWorkQueueCreated(payload: WorkQueueBaseEvent): Promise<void> {
     if (!payload.flowableGroupId || !payload.name) return;
     try {
       const existing = await this.flowableIdentityService.getGroup(payload.flowableGroupId);
@@ -44,7 +44,7 @@ export class FlowableWorkQueueListener {
   }
 
   @OnEvent('workQueue.updated')
-  async handleWorkQueueUpdated(payload: WorkQueueBaseEvent & { changes?: { name?: string }; oldFlowableGroupId?: string }) {
+  async handleWorkQueueUpdated(payload: WorkQueueBaseEvent & { changes?: { name?: string }; oldFlowableGroupId?: string }): Promise<void> {
     try {
       // If name changed, ensure the new group exists
       if (payload.flowableGroupId && payload.name) {
@@ -60,7 +60,7 @@ export class FlowableWorkQueueListener {
   }
 
   @OnEvent('workQueue.sync')
-  async handleWorkQueueSync(payload: WorkQueueSyncEvent) {
+  async handleWorkQueueSync(payload: WorkQueueSyncEvent): Promise<void> {
     try {
       const existing = await this.flowableIdentityService.getGroup(payload.flowableGroupId);
       if (!existing) {
@@ -83,7 +83,7 @@ export class FlowableWorkQueueListener {
   }
 
   @OnEvent('workQueue.userAssigned')
-  async handleUserAssigned(payload: WorkQueueBaseEvent & { userId: string }) {
+  async handleUserAssigned(payload: WorkQueueBaseEvent & { userId: string }): Promise<void> {
     if (!payload.flowableGroupId) return;
     try {
       await this.flowableIdentityService.addUserToGroup(payload.flowableGroupId, payload.userId);
@@ -94,7 +94,7 @@ export class FlowableWorkQueueListener {
   }
 
   @OnEvent('workQueue.userRemoved')
-  async handleUserRemoved(payload: WorkQueueBaseEvent & { userId: string }) {
+  async handleUserRemoved(payload: WorkQueueBaseEvent & { userId: string }): Promise<void> {
     if (!payload.flowableGroupId) return;
     try {
       await this.flowableIdentityService.removeUserFromGroup(payload.flowableGroupId, payload.userId);

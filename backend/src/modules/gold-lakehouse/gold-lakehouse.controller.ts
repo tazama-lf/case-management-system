@@ -10,7 +10,7 @@ import { TransactionNetworkResponseDto, CounterpartyNetworkResponseDto } from '.
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class GoldLakehouseController {
-  constructor(private readonly goldLakehouseService: GoldLakehouseService) { }
+  constructor(private readonly goldLakehouseService: GoldLakehouseService) {}
 
   @Get('alert-navigator/:alertId')
   @RequireInvestigatorOrSupervisorRole()
@@ -379,7 +379,7 @@ export class GoldLakehouseController {
   @ApiOperation({
     summary: 'Get Transaction Perspectives by End-to-End ID',
     description:
-      "Returns all entity perspectives (Debtor Account, Creditor Account, Debtor Counterparty, Creditor Counterparty) for a single transaction. Shows how the transaction appears from each entity's viewpoint. Query by end_to_end_id (transaction UUID) to get complete transaction context.",
+      'Returns all entity perspectives (Debtor Account, Creditor Account, Debtor Counterparty, Creditor Counterparty) for a single transaction. Shows how the transaction appears from each entity viewpoint. Query by end_to_end_id (transaction UUID) to get complete transaction context.',
   })
   @ApiParam({
     name: 'endToEndId',

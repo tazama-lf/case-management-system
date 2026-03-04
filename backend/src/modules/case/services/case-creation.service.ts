@@ -159,7 +159,7 @@ export class CaseCreationService {
     if (!existingAlert) {
       throw new BadRequestException('Alert Not Found');
     }
-    if (existingAlert.case_id || (existingAlert.alert_data as unknown as { status: string })?.status !== 'NALT') {
+    if (existingAlert.case_id ?? (existingAlert.alert_data as unknown as { status: string }).status !== 'NALT') {
       throw new BadRequestException('Case Already Exists');
     }
 

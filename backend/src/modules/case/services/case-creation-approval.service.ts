@@ -185,7 +185,11 @@ export class CaseCreationApprovalService {
 
     const existingAlert = await this.caseRepository.findAlert(dto.alertId, tenantId);
 
-    if (!existingAlert || existingAlert.case_id || (existingAlert.alert_data as any)?.status !== 'NALT') {
+    if (!existingAlert) {
+      throw new BadRequestException('Alert Not Found');
+    }
+
+    if (existingAlert.case_id ?? (existingAlert.alert_data as any)?.status !== 'NALT') {
       throw new BadRequestException(
         !existingAlert
           ? `Alert ${dto.alertId} not found`
