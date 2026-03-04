@@ -633,4 +633,52 @@ export class TaskController {
     const { tenantId } = req.user.token;
     return await this.taskService.getTaskById(taskId, tenantId);
   }
+
+  @Post(':taskId/complete')
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Complete a task',
+    description: 'Marks a task as completed.',
+  })
+  @ApiParam({
+    name: 'taskId',
+    type: 'number',
+    description: 'CaseId of the task to update',
+    example: 123,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Task successfully completed',
+    schema: {
+      type: 'object',
+      properties: {
+        task_id: { type: 'string', format: 'uuid' },
+        case_id: { type: 'string', format: 'uuid' },
+        status: { type: 'string' },
+        name: { type: 'string' },
+        description: { type: 'string' },
+        assigned_user_id: { type: 'string', format: 'uuid', nullable: true },
+        candidateGroup: { type: 'string' },
+        updated_at: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid status or task data',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - User lacks required role',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Not Found - Task does not exist',
+  })
+  async completeTask(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest): Promise<Task> {
+    const userId = req.user.token.clientId;
+    const { tenantId } = req.user.token;
+    return await this.taskLifecycleService.completeTask(taskId, userId, tenantId);
+  }
 }

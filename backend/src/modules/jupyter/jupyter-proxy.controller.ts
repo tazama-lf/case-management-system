@@ -80,7 +80,7 @@ export class JupyterProxyController {
     return await this.proxyService.getCounterpartyNodeFullData(
       counterpartyId,
       tenantId ?? 'DEFAULT',
-      (granularity as 'day' | 'month' | 'year') || 'month',
+      granularity as 'day' | 'month' | 'year',
     );
   }
 
@@ -120,7 +120,7 @@ export class JupyterProxyController {
     @Query('dateRange') dateRange?: string,
     @Query('granularity') granularity = 'day',
     @Headers() headers?: Record<string, any>,
-  ) {
+  ): Promise<unknown> {
     this.validateSecret(headers ?? {});
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
@@ -174,7 +174,7 @@ export class JupyterProxyController {
     @Query('endDate') endDate?: string,
     @Query('granularity') granularity?: string,
     @Headers() headers?: Record<string, any>,
-  ) {
+  ): Promise<unknown> {
     this.validateSecret(headers ?? {});
     if (!entityId || entityId.trim() === '') {
       throw new BadRequestException('entityId is required');

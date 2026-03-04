@@ -742,7 +742,7 @@ export class GoldLakehouseService {
       if (isEndToEndId) {
         // Query by end_to_end_id - returns all 4 entity perspectives for single transaction
         this.logger.log(`Fetching Transaction History by end_to_end_id: ${id}`);
-        return await this.getTransactionHistoryByEndToEndId(id, tenantId, startDate, endDate, granularity);
+        return await this.getTransactionHistoryByEndToEndId(id, tenantId, startDate, endDate);
       } else {
         // Query by entity_id - returns transaction history for entity
         this.logger.log(`Fetching Transaction History by entity_id: ${id}`);
@@ -978,8 +978,7 @@ export class GoldLakehouseService {
     tenantId = 'DEFAULT',
     startDate?: string,
     endDate?: string,
-    granularity?: string,
-  ) {
+  ): Promise<unknown> {
     try {
       this.logger.log(`Fetching Transaction History for end_to_end_id: ${endToEndId}`);
 
@@ -1170,7 +1169,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTransactionPerspectivesByEndToEndId(endToEndId: string, tenantId = 'DEFAULT') {
+  async getTransactionPerspectivesByEndToEndId(endToEndId: string, tenantId = 'DEFAULT'): Promise<unknown> {
     try {
       this.logger.log(`Fetching Transaction Perspectives for end_to_end_id: ${endToEndId}`);
 
@@ -1553,7 +1552,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTestAccountIds(tenantId = 'DEFAULT', minConnections = 1) {
+  async getTestAccountIds(tenantId = 'DEFAULT', minConnections = 1): Promise<unknown> {
     try {
       this.logger.log(`Fetching test account IDs from lakehouse (minConnections: ${minConnections})`);
 

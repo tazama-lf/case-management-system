@@ -55,11 +55,17 @@ export class JupyterProxyService {
     return await this.goldLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all');
   }
 
-  async getTransactionHistoryData(entityId: string, tenantId?: string, startDate?: string, endDate?: string, granularity?: string) {
+  async getTransactionHistoryData(
+    entityId: string,
+    tenantId?: string,
+    startDate?: string,
+    endDate?: string,
+    granularity?: string,
+  ): Promise<unknown> {
     return await this.goldLakehouseService.getTransactionHistoryData(entityId, tenantId ?? 'DEFAULT', startDate, endDate, granularity);
   }
 
-  async getAlertHistoryTimeline(endToEndId?: string, tenantId?: string, dateRange?: string, granularity = 'day') {
+  async getAlertHistoryTimeline(endToEndId?: string, tenantId?: string, dateRange?: string, granularity = 'day'): Promise<unknown> {
     return await this.goldLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity);
   }
 

@@ -114,7 +114,7 @@ export class TaskEventListener {
    * Updates or completes the Flowable task based on status change
    */
   @OnEvent('task.status.changed')
-  async handleTaskStatusChanged(event: TaskStatusChangedEvent) {
+  async handleTaskStatusChanged(event: TaskStatusChangedEvent): Promise<void> {
     this.logger.log(`Start - Handle task.status.changed for task ${event.taskId}`, TaskEventListener.name);
     // const eventKey = `status-${event.taskId}-${event.newStatus}`;
 

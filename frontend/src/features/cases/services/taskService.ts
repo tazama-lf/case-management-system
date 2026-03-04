@@ -297,16 +297,15 @@ export class TaskService {
 
   async completeTask(
     taskId: number,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<{ success: boolean; id: number; message: string }> {
     try {
-      const updateData: Partial<Task> = {
-        status: TaskStatus.STATUS_30_COMPLETED,
-      };
-
-      await this.updateTask(taskId, updateData);
+      const response = await apiClient.post<{ task_id: number }>(
+        `${this.baseUrl}/${taskId}/complete`,
+      );
 
       return {
         success: true,
+        id: response.task_id,
         message: 'Task completed successfully',
       };
     } catch (error: any) {
