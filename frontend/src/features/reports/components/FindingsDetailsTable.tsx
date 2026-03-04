@@ -7,11 +7,11 @@ import {
   DocumentIcon,
 } from '@heroicons/react/24/outline';
 import type { FindingDetail as BaseFindingDetail } from '../types/reports.types';
+import { useNotifications } from '@/shared/providers/NotificationProvider';
 
 interface FindingDetail extends BaseFindingDetail {
   supportingEvidence: string[];
 }
-import { useNotifications } from '@/shared/providers/NotificationProvider';
 
 interface FindingsDetailsTableProps {
   data: FindingDetail[];

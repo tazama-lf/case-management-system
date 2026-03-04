@@ -75,7 +75,7 @@ interface TaskEvidenceTabProps {
 }
 
 const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
-  caseId,
+  caseId: _caseId,
   task,
   onUploadComplete,
   onSaveRequest,

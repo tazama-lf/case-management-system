@@ -162,7 +162,11 @@ export class AlertService {
       this.loggerService.log(`Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`, AlertService.name);
 
       const { tenant_id: tenantIdDb, ...sanitizedAlert } = alert;
-      return sanitizedAlert;
+      return {
+        ...sanitizedAlert,
+        block_status: alert.block_status,
+        block_reason: alert.block_reason,
+      };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       const errorMessage = error instanceof Error ? error.message : String(error);

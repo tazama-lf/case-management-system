@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import triageService from '../../alerts/services/triageservice';
 import type { Alert } from '../../alerts/types/triage.types';
-import { formatDate } from '@/shared/utils/dateUtils';
 
 interface LinkExistingAlertsTabProps {
   selectedAlerts: Alert[];

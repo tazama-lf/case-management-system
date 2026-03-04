@@ -242,18 +242,18 @@ export const useAlerts = (): AlertsState & {
     pagination: {
       ...state.pagination,
       totalItems:
-        state.filters.query !== ''
-          ? searchFilteredAlerts.length
-          : state.pagination.totalItems,
+        state.filters.query === ''
+          ? state.pagination.totalItems
+          : searchFilteredAlerts.length,
       totalPages:
-        state.filters.query !== ''
-          ? Math.max(
+        state.filters.query === ''
+          ? state.pagination.totalPages
+          : Math.max(
               1,
               Math.ceil(
                 searchFilteredAlerts.length / state.pagination.pageSize,
               ),
-            )
-          : state.pagination.totalPages,
+            ),
     },
     paginatedAlerts,
     setFilters,

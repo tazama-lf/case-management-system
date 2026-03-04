@@ -6,8 +6,8 @@ export class JupyterService {
   private readonly voilaUrl: string;
 
   constructor(private readonly configService: ConfigService) {
-    // Require VOILA_URL to be provided via environment / config
-    this.voilaUrl = this.configService.getOrThrow<string>('VOILA_URL') || 'http://10.10.80.19:8866';
+    // Use VOILA_URL from environment or fallback to default
+    this.voilaUrl = this.configService.get<string>('VOILA_URL', 'http://10.10.80.19:8866');
   }
 
   getVisualizationUrl(notebookName: string, params: Record<string, string>): string {

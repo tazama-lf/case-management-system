@@ -29,7 +29,7 @@ export class GoldLakehouseService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
-    this.apiUrl = this.configService.getOrThrow<string>('GOLD_LAKEHOUSE_API_URL');
+    this.apiUrl = this.configService.get<string>('GOLD_LAKEHOUSE_API_URL', 'http://localhost:8000');
     this.timeout = this.configService.get<number>('GOLD_LAKEHOUSE_TIMEOUT') ?? 30000;
     this.alertHistoryFallbackE2EId = this.configService.get<string>('ALERT_HISTORY_FALLBACK_E2E_ID', '05c7ead85a1343d5a959561523a965fb');
   }

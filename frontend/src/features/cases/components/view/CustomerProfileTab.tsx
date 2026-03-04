@@ -276,9 +276,9 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
                 Balance
               </label>
               <p className="mt-1 text-sm text-gray-900">
-                {senderAccount?.balance !== undefined
-                  ? `${senderAccount.currency ?? 'USD'} ${senderAccount.balance.toFixed(2)}`
-                  : '—'}
+                {senderAccount?.balance === undefined
+                  ? '—'
+                  : `${senderAccount.currency ?? 'USD'} ${senderAccount.balance.toFixed(2)}`}
               </p>
             </div>
             <div>
@@ -329,9 +329,9 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
                 Balance
               </label>
               <p className="mt-1 text-sm text-gray-900">
-                {receiverAccount?.balance !== undefined
-                  ? `${receiverAccount.currency ?? 'USD'} ${receiverAccount.balance.toFixed(2)}`
-                  : '—'}
+                {receiverAccount?.balance === undefined
+                  ? '—'
+                  : `${receiverAccount.currency ?? 'USD'} ${receiverAccount.balance.toFixed(2)}`}
               </p>
             </div>
             <div>

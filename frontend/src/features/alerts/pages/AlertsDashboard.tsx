@@ -421,7 +421,7 @@ const AlertsDashboard: React.FC = () => {
               setShowManualTriageModal(false);
               setSelectedAlert(null);
             }}
-            onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
+            onSubmit={async (triageData: ManualTriageDto) => { await handleManualTriage(selectedAlert, triageData); }}
           />
         </Suspense>
       )}

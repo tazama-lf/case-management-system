@@ -37,7 +37,7 @@ const TaskLogTable: React.FC<TaskLogTableProps> = ({
   onReassign,
   onComplete,
   onUpdateStatus,
-  onCaseIdClick,
+  onCaseIdClick: _onCaseIdClick,
   onTaskClick,
 
   pagination,

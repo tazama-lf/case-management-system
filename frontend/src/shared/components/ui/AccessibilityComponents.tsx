@@ -45,7 +45,7 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
     const firstElement = focusableElements[0];
 
     if (firstElement) {
-      firstElement.focus();
+      (firstElement as HTMLElement).focus();
     }
 
     const handleTabKey = (e: KeyboardEvent): void => {
@@ -61,11 +61,11 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
       if (e.shiftKey) {
         if (document.activeElement === currentFirstElement) {
           e.preventDefault();
-          currentLastElement?.focus();
+          (currentLastElement as HTMLElement | undefined)?.focus();
         }
       } else if (document.activeElement === currentLastElement) {
         e.preventDefault();
-        currentFirstElement.focus();
+        (currentFirstElement as HTMLElement).focus();
       }
     };
 

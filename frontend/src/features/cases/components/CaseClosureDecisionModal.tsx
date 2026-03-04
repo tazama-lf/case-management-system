@@ -93,7 +93,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
 
     async function loadTasks() {
       try {
-        if (taskId == null) {
+        if (taskId === null || taskId === undefined) {
           console.error('TaskId is missing');
           return;
         }

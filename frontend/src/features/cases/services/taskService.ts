@@ -98,7 +98,7 @@ export class TaskService {
     try {
       const params = new URLSearchParams();
       if (filters) {
-        (Object.entries(filters) as [string, string | number | undefined][]).forEach(([key, value]) => {
+        (Object.entries(filters) as Array<[string, string | number | undefined]>).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
             params.append(key, String(value));
           }

@@ -326,7 +326,26 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
           </div>
 
           {/* Status or SAR/STR Status (conditional based on role) */}
-          {!isComplianceOfficer ? (
+          {isComplianceOfficer ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                SAR/STR Status
+              </label>
+              <select
+                value={sarStrStatusFilter}
+                onChange={(e) => {
+                  onSarStrStatusFilterChange(e.target.value);
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                {sarStrStatusOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Status
@@ -340,25 +359,6 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-500"
               >
                 {filteredStatusOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                SAR/STR Status
-              </label>
-              <select
-                value={sarStrStatusFilter}
-                onChange={(e) => {
-                  onSarStrStatusFilterChange(e.target.value);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              >
-                {sarStrStatusOptions.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

@@ -43,7 +43,7 @@ interface CaseActionsPanelProps {
 const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
   caseData,
   subCasesDetails,
-  parentCaseDetails,
+  parentCaseDetails: _parentCaseDetails,
   canManageSupervisorActions,
   onComplete,
   onCloseCase,

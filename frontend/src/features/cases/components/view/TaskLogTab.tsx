@@ -54,7 +54,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   onRefreshCases,
   alertId,
   canManageSupervisorActions = false,
-  caseStatus,
+  caseStatus: _caseStatus,
   onAfterTaskReassign,
   caseData,
   onApproveCase,

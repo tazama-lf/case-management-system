@@ -16,5 +16,5 @@ export const getCaseStatusBadge = (status: string): string => {
     STATUS_01_PENDING_CASE_CREATION_APPROVAL:
       '01_PENDING_CASE_CREATION_APPROVAL',
   } as const;
-  return statusMap[status as keyof typeof statusMap] ?? status;
+  return statusMap[status as keyof typeof statusMap] || status;
 };

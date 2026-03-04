@@ -37,7 +37,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
 
   const { showSuccess, showError } = useNotifications();
   const [notes, setNotes] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
+  const [loading, _setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
 

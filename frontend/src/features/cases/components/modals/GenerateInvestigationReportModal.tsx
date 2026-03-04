@@ -132,7 +132,7 @@ const getUserRole = (): string => {
 (pdfMake as any).vfs = (pdfFonts as any).vfs;
 
 const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModalProps> = ({
-  caseStatus,
+  caseStatus: _caseStatus,
   open,
   onClose,
   caseId,

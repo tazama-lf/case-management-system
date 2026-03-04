@@ -14,6 +14,7 @@ import {
   ParseFilePipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { File } from 'multer';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { ReportsService } from './report.service';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
@@ -87,7 +88,7 @@ export class ReportsController {
         fileIsRequired: true,
       }),
     )
-    file: Express.Multer.File,
+    file: File,
     @Body() dto: UploadReportDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<FraudReport> {

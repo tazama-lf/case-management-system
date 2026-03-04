@@ -18,6 +18,10 @@ export default [
       '**/node_modules/**',
       '**/__tests__/**',
       '**/test/**',
+      '**/*.test.ts',
+      '**/*.test.tsx',
+      '**/setupTests.ts',
+      'vitest.config.ts',
     ],
   },
   {

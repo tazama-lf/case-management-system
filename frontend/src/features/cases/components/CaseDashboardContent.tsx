@@ -53,7 +53,9 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
                 Manage and track investigation cases
               </p>
             </div>
-            {!hasComplianceOfficerRole() ? (
+            {hasComplianceOfficerRole() ? (
+              <div className="flex items-center space-x-3"></div>
+            ):(
               <div className="flex items-center space-x-3">
                 <button
                   onClick={onCreateNew}
@@ -63,8 +65,6 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
                   Create Manually
                 </button>
               </div>
-            ) : (
-              <div className="flex items-center space-x-3"></div>
             )}
           </div>
 

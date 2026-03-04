@@ -45,13 +45,13 @@ interface CaseDetailTaskLogTableProps {
 }
 
 const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
-  alertId,
+  alertId: _alertId,
   tasks,
   onAssign,
   onUnassign,
   onReassign,
   onUpdateStatus,
-  onRefreshCases,
+  onRefreshCases: _onRefreshCases,
   canManageSupervisorActions = false,
   caseData,
   onApproveCase,

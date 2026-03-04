@@ -96,7 +96,7 @@ export class ProfileService {
       typeof (error as { response?: unknown }).response === 'object' &&
       (error as { response?: { data?: { message?: string } } }).response?.data
     ) {
-      const data = (error as { response: { data: { message?: string } } }).response.data;
+      const {data} = (error as { response: { data: { message?: string } } }).response;
       return new Error(data.message ?? `Failed to ${operation}`);
     }
     if (error instanceof Error) {

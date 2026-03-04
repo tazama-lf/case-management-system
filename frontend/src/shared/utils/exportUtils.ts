@@ -27,9 +27,9 @@ export const exportToExcel = (
   data: ExportData[],
   filename: string,
   sheetName = 'Data',
-): void => {
+):void => {
   try {
-    if (!data || data.length === 0) {
+    if (data.length === 0) {
       throw new Error('No data to export');
     }
 
@@ -37,6 +37,7 @@ export const exportToExcel = (
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
+     
     if (data.length > 0) {
       const colWidths = Object.keys(data[0] ?? {}).map((key) => ({
         wch: Math.max(
@@ -44,6 +45,7 @@ export const exportToExcel = (
           ...data.map((row) => String(row[key] ?? '').length),
         ),
       }));
+       
       worksheet['!cols'] = colWidths;
     }
 
@@ -63,11 +65,12 @@ export const exportToExcel = (
 
 export const exportToCSV = (data: ExportData[], filename: string): void => {
   try {
-    if (!data || data.length === 0) {
+    if (data.length === 0) {
       throw new Error('No data to export');
     }
 
     const headers = Object.keys(data[0]);
+     
     const csvContent = [
       headers.join(','),
       ...data.map((row) =>
@@ -103,7 +106,7 @@ export const exportToPDF = (
   columns: TableColumn[],
 ): void => {
   try {
-    if (!data || data.length === 0) {
+    if (data.length === 0) {
       throw new Error('No data to export');
     }
 
@@ -129,6 +132,7 @@ export const exportToPDF = (
           const value = row[col.key];
           let displayValue = '';
 
+           
           if (value !== undefined && value !== null) {
             displayValue = String(value);
           }

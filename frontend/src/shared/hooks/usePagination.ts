@@ -68,7 +68,7 @@ export const usePagination = <T>({
   const goToNextPage = (): void => {
     setCurrentPage(Math.min(currentPage + 1, totalPages));
   };
-  const goToPreviousPage = () => {
+  const goToPreviousPage = (): void => {
     setCurrentPage(Math.max(currentPage - 1, 1));
   };
 

@@ -40,7 +40,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [showCollaborate, setShowCollaborate] = React.useState(false);
   const [tasks, setTasks] = React.useState<TaskForSupervisor[]>([]);
   const [loadingTasks, setLoadingTasks] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
+  // const [saving, setSaving] = React.useState(false);
   // const [saveSuccess, setSaveSuccess] = React.useState(false);
 
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
@@ -188,7 +188,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             type="button"
             onClick={onClose}
             className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-1 focus:ring-gray-400"
-            disabled={saving}
+            // disabled={saving}
           >
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
             Close
