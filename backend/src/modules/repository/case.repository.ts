@@ -87,7 +87,6 @@ export class CaseRepository extends BaseRepository {
     });
   }
 
-  // Task finder methods - using specific implementations for type safety
   async findTaskByNameAndStatus(
     caseId: number,
     tenantId: string,

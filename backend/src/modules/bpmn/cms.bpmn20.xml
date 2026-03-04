@@ -255,6 +255,12 @@
             </conditionExpression>
         </sequenceFlow>
 
+        <sequenceFlow id="flowSupervisorDraft" sourceRef="roleGateway" targetRef="completeCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creatorRole == 'SUPERVISOR' &amp;&amp; caseStatus == 'STATUS_00_DRAFT'}
+            </conditionExpression>
+        </sequenceFlow>
+
         <sequenceFlow id="flowReopenInvestigator" sourceRef="caseReopenRoleGateway" targetRef="reopenApproval">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creatorRole == 'INVESTIGATOR'}
@@ -264,6 +270,12 @@
         <sequenceFlow id="flowInvestigatorNonDraft" sourceRef="roleGateway" targetRef="approveCaseCreation">
             <conditionExpression xsi:type="tFormalExpression">
                 ${creatorRole == 'INVESTIGATOR' &amp;&amp; caseStatus != 'STATUS_00_DRAFT'}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowInvestigatorDraft" sourceRef="roleGateway" targetRef="completeCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${creatorRole == 'INVESTIGATOR' &amp;&amp; caseStatus == 'STATUS_00_DRAFT'}
             </conditionExpression>
         </sequenceFlow>
 

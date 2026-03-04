@@ -85,14 +85,6 @@ export class CaseCreationService {
       });
 
       await this.executeFlowableCaseCreationEvent(newCase, caseCreationType, true, userRole);
-      // await this.flowableService.handleCaseCreated({
-      //   caseId: newCase.case_id,
-      //   tenantId: newCase.tenant_id,
-      //   caseStatus: newCase.status,
-      //   creationType: caseCreationType,
-      //   creatorRole: role,
-      //   isReopened: false,
-      // });
 
       await this.taskService.createTask(
         {
@@ -166,14 +158,6 @@ export class CaseCreationService {
     try {
       const createdCase = await this.caseRepository.createCase(caseDetail);
       await this.executeFlowableCaseCreationEvent(createdCase, CaseCreationType.MANUAL, false, userRole);
-      // await this.flowableService.handleCaseCreated({
-      //   caseId: createdCase.case_id,
-      //   tenantId,
-      //   caseStatus,
-      //   creationType: CaseCreationType.MANUAL,
-      //   creatorRole: role,
-      //   isReopened: false,
-      // });
 
       const result = await this.caseRepository.transaction(async (tx) => {
         const updatedAlert = await this.alertRepository.updateAlert(
@@ -186,16 +170,6 @@ export class CaseCreationService {
           },
           tx,
         );
-        // await this.flowableService.handleTaskCompleted({
-        //   caseId: createdCase.case_id,
-        //   newStatus: TaskStatus.STATUS_30_COMPLETED,
-        //   taskName: 'Complete New Case',
-        //   completionVariables: {
-        //     autoCloseEligible: false,
-        //     caseType: updatedAlert.alert_type,
-        //     casePriority: priority,
-        //   },
-        // });
 
         if (needsApproval) {
           await this.taskService.createTask(
@@ -303,25 +277,6 @@ export class CaseCreationService {
     };
 
     await this.retry(flowableCaseCreation, maxAttempts);
-    // for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    //   try {
-    //     await flowableCaseCreation();
-    //     return;
-    //   } catch (error) {
-    //     const errorMessage = error instanceof Error ? error.message : String(error);
-    //     const errorStack = error instanceof Error ? error.stack : undefined;
-    //     this.loggerService.error(
-    //       `Attempt ${attempt} - Failed to trigger Flowable case creation event for case ${createdCase.case_id}: ${errorMessage}`,
-    //       errorStack,
-    //       CaseCreationService.name,
-    //     );
-    //     if (attempt === maxAttempts) {
-    //       throw new InternalServerErrorException(
-    //         `Failed to trigger Flowable case creation event after ${maxAttempts} attempts for case ${createdCase.case_id}`,
-    //       );
-    //     }
-    //   }
-    // }
   }
 
   private async retry(fn: () => Promise<void>, maxRetries: number, attempt = 1): Promise<void> {
