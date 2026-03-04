@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import type { AxiosError, AxiosResponse } from 'axios';
 import { AuthLoginResponse, AuthServiceUserResponse, AuthUser } from 'src/utils/interfaces/Auth.interface';
+import { CacheService } from '../shared/cache.service';
 
 @Injectable()
 export class AuthService {
@@ -13,7 +14,8 @@ export class AuthService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
-  ) {}
+    private readonly cacheService: CacheService,
+  ) { }
 
   async login(username: string, password: string): Promise<{ message: string; token: string; expiresIn: number | null }> {
     const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
@@ -52,6 +54,18 @@ export class AuthService {
       }
 
       this.logger.log('Login successful');
+      // Add delay to ensure all services (especially Redis) are initialized
+      setTimeout(() => {
+        this.cacheService.initializeUserCache(0, token).catch((error: unknown) => {
+          if (error instanceof Error) {
+            this.logger.error('Cache initialization error:', error);
+            this.logger.warn(`Cache initialization failed (non-blocking): ${error.message}`, CacheService.name);
+          } else {
+            this.logger.error('Cache initialization failed with non-error value:', error);
+          }
+        });
+      }, 2000); // Wait 2 seconds before initializing cache
+
       return {
         message: 'Login successful',
         token,
