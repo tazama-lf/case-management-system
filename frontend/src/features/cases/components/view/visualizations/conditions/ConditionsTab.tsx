@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import ConditionsService from './services/service';
-import TransactionDetailsService from '../transactiondetails/services/service';
 import type { ConditionsData } from './types';
+import { SubjectSelectionPanel } from './components/SubjectSelectionPanel';
+import { AccountSelector } from './components/AccountSelector';
+import { SelectedSubjectDetailsCard } from './components/SelectedSubjectDetailsCard';
+import { ConditionsHeader } from './components/ConditionsHeader';
+import { ConditionsCardsList } from './components/ConditionsCardsList';
+import type { DisplayCondition } from './types';
 
 interface ConditionsTabProps {
   caseId?: string;
@@ -16,6 +20,18 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
   const [data, setData] = useState<ConditionsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewingAsOf] = useState<Date>(() => new Date());
+  const [showInactive, setShowInactive] = useState(false);
+  const [subjectSide, setSubjectSide] = useState<'DEBTOR' | 'CREDITOR'>('DEBTOR');
+  const [subjectLevel, setSubjectLevel] = useState<'ENTITY' | 'ACCOUNT'>('ENTITY');
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('ACC-1234-7777');
+  const [subjectDetails, setSubjectDetails] = useState<{
+    entityName?: string;
+    entityId?: string;
+    accountId?: string;
+    accountType?: string;
+    accountNumber?: string;
+  } | null>(null);
 
   const timeRangeOptions = [
     'Last 30 Days',
@@ -26,78 +42,158 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
     'All Time',
   ];
 
-  // Helper function to calculate fromDate based on time range
-  const getFromDate = (range: string): string | undefined => {
-    const now = new Date();
-    let daysAgo = 0;
+  const mockAccountsBySide: Record<
+    'DEBTOR' | 'CREDITOR',
+    Array<{ id: string; name: string; numberMasked: string; type: string; activeCount: number }>
+  > = {
+    DEBTOR: [
+      {
+        id: 'ACC-5678-9812',
+        name: 'Checking',
+        numberMasked: '****5678-9812',
+        type: 'TXN ACCOUNT',
+        activeCount: 1,
+      },
+      {
+        id: 'ACC-9999-1234',
+        name: 'Savings',
+        numberMasked: '****9999-1234',
+        type: 'ACCOUNT',
+        activeCount: 1,
+      },
+      {
+        id: 'ACC-1234-7777',
+        name: 'Business',
+        numberMasked: '****7777-5555',
+        type: 'ACCOUNT',
+        activeCount: 2,
+      },
+    ],
+    CREDITOR: [
+      {
+        id: 'ACC-0000-2222',
+        name: 'Primary',
+        numberMasked: '****0000-2222',
+        type: 'ACCOUNT',
+        activeCount: 1,
+      },
+      {
+        id: 'ACC-0000-3333',
+        name: 'Secondary',
+        numberMasked: '****0000-3333',
+        type: 'ACCOUNT',
+        activeCount: 0,
+      },
+    ],
+  };
 
-    switch (range) {
-      case 'Last 30 Days':
-        daysAgo = 30;
-        break;
-      case 'Last 60 Days':
-        daysAgo = 60;
-        break;
-      case 'Last 90 Days':
-        daysAgo = 90;
-        break;
-      case 'Last 6 Months':
-        daysAgo = 180;
-        break;
-      case 'Last Year':
-        daysAgo = 365;
-        break;
-      case 'All Time':
-        return undefined;
-      default:
-        return undefined;
-    }
-
-    const fromDate = new Date(now);
-    fromDate.setDate(fromDate.getDate() - daysAgo);
-    return fromDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+  const mockDataBySide: Record<'DEBTOR' | 'CREDITOR', ConditionsData> = {
+    DEBTOR: {
+      metrics: { active: 1, blocked: 1, overridden: 0, future: 1 },
+      activeConditions: [
+        {
+          id: 'COND-PEP-SANCTIONS',
+          title: 'PEP Sanctions List',
+          type: 'BLOCK',
+          startDate: '2023-01-01T00:00:00.000Z',
+          endDate: null,
+          status: 'ACTIVE',
+          severity: 'high',
+          createdBy: 'External Watchlist Provider',
+          notes: 'Confirmed match on name and DOB',
+          action: 'BLOCK',
+        },
+      ],
+      expiredConditions: [
+        {
+          id: 'COND-HIGH-RISK-JURIS',
+          title: 'High Risk Jurisdiction',
+          type: 'EXPIRED',
+          startDate: '2023-06-15T00:00:00.000Z',
+          endDate: '2023-12-31T23:59:00.000Z',
+          status: 'EXPIRED',
+          severity: 'low',
+          createdBy: 'Internal Risk Policy',
+          notes: 'Entity operates in high-risk region',
+        },
+      ],
+      futureConditions: [
+        {
+          id: 'COND-TEMP-FREEZE',
+          title: 'Temporary Freeze',
+          type: 'FUTURE',
+          startDate: '2024-01-16T00:00:00.000Z',
+          endDate: null,
+          status: 'FUTURE',
+          severity: 'medium',
+          createdBy: 'Fraud Operations',
+          notes: 'Pending investigation',
+        },
+      ],
+      evaluatedTransactions: [],
+    },
+    CREDITOR: {
+      metrics: { active: 1, blocked: 0, overridden: 0, future: 0 },
+      activeConditions: [
+        {
+          id: 'COND-NEW-ENTITY-PROB',
+          title: 'New Entity Probation',
+          type: 'OVERRIDE',
+          startDate: '2024-01-10T00:00:00.000Z',
+          endDate: '2024-02-10T00:00:00.000Z',
+          status: 'ACTIVE',
+          severity: 'medium',
+          createdBy: 'Onboarding System',
+          notes: 'Entity onboarded < 30 days ago',
+          action: 'OVERRIDE',
+        },
+      ],
+      expiredConditions: [],
+      futureConditions: [],
+      evaluatedTransactions: [],
+    },
   };
 
   useEffect(() => {
     const fetchData = async () => {
-      // Prioritize transactionId flow as requested
-      if (!transactionId) {
-        return;
-      }
-
       setLoading(true);
       setError(null);
-      try {
-        // 1. Fetch Transaction Details to get Account ID
-        const txnDetails =
-          await TransactionDetailsService.getTransactionDetails(transactionId);
 
-        // 2. Extract Creditor Account IBAN or use sample account for testing
-        const accountId =
-          txnDetails.creditorProfile?.account?.iban ||
-          '7777cdefaa9b430692dafe4bd0ef9999'; // Fallback sample account for testing
-
-        console.log('Using accountId for conditions:', accountId);
-
-        // 3. Fetch Conditions using Account ID with date filter
-        const fromDate = getFromDate(timeRange);
-        const response = await ConditionsService.getConditionsData(
-          accountId,
-          fromDate,
-        );
-        setData(response);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to fetch conditions',
-        );
-        console.error(err);
-      } finally {
-        setLoading(false);
+      const sideAccounts = mockAccountsBySide[subjectSide];
+      const defaultAccountId = sideAccounts[0]?.id;
+      const resolvedAccountId = selectedAccountId || defaultAccountId || '';
+      if (!selectedAccountId && defaultAccountId) {
+        setSelectedAccountId(defaultAccountId);
       }
+
+      const selectedAccount = sideAccounts.find((a) => a.id === resolvedAccountId);
+
+      const mockedSubjectDetails =
+        subjectSide === 'DEBTOR'
+          ? {
+              entityName: 'John Smith',
+              entityId: 'ENT-US-9823',
+              accountId: resolvedAccountId,
+              accountType: selectedAccount?.name || 'Business',
+              accountNumber: selectedAccount?.numberMasked || '****7777-5555',
+            }
+          : {
+              entityName: 'Global Trading Corp',
+              entityId: 'ENT-UK-5541',
+              accountId: resolvedAccountId,
+              accountType: selectedAccount?.name || 'Primary',
+              accountNumber: selectedAccount?.numberMasked || '****0000-2222',
+            };
+
+      setSubjectDetails(mockedSubjectDetails);
+
+      const mock = mockDataBySide[subjectSide];
+      setData(mock);
+      setLoading(false);
     };
 
     fetchData();
-  }, [caseId, transactionId, timeRange]);
+  }, [caseId, transactionId, timeRange, subjectSide, selectedAccountId]);
 
   if (loading) {
     return (
@@ -115,281 +211,109 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
     );
   }
 
+  const activeBlocksCount = (data.activeConditions || []).filter((c) => c.action === 'BLOCK').length;
+
+  const displayedConditions = showInactive
+    ? [...(data.activeConditions || []), ...(data.expiredConditions || []), ...(data.futureConditions || [])]
+    : [...(data.activeConditions || [])];
+
+  const activeCount = (data.activeConditions || []).length;
+
+  const formatDateRange = (start: string, end?: string | null) => {
+    const startLabel = start ? new Date(start).toLocaleString() : '-';
+    const endLabel = end ? new Date(end).toLocaleString() : 'Indefinite';
+    return `${startLabel} → ${endLabel}`;
+  };
+
+  const statusBadge = (status: DisplayCondition['status']) => {
+    if (status === 'EXPIRED') return 'bg-gray-100 text-gray-700 ring-1 ring-gray-200';
+    if (status === 'FUTURE') return 'bg-purple-50 text-purple-700 ring-1 ring-purple-200';
+    return 'bg-green-50 text-green-700 ring-1 ring-green-200';
+  };
+
+  const leftBorder = (condition: DisplayCondition) => {
+    if (condition.status === 'EXPIRED') return 'border-l-gray-300';
+    if (condition.status === 'FUTURE') return 'border-l-purple-400';
+    if (condition.action === 'BLOCK') return 'border-l-red-500';
+    return 'border-l-blue-500';
+  };
+
   return (
-    <div className="space-y-6 p-4">
-      {/* Header with Filter */}
-      <div className="flex justify-between items-start">
+    <div className="flex flex-col">
+      <div className="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 py-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">
-            Conditions View
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Conditions and conditions for{' '}
-            {caseId || transactionId || 'Unknown ID'}
-          </p>
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-semibold text-gray-900">Condition Timeline</div>
+          </div>
+          <div className="mt-0.5 text-xs text-gray-500">
+            Transaction:{' '}
+            <span className="inline-flex rounded bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700">
+              {transactionId || '-'}
+            </span>
+          </div>
         </div>
-        <select
-          value={timeRange}
-          onChange={(e) => setTimeRange(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-900 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {timeRangeOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </div>
 
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="text-xs text-gray-600 uppercase font-semibold mb-2">
-            Active Conditions
-          </div>
-          <div className="text-2xl font-bold text-red-600">
-            {data.metrics?.active ?? 0}
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="text-xs text-gray-600 uppercase font-semibold mb-2">
-            Blocked Transactions
-          </div>
-          <div className="text-2xl font-bold text-orange-600">
-            {data.metrics?.blocked ?? 0}
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="text-xs text-gray-600 uppercase font-semibold mb-2">
-            Overridden Transactions
-          </div>
-          <div className="text-2xl font-bold text-green-600">
-            {data.metrics?.overridden ?? 0}
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="text-xs text-gray-600 uppercase font-semibold mb-2">
-            Future Conditions
-          </div>
-          <div className="text-2xl font-bold text-purple-600">
-            {data.metrics?.future ?? 0}
-          </div>
+        <div className="inline-flex h-10 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3">
+          <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4 text-blue-700" aria-hidden="true">
+            <path
+              d="M10 18c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M10 6v4l2.5 1.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <div className="text-[10px] font-semibold leading-none text-blue-700">VIEWING CONDITIONS AS OF</div>
+          <div className="text-xs font-semibold leading-none text-blue-900">{viewingAsOf.toLocaleString()}</div>
         </div>
       </div>
 
-      {/* Active Conditions */}
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">
-          Active Conditions
-        </h3>
-        <div className="space-y-3">
-          {data.activeConditions?.length > 0 ? (
-            data.activeConditions.map((condition) => (
-              <div
-                key={condition.id}
-                className={`rounded-lg border-l-4 p-4 ${
-                  condition.severity === 'high'
-                    ? 'border-l-red-500 bg-red-50'
-                    : condition.severity === 'medium'
-                      ? 'border-l-yellow-500 bg-yellow-50'
-                      : 'border-l-green-500 bg-green-50'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 text-sm">
-                      {condition.title}
-                    </h4>
-                    <div className="mt-2 space-y-1">
-                      <p className="text-xs text-gray-600">
-                        <span className="font-medium">Start:</span>{' '}
-                        {new Date(condition.startDate).toLocaleString()}
-                        {condition.endDate && (
-                          <>
-                            {' | '}
-                            <span className="font-medium">End:</span>{' '}
-                            {new Date(condition.endDate).toLocaleString()}
-                          </>
-                        )}
-                      </p>
-                      {condition.createdBy && (
-                        <p className="text-xs text-gray-600">
-                          <span className="font-medium">Created by:</span>{' '}
-                          {condition.createdBy}
-                        </p>
-                      )}
-                      {condition.action && (
-                        <p className="text-xs text-gray-600">
-                          <span className="font-medium">Action:</span>{' '}
-                          <span
-                            className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                              condition.action === 'BLOCK'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}
-                          >
-                            {condition.action}
-                          </span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-semibold ${
-                      condition.status === 'ACTIVE'
-                        ? 'bg-green-100 text-green-800'
-                        : condition.status === 'EXPIRED'
-                          ? 'bg-gray-100 text-gray-800'
-                          : 'bg-purple-100 text-purple-800'
-                    }`}
-                  >
-                    {condition.status}
-                  </span>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-gray-500">No active conditions.</p>
+      <div className="flex gap-6 p-4">
+        <div className="w-[360px] shrink-0 space-y-4">
+          <SubjectSelectionPanel
+            subjectSide={subjectSide}
+            onChangeSide={setSubjectSide}
+            subjectLevel={subjectLevel}
+            onChangeLevel={setSubjectLevel}
+            accountsAvailable={mockAccountsBySide[subjectSide].length}
+          />
+
+          {subjectLevel === 'ACCOUNT' && (
+            <AccountSelector
+              accounts={mockAccountsBySide[subjectSide]}
+              selectedAccountId={selectedAccountId}
+              onSelectAccount={setSelectedAccountId}
+            />
           )}
-        </div>
-      </div>
 
-      {/* Evaluated Transactions */}
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">
-          Evaluated Transactions
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                  Transaction ID
-                </th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                  Date
-                </th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                  Type
-                </th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                  Amount
-                </th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                  Currency
-                </th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                  Outcome
-                </th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                  Condition ID
-                </th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                  Reason
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.evaluatedTransactions?.length > 0 ? (
-                data.evaluatedTransactions.map((txn) => (
-                  <tr
-                    key={txn.id}
-                    className="border-b border-gray-200 hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-3 text-gray-900 font-semibold">
-                      {txn.id}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {new Date(txn.date).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{txn.type}</td>
-                    <td className="px-4 py-3 text-gray-600">{txn.amount}</td>
-                    <td className="px-4 py-3 text-gray-600">{txn.currency}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-semibold ${
-                          txn.outcome === 'PASSED'
-                            ? 'bg-green-100 text-green-800'
-                            : txn.outcome === 'BLOCKED'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                        }`}
-                      >
-                        {txn.outcome}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {txn.conditionId}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{txn.reason}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-4 py-3 text-center text-gray-500"
-                  >
-                    No evaluated transactions found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <SelectedSubjectDetailsCard
+            subjectDetails={subjectDetails}
+            subjectLevel={subjectLevel}
+            activeBlocksCount={activeBlocksCount}
+          />
         </div>
-      </div>
 
-      {/* Expired & Future Conditions */}
-      <div className="grid grid-cols-2 gap-6">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">
-            Expired Conditions
-          </h3>
-          <div className="space-y-3">
-            {data.expiredConditions?.length > 0 ? (
-              data.expiredConditions.map((condition) => (
-                <div
-                  key={condition.id}
-                  className="rounded-lg border border-gray-300 bg-gray-50 p-4"
-                >
-                  <p className="text-sm text-gray-700 font-medium">
-                    {condition.title}
-                  </p>
-                  <p className="text-xs text-gray-600 mt-2">
-                    {new Date(condition.startDate).toLocaleDateString()} -{' '}
-                    {new Date(condition.endDate || '').toLocaleDateString()}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-500">No expired conditions.</p>
-            )}
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">
-            Future Conditions
-          </h3>
-          <div className="space-y-3">
-            {data.futureConditions?.length > 0 ? (
-              data.futureConditions.map((condition) => (
-                <div
-                  key={condition.id}
-                  className="rounded-lg border border-purple-300 bg-purple-50 p-4"
-                >
-                  <p className="text-sm text-gray-700 font-medium">
-                    {condition.title}
-                  </p>
-                  <p className="text-xs text-gray-600 mt-2">
-                    Effective from{' '}
-                    {new Date(condition.startDate).toLocaleDateString()}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-500">No future conditions.</p>
-            )}
-          </div>
+        <div className="min-w-0 flex-1 space-y-4">
+          <ConditionsHeader
+            activeCount={activeCount}
+            timeRange={timeRange}
+            timeRangeOptions={timeRangeOptions}
+            onChangeTimeRange={setTimeRange}
+            showInactive={showInactive}
+            onToggleShowInactive={() => setShowInactive((s) => !s)}
+          />
+
+          <ConditionsCardsList
+            conditions={displayedConditions}
+            formatDateRange={formatDateRange}
+            leftBorder={leftBorder}
+            statusBadge={statusBadge}
+          />
         </div>
       </div>
     </div>
