@@ -10,7 +10,7 @@ import {
 import { formatDate } from '../../../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../../../types/task.types';
-
+import type { JSX } from 'react';
 
 interface TaskLogTableProps {
   tasks: UnifiedWorkQueueTask[];

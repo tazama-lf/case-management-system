@@ -52,7 +52,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [investigationNotes, setInvestigationNotes] = useState<string>('');
   const [investigationTask, setInvestigationTask] = useState<TaskForSupervisor | null>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
-  // const [isSupervisor, setIsSupervisor] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [submittedDate, setSubmittedDate] = useState<string>('N/A');
 
@@ -164,9 +163,9 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
     setExpandedCategories(newExpanded);
   };
 
-  const handleCompleteTask = async (task: TaskForSupervisor, _notes?: string): Promise<void> => {
+  const handleCompleteTask = async (task: UnifiedWorkQueueTask, _notes?: string): Promise<void> => {
     try {
-      const taskIdToComplete = task.task_id ?? task.id;
+      const taskIdToComplete = task.taskId ?? task.id;
       await taskService.updateTaskForSupervisor(taskIdToComplete, {
         status: TaskStatus.STATUS_30_COMPLETED,
       });
@@ -226,8 +225,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   useEffect(() => {
     const user = authService.getUser();
     const currentUserId = user?.userId;
-    // const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
-    // setIsSupervisor(isSupervisor);
     setCurrentUserId(currentUserId);
   }, []);
 

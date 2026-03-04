@@ -7,6 +7,7 @@ import type {
   ReturnCaseForReviewDto,
   RejectCaseCreationDto,
 } from '../../services/caseService';
+import type { JSX } from 'react';
 
 const CloseCaseModal = lazy(async () => await import('../CloseCaseModal'));
 const ApproveCaseReopenModal = lazy(
@@ -76,7 +77,7 @@ interface CaseModalsProps {
   handleCloseCaseSubmit: (data: CloseCaseDto) => Promise<void>;
   handleReopenSubmit: (caseId: number, reason: string) => Promise<void>;
   handleAbandonSubmit: (caseId: number, reason: string) => Promise<void>;
-  handleSuspendSubmit: (caseId: number, reason: string) => Promise<void>;
+  handleSuspendSubmit: (caseId: number, reason: string, taskIds: number[]) => Promise<void>;
   handleResumeSubmit: (caseId: number, reason: string) => Promise<void>;
   handleRejectSubmit: (rejectionReason: string) => Promise<void>;
   handleApproveSubmit: (data: ApproveCaseClosureDto) => Promise<void>;

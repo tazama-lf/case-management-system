@@ -2,7 +2,7 @@ import { formatDate } from '@/shared/utils/dateUtils';
 import type { TransactionMessage } from '../types/alertsdashboard.types';
 
 export function extractTransactionMessagesFromAlert(
-  transactionData: unknown,
+  transactionData: any,
   transactionId: string,
 ): TransactionMessage[] {
   if (!transactionData || typeof transactionData !== 'object') {
@@ -62,33 +62,23 @@ export function extractTransactionMessagesFromAlert(
   }
 }
 
-interface AlertWithTransaction {
-  transaction?: {
-    FIToFIPmtSts?: { GrpHdr?: { MsgId?: string } };
-    FIToFICstmrCdt?: { GrpHdr?: { MsgId?: string } };
-  };
-  txtp?: string;
-  alert_id?: string | number;
-}
-
-export function extractTransactionIdFromAlert(alert: unknown): string {
-  const a = alert as AlertWithTransaction;
+export function extractTransactionIdFromAlert(alert: any): string {
   try {
-    if (a.transaction?.FIToFIPmtSts?.GrpHdr?.MsgId) {
-      return a.transaction.FIToFIPmtSts.GrpHdr.MsgId;
+    if (alert.transaction?.FIToFIPmtSts?.GrpHdr?.MsgId) {
+      return alert.transaction.FIToFIPmtSts.GrpHdr.MsgId;
     }
 
-    if (a.transaction?.FIToFICstmrCdt?.GrpHdr?.MsgId) {
-      return a.transaction.FIToFICstmrCdt.GrpHdr.MsgId;
+    if (alert.transaction?.FIToFICstmrCdt?.GrpHdr?.MsgId) {
+      return alert.transaction.FIToFICstmrCdt.GrpHdr.MsgId;
     }
 
-    if (a.txtp) {
-      return a.txtp;
+    if (alert.txtp) {
+      return alert.txtp;
     }
 
-    return String(a.alert_id ?? 'Unknown');
+    return alert.alert_id ?? 'Unknown';
   } catch (error) {
     console.warn('Failed to extract transaction ID from alert:', error);
-    return String(a.txtp ?? a.alert_id ?? 'Unknown');
+    return alert.txtp ?? alert.alert_id ?? 'Unknown';
   }
 }

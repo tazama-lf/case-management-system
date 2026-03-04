@@ -186,7 +186,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
                               Confidence Score
                             </label>
                             <span className="text-sm">
-                              {alertDetails.confidence_per.toFixed(2)}%
+                              {alertDetails.confidence_per?.toFixed(2)}%
                             </span>
                           </div>
                           <div>

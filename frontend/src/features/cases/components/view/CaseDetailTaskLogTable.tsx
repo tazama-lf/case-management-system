@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, type JSX } from 'react';
 import {
   UserPlusIcon,
   UserMinusIcon,
@@ -370,8 +370,8 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
 
     if (
       task.status === 'SUSPENDED' &&
-      (caseData.status === 'STATUS_21_SUSPENDED' ||
-        caseData.status.includes('SUSPENDED'))
+      (caseData?.status === 'STATUS_21_SUSPENDED' ||
+        caseData?.status.includes('SUSPENDED'))
     ) {
       addViewAction(actions, task);
       return actions;

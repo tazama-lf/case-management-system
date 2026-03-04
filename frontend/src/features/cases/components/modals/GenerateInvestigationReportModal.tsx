@@ -51,7 +51,7 @@ marked.setOptions({
   gfm: true,
 });
 
-const convertMarkdownToPdfMake = (markdownText: string): unknown => {
+const convertMarkdownToPdfMake = (markdownText: string): any => {
   if (!markdownText) return '';
 
   try {
@@ -129,7 +129,7 @@ const getUserRole = (): string => {
   return 'CMS_SUPERVISOR';
 };
 
-(pdfMake as unknown as { vfs: unknown }).vfs = (pdfFonts as unknown as { vfs: unknown }).vfs;
+(pdfMake as any).vfs = (pdfFonts as any).vfs;
 
 const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModalProps> = ({
   caseStatus,
@@ -318,7 +318,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     ],
   }));
 
-  const docDefinition: Record<string, unknown> = {
+  const docDefinition: any = {
     pageSize: 'A4',
     pageOrientation: 'portrait',
     pageMargins: [40, 60, 40, 60],
@@ -537,9 +537,9 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     setShowApprovalConfirm(true);
   };
 
-  const generatePdfFile = async (docDefinition: Record<string, unknown>): Promise<File> => await new Promise((resolve, reject) => {
+  const generatePdfFile = async (docDefinition: any): Promise<File> => await new Promise((resolve, reject) => {
     try {
-      const pdfDoc = (pdfMake as unknown as { createPdf: (doc: Record<string, unknown>) => { getBlob: (cb: (blob: Blob) => void) => void } }).createPdf(docDefinition);
+      const pdfDoc = (pdfMake as any).createPdf(docDefinition);
 
       pdfDoc.getBlob((blob: Blob) => {
         const file = new File([blob], 'report.pdf', {
@@ -1091,7 +1091,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                 Cancel
               </button>
               <button
-                onClick={() => { void handleFinalize(); }}
+                onClick={handleFinalize}
                 disabled={isFinalizing}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-green-400"
               >
