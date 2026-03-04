@@ -4,7 +4,7 @@ import { AuditLogService } from '../audit/auditLog.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import * as crypto from 'node:crypto';
 import { Outcome } from '../../utils/types/outcome';
-import { JsonValue } from '@prisma/client/runtime/library';
+import { JsonValue, JsonObject, JsonArray } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class ConfigManagementService {
@@ -61,7 +61,31 @@ export class ConfigManagementService {
     }
   }
 
-  async configureRole(roleName: string, permissions: string[], description: string, userId: string, require2FA = true) {
+  async configureRole(
+    roleName: string,
+    permissions: string[],
+    description: string,
+    userId: string,
+    require2FA = true,
+  ): Promise<
+    | {
+        created_at: Date;
+        updated_at: Date;
+        description: string | null;
+        id: number;
+        created_by: string;
+        role_name: string;
+        permissions: JsonValue;
+        is_system_role: boolean;
+        is_active: boolean;
+        updated_by: string;
+      }
+    | {
+        status: string;
+        changeId: number;
+        message: string;
+      }
+  > {
     try {
       if (!roleName || roleName.trim().length < 3) {
         throw new BadRequestException('Role name must be at least 3 characters');
@@ -141,7 +165,18 @@ export class ConfigManagementService {
     }
   }
 
-  async getRolePermissions(roleName: string) {
+  async getRolePermissions(roleName: string): Promise<{
+    id: number;
+    role_name: string;
+    permissions: JsonValue;
+    description: string | null;
+    is_system_role: boolean;
+    is_active: boolean;
+    created_by: string;
+    updated_by: string;
+    created_at: Date;
+    updated_at: Date;
+  }> {
     const role = await this.prisma.rolePermission.findUnique({
       where: { role_name: roleName },
     });
@@ -153,7 +188,18 @@ export class ConfigManagementService {
     return role;
   }
 
-  async listAllRoles() {
+  async listAllRoles(): Promise<
+    Array<{
+      description: string | null;
+      created_at: Date;
+      updated_at: Date;
+      id: number;
+      role_name: string;
+      permissions: JsonValue;
+      is_system_role: boolean;
+      is_active: boolean;
+    }>
+  > {
     return await this.prisma.rolePermission.findMany({
       where: { is_active: true },
       orderBy: { role_name: 'asc' },
@@ -226,7 +272,22 @@ export class ConfigManagementService {
       config_data?: any;
     },
     userId: string,
-  ) {
+  ): Promise<{
+    api_key: string | null;
+    api_secret: string | null;
+    id: number;
+    system_name: string;
+    endpoint_url: string | null;
+    config_data: string | number | boolean | JsonObject | JsonArray | null;
+    auth_type: string | null;
+    is_enabled: boolean;
+    last_tested_at: Date | null;
+    test_status: string | null;
+    created_by: string;
+    updated_by: string;
+    created_at: Date;
+    updated_at: Date;
+  }> {
     try {
       const validSystems = ['ALERT_TRIAGE', 'API_PORTAL', 'FLOWABLE', 'KEYCLOAK'];
       if (!validSystems.includes(systemName)) {
@@ -364,7 +425,15 @@ export class ConfigManagementService {
     return { message: `Integration ${systemName} ${enabled ? 'enabled' : 'disabled'} successfully` };
   }
 
-  async testIntegration(systemName: string, userId: string) {
+  async testIntegration(
+    systemName: string,
+    userId: string,
+  ): Promise<{
+    system_name: string;
+    test_status: string;
+    tested_at: Date;
+    endpoint_url: string | null;
+  }> {
     const config = await this.prisma.integrationConfig.findUnique({
       where: { system_name: systemName },
     });
@@ -569,7 +638,31 @@ export class ConfigManagementService {
     configType?: string;
     page?: number;
     limit?: number;
-  }) {
+  }): Promise<{
+    logs: Array<{
+      created_at: Date;
+      id: number;
+      config_id: number;
+      config_key: string;
+      old_value: JsonValue;
+      new_value: JsonValue;
+      change_type: string;
+      changed_by: string;
+      change_reason: string | null;
+      ip_address: string | null;
+      user_agent: string | null;
+      requires_2fa: boolean;
+      approved_by: string | null;
+      approval_date: Date | null;
+      change_status: string;
+    }>;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> {
     const where: any = {};
     const page = filters?.page ?? 1;
     const limit = filters?.limit ?? 50;

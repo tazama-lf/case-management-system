@@ -21,7 +21,6 @@ import {
   CaseCreatedEvent,
   CaseStatusChangedEvent,
   TaskCompletedEvent,
-  CaseSuspendedEvent,
 } from '../events/domain-events';
 
 @Injectable()

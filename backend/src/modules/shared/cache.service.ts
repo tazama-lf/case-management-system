@@ -44,22 +44,22 @@ export class CacheService implements OnModuleInit {
     this.logger.log('Initializing CMS cache...', CacheService.name);
 
     // Add delay to ensure all services (especially Redis) are initialized
-    setTimeout(() => {
-      this.initializeUserCache().catch((error: unknown) => {
-        if (error instanceof Error) {
-          this.logger.error('Cache initialization error:', error);
-          this.logger.warn(`Cache initialization failed (non-blocking): ${error.message}`, CacheService.name);
-        } else {
-          this.logger.error('Cache initialization failed with non-error value:', error);
-        }
-      });
-    }, 2000); // Wait 2 seconds before initializing cache
+    // setTimeout(() => {
+    //   this.initializeUserCache().catch((error: unknown) => {
+    //     if (error instanceof Error) {
+    //       this.logger.error('Cache initialization error:', error);
+    //       this.logger.warn(`Cache initialization failed (non-blocking): ${error.message}`, CacheService.name);
+    //     } else {
+    //       this.logger.error('Cache initialization failed with non-error value:', error);
+    //     }
+    //   });
+    // }, 2000); // Wait 2 seconds before initializing cache
   }
 
   /**
    * Initialize cache with CMS_INVESTIGATOR and CMS_SUPERVISOR users
    */
-  private async initializeUserCache(retryCount = 0): Promise<void> {
+  public async initializeUserCache(retryCount = 0, token: string,): Promise<void> {
     const maxRetries = 3;
     this.logger.log(`InitializeUserCache called (attempt ${retryCount + 1}/${maxRetries + 1})`, CacheService.name);
 
@@ -70,7 +70,7 @@ export class CacheService implements OnModuleInit {
 
         if (retryCount < maxRetries) {
           setTimeout(() => {
-            this.initializeUserCache(retryCount + 1).catch((error: unknown) => {
+            this.initializeUserCache(retryCount + 1, token).catch((error: unknown) => {
               this.logger.error('Retry failed:', error);
             });
           }, 3000);
@@ -88,12 +88,8 @@ export class CacheService implements OnModuleInit {
         try {
           this.logger.log(`Fetching users with role: ${role}`, CacheService.name);
 
-          // Get admin token for API calls
-          const adminUsername = this.configService.get<string>('TAZAMA_AUTH_ADMIN_USERNAME') ?? '';
-          const adminPassword = this.configService.get<string>('TAZAMA_AUTH_ADMIN_PASSWORD') ?? '';
-          const adminData = await this.authService.login(adminUsername, adminPassword);
 
-          const users = await this.getUsersByRole(adminData.token, role, this.configService.get<string>('KEYCLOAK_GROUP_NAME') ?? '');
+          const users = await this.getUsersByRole(token, role, this.configService.get<string>('KEYCLOAK_GROUP_NAME') ?? '');
 
           for (const user of users) {
             const userDetails: UserDetails = {
@@ -150,10 +146,10 @@ export class CacheService implements OnModuleInit {
   /**
    * Refresh the user cache manually
    */
-  async refreshUserCache(): Promise<void> {
-    this.logger.log('Refreshing user cache...', CacheService.name);
-    await this.initializeUserCache();
-  }
+  // async refreshUserCache(): Promise<void> {
+  //   this.logger.log('Refreshing user cache...', CacheService.name);
+  //   await this.initializeUserCache();
+  // }
 
   /**
    * Get user from cache

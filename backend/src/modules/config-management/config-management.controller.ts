@@ -4,6 +4,7 @@ import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import { RequireAdminRole } from '../../decorators/auth.decorator';
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { JsonValue, JsonObject, JsonArray } from '@prisma/client/runtime/library';
 import {
   ConfigureRoleDto,
   RoleDto,
@@ -18,7 +19,7 @@ import {
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class ConfigManagementController {
-  constructor(private readonly configService: ConfigManagementService) {}
+  constructor(private readonly configService: ConfigManagementService) { }
 
   @Put('roles/:roleName')
   @RequireAdminRole()
@@ -41,7 +42,29 @@ export class ConfigManagementController {
     status: 403,
     description: 'Forbidden - Cannot modify system roles or insufficient privileges',
   })
-  async configureRole(@Param('roleName') roleName: string, @Body() body: ConfigureRoleDto, @Req() req: AuthenticatedRequest): Promise<unknown> {
+  async configureRole(
+    @Param('roleName') roleName: string,
+    @Body() body: ConfigureRoleDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<
+    | {
+      created_at: Date;
+      updated_at: Date;
+      description: string | null;
+      id: number;
+      created_by: string;
+      role_name: string;
+      permissions: JsonValue;
+      is_system_role: boolean;
+      is_active: boolean;
+      updated_by: string;
+    }
+    | {
+      status: string;
+      changeId: number;
+      message: string;
+    }
+  > {
     const userId = req.user.token.clientId;
 
     if (!userId) {
@@ -62,7 +85,18 @@ export class ConfigManagementController {
     description: 'Roles retrieved successfully',
     type: [RoleDto],
   })
-  async listRoles(): Promise<unknown> {
+  async listRoles(): Promise<
+    Array<{
+      description: string | null;
+      created_at: Date;
+      updated_at: Date;
+      id: number;
+      role_name: string;
+      permissions: JsonValue;
+      is_system_role: boolean;
+      is_active: boolean;
+    }>
+  > {
     return await this.configService.listAllRoles();
   }
 
@@ -77,7 +111,18 @@ export class ConfigManagementController {
     description: 'Name of the role',
     example: 'CMS_SUPERVISOR',
   })
-  async getRolePermissions(@Param('roleName') roleName: string): Promise<unknown> {
+  async getRolePermissions(@Param('roleName') roleName: string): Promise<{
+    id: number;
+    role_name: string;
+    permissions: JsonValue;
+    description: string | null;
+    is_system_role: boolean;
+    is_active: boolean;
+    created_by: string;
+    updated_by: string;
+    created_at: Date;
+    updated_at: Date;
+  }> {
     return await this.configService.getRolePermissions(roleName);
   }
 
@@ -103,7 +148,22 @@ export class ConfigManagementController {
     @Param('systemName') systemName: string,
     @Body() config: ConfigureIntegrationDto,
     @Req() req: AuthenticatedRequest,
-  ): Promise<unknown> {
+  ): Promise<{
+    api_key: string | null;
+    api_secret: string | null;
+    id: number;
+    system_name: string;
+    endpoint_url: string | null;
+    config_data: string | number | boolean | JsonObject | JsonArray | null;
+    auth_type: string | null;
+    is_enabled: boolean;
+    last_tested_at: Date | null;
+    test_status: string | null;
+    created_by: string;
+    updated_by: string;
+    created_at: Date;
+    updated_at: Date;
+  }> {
     const userId = req.user.token.clientId;
 
     if (!userId) {
@@ -130,7 +190,15 @@ export class ConfigManagementController {
     description: 'Integration test completed',
     type: IntegrationTestResultDto,
   })
-  async testIntegration(@Param('systemName') systemName: string, @Req() req: AuthenticatedRequest): Promise<unknown> {
+  async testIntegration(
+    @Param('systemName') systemName: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    system_name: string;
+    test_status: string;
+    tested_at: Date;
+    endpoint_url: string | null;
+  }> {
     const userId = req.user.token.clientId;
 
     if (!userId) {
@@ -154,7 +222,16 @@ export class ConfigManagementController {
     format: 'uuid',
   })
   @ApiBody({ type: Verify2FADto })
-  async verify2FA(@Param('changeId') changeId: number, @Body() body: Verify2FADto, @Req() req: AuthenticatedRequest): Promise<unknown> {
+  async verify2FA(
+    @Param('changeId') changeId: number,
+    @Body() body: Verify2FADto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
+    message: string;
+    changeId: number;
+    config_key: string;
+    status: string;
+  }> {
     const userId = req.user.token.clientId;
 
     if (!userId) {
@@ -207,7 +284,31 @@ export class ConfigManagementController {
     @Query('endDate') endDate?: string,
     @Query('changedBy') changedBy?: string,
     @Query('configType') configType?: string,
-  ): Promise<unknown> {
+  ): Promise<{
+    logs: Array<{
+      created_at: Date;
+      id: number;
+      config_id: number;
+      config_key: string;
+      old_value: JsonValue;
+      new_value: JsonValue;
+      change_type: string;
+      changed_by: string;
+      change_reason: string | null;
+      ip_address: string | null;
+      user_agent: string | null;
+      requires_2fa: boolean;
+      approved_by: string | null;
+      approval_date: Date | null;
+      change_status: string;
+    }>;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> {
     const filters = {
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,
