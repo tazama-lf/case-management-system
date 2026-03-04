@@ -2,7 +2,7 @@ import { Controller, Get, Param, Query, UseGuards, BadRequestException } from '@
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { GoldLakehouseService } from './gold-lakehouse.service';
-import { RequireInvestigatorOrSupervisorRole, Public } from 'src/auth/auth.decorator';
+import { RequireInvestigatorOrSupervisorRole } from '../auth/auth.decorator';
 import { TransactionNetworkResponseDto, CounterpartyNetworkResponseDto } from './dto/network-analysis.dto';
 
 @ApiTags('Gold Lakehouse')
@@ -48,194 +48,519 @@ export class GoldLakehouseController {
     return this.goldLakehouseService.getAlertNavigatorMetrics(alertIdNum, tenantId || 'DEFAULT');
   }
 
-  // ---------------- CONDITIONS VIEW ----------------
+  // ================ CONDITIONS ENDPOINTS ================
+  // Essential endpoints based on available data:
+  // 1. Summary - condition counts by account
+  // 2. Details - all condition records by account  
+  // 3. Expired - expired condition details by account
+  // 4. Entity accounts - support entity workflows
 
   @Get('conditions/summary')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get Conditions summary metrics' })
+  @ApiOperation({ 
+    summary: 'Get conditions summary with counts by Account ID',
+    description: `Returns aggregated condition counts and basic details for a specific account. 
+    
+    Features:
+    - Condition counts by status (active, expired, future)
+    - Account metadata (scheme, FSP ID)
+    - Historical view support via asOfDate parameter
+    - Summary of each condition (type, reason, dates)
+    
+    Use Cases:
+    - Dashboard metrics and KPIs
+    - Quick account condition overview
+    - Historical compliance checks
+    - Account risk assessment
+    
+    Test with: 6665bafaee4b430692dafe4bd0efb3fa (has 3 expired conditions)`
+  })
   @ApiQuery({
     name: 'accountId',
-    description: 'Account ID - REQUIRED',
+    description: 'Account ID from conditions_timeline.cond_account_id field',
     required: true,
     type: String,
-    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011',
+    example: '6665bafaee4b430692dafe4bd0efb3fa',
   })
   @ApiQuery({
     name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    description: 'Tenant ID for multi-tenant filtering (use DEFAULT for cross-tenant)',
     required: false,
     type: String,
     example: 'DEFAULT',
   })
   @ApiQuery({
-    name: 'fromDate',
-    description: 'Filter start date - OPTIONAL (YYYY-MM-DD). If omitted, returns all history.',
+    name: 'asOfDate',
+    description: 'Historical view: Show conditions as they were at this ISO timestamp. Filters based on inception/expiry dates. If omitted, uses current timestamp.',
     required: false,
     type: String,
-    example: '2026-01-01',
+    example: '2025-12-31T08:00:00',
   })
-  @ApiResponse({ status: 200 })
+  @ApiResponse({ 
+    status: 200,
+    description: 'Condition summary with counts and basic condition details',
+    schema: {
+      example: {
+        accountId: '6665bafaee4b430692dafe4bd0efb3fa',
+        accountScheme: 'MSISDN',
+        fspId: 'fsp001',
+        totalConditions: 3,
+        activeConditions: 0,
+        expiredConditions: 3,
+        futureConditions: 0,
+        conditions: [
+          {
+            conditionId: '84bdd2a6-379c-4f6a-8ac1-3275faeb7376',
+            type: 'overridable-block',
+            perspective: 'both',
+            reason: 'Adverse media reports',
+            status: 'expired',
+            inceptionDate: '2025-12-31T07:41:53.855000',
+            expiryDate: '2025-12-31T09:41:00',
+            createdBy: 'no mapping found',
+            eventTypes: ['pacs.008.001.10'],
+            eventCount: 1
+          }
+        ]
+      }
+    }
+  })
   async getConditionsSummary(
     @Query('accountId') accountId: string,
     @Query('tenantId') tenantId?: string,
-    @Query('fromDate') fromDate?: string,
+    @Query('asOfDate') asOfDate?: string,
   ) {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
-
-    return this.goldLakehouseService.getConditionsSummary(accountId, tenantId || 'DEFAULT', fromDate);
+    return this.goldLakehouseService.getConditionsSummaryByAccount(accountId, tenantId || 'DEFAULT', undefined, asOfDate);
   }
 
-  @Get('conditions/active')
+  @Get('conditions/details')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get Active Conditions for an account within a time range' })
+  @ApiOperation({ 
+    summary: 'Get complete condition records with full details by Account ID',
+    description: `Returns all condition records with complete field data for a specific account. Primary endpoint for detailed condition analysis.
+    
+    Features:
+    - Full condition record details (all database fields)
+    - Filter by active status (showInactive parameter)
+    - Historical view support (asOfDate parameter)
+    - Includes bucket granularity and bucket start dates
+    - Force create flags and event type details
+    
+    Use Cases:
+    - Detailed condition investigation
+    - Compliance audit trails
+    - Historical condition analysis
+    - Condition lifecycle tracking
+    
+    Test with: 6665bafaee4b430692dafe4bd0efb3fa (has full condition data)`
+  })
   @ApiQuery({
     name: 'accountId',
-    description: 'Account ID - REQUIRED',
+    description: 'Account ID from conditions_timeline.cond_account_id field',
     required: true,
     type: String,
-    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011',
+    example: '6665bafaee4b430692dafe4bd0efb3fa',
   })
   @ApiQuery({
     name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    description: 'Tenant ID for multi-tenant filtering (use DEFAULT for cross-tenant)',
     required: false,
     type: String,
     example: 'DEFAULT',
   })
   @ApiQuery({
-    name: 'fromDate',
-    description: 'Filter start date - OPTIONAL (YYYY-MM-DD). If omitted, returns all history.',
+    name: 'asOfDate',
+    description: 'Historical view: Show conditions as they were at this ISO timestamp',
     required: false,
     type: String,
-    example: '2026-01-01',
+    example: '2025-12-31T08:00:00',
   })
-  @ApiResponse({ status: 200 })
-  async getActiveConditions(
+  @ApiQuery({
+    name: 'showInactive',
+    description: 'Include expired and future conditions. Set to true for complete history. Default: false (active only)',
+    required: false,
+    type: Boolean,
+    example: true,
+  })
+  @ApiResponse({ 
+    status: 200,
+    description: 'Complete condition records with all database fields',
+    schema: {
+      example: {
+        accountId: '6665bafaee4b430692dafe4bd0efb3fa',
+        totalConditions: 3,
+        conditions: [
+          {
+            conditionId: '84bdd2a6-379c-4f6a-8ac1-3275faeb7376',
+            pk: '7b9f85c75159465652283cd6878aa7f98f70fb356124275028fd79430247de23',
+            tenantId: 'fsp-001',
+            bucketGranularity: 'week',
+            bucketStart: '2025-12-28T19:00:00',
+            accountId: '6665bafaee4b430692dafe4bd0efb3fa',
+            accountScheme: 'MSISDN',
+            accountAgentMmbId: 'fsp001',
+            type: 'overridable-block',
+            perspective: 'both',
+            reason: 'Adverse media reports',
+            forceCreate: true,
+            eventTypes: ['pacs.008.001.10'],
+            eventTypePrimary: 'pacs.008.001.10',
+            eventTypeCount: 1,
+            createdTimestamp: '2025-12-31T07:41:53.855000',
+            inceptionTimestamp: '2025-12-31T07:41:53.855000',
+            expiryTimestamp: '2025-12-31T09:41:00',
+            isActive: false,
+            isExpired: true,
+            status: 'expired'
+          }
+        ]
+      }
+    }
+  })
+  async getConditionsDetails(
     @Query('accountId') accountId: string,
     @Query('tenantId') tenantId?: string,
-    @Query('fromDate') fromDate?: string,
+    @Query('asOfDate') asOfDate?: string,
+    @Query('showInactive') showInactive?: boolean,
   ) {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
-
-    return this.goldLakehouseService.getActiveConditions(accountId, tenantId || 'DEFAULT', fromDate);
+    return this.goldLakehouseService.getConditionsListByAccount(accountId, tenantId || 'DEFAULT', asOfDate, showInactive);
   }
 
   @Get('conditions/expired')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get expired conditions for an account' })
+  @ApiOperation({ 
+    summary: 'Get expired conditions by Account ID',
+    description: 'Returns only expired condition records for a specific account. Use when specifically analyzing historical/closed conditions.'
+  })
   @ApiQuery({
     name: 'accountId',
-    description: 'Account ID - REQUIRED',
+    description: 'Account ID from conditions_timeline table',
     required: true,
     type: String,
+    example: '7777cdefaa9b430692dafe4bd0ef9999',
   })
   @ApiQuery({
     name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
-    required: false,
-    type: String,
-  })
-  @ApiResponse({ status: 200 })
-  async getExpiredConditions(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string) {
-    if (!accountId) {
-      throw new BadRequestException('accountId is required');
-    }
-
-    return this.goldLakehouseService.getExpiredConditions(accountId, tenantId || 'DEFAULT');
-  }
-
-  @Get('conditions/future')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get future conditions for an account' })
-  @ApiQuery({
-    name: 'accountId',
-    description: 'Account ID - REQUIRED',
-    required: true,
-    type: String,
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
-    required: false,
-    type: String,
-  })
-  @ApiResponse({ status: 200 })
-  async getFutureConditions(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string) {
-    if (!accountId) {
-      throw new BadRequestException('accountId is required');
-    }
-
-    return this.goldLakehouseService.getFutureConditions(accountId, tenantId || 'DEFAULT');
-  }
-
-  @Get('conditions')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get Conditions list (active / expired / future)' })
-  @ApiQuery({
-    name: 'accountId',
-    description: 'Account ID - REQUIRED',
-    required: true,
-    type: String,
-    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011',
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    description: 'Tenant ID (use DEFAULT for cross-tenant queries)',
     required: false,
     type: String,
     example: 'DEFAULT',
   })
-  @ApiResponse({ status: 200 })
-  async getConditionsList(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string) {
+  @ApiResponse({ 
+    status: 200,
+    description: 'Array of expired condition records',
+    schema: {
+      example: {
+        conditions: [
+          {
+            condition_id: 'cond_002',
+            cond_account_id: '7777cdefaa9b430692dafe4bd0ef9999',
+            cond_reason: 'Customer under enhanced due diligence',
+            cond_is_expired: true,
+            cond_end_date: '2026-01-15',
+            cond_tenant_id: 'fsp-001'
+          }
+        ],
+        metadata: {
+          accountId: '7777cdefaa9b430692dafe4bd0ef9999',
+          expiredCount: 8,
+          queryTimestamp: '2026-03-02T10:30:00Z'
+        }
+      }
+    }
+  })
+  async getExpiredConditions(
+    @Query('accountId') accountId: string,
+    @Query('tenantId') tenantId?: string,
+  ) {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
-
-    return this.goldLakehouseService.getConditionsList(accountId, tenantId);
+    return this.goldLakehouseService.getExpiredConditionsByAccount(accountId, tenantId || 'DEFAULT');
   }
 
-  @Get('conditions/evaluated-transactions')
+
+
+
+
+
+
+  @Get('conditions/detail/:conditionId')
   @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
-    summary: 'Get evaluated transactions for Conditions view',
+  @ApiOperation({ 
+    summary: 'Get specific condition details by Condition ID',
+    description: 'Returns the full details for a specific condition rule, including full reason and metadata.'
   })
-  @ApiQuery({
-    name: 'accountId',
-    description: 'Account ID - REQUIRED',
+  @ApiParam({
+    name: 'conditionId',
+    description: 'The unique ID of the condition rule (e.g. cond-abc-123)',
     required: true,
     type: String,
-    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011',
   })
   @ApiQuery({
     name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    description: 'Tenant ID',
+    required: false,
+    type: String,
+    example: 'DEFAULT',
+  })
+  async getOneConditionDetail(
+    @Param('conditionId') conditionId: string,
+    @Query('tenantId') tenantId?: string,
+  ) {
+    return this.goldLakehouseService.getConditionDetails(conditionId, tenantId || 'DEFAULT');
+  }
+
+  @Get('conditions/evaluated-transactions/:id')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ 
+    summary: 'Get evaluated transactions for a condition/account',
+    description: 'Uses the Temporal Join logic to find all financial activity overlapping with the condition window.'
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Account ID or Transaction ID to anchor the audit',
+    required: true,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID',
     required: false,
     type: String,
     example: 'DEFAULT',
   })
   @ApiQuery({
     name: 'fromDate',
-    description: 'Filter start date - OPTIONAL (YYYY-MM-DD). If omitted, returns all transactions.',
+    description: 'Optional filter to start the audit from a specific ISO date',
     required: false,
     type: String,
-    example: '2026-01-01',
   })
-  @ApiResponse({ status: 200 })
   async getEvaluatedTransactions(
-    @Query('accountId') accountId: string,
+    @Param('id') id: string,
     @Query('tenantId') tenantId?: string,
     @Query('fromDate') fromDate?: string,
   ) {
-    if (!accountId) {
-      throw new BadRequestException('accountId is required');
-    }
-
-    return this.goldLakehouseService.getEvaluatedTransactions(accountId, tenantId, fromDate);
+    return this.goldLakehouseService.getEvaluatedTransactionsByAccount(id, tenantId || 'DEFAULT', fromDate);
   }
+
+  // ================ NEW ENDPOINTS FOR CONDITIONS VIEW ================
+  
+  @Get('conditions/by-transaction/:transactionId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ 
+    summary: 'Get transaction-based conditions context (Transaction Entry Point)',
+    description: `Returns complete transaction context with both parties (debtor/creditor), their accounts, and condition statistics. Primary entry point for Conditions Timeline visualization.
+    
+    Data Flow (UNION Strategy):
+    1. Query transaction_detail → Extract debtor/creditor IDs and account IDs
+    2. For each party:
+       - Add transaction account (direct link)
+       - UNION with entity accounts from account_holder
+       - Query conditions_timeline for all unique accounts
+    3. Return aggregated view with condition counts per account
+    
+    Features:
+    - Transaction metadata (ID, type, amount, timestamp)
+    - Both debtor and creditor entity details
+    - All accounts linked to each entity (transaction + entity-owned)
+    - Condition counts per account (active, expired, future)
+    - isTransactionAccount flag to distinguish transaction vs entity accounts
+    - Historical view via asOfDate (defaults to transaction timestamp)
+    
+    Use Cases:
+    - Conditions Timeline UI entry point
+    - Transaction-based condition investigation
+    - Party selection (Debtor vs Creditor)
+    - Account-level condition analysis
+    
+    Test with: 257758 (pacs.008.001.10 transaction with full party data)`
+  })
+  @ApiParam({
+    name: 'transactionId',
+    description: 'Transaction ID (numeric) from transaction_detail table',
+    required: true,
+    type: Number,
+    example: 257758,
+  })
+  @ApiQuery({
+    name: 'asOfDate',
+    description: 'Historical view: Show conditions active at this ISO timestamp. Defaults to transaction timestamp if omitted.',
+    required: false,
+    type: String,
+    example: '2025-12-31T08:00:00',
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID for multi-tenant filtering',
+    required: false,
+    type: String,
+    example: 'DEFAULT',
+  })
+  @ApiResponse({ 
+    status: 200,
+    description: 'Transaction context with parties, accounts (via UNION strategy), and condition statistics',
+    schema: {
+      example: {
+        transaction: {
+          transactionId: 257758,
+          displayId: 'TXN-20251012257758',
+          endToEndId: 'TMICFBPK2801321849114534',
+          timestamp: '2025-10-12T15:22:51.744758',
+          type: 'pacs.008.001.10',
+          amount: 200,
+          currency: 'XTS'
+        },
+        debtor: {
+          entityId: 'dbtr_TMIC2601281849118634653749633550',
+          entityName: 'MUHAMMAD SHEHROZ KHAN',
+          primaryAccountId: 'dbtrAcct_TMIC2601281849118634653749633550',
+          accounts: [
+            {
+              accountId: 'dbtrAcct_TMIC2601281849118634653749633550',
+              accountNumber: '****9633550',
+              accountType: 'no mapping found',
+              isTransactionAccount: true,
+              activeConditionsCount: 0,
+              expiredConditionsCount: 0,
+              futureConditionsCount: 0
+            }
+          ]
+        },
+        creditor: {
+          entityId: 'cdtr_TMIC2601281849118634653749633550',
+          entityName: 'MAHAM KHAN',
+          primaryAccountId: 'cdtrAcct_TMIC2601281849118634653749633550',
+          accounts: [
+            {
+              accountId: 'cdtrAcct_TMIC2601281849118634653749633550',
+              accountNumber: '****9633550',
+              accountType: 'no mapping found',
+              isTransactionAccount: true,
+              activeConditionsCount: 0,
+              expiredConditionsCount: 0,
+              futureConditionsCount: 0
+            }
+          ]
+        },
+        asOfDate: '2025-10-12T15:22:51.744758'
+      }
+    }
+  })
+  async getConditionsContextByTransaction(
+    @Param('transactionId') transactionId: string,
+    @Query('asOfDate') asOfDate?: string,
+    @Query('tenantId') tenantId?: string,
+  ) {
+    const txId = parseInt(transactionId, 10);
+    if (isNaN(txId)) {
+      throw new BadRequestException('Invalid transactionId: must be a number');
+    }
+    return this.goldLakehouseService.getConditionsContextByTransaction(txId, tenantId || 'DEFAULT', asOfDate);
+  }
+
+  @Get('conditions/by-entity/:entityId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ 
+    summary: 'Get all conditions across entity-owned accounts (Entity-Level View)',
+    description: `Returns aggregated conditions for all accounts owned by a specific legal entity. Used for entity-level compliance and risk assessment.
+    
+    Data Flow:
+    1. Query account_holder WHERE source = entityId
+    2. Get all destination accounts
+    3. Query conditions_timeline for each account
+    4. Return aggregated view with per-account and total statistics
+    
+    Features:
+    - All accounts owned by the entity
+    - Conditions grouped by account
+    - Total entity-wide condition counts
+    - Filter by active status (showInactive)
+    - Historical view support (asOfDate)
+    
+    Use Cases:
+    - Entity-level condition oversight
+    - Legal entity risk profiling
+    - Multi-account condition tracking
+    - Entity compliance monitoring
+    
+    Note: Entity must exist in account_holder.source field
+    
+    Test with: cdtr_526b4a5e02754f97bbe97d9f88fceaf7TAZAMA_EID (has account mapping)`
+  })
+  @ApiParam({
+    name: 'entityId',
+    description: 'Entity ID from account_holder.source field (debtor_id or creditor_id from transactions)',
+    required: true,
+    type: String,
+    example: 'cdtr_526b4a5e02754f97bbe97d9f88fceaf7TAZAMA_EID',
+  })
+  @ApiQuery({
+    name: 'asOfDate',
+    description: 'Historical view: Show conditions active at this ISO timestamp',
+    required: false,
+    type: String,
+    example: '2025-12-31T08:00:00',
+  })
+  @ApiQuery({
+    name: 'showInactive',
+    description: 'Include expired and future conditions. Default: false (active only)',
+    required: false,
+    type: Boolean,
+    example: true,
+  })
+  @ApiQuery({
+    name: 'tenantId',
+    description: 'Tenant ID for multi-tenant filtering',
+    required: false,
+    type: String,
+    example: 'DEFAULT',
+  })
+  @ApiResponse({ 
+    status: 200,
+    description: 'Entity-level condition view with all accounts and aggregated statistics',
+    schema: {
+      example: {
+        entityId: 'cdtr_526b4a5e02754f97bbe97d9f88fceaf7TAZAMA_EID',
+        accounts: [
+          {
+            accountId: 'cdtrAcct_bfbfb048b23b44f28d33823b8b957d7cMSISDNfsp002',
+            accountNumber: '****MSISDNfsp002',
+            totalConditions: 0,
+            activeConditions: 0,
+            expiredConditions: 0
+          }
+        ],
+        conditions: [],
+        metadata: {
+          totalConditions: 0,
+          activeConditions: 0,
+          queryTimestamp: '2026-03-04T10:30:00Z'
+        }
+      }
+    }
+  })
+  async getConditionsByEntity(
+    @Param('entityId') entityId: string,
+    @Query('asOfDate') asOfDate?: string,
+    @Query('showInactive') showInactive?: boolean,
+    @Query('tenantId') tenantId?: string,
+  ) {
+    return this.goldLakehouseService.getConditionsByEntity(
+      entityId, 
+      tenantId || 'DEFAULT', 
+      asOfDate,
+      showInactive
+    );
+  }
+
+
 
   @Get('transaction-history/:endToEndId')
   @RequireInvestigatorOrSupervisorRole()
@@ -991,5 +1316,39 @@ export class GoldLakehouseController {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
     return this.goldLakehouseService.getCounterpartyNetworkData(accountId, tenantId || 'DEFAULT', timeRange || '30d');
+  }
+
+  // ---------------- DEBUG ENDPOINTS FOR DATA ANALYSIS ----------------
+
+  @Get('debug/conditions-table')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'DEBUG: Get all conditions table data' })
+  @ApiQuery({ name: 'tenantId', required: false, type: String, example: 'DEFAULT' })
+  async getAllConditions(@Query('tenantId') tenantId?: string) {
+    return this.goldLakehouseService.getAllConditionsTableData(tenantId || 'DEFAULT');
+  }
+
+  @Get('debug/conditions-timeline-table')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'DEBUG: Get all conditions_timeline table data' })
+  @ApiQuery({ name: 'tenantId', required: false, type: String, example: 'DEFAULT' })
+  async getAllConditionsTimeline(@Query('tenantId') tenantId?: string) {
+    return this.goldLakehouseService.getAllConditionsTimelineData(tenantId || 'DEFAULT');
+  }
+
+  @Get('debug/account-holder-table')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'DEBUG: Get all account_holder table data (limited to 200 rows)' })
+  @ApiQuery({ name: 'tenantId', required: false, type: String, example: 'DEFAULT' })
+  async getAllAccountHolder(@Query('tenantId') tenantId?: string) {
+    return this.goldLakehouseService.getAllAccountHolderData(tenantId || 'DEFAULT');
+  }
+
+  @Get('debug/transaction-detail-table')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'DEBUG: Get sample transaction_detail table data (limited to 100 rows)' })
+  @ApiQuery({ name: 'tenantId', required: false, type: String, example: 'DEFAULT' })
+  async getTransactionDetailSample(@Query('tenantId') tenantId?: string) {
+    return this.goldLakehouseService.getTransactionDetailSampleData(tenantId || 'DEFAULT');
   }
 }
