@@ -4,6 +4,7 @@ import { AuditLogService } from '../audit/auditLog.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import * as crypto from 'node:crypto';
 import { Outcome } from '../../utils/types/outcome';
+import { JsonValue } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class ConfigManagementService {
@@ -426,13 +427,13 @@ export class ConfigManagementService {
     // Implement actual integration testing based on system type
     switch (systemName) {
       case 'ALERT_TRIAGE':
-        return await this.testAlertTriageConnection(config);
+        return this.testAlertTriageConnection(config);
       case 'API_PORTAL':
-        return await this.testApiPortalConnection(config);
+        return this.testApiPortalConnection(config);
       case 'FLOWABLE':
-        return await this.testFlowableConnection(config);
+        return this.testFlowableConnection(config);
       case 'KEYCLOAK':
-        return await this.testKeycloakConnection(config);
+        return this.testKeycloakConnection(config);
       default:
         this.logger.warn(`No test implementation for ${systemName}`);
         return true;
@@ -611,7 +612,29 @@ export class ConfigManagementService {
     };
   }
 
-  async exportConfigurationLogs(format: 'json' | 'csv', filters?: any) {
+  async exportConfigurationLogs(
+    format: 'json' | 'csv',
+    filters?: any,
+  ): Promise<
+    | string
+    | Array<{
+        created_at: Date;
+        config_id: number;
+        config_key: string;
+        old_value: JsonValue;
+        new_value: JsonValue;
+        change_type: string;
+        changed_by: string;
+        change_reason: string | null;
+        ip_address: string | null;
+        user_agent: string | null;
+        requires_2fa: boolean;
+        approved_by: string | null;
+        approval_date: Date | null;
+        change_status: string;
+        id: number;
+      }>
+  > {
     const { logs } = await this.getConfigurationChangeLogs({ ...filters, limit: 10000 });
 
     if (format === 'json') {

@@ -4,6 +4,7 @@ import type { CaseRow } from './casesTable.utils';
 import { getCaseStatusBadge } from '@/shared/constants/case.constant';
 import triageService from '@/features/alerts/services/triageservice';
 import type { Alert } from '@/features/alerts/types/triage.types';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 interface ApproveCaseCreationModalProps {
   open: boolean;
@@ -72,7 +73,8 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
 
   const transactionData =
     alertDetails?.transaction &&
-    typeof alertDetails.transaction === 'object'
+      typeof alertDetails.transaction === 'object' &&
+      alertDetails.transaction !== null
       ? alertDetails.transaction
       : null;
 
@@ -81,7 +83,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
       <div className="w-full max-w-3xl max-h-[90vh] rounded-lg bg-white shadow-xl flex flex-col my-8">
-        {}
+        { }
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
@@ -106,9 +108,9 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
         {}
         <form onSubmit={(e) => { void handleSubmit(e); }} className="flex-1 overflow-y-auto">
           <div className="p-6">
-            {}
+            { }
 
-            {}
+            { }
             <div className="mb-6">
               <h4 className="text-sm font-medium text-gray-700 mb-3">
                 Case Details
@@ -151,7 +153,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
               </div>
             </div>
 
-            {}
+            { }
             {caseData.alertId && (
               <div className="mb-6">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
@@ -216,9 +218,9 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
                               Created At
                             </label>
                             <span className="text-sm">
-                              {new Date(
+                              {formatDate(
                                 alertDetails.created_at,
-                              ).toLocaleString()}
+                              )}
                             </span>
                           </div>
                           {alertDetails.prediction_outcome && (
@@ -276,7 +278,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
               </div>
             )}
 
-            {}
+            { }
             {errors.submit && (
               <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
                 <p className="text-sm text-red-600">{errors.submit}</p>
@@ -285,7 +287,7 @@ const ApproveCaseCreationModal: React.FC<ApproveCaseCreationModalProps> = ({
           </div>
         </form>
 
-        {}
+        { }
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
           <button
             type="button"

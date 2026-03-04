@@ -44,10 +44,14 @@ export class CacheService implements OnModuleInit {
     this.logger.log('Initializing CMS cache...', CacheService.name);
 
     // Add delay to ensure all services (especially Redis) are initialized
-    setTimeout(async () => {
-      await this.initializeUserCache().catch((error) => {
-        this.logger.error('Cache initialization error:', error);
-        this.logger.warn(`Cache initialization failed (non-blocking): ${error.message}`, CacheService.name);
+    setTimeout(() => {
+      this.initializeUserCache().catch((error: unknown) => {
+        if (error instanceof Error) {
+          this.logger.error('Cache initialization error:', error);
+          this.logger.warn(`Cache initialization failed (non-blocking): ${error.message}`, CacheService.name);
+        } else {
+          this.logger.error('Cache initialization failed with non-error value:', error);
+        }
       });
     }, 2000); // Wait 2 seconds before initializing cache
   }
@@ -66,7 +70,7 @@ export class CacheService implements OnModuleInit {
 
         if (retryCount < maxRetries) {
           setTimeout(() => {
-            this.initializeUserCache(retryCount + 1).catch((error) => {
+            this.initializeUserCache(retryCount + 1).catch((error: unknown) => {
               this.logger.error('Retry failed:', error);
             });
           }, 3000);

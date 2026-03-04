@@ -26,7 +26,7 @@ export class AuthService {
       );
       const { data } = response;
 
-      if (data === null || data === undefined) {
+      if (data === null) {
         throw new ServiceUnavailableException('Authentication service unavailable');
       }
       let token: string | undefined;

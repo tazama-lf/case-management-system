@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { Prisma, TaskStatus, CaseStatus, Task, Case } from '@prisma/client-cms';
+import { Prisma, TaskStatus, CaseStatus, Task, Case, Priority } from '@prisma/client-cms';
 import { BaseRepository } from './base.repository';
 
 @Injectable()
@@ -21,7 +21,32 @@ export class TaskRepository extends BaseRepository {
     return task;
   }
 
-  async findTaskWithCase(taskId: number, tenantId: string, tx?: Prisma.TransactionClient) {
+  async findTaskWithCase(
+    taskId: number,
+    tenantId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<
+    | (Task & {
+        case: {
+          case_id: number;
+          status: CaseStatus;
+          case_owner_user_id: string | null;
+          priority: Priority;
+          created_at: Date;
+        } | null;
+        comments: Array<{
+          task_id: number | null;
+          case_id: number | null;
+          tenant_id: string;
+          created_at: Date;
+          updated_at: Date;
+          comment_id: number;
+          user_id: string;
+          note: string;
+        }>;
+      })
+    | null
+  > {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     const task = await client.task.findUnique({
       where: {
@@ -53,7 +78,7 @@ export class TaskRepository extends BaseRepository {
     skip?: number,
     take?: number,
     tx?: Prisma.TransactionClient,
-  ) {
+  ): Promise<Task[]> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.task.findMany({
       where: {
@@ -73,7 +98,7 @@ export class TaskRepository extends BaseRepository {
     });
   }
 
-  async countTasks(where: Prisma.TaskWhereInput, tenantId: string, tx?: Prisma.TransactionClient) {
+  async countTasks(where: Prisma.TaskWhereInput, tenantId: string, tx?: Prisma.TransactionClient): Promise<number> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.task.count({
       where: {
@@ -83,10 +108,9 @@ export class TaskRepository extends BaseRepository {
     });
   }
 
-  async createTask(data: Prisma.TaskCreateInput, tx?: Prisma.TransactionClient): Promise<Task> {
+  async createTask(data: Prisma.TaskCreateInput, tx?: Prisma.TransactionClient): Promise<Task | null> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     const createdTask = await client.task.create({ data });
-    if (!createdTask) throw new Error('Failed to create task');
     return createdTask;
   }
 
@@ -96,7 +120,11 @@ export class TaskRepository extends BaseRepository {
   }
 
   /* ------------------------------ Case Queries ------------------------------ */
-  async findCaseBasic(caseId: number, tenantId: string, tx?: Prisma.TransactionClient) {
+  async findCaseBasic(
+    caseId: number,
+    tenantId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{ tenant_id: string; priority: Priority; status: CaseStatus } | null> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.case.findUnique({
       where: {
@@ -107,7 +135,11 @@ export class TaskRepository extends BaseRepository {
     });
   }
 
-  async findCaseStatus(caseId: number, tenantId: string, tx?: Prisma.TransactionClient) {
+  async findCaseStatus(
+    caseId: number,
+    tenantId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{ status: CaseStatus; case_owner_user_id: string | null } | null> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     const caseRecord = await client.case.findUnique({
       where: {
@@ -125,7 +157,11 @@ export class TaskRepository extends BaseRepository {
   }
 
   /* -------------------------- Lifecycle Transactions ------------------------ */
-  async assignTaskAndUpdateCase(taskId: number, tenantId: string, assignedUserId: string) {
+  async assignTaskAndUpdateCase(
+    taskId: number,
+    tenantId: string,
+    assignedUserId: string,
+  ): Promise<{ taskBefore: Task; updatedTask: Task; previousCaseStatus: CaseStatus }> {
     return await this.transaction(async (tx) => {
       const task = await this.findTaskById(taskId, tenantId, tx);
       if (!task) throw new NotFoundException(`Task ${taskId} not found`);
@@ -145,7 +181,10 @@ export class TaskRepository extends BaseRepository {
     });
   }
 
-  async unassignTaskAndUpdateCase(taskId: number, tenantId: string) {
+  async unassignTaskAndUpdateCase(
+    taskId: number,
+    tenantId: string,
+  ): Promise<{ taskBefore: Task; updatedTask: Task; previousCaseStatus: CaseStatus }> {
     return await this.transaction(async (tx) => {
       const task = await this.findTaskById(taskId, tenantId, tx);
       if (!task) throw new NotFoundException(`Task ${taskId} not found`);

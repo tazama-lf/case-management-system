@@ -3,7 +3,7 @@ import { CaseRepository } from 'src/modules/repository/case.repository';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from 'src/modules/task/task.service';
-import { CaseCreationType, CaseStatus, TaskStatus } from '@prisma/client-cms';
+import { Case, CaseCreationType, CaseStatus, Task, TaskStatus } from '@prisma/client-cms';
 import { CANDIDATE_GROUPS, TASK_NAMES, VALIDATION_LENGTHS, REOPENABLE_CASE_STATUSES } from '../../../constants/case.constants';
 import { ConflictException } from '@nestjs/common/exceptions/conflict.exception';
 import { isInvestigatorRole } from '../../../utils/helperFunction';
@@ -19,15 +19,31 @@ export class CaseReopeningService {
     private readonly caseRepository: CaseRepository,
     private readonly commentRepository: CommentRepository,
     private readonly notificationService: NotificationService,
-    // private readonly prismaService: PrismaService,
     private readonly taskService: TaskService,
     private readonly loggerService: LoggerService,
     private readonly caseQueryService: CaseQueryService,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
-  async reopenCase(caseId: number, reason: string, userId: string, tenantId: string, role: string) {
+  async reopenCase(
+    caseId: number,
+    reason: string,
+    userId: string,
+    tenantId: string,
+    role: string,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    case: Case;
+    investigation_task?: {
+      task_id: number;
+      name: string | null;
+      status: TaskStatus;
+      assigned_to: string;
+    };
+    approvalTask?: Task;
+  }> {
     try {
       this.loggerService.log(`Investigator ${userId} reopening case ${caseId}`, CaseReopeningService.name);
       if (!reason || reason.trim().length < VALIDATION_LENGTHS.MIN_REOPENING_REASON) {
@@ -37,6 +53,9 @@ export class CaseReopeningService {
       }
 
       const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+      if (existingCase === null) {
+        throw new NotFoundException(`Case with id ${caseId} not found`);
+      }
       if (!REOPENABLE_CASE_STATUSES.includes(existingCase.status)) {
         throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
       }
@@ -92,6 +111,7 @@ export class CaseReopeningService {
           creationType: CaseCreationType.MANUAL,
           creatorRole: 'SUPERVISOR',
           isReopened: true,
+          isFraudNAML: false,
         });
 
         await this.loggingOrchestrationService.logActionsWithHistory(
@@ -145,7 +165,7 @@ export class CaseReopeningService {
           userId,
           {
             caseId,
-            note: `Case reopen request initiated by investigator.\nReason: ${reason ?? 'Not specified'}, Current Status: ${existingCase.status}`,
+            note: `Case reopen request initiated by investigator.\nReason: ${reason || 'Not specified'}, Current Status: ${existingCase.status}`,
             tenantId,
           },
           tx,
@@ -161,6 +181,7 @@ export class CaseReopeningService {
         creationType: CaseCreationType.MANUAL,
         creatorRole: 'INVESTIGATOR',
         isReopened: true,
+        isFraudNAML: false,
       });
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -198,7 +219,31 @@ export class CaseReopeningService {
     }
   }
 
-  async approveCaseReopening(caseId: number, supervisorId: string, tenantId: string) {
+  async approveCaseReopening(
+    caseId: number,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    case: {
+      case_id: number;
+      status: CaseStatus;
+      case_owner_user_id: string | null;
+      updated_at: Date;
+    };
+    completed_approval_task: {
+      task_id: number;
+      status: TaskStatus;
+    };
+    investigation_task: {
+      task_id: number;
+      name: string | null;
+      status: TaskStatus;
+      assigned_to: string;
+      candidateGroup: string;
+    };
+  }> {
     try {
       this.loggerService.log(`Supervisor ${supervisorId} approving case reopening for ${caseId}`, CaseReopeningService.name);
 
@@ -418,7 +463,18 @@ export class CaseReopeningService {
     }
   }
 
-  async rejectCaseReopening(caseId: number, rejectionReason: string, supervisorId: string, tenantId: string) {
+  async rejectCaseReopening(
+    caseId: number,
+    rejectionReason: string,
+    supervisorId: string,
+    tenantId: string,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    case: { case_id: number; status: CaseStatus; updated_at: Date };
+    completed_task: { task_id: number; status: TaskStatus };
+    rejection_reason: string;
+  }> {
     try {
       this.loggerService.log(`Supervisor ${supervisorId} rejecting case reopening for ${caseId}`, CaseReopeningService.name);
 
@@ -435,8 +491,6 @@ export class CaseReopeningService {
       }
 
       const caseData = await this.validateReopeningPreconditions(caseId, tenantId);
-
-
 
       const reopeningTask = await this.caseRepository.findReopeningTaskForRejection(caseId, tenantId);
 
@@ -456,7 +510,7 @@ export class CaseReopeningService {
         }
       }
 
-      const originalClosedStatus = caseData.final_outcome ? caseData.final_outcome : CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE;
+      const originalClosedStatus = caseData.final_outcome ?? CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE;
 
       const result = await this.caseRepository.transaction(async (tx) => {
         // Restore case to original closed status

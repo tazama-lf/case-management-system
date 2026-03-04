@@ -1,3 +1,4 @@
+import { formatDate } from '@/shared/utils/dateUtils';
 import type { TransactionMessage } from '../types/alertsdashboard.types';
 
 export function extractTransactionMessagesFromAlert(
@@ -17,7 +18,7 @@ export function extractTransactionMessagesFromAlert(
         type: 'pacs.002.001.12',
         description: 'Payment Status Report',
         status: 'received',
-        timestamp: new Date().toISOString(),
+        timestamp: formatDate(new Date().toISOString()),
       });
     }
 
@@ -27,7 +28,7 @@ export function extractTransactionMessagesFromAlert(
         type: 'pacs.008.001.10',
         description: 'Customer Credit Transfer Initiation',
         status: 'sent',
-        timestamp: new Date(Date.now() - 60000).toISOString(),
+        timestamp: formatDate(new Date(Date.now() - 60000).toISOString()),
       });
     }
 
@@ -37,7 +38,7 @@ export function extractTransactionMessagesFromAlert(
         type: 'pain.002.001.12',
         description: 'Customer Payment Status Report',
         status: 'received',
-        timestamp: new Date(Date.now() - 30000).toISOString(),
+        timestamp: formatDate(new Date(Date.now() - 30000).toISOString()),
       });
     }
 
@@ -47,7 +48,7 @@ export function extractTransactionMessagesFromAlert(
         type: 'generic.transaction.data',
         description: 'Transaction Data',
         status: 'received',
-        timestamp: new Date().toISOString(),
+        timestamp: formatDate(new Date().toISOString()),
       });
     }
 

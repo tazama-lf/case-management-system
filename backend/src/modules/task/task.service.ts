@@ -10,6 +10,7 @@ import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { CLOSED_CASE_STATUSES } from 'src/constants/case.constants';
+import { setTimeout } from 'node:timers/promises';
 
 @Injectable()
 export class TaskService {
@@ -19,7 +20,7 @@ export class TaskService {
     private readonly eventEmitter: EventEmitter2,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   async createTask(taskDTO: CreateTaskDto, userId: string, tenantId: string, tx?: Prisma.TransactionClient): Promise<Task> {
     this.logger.log('Start - createTask', TaskService.name);
@@ -46,6 +47,10 @@ export class TaskService {
         },
         tx,
       );
+
+      if (createdTask === null) {
+        throw new Error('Failed to create task');
+      }
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
@@ -82,10 +87,12 @@ export class TaskService {
       const txResult = await this.taskRepository.transaction(async (tx) => {
         let updatedTask: Task;
         const existingTask = await this.taskRepository.findTaskWithCase(taskId, tenantId, tx);
+        if (existingTask === null || existingTask.case === null) {
+          throw new NotFoundException(`Task ${taskId} not found`);
+        }
         const updateInput: Prisma.TaskUpdateInput = {
           status: updateData.status,
-          assigned_user_id:
-            updateData.assignedUserId === existingTask.assigned_user_id ? existingTask.assigned_user_id : userId,
+          assigned_user_id: updateData.assignedUserId === existingTask.assigned_user_id ? existingTask.assigned_user_id : userId,
           investigationNotes: updateData.investigationNotes,
         };
 
@@ -95,12 +102,7 @@ export class TaskService {
           updatedTask = await this.promoteCaseToInProgress(taskId, updateInput, existingTask, tenantId, tx);
         } else {
           updatedTask = await this.taskRepository.updateTask(taskId, updateInput, tx);
-          await this.flowableService.handleTaskAssigned({
-            taskId: updatedTask.task_id,
-            caseId: updatedTask.case_id,
-            assignedUserId: updateData.assignedUserId ?? existingTask.assigned_user_id!,
-            taskName: existingTask.name!,
-          });
+          await this.executeFlowableOperation(updatedTask, updateData.assignedUserId ?? existingTask.assigned_user_id!);
         }
 
         if (existingTask.status === updatedTask.status) {
@@ -248,10 +250,10 @@ export class TaskService {
       const statusFilter = includeCompleted
         ? {}
         : {
-          status: {
-            not: TaskStatus.STATUS_30_COMPLETED,
-          },
-        };
+            status: {
+              not: TaskStatus.STATUS_30_COMPLETED,
+            },
+          };
 
       return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, tenantId, true);
     } catch (error) {
@@ -286,12 +288,7 @@ export class TaskService {
         await this.promoteParentCaseToInProgress(updatedCase.parent_id, updatedCase, tx);
       }
 
-      await this.flowableService.handleTaskAssigned({
-        taskId: taskRecord.task_id,
-        caseId: taskRecord.case_id,
-        assignedUserId: taskRecord.assigned_user_id ?? existingTask.assigned_user_id!,
-        taskName: existingTask.name!,
-      });
+      await this.executeFlowableOperation(taskRecord, taskRecord.assigned_user_id ?? existingTask.assigned_user_id!);
 
       return taskRecord;
     } catch (error) {
@@ -347,5 +344,29 @@ export class TaskService {
     ];
 
     return eligibleStatuses.includes(status);
+  }
+
+  async executeFlowableOperation(updatedTask: Task, assignedUserId: string): Promise<void> {
+    const flowableOperation = async (): Promise<void> => {
+      await this.flowableService.handleTaskAssigned({
+        taskId: updatedTask.task_id,
+        caseId: updatedTask.case_id,
+        assignedUserId,
+        taskName: updatedTask.name!,
+      });
+    };
+
+    await this.retry(flowableOperation, 5);
+  }
+
+  private async retry(fn: () => Promise<void>, maxRetries: number, attempt = 1): Promise<void> {
+    try {
+      await fn();
+    } catch (error) {
+      if (attempt >= maxRetries) throw error;
+
+      await setTimeout(1000 * attempt);
+      await this.retry(fn, maxRetries, attempt + 1);
+    }
   }
 }

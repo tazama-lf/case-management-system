@@ -79,7 +79,7 @@ export class GoldLakehouseService {
       this.logger.debug(sql);
 
       const response = await firstValueFrom(
-        this.httpService.post<any>(
+        this.httpService.post(
           `${this.apiUrl}/execute_sql`,
           {
             sql_query: sql,
@@ -105,7 +105,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertNavigatorMetrics(alertId: number, tenantId: string = 'DEFAULT') {
+  async getAlertNavigatorMetrics(alertId: number, tenantId = 'DEFAULT') {
     try {
       this.logger.log(`Fetching Alert Navigator metrics for alert: ${alertId}`);
 
@@ -143,7 +143,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertNavigatorData(alertId: number, tenantId: string = 'DEFAULT') {
+  async getAlertNavigatorData(alertId: number, tenantId = 'DEFAULT') {
     try {
       this.logger.log(`Fetching Alert Navigator data for alert: ${alertId}`);
 
@@ -280,7 +280,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTransactionDetailData(transactionId: number, tenantId: string = 'DEFAULT') {
+  async getTransactionDetailData(transactionId: number, tenantId = 'DEFAULT') {
     try {
       this.logger.log(`Fetching Transaction Detail UI data for transaction: ${transactionId}`);
 
@@ -403,7 +403,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTransactionOverviewUIData(transactionId: number, tenantId: string = 'DEFAULT') {
+  async getTransactionOverviewUIData(transactionId: number, tenantId = 'DEFAULT') {
     try {
       this.logger.log(`Fetching Transaction Overview UI data for transaction: ${transactionId}`);
 
@@ -584,7 +584,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getActiveConditions(accountId: string, tenantId: string = 'DEFAULT', fromDate?: string) {
+  async getActiveConditions(accountId: string, tenantId = 'DEFAULT', fromDate?: string) {
     try {
       const dateFilter = fromDate ? `AND ct.bucket_start >= '${fromDate}'` : '';
 
@@ -625,7 +625,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getExpiredConditions(accountId: string, tenantId: string = 'DEFAULT') {
+  async getExpiredConditions(accountId: string, tenantId = 'DEFAULT') {
     try {
       const sql = `
       SELECT
@@ -655,7 +655,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getFutureConditions(accountId: string, tenantId: string = 'DEFAULT') {
+  async getFutureConditions(accountId: string, tenantId = 'DEFAULT') {
     try {
       const sql = `
       SELECT
@@ -684,7 +684,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getEvaluatedTransactions(accountId: string, tenantId: string = 'DEFAULT', fromDate?: string) {
+  async getEvaluatedTransactions(accountId: string, tenantId = 'DEFAULT', fromDate?: string) {
     try {
       const tenantFilter = tenantId ? `AND cond_tenant_id = '${tenantId}'` : '';
       const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
@@ -733,7 +733,7 @@ export class GoldLakehouseService {
     return cleaned;
   }
 
-  async getTransactionHistoryData(id: string, tenantId: string = 'DEFAULT', startDate?: string, endDate?: string, granularity?: string) {
+  async getTransactionHistoryData(id: string, tenantId = 'DEFAULT', startDate?: string, endDate?: string, granularity?: string) {
     try {
       // Smart detection: Check if ID is a UUID (end_to_end_id) or entity_id
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -742,21 +742,21 @@ export class GoldLakehouseService {
       if (isEndToEndId) {
         // Query by end_to_end_id - returns all 4 entity perspectives for single transaction
         this.logger.log(`Fetching Transaction History by end_to_end_id: ${id}`);
-        return await this.getTransactionHistoryByEndToEndId(id, tenantId, startDate, endDate, granularity);
+        return await this.getTransactionHistoryByEndToEndId(id, tenantId, startDate, endDate);
       } else {
         // Query by entity_id - returns transaction history for entity
         this.logger.log(`Fetching Transaction History by entity_id: ${id}`);
         return await this.getTransactionHistoryByEntityId(id, tenantId, startDate, endDate, granularity);
       }
     } catch (error) {
-      this.logger.error(`Error fetching Transaction History data: ${(error as any).message}`, (error as any).stack);
+      this.logger.error(`Error fetching Transaction History data: ${error.message}`, error.stack);
       throw new HttpException('Failed to fetch Transaction History data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   private async getTransactionHistoryByEntityId(
     entityId: string,
-    tenantId: string = 'DEFAULT',
+    tenantId = 'DEFAULT',
     startDate?: string,
     endDate?: string,
     granularity?: string,
@@ -942,7 +942,7 @@ export class GoldLakehouseService {
           avgTransactionsPerDay: Math.round(avgTransactionsPerDay * 100) / 100,
           durationDays,
           bucketTotalVolume: Math.round(bucketTotalVolume * 100) / 100,
-          bucketTotalTransactions: bucketTotalTransactions,
+          bucketTotalTransactions,
           expected: {
             transactionCount: expectedTxCount,
             volume: expectedVolume ? Math.round(expectedVolume * 100) / 100 : null,
@@ -968,18 +968,17 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error(`Error fetching Transaction History by entity_id: ${(error as any).message}`, (error as any).stack);
+      this.logger.error(`Error fetching Transaction History by entity_id: ${error.message}`, error.stack);
       throw new HttpException('Failed to fetch Transaction History by entity_id', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   private async getTransactionHistoryByEndToEndId(
     endToEndId: string,
-    tenantId: string = 'DEFAULT',
+    tenantId = 'DEFAULT',
     startDate?: string,
     endDate?: string,
-    granularity?: string,
-  ) {
+  ): Promise<unknown> {
     try {
       this.logger.log(`Fetching Transaction History for end_to_end_id: ${endToEndId}`);
 
@@ -1170,7 +1169,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTransactionPerspectivesByEndToEndId(endToEndId: string, tenantId: string = 'DEFAULT') {
+  async getTransactionPerspectivesByEndToEndId(endToEndId: string, tenantId = 'DEFAULT'): Promise<unknown> {
     try {
       this.logger.log(`Fetching Transaction Perspectives for end_to_end_id: ${endToEndId}`);
 
@@ -1271,7 +1270,17 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertHistorySummary(endToEndId?: string, tenantId?: string, dateRange?: string) {
+  async getAlertHistorySummary(
+    endToEndId?: string,
+    tenantId?: string,
+    dateRange?: string,
+  ): Promise<{
+    totalAlerts: number;
+    casesOpened: number;
+    investigations: number;
+    sarFilings: number;
+    totalValue: number;
+  }> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
@@ -1337,7 +1346,15 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertHistoryTimeline(endToEndId?: string, tenantId?: string, dateRange?: string, granularity: string = 'day') {
+  async getAlertHistoryTimeline(
+    endToEndId?: string,
+    tenantId?: string,
+    dateRange?: string,
+    granularity = 'day',
+  ): Promise<{
+    alertCountOverTime: any;
+    alertValueOverTime: any;
+  }> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
@@ -1413,7 +1430,21 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertHistoryAlerts(endToEndId?: string, tenantId?: string, dateRange?: string, page: number = 1, limit: number = 20) {
+  async getAlertHistoryAlerts(
+    endToEndId?: string,
+    tenantId?: string,
+    dateRange?: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{
+    alerts: any;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
@@ -1521,7 +1552,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTestAccountIds(tenantId: string = 'DEFAULT', minConnections: number = 1) {
+  async getTestAccountIds(tenantId = 'DEFAULT', minConnections = 1): Promise<unknown> {
     try {
       this.logger.log(`Fetching test account IDs from lakehouse (minConnections: ${minConnections})`);
 
@@ -1569,11 +1600,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTransactionNetworkData(
-    accountId: string,
-    tenantId: string = 'DEFAULT',
-    timeRange: string = '30d',
-  ): Promise<TransactionNetworkResponseDto> {
+  async getTransactionNetworkData(accountId: string, tenantId = 'DEFAULT', timeRange = '30d'): Promise<TransactionNetworkResponseDto> {
     try {
       this.logger.log(`Fetching transaction network for account: ${accountId}, timeRange: ${timeRange}`);
 
@@ -1718,7 +1745,34 @@ export class GoldLakehouseService {
     return 'LOW';
   }
 
-  async getAccountNodeFullData(accountId: string, tenantId: string = 'DEFAULT', granularity: 'day' | 'month' | 'year' = 'month') {
+  async getAccountNodeFullData(
+    accountId: string,
+    tenantId = 'DEFAULT',
+    granularity: 'day' | 'month' | 'year' = 'month',
+  ): Promise<{
+    network: {
+      rootNodeId: string;
+      nodes: any[];
+      edges: any[];
+    };
+    accountDetails: {
+      accountId: string;
+      accountHolder: any;
+      relationship: string;
+      transactions: number;
+      totalValue: number;
+      velocity: string;
+      flags: {
+        alerted: boolean;
+        investigated: boolean;
+      };
+    };
+    meta: {
+      tenantId: string;
+      granularity: 'day' | 'month' | 'year';
+      generatedAt: string;
+    };
+  }> {
     try {
       const networkSql = `
       SELECT
@@ -1882,7 +1936,34 @@ export class GoldLakehouseService {
     }
   }
 
-  async getCounterpartyNodeFullData(counterpartyId: string, tenantId: string = 'DEFAULT', granularity: 'day' | 'month' | 'year' = 'month') {
+  async getCounterpartyNodeFullData(
+    counterpartyId: string,
+    tenantId = 'DEFAULT',
+    granularity: 'day' | 'month' | 'year' = 'month',
+  ): Promise<{
+    network: {
+      rootNodeId: string;
+      nodes: any[];
+      edges: any[];
+    };
+    counterpartyDetails: {
+      counterpartyId: string;
+      name: any;
+      type: string;
+      transactions: number;
+      totalValue: number;
+      velocity: string;
+      flags: {
+        alerted: boolean;
+        investigated: boolean;
+      };
+    };
+    meta: {
+      tenantId: string;
+      granularity: 'day' | 'month' | 'year';
+      generatedAt: string;
+    };
+  }> {
     try {
       const networkSql = `
       SELECT
@@ -2024,7 +2105,22 @@ export class GoldLakehouseService {
     }
   }
 
-  async getBenfordAnalysisByAccount(accountId: string, tenantId: string, fromDate: string, toDate: string) {
+  async getBenfordAnalysisByAccount(
+    accountId: string,
+    tenantId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<{
+    expected: Record<number, number>;
+    actual: Record<number, number>;
+    sampleSize: number;
+    meta: {
+      accountId: string;
+      tenantId: string;
+      fromDate: string;
+      toDate: string;
+    };
+  }> {
     try {
       this.logger.log(`Running Benford analysis for account ${accountId}, tenant ${tenantId}, range ${fromDate} → ${toDate}`);
 
@@ -2089,11 +2185,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getCounterpartyNetworkData(
-    accountId: string,
-    tenantId: string = 'DEFAULT',
-    timeRange: string = '30d',
-  ): Promise<CounterpartyNetworkResponseDto> {
+  async getCounterpartyNetworkData(accountId: string, tenantId = 'DEFAULT', timeRange = '30d'): Promise<CounterpartyNetworkResponseDto> {
     try {
       this.logger.log(`Fetching counterparty network for account: ${accountId}`);
 

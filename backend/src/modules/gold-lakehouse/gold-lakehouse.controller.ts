@@ -10,7 +10,7 @@ import { TransactionNetworkResponseDto, CounterpartyNetworkResponseDto } from '.
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class GoldLakehouseController {
-  constructor(private readonly goldLakehouseService: GoldLakehouseService) {}
+  constructor(private readonly goldLakehouseService: GoldLakehouseService) { }
 
   @Get('alert-navigator/:alertId')
   @RequireInvestigatorOrSupervisorRole()
@@ -612,7 +612,7 @@ export class GoldLakehouseController {
     @Query('endToEndId') endToEndId?: string,
     @Query('tenantId') tenantId?: string,
     @Query('dateRange') dateRange?: string,
-    @Query('granularity') granularity: string = 'day',
+    @Query('granularity') granularity = 'day',
   ) {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
@@ -915,7 +915,17 @@ export class GoldLakehouseController {
     @Query('tenantId') tenantId: string,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
-  ) {
+  ): Promise<{
+    expected: Record<number, number>;
+    actual: Record<number, number>;
+    sampleSize: number;
+    meta: {
+      accountId: string;
+      tenantId: string;
+      fromDate: string;
+      toDate: string;
+    };
+  }> {
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
@@ -978,7 +988,7 @@ export class GoldLakehouseController {
     @Param('accountId') accountId: string,
     @Query('timeRange') timeRange?: string,
     @Query('tenantId') tenantId?: string,
-  ) {
+  ): Promise<CounterpartyNetworkResponseDto> {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }

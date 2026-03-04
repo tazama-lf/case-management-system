@@ -4,6 +4,7 @@ import type { RejectCaseCreationDto } from '../services/caseService';
 import type { CaseRow } from './casesTable.utils';
 import type { Alert } from '@/features/alerts/types/triage.types';
 import { triageService } from '@/features/alerts';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 interface RejectCaseCreationModalProps {
   open: boolean;
@@ -238,9 +239,9 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
                               Created At
                             </label>
                             <span className="text-sm">
-                              {new Date(
+                              {formatDate(
                                 alertDetails.created_at,
-                              ).toLocaleString()}
+                              )}
                             </span>
                           </div>
                           {alertDetails.prediction_outcome && (

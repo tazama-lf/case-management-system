@@ -35,4 +35,5 @@ export interface FraudReport {
   version: number;
   history: FraudReport[];
   category: string;
+  locked?: boolean;
 }

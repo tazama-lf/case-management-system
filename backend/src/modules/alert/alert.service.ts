@@ -2,7 +2,7 @@ import { Injectable, InternalServerErrorException, NotFoundException } from '@ne
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { IngestAlertDto } from './dto/IngestAlert.dto';
-import { Alert, CaseCreationType, CaseStatus, CaseType, Priority, Prisma } from '@prisma/client-cms';
+import { Alert, CaseCreationType, CaseStatus, Priority, Prisma } from '@prisma/client-cms';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { ConfigService } from '@nestjs/config';
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
@@ -98,24 +98,8 @@ export class AlertService {
         priority: Priority.NEW,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       };
-      const createdCase = await this.caseCreationService.createCase(caseDetail, userId, tenantId);
+      const createdCase = await this.caseCreationService.createCase(caseDetail, userId, tenantId, 'SUPERVISOR');
       this.loggerService.log(`handle AlertOrNALT CaseType: ${createdCase.case_type}`);
-      if (createdCase.case_type === CaseType.FRAUD_AND_AML) {
-        await this.caseCreationService.createCaseWithInvestigationTask(
-          CaseType.FRAUD,
-          userId,
-          tenantId,
-          createdCase.case_id,
-          createdCase.priority,
-        );
-        await this.caseCreationService.createCaseWithInvestigationTask(
-          CaseType.AML,
-          userId,
-          tenantId,
-          createdCase.case_id,
-          createdCase.priority,
-        );
-      }
       const createdAlert = await this.createNewAlert(data, tenantId, source, createdCase.case_id);
       return createdAlert;
     }

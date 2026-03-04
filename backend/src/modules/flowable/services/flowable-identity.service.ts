@@ -22,7 +22,7 @@ export class FlowableIdentityService {
   /**
    * Add a user to a Flowable identity group
    */
-  async addUserToGroup(groupId: string, userId: string) {
+  async addUserToGroup(groupId: string, userId: string): Promise<unknown> {
     try {
       const response = await this.flowableClient.post(FlowableApiEndpoints.GROUP_MEMBERS(groupId), {
         userId,
@@ -62,7 +62,7 @@ export class FlowableIdentityService {
   /**
    * Create a new Flowable group
    */
-  async createGroup(groupData: { id: string; name: string; type: string }) {
+  async createGroup(groupData: { id: string; name: string; type: string }): Promise<unknown> {
     try {
       const response = await this.flowableClient.post(FlowableApiEndpoints.GROUPS, groupData);
       return response.data;
@@ -78,7 +78,7 @@ export class FlowableIdentityService {
   /**
    * Get a group by ID
    */
-  async getGroup(groupId: string) {
+  async getGroup(groupId: string): Promise<unknown> {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.GROUP(groupId));
       return response.data;
@@ -93,7 +93,7 @@ export class FlowableIdentityService {
   /**
    * Get all candidate groups
    */
-  async getAllCandidateGroups(size?: number, start?: number) {
+  async getAllCandidateGroups(size?: number, start?: number): Promise<any[]> {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.GROUPS, {
         params: {
@@ -112,7 +112,7 @@ export class FlowableIdentityService {
   /**
    * Get all tasks assigned to a specific user
    */
-  async getTasksAssignedToUser(assignee: string) {
+  async getTasksAssignedToUser(assignee: string): Promise<unknown> {
     try {
       const response = await this.flowableClient.get(FlowableApiEndpoints.TASKS, {
         params: {
@@ -137,7 +137,7 @@ export class FlowableIdentityService {
    */
   async getWorkQueueStatistics(
     flowableClient: AxiosInstance,
-    getCandidateGroupTasksFn: (group: string, includeVariables: boolean) => Promise<any[]>,
+    getCandidateGroupTasksFn: (group: string, includeVariables: boolean) => Promise<Record<string, unknown>[]>,
     candidateGroup?: string,
   ): Promise<Record<string, unknown>> {
     try {

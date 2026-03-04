@@ -48,13 +48,13 @@ export class FeatureExtractionService {
     try {
       const features: number[] = new Array(this.RULE_SEQUENCE.length).fill(0);
 
-      if (!alert.report?.tadpResult?.typologyResult?.length) {
+      if (!alert.report.tadpResult.typologyResult.length) {
         this.logger.warn('No typology results found in alert');
         return { features };
       }
 
       const typologyResults = alert.report.tadpResult.typologyResult[0];
-      const ruleResults = typologyResults.ruleResults || [];
+      const ruleResults = typologyResults.ruleResults;
       features[0] = typologyResults.result;
 
       for (const ruleResult of ruleResults) {
@@ -76,7 +76,7 @@ export class FeatureExtractionService {
       return extractedFeatures;
     } catch (error) {
       this.logger.error(`Error extracting features: ${error.message}`, error.stack);
-      throw new Error(`Feature extraction failed: ${error.message}`);
+      throw error;
     }
   }
 

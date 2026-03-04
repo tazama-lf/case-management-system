@@ -33,47 +33,49 @@ export class AlertPriorityService implements OnModuleInit {
       this.logger.log('No alerts to process.');
       return;
     }
-    for (const alert of alerts) {
-      try {
-        const slaHours = this.defaultSlaHours;
-        const createdAt = new Date(alert.created_at);
-        const now = new Date();
-        const elapsedHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-        const slaProgress = elapsedHours / slaHours;
-        // Determine priority based on priority_score thresholds
-        const priorityScore = slaProgress;
-        let priority: Priority = Priority.NEW;
-        if (priorityScore >= this.urgencyThresholds[2]) {
-          priority = Priority.BREACH;
-        } else if (priorityScore >= this.urgencyThresholds[1]) {
-          priority = Priority.CRITICAL;
-        } else if (priorityScore >= this.urgencyThresholds[0]) {
-          priority = Priority.URGENT;
-        } else {
-          priority = Priority.NEW;
-        }
-        // Update alert priority and priority_score
-        await this.prisma.alert.update({
-          where: { alert_id: alert.alert_id },
-          data: {
-            priority,
-            priority_score: priorityScore,
-          },
-        });
-        // Update associated case priority if it exists
-        if (alert.case_id) {
-          await this.prisma.case.update({
-            where: { case_id: alert.case_id },
+    await Promise.all(
+      alerts.map(async (alert) => {
+        try {
+          const slaHours = this.defaultSlaHours;
+          const createdAt = new Date(alert.created_at);
+          const now = new Date();
+          const elapsedHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+          const slaProgress = elapsedHours / slaHours;
+          // Determine priority based on priority_score thresholds
+          const priorityScore = slaProgress;
+          let priority: Priority = Priority.NEW;
+          if (priorityScore >= this.urgencyThresholds[2]) {
+            priority = Priority.BREACH;
+          } else if (priorityScore >= this.urgencyThresholds[1]) {
+            priority = Priority.CRITICAL;
+          } else if (priorityScore >= this.urgencyThresholds[0]) {
+            priority = Priority.URGENT;
+          } else {
+            priority = Priority.NEW;
+          }
+          // Update alert priority and priority_score
+          await this.prisma.alert.update({
+            where: { alert_id: alert.alert_id },
             data: {
               priority,
+              priority_score: priorityScore,
             },
           });
+          // Update associated case priority if it exists
+          if (alert.case_id) {
+            await this.prisma.case.update({
+              where: { case_id: alert.case_id },
+              data: {
+                priority,
+              },
+            });
+          }
+          this.logger.debug(`Alert ${alert.alert_id}: priority_score=${priorityScore} priority=${priority}`);
+        } catch (err) {
+          this.logger.error(`Failed to process alert ${alert.alert_id}: ${err}`, (err as Error).stack);
         }
-        this.logger.debug(`Alert ${alert.alert_id}: priority_score=${priorityScore} priority=${priority}`);
-      } catch (err) {
-        this.logger.error(`Failed to process alert ${alert.alert_id}: ${err}`, (err as Error).stack);
-      }
-    }
+      }),
+    );
     this.logger.log('Alert priority recalculation job complete.');
   }
 }

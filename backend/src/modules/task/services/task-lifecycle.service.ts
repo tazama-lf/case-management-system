@@ -1,5 +1,4 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { Case, CaseStatus, TaskStatus, Task } from '@prisma/client-cms';
@@ -10,11 +9,11 @@ import { Outcome } from 'src/utils/types/outcome';
 import { TASK_NAMES } from 'src/constants/case.constants';
 import { TaskRepository } from 'src/modules/repository/task.repository';
 import { CaseRepository } from 'src/modules/repository/case.repository';
+import { setTimeout } from 'node:timers/promises';
 
 @Injectable()
 export class TaskLifecycleService {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly taskRepository: TaskRepository,
     private readonly caseRepository: CaseRepository,
     private readonly commentRepository: CommentRepository,
@@ -308,29 +307,70 @@ export class TaskLifecycleService {
   }
 
   async completeTask(taskId: number, actorUserId: string, tenantId: string): Promise<Task> {
-    const existingTask = await this.taskRepository.findTaskById(taskId, tenantId);
-    if (!existingTask) {
-      throw new NotFoundException(`Task ${taskId} not found`);
-    }
-    const updatedTask = await this.prisma.task.update({
-      where: { task_id: taskId },
-      data: { status: TaskStatus.STATUS_30_COMPLETED },
-      include: { case: true },
-    });
-    await this.loggingOrchestrationService.logActionsWithHistory(
-      {
-        userId: actorUserId,
-        actionPerformed: `Completed task ${taskId}`,
-        entityName: 'TaskService',
-        operation: 'completeTask',
-        outcome: Outcome.SUCCESS,
-      },
-      existingTask.case_id,
-      existingTask.tenant_id,
-      taskId,
-    );
+    try {
+      const txResult = await this.taskRepository.transaction(async (tx) => {
+        const existingTask = await this.taskRepository.findTaskById(taskId, tenantId);
+        if (!existingTask) {
+          throw new NotFoundException(`Task ${taskId} not found`);
+        }
+        const updatedTask = await this.taskRepository.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, tx, true);
+        await this.loggingOrchestrationService.logActionsWithHistory(
+          {
+            userId: actorUserId,
+            actionPerformed: `Completed task ${taskId}`,
+            entityName: 'TaskService',
+            operation: 'completeTask',
+            outcome: Outcome.SUCCESS,
+          },
+          existingTask.case_id,
+          existingTask.tenant_id,
+          taskId,
+        );
 
-    return updatedTask;
+        return { updatedTask };
+      });
+
+      await this.executeFlowableOperation(txResult.updatedTask);
+
+      return txResult.updatedTask;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to complete task ${taskId}: ${errorMessage}`, errorStack, TaskLifecycleService.name);
+      throw error;
+    }
+  }
+
+  private async executeFlowableOperation(task: Task): Promise<void> {
+    const flowableOperation = async (): Promise<void> => {
+      await this.flowableService.handleTaskCompleted({
+        caseId: task.case_id,
+        taskName: task.name!,
+        newStatus: TaskStatus.STATUS_30_COMPLETED,
+        completionVariables: {
+          sarStrAction: 'complete',
+        },
+      });
+    };
+
+    await this.retry(flowableOperation, 5);
+  }
+
+  private async retry(fn: () => Promise<void>, maxRetries: number, attempt = 1): Promise<void> {
+    try {
+      await fn();
+    } catch (error) {
+      if (attempt >= maxRetries) {
+        this.logger.error(
+          'Max retries reached for Flowable operation.',
+          error instanceof Error ? error.stack : undefined,
+          TaskLifecycleService.name,
+        );
+        return;
+      }
+      await setTimeout(1000 * attempt);
+      await this.retry(fn, maxRetries, attempt + 1);
+    }
   }
 
   private async fetchTaskAndCase(
