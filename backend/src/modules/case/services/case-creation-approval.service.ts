@@ -27,7 +27,7 @@ export class CaseCreationApprovalService {
     private readonly caseQueryService: CaseQueryService,
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+  ) { }
 
   private validateCaseCompletionFields(existingCase: any): string[] {
     const missing: string[] = [];
@@ -277,12 +277,6 @@ export class CaseCreationApprovalService {
         const updatedCase = await this.caseRepository.updateCase(caseId, {
           status: CaseStatus.STATUS_00_DRAFT,
         });
-
-        // const approvalTask = await tx.task.findFirst({
-        //   where: { case_id: caseId, name: 'Approve Case Creation', status: TaskStatus.STATUS_01_UNASSIGNED },
-        // });
-
-        // if (!approvalTask) throw new NotFoundException('Approve Case Creation task not found');
 
         await this.taskService.updateTask(
           approvalTask.task_id,
@@ -548,8 +542,8 @@ export class CaseCreationApprovalService {
       });
     }
 
-    const approvalTask = caseData.tasks[0];
-    if (!approvalTask.task_id) {
+    const approvalTask = caseData.tasks.find((t) => t.name === 'Approve Case Creation' && t.status === TaskStatus.STATUS_01_UNASSIGNED);
+    if (!approvalTask) {
       throw new NotFoundException('Approve Case Creation task not found');
     }
 
