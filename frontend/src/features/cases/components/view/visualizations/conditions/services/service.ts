@@ -1,187 +1,196 @@
 import apiClient from '@/shared/services/apiClient';
 import type {
   ConditionsSummaryResponse,
-  ActiveCondition,
-  ExpiredCondition,
-  FutureCondition,
-  EvaluatedTransaction,
+  ConditionsDetailsResponse,
   ConditionsData,
+  ConditionsTransactionContextResponse,
   DisplayCondition,
   DisplayTransaction,
 } from '../types';
 
+type EvaluatedTransactionsResponse = {
+  transactions?: Array<{
+    transactionId: string | number;
+    date: string;
+    type: string;
+    amount: number;
+    currency: string;
+    outcome: string;
+    conditionId: string;
+    reason: string;
+  }>;
+};
+
 class ConditionsService {
   private baseUrl = '/api/v1/lakehouse/conditions';
 
-  /**
-   * Fetch comprehensive conditions data for an account
-   * This aggregates data from multiple endpoints:
-   * - Summary metrics
-   * - Active conditions
-   * - Expired conditions
-   * - Future conditions
-   * - Evaluated transactions
-   */
+  async getContextByTransaction(
+    transactionId: number,
+    tenantId: string = 'DEFAULT',
+  ): Promise<ConditionsTransactionContextResponse> {
+    if (!transactionId || Number.isNaN(transactionId)) {
+      throw new Error('Transaction ID is required');
+    }
+
+    return apiClient.get<ConditionsTransactionContextResponse>(
+      `${this.baseUrl}/by-transaction/${transactionId}?tenantId=${tenantId}`,
+    );
+  }
+
   async getConditionsData(
     accountId: string,
-    fromDate?: string,
+    options?: {
+      asOfDate?: string;
+      showInactive?: boolean;
+      fromDate?: string;
+      tenantId?: string;
+    },
   ): Promise<ConditionsData> {
     if (!accountId) {
       throw new Error('Account ID is required');
     }
 
-    try {
-      // Fetch all data in parallel
-      const [summary, active, expired, future, transactions] =
-        await Promise.all([
-          this.getSummary(accountId, fromDate),
-          this.getActive(accountId, fromDate),
-          this.getExpired(accountId),
-          this.getFuture(accountId),
-          this.getEvaluatedTransactions(accountId, fromDate),
-        ]);
+    const asOfDate = options?.asOfDate;
+    const showInactive = options?.showInactive ?? false;
+    const fromDate = options?.fromDate;
+    const tenantId = options?.tenantId || 'DEFAULT';
 
-      // Transform and combine all data
-      return {
-        activeConditions: this.transformActiveConditions(active),
-        expiredConditions: this.transformExpiredConditions(expired),
-        futureConditions: this.transformFutureConditions(future),
-        evaluatedTransactions: this.transformTransactions(transactions),
-        metrics: {
-          active: summary.activeConditions,
-          blocked: summary.blockedTransactions,
-          overridden: summary.overriddenTransactions,
-          future: summary.futureConditions,
-        },
-      };
-    } catch (error) {
-      console.error('Error fetching conditions data:', error);
-      throw error;
+    const [summaryResult, detailsResult, evaluatedResult] = await Promise.allSettled([
+      this.getSummary(accountId, tenantId, asOfDate),
+      this.getDetails(accountId, tenantId, asOfDate, showInactive),
+      this.getEvaluatedTransactions(accountId, tenantId, fromDate),
+    ]);
+
+    if (summaryResult.status === 'rejected') {
+      throw summaryResult.reason;
     }
+
+    if (detailsResult.status === 'rejected') {
+      throw detailsResult.reason;
+    }
+
+    const summary = summaryResult.value;
+    const details = detailsResult.value;
+    const evaluated: EvaluatedTransactionsResponse =
+      evaluatedResult.status === 'fulfilled' ? evaluatedResult.value : { transactions: [] };
+
+    const transformed = this.transformDetails(details);
+
+    return {
+      activeConditions: transformed.active,
+      expiredConditions: transformed.expired,
+      futureConditions: transformed.future,
+      evaluatedTransactions: this.transformTransactions(evaluated),
+      metrics: {
+        active: summary.activeConditions,
+        blocked: transformed.blockedCount,
+        overridden: transformed.overriddenCount,
+        future: summary.futureConditions,
+      },
+    };
   }
 
-  /**
-   * Get conditions summary metrics
-   */
   async getSummary(
     accountId: string,
-    fromDate?: string,
+    tenantId: string = 'DEFAULT',
+    asOfDate?: string,
   ): Promise<ConditionsSummaryResponse> {
-    const params = new URLSearchParams({ accountId });
-    if (fromDate) params.append('fromDate', fromDate);
+    const params = new URLSearchParams({ accountId, tenantId });
+    if (asOfDate) params.append('asOfDate', asOfDate);
 
-    return await apiClient.get<ConditionsSummaryResponse>(
-      `${this.baseUrl}/summary?${params.toString()}`,
-    );
+    return apiClient.get<ConditionsSummaryResponse>(`${this.baseUrl}/summary?${params.toString()}`);
   }
 
-  /**
-   * Get active conditions
-   */
-  async getActive(
+  async getDetails(
     accountId: string,
-    fromDate?: string,
-  ): Promise<ActiveCondition[]> {
-    const params = new URLSearchParams({ accountId });
-    if (fromDate) params.append('fromDate', fromDate);
+    tenantId: string = 'DEFAULT',
+    asOfDate?: string,
+    showInactive: boolean = false,
+  ): Promise<ConditionsDetailsResponse> {
+    const params = new URLSearchParams({ accountId, tenantId });
+    if (asOfDate) params.append('asOfDate', asOfDate);
+    if (showInactive) params.append('showInactive', 'true');
 
-    return await apiClient.get<ActiveCondition[]>(
-      `${this.baseUrl}/active?${params.toString()}`,
-    );
+    return apiClient.get<ConditionsDetailsResponse>(`${this.baseUrl}/details?${params.toString()}`);
   }
 
-  /**
-   * Get expired conditions
-   */
-  async getExpired(accountId: string): Promise<ExpiredCondition[]> {
-    return await apiClient.get<ExpiredCondition[]>(
-      `${this.baseUrl}/expired?accountId=${accountId}`,
-    );
-  }
-
-  /**
-   * Get future conditions
-   */
-  async getFuture(accountId: string): Promise<FutureCondition[]> {
-    return await apiClient.get<FutureCondition[]>(
-      `${this.baseUrl}/future?accountId=${accountId}`,
-    );
-  }
-
-  /**
-   * Get evaluated transactions
-   */
   async getEvaluatedTransactions(
     accountId: string,
+    tenantId: string = 'DEFAULT',
     fromDate?: string,
-  ): Promise<EvaluatedTransaction[]> {
-    const params = new URLSearchParams({ accountId });
+  ): Promise<EvaluatedTransactionsResponse> {
+    const params = new URLSearchParams({ tenantId });
     if (fromDate) params.append('fromDate', fromDate);
 
-    return await apiClient.get<EvaluatedTransaction[]>(
-      `${this.baseUrl}/evaluated-transactions?${params.toString()}`,
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<EvaluatedTransactionsResponse>(
+      `${this.baseUrl}/evaluated-transactions/${accountId}${suffix}`,
     );
   }
 
-  // ============= Transform Functions =============
+  private transformDetails(details: ConditionsDetailsResponse): {
+    active: DisplayCondition[];
+    expired: DisplayCondition[];
+    future: DisplayCondition[];
+    blockedCount: number;
+    overriddenCount: number;
+  } {
+    const active: DisplayCondition[] = [];
+    const expired: DisplayCondition[] = [];
+    const future: DisplayCondition[] = [];
+    let blockedCount = 0;
+    let overriddenCount = 0;
 
-  private transformActiveConditions(
-    conditions: ActiveCondition[],
-  ): DisplayCondition[] {
-    return conditions.map((condition) => ({
-      id: condition.conditionId,
-      title: condition.title,
-      type: condition.action,
-      startDate: condition.startDate,
-      endDate: condition.endDate,
-      status: 'ACTIVE' as const,
-      severity:
-        condition.action === 'BLOCK' ? ('high' as const) : ('medium' as const),
-      createdBy: condition.createdBy,
-      notes: condition.notes,
-      action: condition.action,
-    }));
+    for (const r of details.conditions || []) {
+      const status: DisplayCondition['status'] =
+        r.status === 'expired' || r.isExpired
+          ? 'EXPIRED'
+          : r.status === 'future'
+            ? 'FUTURE'
+            : 'ACTIVE';
+
+      const action: 'OVERRIDE' | 'BLOCK' =
+        r.type && r.type.toLowerCase().includes('block') ? 'BLOCK' : 'OVERRIDE';
+
+      if (status === 'ACTIVE') {
+        if (action === 'BLOCK') blockedCount += 1;
+        if (action === 'OVERRIDE') overriddenCount += 1;
+      }
+
+      const item: DisplayCondition = {
+        id: r.conditionId,
+        title: r.reason || r.conditionId,
+        type: r.type,
+        startDate: r.inceptionTimestamp || r.inceptionDate || '',
+        endDate: r.expiryTimestamp ?? r.expiryDate ?? null,
+        status,
+        severity: action === 'BLOCK' ? 'high' : status === 'FUTURE' ? 'medium' : 'low',
+        createdBy: r.createdBy,
+        notes: r.reason,
+        action,
+      };
+
+      if (status === 'ACTIVE') active.push(item);
+      else if (status === 'EXPIRED') expired.push(item);
+      else future.push(item);
+    }
+
+    return { active, expired, future, blockedCount, overriddenCount };
   }
 
-  private transformExpiredConditions(
-    conditions: ExpiredCondition[],
-  ): DisplayCondition[] {
-    return conditions.map((condition) => ({
-      id: condition.conditionId,
-      title: condition.title,
-      type: 'EXPIRED',
-      startDate: condition.startDate,
-      endDate: condition.endDate,
-      status: 'EXPIRED' as const,
-      severity: 'low' as const,
-    }));
-  }
+  private transformTransactions(evaluated: EvaluatedTransactionsResponse): DisplayTransaction[] {
+    const raw = Array.isArray((evaluated as any)?.transactions)
+      ? ((evaluated as any).transactions as EvaluatedTransactionsResponse['transactions'])
+      : [];
 
-  private transformFutureConditions(
-    conditions: FutureCondition[],
-  ): DisplayCondition[] {
-    return conditions.map((condition) => ({
-      id: condition.conditionId,
-      title: condition.title,
-      type: 'FUTURE',
-      startDate: condition.startDate,
-      endDate: null,
-      status: 'FUTURE' as const,
-      severity: 'medium' as const,
-    }));
-  }
-
-  private transformTransactions(
-    transactions: EvaluatedTransaction[],
-  ): DisplayTransaction[] {
-    return transactions.map((txn) => ({
-      id: txn.transactionId.toString(),
+    return (raw || []).map((txn) => ({
+      id: String(txn.transactionId),
       date: txn.date,
       type: txn.type,
-      amount: `${txn.amount.toFixed(2)}`,
+      amount: `${Number(txn.amount || 0).toFixed(2)}`,
       currency: txn.currency,
-      status: txn.outcome,
-      outcome: txn.outcome,
+      status: 'BLOCKED',
+      outcome: 'BLOCKED',
       conditionId: txn.conditionId,
       reason: txn.reason,
     }));
