@@ -3,10 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 import { FlowableDefaults } from '../../../constants/flowable-api.constants';
 
-/**
- * Factory service for creating and managing Flowable REST API client
- * Provides a singleton AxiosInstance with centralized configuration
- */
 @Injectable()
 export class FlowableClientFactory {
   private readonly client: AxiosInstance;
@@ -32,18 +28,10 @@ export class FlowableClientFactory {
     });
   }
 
-  /**
-   * Get the configured Flowable API client
-   * @returns AxiosInstance configured for Flowable REST API
-   */
   getClient(): AxiosInstance {
     return this.client;
   }
 
-  /**
-   * Get the Flowable base URL
-   * @returns Flowable REST API base URL
-   */
   getBaseUrl(): string {
     return this.flowableUrl;
   }
