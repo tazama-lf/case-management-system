@@ -40,4 +40,22 @@ export class JupyterProxyService {
   async getBenfordByAccount(accountId: string, tenantId: string, from: string, to: string) {
     return this.goldLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, from, to);
   }
+
+  // ================ CONDITIONS PROXY METHODS ================
+
+  async getConditionsContextByTransaction(transactionId: number, tenantId: string = 'DEFAULT', asOfDate?: string) {
+    return this.goldLakehouseService.getConditionsContextByTransaction(transactionId, tenantId, asOfDate);
+  }
+
+  async getConditionsSummary(accountId: string, tenantId: string = 'DEFAULT', asOfDate?: string) {
+    return this.goldLakehouseService.getConditionsSummaryByAccount(accountId, tenantId, undefined, asOfDate);
+  }
+
+  async getConditionsDetails(accountId: string, tenantId: string = 'DEFAULT', asOfDate?: string, showInactive?: boolean) {
+    return this.goldLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive || false);
+  }
+
+  async getConditionsEvaluatedTransactions(accountId: string, tenantId: string = 'DEFAULT', fromDate?: string) {
+    return this.goldLakehouseService.getEvaluatedTransactionsByAccount(accountId, tenantId, fromDate);
+  }
 }

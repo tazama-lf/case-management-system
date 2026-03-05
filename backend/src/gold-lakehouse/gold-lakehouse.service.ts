@@ -2839,8 +2839,17 @@ export class GoldLakehouseService {
         }
       };
     } catch (error) {
-      this.logger.error('Error fetching conditions summary by account', error.stack);
-      throw new HttpException('Failed to fetch conditions summary', HttpStatus.INTERNAL_SERVER_ERROR);
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error fetching conditions summary by account: ${message}`, (error as any)?.stack);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        `Failed to fetch conditions summary: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 

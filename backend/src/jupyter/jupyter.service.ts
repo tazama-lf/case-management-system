@@ -20,6 +20,7 @@ export class JupyterService {
       'transaction-history': 'transaction-viz.ipynb',
       'alert-history': 'alert-history.ipynb',
       'transaction-network': 'transaction-network.ipynb',
+      'conditions-timeline': 'conditions-timeline.ipynb',
     };
 
     const filename = notebookMapping[notebookName];
