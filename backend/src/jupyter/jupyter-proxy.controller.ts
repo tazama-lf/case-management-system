@@ -208,4 +208,79 @@ export class JupyterProxyController {
     }
     return this.proxyService.getBenfordByAccount(accountId, tenantId, from, to);
   }
+
+  // ================ CONDITIONS PROXY ENDPOINTS ================
+
+  @Get('conditions/by-transaction/:transactionId')
+  @ApiOperation({ summary: 'Proxy: Get transaction context with conditions for both parties' })
+  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'asOfDate', required: false })
+  async getConditionsContextByTransaction(
+    @Param('transactionId') transactionId: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('asOfDate') asOfDate?: string,
+    @Headers() headers?: Record<string, any>,
+  ) {
+    this.validateSecret(headers || {});
+    const txId = parseInt(transactionId, 10);
+    if (isNaN(txId)) {
+      throw new BadRequestException('transactionId must be a valid number');
+    }
+    return this.proxyService.getConditionsContextByTransaction(txId, tenantId || 'DEFAULT', asOfDate);
+  }
+
+  @Get('conditions/summary')
+  @ApiOperation({ summary: 'Proxy: Get conditions summary with counts by Account ID' })
+  @ApiQuery({ name: 'accountId', required: true })
+  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'asOfDate', required: false })
+  async getConditionsSummary(
+    @Query('accountId') accountId: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('asOfDate') asOfDate?: string,
+    @Headers() headers?: Record<string, any>,
+  ) {
+    this.validateSecret(headers || {});
+    if (!accountId || accountId.trim() === '') {
+      throw new BadRequestException('accountId is required');
+    }
+    return this.proxyService.getConditionsSummary(accountId, tenantId || 'DEFAULT', asOfDate);
+  }
+
+  @Get('conditions/details')
+  @ApiOperation({ summary: 'Proxy: Get complete condition records with full details by Account ID' })
+  @ApiQuery({ name: 'accountId', required: true })
+  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'asOfDate', required: false })
+  @ApiQuery({ name: 'showInactive', required: false })
+  async getConditionsDetails(
+    @Query('accountId') accountId: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('asOfDate') asOfDate?: string,
+    @Query('showInactive') showInactive?: boolean,
+    @Headers() headers?: Record<string, any>,
+  ) {
+    this.validateSecret(headers || {});
+    if (!accountId || accountId.trim() === '') {
+      throw new BadRequestException('accountId is required');
+    }
+    return this.proxyService.getConditionsDetails(accountId, tenantId || 'DEFAULT', asOfDate, showInactive);
+  }
+
+  @Get('conditions/evaluated-transactions/:accountId')
+  @ApiOperation({ summary: 'Proxy: Get evaluated transactions for a condition/account' })
+  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'fromDate', required: false })
+  async getConditionsEvaluatedTransactions(
+    @Param('accountId') accountId: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('fromDate') fromDate?: string,
+    @Headers() headers?: Record<string, any>,
+  ) {
+    this.validateSecret(headers || {});
+    if (!accountId || accountId.trim() === '') {
+      throw new BadRequestException('accountId is required');
+    }
+    return this.proxyService.getConditionsEvaluatedTransactions(accountId, tenantId || 'DEFAULT', fromDate);
+  }
 }
