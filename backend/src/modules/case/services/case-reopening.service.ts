@@ -486,7 +486,7 @@ export class CaseReopeningService {
     return caseData;
   }
 
-  private executeFlowableOperations = async (
+  private readonly executeFlowableOperations = async (
     caseId: number,
     tenantId: string,
     role: string,
@@ -495,7 +495,17 @@ export class CaseReopeningService {
   ): Promise<void> => {
     const flowableOperations = async (): Promise<void> => {
       if (role === 'CMS_SUPERVISOR') {
-        if (approvalDecision !== undefined && approvalDecision) {
+        if (approvalDecision === undefined) {
+          await this.flowableService.handleCaseCreated({
+            caseId,
+            tenantId,
+            caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+            creationType: CaseCreationType.MANUAL,
+            creatorRole: 'SUPERVISOR',
+            isReopened: true,
+            isFraudNAML: false,
+          });
+        } else if (approvalDecision) {
           await this.flowableService.handleTaskCompleted({
             caseId,
             newStatus: TaskStatus.STATUS_30_COMPLETED,
@@ -509,7 +519,7 @@ export class CaseReopeningService {
             caseId,
             newStatus: newCaseStatus!,
           });
-        } else if (approvalDecision !== undefined) {
+        } else {
           await this.flowableService.handleTaskCompleted({
             caseId,
             newStatus: TaskStatus.STATUS_30_COMPLETED,
@@ -517,16 +527,6 @@ export class CaseReopeningService {
             completionVariables: {
               reopenApprovalDecision: 'reject',
             },
-          });
-        } else {
-          await this.flowableService.handleCaseCreated({
-            caseId,
-            tenantId,
-            caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-            creationType: CaseCreationType.MANUAL,
-            creatorRole: 'SUPERVISOR',
-            isReopened: true,
-            isFraudNAML: false,
           });
         }
       } else {
@@ -545,7 +545,7 @@ export class CaseReopeningService {
     await this.retryFlowableOperations(flowableOperations, 5);
   };
 
-  private retryFlowableOperations = async (fn: () => Promise<void>, maxRetries: number, attempt = 1): Promise<void> => {
+  private readonly retryFlowableOperations = async (fn: () => Promise<void>, maxRetries: number, attempt = 1): Promise<void> => {
     try {
       await fn();
     } catch (error) {

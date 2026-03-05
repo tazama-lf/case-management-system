@@ -12,9 +12,8 @@ import {
   VALIDATION_LENGTHS,
   CLOSED_CASE_STATUSES,
 } from '../../../constants/case.constants';
-import { ApproveCaseClosureDto, CloseCaseDto } from '../dto';
+import { CloseCaseDto } from '../dto';
 import { NotificationService } from 'src/modules/notification/notification.service';
-// import { validateClosureData } from 'src/utils/helperFunction';
 import { TaskValidationUtil } from 'src/modules/shared/utils/task-validation.util';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CreateCommentDto } from 'src/modules/comment/dto/create-comment.dto';
@@ -157,15 +156,6 @@ export class CaseClosureApprovalService {
               const bTime = new Date(b.created_at).getTime();
               return bTime - aTime;
             })[0] || null;
-
-        if (!investigationTask) {
-          throw new BadRequestException({
-            message: 'Investigation task not found for this case',
-            caseId,
-            missingTask: TASK_NAMES.INVESTIGATE_CASE,
-            availableTasks: caseData.tasks.map((t) => ({ name: t.name, status: t.status })),
-          });
-        }
 
         this.logger.log(
           `Found investigation task userId ${investigationTask.assigned_user_id} and userId ${userId}`,

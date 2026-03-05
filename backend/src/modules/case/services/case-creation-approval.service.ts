@@ -27,7 +27,7 @@ export class CaseCreationApprovalService {
     private readonly caseQueryService: CaseQueryService,
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   private validateCaseCompletionFields(existingCase: any): string[] {
     const missing: string[] = [];
@@ -52,11 +52,9 @@ export class CaseCreationApprovalService {
 
     if (existingAlert.case_id ?? (existingAlert.alert_data as any)?.status !== 'NALT') {
       throw new BadRequestException(
-        !existingAlert
-          ? `Alert ${dto.alertId} not found`
-          : existingAlert.case_id
-            ? `Case already exists for alertId ${dto.alertId}`
-            : 'Can only create manual cases from alerts with NALT status',
+        existingAlert.case_id
+          ? `Case already exists for alertId ${dto.alertId}`
+          : 'Can only create manual cases from alerts with NALT status',
       );
     }
 
@@ -531,7 +529,6 @@ export class CaseCreationApprovalService {
     }
 
     const missingFields: string[] = [];
-    if (!caseData.priority) missingFields.push('priority');
     if (!caseData.case_type) missingFields.push('case_type');
     if (!caseData.case_creator_user_id) missingFields.push('case_creator_user_id');
 

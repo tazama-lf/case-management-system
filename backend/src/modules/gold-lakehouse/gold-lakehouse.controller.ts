@@ -11,7 +11,7 @@ import { Alerts, Edge, Node } from './types/gold-lakehouse.types';
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class GoldLakehouseController {
-  constructor(private readonly goldLakehouseService: GoldLakehouseService) { }
+  constructor(private readonly goldLakehouseService: GoldLakehouseService) {}
 
   @Get('alert-navigator/:alertId')
   @RequireInvestigatorOrSupervisorRole()
@@ -116,18 +116,18 @@ export class GoldLakehouseController {
     };
     amountAndCurrency: Array<
       | {
-        originalAmount: number;
-        exchangeRate: number;
-        convertedAmount: number;
-      }
+          originalAmount: number;
+          exchangeRate: number;
+          convertedAmount: number;
+        }
       | {
-        senderCharges: never[];
-        intermediaryCharges: never[];
-        receiverCharges: never[];
-      }
+          senderCharges: never[];
+          intermediaryCharges: never[];
+          receiverCharges: never[];
+        }
       | {
-        totalCharges: number;
-      }
+          totalCharges: number;
+        }
     >;
     settlementDetails: {
       settlementDate: string;
@@ -239,7 +239,7 @@ export class GoldLakehouseController {
     @Query('accountId') accountId: string,
     @Query('tenantId') tenantId?: string,
     @Query('fromDate') fromDate?: string,
-  ) {
+  ): Promise<any[]> {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
@@ -263,7 +263,7 @@ export class GoldLakehouseController {
     type: String,
   })
   @ApiResponse({ status: 200 })
-  async getExpiredConditions(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string) {
+  async getExpiredConditions(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string): Promise<any[]> {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
@@ -287,7 +287,7 @@ export class GoldLakehouseController {
     type: String,
   })
   @ApiResponse({ status: 200 })
-  async getFutureConditions(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string) {
+  async getFutureConditions(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string): Promise<any[]> {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
@@ -313,7 +313,7 @@ export class GoldLakehouseController {
     example: 'DEFAULT',
   })
   @ApiResponse({ status: 200 })
-  async getConditionsList(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string) {
+  async getConditionsList(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string): Promise<any[]> {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
@@ -352,7 +352,7 @@ export class GoldLakehouseController {
     @Query('accountId') accountId: string,
     @Query('tenantId') tenantId?: string,
     @Query('fromDate') fromDate?: string,
-  ) {
+  ): Promise<any[]> {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
@@ -469,7 +469,7 @@ export class GoldLakehouseController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('granularity') granularity?: string,
-  ) {
+  ): Promise<any> {
     // Validate ID
     if (!endToEndId || endToEndId.trim() === '') {
       throw new BadRequestException('Transaction ID or Entity ID is required');
@@ -744,7 +744,7 @@ export class GoldLakehouseController {
     @Query('tenantId') tenantId?: string,
     @Query('dateRange') dateRange?: string,
     @Query('granularity') granularity = 'day',
-  ) {
+  ): Promise<any> {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
@@ -985,7 +985,11 @@ export class GoldLakehouseController {
       throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
 
-    return await this.goldLakehouseService.getAccountNodeFullData(accountId, tenantId ?? 'DEFAULT', (granularity as any) ?? 'month');
+    return await this.goldLakehouseService.getAccountNodeFullData(
+      accountId,
+      tenantId ?? 'DEFAULT',
+      (granularity as 'day' | 'month' | 'year' | undefined) ?? 'month',
+    );
   }
 
   @Get('network-analysis/counterparty-node/:counterpartyId')
@@ -1056,7 +1060,7 @@ export class GoldLakehouseController {
     return await this.goldLakehouseService.getCounterpartyNodeFullData(
       counterpartyId,
       tenantId ?? 'DEFAULT',
-      (granularity as 'day' | 'month' | 'year') || 'month',
+      (granularity as 'day' | 'month' | 'year' | undefined) ?? 'month',
     );
   }
 
