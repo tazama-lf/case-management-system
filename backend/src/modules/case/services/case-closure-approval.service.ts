@@ -35,7 +35,7 @@ export class CaseClosureApprovalService {
     private readonly commentService: CommentService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly taskValidationUtil: TaskValidationUtil,
-  ) { }
+  ) {}
 
   private async createSARFilingTask(caseId: number, tenantId: string, userId: string): Promise<void> {
     this.logger.log(`Start - Creating SAR_STR_FILING task for case ${caseId}`, CaseClosureApprovalService.name);
@@ -193,9 +193,11 @@ export class CaseClosureApprovalService {
 
       // SUPERVISOR DIRECT CLOSURE PATH
       if (role === 'CMS_SUPERVISOR') {
-
         const finalStatus = dto.recommendedOutcome as CaseStatus;
-        this.logger.log(`recommendedOutcome: ${dto.recommendedOutcome} finalStatus: ${finalStatus} directly without approval`, CaseClosureApprovalService.name);
+        this.logger.log(
+          `recommendedOutcome: ${dto.recommendedOutcome} finalStatus: ${finalStatus} directly without approval`,
+          CaseClosureApprovalService.name,
+        );
 
         const result = await this.caseRepository.updateCaseStatusAndCompleteTask(
           caseId,
@@ -205,9 +207,9 @@ export class CaseClosureApprovalService {
           dto.recommendedOutcome,
           dto.finalNotes
             ? {
-              note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
-              tenantId,
-            }
+                note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
+                tenantId,
+              }
             : undefined,
         );
         if (!isFraudAndAmlCase) {
@@ -291,10 +293,10 @@ export class CaseClosureApprovalService {
         dto.recommendedOutcome,
         dto.finalNotes
           ? {
-            note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
-            taskId: approvalTask.task_id,
-            tenantId,
-          }
+              note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
+              taskId: approvalTask.task_id,
+              tenantId,
+            }
           : undefined,
       );
 
