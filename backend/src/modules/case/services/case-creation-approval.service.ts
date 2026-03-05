@@ -412,6 +412,7 @@ export class CaseCreationApprovalService {
             autoCloseEligible: false,
             CaseType: updatedCase.case_type,
             casePriority: existingCase.priority,
+            draftApprovalRequired: false,
           },
         });
         return { case: updatedCase, completedTask: updatedTask };

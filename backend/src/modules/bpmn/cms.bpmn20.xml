@@ -62,8 +62,11 @@
                     <flowable:value id="CRITICAL" name="Critical"/>
                     <flowable:value id="BREACH" name="Breach"/>
                 </flowable:formProperty>
+                <flowable:formProperty id="draftApprovalRequired" name="Draft Completion Approval" type="boolean" default="false"/>
             </extensionElements>
         </userTask>
+
+        <exclusiveGateway id="isDraftCompletionGateway" name="Draft Completion Check"/>
 
         <!-- Autoclose Task (Manual completion in NestJS) -->
         <userTask id="performAutoclose" name="Auto Close"
@@ -204,7 +207,19 @@
             </conditionExpression>
         </sequenceFlow>
 
-        <sequenceFlow id="flowToCreationTypeGateway" sourceRef="completeCaseCreation" targetRef="autoCloseGateway"/>
+        <sequenceFlow id="flowToCreationTypeGateway" sourceRef="completeCaseCreation" targetRef="isDraftCompletionGateway"/>
+
+        <sequenceFlow id="flowDraftCompletionInvestigator" sourceRef="isDraftCompletionGateway" targetRef="approveCaseCreation">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${draftApprovalRequired == true}
+            </conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flowDraftCompletionSupervisor" sourceRef="isDraftCompletionGateway" targetRef="autoCloseGateway">
+            <conditionExpression xsi:type="tFormalExpression">
+                ${draftApprovalRequired == false}
+            </conditionExpression>
+        </sequenceFlow>
 
         <!-- Auto Close Eligible -> Perform Auto Close -->
         <sequenceFlow id="flowAutoclose" sourceRef="autoCloseGateway" targetRef="performAutoclose">

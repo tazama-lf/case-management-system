@@ -702,14 +702,19 @@ export class CaseService {
           userId,
           tenantId,
         );
+        const isAutoCloseEligible =
+          targetStatus === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT || targetStatus === CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL
+            ? false
+            : true;
         await this.flowableService.handleTaskCompleted({
           caseId: completedTask.case_id,
           taskName: completedTask.name!,
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
-            autoCloseEligible: targetStatus === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT ? false : true,
+            autoCloseEligible: isAutoCloseEligible,
             caseType: updateData.caseType ?? existingCase.case_type!,
             casePriority: updateData.priority ?? existingCase.priority,
+            draftApprovalRequired: isSupervisor ? false : true,
           },
         });
 
