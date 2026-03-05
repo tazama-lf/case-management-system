@@ -21,7 +21,7 @@ export class CaseEventListener {
       throw new NotFoundException('Process instance not found');
     }
 
-    await this.flowableProcessService.updateProcessVariable(processInstance.id as string, 'caseStatus', event.newStatus);
+    await this.flowableProcessService.updateProcessVariable(processInstance.id, 'caseStatus', event.newStatus);
     this.logger.log(`Updated Case Status To ${event.newStatus} For Process ${processInstance.id}`, CaseEventListener.name);
   }
 
@@ -32,7 +32,7 @@ export class CaseEventListener {
     const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
 
     if (processInstance) {
-      await this.flowableProcessService.terminateProcessInstance(processInstance.id as string, `Case abandoned: ${event.reason}`);
+      await this.flowableProcessService.terminateProcessInstance(processInstance.id, `Case abandoned: ${event.reason}`);
       this.logger.log(
         `[CaseEventListener] ✓ Terminated Flowable process ${processInstance.id} for abandoned case ${event.caseId}`,
         CaseEventListener.name,

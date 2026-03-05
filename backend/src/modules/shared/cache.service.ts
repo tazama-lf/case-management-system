@@ -1,7 +1,6 @@
-import { Injectable, OnModuleInit, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../shared/redis.service';
-import { AuthService } from '../auth/auth.service';
 import axios from 'axios';
 import { UserGroupDetails } from '../../utils/types/UserList';
 
@@ -15,15 +14,11 @@ export interface UserDetails {
   roles?: string[];
 }
 
-/**
- * Service for caching CMS user data in Redis to improve performance
- * for email notifications and user lookups
- */
 @Injectable()
-export class CacheService implements OnModuleInit {
+export class CacheService {
   private readonly logger = new Logger(CacheService.name);
   private cacheInitialized = false;
-  private readonly CACHE_ROLES = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR'];
+  private readonly CACHE_ROLES = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'];
   private readonly CACHE_KEY_PREFIX = 'cms:users:';
   private readonly CACHE_TTL_HOURS = 720; // 720 hours == 30 days TTL
   private readonly AuthBaseUrl: string;
@@ -31,35 +26,11 @@ export class CacheService implements OnModuleInit {
   constructor(
     private readonly redisService: RedisService,
     private readonly configService: ConfigService,
-    @Inject(forwardRef(() => AuthService))
-    private readonly authService: AuthService,
   ) {
     this.AuthBaseUrl = this.configService.get<string>('TAZAMA_AUTH_URL')!;
   }
 
-  /**
-   * Initialize user cache on module startup
-   */
-  onModuleInit(): void {
-    this.logger.log('Initializing CMS cache...', CacheService.name);
-
-    // Add delay to ensure all services (especially Redis) are initialized
-    // setTimeout(() => {
-    //   this.initializeUserCache().catch((error: unknown) => {
-    //     if (error instanceof Error) {
-    //       this.logger.error('Cache initialization error:', error);
-    //       this.logger.warn(`Cache initialization failed (non-blocking): ${error.message}`, CacheService.name);
-    //     } else {
-    //       this.logger.error('Cache initialization failed with non-error value:', error);
-    //     }
-    //   });
-    // }, 2000); // Wait 2 seconds before initializing cache
-  }
-
-  /**
-   * Initialize cache with CMS_INVESTIGATOR and CMS_SUPERVISOR users
-   */
-  public async initializeUserCache(retryCount = 0, token: string,): Promise<void> {
+  public async initializeUserCache(retryCount = 0, token: string): Promise<void> {
     const maxRetries = 3;
     this.logger.log(`InitializeUserCache called (attempt ${retryCount + 1}/${maxRetries + 1})`, CacheService.name);
 
@@ -85,33 +56,27 @@ export class CacheService implements OnModuleInit {
       let totalUsers = 0;
 
       for (const role of this.CACHE_ROLES) {
-        try {
-          this.logger.log(`Fetching users with role: ${role}`, CacheService.name);
+        this.logger.log(`Fetching users with role: ${role}`, CacheService.name);
 
+        const users = await this.getUsersByRole(token, role, this.configService.get<string>('KEYCLOAK_GROUP_NAME') ?? '');
 
-          const users = await this.getUsersByRole(token, role, this.configService.get<string>('KEYCLOAK_GROUP_NAME') ?? '');
+        for (const user of users) {
+          const userDetails: UserDetails = {
+            id: user.id,
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            fullName: `${user.firstName} ${user.lastName}`.trim(),
+            email: user.email,
+          };
 
-          for (const user of users) {
-            const userDetails: UserDetails = {
-              id: user.id,
-              username: user.username,
-              firstName: user.firstName,
-              lastName: user.lastName,
-              fullName: `${user.firstName} ${user.lastName}`.trim(),
-              email: user.email,
-            };
-
-            cacheData[this.getCacheKey(user.id)] = userDetails;
-            totalUsers += 1;
-          }
-
-          this.logger.log(`Cached ${users.length} users with role: ${role}`, CacheService.name);
-        } catch (error) {
-          this.logger.error(`Failed to fetch users with role ${role}: ${error.message}`, CacheService.name);
+          cacheData[this.getCacheKey(user.id)] = userDetails;
+          totalUsers += 1;
         }
+
+        this.logger.log(`Cached ${users.length} users with role: ${role}`, CacheService.name);
       }
 
-      // Store all users in Redis with TTL
       if (Object.keys(cacheData).length > 0) {
         await this.redisService.mset(cacheData, this.CACHE_TTL_HOURS * 3600);
         this.cacheInitialized = true;
@@ -120,7 +85,8 @@ export class CacheService implements OnModuleInit {
         this.logger.warn('No users fetched for caching', CacheService.name);
       }
     } catch (error) {
-      this.logger.warn(`Failed to initialize user cache (will fall back to API): ${error.message}`, CacheService.name);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Failed to initialize user cache (will fall back to API): ${errorMessage}`, CacheService.name);
       this.cacheInitialized = false;
     }
   }
@@ -136,26 +102,10 @@ export class CacheService implements OnModuleInit {
     return users.data;
   }
 
-  /**
-   * Get Redis cache key for user ID
-   */
   private getCacheKey(userId: string): string {
     return `${this.CACHE_KEY_PREFIX}${userId}`;
   }
 
-  /**
-   * Refresh the user cache manually
-   */
-  // async refreshUserCache(): Promise<void> {
-  //   this.logger.log('Refreshing user cache...', CacheService.name);
-  //   await this.initializeUserCache();
-  // }
-
-  /**
-   * Get user from cache
-   * @param userId - The user ID to lookup
-   * @returns UserDetails object or null if not found in cache
-   */
   async getUserFromCache(userId: string): Promise<UserDetails | null> {
     if (!this.redisService.isConnected()) {
       this.logger.debug('Redis not connected, cache unavailable', CacheService.name);
@@ -172,72 +122,14 @@ export class CacheService implements OnModuleInit {
       this.logger.debug(`User ${userId} not found in Redis cache`, CacheService.name);
       return null;
     } catch (error) {
-      this.logger.warn(`Error getting user ${userId} from cache: ${error.message}`, CacheService.name);
-      return null;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Error getting user ${userId} from cache: ${errorMessage}`, CacheService.name);
+      throw error;
     }
   }
 
-  /**
-   * Get user email from cache
-   * @param userId - The user ID to lookup
-   * @returns User's email address or null if not found in cache
-   */
   async getUserEmailFromCache(userId: string): Promise<string | null> {
     const user = await this.getUserFromCache(userId);
     return user?.email ?? null;
-  }
-
-  /**
-   * Get user's full name from cache
-   * @param userId - The user ID to lookup
-   * @returns User's full name or null if not found in cache
-   */
-  async getUserFullNameFromCache(userId: string): Promise<string | null> {
-    const user = await this.getUserFromCache(userId);
-    if (user) {
-      return `${user.firstName} ${user.lastName}`.trim();
-    }
-    return null;
-  }
-
-  /**
-   * Batch get user emails from cache
-   * @param userIds - Array of user IDs to lookup
-   * @returns Map of userId to email for cached users only
-   */
-  async getBatchUserEmailsFromCache(userIds: string[]): Promise<Map<string, string>> {
-    const emailMap = new Map<string, string>();
-
-    if (!this.redisService.isConnected()) {
-      return emailMap;
-    }
-
-    try {
-      // Get cache keys for all user IDs
-      const cacheKeys = userIds.map((id) => this.getCacheKey(id));
-      const cachedData = await this.redisService.mget<UserDetails>(cacheKeys, true);
-
-      // Map results back to user IDs
-      userIds.forEach((userId) => {
-        const cacheKey = this.getCacheKey(userId);
-        const userData = cachedData[cacheKey];
-        if (userData?.email) {
-          emailMap.set(userId, userData.email);
-        }
-      });
-
-      this.logger.debug(`Found ${emailMap.size} users in cache out of ${userIds.length} requested`, CacheService.name);
-      return emailMap;
-    } catch (error) {
-      this.logger.warn(`Error during batch cache lookup: ${error.message}`, CacheService.name);
-      return emailMap;
-    }
-  }
-
-  /**
-   * Check if cache is initialized and available
-   */
-  isCacheAvailable(): boolean {
-    return this.cacheInitialized && this.redisService.isConnected();
   }
 }

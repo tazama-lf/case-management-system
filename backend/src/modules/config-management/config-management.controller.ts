@@ -19,7 +19,7 @@ import {
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class ConfigManagementController {
-  constructor(private readonly configService: ConfigManagementService) { }
+  constructor(private readonly configService: ConfigManagementService) {}
 
   @Put('roles/:roleName')
   @RequireAdminRole()
@@ -48,22 +48,22 @@ export class ConfigManagementController {
     @Req() req: AuthenticatedRequest,
   ): Promise<
     | {
-      created_at: Date;
-      updated_at: Date;
-      description: string | null;
-      id: number;
-      created_by: string;
-      role_name: string;
-      permissions: JsonValue;
-      is_system_role: boolean;
-      is_active: boolean;
-      updated_by: string;
-    }
+        created_at: Date;
+        updated_at: Date;
+        description: string | null;
+        id: number;
+        created_by: string;
+        role_name: string;
+        permissions: JsonValue;
+        is_system_role: boolean;
+        is_active: boolean;
+        updated_by: string;
+      }
     | {
-      status: string;
-      changeId: number;
-      message: string;
-    }
+        status: string;
+        changeId: number;
+        message: string;
+      }
   > {
     const userId = req.user.token.clientId;
 
