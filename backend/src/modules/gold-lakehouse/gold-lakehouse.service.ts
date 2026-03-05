@@ -845,7 +845,7 @@ export class GoldLakehouseService {
         const baseline = baselineResponse?.data?.[0];
         if (baseline) {
           const baselineData = this.stripHudiMetadata(baseline);
-          expectedTxCount = parseInt(baselineData.total_tx_count) || null;
+          expectedTxCount = parseInt(baselineData.total_tx_count, 10) || null;
           expectedVolume = parseFloat(baselineData.total_amount) || null;
         }
       } catch (error) {
@@ -872,7 +872,7 @@ export class GoldLakehouseService {
 
       // Calculate aggregates from bucket data
       const bucketTotalVolume = aggregates.reduce((sum, a) => sum + (parseFloat(a.bucket_tx_amount) || 0), 0);
-      const bucketTotalTransactions = aggregates.reduce((sum, a) => sum + (parseInt(a.bucket_tx_count) || 0), 0);
+      const bucketTotalTransactions = aggregates.reduce((sum, a) => sum + (parseInt(a.bucket_tx_count, 10) || 0), 0);
 
       // Calculate percentages and averages
       const alertsPercentage = totalTransactions > 0 ? (alertsTriggered / totalTransactions) * 100 : 0;
@@ -895,7 +895,7 @@ export class GoldLakehouseService {
         .map((e) => ({
           date: e.event_date,
           cumulativeAmount: parseFloat(e.cum_tx_amount) || 0,
-          cumulativeCount: parseInt(e.cum_tx_count) || 0,
+          cumulativeCount: parseInt(e.cum_tx_count, 10) || 0,
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -903,7 +903,7 @@ export class GoldLakehouseService {
       const volumeDistribution = aggregates.map((a) => ({
         bucketStart: a.bucket_start,
         granularity: a.bucket_granularity,
-        transactionCount: parseInt(a.bucket_tx_count) || 0,
+        transactionCount: parseInt(a.bucket_tx_count, 10) || 0,
         totalVolume: parseFloat(a.bucket_tx_amount) || 0,
       }));
 

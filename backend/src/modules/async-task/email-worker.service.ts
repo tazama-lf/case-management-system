@@ -28,7 +28,7 @@ export class EmailWorkerService {
 
     this.transporter = nodemailer.createTransport({
       host: smtpHost ?? 'localhost',
-      port: parseInt(smtpPort),
+      port: parseInt(smtpPort, 10),
       secure: false,
       auth: smtpUser
         ? {

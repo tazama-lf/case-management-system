@@ -29,7 +29,7 @@ export class EvidenceService {
     private readonly taskRepository: TaskRepository,
     private readonly eventLogSerice: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
-  ) {}
+  ) { }
 
   private sha256(buffer: Buffer): string {
     return crypto.createHash('sha256').update(buffer).digest('hex');
@@ -157,7 +157,7 @@ export class EvidenceService {
     for (const file of files) {
       // Validate MIME type
       const allowed = allowedMimeTypes[dto.evidenceType];
-      if (!allowed?.includes(file.mimetype)) {
+      if (!allowed.includes(file.mimetype)) {
         throw new BadRequestException(
           `File type ${file.mimetype} is not allowed for ${dto.evidenceType} evidence. File: ${file.originalname}`,
         );
@@ -275,7 +275,7 @@ export class EvidenceService {
   }
 
   async deleteEvidence(evidenceId: string, fileName: string, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
-    if (evidenceId === undefined || evidenceId.trim() === '' || fileName === undefined || fileName.trim() === '') {
+    if (evidenceId.trim() === '' || fileName.trim() === '') {
       this.logger.log(`Evidence Id  ${evidenceId} or fileName  ${fileName} is not found`);
       this.logger.error(`Evidence Id or fileName is not found: ${evidenceId} , ${fileName}`);
       throw new BadRequestException(`Evidence Id is not found: ${evidenceId}, or fileName is empty: ${fileName}`);
@@ -496,8 +496,9 @@ export class EvidenceService {
           continue;
         }
 
-        let decrypted: Buffer;
+
         try {
+          let decrypted: Buffer;
           decrypted = this.decrypt(encryptedBuffer, att.encryption.key, att.encryption.iv, att.encryption.authTag);
         } catch (decErr) {
           const errorMessage = decErr instanceof Error ? decErr.message : String(decErr);
