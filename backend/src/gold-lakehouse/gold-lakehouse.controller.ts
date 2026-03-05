@@ -73,7 +73,7 @@ export class GoldLakehouseController {
     - Historical compliance checks
     - Account risk assessment
     
-    Test with: 6665bafaee4b430692dafe4bd0efb3fa (has 3 expired conditions)`
+    Test with: 87f16412f0d147c1ad2fe94cac078f2c (has rich condition data with real metadata)`
   })
   @ApiQuery({
     name: 'accountId',
@@ -101,25 +101,23 @@ export class GoldLakehouseController {
     description: 'Condition summary with counts and basic condition details',
     schema: {
       example: {
-        accountId: '6665bafaee4b430692dafe4bd0efb3fa',
+        accountId: '87f16412f0d147c1ad2fe94cac078f2c',
         accountScheme: 'MSISDN',
         fspId: 'fsp001',
-        totalConditions: 3,
+        totalConditions: 1,
         activeConditions: 0,
-        expiredConditions: 3,
+        expiredConditions: 1,
         futureConditions: 0,
         conditions: [
           {
-            conditionId: '84bdd2a6-379c-4f6a-8ac1-3275faeb7376',
-            type: 'overridable-block',
-            perspective: 'both',
-            reason: 'Adverse media reports',
+            conditionId: 'ba36e82f-d2e1-46fa-a9a4-ed95007db7e0',
+            type: 'override',
+            perspective: 'creditor',
+            reason: 'Suspicion of Money Laundering',
             status: 'expired',
-            inceptionDate: '2025-12-31T07:41:53.855000',
-            expiryDate: '2025-12-31T09:41:00',
-            createdBy: 'no mapping found',
-            eventTypes: ['pacs.008.001.10'],
-            eventCount: 1
+            inceptionDate: '2026-02-04T02:22:33.452000',
+            expiryDate: '2026-02-05T02:22:00',
+            createdBy: 'demo UI'
           }
         ]
       }
@@ -155,7 +153,7 @@ export class GoldLakehouseController {
     - Historical condition analysis
     - Condition lifecycle tracking
     
-    Test with: 6665bafaee4b430692dafe4bd0efb3fa (has full condition data)`
+    Test with: 87f16412f0d147c1ad2fe94cac078f2c (has full condition data with real creators)`
   })
   @ApiQuery({
     name: 'accountId',
@@ -190,31 +188,27 @@ export class GoldLakehouseController {
     description: 'Complete condition records with all database fields',
     schema: {
       example: {
-        accountId: '6665bafaee4b430692dafe4bd0efb3fa',
-        totalConditions: 3,
+        accountId: '87f16412f0d147c1ad2fe94cac078f2c',
+        totalConditions: 1,
         conditions: [
           {
-            conditionId: '84bdd2a6-379c-4f6a-8ac1-3275faeb7376',
-            pk: '7b9f85c75159465652283cd6878aa7f98f70fb356124275028fd79430247de23',
-            tenantId: 'fsp-001',
-            bucketGranularity: 'week',
-            bucketStart: '2025-12-28T19:00:00',
-            accountId: '6665bafaee4b430692dafe4bd0efb3fa',
+            conditionId: 'ba36e82f-d2e1-46fa-a9a4-ed95007db7e0',
+            pk: 'no mapping found',
+            tenantId: 'DEFAULT',
+            bucketGranularity: 'no data found',
+            bucketStart: 'no data found',
+            accountId: '87f16412f0d147c1ad2fe94cac078f2c',
             accountScheme: 'MSISDN',
-            accountAgentMmbId: 'fsp001',
-            type: 'overridable-block',
-            perspective: 'both',
-            reason: 'Adverse media reports',
-            forceCreate: true,
-            eventTypes: ['pacs.008.001.10'],
-            eventTypePrimary: 'pacs.008.001.10',
-            eventTypeCount: 1,
-            createdTimestamp: '2025-12-31T07:41:53.855000',
-            inceptionTimestamp: '2025-12-31T07:41:53.855000',
-            expiryTimestamp: '2025-12-31T09:41:00',
+            type: 'override',
+            perspective: 'creditor',
+            reason: 'Suspicion of Money Laundering',
+            eventTypes: 'all',
+            inceptionDate: '2026-02-04T02:22:33.452000',
+            expiryDate: '2026-02-05T02:22:00',
+            createdDate: '2026-02-04T02:22:33.452000',
             isActive: false,
             isExpired: true,
-            status: 'expired'
+            createdBy: 'demo UI'
           }
         ]
       }
@@ -232,58 +226,6 @@ export class GoldLakehouseController {
     return this.goldLakehouseService.getConditionsListByAccount(accountId, tenantId || 'DEFAULT', asOfDate, showInactive);
   }
 
-  @Get('conditions/expired')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
-    summary: 'Get expired conditions by Account ID',
-    description: 'Returns only expired condition records for a specific account. Use when specifically analyzing historical/closed conditions.'
-  })
-  @ApiQuery({
-    name: 'accountId',
-    description: 'Account ID from conditions_timeline table',
-    required: true,
-    type: String,
-    example: '7777cdefaa9b430692dafe4bd0ef9999',
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID (use DEFAULT for cross-tenant queries)',
-    required: false,
-    type: String,
-    example: 'DEFAULT',
-  })
-  @ApiResponse({ 
-    status: 200,
-    description: 'Array of expired condition records',
-    schema: {
-      example: {
-        conditions: [
-          {
-            condition_id: 'cond_002',
-            cond_account_id: '7777cdefaa9b430692dafe4bd0ef9999',
-            cond_reason: 'Customer under enhanced due diligence',
-            cond_is_expired: true,
-            cond_end_date: '2026-01-15',
-            cond_tenant_id: 'fsp-001'
-          }
-        ],
-        metadata: {
-          accountId: '7777cdefaa9b430692dafe4bd0ef9999',
-          expiredCount: 8,
-          queryTimestamp: '2026-03-02T10:30:00Z'
-        }
-      }
-    }
-  })
-  async getExpiredConditions(
-    @Query('accountId') accountId: string,
-    @Query('tenantId') tenantId?: string,
-  ) {
-    if (!accountId) {
-      throw new BadRequestException('accountId is required');
-    }
-    return this.goldLakehouseService.getExpiredConditionsByAccount(accountId, tenantId || 'DEFAULT');
-  }
 
 
 
@@ -291,64 +233,8 @@ export class GoldLakehouseController {
 
 
 
-  @Get('conditions/detail/:conditionId')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
-    summary: 'Get specific condition details by Condition ID',
-    description: 'Returns the full details for a specific condition rule, including full reason and metadata.'
-  })
-  @ApiParam({
-    name: 'conditionId',
-    description: 'The unique ID of the condition rule (e.g. cond-abc-123)',
-    required: true,
-    type: String,
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID',
-    required: false,
-    type: String,
-    example: 'DEFAULT',
-  })
-  async getOneConditionDetail(
-    @Param('conditionId') conditionId: string,
-    @Query('tenantId') tenantId?: string,
-  ) {
-    return this.goldLakehouseService.getConditionDetails(conditionId, tenantId || 'DEFAULT');
-  }
 
-  @Get('conditions/evaluated-transactions/:id')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ 
-    summary: 'Get evaluated transactions for a condition/account',
-    description: 'Uses the Temporal Join logic to find all financial activity overlapping with the condition window.'
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Account ID or Transaction ID to anchor the audit',
-    required: true,
-    type: String,
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID',
-    required: false,
-    type: String,
-    example: 'DEFAULT',
-  })
-  @ApiQuery({
-    name: 'fromDate',
-    description: 'Optional filter to start the audit from a specific ISO date',
-    required: false,
-    type: String,
-  })
-  async getEvaluatedTransactions(
-    @Param('id') id: string,
-    @Query('tenantId') tenantId?: string,
-    @Query('fromDate') fromDate?: string,
-  ) {
-    return this.goldLakehouseService.getEvaluatedTransactionsByAccount(id, tenantId || 'DEFAULT', fromDate);
-  }
+
 
   // ================ NEW ENDPOINTS FOR CONDITIONS VIEW ================
   
@@ -410,46 +296,55 @@ export class GoldLakehouseController {
       example: {
         transaction: {
           transactionId: 257758,
-          displayId: 'TXN-20251012257758',
+          displayId: 'TXN-20260204257758',
           endToEndId: 'TMICFBPK2801321849114534',
-          timestamp: '2025-10-12T15:22:51.744758',
+          timestamp: '2026-02-04T08:00:00.000Z',
           type: 'pacs.008.001.10',
-          amount: 200,
-          currency: 'XTS'
+          amount: 316.13,
+          currency: 'USD'
         },
         debtor: {
-          entityId: 'dbtr_TMIC2601281849118634653749633550',
-          entityName: 'MUHAMMAD SHEHROZ KHAN',
-          primaryAccountId: 'dbtrAcct_TMIC2601281849118634653749633550',
+          entityId: 'f120717550e1476d9ba59d656db346cc',
+          entityName: 'Super Ellipse Entity',
+          primaryAccountId: '545a8ebfd7ce4ce3bda48246dcff8b15',
           accounts: [
             {
-              accountId: 'dbtrAcct_TMIC2601281849118634653749633550',
-              accountNumber: '****9633550',
+              accountId: '545a8ebfd7ce4ce3bda48246dcff8b15',
+              accountNumber: '****dcff8b15',
               accountType: 'no mapping found',
-              isTransactionAccount: true,
-              activeConditionsCount: 0,
-              expiredConditionsCount: 0,
-              futureConditionsCount: 0
+              conditionsCount: {
+                total: 1,
+                active: 0,
+                expired: 1,
+                future: 0
+              },
+              isTransactionAccount: true
             }
           ]
         },
         creditor: {
-          entityId: 'cdtr_TMIC2601281849118634653749633550',
-          entityName: 'MAHAM KHAN',
-          primaryAccountId: 'cdtrAcct_TMIC2601281849118634653749633550',
+          entityId: '0ebc5e5d5a37466097f967cd01a43318',
+          entityName: 'Genuine Litigator Entity',
+          primaryAccountId: '87f16412f0d147c1ad2fe94cac078f2c',
           accounts: [
             {
-              accountId: 'cdtrAcct_TMIC2601281849118634653749633550',
-              accountNumber: '****9633550',
+              accountId: '87f16412f0d147c1ad2fe94cac078f2c',
+              accountNumber: '****078f2c',
               accountType: 'no mapping found',
-              isTransactionAccount: true,
-              activeConditionsCount: 0,
-              expiredConditionsCount: 0,
-              futureConditionsCount: 0
+              conditionsCount: {
+                total: 1,
+                active: 0,
+                expired: 1,
+                future: 0
+              },
+              isTransactionAccount: true
             }
           ]
         },
-        asOfDate: '2025-10-12T15:22:51.744758'
+        metadata: {
+          asOfDate: '2026-02-04T08:00:00.000Z',
+          queryTimestamp: '2026-03-05T10:30:00Z'
+        }
       }
     }
   })
@@ -472,15 +367,16 @@ export class GoldLakehouseController {
     description: `Returns aggregated conditions for all accounts owned by a specific legal entity. Used for entity-level compliance and risk assessment.
     
     Data Flow:
-    1. Query account_holder WHERE source = entityId
-    2. Get all destination accounts
-    3. Query conditions_timeline for each account
-    4. Return aggregated view with per-account and total statistics
+    1. Query account_holder WHERE source = entityId → Get associated accounts
+    2. Query conditions WHERE entity_id = entityId → Get entity-level conditions  
+    3. Query conditions WHERE account_id IN (accounts) → Get account-level conditions
+    4. Return aggregated view with both entity and account conditions
     
     Features:
+    - Both entity-level AND account-level conditions
+    - Real metadata: created_by_user, account_scheme, fsp_id
     - All accounts owned by the entity
-    - Conditions grouped by account
-    - Total entity-wide condition counts
+    - Simplified queries (no complex bucketing)
     - Filter by active status (showInactive)
     - Historical view support (asOfDate)
     
@@ -492,14 +388,14 @@ export class GoldLakehouseController {
     
     Note: Entity must exist in account_holder.source field
     
-    Test with: cdtr_526b4a5e02754f97bbe97d9f88fceaf7TAZAMA_EID (has account mapping)`
+    Test with: 0ebc5e5d5a37466097f967cd01a43318 (real entity with conditions)`
   })
   @ApiParam({
     name: 'entityId',
-    description: 'Entity ID from account_holder.source field (debtor_id or creditor_id from transactions)',
+    description: 'Entity ID from conditions.entity_id field or account_holder.source - supports both account and entity conditions',
     required: true,
     type: String,
-    example: 'cdtr_526b4a5e02754f97bbe97d9f88fceaf7TAZAMA_EID',
+    example: '0ebc5e5d5a37466097f967cd01a43318',
   })
   @ApiQuery({
     name: 'asOfDate',
@@ -527,21 +423,26 @@ export class GoldLakehouseController {
     description: 'Entity-level condition view with all accounts and aggregated statistics',
     schema: {
       example: {
-        entityId: 'cdtr_526b4a5e02754f97bbe97d9f88fceaf7TAZAMA_EID',
+        entityId: '0ebc5e5d5a37466097f967cd01a43318',
         accounts: [
+          '87f16412f0d147c1ad2fe94cac078f2c'
+        ],
+        conditions: [
           {
-            accountId: 'cdtrAcct_bfbfb048b23b44f28d33823b8b957d7cMSISDNfsp002',
-            accountNumber: '****MSISDNfsp002',
-            totalConditions: 0,
-            activeConditions: 0,
-            expiredConditions: 0
+            conditionId: 'f0b633d3-8232-4f86-bf79-81f490651f9f',
+            title: 'Suspicion of Money Laundering',
+            type: 'overridable-block',
+            createdBy: 'TAZAMA_DEMO_UI',
+            startDate: '2026-02-03T03:05:54.636000',
+            endDate: '2026-02-04T03:05:00',
+            status: 'EXPIRED',
+            accountId: '0ebc5e5d5a37466097f967cd01a43318',
+            notes: 'Suspicion of Money Laundering'
           }
         ],
-        conditions: [],
         metadata: {
-          totalConditions: 0,
-          activeConditions: 0,
-          queryTimestamp: '2026-03-04T10:30:00Z'
+          entityId: '0ebc5e5d5a37466097f967cd01a43318',
+          queryTimestamp: '2026-03-05T10:30:00Z'
         }
       }
     }
