@@ -2690,6 +2690,7 @@ export class GoldLakehouseService {
         tableName: 'conditions',
         totalRows: response.data?.length || 0,
         data: response.data || [],
+        note: 'Now using primary conditions table with full data (132 rows)',
       };
     } catch (error) {
       this.logger.error(`Error fetching conditions table: ${error.message}`);
@@ -2769,28 +2770,21 @@ export class GoldLakehouseService {
       let asOfDateFilter = '';
       if (asOfDate) {
         asOfDateFilter = `
-          AND cond_inception_ts <= '${asOfDate}'
-          AND (cond_expiry_ts IS NULL OR cond_expiry_ts >= '${asOfDate}')
+          AND condition_inception_ts <= '${asOfDate}'
+          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= '${asOfDate}')
         `;
       }
 
       const sql = `
       SELECT 
         COUNT(*) as total_conditions,
-        SUM(CASE WHEN cond_is_active = 1 THEN 1 ELSE 0 END) as active_conditions,
-        SUM(CASE WHEN cond_is_expired = 1 THEN 1 ELSE 0 END) as expired_conditions,
-        SUM(CASE WHEN cond_is_active = 0 AND cond_is_expired = 0 THEN 1 ELSE 0 END) as future_conditions
-      FROM (
-        SELECT 
-          *,
-          ROW_NUMBER() OVER (PARTITION BY cond_condition_id ORDER BY bucket_start DESC) as latest_v
-        FROM conditions_timeline
-        WHERE cond_account_id = '${accountId}'
-          ${tenantId && tenantId !== 'DEFAULT' ? `AND cond_tenant_id = '${tenantId}'` : ''}
-          ${dateFilter}
-          ${asOfDateFilter}
-      ) ct
-      WHERE ct.latest_v = 1
+        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_conditions,
+        SUM(CASE WHEN is_expired = 1 THEN 1 ELSE 0 END) as expired_conditions,
+        SUM(CASE WHEN is_active = 0 AND is_expired = 0 THEN 1 ELSE 0 END) as future_conditions
+      FROM conditions
+      WHERE account_id = '${accountId}'
+        ${tenantId && tenantId !== 'DEFAULT' ? `AND tenant_id = '${tenantId}'` : ''}
+        ${asOfDateFilter}
       `;
 
       const response = await this.runSqlQuery(sql, 1);
@@ -2799,45 +2793,41 @@ export class GoldLakehouseService {
       // Get basic condition details for summary
       const conditionsSql = `
       SELECT 
-        cond_condition_id,
-        cond_reason,
-        cond_type,
-        cond_perspective,
-        cond_inception_ts,
-        cond_expiry_ts,
-        cond_is_active,
-        cond_is_expired
-      FROM (
-        SELECT 
-          *,
-          ROW_NUMBER() OVER (PARTITION BY cond_condition_id ORDER BY bucket_start DESC) as latest_v
-        FROM conditions_timeline
-        WHERE cond_account_id = '${accountId}'
-          ${tenantId && tenantId !== 'DEFAULT' ? `AND cond_tenant_id = '${tenantId}'` : ''}
-          ${dateFilter}
-          ${asOfDateFilter}
-      ) ct
-      WHERE ct.latest_v = 1
+        condition_id,
+        condition_reason,
+        condition_type,
+        perspective,
+        condition_inception_ts,
+        condition_expiry_ts,
+        is_active,
+        is_expired,
+        created_by_user,
+        account_scheme,
+        account_agent_mmb_id
+      FROM conditions
+      WHERE account_id = '${accountId}'
+        ${tenantId && tenantId !== 'DEFAULT' ? `AND tenant_id = '${tenantId}'` : ''}
+        ${asOfDateFilter}
       LIMIT 100
       `;
       
       const conditionsResponse = await this.runSqlQuery(conditionsSql, 100);
       const conditions = (conditionsResponse.data || []).map(cond => ({
-        conditionId: cond.cond_condition_id,
-        type: cond.cond_type || 'no data found',
-        perspective: cond.cond_perspective || 'no data found',
-        reason: cond.cond_reason || 'no data found',
-        status: cond.cond_is_active === 1 ? 'active' : 
-               cond.cond_is_expired === 1 ? 'expired' : 'future',
-        inceptionDate: cond.cond_inception_ts,
-        expiryDate: cond.cond_expiry_ts,
-        createdBy: 'no mapping found'
+        conditionId: cond.condition_id,
+        type: cond.condition_type || 'no data found',
+        perspective: cond.perspective || 'no data found',
+        reason: cond.condition_reason || 'no data found',
+        status: cond.is_active === 1 ? 'active' : 
+               cond.is_expired === 1 ? 'expired' : 'future',
+        inceptionDate: cond.condition_inception_ts,
+        expiryDate: cond.condition_expiry_ts,
+        createdBy: cond.created_by_user || 'no data found'
       }));
 
       return {
         accountId: accountId,
-        accountScheme: 'no mapping found',
-        fspId: 'no mapping found', 
+        accountScheme: (conditionsResponse.data?.[0]?.account_scheme || 'no data found'),
+        fspId: (conditionsResponse.data?.[0]?.account_agent_mmb_id || 'no data found'), 
         totalConditions: summary.total_conditions || 0,
         activeConditions: summary.active_conditions || 0,
         expiredConditions: summary.expired_conditions || 0,
@@ -2866,23 +2856,12 @@ export class GoldLakehouseService {
         ct.condition_type,
         ct.condition_inception_ts,
         ct.condition_expiry_ts,
-        ct.account_id
-      FROM (
-        SELECT
-          cond_condition_id as condition_id,
-          cond_reason as condition_reason,
-          cond_type as condition_type,
-          cond_inception_ts as condition_inception_ts,
-          cond_expiry_ts as condition_expiry_ts,
-          cond_account_id as account_id,
-          ROW_NUMBER() OVER (PARTITION BY cond_condition_id ORDER BY bucket_start DESC) as latest_v
-        FROM conditions_timeline
-        WHERE (cond_account_id = '${accountId}' OR tx_transaction_id = '${accountId}' OR cond_entity_id = '${accountId}')
-          ${tenantId && tenantId !== 'DEFAULT' ? `AND cond_tenant_id = '${tenantId}'` : ''}
-          AND cond_is_active = 1
-          ${dateFilter}
-      ) ct
-      WHERE ct.latest_v = 1
+        ct.account_id,
+        ct.created_by_user
+      FROM conditions ct
+      WHERE (ct.account_id = '${accountId}' OR ct.entity_id = '${accountId}')
+        ${tenantId && tenantId !== 'DEFAULT' ? `AND ct.tenant_id = '${tenantId}'` : ''}
+        AND ct.is_active = 1
       ORDER BY ct.condition_inception_ts DESC
       LIMIT 500
       `;
@@ -2897,7 +2876,7 @@ export class GoldLakehouseService {
           conditionId: r.condition_id,
           title: r.condition_reason,
           type: r.condition_type,
-          createdBy: 'no mapping found',
+          createdBy: r.created_by_user || 'no data found',
           startDate: r.condition_inception_ts,
           endDate: r.condition_expiry_ts ?? 'no data found',
           notes: r.condition_reason,
@@ -2915,114 +2894,24 @@ export class GoldLakehouseService {
       throw new HttpException('Failed to fetch active conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
-  async getExpiredConditionsByAccount(accountId: string, tenantId: string = 'DEFAULT') {
-    try {
-      this.logger.log(`Fetching expired conditions for account: ${accountId}`);
-
-      const sql = `
-      SELECT
-        ct.cond_condition_id as condition_id,
-        ct.cond_reason as condition_reason,
-        ct.cond_type as condition_type,
-        ct.cond_inception_ts as condition_inception_ts,
-        ct.cond_expiry_ts as condition_expiry_ts,
-        ct.cond_account_id as account_id,
-        td.transaction_id,
-        td.end_to_end_id,
-        td.tx_type,
-        td.tx_event_ts,
-        td.interbank_settlement_amount,
-        td.interbank_settlement_currency,
-        td.debtor_id,
-        td.creditor_id,
-        CASE 
-          WHEN td.debtor_account_id = ct.cond_account_id THEN 'debtor'
-          WHEN td.creditor_account_id = ct.cond_account_id THEN 'creditor'
-          ELSE NULL
-        END as account_role
-      FROM conditions_timeline ct
-      LEFT JOIN transaction_detail td ON (
-        (td.debtor_account_id = ct.cond_account_id OR td.creditor_account_id = ct.cond_account_id)
-        AND td.tx_event_ts >= ct.cond_inception_ts
-        AND td.tx_event_ts <= ct.cond_expiry_ts
-        AND td.tenant_id = ct.cond_tenant_id
-      )
-      WHERE ct.cond_account_id = '${accountId}'
-        ${tenantId && tenantId !== 'DEFAULT' ? `AND ct.cond_tenant_id = '${tenantId}'` : ''}
-        AND ct.cond_is_expired = 1
-      ORDER BY ct.cond_expiry_ts DESC, td.tx_event_ts DESC
-      LIMIT 1000
-      `;
-
-      const response = await this.runSqlQuery(sql, 1000);
-      const rows = response.data || [];
-
-      // Group by condition_id and aggregate transactions
-      const conditionsMap = new Map();
-      rows.forEach((r) => {
-        if (!conditionsMap.has(r.condition_id)) {
-          conditionsMap.set(r.condition_id, {
-            conditionId: r.condition_id,
-            title: r.condition_reason,
-            type: r.condition_type,
-            startDate: r.condition_inception_ts,
-            endDate: r.condition_expiry_ts,
-            accountId: r.account_id,
-            transactions: [],
-          });
-        }
-        if (r.transaction_id) {
-          conditionsMap.get(r.condition_id).transactions.push({
-            transactionId: r.transaction_id,
-            endToEndId: r.end_to_end_id,
-            type: r.tx_type,
-            date: r.tx_event_ts,
-            amount: r.interbank_settlement_amount,
-            currency: r.interbank_settlement_currency,
-            debtorId: r.debtor_id,
-            creditorId: r.creditor_id,
-            accountRole: r.account_role,
-          });
-        }
-      });
-
-      const conditions = Array.from(conditionsMap.values());
-
-      this.logger.log(`Found ${conditions.length} expired conditions for account ${accountId} with ${rows.filter(r => r.transaction_id).length} transaction links`);
-
-      return {
-        accountId: accountId,
-        totalExpiredConditions: conditions.length,
-        conditions,
-        metadata: {
-          expiredCount: conditions.length,
-          totalTransactionLinks: rows.filter(r => r.transaction_id).length,
-          queryTimestamp: new Date().toISOString()
-        }
-      };
-    } catch (error) {
-      this.logger.error('Error fetching expired conditions by account', error.stack);
-      throw new HttpException('Failed to fetch expired conditions', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
   async getFutureConditionsByAccount(accountId: string, tenantId: string = 'DEFAULT') {
     try {
       this.logger.log(`Fetching future conditions for account: ${accountId}`);
       const sql = `
       SELECT
-        ct.cond_condition_id as condition_id,
-        ct.cond_reason as condition_reason,
-        ct.cond_type as condition_type,
-        ct.cond_inception_ts as condition_inception_ts,
-        ct.cond_expiry_ts as condition_expiry_ts,
-        ct.cond_account_id as account_id
-      FROM conditions_timeline ct
-      WHERE ct.cond_account_id = '${accountId}'
-        AND ct.cond_tenant_id = '${tenantId}'
-        AND ct.cond_is_active = 0
-        AND ct.cond_is_expired = 0
-      ORDER BY ct.cond_inception_ts ASC
+        ct.condition_id,
+        ct.condition_reason,
+        ct.condition_type,
+        ct.condition_inception_ts,
+        ct.condition_expiry_ts,
+        ct.account_id,
+        ct.created_by_user
+      FROM conditions ct
+      WHERE ct.account_id = '${accountId}'
+        AND ct.tenant_id = '${tenantId}'
+        AND ct.is_active = 0
+        AND ct.is_expired = 0
+      ORDER BY ct.condition_inception_ts ASC
       LIMIT 500
       `;
 
@@ -3036,6 +2925,7 @@ export class GoldLakehouseService {
           conditionId: r.condition_id,
           title: r.condition_reason,
           type: r.condition_type,
+          createdBy: r.created_by_user || 'no data found',
           startDate: r.condition_inception_ts,
           endDate: r.condition_expiry_ts,
           accountId: r.account_id,
@@ -3062,39 +2952,32 @@ export class GoldLakehouseService {
       if (asOfDate && !showInactive) {
         // Show only conditions active at the specified date
         dateFilter = `
-          AND cond_inception_ts <= '${asOfDate}'
-          AND (cond_expiry_ts IS NULL OR cond_expiry_ts >= '${asOfDate}')
+          AND condition_inception_ts <= '${asOfDate}'
+          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= '${asOfDate}')
         `;
       }
       
       const sql = `
       SELECT
-        ct.cond_condition_id,
-        ct.cond_reason,
-        ct.cond_type,
-        ct.cond_perspective,
-        ct.cond_inception_ts,
-        ct.cond_expiry_ts,
-        ct.cond_created_ts,
-        ct.cond_is_active,
-        ct.cond_is_expired,
-        ct.cond_account_id,
-        ct.cond_tenant_id,
-        ct.cond_account_scheme,
-        ct.cond_event_types_csv,
-        ct.bucket_start,
-        ct.bucket_granularity
-      FROM (
-        SELECT 
-          *,
-          ROW_NUMBER() OVER (PARTITION BY cond_condition_id ORDER BY bucket_start DESC) as latest_v
-        FROM conditions_timeline
-        WHERE cond_account_id = '${id}'
-          ${tenantId && tenantId !== 'DEFAULT' ? `AND cond_tenant_id = '${tenantId}'` : ''}
-          ${dateFilter}
-      ) ct
-      WHERE ct.latest_v = 1
-      ORDER BY ct.cond_inception_ts DESC
+        ct.condition_id,
+        ct.condition_reason,
+        ct.condition_type,
+        ct.perspective,
+        ct.condition_inception_ts,
+        ct.condition_expiry_ts,
+        ct.condition_created_ts,
+        ct.is_active,
+        ct.is_expired,
+        ct.account_id,
+        ct.tenant_id,
+        ct.account_scheme,
+        ct.event_types_csv,
+        ct.created_by_user
+      FROM conditions ct
+      WHERE ct.account_id = '${id}'
+        ${tenantId && tenantId !== 'DEFAULT' ? `AND ct.tenant_id = '${tenantId}'` : ''}
+        ${dateFilter}
+      ORDER BY ct.condition_inception_ts DESC
       LIMIT 500
       `;
 
@@ -3104,23 +2987,23 @@ export class GoldLakehouseService {
       this.logger.log(`Found ${rows.length} conditions for ID ${id}`);
 
       const formattedConditions = rows.map(row => ({
-        conditionId: row.cond_condition_id,
+        conditionId: row.condition_id,
         pk: 'no mapping found',
-        tenantId: row.cond_tenant_id || tenantId,
-        bucketGranularity: row.bucket_granularity || 'no data found',
-        bucketStart: row.bucket_start,
-        accountId: row.cond_account_id,
-        accountScheme: row.cond_account_scheme || 'no mapping found',
-        type: row.cond_type || 'no data found',
-        perspective: row.cond_perspective || 'no data found', 
-        reason: row.cond_reason || 'no data found',
-        eventTypes: row.cond_event_types_csv || 'no data found',
-        inceptionDate: row.cond_inception_ts,
-        expiryDate: row.cond_expiry_ts,
-        createdDate: row.cond_created_ts,
-        isActive: row.cond_is_active === 1,
-        isExpired: row.cond_is_expired === 1,
-        createdBy: 'no mapping found'
+        tenantId: row.tenant_id || tenantId,
+        bucketGranularity: 'no data found',
+        bucketStart: 'no data found',
+        accountId: row.account_id,
+        accountScheme: row.account_scheme || 'no data found',
+        type: row.condition_type || 'no data found',
+        perspective: row.perspective || 'no data found', 
+        reason: row.condition_reason || 'no data found',
+        eventTypes: row.event_types_csv || 'no data found',
+        inceptionDate: row.condition_inception_ts,
+        expiryDate: row.condition_expiry_ts,
+        createdDate: row.condition_created_ts,
+        isActive: row.is_active === 1,
+        isExpired: row.is_expired === 1,
+        createdBy: row.created_by_user || 'no data found'
       }));
 
       return {
@@ -3128,9 +3011,9 @@ export class GoldLakehouseService {
         totalConditions: rows.length,
         conditions: formattedConditions,
         metadata: {
-          activeCount: rows.filter(r => r.cond_is_active === 1).length,
-          expiredCount: rows.filter(r => r.cond_is_expired === 1).length,
-          futureCount: rows.filter(r => r.cond_is_active === 0 && r.cond_is_expired === 0).length,
+          activeCount: rows.filter(r => r.is_active === 1).length,
+          expiredCount: rows.filter(r => r.is_expired === 1).length,
+          futureCount: rows.filter(r => r.is_active === 0 && r.is_expired === 0).length,
           asOfDate: asOfDate || 'current',
           showInactive,
           queryTimestamp: new Date().toISOString()
@@ -3544,25 +3427,25 @@ export class GoldLakehouseService {
           SELECT 
             COUNT(*) as total,
             SUM(CASE 
-              WHEN cond_inception_ts <= '${asOfDate}' 
-              AND (cond_expiry_ts IS NULL OR cond_expiry_ts >= '${asOfDate}')
-              AND cond_is_active = 1 
+              WHEN condition_inception_ts <= '${asOfDate}' 
+              AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= '${asOfDate}')
+              AND is_active = 1 
               THEN 1 ELSE 0 
             END) as active,
             SUM(CASE 
-              WHEN cond_expiry_ts < '${asOfDate}' 
-              AND cond_is_expired = 1 
+              WHEN condition_expiry_ts < '${asOfDate}' 
+              AND is_expired = 1 
               THEN 1 ELSE 0 
             END) as expired,
             SUM(CASE 
-              WHEN cond_inception_ts > '${asOfDate}' 
-              AND cond_is_active = 0 
-              AND cond_is_expired = 0 
+              WHEN condition_inception_ts > '${asOfDate}' 
+              AND is_active = 0 
+              AND is_expired = 0 
               THEN 1 ELSE 0 
             END) as future
-          FROM conditions_timeline
-          WHERE cond_account_id = '${accountId}'
-            AND cond_tenant_id = '${tenantId}'
+          FROM conditions
+          WHERE account_id = '${accountId}'
+            AND tenant_id = '${tenantId}'
           `;
 
           const countsResponse = await this.runSqlQuery(conditionsSql, 1);
@@ -3644,29 +3527,32 @@ export class GoldLakehouseService {
       let dateFilter = '';
       if (asOfDate && !showInactive) {
         dateFilter = `
-          AND cond_inception_ts <= '${asOfDate}'
-          AND (cond_expiry_ts IS NULL OR cond_expiry_ts >= '${asOfDate}')
+          AND condition_inception_ts <= '${asOfDate}'
+          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= '${asOfDate}')
         `;
       }
 
-      // 3. Get conditions for all accounts
+      // 3. Get conditions for all accounts AND entity-level conditions
       const accountFilter = accountIds.map(id => `'${id}'`).join(',');
       const conditionsSql = `
       SELECT
-        cond_condition_id,
-        cond_reason,
-        cond_type,
-        cond_inception_ts,
-        cond_expiry_ts,
-        cond_is_active,
-        cond_is_expired,
-        cond_account_id,
-        cond_created_ts
-      FROM conditions_timeline
-      WHERE cond_account_id IN (${accountFilter})
-        AND cond_tenant_id = '${tenantId}'
+        condition_id,
+        condition_reason,
+        condition_type,
+        condition_inception_ts,
+        condition_expiry_ts,
+        is_active,
+        is_expired,
+        account_id,
+        entity_id,
+        condition_created_ts,
+        created_by_user
+      FROM conditions
+      WHERE ((account_id IN (${accountFilter}) AND identity_type = 'ACCOUNT')
+             OR (entity_id = '${entityId}' AND identity_type = 'ENTITY'))
+        AND tenant_id = '${tenantId}'
         ${dateFilter}
-      ORDER BY cond_inception_ts DESC
+      ORDER BY condition_inception_ts DESC
       LIMIT 500
       `;
 
@@ -3677,15 +3563,15 @@ export class GoldLakehouseService {
         entityId,
         accounts: accountIds,
         conditions: rows.map(r => ({
-          conditionId: r.cond_condition_id,
-          title: r.cond_reason || 'no data found',
-          type: r.cond_type || 'no data found',
-          createdBy: 'no mapping found',
-          startDate: r.cond_inception_ts,
-          endDate: r.cond_expiry_ts ?? 'no data found',
-          status: r.cond_is_active === 1 ? 'ACTIVE' : r.cond_is_expired === 1 ? 'EXPIRED' : 'FUTURE',
-          accountId: r.cond_account_id,
-          notes: r.cond_reason || 'no data found'
+          conditionId: r.condition_id,
+          title: r.condition_reason || 'no data found',
+          type: r.condition_type || 'no data found',
+          createdBy: r.created_by_user || 'no data found',
+          startDate: r.condition_inception_ts,
+          endDate: r.condition_expiry_ts ?? 'no data found',
+          status: r.is_active === 1 ? 'ACTIVE' : r.is_expired === 1 ? 'EXPIRED' : 'FUTURE',
+          accountId: r.account_id || r.entity_id,
+          notes: r.condition_reason || 'no data found'
         })),
         metadata: {
           entityId,
