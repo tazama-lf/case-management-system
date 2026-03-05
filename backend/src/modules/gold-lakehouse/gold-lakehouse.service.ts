@@ -17,6 +17,7 @@ import {
   CounterpartyNetworkSummaryDto,
   CounterpartyNetworkEdgeDto,
 } from './dto/network-analysis.dto';
+import { Alerts, Cumulative, Edge, Node, RecentTransaction, Timeline } from './types/gold-lakehouse.types';
 
 @Injectable()
 export class GoldLakehouseService {
@@ -105,7 +106,16 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertNavigatorMetrics(alertId: number, tenantId = 'DEFAULT') {
+  async getAlertNavigatorMetrics(
+    alertId: number,
+    tenantId = 'DEFAULT',
+  ): Promise<{
+    total_typologies: number;
+    total_rules: number;
+    avg_typology_score: number | null;
+    alertId: number;
+    tenantId: string;
+  }> {
     try {
       this.logger.log(`Fetching Alert Navigator metrics for alert: ${alertId}`);
 
@@ -143,7 +153,40 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertNavigatorData(alertId: number, tenantId = 'DEFAULT') {
+  async getAlertNavigatorData(
+    alertId: number,
+    tenantId = 'DEFAULT',
+  ): Promise<{
+    alertMetadata: {
+      alertId: number;
+      transactionId: string;
+      timestamp: string;
+      transactionType: string;
+      amount: number;
+      currency: string;
+      status: string;
+      reason: string;
+      blockReason: string;
+    };
+    typologies: Array<{
+      typologyId: string;
+      typologyCfg: string;
+      typologyScore: number;
+      alertThreshold: number;
+      interdictionThreshold: number;
+      ruleCount: number;
+      rules: string;
+    }>;
+    statistics: {
+      totalTypologies: number;
+      totalRules: number;
+      avgScore: number;
+    };
+    meta: {
+      alertId: number;
+      tenantId: string;
+    };
+  }> {
     try {
       this.logger.log(`Fetching Alert Navigator data for alert: ${alertId}`);
 
@@ -209,20 +252,20 @@ export class GoldLakehouseService {
       }
 
       const combined = this.stripHudiMetadata(combinedRaw);
-      const typologiesRaw = typologiesResponse.data || [];
+      const typologiesRaw = typologiesResponse.data;
       const rulesRaw = rulesResponse?.data ?? [];
 
       // Alert Metadata
       const alertMetadata = {
-        alertId: combined.alert_id,
-        transactionId: combined.tx_transaction_id ?? combined.end_to_end_id ?? combined.transaction_id,
-        timestamp: combined.created_at_ts ?? combined.ingested_at_ts,
-        transactionType: combined.alert_tx_type ?? combined.tx_type,
-        amount: combined.alert_tx_amount ?? combined.tx_amount,
-        currency: combined.alert_tx_ccy ?? combined.tx_ccy,
-        status: combined.alert_status,
-        reason: combined.alert_reason,
-        blockReason: combined.block_or_override_status,
+        alertId: Number(combined.alert_id),
+        transactionId: String(combined.tx_transaction_id) || String(combined.end_to_end_id) || String(combined.transaction_id),
+        timestamp: String(combined.created_at_ts) || String(combined.ingested_at_ts),
+        transactionType: String(combined.alert_tx_type) || String(combined.tx_type),
+        amount: Number(combined.alert_tx_amount) || Number(combined.tx_amount),
+        currency: String(combined.alert_tx_ccy) || String(combined.tx_ccy),
+        status: String(combined.alert_status),
+        reason: String(combined.alert_reason),
+        blockReason: String(combined.block_or_override_status),
       };
 
       // Typologies
@@ -246,27 +289,27 @@ export class GoldLakehouseService {
           });
 
         return {
-          typologyId: typology.typology_id,
-          typologyCfg: typology.typology_cfg,
-          typologyScore: typology.typology_score,
-          alertThreshold: typology.alert_threshold,
-          interdictionThreshold: typology.interdiction_threshold,
-          ruleCount: typology.rule_count_in_typology,
-          rules: typologyRules,
+          typologyId: String(typology.typology_id),
+          typologyCfg: String(typology.typology_cfg),
+          typologyScore: Number(typology.typology_score),
+          alertThreshold: Number(typology.alert_threshold),
+          interdictionThreshold: Number(typology.interdiction_threshold),
+          ruleCount: Number(typology.rule_count_in_typology),
+          rules: String(typologyRules),
         };
       });
 
       // Calculate summary statistics
       const totalTypologies = typologies.length;
       const totalRules = rulesRaw.length;
-      const avgScore = totalTypologies > 0 ? typologies.reduce((sum, t) => sum + (t.typologyScore ?? 0), 0) / totalTypologies : 0;
+      const avgScore = totalTypologies > 0 ? typologies.reduce((sum, t) => sum + t.typologyScore, 0) / totalTypologies : 0;
 
       return {
         alertMetadata,
         typologies,
         statistics: {
           totalTypologies,
-          totalRules,
+          totalRules: Number(totalRules),
           avgScore: Math.round(avgScore * 100) / 100,
         },
         meta: {
@@ -280,7 +323,84 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTransactionDetailData(transactionId: number, tenantId = 'DEFAULT') {
+  async getTransactionDetailData(
+    transactionId: number,
+    tenantId = 'DEFAULT',
+  ): Promise<{
+    transactionOverview: {
+      transactionId: string;
+      transactionType: string;
+      timestamp: string;
+    };
+    transactionFlow: {
+      debtor: {
+        name: string;
+        account: {
+          iban: string;
+          type: string;
+        };
+        bank: string;
+      };
+      amount: {
+        amount: number;
+        currency: string;
+      };
+      creditor: {
+        name: string;
+        account: {
+          iban: string;
+          type: string;
+        };
+        bankName: string;
+      };
+    };
+    debtorProfile: {
+      name: string;
+      account: {
+        iban: string;
+        type: string;
+      };
+      bank: string;
+      swiftCode: string;
+      address: string;
+      accountType: string;
+    };
+    creditorProfile: {
+      name: string;
+      account: {
+        iban: string;
+        type: string;
+      };
+      bank: string;
+      swiftCode: string;
+      address: string;
+      accountType: string;
+    };
+    amountAndCurrency: Array<
+      | {
+          originalAmount: number;
+          exchangeRate: number;
+          convertedAmount: number;
+        }
+      | {
+          senderCharges: never[];
+          intermediaryCharges: never[];
+          receiverCharges: never[];
+        }
+      | {
+          totalCharges: number;
+        }
+    >;
+    settlementDetails: {
+      settlementDate: string;
+      reference: string;
+      purpose: string;
+    };
+    links: Array<{
+      rel: string;
+      href: string;
+    }>;
+  }> {
     try {
       this.logger.log(`Fetching Transaction Detail UI data for transaction: ${transactionId}`);
 
@@ -321,59 +441,59 @@ export class GoldLakehouseService {
       // Transform to frontend-expected format
       return {
         transactionOverview: {
-          transactionId: row.transaction_id ?? '',
-          transactionType: row.tx_type ?? '',
-          timestamp: row.tx_event_ts ?? '',
+          transactionId: String(row.transaction_id),
+          transactionType: String(row.tx_type),
+          timestamp: String(row.tx_event_ts),
         },
         transactionFlow: {
           debtor: {
-            name: row.debtor_name ?? '',
+            name: String(row.debtor_name),
             account: {
-              iban: row.debtor_account_id ?? '',
+              iban: String(row.debtor_account_id),
               type: 'CHECKING',
             },
-            bank: row.instd_mmb_id ?? '',
+            bank: String(row.instd_mmb_id),
           },
           amount: {
-            amount: row.interbank_settlement_amount ?? 0,
-            currency: row.interbank_settlement_currency ?? 'USD',
+            amount: Number(row.interbank_settlement_amount),
+            currency: String(row.interbank_settlement_currency) || 'USD',
           },
           creditor: {
-            name: row.creditor_name ?? '',
+            name: String(row.creditor_name),
             account: {
-              iban: row.creditor_account_id ?? '',
+              iban: String(row.creditor_account_id),
               type: 'CHECKING',
             },
-            bankName: row.instg_mmb_id ?? '',
+            bankName: String(row.instg_mmb_id),
           },
         },
         debtorProfile: {
-          name: row.debtor_name ?? '',
+          name: String(row.debtor_name),
           account: {
-            iban: row.debtor_account_id ?? '',
+            iban: String(row.debtor_account_id),
             type: 'CHECKING',
           },
-          bank: row.instd_mmb_id ?? '',
+          bank: String(row.instd_mmb_id),
           swiftCode: '',
           address: '',
           accountType: 'CHECKING',
         },
         creditorProfile: {
-          name: row.creditor_name ?? '',
+          name: String(row.creditor_name),
           account: {
-            iban: row.creditor_account_id ?? '',
+            iban: String(row.creditor_account_id),
             type: 'CHECKING',
           },
-          bank: row.instg_mmb_id ?? '',
+          bank: String(row.instg_mmb_id),
           swiftCode: '',
           address: '',
           accountType: 'CHECKING',
         },
         amountAndCurrency: [
           {
-            originalAmount: row.instructed_amount ?? 0,
-            exchangeRate: row.exchange_rate ?? 1,
-            convertedAmount: row.interbank_settlement_amount ?? 0,
+            originalAmount: Number(row.instructed_amount) || 0,
+            exchangeRate: Number(row.exchange_rate) || 1,
+            convertedAmount: Number(row.interbank_settlement_amount) || 0,
           },
           {
             senderCharges: [],
@@ -381,12 +501,12 @@ export class GoldLakehouseService {
             receiverCharges: [],
           },
           {
-            totalCharges: row.charge_total_amount ?? 0,
+            totalCharges: Number(row.charge_total_amount),
           },
         ],
         settlementDetails: {
-          settlementDate: row.tx_event_date ?? '',
-          reference: row.transaction_id ?? '',
+          settlementDate: String(row.tx_event_date),
+          reference: String(row.transaction_id),
           purpose: '',
         },
         links: [
@@ -509,7 +629,16 @@ export class GoldLakehouseService {
     }
   }
 
-  async getConditionsSummary(accountId: string, tenantId?: string, fromDate?: string) {
+  async getConditionsSummary(
+    accountId: string,
+    tenantId?: string,
+    fromDate?: string,
+  ): Promise<{
+    activeConditions: number;
+    blockedTransactions: number;
+    overriddenTransactions: number;
+    futureConditions: number;
+  }> {
     try {
       const tenantFilter = tenantId ? `AND cond_tenant_id = '${tenantId}'` : '';
       const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
@@ -733,10 +862,16 @@ export class GoldLakehouseService {
     return cleaned;
   }
 
-  async getTransactionHistoryData(id: string, tenantId = 'DEFAULT', startDate?: string, endDate?: string, granularity?: string) {
+  async getTransactionHistoryData(
+    id: string,
+    tenantId = 'DEFAULT',
+    startDate?: string,
+    endDate?: string,
+    granularity?: string,
+  ): Promise<unknown> {
     try {
       // Smart detection: Check if ID is a UUID (end_to_end_id) or entity_id
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iv;
       const isEndToEndId = uuidRegex.test(id);
 
       if (isEndToEndId) {
@@ -760,7 +895,48 @@ export class GoldLakehouseService {
     startDate?: string,
     endDate?: string,
     granularity?: string,
-  ) {
+  ): Promise<{
+    summary: {
+      totalVolume: number;
+      totalTransactions: number;
+      transactionCount: number;
+      alertsTriggered: number;
+      alertsPercentage: number;
+      investigated: number;
+      investigatedPercentage: number;
+      avgTransactionsPerDay: number;
+      durationDays: number;
+      bucketTotalVolume: number;
+      bucketTotalTransactions: number;
+      expected: {
+        transactionCount: number | null;
+        volume: number | null;
+      };
+      actual: {
+        transactionCount: number;
+        volume: number;
+      };
+    };
+    timeline: Timeline[];
+    cumulative: Cumulative;
+    volumeDistribution: Array<{
+      bucketStart: string;
+      granularity: string;
+      transactionCount: number;
+      totalVolume: number;
+    }>;
+    recentTransactions: RecentTransaction[];
+    meta: {
+      entityId: string;
+      tenantId: string;
+      granularity: string | null;
+      startDate: string | null;
+      endDate: string | null;
+      eventRowCount: number;
+      aggRowCount: number;
+      queryTimestamp: string;
+    };
+  }> {
     try {
       this.logger.log(`Fetching Transaction History for entity: ${entityId}`);
 
@@ -880,20 +1056,20 @@ export class GoldLakehouseService {
       const avgTransactionsPerDay = durationDays > 0 ? totalTransactions / durationDays : 0;
 
       // Transform timeline data with cumulative values
-      const timeline = events.map((e) => ({
-        transactionId: e.transaction_id,
-        date: e.event_date,
+      const timeline: Timeline[] = events.map((e) => ({
+        transactionId: String(e.transaction_id),
+        date: String(e.event_date),
         amount: parseFloat(e.tx_amount) || 0,
-        currency: e.tx_ccy,
-        type: e.tx_type ?? 'Unknown',
+        currency: String(e.tx_ccy),
+        type: String(e.tx_type) || 'Unknown',
         isAlerted: e.is_alerted === 1,
         isInvestigated: e.is_investigated === 1,
       }));
 
       // Transform cumulative data (sorted by date ascending)
-      const cumulative = events
+      const cumulative: Cumulative = events
         .map((e) => ({
-          date: e.event_date,
+          date: String(e.event_date),
           cumulativeAmount: parseFloat(e.cum_tx_amount) || 0,
           cumulativeCount: parseInt(e.cum_tx_count, 10) || 0,
         }))
@@ -901,14 +1077,14 @@ export class GoldLakehouseService {
 
       // Transform volume distribution
       const volumeDistribution = aggregates.map((a) => ({
-        bucketStart: a.bucket_start,
-        granularity: a.bucket_granularity,
+        bucketStart: String(a.bucket_start),
+        granularity: String(a.bucket_granularity),
         transactionCount: parseInt(a.bucket_tx_count, 10) || 0,
         totalVolume: parseFloat(a.bucket_tx_amount) || 0,
       }));
 
       // Transform recent transactions table (top 20)
-      const recentTransactions = events.slice(0, 20).map((e) => {
+      const recentTransactions: RecentTransaction[] = events.slice(0, 20).map((e) => {
         // Determine counterparty based on entity role
         const counterparty = e.entity_role === 'DEBTOR' ? (e.creditor_name ?? 'Unknown Creditor') : (e.debtor_name ?? 'Unknown Debtor');
 
@@ -917,12 +1093,12 @@ export class GoldLakehouseService {
         if (e.is_investigated === 1) status.push('Investigated');
 
         return {
-          transactionId: e.transaction_id,
-          date: e.event_date,
-          type: e.tx_type ?? 'Unknown',
-          counterparty,
+          transactionId: String(e.transaction_id),
+          date: String(e.event_date),
+          type: String(e.tx_type) || 'Unknown',
+          counterparty: String(counterparty),
           amount: parseFloat(e.tx_amount) || 0,
-          currency: e.tx_ccy,
+          currency: String(e.tx_ccy),
           status,
           actions: {
             viewDetailsLink: `/triage/transaction-detail/${e.transaction_id}`,
@@ -933,22 +1109,22 @@ export class GoldLakehouseService {
       return {
         summary: {
           totalVolume: Math.round(totalVolume * 100) / 100,
-          totalTransactions,
-          transactionCount: totalTransactions,
-          alertsTriggered,
+          totalTransactions: Number(totalTransactions),
+          transactionCount: Number(totalTransactions),
+          alertsTriggered: Number(alertsTriggered),
           alertsPercentage: Math.round(alertsPercentage * 100) / 100,
-          investigated,
+          investigated: Number(investigated),
           investigatedPercentage: Math.round(investigatedPercentage * 100) / 100,
           avgTransactionsPerDay: Math.round(avgTransactionsPerDay * 100) / 100,
           durationDays,
           bucketTotalVolume: Math.round(bucketTotalVolume * 100) / 100,
-          bucketTotalTransactions,
+          bucketTotalTransactions: Number(bucketTotalTransactions),
           expected: {
             transactionCount: expectedTxCount,
             volume: expectedVolume ? Math.round(expectedVolume * 100) / 100 : null,
           },
           actual: {
-            transactionCount: totalTransactions,
+            transactionCount: Number(totalTransactions),
             volume: Math.round(totalVolume * 100) / 100,
           },
         },
@@ -962,7 +1138,7 @@ export class GoldLakehouseService {
           granularity: granularity ?? null,
           startDate: startDate ?? null,
           endDate: endDate ?? null,
-          eventRowCount: events.length,
+          eventRowCount: Number(events.length),
           aggRowCount: aggregates.length,
           queryTimestamp: new Date().toISOString(),
         },
@@ -1346,15 +1522,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertHistoryTimeline(
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
-    granularity = 'day',
-  ): Promise<{
-    alertCountOverTime: any;
-    alertValueOverTime: any;
-  }> {
+  async getAlertHistoryTimeline(endToEndId?: string, tenantId?: string, dateRange?: string, granularity = 'day') {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
@@ -1437,7 +1605,7 @@ export class GoldLakehouseService {
     page = 1,
     limit = 20,
   ): Promise<{
-    alerts: any;
+    alerts: Alerts[];
     pagination: {
       total: number;
       page: number;
@@ -1514,7 +1682,7 @@ export class GoldLakehouseService {
       const response = await this.runSqlQuery(sql, limit);
       const rows = response.data ?? [];
 
-      const alerts = rows.map((r) => {
+      const alerts: Alerts[] = rows.map((r) => {
         let outcome = 'Pending';
         if (r.case_status) {
           if (r.case_status.includes('COMPLETED')) outcome = 'Closed';
@@ -1752,12 +1920,12 @@ export class GoldLakehouseService {
   ): Promise<{
     network: {
       rootNodeId: string;
-      nodes: any[];
-      edges: any[];
+      nodes: Node[];
+      edges: Edge[];
     };
     accountDetails: {
       accountId: string;
-      accountHolder: any;
+      accountHolder: string;
       relationship: string;
       transactions: number;
       totalValue: number;
@@ -1797,8 +1965,8 @@ export class GoldLakehouseService {
       const networkResp = await this.runSqlQuery(networkSql, 1000);
       const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
 
-      const nodesMap = new Map<string, any>();
-      const edges: any[] = [];
+      const nodesMap = new Map<string, Node>();
+      const edges: Edge[] = [];
 
       nodesMap.set(accountId, {
         id: accountId,
@@ -1835,9 +2003,9 @@ export class GoldLakehouseService {
           });
         }
 
-        const root = nodesMap.get(accountId);
-        root.flags.alerted ??= r.is_alerted_edge === 1;
-        root.flags.investigated ??= r.is_investigated_edge === 1;
+        const root = nodesMap.get(accountId)!;
+        root.flags.alerted ||= r.is_alerted_edge === 1;
+        root.flags.investigated ||= r.is_investigated_edge === 1;
 
         edges.push({
           source: fromId,
@@ -1914,7 +2082,7 @@ export class GoldLakehouseService {
         },
         accountDetails: {
           accountId,
-          accountHolder: holderRow?.holder_name ?? 'Unknown',
+          accountHolder: String(holderRow?.holder_name) || 'Unknown',
           relationship: 'Primary Owner',
           transactions: txCount,
           totalValue: Number(metrics.total_value ?? 0),
@@ -1943,12 +2111,12 @@ export class GoldLakehouseService {
   ): Promise<{
     network: {
       rootNodeId: string;
-      nodes: any[];
-      edges: any[];
+      nodes: Node[];
+      edges: Edge[];
     };
     counterpartyDetails: {
       counterpartyId: string;
-      name: any;
+      name: string;
       type: string;
       transactions: number;
       totalValue: number;
@@ -1988,8 +2156,8 @@ export class GoldLakehouseService {
       const networkResp = await this.runSqlQuery(networkSql, 1000);
       const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
 
-      const nodesMap = new Map<string, any>();
-      const edges: any[] = [];
+      const nodesMap = new Map<string, Node>();
+      const edges: Edge[] = [];
 
       nodesMap.set(counterpartyId, {
         id: counterpartyId,
@@ -2026,9 +2194,9 @@ export class GoldLakehouseService {
           });
         }
 
-        const root = nodesMap.get(counterpartyId);
-        root.flags.alerted ??= r.is_alerted_edge === 1;
-        root.flags.investigated ??= r.is_investigated_edge === 1;
+        const root = nodesMap.get(counterpartyId)!;
+        root.flags.alerted ||= r.is_alerted_edge === 1;
+        root.flags.investigated ||= r.is_investigated_edge === 1;
 
         edges.push({
           source: fromId,
@@ -2152,7 +2320,7 @@ export class GoldLakehouseService {
       let total = 0;
 
       for (const value of amounts) {
-        const s = value.toString().replace('.', '').replace(/^0+/u, '');
+        const s = value.toString().replace('.', '').replace(/^0+/v, '');
         if (!s) continue;
 
         const digit = parseInt(s[0], 10);

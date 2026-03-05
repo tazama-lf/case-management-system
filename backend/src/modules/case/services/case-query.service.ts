@@ -157,14 +157,26 @@ export class CaseQueryService {
         this.prismaService.case.groupBy({ by: ['priority'], where: { OR: whereConditions }, _count: { case_id: true } }),
       ]);
 
+      // const statusCounts = casesByStatus.reduce<Record<string, number>>((acc, item) => {
+      //   acc[item.status] = item._count.case_id;
+      //   return acc;
+      // }, {});
+
       const statusCounts = casesByStatus.reduce<Record<string, number>>((acc, item) => {
-        acc[item.status] = item._count.case_id;
-        return acc;
+        const result = acc;
+        result[item.status] = item._count.case_id;
+        return result;
       }, {});
 
+      // const priorityCounts = casesByPriority.reduce<Record<string, number>>((acc, item) => {
+      //   acc[item.priority] = item._count.case_id;
+      //   return acc;
+      // }, {});
+
       const priorityCounts = casesByPriority.reduce<Record<string, number>>((acc, item) => {
-        acc[item.priority] = item._count.case_id;
-        return acc;
+        const result = acc;
+        result[item.priority] = item._count.case_id;
+        return result;
       }, {});
 
       return {
@@ -321,7 +333,7 @@ export class CaseQueryService {
       if (search && search.trim() !== '') {
         const searchTerm = search.trim();
         const searchUpper = searchTerm.toUpperCase();
-        const normalizedSearch = searchTerm.toLowerCase().replace(/[\/\s\-_]/g, ''); // Remove slashes, spaces, dashes, underscores
+        const normalizedSearch = searchTerm.toLowerCase().replace(/[\/\s\-_]/gv, ''); // Remove slashes, spaces, dashes, underscores
         const orConditions: any[] = [];
 
         // SPECIAL CASE: Handle "N/A" search separately (only search for null values)
@@ -606,16 +618,19 @@ export class CaseQueryService {
         this.prismaService.case.count({ where: { case_owner_user_id: null } }),
       ]);
       const casesByStatus = statusStats.reduce<Record<string, number>>((acc, item) => {
-        acc[item.status] = item._count.case_id;
-        return acc;
+        const result = acc;
+        result[item.status] = item._count.case_id;
+        return result;
       }, {});
       const casesByPriority = priorityStats.reduce<Record<string, number>>((acc, item) => {
-        acc[item.priority] = item._count.case_id;
-        return acc;
+        const result = acc;
+        result[item.priority] = item._count.case_id;
+        return result;
       }, {});
       const casesByType = typeStats.reduce<Record<string, number>>((acc, item) => {
-        if (item.case_type) acc[item.case_type] = item._count.case_id;
-        return acc;
+        const result = acc;
+        if (item.case_type) result[item.case_type] = item._count.case_id;
+        return result;
       }, {});
       const totalTasks = cases.reduce((sum, c) => sum + c.tasks.length, 0);
       const averageTasksPerCase = cases.length > 0 ? Math.round((totalTasks / cases.length) * 10) / 10 : 0;

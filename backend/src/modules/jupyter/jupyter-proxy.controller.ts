@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query, BadRequestException, Headers } from '@ne
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { JupyterProxyService } from './jupyter-proxy.service';
 import { CounterpartyNetworkResponseDto, TransactionNetworkResponseDto } from '../gold-lakehouse/dto/network-analysis.dto';
+import { Alerts, Edge, Node } from '../gold-lakehouse/types/gold-lakehouse.types';
 
 @Controller('api/v1/jupyter/proxy')
 @ApiTags('Jupyter Proxy')
@@ -49,12 +50,12 @@ export class JupyterProxyController {
   ): Promise<{
     network: {
       rootNodeId: string;
-      nodes: any[];
-      edges: any[];
+      nodes: Node[];
+      edges: Edge[];
     };
     counterpartyDetails: {
       counterpartyId: string;
-      name: any;
+      name: string;
       type: string;
       transactions: number;
       totalValue: number;
@@ -146,7 +147,7 @@ export class JupyterProxyController {
     @Query('limit') limit?: number,
     @Headers() headers?: Record<string, any>,
   ): Promise<{
-    alerts: any;
+    alerts: Alerts[];
     pagination: {
       total: number;
       page: number;
@@ -181,7 +182,7 @@ export class JupyterProxyController {
     }
     // reuse same validation as gold-lakehouse
     if (startDate ?? endDate) {
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/v;
       if ((startDate && !dateRegex.test(startDate)) ?? (endDate && !dateRegex.test(endDate))) {
         throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
       }

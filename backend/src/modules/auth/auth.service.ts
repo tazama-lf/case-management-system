@@ -202,7 +202,7 @@ export class AuthService {
     }
     // Remove /v1/auth/login suffix if present and replace with base path
 
-    const baseUrl = authUrl.replace(/\/v1\/auth\/login\/?$/u, '');
+    const baseUrl = authUrl.replace(/\/v1\/auth\/login\/?$/v, '');
     return baseUrl;
   }
 

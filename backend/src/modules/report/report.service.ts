@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AuditLogService } from '../audit/auditLog.service';
-import { CaseStatus, TaskStatus, CaseType } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, CaseType, Priority } from '@prisma/client-cms';
 import { FraudReport, FraudReportOutcome } from './report.model';
 import { NotificationService } from '../notification/notification.service';
 import { CouchdbService } from 'src/modules/couchdb/couchdb.service';
@@ -9,6 +9,7 @@ import { EvidenceService } from '../evidence/evidence.service';
 import { EventLogService } from '../event_log/eventLog.service';
 import { UploadReportDto } from './dto/upload-report.dto';
 import * as crypto from 'node:crypto';
+import { AgeingSummary, monthlyTrend, resolutionTrend, statusDetails } from './types/report.types';
 
 @Injectable()
 export class ReportsService {
@@ -69,7 +70,40 @@ export class ReportsService {
       tenantId: string;
       requestingUserId?: string;
     },
-  ) {
+  ): Promise<{
+    stats: {
+      totalCases: number;
+      closedCases: number;
+      openCases: number;
+      avgResolutionTime: number;
+    };
+    statusDistribution: {
+      assigned: number;
+      inProgress: number;
+      draft: number;
+      suspended: number;
+      pendingApproval: number;
+      closed: number;
+    };
+    caseTypes: Array<{
+      name: string;
+      count: number;
+      color: string;
+    }>;
+    outcomes: {
+      resolved: number;
+      confirmed: number;
+      inconclusive: number;
+      pending: number;
+    };
+    monthlyTrend: monthlyTrend[];
+    resolutionTrend: Array<{
+      month: string;
+      avgResolutionTime: number;
+      casesResolved: number;
+    }>;
+    statusDetails: statusDetails[];
+  }> {
     const { startDate, endDate } = this.getDateRange(dateRange);
 
     const baseFilters: any = {
@@ -271,7 +305,7 @@ export class ReportsService {
       }
     });
 
-    const monthlyTrend: any[] = [];
+    const monthlyTrend: monthlyTrend[] = [];
     const now = new Date();
     const trendStartDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
@@ -328,7 +362,7 @@ export class ReportsService {
       });
     });
 
-    const statusDetails: any[] = await Promise.all(
+    const statusDetails: statusDetails[] = await Promise.all(
       statusCounts.map(async ({ status, _count }) => {
         const percentage = totalCases > 0 ? ((_count.case_id / totalCases) * 100).toFixed(1) : '0.0';
 
@@ -364,40 +398,73 @@ export class ReportsService {
     );
 
     const resolutionTrend: Array<{ month: string; avgResolutionTime: number; casesResolved: number }> = [];
-    for (let i = 5; i >= 0; i -= 1) {
-      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const index = 5 - i; // counts down
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - index, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - index + 1, 0, 23, 59, 59, 999);
+      return { monthStart, monthEnd };
+    });
 
+    const monthPromises = months.map(async ({ monthStart, monthEnd }) => {
       const monthClosedCases = await this.prisma.case.findMany({
         where: {
-          updated_at: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-          status: {
-            in: closedStatuses,
-          },
+          updated_at: { gte: monthStart, lte: monthEnd },
+          status: { in: closedStatuses },
         },
-        select: {
-          created_at: true,
-          updated_at: true,
-        },
+        select: { created_at: true, updated_at: true },
       });
 
       const avgResolutionTimeMonth =
         monthClosedCases.length > 0
           ? monthClosedCases.reduce((sum, case_) => {
-              const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+              const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24); // days
               return sum + resolutionTime;
             }, 0) / monthClosedCases.length
           : 0;
 
-      resolutionTrend.push({
+      return {
         month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
         avgResolutionTime: Math.round(avgResolutionTimeMonth),
         casesResolved: monthClosedCases.length,
-      });
-    }
+      };
+    });
+
+    const results = await Promise.all(monthPromises);
+    resolutionTrend.push(...results);
+    // for (let i = 5; i >= 0; i -= 1) {
+    //   const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    //   const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+
+    //   const monthClosedCases = await this.prisma.case.findMany({
+    //     where: {
+    //       updated_at: {
+    //         gte: monthStart,
+    //         lte: monthEnd,
+    //       },
+    //       status: {
+    //         in: closedStatuses,
+    //       },
+    //     },
+    //     select: {
+    //       created_at: true,
+    //       updated_at: true,
+    //     },
+    //   });
+
+    //   const avgResolutionTimeMonth =
+    //     monthClosedCases.length > 0
+    //       ? monthClosedCases.reduce((sum, case_) => {
+    //         const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+    //         return sum + resolutionTime;
+    //       }, 0) / monthClosedCases.length
+    //       : 0;
+
+    //   resolutionTrend.push({
+    //     month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
+    //     avgResolutionTime: Math.round(avgResolutionTimeMonth),
+    //     casesResolved: monthClosedCases.length,
+    //   });
+    // }
 
     return {
       stats: {
@@ -415,7 +482,47 @@ export class ReportsService {
     };
   }
 
-  async getInvestigatorWorkload(dateRange?: string) {
+  async getInvestigatorWorkload(dateRange?: string): Promise<{
+    stats: {
+      totalInvestigators: number;
+      avgCasesPerInvestigator: number;
+      avgResolutionTime: number;
+      caseClosureRate: number;
+    };
+    workloadData: Array<{
+      investigatorId: string;
+      name: string;
+      activeCases: number;
+      pendingTasks: number;
+    } | null>;
+    volumeTrend: Array<{
+      month: string;
+      investigators: Record<string, number>;
+    }>;
+    efficiencyData: Array<{
+      name: string;
+      avgDays: number;
+    } | null>;
+    outcomeData: Array<{
+      name: string;
+      confirmed: number;
+      refuted: number;
+      inconclusive: number;
+    } | null>;
+    performanceData: Array<{
+      investigatorId: string;
+      investigator: string;
+      role: string;
+      totalCases: number;
+      activeCases: number;
+      completedCases: number;
+      pendingTasks: number;
+      completionRate: number;
+      avgResolutionTime: number;
+      caseClosureRate: number;
+      performanceTrend: string;
+    } | null>;
+  }> {
     const { startDate, endDate } = this.getDateRange(dateRange);
 
     const investigators = await this.prisma.case.findMany({
@@ -711,7 +818,24 @@ export class ReportsService {
     };
   }
 
-  async getAuditLogs(dateRange?: string) {
+  async getAuditLogs(dateRange?: string): Promise<{
+    stats: {
+      totalLogs: number;
+      caseActions: number;
+      userSessions: number;
+      systemWarnings: number;
+    };
+    auditLogs: Array<{
+      audit_log_id: string | number;
+      user_id: string;
+      operation: string;
+      entity_name: string;
+      action_performed: string;
+      outcome: string;
+      performed_at: string;
+      type: 'Info' | 'Success' | 'Warning' | 'Error';
+    }>;
+  }> {
     const { startDate, endDate } = this.getDateRange(dateRange);
 
     const auditLogs = await this.auditLogService.getLogs(100, 0);
@@ -737,17 +861,15 @@ export class ReportsService {
       entity_name: log.entity_name ? log.entity_name : '',
       action_performed: log.action_performed ? log.action_performed : '',
       outcome: log.outcome ? log.outcome : '',
-      performed_at: log.performed_at
-        ? log.performed_at.toLocaleString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true,
-          })
-        : '',
+      performed_at: log.performed_at.toLocaleString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      }),
       type: this.getAuditLogType(log.outcome || ''),
     }));
 
@@ -762,7 +884,22 @@ export class ReportsService {
     };
   }
 
-  async getEventLogs(dateRange?: string) {
+  async getEventLogs(dateRange?: string): Promise<{
+    stats: {
+      totalLogs: number;
+      caseActions: number;
+    };
+    eventLogs: Array<{
+      event_log_id: string | number;
+      user_id: string;
+      operation: string;
+      entity_name: string;
+      action_performed: string;
+      outcome: string;
+      performed_at: string;
+      type: 'Info' | 'Success' | 'Warning' | 'Error';
+    }>;
+  }> {
     const { startDate, endDate } = this.getDateRange(dateRange);
 
     const eventLogs = await this.eventLogService.getLogs(100, 0);
@@ -780,18 +917,16 @@ export class ReportsService {
       entity_name: log.entity_name ? log.entity_name : '',
       action_performed: log.action_performed ? log.action_performed : '',
       outcome: log.outcome ? log.outcome : '',
-      performed_at: log.performed_at
-        ? log.performed_at.toLocaleString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true,
-          })
-        : '',
-      type: this.getAuditLogType(log.outcome || ''),
+      performed_at: log.performed_at.toLocaleString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      }),
+      type: this.getAuditLogType(log.outcome),
     }));
 
     return {
@@ -803,7 +938,36 @@ export class ReportsService {
     };
   }
 
-  async getCaseAgeing(dateRange?: string) {
+  async getCaseAgeing(dateRange?: string): Promise<{
+    stats: {
+      avgCaseAge: number;
+      avgResolutionTime: number;
+      casesOver15Days: number;
+      casesOver30Days: number;
+    };
+    ageingByStatus: AgeingSummary[];
+    resolutionTrend: resolutionTrend[];
+    ageingDistribution: Array<{
+      ageRange: string;
+      count: number;
+      percentage: number;
+      color: string;
+    }>;
+    caseTypeResolution: Array<{
+      caseType: 'FRAUD' | 'AML' | 'FRAUD_AND_AML';
+      avgDays: number;
+    }>;
+    caseDetails: Array<{
+      caseId: number;
+      type: string;
+      status: string;
+      createdDate: string;
+      ageDays: number;
+      priority: Priority;
+      userId: string | null;
+      investigator: string;
+    }>;
+  }> {
     const cases = await this.prisma.case.findMany({
       select: {
         case_id: true,
@@ -845,11 +1009,12 @@ export class ReportsService {
     const casesOver15Days = casesWithAge.filter((c) => c.ageDays > 15).length;
     const casesOver30Days = casesWithAge.filter((c) => c.ageDays >= 30).length;
 
-    const ageingByStatus: any[] = [];
+    const ageingByStatus: AgeingSummary[] = [];
     const statusGroups = casesWithAge.reduce<Record<string, typeof casesWithAge>>((acc, case_) => {
-      if (!acc[case_.status]) acc[case_.status] = [];
-      acc[case_.status].push(case_);
-      return acc;
+      const result = acc;
+      if (!acc[case_.status]) result[case_.status] = [];
+      result[case_.status].push(case_);
+      return result;
     }, {});
 
     Object.entries(statusGroups).forEach(([status, cases]) => {
@@ -918,7 +1083,7 @@ export class ReportsService {
       }),
     ).then((results) => results.filter((item) => item !== null));
 
-    const resolutionTrend: any[] = [];
+    const resolutionTrend: resolutionTrend[] = [];
     const currentDate = new Date();
     const trendStartDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1);
 
@@ -994,7 +1159,7 @@ export class ReportsService {
   }
 
   private formatStatusName(status: CaseStatus): string {
-    return status.replace('STATUS_', '').replace(/_/g, ' ');
+    return status.replace('STATUS_', '').replace(/_/gv, ' ');
   }
 
   private getAuditLogType(outcome: string | null | undefined): 'Info' | 'Success' | 'Warning' | 'Error' {
@@ -1006,7 +1171,20 @@ export class ReportsService {
     return 'Info';
   }
 
-  async getFilters() {
+  async getFilters(): Promise<{
+    caseTypes: Array<{
+      value: string;
+      label: string;
+    }>;
+    priorities: Array<{
+      value: Priority;
+      label: Priority;
+    }>;
+    investigators: Array<{
+      value: string;
+      label: string;
+    }>;
+  }> {
     const caseTypes = await this.prisma.case.findMany({
       select: { case_type: true },
       distinct: ['case_type'],
@@ -1029,8 +1207,8 @@ export class ReportsService {
         label: ct.case_type ?? 'None',
       })),
       priorities: priorities.map((p) => ({
-        value: p.priority || 'NONE',
-        label: p.priority || 'None',
+        value: p.priority,
+        label: p.priority,
       })),
       investigators: investigators.map((i) => ({
         value: i.case_owner_user_id ?? '',
@@ -1043,7 +1221,7 @@ export class ReportsService {
     return crypto.createHash('sha256').update(buffer).digest('hex');
   }
 
-  private encrypt(buffer: Buffer) {
+  private encrypt(buffer: Buffer): { encrypted: Buffer; key: string; iv: string; authTag: string } {
     const key = crypto.randomBytes(32);
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
@@ -1061,7 +1239,7 @@ export class ReportsService {
 
   async generateFraudReport(file: any, dto: UploadReportDto, userId?: string, tenantId?: string, role?: string): Promise<FraudReport> {
     const allowed = 'application/pdf';
-    if (!allowed?.includes(file.mimetype)) {
+    if (!allowed.includes(file.mimetype)) {
       throw new BadRequestException(`File type ${file.mimetype} is not allowed for ${dto.reportType}. File: ${file.originalname}`);
     }
 
@@ -1083,7 +1261,7 @@ export class ReportsService {
     if (!caseData) throw new Error('Case not found');
     const db = this.couchdbService.getDatabase();
     const existingReportsResult = await db.find({ selector: { caseId: dto.caseId, category: 'report' } });
-    const existingReports = (existingReportsResult.docs as FraudReport[]) || [];
+    const existingReports = existingReportsResult.docs as FraudReport[];
     const nextVersion = existingReports.length > 0 ? Math.max(...existingReports.map((r) => r.version || 1)) + 1 : 1;
     const reportId = `${dto.caseId}-InvestigationReport-v${nextVersion}`;
     const fileName = `${reportId}.pdf`;

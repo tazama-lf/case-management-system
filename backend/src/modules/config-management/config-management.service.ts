@@ -34,7 +34,7 @@ export class ConfigManagementService {
       return `${iv.toString('hex')}:${encrypted}`;
     } catch (error) {
       this.logger.error(`Encryption failed: ${error.message}`);
-      throw new Error('Failed to encrypt sensitive data');
+      throw new Error('Failed to encrypt sensitive data', { cause: error });
     }
   }
 
@@ -57,7 +57,7 @@ export class ConfigManagementService {
       return decrypted;
     } catch (error) {
       this.logger.error(`Decryption failed: ${error.message}`);
-      throw new Error('Failed to decrypt sensitive data');
+      throw new Error('Failed to decrypt sensitive data', { cause: error });
     }
   }
 
@@ -91,7 +91,7 @@ export class ConfigManagementService {
         throw new BadRequestException('Role name must be at least 3 characters');
       }
 
-      if (!permissions || permissions.length === 0) {
+      if (permissions.length === 0) {
         throw new BadRequestException('At least one permission is required');
       }
 
@@ -524,7 +524,7 @@ export class ConfigManagementService {
     }
   }
 
-  private async performIntegrationTest(systemName: string, config: any): Promise<boolean> {
+  private performIntegrationTest(systemName: string, config: any): boolean {
     // Implement actual integration testing based on system type
     switch (systemName) {
       case 'ALERT_TRIAGE':
@@ -614,7 +614,7 @@ export class ConfigManagementService {
       throw new ForbiddenException('You can only verify your own configuration changes');
     }
 
-    if (!/^\d{6}$/.test(twoFactorCode)) {
+    if (!/^\d{6}$/v.test(twoFactorCode)) {
       throw new BadRequestException('Invalid 2FA code format');
     }
 

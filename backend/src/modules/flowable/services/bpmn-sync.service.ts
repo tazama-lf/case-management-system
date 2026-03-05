@@ -66,7 +66,7 @@ export class BpmnSyncService {
           return;
         } else {
           this.logger.warn(
-            `[BPMN-Sync] Flowable task ${taskId} references non-existent database task ${taskVariables.postgres_task_id}`,
+            `[BPMN-Sync] Flowable task ${taskId} references non-existent database task ${String(taskVariables.postgres_task_id)}`,
             BpmnSyncService.name,
           );
         }

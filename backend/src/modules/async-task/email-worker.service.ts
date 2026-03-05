@@ -58,10 +58,26 @@ export class EmailWorkerService {
       if (tasks.length > 0) {
         this.logger.log(`Processing ${tasks.length} email tasks`);
 
-        for (const task of tasks) {
-          await this.processTask(task);
-        }
+        const results = await Promise.allSettled(
+          tasks.map(async (task) => {
+            await this.processTask(task);
+          }),
+        );
+
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            this.logger.error(`Task ${tasks[index].task_id} failed: ${result.reason}`);
+          }
+        });
       }
+
+      // if (tasks.length > 0) {
+      //   this.logger.log(`Processing ${tasks.length} email tasks`);
+
+      //   for (const task of tasks) {
+      //     await this.processTask(task);
+      //   }
+      // }
     } catch (error) {
       this.logger.error(`Email queue processing error: ${error.message}`, error.stack);
     } finally {

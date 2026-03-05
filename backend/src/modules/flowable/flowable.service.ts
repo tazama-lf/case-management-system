@@ -22,6 +22,7 @@ import {
   CaseStatusChangedEvent,
   TaskCompletedEvent,
 } from '../events/domain-events';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 @Injectable()
 export class FlowableService implements OnModuleInit {
@@ -87,7 +88,7 @@ export class FlowableService implements OnModuleInit {
             return;
           } else {
             this.loggerService.error('Max retry attempts reached. CMS cannot start without Flowable.', errorStack, FlowableService.name);
-            throw new Error(`Flowable initialization failed after ${this.maxRetries} attempts: ${errorMessage}`);
+            throw new Error(`Flowable initialization failed after ${this.maxRetries} attempts: ${errorMessage}`, { cause: error });
           }
         }
 
@@ -131,7 +132,7 @@ export class FlowableService implements OnModuleInit {
           errorStack,
           FlowableService.name,
         );
-        throw new Error(`Critical: BPMN file not found at ${bpmnFilePath}`);
+        throw new Error(`Critical: BPMN file not found at ${bpmnFilePath}`, { cause: error });
       }
 
       this.loggerService.error(`Failed to deploy BPMN process: ${errorMessage}`, errorStack, FlowableService.name);
@@ -302,7 +303,7 @@ export class FlowableService implements OnModuleInit {
         errorMessage = `Connection reset by Flowable server at ${this.flowableUrl} - check server status and credentials`;
       }
       this.loggerService.error(`Health check failed: ${errorMessage}`, errorStack, FlowableService.name);
-      throw new Error(errorMessage);
+      throw new Error(errorMessage, { cause: error });
     }
   }
 
@@ -369,6 +370,6 @@ export class FlowableService implements OnModuleInit {
   }
 
   private async sleep(ms: number): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, ms));
+    await sleep(ms);
   }
 }

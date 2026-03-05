@@ -91,12 +91,15 @@ export class TaskEventListener {
       const taskVars = await this.utilityService.getTaskVariables(task.id as number);
 
       this.logger.log(
-        `[TaskEventListener] Checking Flowable task ${task.id} (${task.name}): postgres_task_id=${taskVars.postgres_task_id}`,
+        `[TaskEventListener] Checking Flowable task ${String(task.id)} (${String(task.name)}): postgres_task_id=${String(taskVars.postgres_task_id)}`,
         TaskEventListener.name,
       );
 
       if (taskVars.postgres_task_id === event.taskId) {
-        this.logger.log(`[TaskEventListener] Task ${event.taskId} already synced to Flowable task ${task.id}`, TaskEventListener.name);
+        this.logger.log(
+          `[TaskEventListener] Task ${event.taskId} already synced to Flowable task ${String(task.id)}`,
+          TaskEventListener.name,
+        );
         return;
       }
     }
@@ -140,13 +143,13 @@ export class TaskEventListener {
       const taskVars = await this.utilityService.getTaskVariables(task.id as number);
 
       this.logger.log(
-        `[TaskEventListener] Checking Flowable task ${task.id} (${task.name}) - postgres_task_id: ${taskVars.postgres_task_id}`,
+        `[TaskEventListener] Checking Flowable task ${String(task.id)} (${String(task.name)}) - postgres_task_id: ${String(taskVars.postgres_task_id)}`,
         TaskEventListener.name,
       );
 
       if (taskVars.postgres_task_id === event.taskId) {
         flowableTask = task;
-        this.logger.log(`[TaskEventListener] Found matching Flowable task ${task.id}`, TaskEventListener.name);
+        this.logger.log(`[TaskEventListener] Found matching Flowable task ${String(task.id)}`, TaskEventListener.name);
         break;
       }
     }
@@ -160,7 +163,7 @@ export class TaskEventListener {
 
     // If task is being completed OR has completion variables, complete it in Flowable
     if (event.newStatus === TaskStatus.STATUS_30_COMPLETED || event.completionVariables) {
-      this.logger.log(`[TaskEventListener] Task completion requested for Flowable task ${taskObj.id}`, TaskEventListener.name);
+      this.logger.log(`[TaskEventListener] Task completion requested for Flowable task ${String(taskObj.id)}`, TaskEventListener.name);
 
       const completionVars: Record<string, string> = {
         task_completed: 'true',
@@ -176,13 +179,13 @@ export class TaskEventListener {
       }
 
       this.logger.log(
-        `[TaskEventListener] Completing Flowable task ${taskObj.id} with variables: ${JSON.stringify(completionVars)}`,
+        `[TaskEventListener] Completing Flowable task ${String(taskObj.id)} with variables: ${JSON.stringify(completionVars)}`,
         TaskEventListener.name,
       );
       await this.flowableTaskService.completeTask(taskObj.id as number, completionVars);
 
       this.logger.log(
-        `[TaskEventListener] Successfully completed Flowable task ${taskObj.id}. BPMN should now progress.`,
+        `[TaskEventListener] Successfully completed Flowable task ${String(taskObj.id)}. BPMN should now progress.`,
         TaskEventListener.name,
       );
 
@@ -214,13 +217,13 @@ export class TaskEventListener {
       }, 3000);
     } else {
       this.logger.log(
-        `[TaskEventListener] Updating Flowable task ${taskObj.id} status variable to ${event.newStatus}`,
+        `[TaskEventListener] Updating Flowable task ${String(taskObj.id)} status variable to ${event.newStatus}`,
         TaskEventListener.name,
       );
 
       await this.flowableTaskService.updateTaskVariable(taskObj.id as number, 'task_status', event.newStatus);
 
-      this.logger.log(`[TaskEventListener] Updated Flowable task ${taskObj.id} status variable`, TaskEventListener.name);
+      this.logger.log(`[TaskEventListener] Updated Flowable task ${String(taskObj.id)} status variable`, TaskEventListener.name);
     }
   }
 

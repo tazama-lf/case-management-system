@@ -54,7 +54,7 @@ export class CouchdbService implements OnModuleInit {
       return { ok: true, id: evidenceId, rev: '' };
     } catch (error) {
       this.logger.error(`Failed to delete document: ${error.message}`, error.stack);
-      throw new Error(error.message ?? 'Failed to delete attachment');
+      throw new Error(error.message ?? 'Failed to delete attachment', { cause: error });
     }
   }
 

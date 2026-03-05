@@ -12,7 +12,7 @@ import {
   VALIDATION_LENGTHS,
   CLOSED_CASE_STATUSES,
 } from '../../../constants/case.constants';
-import { CloseCaseDto } from '../dto';
+import { ApproveCaseClosureDto, CloseCaseDto } from '../dto';
 import { NotificationService } from 'src/modules/notification/notification.service';
 // import { validateClosureData } from 'src/utils/helperFunction';
 import { TaskValidationUtil } from 'src/modules/shared/utils/task-validation.util';
@@ -21,6 +21,7 @@ import { CreateCommentDto } from 'src/modules/comment/dto/create-comment.dto';
 import { CommentService } from 'src/modules/comment/comment.service';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
+import { ApprovalTaskDTO } from '../types/case-closure-approval.types';
 
 @Injectable()
 export class CaseClosureApprovalService {
@@ -35,7 +36,7 @@ export class CaseClosureApprovalService {
     private readonly commentService: CommentService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly taskValidationUtil: TaskValidationUtil,
-  ) { }
+  ) {}
 
   private async createSARFilingTask(caseId: number, tenantId: string, userId: string): Promise<void> {
     this.logger.log(`Start - Creating SAR_STR_FILING task for case ${caseId}`, CaseClosureApprovalService.name);
@@ -152,8 +153,8 @@ export class CaseClosureApprovalService {
                 (task.status === TaskStatus.STATUS_20_IN_PROGRESS || task.status === TaskStatus.STATUS_30_COMPLETED),
             )
             .sort((a, b) => {
-              const aTime = new Date(a.created_at || 0).getTime();
-              const bTime = new Date(b.created_at || 0).getTime();
+              const aTime = new Date(a.created_at).getTime();
+              const bTime = new Date(b.created_at).getTime();
               return bTime - aTime;
             })[0] || null;
 
@@ -207,9 +208,9 @@ export class CaseClosureApprovalService {
           dto.recommendedOutcome,
           dto.finalNotes
             ? {
-              note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
-              tenantId,
-            }
+                note: `Supervisor Direct Closure:\n${dto.recommendedOutcome}${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}\n${dto.finalNotes}\nFinal Outcome: ${dto.recommendedOutcome}`,
+                tenantId,
+              }
             : undefined,
         );
         if (!isFraudAndAmlCase) {
@@ -293,10 +294,10 @@ export class CaseClosureApprovalService {
         dto.recommendedOutcome,
         dto.finalNotes
           ? {
-            note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
-            taskId: approvalTask.task_id,
-            tenantId,
-          }
+              note: `Final Investigation Summary${isFraudAndAmlCase ? ' (Both Fraud and AML investigations completed)' : ''}:\n${dto.finalNotes}\n\nRecommended Outcome: ${dto.recommendedOutcome}`,
+              taskId: approvalTask.task_id,
+              tenantId,
+            }
           : undefined,
       );
 
@@ -772,7 +773,10 @@ export class CaseClosureApprovalService {
     tenantId: string,
     supervisorId?: string,
     options: { autoClaimApprovalTask?: boolean } = {},
-  ) {
+  ): Promise<{
+    caseData: typeof caseData;
+    approvalTask: ApprovalTaskDTO;
+  }> {
     const caseData = await this.caseRepository.findCaseForReview(caseId, tenantId);
 
     if (!caseData) {
@@ -844,7 +848,13 @@ export class CaseClosureApprovalService {
       });
     }
 
-    return { caseData, approvalTask };
+    const mappedApprovalTask: ApprovalTaskDTO = {
+      task_id: approvalTask.task_id,
+      name: approvalTask.name,
+      status: approvalTask.status,
+      assigned_user_id: approvalTask.assigned_user_id,
+    };
+    return { caseData, approvalTask: mappedApprovalTask };
   }
 
   private validateCaseCompleteness(caseDetails: {

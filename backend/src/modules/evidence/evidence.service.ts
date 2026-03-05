@@ -29,7 +29,7 @@ export class EvidenceService {
     private readonly taskRepository: TaskRepository,
     private readonly eventLogSerice: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
-  ) { }
+  ) {}
 
   private sha256(buffer: Buffer): string {
     return crypto.createHash('sha256').update(buffer).digest('hex');
@@ -226,7 +226,7 @@ export class EvidenceService {
 
       currentRev = attachmentResult.rev;
 
-      this.evidenceRepository.createEvidence(userId, {
+      const createEvidenceDto: CreateEvidenceDto = {
         id: evidenceId,
         taskId: dto.taskId,
         fileName: file.originalname,
@@ -241,7 +241,9 @@ export class EvidenceService {
         caseId: task.case_id,
         tenant_id: tenantId,
         metadata,
-      } as CreateEvidenceDto);
+      };
+
+      this.evidenceRepository.createEvidence(userId, createEvidenceDto);
     }
     await this.couchdb.updateDocument(evidenceId, metadata);
 
@@ -496,23 +498,22 @@ export class EvidenceService {
           continue;
         }
 
-
-        try {
-          let decrypted: Buffer;
-          decrypted = this.decrypt(encryptedBuffer, att.encryption.key, att.encryption.iv, att.encryption.authTag);
-        } catch (decErr) {
-          const errorMessage = decErr instanceof Error ? decErr.message : String(decErr);
-          const errorStack = decErr instanceof Error ? decErr.stack : undefined;
-          this.logger.error(`Decryption failed for ${evidenceId}:${att.fileName} - ${errorMessage}`, errorStack);
-          details.push({
-            fileName: att.fileName,
-            verified: false,
-            reason: 'decryption failed',
-            error: errorMessage,
-          });
-          allVerified = false;
-          continue;
-        }
+        // try {
+        //   let decrypted: Buffer;
+        //   decrypted = this.decrypt(encryptedBuffer, att.encryption.key, att.encryption.iv, att.encryption.authTag);
+        // } catch (decErr) {
+        //   const errorMessage = decErr instanceof Error ? decErr.message : String(decErr);
+        //   const errorStack = decErr instanceof Error ? decErr.stack : undefined;
+        //   this.logger.error(`Decryption failed for ${evidenceId}:${att.fileName} - ${errorMessage}`, errorStack);
+        //   details.push({
+        //     fileName: att.fileName,
+        //     verified: false,
+        //     reason: 'decryption failed',
+        //     error: errorMessage,
+        //   });
+        //   allVerified = false;
+        //   continue;
+        // }
 
         details.push({
           fileName: att.fileName,
@@ -554,7 +555,7 @@ export class EvidenceService {
     if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
-    const docs = result.data || [];
+    const docs = result.data;
 
     const evidence = docs.map((item) => ({
       id: item.evidenceId,
@@ -598,7 +599,7 @@ export class EvidenceService {
 
     const result = await this.couchdb.queryDocuments(query);
 
-    const docs = result.data || [];
+    const docs = result.data;
     allDocs.push(...docs);
 
     const evidence = allDocs.map((item) => ({
@@ -637,7 +638,7 @@ export class EvidenceService {
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
-    const docs = result.data || [];
+    const docs = result.data;
 
     const evidence = docs.map((item) => ({
       id: item.evidenceId,

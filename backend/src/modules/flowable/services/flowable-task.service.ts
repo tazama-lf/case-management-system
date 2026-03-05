@@ -249,7 +249,7 @@ export class FlowableTaskService {
               const variables = await this.utilityService.getTaskVariables(taskObj.id as number);
               return { ...taskObj, variables };
             } catch (error) {
-              this.logger.warn(`Failed to get variables for task ${taskObj.id}`, FlowableTaskService.name);
+              this.logger.warn(`Failed to get variables for task ${String(taskObj.id)}`, FlowableTaskService.name);
               return taskObj;
             }
           }),
@@ -287,7 +287,7 @@ export class FlowableTaskService {
               const variables = await this.utilityService.getTaskVariables(taskObj.id as number);
               return { ...taskObj, variables };
             } catch (error) {
-              this.logger.warn(`Failed to get variables for task ${taskObj.id}`, FlowableTaskService.name);
+              this.logger.warn(`Failed to get variables for task ${String(taskObj.id)}`, FlowableTaskService.name);
               return taskObj;
             }
           }),
