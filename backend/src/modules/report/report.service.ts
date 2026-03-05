@@ -762,34 +762,42 @@ export class ReportsService {
       }),
     );
 
-    const volumeTrend: Array<{ month: string; investigators: Record<string, number> }> = [];
     const now = new Date();
 
-    for (let i = 5; i >= 0; i -= 1) {
-      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
-      const monthLabel = monthStart.toLocaleString('default', { month: 'short', year: 'numeric' });
+    const volumeTrend = await Promise.all(
+      Array.from({ length: 6 }, (_, i) => 5 - i).map(async (i) => {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+        const monthLabel = monthStart.toLocaleString('default', { month: 'short', year: 'numeric' });
 
-      const monthData = { month: monthLabel, investigators: {} };
+        const investigatorCounts = await Promise.all(
+          investigators.map(async ({ case_owner_user_id: caseOwnerUserId }) => {
+            if (!caseOwnerUserId) return { caseOwnerUserId: null, count: 0 };
 
-      for (const { case_owner_user_id: caseOwnerUserId } of investigators) {
-        if (!caseOwnerUserId) continue;
+            const caseCount = await this.prisma.case.count({
+              where: {
+                case_owner_user_id: caseOwnerUserId,
+                created_at: {
+                  gte: monthStart,
+                  lte: monthEnd,
+                },
+              },
+            });
 
-        const caseCount = await this.prisma.case.count({
-          where: {
-            case_owner_user_id: caseOwnerUserId,
-            created_at: {
-              gte: monthStart,
-              lte: monthEnd,
-            },
-          },
+            return { caseOwnerUserId, count: caseCount };
+          }),
+        );
+
+        const investigatorsMap: Record<string, number> = {};
+        investigatorCounts.forEach(({ caseOwnerUserId, count }) => {
+          if (caseOwnerUserId) {
+            investigatorsMap[caseOwnerUserId] = count;
+          }
         });
 
-        monthData.investigators[caseOwnerUserId] = caseCount;
-      }
-
-      volumeTrend.push(monthData);
-    }
+        return { month: monthLabel, investigators: investigatorsMap };
+      }),
+    );
 
     const totalInvestigators = validWorkloadData.length;
     const avgCasesPerInvestigator =
@@ -842,12 +850,10 @@ export class ReportsService {
 
     const filteredLogs = auditLogs.filter((log) => log.performed_at >= startDate && log.performed_at <= endDate);
 
-    const caseActions = filteredLogs.filter(
-      (log) => log.entity_name === 'Case' || (log.action_performed && log.action_performed.includes('Case')),
-    ).length;
+    const caseActions = filteredLogs.filter((log) => log.entity_name === 'Case' || log.action_performed.includes('Case')).length;
 
     const userSessions = filteredLogs.filter(
-      (log) => log.action_performed && (log.action_performed.includes('login') || log.action_performed.includes('session')),
+      (log) => log.action_performed.includes('login') || log.action_performed.includes('session'),
     ).length;
 
     const systemWarnings = filteredLogs.filter(
@@ -906,9 +912,7 @@ export class ReportsService {
 
     const filteredLogs = eventLogs.filter((log) => log.performed_at >= startDate && log.performed_at <= endDate);
 
-    const caseActions = filteredLogs.filter(
-      (log) => log.entity_name === 'Case' || (log.action_performed && log.action_performed.includes('Case')),
-    ).length;
+    const caseActions = filteredLogs.filter((log) => log.entity_name === 'Case' || log.action_performed.includes('Case')).length;
 
     const formattedLogs = filteredLogs.map((log) => ({
       event_log_id: log.event_log_id ? log.event_log_id : '',
@@ -1011,10 +1015,12 @@ export class ReportsService {
 
     const ageingByStatus: AgeingSummary[] = [];
     const statusGroups = casesWithAge.reduce<Record<string, typeof casesWithAge>>((acc, case_) => {
-      const result = acc;
-      if (!acc[case_.status]) result[case_.status] = [];
-      result[case_.status].push(case_);
-      return result;
+      const { status } = case_;
+      const existingCases = acc[status] ?? [];
+      return {
+        ...acc,
+        [status]: [...existingCases, case_],
+      };
     }, {});
 
     Object.entries(statusGroups).forEach(([status, cases]) => {
@@ -1045,13 +1051,14 @@ export class ReportsService {
     ];
 
     const total = ageingDistribution.reduce((sum, item) => sum + item.count, 0);
-    ageingDistribution.forEach((item) => {
-      item.percentage = total > 0 ? Math.round((item.count / total) * 100) : 0;
-    });
+    const ageingDistributionWithPercentage = ageingDistribution.map((item) => ({
+      ...item,
+      percentage: total > 0 ? Math.round((item.count / total) * 100) : 0,
+    }));
 
     const caseTypeResolution = await Promise.all(
       Object.values(CaseType).map(async (type) => {
-        const whereClause: any = {
+        const whereClause = {
           status: {
             in: closedStatuses,
           },
@@ -1139,7 +1146,7 @@ export class ReportsService {
       },
       ageingByStatus,
       resolutionTrend,
-      ageingDistribution,
+      ageingDistribution: ageingDistributionWithPercentage,
       caseTypeResolution,
       caseDetails,
     };
@@ -1248,7 +1255,7 @@ export class ReportsService {
         where: { case_id: dto.caseId },
       });
 
-      const investigationTasks = caseTasks.filter((task) => task.name && task.name.toLowerCase().includes('investigate'));
+      const investigationTasks = caseTasks.filter((task) => task.name?.toLowerCase().includes('investigate'));
 
       const incompleteTasks = investigationTasks.filter((task) => task.status !== TaskStatus.STATUS_30_COMPLETED);
 
@@ -1432,12 +1439,10 @@ export class ReportsService {
     return report;
   }
 
-  async getFraudReports(caseId: string): Promise<FraudReport[]> {
+  async getFraudReports(caseId: string, userId = 'SYSTEM'): Promise<FraudReport[]> {
     // Fetch all reports for case from CouchDB
     const db = this.couchdbService.getDatabase();
     const result = await db.find({ selector: { caseId, category: 'report' } });
-    // Accept userId as an optional second argument for audit logging
-    const userId = arguments.length > 1 ? arguments[1] : 'SYSTEM';
     await this.auditLogService.logAction({
       userId,
       operation: 'RETRIEVE',
