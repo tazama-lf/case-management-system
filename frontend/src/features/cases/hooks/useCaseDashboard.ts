@@ -137,12 +137,10 @@ export const useCaseDashboard = (): {
           closedOnly = true;
           finalStatusFilter = '';
         }
-      } else if (caseTypeFilter === 'all') {
-        if (!statusFilter) {
-          excludeDraft = true;
-          excludeClosed = true;
-          finalStatusFilter = '';
-        }
+      } else if (!statusFilter) {
+        excludeDraft = true;
+        excludeClosed = true;
+        finalStatusFilter = '';
       }
 
       const response = await caseService.getAllCases({
@@ -167,7 +165,8 @@ export const useCaseDashboard = (): {
         setBackendTotalItems(response.pagination.total);
         setBackendTotalPages(response.pagination.totalPages);
       }
-    } catch {
+    } catch (err) {
+      console.error('Failed to fetch cases:', err);
       setErrorState('Failed to load cases. Please try again.');
       setCases([]);
     } finally {
@@ -192,6 +191,7 @@ export const useCaseDashboard = (): {
   }, [fetchCases]);
 
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Type narrowing required for 'in' operator
     if (typeof params === 'object' && params && 'caseId' in params) {
       const caseId = Number(params.caseId);
       if (caseId && cases.length > 0) {
@@ -209,10 +209,8 @@ export const useCaseDashboard = (): {
   const totalItems = backendTotalItems;
   const totalPages = backendTotalPages;
 
-  // Reset to page 1 when search changes
   useEffect(() => {
     if (debouncedSearch !== search) {
-      // Search is still being typed, don't reset page yet
       return;
     }
     setCurrentPage(1);
@@ -237,13 +235,9 @@ export const useCaseDashboard = (): {
 
     handleComplete: (row: CaseRow) => {
       setSelectedRow(row);
-      if (row.type === null) {
-        setIsUpdateAlertOpen(true);
-      } else {
-        setCreateModalMode('edit');
-        setEditingCaseId(row.id);
-        setIsCreateOpen(true);
-      }
+      setCreateModalMode('edit');
+      setEditingCaseId(row.id);
+      setIsCreateOpen(true);
     },
 
     handleCloseCase: (row: CaseRow) => {

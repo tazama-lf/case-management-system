@@ -1,8 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { UseQueryResult, UseMutationResult } from '@tanstack/react-query';
 import { evidenceService }  from '../services/evidenceService';
 import type {
   VerifyEvidenceDto,
   EvidenceSearchFilters,
+  EvidenceListResponse,
+  Evidence,
+  VerifyEvidenceResponse,
 } from '../types/evidence.types';
 import toast from 'react-hot-toast';
 
@@ -28,7 +32,7 @@ export const useCaseEvidence = (
   caseId: number,
   filters?: EvidenceSearchFilters,
   enabled = true,
-) =>
+): UseQueryResult<EvidenceListResponse> =>
   useQuery({
     queryKey: evidenceKeys.list(caseId, filters),
     queryFn: async () => await evidenceService.getCaseEvidence(caseId),
@@ -39,7 +43,7 @@ export const useCaseEvidence = (
 /**
  * Hook to fetch evidence details
  */
-export const useEvidenceDetails = (evidenceId: string, enabled = true) =>
+export const useEvidenceDetails = (evidenceId: string, enabled = true): UseQueryResult<Evidence> =>
   useQuery({
     queryKey: evidenceKeys.detail(evidenceId),
     queryFn: async () => await evidenceService.getEvidenceById(evidenceId),
@@ -49,7 +53,7 @@ export const useEvidenceDetails = (evidenceId: string, enabled = true) =>
 /**
  * Hook to verify evidence integrity
  */
-export const useVerifyEvidence = (caseId: number) => {
+export const useVerifyEvidence = (caseId: number): UseMutationResult<VerifyEvidenceResponse, Error, VerifyEvidenceDto> => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -83,7 +87,7 @@ export const useSearchEvidence = (
   page = 1,
   limit = 20,
   enabled = true,
-) =>
+): UseQueryResult<EvidenceListResponse> =>
   useQuery({
     queryKey: evidenceKeys.search(filters),
     queryFn: async () =>

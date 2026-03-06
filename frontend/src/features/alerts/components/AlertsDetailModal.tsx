@@ -11,7 +11,7 @@ import type {
 } from '../types/triage.types';
 import type { Alert as LegacyAlert } from '../types/alertsdashboard.types';
 import triageService from '../services/triageservice';
-import userService from '../../cases/services/userService';
+import userService,{UserService} from '../../cases/services/userService';
 import {
   taskService,
   type TaskForSupervisor,
@@ -204,7 +204,7 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
           action.user_id,
         );
         if (userDetails) {
-          const userName = userService.formatUserName(userDetails);
+          const userName = UserService.formatUserName(userDetails);
           setUsername(userName);
         }
       } catch (error) {

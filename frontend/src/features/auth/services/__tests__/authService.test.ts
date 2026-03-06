@@ -7,7 +7,7 @@ import type {
 } from '../../types/auth.types';
 import { server } from '@/test/mocks/server';
 import { http, HttpResponse } from 'msw';
-import authService from '../authService';
+import authService, { AuthService } from '../authService';
 
 // No longer needed - using MSW handlers instead
 
@@ -273,18 +273,18 @@ describe('authService', () => {
       const futureExp = Math.floor(Date.now() / 1000) + 3600;
       const token = createMockToken({ exp: futureExp });
 
-      expect(authService.isTokenExpired(token)).toBe(false);
+      expect(AuthService.isTokenExpired(token)).toBe(false);
     });
 
     it('returns true for expired token', () => {
       const pastExp = Math.floor(Date.now() / 1000) - 3600;
       const token = createMockToken({ exp: pastExp });
 
-      expect(authService.isTokenExpired(token)).toBe(true);
+      expect(AuthService.isTokenExpired(token)).toBe(true);
     });
 
     it('returns true for invalid token', () => {
-      expect(authService.isTokenExpired('invalid-token')).toBe(true);
+      expect(AuthService.isTokenExpired('invalid-token')).toBe(true);
     });
   });
 
@@ -293,14 +293,14 @@ describe('authService', () => {
       const exp = Math.floor(Date.now() / 1000) + 3600;
       const token = createMockToken({ exp });
 
-      const expiration = authService.getTokenExpiration(token);
+      const expiration = AuthService.getTokenExpiration(token);
 
       expect(expiration).toBeInstanceOf(Date);
       expect(expiration?.getTime()).toBe(exp * 1000);
     });
 
     it('returns null for invalid token', () => {
-      expect(authService.getTokenExpiration('invalid-token')).toBeNull();
+      expect(AuthService.getTokenExpiration('invalid-token')).toBeNull();
     });
   });
 

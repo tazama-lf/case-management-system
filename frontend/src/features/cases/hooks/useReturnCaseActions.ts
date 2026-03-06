@@ -12,7 +12,7 @@ export const useReturnCaseActions = (refreshCases: () => Promise<void>): {
   const handleReturnForReview = async (
     caseId: number,
     reviewComments: string,
-  ) => {
+  ): Promise<void> => {
     try {
       const returnCaseData: ReturnCaseForReviewDto = {
         reviewComments: reviewComments.trim(),

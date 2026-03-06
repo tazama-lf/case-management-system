@@ -35,9 +35,10 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
         setProfile(data);
         setError(null);
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
+        const error = err as { response?: { data?: { message?: string } } };
         setError(
-          err.response?.data?.message ?? 'Failed to load customer profile',
+          error.response?.data?.message ?? 'Failed to load customer profile',
         );
         setProfile(null);
       })
@@ -46,7 +47,7 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
       });
   }, [transactionId]);
 
-  const handleManualSearch = () => {
+  const handleManualSearch = (): void => {
     if (!manualId.trim()) return;
 
     setLoading(true);
@@ -58,9 +59,10 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
       .then((data) => {
         setProfile(data);
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
+        const error = err as { response?: { data?: { message?: string } } };
         setError(
-          err.response?.data?.message ?? 'Failed to load customer profile',
+          error.response?.data?.message ?? 'Failed to load customer profile',
         );
       })
       .finally(() => {

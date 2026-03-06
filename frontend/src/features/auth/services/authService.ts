@@ -9,8 +9,8 @@ import type {
 } from '../types/auth.types';
 import { ACTIVE_SESSION_KEY } from './sessionLock';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3000';
+const API_BASE_URL: string =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://127.0.0.1:3000';
 
 class AuthService {
   private readonly tokenKey = 'authToken';
@@ -30,7 +30,7 @@ class AuthService {
         throw new Error('Invalid credentials');
       }
 
-      const data: LoginResponse = await response.json();
+      const data = (await response.json()) as LoginResponse;
 
       if (data.token) {
         this.setToken(data.token);
@@ -85,7 +85,14 @@ class AuthService {
         );
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        clientId: string;
+        tenantId: string;
+        email: string;
+        fullName: string;
+        tenantName: string;
+        validatedClaims: Record<string, boolean>;
+      };
 
       // Map backend response to User interface
       const user: User = {
@@ -122,7 +129,7 @@ class AuthService {
 
   getUser(): User | null {
     const userData = localStorage.getItem(this.userKey);
-    return userData ? JSON.parse(userData) : null;
+    return userData ? (JSON.parse(userData) as User) : null;
   }
 
   setUser(user: User): void {
@@ -131,21 +138,21 @@ class AuthService {
 
   isAuthenticated(): boolean {
     const token = this.getToken();
-    return token ? !this.isTokenExpired(token) : false;
+    return token ? !AuthService.isTokenExpired(token) : false;
   }
 
-  private getDecodedToken(token: string): DecodedToken | null {
+  private static getDecodedToken(token: string): DecodedToken | null {
     try {
       const payload = token.split('.')[1];
-      return JSON.parse(atob(payload.replace(/-/gu, '+').replace(/_/gu, '/')));
+      return JSON.parse(atob(payload.replace(/-/gu, '+').replace(/_/gu, '/'))) as DecodedToken;
     } catch (error) {
       console.error('Error decoding token:', error);
       return null;
     }
   }
 
-  isTokenExpired(token: string): boolean {
-    const decoded = this.getDecodedToken(token);
+  static isTokenExpired(token: string): boolean {
+    const decoded = AuthService.getDecodedToken(token);
     if (!decoded || typeof decoded.exp !== 'number') {
       return true;
     }
@@ -154,8 +161,8 @@ class AuthService {
     return decoded.exp < currentTime;
   }
 
-  getTokenExpiration(token: string): Date | null {
-    const decoded = this.getDecodedToken(token);
+  static getTokenExpiration(token: string): Date | null {
+    const decoded = AuthService.getDecodedToken(token);
     if (!decoded || typeof decoded.exp !== 'number') {
       return null;
     }
@@ -168,7 +175,7 @@ class AuthService {
       return false;
     }
 
-    return user.validatedClaims?.[claim] || false;
+    return user.validatedClaims[claim];
   }
 
   hasCMSTestRole(): boolean {
@@ -276,7 +283,7 @@ class AuthService {
         );
       }
 
-      const data: Investigator[] = await response.json();
+      const data = (await response.json()) as Investigator[];
       return data;
     } catch (error) {
       console.error('Error fetching investigators:', error);
@@ -307,14 +314,15 @@ class AuthService {
         );
       }
 
-      const data: Investigator[] = await response.json();
+      const data = (await response.json()) as Supervisor[];
       return data;
     } catch (error) {
-      console.error('Error fetching investigators:', error);
+      console.error('Error fetching supervisors:', error);
       throw error;
     }
   }
 }
 
 const authService = new AuthService();
+export { AuthService };
 export default authService;

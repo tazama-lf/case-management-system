@@ -23,7 +23,7 @@ export interface UserDetails {
   notBefore: number;
 }
 
-class UserService {
+export class UserService {
   private readonly baseUrl = '/v1/user';
 
   async getUsersByRole(role: string): Promise<UserOption[]> {
@@ -81,7 +81,7 @@ class UserService {
     }
   }
 
-  formatUserName(user: UserDetails | null): string {
+  static formatUserName(user: UserDetails | null): string {
     if (!user) return 'Unknown';
     const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
     return fullName || user.username || user.email || 'Unknown';

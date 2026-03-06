@@ -16,7 +16,9 @@ interface CaseStatusResponse {
   statusDistribution?: Record<string, number>;
 }
 
-class DashboardService {
+export class DashboardService {
+  private readonly client = apiClient;
+
   async getDashboardData(): Promise<DashboardData> {
     try {
       const [stats, recentAlerts, activeCases] = await Promise.all([
@@ -38,7 +40,7 @@ class DashboardService {
 
   async getDashboardStats(): Promise<DashboardStats> {
     try {
-      const response = await apiClient.get<CaseStatusResponse>(
+      const response = await this.client.get<CaseStatusResponse>(
         '/api/v1/reports/case-status?dateRange=last30',
       );
 
@@ -62,14 +64,14 @@ class DashboardService {
 
   async getRecentAlerts(): Promise<AlertSummary[]> {
     try {
-      const response = await apiClient.get<CaseStatusResponse>(
+      const response = await this.client.get<CaseStatusResponse>(
         '/api/v1/reports/case-status?dateRange=last7',
       );
 
       const caseTypes = response.caseTypes ?? [];
 
       return caseTypes.map((caseType) => ({
-        priority: this.mapCaseTypeToPriority(caseType.name),
+        priority: DashboardService.mapCaseTypeToPriority(caseType.name),
         count: caseType.count,
         description: `${caseType.name.toLowerCase()} cases requiring attention`,
       }));
@@ -97,7 +99,7 @@ class DashboardService {
 
   async getActiveCases(): Promise<CaseSummary[]> {
     try {
-      const response = await apiClient.get<CaseStatusResponse>(
+      const response = await this.client.get<CaseStatusResponse>(
         '/api/v1/reports/case-status?dateRange=last30',
       );
       const statusDist = response.statusDistribution ?? {};
@@ -105,17 +107,17 @@ class DashboardService {
       return [
         {
           status: 'assigned',
-          count: statusDist.assigned ?? 0,
+          count: statusDist.assigned,
           description: 'cases requiring your action',
         },
         {
           status: 'pending',
-          count: statusDist.pendingApproval ?? 0,
+          count: statusDist.pendingApproval,
           description: 'cases awaiting your approval',
         },
         {
           status: 'closed',
-          count: statusDist.closed ?? 0,
+          count: statusDist.closed,
           description: 'cases resolved recently',
         },
       ];
@@ -141,7 +143,7 @@ class DashboardService {
     }
   }
 
-  private mapCaseTypeToPriority(caseType: string): 'high' | 'medium' | 'low' {
+  private static mapCaseTypeToPriority(caseType: string): 'high' | 'medium' | 'low' {
     switch (caseType) {
       case 'FRAUD':
       case 'FRAUD_AND_AML':

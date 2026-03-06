@@ -140,13 +140,6 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     ) {
       effectiveStatus = 'STATUS_01_UNASSIGNED';
     }
-    let assigneeName: string | undefined;
-    if (backendTask.assigned_user_id) {
-      assigneeName =
-        investigators[backendTask.assigned_user_id] ??
-        backendTask.assignedUser?.username ??
-        backendTask.assigned_user_id;
-    }
 
     return {
       id: backendTask.task_id,

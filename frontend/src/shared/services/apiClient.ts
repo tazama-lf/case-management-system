@@ -1,7 +1,7 @@
 import authService from '../../features/auth/services/authService';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3000';
+const API_BASE_URL: string =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://127.0.0.1:3000';
 
 interface ApiRequestOptions extends RequestInit {
   skipAuth?: boolean;
@@ -22,9 +22,9 @@ class ApiClient {
 
     const url = `${this.baseUrl}${endpoint}`;
 
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...fetchOptions.headers,
+      ...(fetchOptions.headers as Record<string, string> | undefined),
     };
 
     if (!skipAuth) {
@@ -52,7 +52,7 @@ class ApiClient {
             },
           };
           const retryResponse = await fetch(url, retryConfig);
-          return await this.handleResponse<T>(retryResponse);
+          return await ApiClient.handleResponse<T>(retryResponse);
         } else {
           authService.logout();
           window.location.href = '/login';
@@ -60,26 +60,25 @@ class ApiClient {
         }
       }
 
-      return await this.handleResponse<T>(response);
+      return await ApiClient.handleResponse<T>(response);
     } catch (error) {
       console.error(`API request failed: ${endpoint}`, error);
       throw error;
     }
   }
 
-  private async handleResponse<T>(response: Response): Promise<T> {
+  private static async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = (await response.json().catch(() => ({}))) as { message?: string };
       throw new Error(
-        errorData.message ||
-          `HTTP ${response.status}: ${response.statusText}` ||
-          'An error occurred',
+        errorData.message ??
+          `HTTP ${response.status}: ${response.statusText}`,
       );
     }
 
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {
-      return await response.json();
+      return (await response.json()) as T;
     }
 
     return response.text() as unknown as T;
@@ -137,8 +136,8 @@ class ApiClient {
     const { skipAuth = false, ...fetchOptions } = options ?? {};
 
     const url = `${this.baseUrl}${endpoint}`;
-    const headers: HeadersInit = {
-      ...fetchOptions.headers,
+    const headers: Record<string, string> = {
+      ...(fetchOptions.headers as Record<string, string> | undefined),
     };
 
     if (!skipAuth) {
@@ -173,7 +172,7 @@ class ApiClient {
             headers: retryHeaders,
           };
           const retryResponse = await fetch(url, retryConfig);
-          return await this.handleResponse<T>(retryResponse);
+          return await ApiClient.handleResponse<T>(retryResponse);
         } else {
           authService.logout();
           window.location.href = '/login';
@@ -181,7 +180,7 @@ class ApiClient {
         }
       }
 
-      return await this.handleResponse<T>(response);
+      return await ApiClient.handleResponse<T>(response);
     } catch (error) {
       console.error(`API upload failed: ${endpoint}`, error);
       throw error;

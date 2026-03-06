@@ -1,7 +1,6 @@
 import apiClient from '../../../shared/services/apiClient';
 import type {
   Evidence,
-  EvidenceAttachment,
   UploadEvidenceDto,
   UploadEvidenceResponse,
   VerifyEvidenceResponse,
@@ -13,28 +12,9 @@ import type {
 export class EvidenceService {
   private readonly baseUrl = '/api/v1/evidence';
 
-  private normalizeEvidenceData(evidence: Evidence): Evidence {
-    if (!evidence) return evidence;
-
-    const firstAttachment = evidence.attachments?.[0];
-
-    const totalFileSize: number =
-      evidence.fileSize ??
-      (evidence.attachments?.reduce(
-        (sum: number, att: EvidenceAttachment) => sum + (att.fileSize ?? 0),
-        0,
-      ) ??
-        0);
-
+  private static normalizeEvidenceData(evidence: Evidence): Evidence {
     return {
       ...evidence,
-      fileName: evidence.fileName ?? firstAttachment?.fileName ?? 'unknown',
-      fileSize: evidence.fileSize ? evidence.fileSize : totalFileSize,
-      mimeType:
-        evidence.mimeType ??
-        firstAttachment?.mimeType ??
-        'application/octet-stream',
-      hash: evidence.hash ?? firstAttachment?.hash ?? '',
     };
   }
 
@@ -93,7 +73,7 @@ export class EvidenceService {
 
       return response;
     } catch (error) {
-      throw this.handleError(error, 'upload evidence');
+      throw EvidenceService.handleError(error, 'upload evidence');
     }
   }
 
@@ -102,12 +82,12 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/task/${taskId}`,
       );
-      response.evidence &&= response.evidence.map((e) =>
-        this.normalizeEvidenceData(e),
+      response.evidence = response.evidence.map((e) =>
+        EvidenceService.normalizeEvidenceData(e),
       );
       return response;
     } catch (error) {
-      throw this.handleError(error, 'get task evidence');
+      throw EvidenceService.handleError(error, 'get task evidence');
     }
   }
 
@@ -116,12 +96,12 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/case/${caseId}`,
       );
-      response.evidence &&= response.evidence.map((e) =>
-        this.normalizeEvidenceData(e),
+      response.evidence = response.evidence.map((e) =>
+        EvidenceService.normalizeEvidenceData(e),
       );
       return response;
     } catch (error) {
-      throw this.handleError(error, 'get case evidence');
+      throw EvidenceService.handleError(error, 'get case evidence');
     }
   }
 
@@ -133,12 +113,12 @@ export class EvidenceService {
         `${this.baseUrl}/evidenceType/${evidenceType}`,
       );
 
-      response.evidence &&= response.evidence.map((e) =>
-        this.normalizeEvidenceData(e),
+      response.evidence = response.evidence.map((e) =>
+        EvidenceService.normalizeEvidenceData(e),
       );
       return response;
     } catch (error) {
-      throw this.handleError(error, 'get evidence by type');
+      throw EvidenceService.handleError(error, 'get evidence by type');
     }
   }
 
@@ -147,9 +127,9 @@ export class EvidenceService {
       const response = await apiClient.get<Evidence>(
         `${this.baseUrl}/${evidenceId}`,
       );
-      return this.normalizeEvidenceData(response);
+      return EvidenceService.normalizeEvidenceData(response);
     } catch (error) {
-      throw this.handleError(error, 'get evidence details');
+      throw EvidenceService.handleError(error, 'get evidence details');
     }
   }
 
@@ -160,7 +140,7 @@ export class EvidenceService {
       );
       return response;
     } catch (error) {
-      throw this.handleError(error, 'verify evidence');
+      throw EvidenceService.handleError(error, 'verify evidence');
     }
   }
 
@@ -170,11 +150,11 @@ export class EvidenceService {
 
   async deleteEvidence(evidenceId: string, fileName: string): Promise<void> {
     try {
-      await apiClient.delete<void>(
+      await apiClient.delete<undefined>(
         `${this.baseUrl}/${evidenceId}/attachments/${encodeURIComponent(fileName)}`,
       );
     } catch (error) {
-      throw this.handleError(error, 'delete evidence');
+      throw EvidenceService.handleError(error, 'delete evidence');
     }
   }
 
@@ -263,11 +243,11 @@ export class EvidenceService {
         'ms:',
         error,
       );
-      throw this.handleError(error, 'download evidence');
+      throw EvidenceService.handleError(error, 'download evidence');
     }
   }
 
-  async calculateFileHash(file: File): Promise<string> {
+  static async calculateFileHash(file: File): Promise<string> {
     try {
       const buffer = await file.arrayBuffer();
       const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
@@ -282,7 +262,7 @@ export class EvidenceService {
     }
   }
 
-  validateFile(file: File, maxSizeMB = 50): { valid: boolean; error?: string } {
+  static validateFile(file: File, maxSizeMB = 50): { valid: boolean; error?: string } {
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       return {
@@ -317,7 +297,7 @@ export class EvidenceService {
     return { valid: true };
   }
 
-  formatFileSize(bytes: number): string {
+  static formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -348,16 +328,16 @@ export class EvidenceService {
         `${this.baseUrl}/search?${queryString}`,
       );
 
-      response.evidence &&= response.evidence.map((e) =>
-        this.normalizeEvidenceData(e),
+      response.evidence = response.evidence.map((e) =>
+        EvidenceService.normalizeEvidenceData(e),
       );
       return response;
     } catch (error) {
-      throw this.handleError(error, 'search evidence');
+      throw EvidenceService.handleError(error, 'search evidence');
     }
   }
 
-  private handleError(error: unknown, operation: string): Error {
+  private static handleError(error: unknown, operation: string): Error {
     console.error(`EvidenceService Error - ${operation}:`, error);
 
     if (error instanceof Error) {
@@ -368,11 +348,11 @@ export class EvidenceService {
       response?: { data?: { message?: string } };
       message?: string;
     };
-    if (err?.response?.data) {
+    if (err.response?.data) {
       return new Error(err.response.data.message ?? `Failed to ${operation}`);
     }
 
-    if (err?.message) {
+    if (err.message) {
       return new Error(err.message);
     }
 

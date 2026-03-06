@@ -15,7 +15,7 @@ import {
 } from '@/shared/utils/exportUtils';
 import { usePagination } from '@/shared/hooks/usePagination';
 import type { FindingDetail } from '@/features/reports/types/reports.types';
-import { evidenceService } from '../../cases/services/evidenceService';
+import { evidenceService, EvidenceService } from '../../cases/services/evidenceService';
 import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 import EvidenceCard from '@/features/reports/components/EvidenceCard';
 import { formatDate } from '@/shared/utils/dateUtils';
@@ -586,7 +586,7 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                                                 getAssigneeFullName
                                               }
                                               formatFileSize={
-                                                evidenceService.formatFileSize
+                                                EvidenceService.formatFileSize
                                               }
                                             />
                                           ),

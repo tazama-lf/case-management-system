@@ -12,7 +12,7 @@ export const useRejectCaseActions = (refreshCases: () => Promise<void>): {
 } => {
   const { success, error } = useToast();
 
-  const handleRejectCaseCreation = async (caseId: number, reason: string) => {
+  const handleRejectCaseCreation = async (caseId: number, reason: string): Promise<void> => {
     try {
       const rejectCaseData: RejectCaseCreationDto = {
         reason: reason.trim(),
@@ -48,7 +48,7 @@ export const useRejectCaseActions = (refreshCases: () => Promise<void>): {
     }
   };
 
-  const handleRejectCase = async (caseId: number, rejectionReason: string) => {
+  const handleRejectCase = async (caseId: number, rejectionReason: string): Promise<void> => {
     try {
       const rejectCaseData: RejectCaseDto = {
         rejectionReason: rejectionReason.trim(),
@@ -87,7 +87,7 @@ export const useRejectCaseActions = (refreshCases: () => Promise<void>): {
   const handleRejectReopening = async (
     caseId: number,
     rejectionReason: string,
-  ) => {
+  ): Promise<void> => {
     try {
       await caseService.rejectCaseReopening(caseId, rejectionReason);
 

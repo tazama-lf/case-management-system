@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import authService from '../services/authService.ts';
+import authService, { AuthService } from '../services/authService.ts';
 import type {
   AuthContextType,
   User,
@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     let expirationCheckTimer: NodeJS.Timeout;
 
     if (token && isAuthenticated) {
-      const tokenExpiration = authService.getTokenExpiration(token);
+      const tokenExpiration = AuthService.getTokenExpiration(token);
       if (tokenExpiration) {
         const timeUntilExpiration = tokenExpiration.getTime() - Date.now();
 
@@ -138,8 +138,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     clearError,
     hasBackendClaim: authService.hasBackendClaim.bind(authService),
-    // hasCMSTestRole: authService.hasCMSTestRole.bind(authService),
-    // hasAlertTriageRole: authService.hasAlertTriageRole.bind(authService),
     hasInvestigatorRole: authService.hasInvestigatorRole.bind(authService),
     hasSupervisorRole: authService.hasSupervisorRole.bind(authService),
     hasComplianceOfficerRole:

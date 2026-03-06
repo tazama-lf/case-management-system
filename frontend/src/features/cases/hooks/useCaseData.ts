@@ -105,7 +105,34 @@ export const useCaseActions = (
     priorityFilter?: string,
     sortBy?: 'recent' | 'oldest',
   ) => Promise<void>,
-) => {
+): {
+  createCaseLoading: boolean;
+  createCaseError: string;
+  setCreateCaseError: React.Dispatch<React.SetStateAction<string>>;
+  handleCreate: (payload: {
+    alertId?: number;
+    priority: Priority;
+    priorityScore: number;
+    alertType: AlertType;
+    assignee?: string;
+    dueDate?: Date;
+  }) => Promise<void>;
+  handleUpdate: (caseId: number, payload: {
+    priority: Priority;
+    priorityScore: number;
+    alertType: AlertType;
+    assignee?: string;
+  }) => Promise<void>;
+  handleReopenSubmit: (caseId: number, reason: string) => Promise<void>;
+  handleAbandonSubmit: (caseId: number, reason: string, taskIds: number[]) => Promise<void>;
+  handleSuspendSubmit: (caseId: number, reason: string, taskIds: number[]) => Promise<void>;
+  handleResumeSubmit: (caseId: number, reason: string, taskIds: number[]) => Promise<void>;
+  handleRejectSubmit: (rejectionReason: string, selectedRow: CaseRow | null, taskId: number) => Promise<void>;
+  handleApproveSubmit: (data: ApproveCaseClosureDto, selectedRow: CaseRow | null, taskId: number) => Promise<void>;
+  handleApproveCreationSubmit: (caseId: number, taskId: number) => Promise<void>;
+  handleRejectCreationSubmit: (caseId: number, data: RejectCaseCreationDto) => Promise<void>;
+  handleReturnForReviewSubmit: (caseId: number, data: ReturnCaseForReviewDto) => Promise<void>;
+} => {
   const { user } = useAuth();
   const { success, error } = useToast();
 
@@ -287,7 +314,7 @@ The case may have been deleted or moved.`;
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage =
-          'Case Not Found.\n\n' + 'The case may have been deleted or moved.';
+          'Case Not Found.\n\nThe case may have been deleted or moved.';
       }
 
       error('Abandon Case Failed', errorMessage);
@@ -406,9 +433,7 @@ The case has been moved back to "In Progress" status. All associated tasks have 
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage =
-          `Case Not Found.
-
-` + 'The case may have been deleted or moved.';
+          'Case Not Found.\n\nThe case may have been deleted or moved.';
       }
 
       error('Resume Case Failed', errorMessage);
@@ -471,9 +496,7 @@ The case has been returned to the investigator for additional work.`,
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage =
-          `Case Not Found.
-
-` + 'The case may have been deleted or moved.';
+          'Case Not Found.\n\nThe case may have been deleted or moved.';
       } else if (errorString.includes('Approval task validation failed')) {
         errorMessage = errorString;
       }

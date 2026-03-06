@@ -1,14 +1,11 @@
 import { formatDate } from '@/shared/utils/dateUtils';
 import type { TransactionMessage } from '../types/alertsdashboard.types';
+import type { Alert } from '../types/triage.types';
 
 export function extractTransactionMessagesFromAlert(
-  transactionData: any,
+  transactionData: Record<string, unknown>,
   transactionId: string,
 ): TransactionMessage[] {
-  if (!transactionData || typeof transactionData !== 'object') {
-    return [];
-  }
-
   const messages: TransactionMessage[] = [];
 
   try {
@@ -62,23 +59,33 @@ export function extractTransactionMessagesFromAlert(
   }
 }
 
-export function extractTransactionIdFromAlert(alert: any): string {
+export function extractTransactionIdFromAlert(alert: Alert): string {
   try {
-    if (alert.transaction?.FIToFIPmtSts?.GrpHdr?.MsgId) {
-      return alert.transaction.FIToFIPmtSts.GrpHdr.MsgId;
+    const transaction = alert.transaction as Record<string, unknown> | undefined;
+    const fiToFIPmtSts = transaction?.FIToFIPmtSts as Record<string, unknown> | undefined;
+    const fiToFICstmrCdt = transaction?.FIToFICstmrCdt as Record<string, unknown> | undefined;
+    
+    if (fiToFIPmtSts?.GrpHdr) {
+      const grpHdr = fiToFIPmtSts.GrpHdr as Record<string, unknown>;
+      if (grpHdr.MsgId) {
+        return typeof grpHdr.MsgId === 'string' ? grpHdr.MsgId : JSON.stringify(grpHdr.MsgId);
+      }
     }
 
-    if (alert.transaction?.FIToFICstmrCdt?.GrpHdr?.MsgId) {
-      return alert.transaction.FIToFICstmrCdt.GrpHdr.MsgId;
+    if (fiToFICstmrCdt?.GrpHdr) {
+      const grpHdr = fiToFICstmrCdt.GrpHdr as Record<string, unknown>;
+      if (grpHdr.MsgId) {
+        return typeof grpHdr.MsgId === 'string' ? grpHdr.MsgId : JSON.stringify(grpHdr.MsgId);
+      }
     }
 
     if (alert.txtp) {
       return alert.txtp;
     }
 
-    return alert.alert_id ?? 'Unknown';
+    return String(alert.alert_id);
   } catch (error) {
     console.warn('Failed to extract transaction ID from alert:', error);
-    return alert.txtp ?? alert.alert_id ?? 'Unknown';
+    return alert.txtp ?? String(alert.alert_id);
   }
 }

@@ -161,7 +161,7 @@ export const useAlertOperations = (): {
       }
     },
     onError: (error: Error) => {
-      showError(error.message ?? 'Failed to close alert');
+      showError(error.message);
     },
   });
 
@@ -195,7 +195,7 @@ export const useAlertOperations = (): {
       }
     },
     onError: (error: Error) => {
-      showError(error.message ?? 'Failed to update alert');
+      showError(error.message);
     },
   });
 

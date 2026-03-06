@@ -1,5 +1,5 @@
 import apiClient from '../../../shared/services/apiClient';
-import type { ApiErrorResponse } from '../../alerts/types/triage.types';
+// import type { ApiErrorResponse } from '../../alerts/types/triage.types';
 
 export interface CaseHistoryEntry {
   event_log_id: string;
@@ -14,22 +14,6 @@ export interface CaseHistoryEntry {
 export class CaseHistoryService {
   private readonly baseUrl = '/api/v1/case-history';
 
-  // async getCaseHistoryByTask(caseId: number): Promise<TaskHistoryEntry[]> {
-  //   try {
-  //     const response = await apiClient.get<{
-  //       taskHistory: TaskHistoryEntry[];
-  //     }>(
-  //       `${this.baseUrl}/${caseId}`
-  //     );
-
-  //     return response.taskHistory ?? [];
-
-  //   } catch (error) {
-  //     console.error('Failed to fetch case history by Task:', error);
-  //     return [];
-  //   }
-  // }
-
   async getCaseHistory(caseId: number): Promise<CaseHistoryEntry[]> {
     try {
       const response = await apiClient.get<CaseHistoryEntry[]>(
@@ -42,22 +26,24 @@ export class CaseHistoryService {
     }
   }
 
-  private handleError(error: unknown, operation: string): Error {
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'response' in error &&
-      typeof (error as { response?: unknown }).response === 'object' &&
-      (error as { response?: { data?: ApiErrorResponse } }).response?.data
-    ) {
-      const apiError = (error as { response: { data: ApiErrorResponse } }).response.data;
-      return new Error(apiError.message || `Failed to ${operation}`);
-    }
-    if (error instanceof Error) {
-      return new Error(`Failed to ${operation}: ${error.message}`);
-    }
-    return new Error(`Failed to ${operation}`);
-  }
+  // handleError is unused but kept for future error handling needs
+  // eslint-disable-next-line @typescript-eslint/no-unused-private-class-members -- Reserved for future use
+  // private static handleError(error: unknown, operation: string): Error {
+  //   if (
+  //     typeof error === 'object' &&
+  //     error !== null &&
+  //     'response' in error &&
+  //     typeof (error as { response?: unknown }).response === 'object' &&
+  //     (error as { response?: { data?: ApiErrorResponse } }).response?.data
+  //   ) {
+  //     const apiError = (error as { response: { data: ApiErrorResponse } }).response.data;
+  //     return new Error(apiError.message || `Failed to ${operation}`);
+  //   }
+  //   if (error instanceof Error) {
+  //     return new Error(`Failed to ${operation}: ${error.message}`);
+  //   }
+  //   return new Error(`Failed to ${operation}`);
+  // }
 }
 
 export const caseHistoryService = new CaseHistoryService();

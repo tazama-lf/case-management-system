@@ -17,7 +17,7 @@ export const TaskStatus = {
 
 export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus];
 
-export function getCaseTypeColor(caseType: CaseType | null): string {
+export function getCaseTypeColor(caseType: string | null): string {
   switch (caseType) {
     case CaseType.FRAUD:
     case 'FRAUD':
@@ -52,8 +52,6 @@ export function getTaskStatusColor(status: TaskStatus): string {
     case TaskStatus.STATUS_10_ASSIGNED:
     case 'STATUS_10_ASSIGNED':
       return '#8b5cf6';
-    default:
-      return '#6b7280';
   }
 }
 
@@ -94,7 +92,5 @@ export function getTaskStatusColorClass(status: TaskStatus): string {
     case TaskStatus.STATUS_10_ASSIGNED:
     case 'STATUS_10_ASSIGNED':
       return 'text-purple-500 bg-purple-50 border-purple-200';
-    default:
-      return 'text-gray-500 bg-gray-50 border-gray-200';
   }
 }

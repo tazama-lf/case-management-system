@@ -62,7 +62,7 @@ interface AlertDataShape {
 function extractRiskScore(alertData: unknown): number {
   try {
     const data = alertData as AlertDataShape;
-    const typologyResults = data?.tadpResult?.typologyResult;
+    const typologyResults = data.tadpResult?.typologyResult;
     if (Array.isArray(typologyResults) && typologyResults.length > 0) {
       const result = typologyResults[0]?.result;
       return typeof result === 'number' ? result : 0;
@@ -77,7 +77,7 @@ function extractRiskScore(alertData: unknown): number {
 export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
   const transformedAlert: UIAlert = {
     alert_id: backendAlert.alert_id,
-    tenant_id: backendAlert.tenant_id ?? 'default-tenant',
+    tenant_id: backendAlert.tenant_id,
     priority: backendAlert.priority,
     alert_type: extractAlertType(backendAlert) ?? undefined,
     source: backendAlert.source,
@@ -96,10 +96,7 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
     description: backendAlert.message,
     type: extractAlertType(backendAlert) ?? 'Unknown',
     severity: mapPriorityToSeverity(backendAlert.priority),
-    riskScore:
-      extractRiskScore(backendAlert.alert_data) ??
-      backendAlert.confidence_per ??
-      0,
+    riskScore: extractRiskScore(backendAlert.alert_data),
     confidence: backendAlert.confidence_per,
     createdAt: backendAlert.created_at,
     updatedAt: backendAlert.created_at,
@@ -240,5 +237,5 @@ export function transformBackendAlertsToUI(
 
 export const convertToTriageAlert = (alert: Alert): TriageAlert => ({
   ...alert,
-  alert_type: alert.alert_type! || null,
+  alert_type: alert.alert_type ?? null,
 });

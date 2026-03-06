@@ -1,5 +1,4 @@
 import apiClient from '../../../shared/services/apiClient';
-import type { ApiErrorResponse } from '../../alerts/types/triage.types';
 
 export interface TaskHistoryEntry {
   event_log_id: string;
@@ -28,22 +27,24 @@ export class TaskHistoryService {
     }
   }
 
-  private handleError(error: unknown, operation: string): Error {
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'response' in error &&
-      typeof (error as { response?: unknown }).response === 'object' &&
-      (error as { response?: { data?: ApiErrorResponse } }).response?.data
-    ) {
-      const apiError = (error as { response: { data: ApiErrorResponse } }).response.data;
-      return new Error(apiError.message || `Failed to ${operation}`);
-    }
-    if (error instanceof Error) {
-      return new Error(`Failed to ${operation}: ${error.message}`);
-    }
-    return new Error(`Failed to ${operation}`);
-  }
+  // handleError is unused but kept for future error handling needs
+  // eslint-disable-next-line @typescript-eslint/no-unused-private-class-members -- Reserved for future use
+  // private static handleError(error: unknown, operation: string): Error {
+  //   if (
+  //     typeof error === 'object' &&
+  //     error !== null &&
+  //     'response' in error &&
+  //     typeof (error as { response?: unknown }).response === 'object' &&
+  //     (error as { response?: { data?: ApiErrorResponse } }).response?.data
+  //   ) {
+  //     const apiError = (error as { response: { data: ApiErrorResponse } }).response.data;
+  //     return new Error(apiError.message || `Failed to ${operation}`);
+  //   }
+  //   if (error instanceof Error) {
+  //     return new Error(`Failed to ${operation}: ${error.message}`);
+  //   }
+  //   return new Error(`Failed to ${operation}`);
+  // }
 }
 
 export const taskHistoryService = new TaskHistoryService();

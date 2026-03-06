@@ -6,7 +6,7 @@ import { caseService } from '../services/caseService';
 import { commentService } from '../services/commentService';
 import { taskService } from '../services/taskService';
 import type { TaskForSupervisor } from '../services/taskService';
-import userService from '../services/userService';
+import userService, { UserService } from '../services/userService';
 import { formatDate } from '@/shared/utils/dateUtils';
 
 export interface EvidenceCategory {
@@ -106,7 +106,7 @@ export const fetchCasesAndEvidence = async (
             if (investigationTask.assigned_user_id) {
                 const userDetails = await userService.getUserDetailsById(investigationTask.assigned_user_id);
                 if (userDetails) {
-                    investigatorName = userService.formatUserName(userDetails);
+                    investigatorName = UserService.formatUserName(userDetails);
                 }
             }
         }

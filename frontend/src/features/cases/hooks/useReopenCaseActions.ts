@@ -11,7 +11,7 @@ export const useReopenCaseActions = (refreshCases: () => Promise<void>): {
 
   React.useEffect(() => {
       const user = authService.getUser();
-      const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
+      const isSupervisor = user?.validatedClaims.CMS_SUPERVISOR === true;
       setIsSupervisor(isSupervisor);
     }, []);
   
@@ -23,9 +23,9 @@ export const useReopenCaseActions = (refreshCases: () => Promise<void>): {
 
       await caseService.reopenCase(caseId, reopenCaseData);
       
-      {isSupervisor ?
-        success('Case Reopened', `Case ${caseId} reopened successfully.`)
-        :
+      if (isSupervisor) {
+        success('Case Reopened', `Case ${caseId} reopened successfully.`);
+      } else {
         success('Reopen Request Submitted', `Reopen request for case ${caseId} submitted. Reason: ${reason}`);
       }
       await refreshCases();

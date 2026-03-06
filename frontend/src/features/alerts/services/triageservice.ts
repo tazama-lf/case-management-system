@@ -14,7 +14,7 @@ class TriageService {
   private readonly baseUrl = '/api/v1/triage/alerts';
   private readonly alertBaseUrl = '/api/v1/alert';
 
-  private handleError(error: unknown, operation: string): Error {
+  private static handleError(error: unknown, operation: string): Error {
     console.error(`TriageService Error - ${operation}:`, error);
 
     const err = error as
@@ -32,7 +32,7 @@ class TriageService {
     return new Error(`Failed to ${operation}`);
   }
 
-  private validateAlertResponse(data: unknown): Alert {
+  private static validateAlertResponse(data: unknown): Alert {
     if (!data || typeof data !== 'object') {
       throw new Error('Invalid alert data received');
     }
@@ -82,15 +82,15 @@ class TriageService {
       totalPages: number;
     }>(url);
 
-    const alerts = backendResponse.data ?? [];
+    const alerts = backendResponse.data;
 
     return {
       alerts,
       pagination: {
-        currentPage: backendResponse.page ?? 1,
-        totalPages: backendResponse.totalPages ?? 1,
-        totalItems: backendResponse.total ?? 0,
-        pageSize: backendResponse.limit ?? 10,
+        currentPage: backendResponse.page,
+        totalPages: backendResponse.totalPages,
+        totalItems: backendResponse.total,
+        pageSize: backendResponse.limit,
       },
     };
   }
@@ -110,7 +110,7 @@ class TriageService {
       }>(`${this.baseUrl}/filter-options`);
       return response;
     } catch (error) {
-      throw this.handleError(error, 'fetch filter options');
+      throw TriageService.handleError(error, 'fetch filter options');
     }
   }
 
@@ -119,9 +119,9 @@ class TriageService {
       const response = await apiClient.get<Alert>(
         `${this.alertBaseUrl}/${alertId}`,
       );
-      return this.validateAlertResponse(response);
+      return TriageService.validateAlertResponse(response);
     } catch (error) {
-      throw this.handleError(error, 'fetch alert details');
+      throw TriageService.handleError(error, 'fetch alert details');
     }
   }
 
@@ -132,7 +132,7 @@ class TriageService {
       );
       return response.history;
     } catch (error) {
-      throw this.handleError(error, 'fetch alert action history');
+      throw TriageService.handleError(error, 'fetch alert action history');
     }
   }
 
@@ -145,9 +145,9 @@ class TriageService {
         `${this.baseUrl}/${alertId}`,
         data,
       );
-      return this.validateAlertResponse(response);
+      return TriageService.validateAlertResponse(response);
     } catch (error) {
-      throw this.handleError(error, 'perform manual triage');
+      throw TriageService.handleError(error, 'perform manual triage');
     }
   }
 
@@ -157,9 +157,9 @@ class TriageService {
         `${this.baseUrl}/${alertId}`,
         data,
       );
-      return this.validateAlertResponse(response);
+      return TriageService.validateAlertResponse(response);
     } catch (error) {
-      throw this.handleError(error, 'update alert');
+      throw TriageService.handleError(error, 'update alert');
     }
   }
 
@@ -174,9 +174,9 @@ class TriageService {
         `${this.baseUrl}/${alertId}/close`,
         data,
       );
-      return this.validateAlertResponse(response);
+      return TriageService.validateAlertResponse(response);
     } catch (error) {
-      throw this.handleError(error, 'close alert');
+      throw TriageService.handleError(error, 'close alert');
     }
   }
 
@@ -187,7 +187,7 @@ class TriageService {
       );
       return response;
     } catch (error) {
-      throw this.handleError(error, 'close alert');
+      throw TriageService.handleError(error, 'close alert');
     }
   }
 
@@ -221,11 +221,10 @@ class TriageService {
         filters.search = search;
       }
 
-      // Call getAlerts, which will use reportStatus=NALT from filters
       const response = await this.getAlerts(filters);
       return response;
     } catch (error) {
-      throw this.handleError(error, 'fetch NALT alerts');
+      throw TriageService.handleError(error, 'fetch NALT alerts');
     }
   }
 }

@@ -22,7 +22,7 @@ class ReferenceIdService {
         totalCount: response.length,
       };
     } catch (error: unknown) {
-      throw this.handleError(error, 'get reference ids');
+      throw ReferenceIdService.handleError(error, 'get reference ids');
     }
   }
 
@@ -36,11 +36,11 @@ class ReferenceIdService {
       );
       return response;
     } catch (error: unknown) {
-      throw this.handleError(error, 'create reference id');
+      throw ReferenceIdService.handleError(error, 'create reference id');
     }
   }
 
-  private handleError(error: unknown, operation: string): Error {
+  private static handleError(error: unknown, operation: string): Error {
     console.error(`ReferenceIdService Error - ${operation}:`, error);
 
     if (

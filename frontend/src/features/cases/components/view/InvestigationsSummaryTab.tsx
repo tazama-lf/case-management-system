@@ -3,10 +3,10 @@ import { DocumentTextIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/
 import { marked } from 'marked';
 import type { CaseRow } from '../casesTable.utils';
 import { caseService } from '../../services/caseService';
-import { evidenceService } from '../../services/evidenceService';
+import { evidenceService, EvidenceService } from '../../services/evidenceService';
 import { commentService } from '../../services/commentService';
 import { taskService, TaskStatus } from '../../services/taskService';
-import userService from '../../services/userService';
+import userService, { UserService } from '../../services/userService';
 import type { Case } from '@/features/alerts/types/triage.types';
 import type { Evidence } from '../../types/evidence.types';
 import type { TaskComment } from '../../services/commentService';
@@ -269,7 +269,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
             if (investigationTask.assigned_user_id) {
               const userDetails = await userService.getUserDetailsById(investigationTask.assigned_user_id);
               if (userDetails) {
-                setInvestigatorName(userService.formatUserName(userDetails));
+                setInvestigatorName(UserService.formatUserName(userDetails));
               }
             }
           }
@@ -463,7 +463,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                                 {doc.fileName ?? 'Untitled Document'}
                               </p>
                               <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                                <span>{evidenceService.formatFileSize(doc.fileSize ?? 0)}</span>
+                                <span>{EvidenceService.formatFileSize(doc.fileSize ?? 0)}</span>
                                 <span>•</span>
                                 <span>{doc.evidenceType}</span>
                                 {doc.uploadedAt && (

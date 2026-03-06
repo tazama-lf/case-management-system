@@ -4,12 +4,18 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { UseQueryResult, UseMutationResult } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import type {
   SanctionsScreening,
   CreateSanctionsScreeningDto,
   UpdateSanctionsScreeningDto,
   SanctionsScreeningFilters,
+  SanctionsScreeningListResponse,
+  SanctionsScreeningResponse,
+  DeleteSanctionsScreeningResponse,
+  SanctionsScreeningAuditLog,
+  SanctionsScreeningStatistics,
 } from '../types/sanctions.types';
 import * as sanctionsService from '../services/sanctionsService';
 
@@ -35,7 +41,7 @@ export const sanctionsKeys = {
 export const useCaseSanctionsScreenings = (
   caseId: string,
   filters?: SanctionsScreeningFilters,
-) =>
+): UseQueryResult<SanctionsScreeningListResponse> =>
   useQuery({
     queryKey: sanctionsKeys.list(caseId, filters),
     queryFn: async () =>
@@ -47,7 +53,7 @@ export const useCaseSanctionsScreenings = (
 /**
  * Hook to fetch a single sanctions screening
  */
-export const useSanctionsScreening = (screeningId: string) =>
+export const useSanctionsScreening = (screeningId: string): UseQueryResult<SanctionsScreening> =>
   useQuery({
     queryKey: sanctionsKeys.detail(screeningId),
     queryFn: async () =>
@@ -59,7 +65,7 @@ export const useSanctionsScreening = (screeningId: string) =>
 /**
  * Hook to create a new sanctions screening
  */
-export const useCreateSanctionsScreening = () => {
+export const useCreateSanctionsScreening = (): UseMutationResult<SanctionsScreeningResponse, Error, CreateSanctionsScreeningDto> => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -87,7 +93,7 @@ export const useCreateSanctionsScreening = () => {
 /**
  * Hook to update an existing sanctions screening
  */
-export const useUpdateSanctionsScreening = () => {
+export const useUpdateSanctionsScreening = (): UseMutationResult<SanctionsScreeningResponse, Error, UpdateSanctionsScreeningDto> => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -118,7 +124,7 @@ export const useUpdateSanctionsScreening = () => {
 /**
  * Hook to delete a sanctions screening
  */
-export const useDeleteSanctionsScreening = () => {
+export const useDeleteSanctionsScreening = (): UseMutationResult<DeleteSanctionsScreeningResponse, Error, string> => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -146,7 +152,7 @@ export const useDeleteSanctionsScreening = () => {
 /**
  * Hook to download sanctions report
  */
-export const useDownloadSanctionsReport = () =>
+export const useDownloadSanctionsReport = (): UseMutationResult<{ url: string; file_name: string }, Error, string> =>
   useMutation({
     mutationFn: async (screeningId: string) =>
       await sanctionsService.downloadSanctionsReport(screeningId),
@@ -161,7 +167,7 @@ export const useDownloadSanctionsReport = () =>
 /**
  * Hook to fetch audit logs for a screening
  */
-export const useSanctionsScreeningAuditLogs = (screeningId: string) =>
+export const useSanctionsScreeningAuditLogs = (screeningId: string): UseQueryResult<SanctionsScreeningAuditLog[]> =>
   useQuery({
     queryKey: sanctionsKeys.auditLogs(screeningId),
     queryFn: async () =>
@@ -173,7 +179,7 @@ export const useSanctionsScreeningAuditLogs = (screeningId: string) =>
 /**
  * Hook to fetch statistics for a case
  */
-export const useCaseSanctionsStatistics = (caseId: string) =>
+export const useCaseSanctionsStatistics = (caseId: string): UseQueryResult<SanctionsScreeningStatistics> =>
   useQuery({
     queryKey: sanctionsKeys.statistics(caseId),
     queryFn: async () =>
@@ -189,7 +195,7 @@ export const useSearchSanctionsScreenings = (
   filters: SanctionsScreeningFilters,
   page = 1,
   limit = 20,
-) =>
+): UseQueryResult<SanctionsScreeningListResponse> =>
   useQuery({
     queryKey: sanctionsKeys.search(filters),
     queryFn: async () =>

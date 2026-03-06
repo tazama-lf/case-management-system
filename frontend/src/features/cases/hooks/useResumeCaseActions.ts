@@ -6,7 +6,7 @@ export const useResumeCaseActions = (refreshCases: () => Promise<void>): {
 } => {
   const { success, error } = useToast();
 
-  const handleResumeSubmit = async (caseId: number, reason: string) => {
+  const handleResumeSubmit = async (caseId: number, reason: string): Promise<void> => {
     try {
       const resumeCaseData: ResumeCaseDto = {
         reason: reason.trim(),

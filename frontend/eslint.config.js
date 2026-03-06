@@ -90,6 +90,8 @@ export default [
       'eslint-comments/no-unlimited-disable': 'off',
       'eslint-comments/no-unused-enable': 'off',
       'require-unicode-regexp': ['error', { requireFlag: 'u' }],
+      'max-lines': ['error', { max: 850, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': 'off',
     },
   },
 ];

@@ -17,6 +17,13 @@ interface PdfFontsVfs { pdfMake?: { vfs: Record<string, string> }; vfs?: Record<
 
 export type ExportData = Record<string, unknown>;
 
+const formatCellValue = (value: unknown): string => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return JSON.stringify(value);
+};
+
 export interface TableColumn {
   key: string;
   label: string;
@@ -42,7 +49,7 @@ export const exportToExcel = (
       const colWidths = Object.keys(data[0] ?? {}).map((key) => ({
         wch: Math.max(
           key.length,
-          ...data.map((row) => String(row[key] ?? '').length),
+          ...data.map((row) => formatCellValue(row[key]).length),
         ),
       }));
        
@@ -52,7 +59,7 @@ export const exportToExcel = (
     const excelBuffer = XLSX.write(workbook, {
       bookType: 'xlsx',
       type: 'array',
-    });
+    }) as ArrayBuffer;
     const blob = new Blob([excelBuffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
@@ -76,16 +83,15 @@ export const exportToCSV = (data: ExportData[], filename: string): void => {
       ...data.map((row) =>
         headers
           .map((header) => {
-            const value = row[header];
+            const value = formatCellValue(row[header]);
             if (
-              typeof value === 'string' &&
-              (value.includes(',') ||
+              value.includes(',') ||
                 value.includes('"') ||
-                value.includes('\n'))
+                value.includes('\n')
             ) {
               return `"${value.replace(/"/gu, '""')}"`;
             }
-            return value ?? '';
+            return value;
           })
           .join(','),
       ),
@@ -130,12 +136,7 @@ export const exportToPDF = (
       ...data.map((row) =>
         columns.map((col) => {
           const value = row[col.key];
-          let displayValue = '';
-
-           
-          if (value !== undefined && value !== null) {
-            displayValue = String(value);
-          }
+          const displayValue = formatCellValue(value);
 
           return {
             text: displayValue,
@@ -387,8 +388,8 @@ export const formatDataForExport = (
 
     case 'AUDIT_LOGS':
       return (data as AuditLogData[]).map((item) => ({
-        'Log ID': String(item.audit_log_id ?? item.logId ?? item.id ?? ''),
-        'User ID': String(item.user_id ?? item.userId ?? item.user ?? ''),
+        'Log ID': item.audit_log_id ?? item.logId ?? item.id ?? '',
+        'User ID': item.user_id ?? item.userId ?? item.user ?? '',
         Operation: item.operation ?? '',
         'Entity Name': item.entity_name ?? item.entityName ?? '',
         'Action Performed':
@@ -401,20 +402,19 @@ export const formatDataForExport = (
 
     case 'CASE_AGEING':
       return (data as CaseData[]).map((item) => ({
-        'Case ID': String(item.caseId ?? item.case_id ?? item.id ?? ''),
+        'Case ID': item.caseId ?? item.case_id ?? item.id ?? '',
         Type: item.type ?? item.caseType ?? '',
         Status: item.status ?? '',
         'Created Date':
           item.createdDate ?? item.created_date ?? item.createdAt ?? '',
         'Age (Days)': item.ageDays ?? item.age_days ?? item.age ?? 0,
         Priority: item.priority ?? 'Normal',
-        'User ID': String(
+        'User ID':
           item.userId ??
-            item.user_id ??
-            item.assigneeId ??
-            item.assignee_id ??
-            '',
-        ),
+          item.user_id ??
+          item.assigneeId ??
+          item.assignee_id ??
+          '',
         Investigator:
           item.investigator ??
           item.assignee ??
@@ -424,16 +424,15 @@ export const formatDataForExport = (
 
     case 'INVESTIGATOR_WORKLOAD':
       return (data as InvestigatorData[]).map((item) => ({
-        'Investigator ID': String(
+        'Investigator ID':
           item.investigatorId ??
-            item.investigator_id ??
-            item.userId ??
-            item.user_id ??
-            '',
-        ),
+          item.investigator_id ??
+          item.userId ??
+          item.user_id ??
+          '',
         Investigator:
           (typeof item.investigator === 'object' 
-            ? item.investigator?.name ?? item.investigator?.fullName 
+            ? item.investigator.name ?? item.investigator.fullName 
             : item.investigator as string | undefined) ??
            item.name ?? item.fullName ?? 'Unknown',
         Role: item.role ?? 'Investigator',
@@ -455,9 +454,9 @@ export const formatDataForExport = (
               rows.push({
                 'Case ID': String(caseItem.caseId),
                 'Task ID': String(task.taskId ?? ''),
-                Finding: caseItem.finding ?? '',
-                Conclusion: caseItem.conclusion ?? '',
-                'Supporting Evidence': ev.fileName ?? '',
+                Finding: caseItem.finding,
+                Conclusion: caseItem.conclusion,
+                'Supporting Evidence': ev.fileName,
                 Comments: [
                   ev.id,
                   ev.evidenceType,
@@ -466,7 +465,7 @@ export const formatDataForExport = (
                 ]
                   .filter(Boolean)
                   .join(' | '),
-                'Date Identified': caseItem.dateIdentified ?? '',
+                'Date Identified': caseItem.dateIdentified,
               });
             }
           }
@@ -488,7 +487,8 @@ export const formatDataForExport = (
             key.toLowerCase().includes('case')
           ) {
              
-            formatted[key] = String(value ?? '');
+            const strVal = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+            formatted[key] = strVal;
           } else {
              
             formatted[key] = value;

@@ -46,7 +46,7 @@ export class CommentService {
         caseId,
         error,
       );
-      throw this.handleError(error, 'get tasks with comments by case ID');
+      throw CommentService.handleError(error, 'get tasks with comments by case ID');
     }
   }
 
@@ -62,7 +62,7 @@ export class CommentService {
         taskId,
         error,
       );
-      throw this.handleError(error, 'get tasks with comments by task ID');
+      throw CommentService.handleError(error, 'get tasks with comments by task ID');
     }
   }
 
@@ -123,7 +123,7 @@ export class CommentService {
     }
   }
 
-  private handleError(error: unknown, operation: string): Error {
+  private static handleError(error: unknown, operation: string): Error {
     if (
       typeof error === 'object' &&
       error !== null &&

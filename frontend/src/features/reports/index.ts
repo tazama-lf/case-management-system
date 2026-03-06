@@ -20,7 +20,7 @@ export {
   useCaseAgeing,
 } from './hooks/useReports';
 
-export { reportsService } from './services/reportsService';
+export { reportsService, ReportsService } from './services/reportsService';
 
 export type {
   CaseStatusStats,

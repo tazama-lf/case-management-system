@@ -4,6 +4,7 @@
  */
 
 import apiClient from '../../../shared/services/apiClient';
+import { DEFAULT_PAGE, DEFAULT_LIMIT, MAX_FILE_SIZE_50MB, BYTES_IN_KB } from '@/shared/constants/defaults';
 import type {
   SanctionsScreening,
   CreateSanctionsScreeningDto,
@@ -89,10 +90,10 @@ export const createSanctionsScreening = async (
 export const updateSanctionsScreening = async (
   dto: UpdateSanctionsScreeningDto,
 ): Promise<SanctionsScreeningResponse> => {
-  const { screening_id, ...updateData } = dto;
+  const { screening_id: screeningId, ...updateData } = dto;
 
   return await apiClient.patch<SanctionsScreeningResponse>(
-    `${BASE_URL}/${screening_id}`,
+    `${BASE_URL}/${screeningId}`,
     updateData,
   );
 };
@@ -153,8 +154,8 @@ export const getCaseSanctionsStatistics = async (
  */
 export const searchSanctionsScreenings = async (
   filters: SanctionsScreeningFilters,
-  page = 1,
-  limit = 20,
+  page = DEFAULT_PAGE,
+  limit = DEFAULT_LIMIT,
 ): Promise<SanctionsScreeningListResponse> => {
   const params = new URLSearchParams();
   params.append('page', page.toString());
@@ -182,7 +183,6 @@ export const searchSanctionsScreenings = async (
 export const validateScreeningFile = (
   file: File,
 ): { valid: boolean; error?: string } => {
-  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
   const ALLOWED_TYPES = [
     'application/pdf',
     'application/vnd.ms-excel',
@@ -192,7 +192,7 @@ export const validateScreeningFile = (
     'text/plain',
   ];
 
-  if (file.size > MAX_FILE_SIZE) {
+  if (file.size > MAX_FILE_SIZE_50MB) {
     return {
       valid: false,
       error: `File size exceeds 50MB limit. Current size: ${formatFileSize(file.size)}`,
@@ -215,11 +215,11 @@ export const validateScreeningFile = (
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
 
-  const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const i = Math.floor(Math.log(bytes) / Math.log(BYTES_IN_KB));
 
-  return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
+  const DECIMAL_PLACES = 2;
+  return `${parseFloat((bytes / BYTES_IN_KB ** i).toFixed(DECIMAL_PLACES))} ${sizes[i]}`;
 };
 
 /**

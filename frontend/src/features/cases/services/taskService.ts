@@ -99,7 +99,7 @@ export class TaskService {
       const params = new URLSearchParams();
       if (filters) {
         (Object.entries(filters) as Array<[string, string | number | undefined]>).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
+          if (value !== undefined) {
             params.append(key, String(value));
           }
         });
@@ -110,7 +110,7 @@ export class TaskService {
       );
       return response;
     } catch (error: unknown) {
-      throw this.handleError(error, 'get tasks');
+      throw TaskService.handleError(error, 'get tasks');
     }
   }
 
@@ -131,16 +131,16 @@ export class TaskService {
         'TaskService: Failed to get all tasks from backend:',
         error,
       );
-      throw this.handleError(error, 'get all tasks');
+      throw TaskService.handleError(error, 'get all tasks');
     }
   }
 
   async getTaskDetails(taskId: number): Promise<Task> {
     try {
       const response = await apiClient.get<Task>(`${this.baseUrl}/${taskId}`);
-      return this.validateTaskResponse(response);
+      return TaskService.validateTaskResponse(response);
     } catch (error: unknown) {
-      throw this.handleError(error, 'get task details');
+      throw TaskService.handleError(error, 'get task details');
     }
   }
 
@@ -161,7 +161,7 @@ export class TaskService {
       return response;
     } catch (error: unknown) {
       console.error('TaskService: Task assignment failed:', error);
-      throw this.handleError(error, 'assign task to investigator');
+      throw TaskService.handleError(error, 'assign task to investigator');
     }
   }
 
@@ -182,7 +182,7 @@ export class TaskService {
       return response;
     } catch (error: unknown) {
       console.error('TaskService: Task reassignment failed:', error);
-      throw this.handleError(error, 'reassign task');
+      throw TaskService.handleError(error, 'reassign task');
     }
   }
 
@@ -197,7 +197,7 @@ export class TaskService {
       }>(`${this.baseUrl}/${taskId}/assign`, data);
       return response;
     } catch (error: unknown) {
-      throw this.handleError(error, 'assign task');
+      throw TaskService.handleError(error, 'assign task');
     }
   }
 
@@ -212,7 +212,7 @@ export class TaskService {
       }>(`${this.baseUrl}/${taskId}/unassign`, data);
       return response;
     } catch (error: unknown) {
-      throw this.handleError(error, 'unassign task');
+      throw TaskService.handleError(error, 'unassign task');
     }
   }
 
@@ -222,9 +222,9 @@ export class TaskService {
         `${this.baseUrl}/${taskId}`,
         data,
       );
-      return this.validateTaskResponse(response);
+      return TaskService.validateTaskResponse(response);
     } catch (error: unknown) {
-      throw this.handleError(error, 'update task');
+      throw TaskService.handleError(error, 'update task');
     }
   }
 
@@ -245,7 +245,7 @@ export class TaskService {
       );
       return response;
     } catch (error: unknown) {
-      throw this.handleError(error, 'update task for supervisor');
+      throw TaskService.handleError(error, 'update task for supervisor');
     }
   }
 
@@ -254,9 +254,9 @@ export class TaskService {
   ): Promise<Task> {
     try {
       const response = await apiClient.post<Task>(this.baseUrl, data);
-      return this.validateTaskResponse(response);
+      return TaskService.validateTaskResponse(response);
     } catch (error: unknown) {
-      throw this.handleError(error, 'create task');
+      throw TaskService.handleError(error, 'create task');
     }
   }
 
@@ -272,7 +272,7 @@ export class TaskService {
         caseId,
         error,
       );
-      throw this.handleError(error, 'get tasks by case ID');
+      throw TaskService.handleError(error, 'get tasks by case ID');
     }
   }
 
@@ -292,7 +292,7 @@ export class TaskService {
         caseId,
         error,
       );
-      throw this.handleError(error, 'get investigation task for case');
+      throw TaskService.handleError(error, 'get investigation task for case');
     }
   }
 
@@ -310,7 +310,7 @@ export class TaskService {
         message: 'Task completed successfully',
       };
     } catch (error: unknown) {
-      throw this.handleError(error, 'complete task');
+      throw TaskService.handleError(error, 'complete task');
     }
   }
 
@@ -330,7 +330,7 @@ export class TaskService {
         message: 'Task closed successfully',
       };
     } catch (error: unknown) {
-      throw this.handleError(error, 'close task');
+      throw TaskService.handleError(error, 'close task');
     }
   }
 
@@ -352,7 +352,7 @@ export class TaskService {
     });
   }
 
-  private validateTaskResponse(data: unknown): Task {
+  private static validateTaskResponse(data: unknown): Task {
     if (!data || typeof data !== 'object') {
       throw new Error('Invalid task data received');
     }
@@ -365,7 +365,7 @@ export class TaskService {
     return task;
   }
 
-  private handleError(error: unknown, operation: string): Error {
+  private static handleError(error: unknown, operation: string): Error {
     if (
       typeof error === 'object' &&
       error !== null &&

@@ -73,7 +73,7 @@ export class ProfileService {
       );
       return response;
     } catch (error: unknown) {
-      throw this.handleError(error, 'generate transaction profile');
+      throw ProfileService.handleError(error, 'generate transaction profile');
     }
   }
 
@@ -84,11 +84,11 @@ export class ProfileService {
       );
       return response;
     } catch (error: unknown) {
-      throw this.handleError(error, 'get transaction profile');
+      throw ProfileService.handleError(error, 'get transaction profile');
     }
   }
 
-  private handleError(error: unknown, operation: string): Error {
+  private static handleError(error: unknown, operation: string): Error {
     if (
       typeof error === 'object' &&
       error !== null &&

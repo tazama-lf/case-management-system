@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { evidenceService } from '../evidenceService';
+import { evidenceService, EvidenceService } from '../evidenceService';
 import apiClient from '../../../../shared/services/apiClient';
 
 vi.mock('../../../../shared/services/apiClient');
@@ -331,7 +331,7 @@ describe('EvidenceService', () => {
       }
 
       try {
-        const result = await evidenceService.calculateFileHash(mockFile);
+        const result = await EvidenceService.calculateFileHash(mockFile);
         expect(result).toBeTruthy();
         expect(typeof result).toBe('string');
       } catch (error) {
@@ -349,7 +349,7 @@ describe('EvidenceService', () => {
         .mockRejectedValue(new Error('Hash failed'));
 
       await expect(
-        evidenceService.calculateFileHash(mockFile),
+        EvidenceService.calculateFileHash(mockFile),
       ).rejects.toThrow();
 
       (crypto.subtle as any).digest = originalSubtle.digest;
@@ -363,7 +363,7 @@ describe('EvidenceService', () => {
       });
       Object.defineProperty(mockFile, 'size', { value: 1024 * 1024 }); // 1MB
 
-      const result = evidenceService.validateFile(mockFile, 50);
+      const result = EvidenceService.validateFile(mockFile, 50);
 
       expect(result.valid).toBe(true);
     });
@@ -374,7 +374,7 @@ describe('EvidenceService', () => {
       });
       Object.defineProperty(mockFile, 'size', { value: 60 * 1024 * 1024 }); // 60MB
 
-      const result = evidenceService.validateFile(mockFile, 50);
+      const result = EvidenceService.validateFile(mockFile, 50);
 
       expect(result.valid).toBe(false);
       expect(result.error).toContain('exceeds');
@@ -386,7 +386,7 @@ describe('EvidenceService', () => {
       });
       Object.defineProperty(mockFile, 'size', { value: 1024 });
 
-      const result = evidenceService.validateFile(mockFile);
+      const result = EvidenceService.validateFile(mockFile);
 
       expect(result.valid).toBe(true);
     });
@@ -397,7 +397,7 @@ describe('EvidenceService', () => {
       });
       Object.defineProperty(mockFile, 'size', { value: 1024 });
 
-      const result = evidenceService.validateFile(mockFile);
+      const result = EvidenceService.validateFile(mockFile);
 
       expect(result.valid).toBe(false);
       expect(result.error).toContain('not allowed');
@@ -406,22 +406,22 @@ describe('EvidenceService', () => {
 
   describe('formatFileSize', () => {
     it('formats file size in bytes', () => {
-      const result = evidenceService.formatFileSize(0);
+      const result = EvidenceService.formatFileSize(0);
       expect(result).toBe('0 Bytes');
     });
 
     it('formats file size in KB', () => {
-      const result = evidenceService.formatFileSize(1024);
+      const result = EvidenceService.formatFileSize(1024);
       expect(result).toContain('KB');
     });
 
     it('formats file size in MB', () => {
-      const result = evidenceService.formatFileSize(1024 * 1024);
+      const result = EvidenceService.formatFileSize(1024 * 1024);
       expect(result).toContain('MB');
     });
 
     it('formats file size in GB', () => {
-      const result = evidenceService.formatFileSize(1024 * 1024 * 1024);
+      const result = EvidenceService.formatFileSize(1024 * 1024 * 1024);
       expect(result).toContain('GB');
     });
   });

@@ -10,7 +10,7 @@ export const useSuspendCaseActions = (refreshCases: () => Promise<void>): {
     caseId: number,
     reason: string,
     taskIds: number[],
-  ) => {
+  ): Promise<void> => {
     try {
       const suspendCaseData: SuspendCaseDto = {
         reason: reason.trim(),

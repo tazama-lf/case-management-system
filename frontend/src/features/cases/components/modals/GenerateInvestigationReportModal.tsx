@@ -12,8 +12,8 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { marked } from 'marked';
 import htmlToPdfmake from 'html-to-pdfmake';
 import type { Evidence } from '../../types/evidence.types';
-import { reportsService } from '../../../reports/services/reportsService';
-import { evidenceService } from '../../services/evidenceService';
+import { ReportsService } from '../../../reports/services/reportsService';
+import { EvidenceService } from '../../services/evidenceService';
 import type { TaskDTO } from '../../services/caseService';
 import { loadEvidence, fetchCasesAndEvidence } from '../../utils/investigationUtils';
 import type { TaskComment } from '../../services/commentService';
@@ -303,7 +303,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
           text: [
             { text: doc.fileName ?? 'Untitled Document', bold: true },
             {
-              text: ` (${evidenceService.formatFileSize(doc.fileSize ?? 0)}`,
+              text: ` (${EvidenceService.formatFileSize(doc.fileSize ?? 0)}`,
             },
             doc.uploadedAt
               ? { text: ` • ${formatDate(doc.uploadedAt)})` }
@@ -571,7 +571,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
     try {
       const pdfFile = await generatePdfFile(docDefinition);
       try {
-        const generateFraudReport = await reportsService.generateFraudReport({
+        const generateFraudReport = await ReportsService.generateFraudReport({
           file: pdfFile,
           caseId,
           investigatorInputs: keyFindings,
@@ -921,7 +921,7 @@ const GenerateInvestigationReportModal: React.FC<GenerateInvestigationReportModa
                                       {doc.fileName ?? 'Untitled Document'}
                                     </p>
                                     <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                                      <span>{evidenceService.formatFileSize(doc.fileSize ?? 0)}</span>
+                                      <span>{EvidenceService.formatFileSize(doc.fileSize ?? 0)}</span>
                                       <span>•</span>
                                       <span>{doc.evidenceType}</span>
                                       {doc.uploadedAt && (

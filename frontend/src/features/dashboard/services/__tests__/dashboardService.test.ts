@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { dashboardService } from '../dashboardService';
+import { DashboardService } from '../dashboardService';
 import apiClient from '../../../../shared/services/apiClient';
 
 vi.mock('../../../../shared/services/apiClient', () => ({
@@ -46,7 +46,7 @@ describe('dashboardService', () => {
           statusDistribution: { assigned: 3, pendingApproval: 0, closed: 0 },
         });
 
-      const result = await dashboardService.getDashboardData();
+      const result = await DashboardService.getDashboardData();
 
       expect(result).toEqual({
         stats: mockStats,
@@ -66,11 +66,11 @@ describe('dashboardService', () => {
       const error = new Error('Network error');
 
       // Mock getDashboardStats to throw, which will cause Promise.all to reject
-      vi.spyOn(dashboardService, 'getDashboardStats').mockRejectedValue(error);
-      vi.spyOn(dashboardService, 'getRecentAlerts').mockRejectedValue(error);
-      vi.spyOn(dashboardService, 'getActiveCases').mockRejectedValue(error);
+      vi.spyOn(DashboardService, 'getDashboardStats').mockRejectedValue(error);
+      vi.spyOn(DashboardService, 'getRecentAlerts').mockRejectedValue(error);
+      vi.spyOn(DashboardService, 'getActiveCases').mockRejectedValue(error);
 
-      await expect(dashboardService.getDashboardData()).rejects.toThrow(
+      await expect(DashboardService.getDashboardData()).rejects.toThrow(
         'Failed to load dashboard data',
       );
 
@@ -90,7 +90,7 @@ describe('dashboardService', () => {
         caseTypes: [{ name: 'FRAUD', count: 5 }],
       });
 
-      const result = await dashboardService.getDashboardStats();
+      const result = await DashboardService.getDashboardStats();
 
       expect(result).toEqual({
         totalAlerts: 10,
@@ -106,7 +106,7 @@ describe('dashboardService', () => {
         .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('API error'));
 
-      const result = await dashboardService.getDashboardStats();
+      const result = await DashboardService.getDashboardStats();
 
       expect(result).toEqual({
         totalAlerts: 42,
@@ -125,7 +125,7 @@ describe('dashboardService', () => {
         caseTypes: [],
       });
 
-      const result = await dashboardService.getDashboardStats();
+      const result = await DashboardService.getDashboardStats();
 
       expect(result).toEqual({
         totalAlerts: 0,
@@ -141,7 +141,7 @@ describe('dashboardService', () => {
         caseTypes: [{ name: 'AML', count: 5 }],
       });
 
-      const result = await dashboardService.getDashboardStats();
+      const result = await DashboardService.getDashboardStats();
 
       expect(result.highPriorityAlerts).toBe(0);
     });
@@ -156,7 +156,7 @@ describe('dashboardService', () => {
         ],
       });
 
-      const result = await dashboardService.getRecentAlerts();
+      const result = await DashboardService.getRecentAlerts();
 
       expect(result).toEqual([
         {
@@ -178,7 +178,7 @@ describe('dashboardService', () => {
         .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('API error'));
 
-      const result = await dashboardService.getRecentAlerts();
+      const result = await DashboardService.getRecentAlerts();
 
       expect(result).toEqual([
         {
@@ -208,7 +208,7 @@ describe('dashboardService', () => {
         caseTypes: [],
       });
 
-      const result = await dashboardService.getRecentAlerts();
+      const result = await DashboardService.getRecentAlerts();
 
       expect(result).toEqual([]);
     });
@@ -224,7 +224,7 @@ describe('dashboardService', () => {
         },
       });
 
-      const result = await dashboardService.getActiveCases();
+      const result = await DashboardService.getActiveCases();
 
       expect(result).toEqual([
         {
@@ -251,7 +251,7 @@ describe('dashboardService', () => {
         .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('API error'));
 
-      const result = await dashboardService.getActiveCases();
+      const result = await DashboardService.getActiveCases();
 
       expect(result).toEqual([
         {
@@ -279,7 +279,7 @@ describe('dashboardService', () => {
     it('handles missing status distribution', async () => {
       (apiClient.get as vi.Mock).mockResolvedValue({});
 
-      const result = await dashboardService.getActiveCases();
+      const result = await DashboardService.getActiveCases();
 
       expect(result).toEqual([
         {
@@ -307,7 +307,7 @@ describe('dashboardService', () => {
         caseTypes: [{ name: 'FRAUD', count: 5 }],
       });
 
-      const result = await dashboardService.getRecentAlerts();
+      const result = await DashboardService.getRecentAlerts();
 
       expect(result[0].priority).toBe('high');
     });
@@ -317,7 +317,7 @@ describe('dashboardService', () => {
         caseTypes: [{ name: 'FRAUD_AND_AML', count: 5 }],
       });
 
-      const result = await dashboardService.getRecentAlerts();
+      const result = await DashboardService.getRecentAlerts();
 
       expect(result[0].priority).toBe('high');
     });
@@ -327,7 +327,7 @@ describe('dashboardService', () => {
         caseTypes: [{ name: 'AML', count: 5 }],
       });
 
-      const result = await dashboardService.getRecentAlerts();
+      const result = await DashboardService.getRecentAlerts();
 
       expect(result[0].priority).toBe('medium');
     });
@@ -337,7 +337,7 @@ describe('dashboardService', () => {
         caseTypes: [{ name: 'UNKNOWN', count: 5 }],
       });
 
-      const result = await dashboardService.getRecentAlerts();
+      const result = await DashboardService.getRecentAlerts();
 
       expect(result[0].priority).toBe('low');
     });

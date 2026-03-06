@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../../shared/services/apiClient';
+import { FIVE_MINUTES } from '@/shared/constants/timing';
 
 export interface FilterOption {
   value: string;
@@ -21,5 +22,5 @@ export const useFilters = (): ReturnType<typeof useQuery<FiltersData>> =>
       );
       return response;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: FIVE_MINUTES,
   });

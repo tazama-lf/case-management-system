@@ -12,7 +12,7 @@ export const useCloseCaseActions = (refreshCases: () => Promise<void>): {
     try {
       await caseService.closeCase(caseId, data);
       const user = authService.getUser();
-      const isSupervisor = Boolean(user?.validatedClaims?.CMS_SUPERVISOR);
+      const isSupervisor = Boolean(user?.validatedClaims.CMS_SUPERVISOR);
 
       success(
         'Investigation Complete',
