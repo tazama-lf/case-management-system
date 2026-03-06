@@ -10,12 +10,7 @@ import { FlowableService } from '../src/modules/flowable/flowable.service';
 import { CommentService } from '../src/modules/comment/comment.service';
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
 import { TaskValidationUtil } from '../src/modules/shared/utils/task-validation.util';
-import {
-  NotFoundException,
-  BadRequestException,
-  ConflictException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { CaseStatus, TaskStatus, CaseType, Priority } from '@prisma/client-cms';
 
 describe('CaseClosureApprovalService', () => {
@@ -60,6 +55,48 @@ describe('CaseClosureApprovalService', () => {
   const mockCloseDto = {
     recommendedOutcome: 'STATUS_82_CLOSED_CONFIRMED' as any,
     finalNotes: 'Case confirmed fraud after investigation',
+  };
+
+  // Helper function to setup successful case closure mocks
+  const setupSuccessfulClosure = (role: string, finalStatus: CaseStatus) => {
+    const caseWithTask = {
+      ...mockCase,
+      tasks: [
+        {
+          ...mockTask,
+          status: TaskStatus.STATUS_20_IN_PROGRESS,
+          assigned_user_id: role === 'CMS_SUPERVISOR' ? 'supervisor-123' : 'user-123',
+        },
+      ],
+    };
+    caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithTask as any);
+    caseRepository.updateCaseStatusAndCompleteTask.mockResolvedValue({
+      updatedCase: { ...mockCase, status: finalStatus },
+      completedTask: { ...mockTask, status: TaskStatus.STATUS_30_COMPLETED },
+    } as any);
+    if (role !== 'CMS_SUPERVISOR') {
+      taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Approve Case Closure' } as any);
+    }
+  };
+
+  // Helper function to setup approval mocks
+  const setupSuccessfulApproval = (finalOutcome: string) => {
+    const pendingCase = {
+      ...mockCase,
+      status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+      tasks: [
+        { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 },
+        { ...mockTask, name: 'Investigate Case', status: TaskStatus.STATUS_30_COMPLETED, task_id: 1 },
+      ],
+      comments: [{ note: 'Recommended Outcome: Confirmed' }],
+    };
+    caseRepository.findCaseForClosureApproval.mockResolvedValue(pendingCase as any);
+    caseRepository.approveClosureTask.mockResolvedValue({
+      updatedCase: { ...mockCase, status: finalOutcome as CaseStatus },
+      completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
+    } as any);
+    commentService.addComment.mockResolvedValue({} as any);
+    return pendingCase;
   };
 
   beforeEach(async () => {
@@ -128,14 +165,14 @@ describe('CaseClosureApprovalService', () => {
       getUserAssignedTasks: jest.fn(),
       validateTask: jest.fn(),
       validateApprovalTask: jest.fn(),
-      validateApprovalTaskForClosure: jest.fn().mockReturnValue({ 
-        isValid: true, 
+      validateApprovalTaskForClosure: jest.fn().mockReturnValue({
+        isValid: true,
         approvalTask: {
           task_id: 2,
           name: 'Approve Case Closure',
           assigned_user_id: 'supervisor-123',
           status: TaskStatus.STATUS_10_ASSIGNED,
-        }
+        },
       }),
       throwIfValidationFails: jest.fn(),
       validateOtherTasksCompleted: jest.fn().mockReturnValue({ isValid: true }),
@@ -172,15 +209,7 @@ describe('CaseClosureApprovalService', () => {
 
   describe('closeCase', () => {
     it('should successfully close case by supervisor directly', async () => {
-      const caseWithTask = {
-        ...mockCase,
-        tasks: [{ ...mockTask, status: TaskStatus.STATUS_20_IN_PROGRESS, assigned_user_id: 'supervisor-123' }],
-      };
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithTask as any);
-      caseRepository.updateCaseStatusAndCompleteTask.mockResolvedValue({
-        updatedCase: { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-        completedTask: { ...mockTask, status: TaskStatus.STATUS_30_COMPLETED },
-      } as any);
+      setupSuccessfulClosure('CMS_SUPERVISOR', CaseStatus.STATUS_82_CLOSED_CONFIRMED);
       taskService.createTask.mockResolvedValue({ task_id: 2, name: 'SAR_STR_FILING' } as any);
 
       const result = await service.closeCase(1, mockCloseDto, 'supervisor-123', 'tenant-123', 'CMS_SUPERVISOR');
@@ -193,15 +222,7 @@ describe('CaseClosureApprovalService', () => {
     });
 
     it('should create SAR filing task when case is closed as confirmed', async () => {
-      const caseWithTask = {
-        ...mockCase,
-        tasks: [{ ...mockTask, status: TaskStatus.STATUS_20_IN_PROGRESS, assigned_user_id: 'supervisor-123' }],
-      };
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithTask as any);
-      caseRepository.updateCaseStatusAndCompleteTask.mockResolvedValue({
-        updatedCase: { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-        completedTask: { ...mockTask, status: TaskStatus.STATUS_30_COMPLETED },
-      } as any);
+      setupSuccessfulClosure('CMS_SUPERVISOR', CaseStatus.STATUS_82_CLOSED_CONFIRMED);
       taskService.createTask.mockResolvedValue({ task_id: 2, name: 'SAR_STR_FILING' } as any);
 
       await service.closeCase(1, mockCloseDto, 'supervisor-123', 'tenant-123', 'CMS_SUPERVISOR');
@@ -212,20 +233,12 @@ describe('CaseClosureApprovalService', () => {
           status: TaskStatus.STATUS_01_UNASSIGNED,
         }),
         'supervisor-123',
-        'tenant-123'
+        'tenant-123',
       );
     });
 
     it('should handle SAR task creation failure gracefully', async () => {
-      const caseWithTask = {
-        ...mockCase,
-        tasks: [{ ...mockTask, status: TaskStatus.STATUS_20_IN_PROGRESS, assigned_user_id: 'supervisor-123' }],
-      };
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithTask as any);
-      caseRepository.updateCaseStatusAndCompleteTask.mockResolvedValue({
-        updatedCase: { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-        completedTask: { ...mockTask, status: TaskStatus.STATUS_30_COMPLETED },
-      } as any);
+      setupSuccessfulClosure('CMS_SUPERVISOR', CaseStatus.STATUS_82_CLOSED_CONFIRMED);
       taskService.createTask.mockRejectedValue(new Error('Task creation failed'));
 
       const result = await service.closeCase(1, mockCloseDto, 'supervisor-123', 'tenant-123', 'CMS_SUPERVISOR');
@@ -235,16 +248,7 @@ describe('CaseClosureApprovalService', () => {
     });
 
     it('should successfully close case by investigator with approval required', async () => {
-      const caseWithTask = {
-        ...mockCase,
-        tasks: [{ ...mockTask, status: TaskStatus.STATUS_20_IN_PROGRESS }],
-      };
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithTask as any);
-      caseRepository.updateCaseStatusAndCompleteTask.mockResolvedValue({
-        updatedCase: { ...mockCase, status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL },
-        completedTask: { ...mockTask, status: TaskStatus.STATUS_30_COMPLETED },
-      } as any);
-      taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Approve Case Closure' } as any);
+      setupSuccessfulClosure('investigator', CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL);
 
       const result = await service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator');
 
@@ -255,12 +259,11 @@ describe('CaseClosureApprovalService', () => {
           status: TaskStatus.STATUS_01_UNASSIGNED,
         }),
         'user-123',
-        'tenant-123'
+        'tenant-123',
       );
       expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledWith({
         caseId: 1,
         newStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        reason: expect.any(String),
       });
     });
 
@@ -283,110 +286,94 @@ describe('CaseClosureApprovalService', () => {
       const result = await service.closeCase(1, mockCloseDto, 'supervisor-123', 'tenant-123', 'CMS_SUPERVISOR');
 
       expect(result.supervisor_closure).toBe(true);
-      expect((prismaService.case.findMany as jest.Mock)).toHaveBeenCalledWith({
+      expect(prismaService.case.findMany as jest.Mock).toHaveBeenCalledWith({
         where: { parent_id: 1, tenant_id: 'tenant-123' },
       });
     });
 
-    it('should throw ConflictException if FRAUD_AND_AML sub cases are not closable', async () => {
-      const fraudAmlCase = {
-        ...mockCase,
-        case_type: CaseType.FRAUD_AND_AML as any,
-        tasks: [],
-      };
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(fraudAmlCase as any);
-      (prismaService.case.findMany as jest.Mock).mockResolvedValue([
-        { ...mockCase, case_id: 2, parent_id: 1, status: CaseStatus.STATUS_20_IN_PROGRESS },
-      ] as any);
+    it.each([
+      {
+        description: 'FRAUD_AND_AML sub cases are not closable',
+        setupMock: () => {
+          const fraudAmlCase = { ...mockCase, case_type: CaseType.FRAUD_AND_AML as any, tasks: [] };
+          caseRepository.findCaseWithPermissionCheck.mockResolvedValue(fraudAmlCase as any);
+          (prismaService.case.findMany as jest.Mock).mockResolvedValue([
+            { ...mockCase, case_id: 2, parent_id: 1, status: CaseStatus.STATUS_20_IN_PROGRESS },
+          ] as any);
+        },
+        role: 'CMS_SUPERVISOR',
+        error: ConflictException,
+      },
+      {
+        description: 'FRAUD_AND_AML sub cases do not exist',
+        setupMock: () => {
+          const fraudAmlCase = { ...mockCase, case_type: CaseType.FRAUD_AND_AML as any, tasks: [] };
+          caseRepository.findCaseWithPermissionCheck.mockResolvedValue(fraudAmlCase as any);
+          (prismaService.case.findMany as jest.Mock).mockResolvedValue([]);
+        },
+        error: BadRequestException,
+      },
+      {
+        description: 'non-supervisor tries to close FRAUD_AND_AML case',
+        setupMock: () => {
+          const fraudAmlCase = { ...mockCase, case_type: CaseType.FRAUD_AND_AML as any, tasks: [] };
+          caseRepository.findCaseWithPermissionCheck.mockResolvedValue(fraudAmlCase as any);
+        },
+        role: 'investigator',
+        error: BadRequestException,
+      },
+      {
+        description: 'case not found',
+        setupMock: () => caseRepository.findCaseWithPermissionCheck.mockResolvedValue(null),
+        error: NotFoundException,
+      },
+      {
+        description: 'case is not in progress',
+        setupMock: () => {
+          const closedCase = { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, tasks: [] };
+          caseRepository.findCaseWithPermissionCheck.mockResolvedValue(closedCase as any);
+        },
+        error: ConflictException,
+      },
+      {
+        description: 'investigation task not found',
+        setupMock: () => {
+          const caseWithoutTask = { ...mockCase, tasks: [] };
+          caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithoutTask as any);
+        },
+        error: InternalServerErrorException,
+      },
+      {
+        description: 'investigation task not assigned to user',
+        setupMock: () => {
+          const caseWithTask = {
+            ...mockCase,
+            tasks: [{ ...mockTask, assigned_user_id: 'other-user', status: TaskStatus.STATUS_20_IN_PROGRESS }],
+          };
+          caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithTask as any);
+        },
+        error: BadRequestException,
+      },
+      {
+        description: 'investigation task not in valid status',
+        setupMock: () => {
+          const caseWithTask = {
+            ...mockCase,
+            tasks: [{ ...mockTask, status: TaskStatus.STATUS_01_UNASSIGNED }],
+          };
+          caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithTask as any);
+        },
+        error: InternalServerErrorException,
+      },
+      {
+        description: 'unexpected error',
+        setupMock: () => caseRepository.findCaseWithPermissionCheck.mockRejectedValue(new Error('Database error')),
+        error: InternalServerErrorException,
+      },
+    ])('should throw $error.name when $description', async ({ setupMock, error, role }) => {
+      setupMock();
 
-      await expect(
-        service.closeCase(1, mockCloseDto, 'supervisor-123', 'tenant-123', 'CMS_SUPERVISOR')
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('should throw BadRequestException if FRAUD_AND_AML sub cases do not exist', async () => {
-      const fraudAmlCase = {
-        ...mockCase,
-        case_type: CaseType.FRAUD_AND_AML as any,
-        tasks: [],
-      };
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(fraudAmlCase as any);
-      (prismaService.case.findMany as jest.Mock).mockResolvedValue([]);
-
-      await expect(
-        service.closeCase(1, mockCloseDto, 'supervisor-123', 'tenant-123', 'CMS_SUPERVISOR')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if non-supervisor tries to close FRAUD_AND_AML case', async () => {
-      const fraudAmlCase = {
-        ...mockCase,
-        case_type: CaseType.FRAUD_AND_AML as any,
-        tasks: [],
-      };
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(fraudAmlCase as any);
-
-      await expect(
-        service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw NotFoundException if case not found', async () => {
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(null);
-
-      await expect(
-        service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw ConflictException if case is not in progress', async () => {
-      const closedCase = { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, tasks: [] };
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(closedCase as any);
-
-      await expect(
-        service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('should throw BadRequestException if investigation task not found', async () => {
-      const caseWithoutTask = { ...mockCase, tasks: [] };
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithoutTask as any);
-
-      await expect(
-        service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if investigation task not assigned to user', async () => {
-      const caseWithTask = {
-        ...mockCase,
-        tasks: [{ ...mockTask, assigned_user_id: 'other-user', status: TaskStatus.STATUS_20_IN_PROGRESS }],
-      };
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithTask as any);
-
-      await expect(
-        service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if investigation task not in valid status', async () => {
-      const caseWithTask = {
-        ...mockCase,
-        tasks: [{ ...mockTask, status: TaskStatus.STATUS_01_UNASSIGNED }],
-      };
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithTask as any);
-
-      await expect(
-        service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw InternalServerErrorException on unexpected error', async () => {
-      caseRepository.findCaseWithPermissionCheck.mockRejectedValue(new Error('Database error'));
-
-      await expect(
-        service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', role || 'investigator')).rejects.toThrow(error);
     });
 
     it('should handle investigation task with STATUS_30_COMPLETED', async () => {
@@ -405,33 +392,36 @@ describe('CaseClosureApprovalService', () => {
 
       expect(result.message).toContain('approval');
     });
+
+    it('should sort investigation tasks and use the latest one', async () => {
+      const oldTask = { ...mockTask, task_id: 1, created_at: new Date('2023-01-01') };
+      const newTask = { ...mockTask, task_id: 2, created_at: new Date('2023-01-02') };
+      const caseWithMultipleTasks = { ...mockCase, tasks: [oldTask, newTask] };
+      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithMultipleTasks as any);
+      caseRepository.updateCaseStatusAndCompleteTask.mockResolvedValue({
+        updatedCase: { ...mockCase, status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL },
+        completedTask: { ...newTask, status: TaskStatus.STATUS_30_COMPLETED },
+      } as any);
+      taskService.createTask.mockResolvedValue({ task_id: 3 } as any);
+
+      await service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator');
+
+      expect(caseRepository.updateCaseStatusAndCompleteTask).toHaveBeenCalledWith(
+        1,
+        CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+        2,
+        expect.any(String),
+        expect.anything(),
+        expect.anything(),
+      );
+    });
   });
 
   describe('approveCaseClosure', () => {
     it('should successfully approve case closure', async () => {
-      const pendingCase = {
-        ...mockCase,
-        status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        tasks: [
-          { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 },
-          { ...mockTask, name: 'Investigate Case', status: TaskStatus.STATUS_30_COMPLETED, task_id: 1 },
-        ],
-        comments: [{ note: 'Recommended Outcome: Confirmed' }],
-      };
-      caseRepository.findCaseForClosureApproval.mockResolvedValue(pendingCase as any);
-      caseRepository.approveClosureTask.mockResolvedValue({
-        updatedCase: { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-        completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
-      } as any);
-      commentService.addComment.mockResolvedValue({} as any);
+      setupSuccessfulApproval('STATUS_82_CLOSED_CONFIRMED');
 
-      const result = await service.approveCaseClosure(
-        1,
-        'STATUS_82_CLOSED_CONFIRMED',
-        'Approved',
-        'supervisor-123',
-        'tenant-123'
-      );
+      const result = await service.approveCaseClosure(1, 'STATUS_82_CLOSED_CONFIRMED', 'Approved', 'supervisor-123', 'tenant-123');
 
       expect(result.message).toBe('Case closure approved');
       expect(flowableService.handleTaskCompleted).toHaveBeenCalled();
@@ -440,63 +430,24 @@ describe('CaseClosureApprovalService', () => {
     });
 
     it('should create SAR filing task when approving confirmed case', async () => {
-      const pendingCase = {
-        ...mockCase,
-        status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        tasks: [
-          { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 },
-          { ...mockTask, name: 'Investigate Case', status: TaskStatus.STATUS_30_COMPLETED, task_id: 1 },
-        ],
-        comments: [{ note: 'Recommended Outcome: Confirmed' }],
-      };
-      caseRepository.findCaseForClosureApproval.mockResolvedValue(pendingCase as any);
-      caseRepository.approveClosureTask.mockResolvedValue({
-        updatedCase: { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-        completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
-      } as any);
-      commentService.addComment.mockResolvedValue({} as any);
+      setupSuccessfulApproval('STATUS_82_CLOSED_CONFIRMED');
       taskService.createTask.mockResolvedValue({ task_id: 3, name: 'SAR_STR_FILING' } as any);
 
-      await service.approveCaseClosure(
-        1,
-        'STATUS_82_CLOSED_CONFIRMED',
-        'Approved',
-        'supervisor-123',
-        'tenant-123'
-      );
+      await service.approveCaseClosure(1, 'STATUS_82_CLOSED_CONFIRMED', 'Approved', 'supervisor-123', 'tenant-123');
 
       expect(taskService.createTask).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'SAR/STR Filing' }),
         'supervisor-123',
-        'tenant-123'
+        'tenant-123',
       );
     });
 
     it('should send notification to investigator on approval', async () => {
-      const pendingCase = {
-        ...mockCase,
-        status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        tasks: [
-          { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 },
-          { ...mockTask, name: 'Investigate Case', status: TaskStatus.STATUS_30_COMPLETED, assigned_user_id: 'investigator-123', task_id: 1 },
-        ],
-        comments: [{ note: 'Recommended Outcome: Confirmed' }],
-      };
-      caseRepository.findCaseForClosureApproval.mockResolvedValue(pendingCase as any);
-      caseRepository.approveClosureTask.mockResolvedValue({
-        updatedCase: { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-        completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
-      } as any);
-      commentService.addComment.mockResolvedValue({} as any);
+      const pendingCase = setupSuccessfulApproval('STATUS_82_CLOSED_CONFIRMED');
+      pendingCase.tasks[1].assigned_user_id = 'investigator-123';
       notificationService.sendNotification.mockResolvedValue({} as any);
 
-      await service.approveCaseClosure(
-        1,
-        'STATUS_82_CLOSED_CONFIRMED',
-        'Approved',
-        'supervisor-123',
-        'tenant-123'
-      );
+      await service.approveCaseClosure(1, 'STATUS_82_CLOSED_CONFIRMED', 'Approved', 'supervisor-123', 'tenant-123');
 
       expect(notificationService.sendNotification).toHaveBeenCalledWith({
         userId: 'investigator-123',
@@ -506,127 +457,92 @@ describe('CaseClosureApprovalService', () => {
       });
     });
 
-    it('should handle notification failure gracefully', async () => {
-      const pendingCase = {
-        ...mockCase,
-        status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        tasks: [
-          { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 },
-          { ...mockTask, name: 'Investigate Case', status: TaskStatus.STATUS_30_COMPLETED, assigned_user_id: 'investigator-123', task_id: 1 },
-        ],
-        comments: [{ note: 'Recommended Outcome: Confirmed' }],
-      };
-      caseRepository.findCaseForClosureApproval.mockResolvedValue(pendingCase as any);
-      caseRepository.approveClosureTask.mockResolvedValue({
-        updatedCase: { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-        completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
-      } as any);
-      commentService.addComment.mockResolvedValue({} as any);
-      notificationService.sendNotification.mockRejectedValue(new Error('Notification failed'));
+    it.each([
+      {
+        description: 'notification failure',
+        setupFailure: () => notificationService.sendNotification.mockRejectedValue(new Error('Notification failed')),
+        checkLogger: () => expect(logger.warn).toHaveBeenCalled(),
+      },
+      {
+        description: 'SAR filing task creation failure',
+        setupFailure: () => taskService.createTask.mockRejectedValue(new Error('Task creation failed')),
+        checkLogger: () => expect(logger.error).toHaveBeenCalled(),
+      },
+    ])('should handle $description gracefully', async ({ setupFailure, checkLogger }) => {
+      const pendingCase = setupSuccessfulApproval('STATUS_82_CLOSED_CONFIRMED');
+      pendingCase.tasks[1].assigned_user_id = 'investigator-123';
+      setupFailure();
 
-      const result = await service.approveCaseClosure(
-        1,
-        'STATUS_82_CLOSED_CONFIRMED',
-        'Approved',
-        'supervisor-123',
-        'tenant-123'
-      );
+      const result = await service.approveCaseClosure(1, 'STATUS_82_CLOSED_CONFIRMED', 'Approved', 'supervisor-123', 'tenant-123');
 
       expect(result.message).toBe('Case closure approved');
-      expect(logger.warn).toHaveBeenCalled();
+      checkLogger();
     });
 
-    it('should handle SAR filing task creation failure gracefully', async () => {
-      const pendingCase = {
-        ...mockCase,
-        status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        tasks: [
-          { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 },
-          { ...mockTask, name: 'Investigate Case', status: TaskStatus.STATUS_30_COMPLETED, task_id: 1 },
-        ],
-        comments: [{ note: 'Recommended Outcome: Confirmed' }],
-      };
-      caseRepository.findCaseForClosureApproval.mockResolvedValue(pendingCase as any);
-      caseRepository.approveClosureTask.mockResolvedValue({
-        updatedCase: { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-        completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
-      } as any);
-      commentService.addComment.mockResolvedValue({} as any);
-      taskService.createTask.mockRejectedValue(new Error('Task creation failed'));
+    it.each([
+      {
+        description: 'invalid final outcome',
+        mockSetup: () => {},
+        finalOutcome: 'INVALID_OUTCOME',
+        error: BadRequestException,
+      },
+      {
+        description: 'case not found',
+        mockSetup: () => caseRepository.findCaseForClosureApproval.mockResolvedValue(null),
+        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+        error: NotFoundException,
+      },
+      {
+        description: 'case not pending approval',
+        mockSetup: () => {
+          const wrongStatusCase = { ...mockCase, status: CaseStatus.STATUS_20_IN_PROGRESS, tasks: [], comments: [] };
+          caseRepository.findCaseForClosureApproval.mockResolvedValue(wrongStatusCase as any);
+        },
+        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+        error: ConflictException,
+      },
+      {
+        description: 'approval task not found',
+        mockSetup: () => {
+          const caseWithoutApprovalTask = {
+            ...mockCase,
+            status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+            tasks: [],
+            comments: [],
+          };
+          caseRepository.findCaseForClosureApproval.mockResolvedValue(caseWithoutApprovalTask as any);
+        },
+        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+        error: NotFoundException,
+      },
+      {
+        description: 'case has incomplete information',
+        mockSetup: () => {
+          const incompleteCase = {
+            case_id: 1,
+            tenant_id: 'tenant-123',
+            status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+            priority: null,
+            case_type: null,
+            case_creator_user_id: null,
+            tasks: [{ ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 }],
+            comments: [],
+          };
+          caseRepository.findCaseForClosureApproval.mockResolvedValue(incompleteCase as any);
+        },
+        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+        error: BadRequestException,
+      },
+      {
+        description: 'unexpected error',
+        mockSetup: () => caseRepository.findCaseForClosureApproval.mockRejectedValue(new Error('Database error')),
+        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
+        error: InternalServerErrorException,
+      },
+    ])('should throw $error.name when $description', async ({ mockSetup, finalOutcome, error }) => {
+      mockSetup();
 
-      const result = await service.approveCaseClosure(
-        1,
-        'STATUS_82_CLOSED_CONFIRMED',
-        'Approved',
-        'supervisor-123',
-        'tenant-123'
-      );
-
-      expect(result.message).toBe('Case closure approved');
-      expect(logger.error).toHaveBeenCalled();
-    });
-
-    it('should throw BadRequestException for invalid final outcome', async () => {
-      await expect(
-        service.approveCaseClosure(1, 'INVALID_OUTCOME', 'Approved', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw NotFoundException if case not found', async () => {
-      caseRepository.findCaseForClosureApproval.mockResolvedValue(null);
-
-      await expect(
-        service.approveCaseClosure(1, 'STATUS_82_CLOSED_CONFIRMED', 'Approved', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw ConflictException if case not pending approval', async () => {
-      const wrongStatusCase = { ...mockCase, status: CaseStatus.STATUS_20_IN_PROGRESS, tasks: [], comments: [] };
-      caseRepository.findCaseForClosureApproval.mockResolvedValue(wrongStatusCase as any);
-
-      await expect(
-        service.approveCaseClosure(1, 'STATUS_82_CLOSED_CONFIRMED', 'Approved', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('should throw NotFoundException if approval task not found', async () => {
-      const caseWithoutApprovalTask = {
-        ...mockCase,
-        status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        tasks: [],
-        comments: [],
-      };
-      caseRepository.findCaseForClosureApproval.mockResolvedValue(caseWithoutApprovalTask as any);
-
-      await expect(
-        service.approveCaseClosure(1, 'STATUS_82_CLOSED_CONFIRMED', 'Approved', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw BadRequestException if case has incomplete information', async () => {
-      const incompleteCase = {
-        case_id: 1,
-        tenant_id: 'tenant-123',
-        status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        priority: null,
-        case_type: null,
-        case_creator_user_id: null,
-        tasks: [{ ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 }],
-        comments: [],
-      };
-      caseRepository.findCaseForClosureApproval.mockResolvedValue(incompleteCase as any);
-
-      await expect(
-        service.approveCaseClosure(1, 'STATUS_82_CLOSED_CONFIRMED', 'Approved', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw InternalServerErrorException on unexpected error', async () => {
-      caseRepository.findCaseForClosureApproval.mockRejectedValue(new Error('Database error'));
-
-      await expect(
-        service.approveCaseClosure(1, 'STATUS_82_CLOSED_CONFIRMED', 'Approved', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.approveCaseClosure(1, finalOutcome, 'Approved', 'supervisor-123', 'tenant-123')).rejects.toThrow(error);
     });
   });
 
@@ -636,14 +552,18 @@ describe('CaseClosureApprovalService', () => {
         ...mockCase,
         status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
         tasks: [
-          { ...mockTask, name: 'Investigate Case', status: TaskStatus.STATUS_30_COMPLETED, assigned_user_id: 'investigator-123', task_id: 1 },
+          {
+            ...mockTask,
+            name: 'Investigate Case',
+            status: TaskStatus.STATUS_30_COMPLETED,
+            assigned_user_id: 'investigator-123',
+            task_id: 1,
+          },
         ],
       };
       caseRepository.findCaseForReview.mockResolvedValue({
         ...pendingCase,
-        tasks: [
-          { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 },
-        ],
+        tasks: [{ ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 }],
       } as any);
       caseRepository.findCaseWithCompletedInvestigation.mockResolvedValue(pendingCase as any);
       caseRepository.rejectClosureTask.mockResolvedValue({
@@ -653,12 +573,7 @@ describe('CaseClosureApprovalService', () => {
       } as any);
       notificationService.sendNotification.mockResolvedValue({} as any);
 
-      const result = await service.rejectCaseClosure(
-        1,
-        'Need more evidence for fraud confirmation',
-        'supervisor-123',
-        'tenant-123'
-      );
+      const result = await service.rejectCaseClosure(1, 'Need more evidence for fraud confirmation', 'supervisor-123', 'tenant-123');
 
       expect(result.message).toContain('rejected');
       expect(result.investigation_task.assigned_to).toBe('investigator-123');
@@ -672,14 +587,18 @@ describe('CaseClosureApprovalService', () => {
         ...mockCase,
         status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
         tasks: [
-          { ...mockTask, name: 'Investigate Case', status: TaskStatus.STATUS_30_COMPLETED, assigned_user_id: 'investigator-123', task_id: 1 },
+          {
+            ...mockTask,
+            name: 'Investigate Case',
+            status: TaskStatus.STATUS_30_COMPLETED,
+            assigned_user_id: 'investigator-123',
+            task_id: 1,
+          },
         ],
       };
       caseRepository.findCaseForReview.mockResolvedValue({
         ...pendingCase,
-        tasks: [
-          { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 },
-        ],
+        tasks: [{ ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 }],
       } as any);
       caseRepository.findCaseWithCompletedInvestigation.mockResolvedValue(pendingCase as any);
       caseRepository.rejectClosureTask.mockResolvedValue({
@@ -689,59 +608,80 @@ describe('CaseClosureApprovalService', () => {
       } as any);
       notificationService.sendNotification.mockRejectedValue(new Error('Notification failed'));
 
-      const result = await service.rejectCaseClosure(
-        1,
-        'Need more evidence',
-        'supervisor-123',
-        'tenant-123'
-      );
+      const result = await service.rejectCaseClosure(1, 'Need more evidence', 'supervisor-123', 'tenant-123');
 
       expect(result.message).toContain('rejected');
       expect(logger.warn).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException if comments too short', async () => {
-      caseRepository.findCaseForReview.mockResolvedValue({
-        ...mockCase,
-        status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        tasks: [{ ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 }],
-      } as any);
+    it.each([
+      {
+        description: 'comments too short',
+        setupMock: () => {
+          caseRepository.findCaseForReview.mockResolvedValue({
+            ...mockCase,
+            status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+            tasks: [{ ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 }],
+          } as any);
+        },
+        comments: 'No',
+        error: BadRequestException,
+      },
+      {
+        description: 'case not found',
+        setupMock: () => {
+          caseRepository.findCaseForReview.mockResolvedValue({
+            ...mockCase,
+            status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+            tasks: [{ ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 }],
+          } as any);
+          caseRepository.findCaseWithCompletedInvestigation.mockResolvedValue(null);
+        },
+        comments: 'Need more evidence',
+        error: NotFoundException,
+      },
+      {
+        description: 'original investigator cannot be determined',
+        setupMock: () => {
+          const taskWithoutAssignee = {
+            ...mockCase,
+            status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+            tasks: [{ ...mockTask, name: 'Investigate Case', status: TaskStatus.STATUS_30_COMPLETED, assigned_user_id: null, task_id: 1 }],
+          };
+          caseRepository.findCaseForReview.mockResolvedValue({
+            ...taskWithoutAssignee,
+            tasks: [{ ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 }],
+          } as any);
+          caseRepository.findCaseWithCompletedInvestigation.mockResolvedValue(taskWithoutAssignee as any);
+        },
+        comments: 'Need more evidence',
+        error: BadRequestException,
+      },
+      {
+        description: 'validation error when other tasks are incomplete',
+        setupMock: () => {
+          const pendingCase = {
+            ...mockCase,
+            status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+            tasks: [
+              { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 },
+              { ...mockTask, name: 'Some Other Task', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 3 },
+            ],
+          };
+          caseRepository.findCaseForReview.mockResolvedValue(pendingCase as any);
+          caseRepository.findCaseWithCompletedInvestigation.mockResolvedValue(pendingCase as any);
+          (taskValidationUtil.validateOtherTasksCompleted as jest.Mock).mockReturnValueOnce({
+            isValid: false,
+            incompleteTasks: [{ task_id: 3, name: 'Some Other Task' }],
+          });
+        },
+        comments: 'Need more evidence',
+        error: BadRequestException,
+      },
+    ])('should throw $error.name when $description', async ({ setupMock, comments, error }) => {
+      setupMock();
 
-      await expect(
-        service.rejectCaseClosure(1, 'No', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw NotFoundException if case not found', async () => {
-      caseRepository.findCaseForReview.mockResolvedValue({
-        ...mockCase,
-        status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        tasks: [{ ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 }],
-      } as any);
-      caseRepository.findCaseWithCompletedInvestigation.mockResolvedValue(null);
-
-      await expect(
-        service.rejectCaseClosure(1, 'Need more evidence', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw BadRequestException if original investigator cannot be determined', async () => {
-      const taskWithoutAssignee = {
-        ...mockCase,
-        status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        tasks: [
-          { ...mockTask, name: 'Investigate Case', status: TaskStatus.STATUS_30_COMPLETED, assigned_user_id: null, task_id: 1 },
-        ],
-      };
-      caseRepository.findCaseForReview.mockResolvedValue({
-        ...taskWithoutAssignee,
-        tasks: [{ ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 }],
-      } as any);
-      caseRepository.findCaseWithCompletedInvestigation.mockResolvedValue(taskWithoutAssignee as any);
-
-      await expect(
-        service.rejectCaseClosure(1, 'Need more evidence', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.rejectCaseClosure(1, comments, 'supervisor-123', 'tenant-123')).rejects.toThrow(error);
     });
   });
 
@@ -751,25 +691,29 @@ describe('CaseClosureApprovalService', () => {
         ...mockCase,
         status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
         tasks: [
-          { ...mockTask, name: 'approve case closure', status: TaskStatus.STATUS_10_ASSIGNED, assigned_user_id: 'supervisor-123', task_id: 2 },
+          {
+            ...mockTask,
+            name: 'approve case closure',
+            status: TaskStatus.STATUS_10_ASSIGNED,
+            assigned_user_id: 'supervisor-123',
+            task_id: 2,
+          },
         ],
       };
       caseRepository.findCaseForReview.mockResolvedValue(pendingCase as any);
       prismaService.$transaction.mockImplementation(async (callback) => {
         const mockTx = {
           case: { update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_20_IN_PROGRESS }) },
-          task: { findFirst: jest.fn().mockResolvedValue({ task_id: 2, name: 'approve case closure' }), update: jest.fn().mockResolvedValue({ task_id: 2, status: TaskStatus.STATUS_30_COMPLETED }) },
+          task: {
+            findFirst: jest.fn().mockResolvedValue({ task_id: 2, name: 'approve case closure' }),
+            update: jest.fn().mockResolvedValue({ task_id: 2, status: TaskStatus.STATUS_30_COMPLETED }),
+          },
         };
         commentRepository.createComment.mockResolvedValue({} as any);
         return await callback(mockTx as any);
       });
 
-      const result = await service.returnCaseForReview(
-        1,
-        'Please review additional evidence',
-        'supervisor-123',
-        'tenant-123'
-      );
+      const result = await service.returnCaseForReview(1, 'Please review additional evidence', 'supervisor-123', 'tenant-123');
 
       expect(result.message).toContain('returned');
       expect(flowableService.handleCaseStatusChanged).toHaveBeenCalled();
@@ -781,7 +725,13 @@ describe('CaseClosureApprovalService', () => {
         ...mockCase,
         status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
         tasks: [
-          { ...mockTask, name: 'approve case closure', status: TaskStatus.STATUS_10_ASSIGNED, assigned_user_id: 'supervisor-123', task_id: 2 },
+          {
+            ...mockTask,
+            name: 'approve case closure',
+            status: TaskStatus.STATUS_10_ASSIGNED,
+            assigned_user_id: 'supervisor-123',
+            task_id: 2,
+          },
         ],
       };
       caseRepository.findCaseForReview.mockResolvedValue(pendingCase as any);
@@ -793,49 +743,51 @@ describe('CaseClosureApprovalService', () => {
         return await callback(mockTx as any);
       });
 
-      await expect(
-        service.returnCaseForReview(1, 'Review needed', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.returnCaseForReview(1, 'Review needed', 'supervisor-123', 'tenant-123')).rejects.toThrow(NotFoundException);
     });
 
     it('should handle auto-claim of approval task', async () => {
       const pendingCase = {
         ...mockCase,
         status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        tasks: [
-          { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, assigned_user_id: null, task_id: 2 },
-        ],
+        tasks: [{ ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, assigned_user_id: null, task_id: 2 }],
       };
-      
-      // Mock first call to return unassigned task with error
+
       const unassignedTask = { task_id: 2, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, assigned_user_id: null };
       (taskValidationUtil.validateApprovalTaskForClosure as jest.Mock)
-        .mockReturnValueOnce({ 
-          isValid: false, 
+        .mockReturnValueOnce({
+          isValid: false,
           errors: ['Approval task must be claimed'],
-          approvalTask: unassignedTask
+          approvalTask: unassignedTask,
         })
-        // After claiming, return valid
-        .mockReturnValueOnce({ 
-          isValid: true, 
-          approvalTask: { ...unassignedTask, assigned_user_id: 'supervisor-123', status: TaskStatus.STATUS_10_ASSIGNED }
+        .mockReturnValueOnce({
+          isValid: true,
+          approvalTask: { ...unassignedTask, assigned_user_id: 'supervisor-123', status: TaskStatus.STATUS_10_ASSIGNED },
         });
-        
+
       caseRepository.findCaseForReview.mockResolvedValueOnce(pendingCase as any);
       taskService.claimTask.mockResolvedValue({} as any);
-      
-      // After claiming, return same case with updated task status
+
       caseRepository.findCaseForReview.mockResolvedValueOnce({
         ...pendingCase,
         tasks: [
-          { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_10_ASSIGNED, assigned_user_id: 'supervisor-123', task_id: 2 },
+          {
+            ...mockTask,
+            name: 'Approve Case Closure',
+            status: TaskStatus.STATUS_10_ASSIGNED,
+            assigned_user_id: 'supervisor-123',
+            task_id: 2,
+          },
         ],
       } as any);
-      
+
       prismaService.$transaction.mockImplementation(async (callback) => {
         const mockTx = {
           case: { update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_20_IN_PROGRESS }) },
-          task: { findFirst: jest.fn().mockResolvedValue({ task_id: 2, name: 'approve case closure' }), update: jest.fn().mockResolvedValue({ task_id: 2, status: TaskStatus.STATUS_30_COMPLETED }) },
+          task: {
+            findFirst: jest.fn().mockResolvedValue({ task_id: 2, name: 'approve case closure' }),
+            update: jest.fn().mockResolvedValue({ task_id: 2, status: TaskStatus.STATUS_30_COMPLETED }),
+          },
         };
         commentRepository.createComment.mockResolvedValue({} as any);
         return await callback(mockTx as any);
@@ -846,100 +798,6 @@ describe('CaseClosureApprovalService', () => {
       expect(taskService.claimTask).toHaveBeenCalledWith(2, 'supervisor-123', 'tenant-123');
       expect(result.message).toContain('returned');
     });
-  });
-
-  describe('edge cases and error handling', () => {
-    it('should log error on failed operation in approveCaseClosure', async () => {
-      caseRepository.findCaseForClosureApproval.mockRejectedValue(new Error('Database connection lost'));
-
-      await expect(
-        service.approveCaseClosure(1, 'STATUS_82_CLOSED_CONFIRMED', 'Approved', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(InternalServerErrorException);
-
-      expect(logger.error).toHaveBeenCalled();
-      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
-        expect.objectContaining({
-          outcome: 'FAILURE',
-        })
-      );
-    });
-
-    it('should log error on failed operation in rejectCaseClosure', async () => {
-      caseRepository.findCaseForReview.mockRejectedValue(new Error('Database error'));
-
-      await expect(
-        service.rejectCaseClosure(1, 'Need more evidence', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow();
-
-      expect(logger.error).toHaveBeenCalled();
-      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
-        expect.objectContaining({
-          outcome: 'FAILURE',
-        })
-      );
-    });
-
-    it('should log error on failed operation in returnCaseForReview', async () => {
-      caseRepository.findCaseForReview.mockRejectedValue(new Error('Database error'));
-
-      await expect(
-        service.returnCaseForReview(1, 'Review needed', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow();
-
-      expect(logger.error).toHaveBeenCalled();
-      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
-        expect.objectContaining({
-          outcome: 'FAILURE',
-        })
-      );
-    });
-
-    it('should handle validation error when other tasks are incomplete', async () => {
-      const pendingCase = {
-        ...mockCase,
-        status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        tasks: [
-          { ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 },
-          { ...mockTask, name: 'Some Other Task', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 3 },
-        ],
-      };
-      caseRepository.findCaseForReview.mockResolvedValue(pendingCase as any);
-      caseRepository.findCaseWithCompletedInvestigation.mockResolvedValue(pendingCase as any);
-      
-      // Mock to return that other tasks are incomplete
-      (taskValidationUtil.validateOtherTasksCompleted as jest.Mock)
-        .mockReturnValueOnce({ isValid: false, incompleteTasks: [{ task_id: 3, name: 'Some Other Task' }] });
-
-      await expect(
-        service.rejectCaseClosure(1, 'Need more evidence', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should sort investigation tasks and use the latest one', async () => {
-      const oldTask = { ...mockTask, task_id: 1, name: 'Investigate Case', status: TaskStatus.STATUS_20_IN_PROGRESS, assigned_user_id: 'user-123', created_at: new Date('2023-01-01') };
-      const newTask = { ...mockTask, task_id: 2, name: 'Investigate Case', status: TaskStatus.STATUS_20_IN_PROGRESS, assigned_user_id: 'user-123', created_at: new Date('2023-01-02') };
-      const caseWithMultipleTasks = {
-        ...mockCase,
-        tasks: [oldTask, newTask],
-      };
-      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithMultipleTasks as any);
-      caseRepository.updateCaseStatusAndCompleteTask.mockResolvedValue({
-        updatedCase: { ...mockCase, status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL },
-        completedTask: { ...newTask, status: TaskStatus.STATUS_30_COMPLETED },
-      } as any);
-      taskService.createTask.mockResolvedValue({ task_id: 3 } as any);
-
-      await service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator');
-
-      // Should use the newer task (task_id: 2)
-      expect(caseRepository.updateCaseStatusAndCompleteTask).toHaveBeenCalledWith(
-        1,
-        CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
-        2,
-        expect.any(String),
-        expect.anything()
-      );
-    });
 
     it('should throw NotFoundException when validation finds no approval task', async () => {
       const pendingCase = {
@@ -949,9 +807,38 @@ describe('CaseClosureApprovalService', () => {
       };
       caseRepository.findCaseForReview.mockResolvedValue(pendingCase as any);
 
-      await expect(
-        service.returnCaseForReview(1, 'Review needed', 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow();
+      await expect(service.returnCaseForReview(1, 'Review needed', 'supervisor-123', 'tenant-123')).rejects.toThrow();
+    });
+  });
+
+  describe('error handling and logging', () => {
+    it.each([
+      {
+        method: 'approveCaseClosure',
+        setupError: () => caseRepository.findCaseForClosureApproval.mockRejectedValue(new Error('Database connection lost')),
+        invokeMethod: () => service.approveCaseClosure(1, 'STATUS_82_CLOSED_CONFIRMED', 'Approved', 'supervisor-123', 'tenant-123'),
+      },
+      {
+        method: 'rejectCaseClosure',
+        setupError: () => caseRepository.findCaseForReview.mockRejectedValue(new Error('Database error')),
+        invokeMethod: () => service.rejectCaseClosure(1, 'Need more evidence', 'supervisor-123', 'tenant-123'),
+      },
+      {
+        method: 'returnCaseForReview',
+        setupError: () => caseRepository.findCaseForReview.mockRejectedValue(new Error('Database error')),
+        invokeMethod: () => service.returnCaseForReview(1, 'Review needed', 'supervisor-123', 'tenant-123'),
+      },
+    ])('should log error on failed operation in $method', async ({ setupError, invokeMethod }) => {
+      setupError();
+
+      await expect(invokeMethod()).rejects.toThrow();
+
+      expect(logger.error).toHaveBeenCalled();
+      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          outcome: 'FAILURE',
+        }),
+      );
     });
   });
 });

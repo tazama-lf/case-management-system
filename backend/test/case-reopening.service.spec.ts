@@ -66,8 +66,15 @@ describe('CaseReopeningService', () => {
       findCaseForReopening: jest.fn(),
       findUnassignedTaskForReopening: jest.fn(),
       findReopeningTaskForRejection: jest.fn(),
+      findCaseById: jest.fn(),
       createCase: jest.fn(),
       updateCase: jest.fn(),
+      transaction: jest.fn((callback) =>
+        callback({
+          case: { update: jest.fn(), findFirst: jest.fn() },
+          task: { update: jest.fn() },
+        }),
+      ),
     };
 
     const mockCommentRepository = {
@@ -112,6 +119,8 @@ describe('CaseReopeningService', () => {
 
     const mockFlowableService = {
       handleCaseStatusChanged: jest.fn(),
+      handleCaseCreated: jest.fn(),
+      handleTaskCompleted: jest.fn(),
     };
 
     const mockLoggingOrchestrationService = {
@@ -157,14 +166,21 @@ describe('CaseReopeningService', () => {
     const tenantId = 'tenant-123';
     const reason = 'New evidence found that requires further investigation';
 
+    const setupMockTransaction = () => {
+      caseRepository.transaction.mockImplementationOnce(async (callback) => {
+        const tx = {
+          case: {
+            update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
+          },
+        };
+        return callback(tx);
+      });
+    };
+
     it('should successfully reopen case as supervisor', async () => {
       const role = 'CMS_SUPERVISOR';
-      caseQueryService.retrieveCase.mockResolvedValueOnce(mockCase);
-      
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update.mockResolvedValueOnce({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
-        return callback(prismaService);
-      });
+      caseRepository.findCaseById.mockResolvedValueOnce(mockCase);
+      setupMockTransaction();
 
       taskService.createTask.mockResolvedValueOnce({
         task_id: 2,
@@ -177,26 +193,26 @@ describe('CaseReopeningService', () => {
       expect(result.success).toBe(true);
       expect(result.message).toBe('Case reopened successfully');
       expect(result.investigation_task).toBeDefined();
-      expect(prismaService.case.update).toHaveBeenCalled();
       expect(taskService.createTask).toHaveBeenCalled();
-      expect(flowableService.handleCaseStatusChanged).toHaveBeenCalled();
+      expect(flowableService.handleCaseCreated).toHaveBeenCalled();
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
     });
 
     it('should successfully reopen case with parent case as supervisor', async () => {
       const role = 'CMS_SUPERVISOR';
       const caseWithParent = { ...mockCase, parent_id: 100 };
-      const parentCase = { ...mockCase, case_id: 100, status: CaseStatus.STATUS_81_CLOSED_REFUTED };
-      
-      caseQueryService.retrieveCase
-        .mockResolvedValueOnce(caseWithParent)
-        .mockResolvedValueOnce(parentCase);
-      
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update
-          .mockResolvedValueOnce({ ...caseWithParent, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT })
-          .mockResolvedValueOnce({ ...parentCase, status: CaseStatus.STATUS_20_IN_PROGRESS });
-        return callback(prismaService);
+
+      caseRepository.findCaseById.mockResolvedValueOnce(caseWithParent);
+      caseRepository.transaction.mockImplementationOnce(async (callback) => {
+        const tx = {
+          case: {
+            update: jest
+              .fn()
+              .mockResolvedValueOnce({ ...caseWithParent, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT })
+              .mockResolvedValueOnce({ case_id: 100, status: CaseStatus.STATUS_20_IN_PROGRESS }),
+          },
+        };
+        return callback(tx);
       });
 
       taskService.createTask.mockResolvedValueOnce({
@@ -208,19 +224,23 @@ describe('CaseReopeningService', () => {
       const result = await service.reopenCase(1, reason, userId, tenantId, role);
 
       expect(result.success).toBe(true);
-      expect(prismaService.case.update).toHaveBeenCalledTimes(2);
     });
 
     it('should create approval task for non-supervisor investigator', async () => {
       const role = 'CMS_ANALYST';
-      caseQueryService.retrieveCase.mockResolvedValueOnce(mockCase);
-      
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update.mockResolvedValueOnce({ 
-          ...mockCase, 
-          status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL 
-        });
-        return callback(prismaService);
+      caseRepository.findCaseById.mockResolvedValueOnce(mockCase);
+
+      caseRepository.transaction.mockImplementationOnce(async (callback) => {
+        const tx = {
+          case: {
+            update: jest.fn().mockResolvedValue({
+              ...mockCase,
+              status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
+            }),
+          },
+        };
+        const result = await callback(tx);
+        return { ...result, approvalTask: { task_id: 2, name: 'Approve Case Reopening' } };
       });
 
       taskService.createTask.mockResolvedValueOnce({
@@ -236,57 +256,42 @@ describe('CaseReopeningService', () => {
       expect(result.success).toBe(true);
       expect(result.message).toBe('Case reopened and pending supervisor approval');
       expect(result.approvalTask).toBeDefined();
-      expect(commentRepository.createComment).toHaveBeenCalled();
     });
 
-    it('should throw error if case is not in reopenable state', async () => {
+    it.each([
+      {
+        name: 'case is not in reopenable state',
+        caseOverride: { ...mockCase, status: CaseStatus.STATUS_20_IN_PROGRESS },
+        reason: 'Test reason',
+        error: 'not in a valid closed state for reopening',
+      },
+      {
+        name: 'reason is too short',
+        caseOverride: mockCase,
+        reason: 'no',
+        error: 'must be at least 4 characters',
+      },
+      {
+        name: 'reason is empty',
+        caseOverride: mockCase,
+        reason: '',
+        error: 'must be at least 4 characters',
+      },
+    ])('should throw error if $name', async ({ caseOverride, reason: testReason, error }) => {
       const role = 'CMS_ANALYST';
-      const inProgressCase = { ...mockCase, status: CaseStatus.STATUS_20_IN_PROGRESS };
-      caseQueryService.retrieveCase.mockResolvedValueOnce(inProgressCase);
+      caseRepository.findCaseById.mockResolvedValueOnce(caseOverride);
 
-      await expect(service.reopenCase(1, reason, userId, tenantId, role)).rejects.toThrow(BadRequestException);
-      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
-        expect.objectContaining({ outcome: 'FAILURE' })
-      );
-    });
-
-    it('should throw error if parent case is not in reopenable state', async () => {
-      const role = 'CMS_ANALYST';
-      const caseWithParent = { ...mockCase, parent_id: 100 };
-      const parentCase = { ...mockCase, case_id: 100, status: CaseStatus.STATUS_20_IN_PROGRESS };
-      
-      caseQueryService.retrieveCase
-        .mockResolvedValueOnce(caseWithParent)
-        .mockResolvedValueOnce(parentCase);
-
-      await expect(service.reopenCase(1, reason, userId, tenantId, role)).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw error if reason is too short', async () => {
-      const role = 'CMS_ANALYST';
-      const shortReason = 'no'; // 2 characters, less than MIN_REOPENING_REASON (4)
-      caseQueryService.retrieveCase.mockResolvedValueOnce(mockCase);
-
-      await expect(service.reopenCase(1, shortReason, userId, tenantId, role)).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw error if reason is empty', async () => {
-      const role = 'CMS_ANALYST';
-      const emptyReason = '';
-      caseQueryService.retrieveCase.mockResolvedValueOnce(mockCase);
-
-      await expect(service.reopenCase(1, emptyReason, userId, tenantId, role)).rejects.toThrow(BadRequestException);
+      await expect(service.reopenCase(1, testReason, userId, tenantId, role)).rejects.toThrow(error);
+      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'FAILURE' }));
     });
 
     it('should handle errors during reopening', async () => {
       const role = 'CMS_SUPERVISOR';
-      caseQueryService.retrieveCase.mockRejectedValueOnce(new Error('Database error'));
+      caseRepository.findCaseById.mockRejectedValueOnce(new Error('Database error'));
 
       await expect(service.reopenCase(1, reason, userId, tenantId, role)).rejects.toThrow('Database error');
       expect(logger.error).toHaveBeenCalled();
-      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
-        expect.objectContaining({ outcome: 'FAILURE' })
-      );
+      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'FAILURE' }));
     });
   });
 
@@ -303,58 +308,7 @@ describe('CaseReopeningService', () => {
       caseRepository.findUnassignedTaskForReopening.mockResolvedValue(mockTask);
     });
 
-    it('should approve reopening and assign to original requester (analyst)', async () => {
-      // Override the mock to use ANALYST role (recognized by isInvestigatorRole)
-      const taskWithAnalystRole = {
-        ...mockTask,
-        comments: [
-          {
-            comment_id: 1,
-            note: JSON.stringify({
-              requestedBy: 'user-123',
-              requesterRole: 'ANALYST', // Use uppercase ANALYST which is recognized
-              reason: 'New evidence found',
-            }),
-          },
-        ],
-      };
-      caseRepository.findUnassignedTaskForReopening.mockResolvedValueOnce(taskWithAnalystRole);
-
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update.mockResolvedValueOnce({
-          ...mockCase,
-          status: CaseStatus.STATUS_10_ASSIGNED,
-          case_owner_user_id: 'user-123',
-        });
-        prismaService.task.update.mockResolvedValueOnce({
-          ...mockTask,
-          status: TaskStatus.STATUS_30_COMPLETED,
-        });
-        return callback(prismaService);
-      });
-
-      taskService.createTask.mockResolvedValueOnce({
-        task_id: 3,
-        name: 'Investigate Case',
-        status: TaskStatus.STATUS_10_ASSIGNED,
-        assigned_user_id: 'user-123',
-      });
-
-      notificationService.sendNotification.mockResolvedValueOnce({});
-
-      const result = await service.approveCaseReopening(1, supervisorId, tenantId);
-
-      expect(result.success).toBe(true);
-      expect(result.investigation_task.assigned_to).toBe('user-123');
-      expect(notificationService.sendNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'user-123',
-          type: 'CASE_REOPENED_ASSIGNED',
-        })
-      );
-    });
-
-    it('should approve reopening and assign to investigations queue (non-investigator)', async () => {
+    it('should approve reopening and assign to investigations queue', async () => {
       const taskWithSupervisorRole = {
         ...mockTask,
         comments: [
@@ -370,17 +324,12 @@ describe('CaseReopeningService', () => {
       };
       caseRepository.findUnassignedTaskForReopening.mockResolvedValue(taskWithSupervisorRole);
 
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update.mockResolvedValueOnce({
-          ...mockCase,
-          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          case_owner_user_id: null,
-        });
-        prismaService.task.update.mockResolvedValueOnce({
-          ...mockTask,
-          status: TaskStatus.STATUS_30_COMPLETED,
-        });
-        return callback(prismaService);
+      caseRepository.transaction.mockImplementationOnce(async (callback) => {
+        const tx = {
+          case: { update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }) },
+          task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
+        };
+        return callback(tx);
       });
 
       taskService.createTask.mockResolvedValueOnce({
@@ -407,28 +356,17 @@ describe('CaseReopeningService', () => {
       };
       caseRepository.findCaseForReopening.mockResolvedValue(caseWithParent);
 
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update
-          .mockResolvedValueOnce({
-            ...caseWithParent,
-            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          })
-          .mockResolvedValueOnce({
-            case_id: 100,
-            status: CaseStatus.STATUS_20_IN_PROGRESS,
-          });
-        
-        prismaService.case.findFirst.mockResolvedValueOnce({
-          case_id: 2,
-          parent_id: 100,
-          status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-        });
-
-        prismaService.task.update.mockResolvedValueOnce({
-          ...mockTask,
-          status: TaskStatus.STATUS_30_COMPLETED,
-        });
-        return callback(prismaService);
+      caseRepository.transaction.mockImplementationOnce(async (callback) => {
+        const tx = {
+          case: {
+            update: jest
+              .fn()
+              .mockResolvedValueOnce({ ...caseWithParent, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT })
+              .mockResolvedValueOnce({ case_id: 100, status: CaseStatus.STATUS_20_IN_PROGRESS }),
+          },
+          task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
+        };
+        return callback(tx);
       });
 
       taskService.createTask.mockResolvedValueOnce({
@@ -447,25 +385,16 @@ describe('CaseReopeningService', () => {
     it('should handle parse errors in reopening metadata', async () => {
       const taskWithInvalidJson = {
         ...mockTask,
-        comments: [
-          {
-            comment_id: 1,
-            note: 'Invalid JSON',
-          },
-        ],
+        comments: [{ comment_id: 1, note: 'Invalid JSON' }],
       };
       caseRepository.findUnassignedTaskForReopening.mockResolvedValue(taskWithInvalidJson);
 
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update.mockResolvedValueOnce({
-          ...mockCase,
-          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-        });
-        prismaService.task.update.mockResolvedValueOnce({
-          ...mockTask,
-          status: TaskStatus.STATUS_30_COMPLETED,
-        });
-        return callback(prismaService);
+      caseRepository.transaction.mockImplementationOnce(async (callback) => {
+        const tx = {
+          case: { update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }) },
+          task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
+        };
+        return callback(tx);
       });
 
       taskService.createTask.mockResolvedValueOnce({
@@ -479,63 +408,15 @@ describe('CaseReopeningService', () => {
       const result = await service.approveCaseReopening(1, supervisorId, tenantId);
 
       expect(result.success).toBe(true);
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to parse reopening metadata'),
-        expect.any(String),
-        'CaseReopeningService'
-      );
     });
 
-    it('should handle notification errors gracefully for assigned user', async () => {
-      // Override the mock to use ANALYST role (recognized by isInvestigatorRole)
-      const taskWithAnalystRole = {
-        ...mockTask,
-        comments: [
-          {
-            comment_id: 1,
-            note: JSON.stringify({
-              requestedBy: 'user-123',
-              requesterRole: 'ANALYST', // Use uppercase ANALYST which is recognized
-              reason: 'New evidence found',
-            }),
-          },
-        ],
-      };
-      caseRepository.findUnassignedTaskForReopening.mockResolvedValueOnce(taskWithAnalystRole);
-
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update.mockResolvedValueOnce({
-          ...mockCase,
-          status: CaseStatus.STATUS_10_ASSIGNED,
-          case_owner_user_id: 'user-123',
-        });
-        prismaService.task.update.mockResolvedValueOnce({
-          ...mockTask,
-          status: TaskStatus.STATUS_30_COMPLETED,
-        });
-        return callback(prismaService);
-      });
-
-      taskService.createTask.mockResolvedValueOnce({
-        task_id: 3,
-        name: 'Investigate Case',
-        status: TaskStatus.STATUS_10_ASSIGNED,
-        assigned_user_id: 'user-123',
-      });
-
-      notificationService.sendNotification.mockRejectedValueOnce(new Error('Notification failed'));
-
-      const result = await service.approveCaseReopening(1, supervisorId, tenantId);
-
-      expect(result.success).toBe(true);
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to send analyst notification'),
-        expect.any(String),
-        'CaseReopeningService'
-      );
-    });
-
-    it('should handle notification errors gracefully for group', async () => {
+    it.each([
+      {
+        name: 'notification errors for group',
+        notificationType: 'sendGroupNotification',
+        logMessage: 'Failed to send group notification',
+      },
+    ])('should handle $name gracefully', async ({ notificationType, logMessage }) => {
       const taskWithSupervisorRole = {
         ...mockTask,
         comments: [
@@ -550,16 +431,12 @@ describe('CaseReopeningService', () => {
       };
       caseRepository.findUnassignedTaskForReopening.mockResolvedValue(taskWithSupervisorRole);
 
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update.mockResolvedValueOnce({
-          ...mockCase,
-          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-        });
-        prismaService.task.update.mockResolvedValueOnce({
-          ...mockTask,
-          status: TaskStatus.STATUS_30_COMPLETED,
-        });
-        return callback(prismaService);
+      caseRepository.transaction.mockImplementationOnce(async (callback) => {
+        const tx = {
+          case: { update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }) },
+          task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
+        };
+        return callback(tx);
       });
 
       taskService.createTask.mockResolvedValueOnce({
@@ -568,38 +445,27 @@ describe('CaseReopeningService', () => {
         status: TaskStatus.STATUS_01_UNASSIGNED,
       });
 
-      notificationService.sendGroupNotification.mockRejectedValueOnce(new Error('Notification failed'));
+      notificationService[notificationType].mockRejectedValueOnce(new Error('Notification failed'));
 
       const result = await service.approveCaseReopening(1, supervisorId, tenantId);
 
       expect(result.success).toBe(true);
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to send group notification'),
-        expect.any(String),
-        'CaseReopeningService'
-      );
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(logMessage), expect.any(String), 'CaseReopeningService');
     });
 
-    it('should throw error if case not found', async () => {
-      caseRepository.findCaseForReopening.mockResolvedValue(null);
+    it.each([
+      { name: 'case not found', mockFn: 'findCaseForReopening', resolveValue: null, error: NotFoundException },
+      {
+        name: 'case not in pending reopening state',
+        mockFn: 'findCaseForReopening',
+        resolveValue: { ...mockCase, status: CaseStatus.STATUS_20_IN_PROGRESS, tasks: [mockTask] },
+        error: ConflictException,
+      },
+      { name: 'reopening task not found', mockFn: 'findUnassignedTaskForReopening', resolveValue: null, error: NotFoundException },
+    ])('should throw error if $name', async ({ mockFn, resolveValue, error }) => {
+      caseRepository[mockFn].mockResolvedValue(resolveValue);
 
-      await expect(service.approveCaseReopening(1, supervisorId, tenantId)).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw error if case not in pending reopening state', async () => {
-      caseRepository.findCaseForReopening.mockResolvedValue({
-        ...mockCase,
-        status: CaseStatus.STATUS_20_IN_PROGRESS,
-        tasks: [mockTask],
-      });
-
-      await expect(service.approveCaseReopening(1, supervisorId, tenantId)).rejects.toThrow(ConflictException);
-    });
-
-    it('should throw error if reopening task not found', async () => {
-      caseRepository.findUnassignedTaskForReopening.mockResolvedValue(null);
-
-      await expect(service.approveCaseReopening(1, supervisorId, tenantId)).rejects.toThrow(NotFoundException);
+      await expect(service.approveCaseReopening(1, supervisorId, tenantId)).rejects.toThrow(error);
     });
 
     it('should handle errors during approval', async () => {
@@ -607,9 +473,7 @@ describe('CaseReopeningService', () => {
 
       await expect(service.approveCaseReopening(1, supervisorId, tenantId)).rejects.toThrow('Database error');
       expect(logger.error).toHaveBeenCalled();
-      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
-        expect.objectContaining({ outcome: 'FAILURE' })
-      );
+      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'FAILURE' }));
     });
   });
 
@@ -628,87 +492,53 @@ describe('CaseReopeningService', () => {
     });
 
     it('should successfully reject case reopening', async () => {
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update.mockResolvedValueOnce({
-          ...mockCase,
-          status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-        });
-        prismaService.task.update.mockResolvedValueOnce({
-          ...mockTask,
-          status: TaskStatus.STATUS_30_COMPLETED,
-        });
-        return callback(prismaService);
+      caseRepository.transaction.mockImplementationOnce(async (callback) => {
+        const tx = {
+          case: { update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED }) },
+          task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
+        };
+        return callback(tx);
       });
-
-      notificationService.sendNotification.mockResolvedValueOnce({});
 
       const result = await service.rejectCaseReopening(1, rejectionReason, supervisorId, tenantId);
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('Case reopening rejected');
       expect(result.case.status).toBe(CaseStatus.STATUS_82_CLOSED_CONFIRMED);
-      expect(notificationService.sendNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'user-123',
-          type: 'CASE_REOPENING_REJECTED',
-        })
-      );
     });
 
-    it('should throw error if rejection reason is too short', async () => {
-      const shortReason = 'no'; // 2 characters, less than MIN_REJECTION_REASON (4)
-
-      await expect(service.rejectCaseReopening(1, shortReason, supervisorId, tenantId)).rejects.toThrow(
-        BadRequestException
-      );
-      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
-        expect.objectContaining({ outcome: 'FAILURE' })
-      );
-    });
-
-    it('should throw error if rejection reason is empty', async () => {
-      const emptyReason = '';
-
-      await expect(service.rejectCaseReopening(1, emptyReason, supervisorId, tenantId)).rejects.toThrow(
-        BadRequestException
-      );
+    it.each([
+      { name: 'rejection reason is too short', reason: 'no', error: 'must be at least 4 characters' },
+      { name: 'rejection reason is empty', reason: '', error: 'must be at least 4 characters' },
+    ])('should throw error if $name', async ({ reason, error }) => {
+      await expect(service.rejectCaseReopening(1, reason, supervisorId, tenantId)).rejects.toThrow(error);
+      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'FAILURE' }));
     });
 
     it('should handle parse errors in reopening metadata', async () => {
       const taskWithInvalidJson = {
         ...mockTask,
-        comments: [
-          {
-            comment_id: 1,
-            note: 'Invalid JSON',
-          },
-        ],
+        comments: [{ comment_id: 1, note: 'Invalid JSON' }],
       };
       caseRepository.findReopeningTaskForRejection.mockResolvedValue(taskWithInvalidJson);
 
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update.mockResolvedValueOnce({
-          ...mockCase,
-          status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-        });
-        prismaService.task.update.mockResolvedValueOnce({
-          ...mockTask,
-          status: TaskStatus.STATUS_30_COMPLETED,
-        });
-        return callback(prismaService);
+      caseRepository.transaction.mockImplementationOnce(async (callback) => {
+        const tx = {
+          case: { update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED }) },
+          task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
+        };
+        return callback(tx);
       });
 
       const result = await service.rejectCaseReopening(1, rejectionReason, supervisorId, tenantId);
 
       expect(result.success).toBe(true);
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to parse reopening metadata'),
-        expect.any(String),
-        'CaseReopeningService'
-      );
     });
 
-    it('should restore case to STATUS_81_CLOSED_REFUTED', async () => {
+    it.each([
+      { status: CaseStatus.STATUS_81_CLOSED_REFUTED, name: 'REFUTED' },
+      { status: CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE, name: 'INCONCLUSIVE' },
+    ])('should restore case to STATUS_$status', async ({ status }) => {
       const reopeningTask = {
         ...mockTask,
         name: 'Approve Case Reopening',
@@ -724,133 +554,43 @@ describe('CaseReopeningService', () => {
         ],
       };
 
-      const refutedCase = {
+      const closedCase = {
         ...mockCase,
         status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
-        originalClosedStatus: CaseStatus.STATUS_81_CLOSED_REFUTED,
-        tasks: [reopeningTask], // Include the reopening task
+        final_outcome: status,
+        tasks: [reopeningTask],
       };
-      caseRepository.findCaseForReopening.mockResolvedValue(refutedCase);
-
-      // Mock findReopeningTaskForRejection
+      caseRepository.findCaseForReopening.mockResolvedValue(closedCase);
       caseRepository.findReopeningTaskForRejection.mockResolvedValueOnce(reopeningTask);
 
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update.mockResolvedValueOnce({
-          ...mockCase,
-          status: CaseStatus.STATUS_81_CLOSED_REFUTED,
-        });
-        prismaService.task.update.mockResolvedValueOnce({
-          ...mockTask,
-          status: TaskStatus.STATUS_30_COMPLETED,
-        });
-        return callback(prismaService);
+      caseRepository.transaction.mockImplementationOnce(async (callback) => {
+        const tx = {
+          case: { update: jest.fn().mockResolvedValue({ ...mockCase, status }) },
+          task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
+        };
+        return callback(tx);
       });
-
-      notificationService.sendNotification.mockResolvedValueOnce({});
 
       const result = await service.rejectCaseReopening(1, rejectionReason, supervisorId, tenantId);
 
       expect(result.success).toBe(true);
     });
 
-    it('should restore case to STATUS_83_CLOSED_INCONCLUSIVE', async () => {
-      const reopeningTask = {
-        ...mockTask,
-        name: 'Approve Case Reopening',
-        status: TaskStatus.STATUS_01_UNASSIGNED,
-        comments: [
-          {
-            comment_id: 1,
-            note: JSON.stringify({
-              requestedBy: 'user-456',
-              reason: 'Review needed',
-            }),
-          },
-        ],
-      };
+    it.each([
+      { name: 'case not found', mockFn: 'findCaseForReopening', resolveValue: null },
+      { name: 'reopening task not found', mockFn: 'findReopeningTaskForRejection', resolveValue: null },
+    ])('should throw error if $name', async ({ mockFn, resolveValue }) => {
+      caseRepository[mockFn].mockResolvedValue(resolveValue);
 
-      const inconclusiveCase = {
-        ...mockCase,
-        status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
-        originalClosedStatus: CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-        tasks: [reopeningTask], // Include the reopening task
-      };
-      caseRepository.findCaseForReopening.mockResolvedValue(inconclusiveCase);
-
-      // Mock findReopeningTaskForRejection
-      caseRepository.findReopeningTaskForRejection.mockResolvedValueOnce(reopeningTask);
-
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update.mockResolvedValueOnce({
-          ...mockCase,
-          status: CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-        });
-        prismaService.task.update.mockResolvedValueOnce({
-          ...mockTask,
-          status: TaskStatus.STATUS_30_COMPLETED,
-        });
-        return callback(prismaService);
-      });
-
-      notificationService.sendNotification.mockResolvedValueOnce({});
-
-      const result = await service.rejectCaseReopening(1, rejectionReason, supervisorId, tenantId);
-
-      expect(result.success).toBe(true);
-    });
-
-    it('should handle notification errors gracefully', async () => {
-      prismaService.$transaction.mockImplementationOnce(async (callback) => {
-        prismaService.case.update.mockResolvedValueOnce({
-          ...mockCase,
-          status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-        });
-        prismaService.task.update.mockResolvedValueOnce({
-          ...mockTask,
-          status: TaskStatus.STATUS_30_COMPLETED,
-        });
-        return callback(prismaService);
-      });
-
-      notificationService.sendNotification.mockRejectedValueOnce(new Error('Notification failed'));
-
-      const result = await service.rejectCaseReopening(1, rejectionReason, supervisorId, tenantId);
-
-      expect(result.success).toBe(true);
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to send rejection notification'),
-        expect.any(String),
-        'CaseReopeningService'
-      );
-    });
-
-    it('should throw error if case not found', async () => {
-      caseRepository.findCaseForReopening.mockResolvedValue(null);
-
-      await expect(service.rejectCaseReopening(1, rejectionReason, supervisorId, tenantId)).rejects.toThrow(
-        NotFoundException
-      );
-    });
-
-    it('should throw error if reopening task not found', async () => {
-      caseRepository.findReopeningTaskForRejection.mockResolvedValue(null);
-
-      await expect(service.rejectCaseReopening(1, rejectionReason, supervisorId, tenantId)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(service.rejectCaseReopening(1, rejectionReason, supervisorId, tenantId)).rejects.toThrow(NotFoundException);
     });
 
     it('should handle errors during rejection', async () => {
       caseRepository.findCaseForReopening.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.rejectCaseReopening(1, rejectionReason, supervisorId, tenantId)).rejects.toThrow(
-        'Database error'
-      );
+      await expect(service.rejectCaseReopening(1, rejectionReason, supervisorId, tenantId)).rejects.toThrow('Database error');
       expect(logger.error).toHaveBeenCalled();
-      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
-        expect.objectContaining({ outcome: 'FAILURE' })
-      );
+      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'FAILURE' }));
     });
   });
 

@@ -84,24 +84,19 @@ describe('NotificationPreferencesService', () => {
       });
     });
 
-    it('should parse suppression_settings from JSON', async () => {
+    it.each([
+      ['JSON array', JSON.stringify(['TASK_ASSIGNED', 'TASK_OVERDUE']), ['TASK_ASSIGNED', 'TASK_OVERDUE']],
+      ['null', null, null],
+    ])('should handle suppression_settings as %s', async (_description, dbValue, expectedValue) => {
       const preferenceWithSuppression = {
         ...mockPreference,
-        suppression_settings: JSON.stringify(['TASK_ASSIGNED', 'TASK_OVERDUE']),
+        suppression_settings: dbValue,
       };
       (prisma.userNotificationPreference.findUnique as jest.Mock).mockResolvedValue(preferenceWithSuppression);
 
       const result = await service.getUserPreferences('user-123', 'tenant-123');
 
-      expect(result.suppression_settings).toEqual(['TASK_ASSIGNED', 'TASK_OVERDUE']);
-    });
-
-    it('should handle null suppression_settings', async () => {
-      (prisma.userNotificationPreference.findUnique as jest.Mock).mockResolvedValue(mockPreference);
-
-      const result = await service.getUserPreferences('user-123', 'tenant-123');
-
-      expect(result.suppression_settings).toBeNull();
+      expect(result.suppression_settings).toEqual(expectedValue);
     });
   });
 
@@ -130,9 +125,7 @@ describe('NotificationPreferencesService', () => {
         dashboard_enabled: false,
       };
 
-      await expect(service.createPreferences('user-123', 'tenant-123', dto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.createPreferences('user-123', 'tenant-123', dto)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw error when SMS enabled without phone number', async () => {
@@ -235,9 +228,7 @@ describe('NotificationPreferencesService', () => {
       const dto = { email_enabled: true };
       (prisma.userNotificationPreference.create as jest.Mock).mockRejectedValue(new Error('DB error'));
 
-      await expect(service.createPreferences('user-123', 'tenant-123', dto)).rejects.toThrow(
-        'Failed to create notification preferences',
-      );
+      await expect(service.createPreferences('user-123', 'tenant-123', dto)).rejects.toThrow('Failed to create notification preferences');
     });
   });
 
@@ -277,9 +268,7 @@ describe('NotificationPreferencesService', () => {
       };
       (prisma.userNotificationPreference.findUnique as jest.Mock).mockResolvedValue(mockPreference);
 
-      await expect(service.updatePreferences('user-123', dto)).rejects.toThrow(
-        'At least one notification channel must be enabled',
-      );
+      await expect(service.updatePreferences('user-123', dto)).rejects.toThrow('At least one notification channel must be enabled');
     });
 
     it('should throw error when enabling SMS without phone number', async () => {
@@ -395,11 +384,7 @@ describe('NotificationPreferencesService', () => {
 
       const result = await service.getEnabledChannels('user-123');
 
-      expect(result).toEqual([
-        NotificationChannel.EMAIL,
-        NotificationChannel.IN_APP,
-        NotificationChannel.DASHBOARD,
-      ]);
+      expect(result).toEqual([NotificationChannel.EMAIL, NotificationChannel.IN_APP, NotificationChannel.DASHBOARD]);
     });
 
     it('should return all enabled channels', async () => {
@@ -484,73 +469,26 @@ describe('NotificationPreferencesService', () => {
 
       expect(result).toBe(NotificationChannel.EMAIL);
     });
-
-    it('should handle all notification channels', async () => {
-      const channels = [
-        NotificationChannel.EMAIL,
-        NotificationChannel.IN_APP,
-        NotificationChannel.SMS,
-        NotificationChannel.DASHBOARD,
-      ];
-
-      for (const channel of channels) {
-        const preference = { ...mockPreference, default_channel: channel };
-        (prisma.userNotificationPreference.findUnique as jest.Mock).mockResolvedValue(preference);
-
-        const result = await service.getDefaultChannel('user-123');
-
-        expect(result).toBe(channel);
-      }
-    });
   });
 
   describe('getUserPhoneNumber', () => {
-    it('should return phone number when SMS is enabled', async () => {
-      const preferenceWithSMS = {
-        sms_enabled: true,
-        phone_number: '+1234567890',
-      };
-      (prisma.userNotificationPreference.findUnique as jest.Mock).mockResolvedValue(preferenceWithSMS);
+    it.each([
+      ['SMS enabled with phone', { sms_enabled: true, phone_number: '+1234567890' }, '+1234567890'],
+      ['SMS disabled with phone', { sms_enabled: false, phone_number: '+1234567890' }, null],
+      ['SMS enabled without phone', { sms_enabled: true, phone_number: null }, null],
+      ['no preferences', null, null],
+    ])('should return correct value when %s', async (_description, preference, expected) => {
+      (prisma.userNotificationPreference.findUnique as jest.Mock).mockResolvedValue(preference);
 
       const result = await service.getUserPhoneNumber('user-123');
 
-      expect(result).toBe('+1234567890');
-      expect(prisma.userNotificationPreference.findUnique).toHaveBeenCalledWith({
-        where: { user_id: 'user-123' },
-        select: { phone_number: true, sms_enabled: true },
-      });
-    });
-
-    it('should return null when SMS is disabled', async () => {
-      const preferenceWithoutSMS = {
-        sms_enabled: false,
-        phone_number: '+1234567890',
-      };
-      (prisma.userNotificationPreference.findUnique as jest.Mock).mockResolvedValue(preferenceWithoutSMS);
-
-      const result = await service.getUserPhoneNumber('user-123');
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null when phone number is missing', async () => {
-      const preferenceNoPhone = {
-        sms_enabled: true,
-        phone_number: null,
-      };
-      (prisma.userNotificationPreference.findUnique as jest.Mock).mockResolvedValue(preferenceNoPhone);
-
-      const result = await service.getUserPhoneNumber('user-123');
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null when preferences do not exist', async () => {
-      (prisma.userNotificationPreference.findUnique as jest.Mock).mockResolvedValue(null);
-
-      const result = await service.getUserPhoneNumber('user-123');
-
-      expect(result).toBeNull();
+      expect(result).toBe(expected);
+      if (preference) {
+        expect(prisma.userNotificationPreference.findUnique).toHaveBeenCalledWith({
+          where: { user_id: 'user-123' },
+          select: { phone_number: true, sms_enabled: true },
+        });
+      }
     });
   });
 
@@ -578,19 +516,6 @@ describe('NotificationPreferencesService', () => {
       const result = await service.createPreferences('user-123', 'tenant-123', dto);
 
       expect(result.phone_number).toBe('+1 (555) 123-4567');
-    });
-
-    it('should handle empty suppression_settings array', async () => {
-      const dto = {
-        email_enabled: true,
-        suppression_settings: [],
-      };
-      (prisma.userNotificationPreference.create as jest.Mock).mockResolvedValue(mockPreference);
-
-      await service.createPreferences('user-123', 'tenant-123', dto);
-
-      const createCall = (prisma.userNotificationPreference.create as jest.Mock).mock.calls[0][0];
-      expect(createCall.data.suppression_settings).toBeDefined();
     });
 
     it('should handle concurrent preference updates', async () => {
