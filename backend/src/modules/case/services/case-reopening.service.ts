@@ -6,12 +6,11 @@ import { TaskService } from 'src/modules/task/task.service';
 import { Case, CaseCreationType, CaseStatus, Task, TaskStatus } from '@prisma/client-cms';
 import { CANDIDATE_GROUPS, TASK_NAMES, VALIDATION_LENGTHS, REOPENABLE_CASE_STATUSES } from '../../../constants/case.constants';
 import { ConflictException } from '@nestjs/common/exceptions/conflict.exception';
-import { isInvestigatorRole } from '../../../utils/helperFunction';
-import { CaseQueryService } from './case-query.service';
 import { Outcome } from '../../../utils/types/outcome';
 import { FlowableService } from '../../flowable/flowable.service';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
+import { setTimeout } from 'node:timers/promises';
 
 @Injectable()
 export class CaseReopeningService {
@@ -21,7 +20,6 @@ export class CaseReopeningService {
     private readonly notificationService: NotificationService,
     private readonly taskService: TaskService,
     private readonly loggerService: LoggerService,
-    private readonly caseQueryService: CaseQueryService,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
@@ -52,26 +50,13 @@ export class CaseReopeningService {
         );
       }
 
-      const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
-      if (existingCase === null) {
-        throw new NotFoundException(`Case with id ${caseId} not found`);
-      }
-      if (!REOPENABLE_CASE_STATUSES.includes(existingCase.status)) {
-        throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
-      }
-
-      // If this is a child case, validate parent case is also reopenable
-      // if (existingCase.parent_id) {
-      //   const parentCase = await this.caseQueryService.retrieveCase(existingCase.parent_id, tenantId);
-      //   if (!REOPENABLE_CASE_STATUSES.includes(parentCase.status)) {
-      //     throw new BadRequestException(
-      //       `Cannot reopen child case ${caseId} because parent case ${existingCase.parent_id} is not in a valid reopenable state`,
-      //     );
-      //   }
-      // }
-
       if (role === 'CMS_SUPERVISOR') {
-        const result = await this.caseRepository.transaction(async (tx) => {
+        const txResult = await this.caseRepository.transaction(async (tx) => {
+          const existingCaseForUpdate = await this.caseRepository.findCaseById(caseId, tenantId, tx);
+          if (!REOPENABLE_CASE_STATUSES.includes(existingCaseForUpdate.status)) {
+            throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
+          }
+
           const updatedCase = await tx.case.update({
             where: { case_id: caseId },
             data: {
@@ -102,111 +87,98 @@ export class CaseReopeningService {
           return { case: updatedCase, investigationTask };
         });
 
-        // Create new investigation task for supervisor
-
-        this.flowableService.handleCaseCreated({
-          caseId,
-          tenantId,
-          caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          creationType: CaseCreationType.MANUAL,
-          creatorRole: 'SUPERVISOR',
-          isReopened: true,
-          isFraudNAML: false,
-        });
+        this.executeFlowableOperations(caseId, tenantId, role);
 
         await this.loggingOrchestrationService.logActionsWithHistory(
           {
             userId,
             operation: 'reopenCase',
             entityName: CaseReopeningService.name,
-            actionPerformed: `Reopened case ${caseId} and created investigation task ${result.investigationTask.task_id}. Reason: ${reason}`,
+            actionPerformed: `Reopened case ${caseId} and created investigation task ${txResult.investigationTask.task_id}. Reason: ${reason}`,
             outcome: Outcome.SUCCESS,
           },
           caseId,
-          existingCase.tenant_id,
+          txResult.case.tenant_id,
         );
 
         return {
           success: true,
           message: 'Case reopened successfully',
-          case: result.case,
+          case: txResult.case,
           investigation_task: {
-            task_id: result.investigationTask.task_id,
-            name: result.investigationTask.name,
-            status: result.investigationTask.status,
+            task_id: txResult.investigationTask.task_id,
+            name: txResult.investigationTask.name,
+            status: txResult.investigationTask.status,
             assigned_to: userId,
           },
         };
-      }
+      } else {
+        const txResult = await this.caseRepository.transaction(async (tx) => {
+          const existingCaseForUpdate = await this.caseRepository.findCaseById(caseId, tenantId, tx);
+          if (!REOPENABLE_CASE_STATUSES.includes(existingCaseForUpdate.status)) {
+            throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
+          }
 
-      const result = await this.caseRepository.transaction(async (tx) => {
-        const updatedCase = await tx.case.update({
-          where: { case_id: caseId },
-          data: {
-            status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
-            updated_at: new Date(),
-          },
+          const updatedCase = await tx.case.update({
+            where: { case_id: caseId },
+            data: {
+              status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
+              updated_at: new Date(),
+            },
+          });
+
+          const approvalTask = await this.taskService.createTask(
+            {
+              caseId,
+              name: TASK_NAMES.APPROVE_CASE_REOPENING,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              description: `Case reopening approval required. Reason: ${reason}`,
+              candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+            },
+            userId,
+            tenantId,
+            tx,
+          );
+
+          await this.commentRepository.createComment(
+            userId,
+            {
+              caseId,
+              note: `Case reopen request initiated by investigator.\nReason: ${reason || 'Not specified'}, Current Status: ${existingCaseForUpdate.status}`,
+              tenantId,
+            },
+            tx,
+          );
+
+          return { case: updatedCase, approvalTask };
         });
 
-        const approvalTask = await this.taskService.createTask(
+        this.executeFlowableOperations(caseId, tenantId, role);
+
+        await this.loggingOrchestrationService.logActionsWithHistory(
           {
-            caseId,
-            name: TASK_NAMES.APPROVE_CASE_REOPENING,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            description: `Case reopening approval required. Reason: ${reason}`,
-            candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+            userId,
+            operation: 'reopenCase',
+            entityName: CaseReopeningService.name,
+            actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
+            outcome: Outcome.SUCCESS,
           },
-          userId,
-          tenantId,
-          tx,
+          caseId,
+          txResult.case.tenant_id,
         );
 
-        await this.commentRepository.createComment(
-          userId,
-          {
-            caseId,
-            note: `Case reopen request initiated by investigator.\nReason: ${reason || 'Not specified'}, Current Status: ${existingCase.status}`,
-            tenantId,
-          },
-          tx,
-        );
-
-        return { case: updatedCase, approvalTask };
-      });
-
-      this.flowableService.handleCaseCreated({
-        caseId,
-        tenantId,
-        caseStatus: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
-        creationType: CaseCreationType.MANUAL,
-        creatorRole: 'INVESTIGATOR',
-        isReopened: true,
-        isFraudNAML: false,
-      });
-
-      await this.loggingOrchestrationService.logActionsWithHistory(
-        {
-          userId,
-          operation: 'reopenCase',
-          entityName: CaseReopeningService.name,
-          actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
-          outcome: Outcome.SUCCESS,
-        },
-        caseId,
-        existingCase.tenant_id,
-      );
-
-      return {
-        success: true,
-        message: 'Case reopened and pending supervisor approval',
-        case: result.case,
-        approvalTask: result.approvalTask,
-      };
+        return {
+          success: true,
+          message: 'Case reopened and pending supervisor approval',
+          case: txResult.case,
+          approvalTask: txResult.approvalTask,
+        };
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.loggerService.error(`Failed to reopen case ${caseId}: ${errorMessage}`, errorStack, CaseReopeningService.name);
 
+      this.loggerService.error(`Failed to reopen case ${caseId}: ${errorMessage}`, errorStack, CaseReopeningService.name);
       await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'reopenCase',
@@ -246,91 +218,31 @@ export class CaseReopeningService {
   }> {
     try {
       this.loggerService.log(`Supervisor ${supervisorId} approving case reopening for ${caseId}`, CaseReopeningService.name);
-
-      const caseData = await this.validateReopeningPreconditions(caseId, tenantId);
-      // Step 2: Find the reopening approval task
-      const reopeningTask = await this.caseRepository.findUnassignedTaskForReopening(caseId, tenantId);
-
-      if (!reopeningTask) {
-        throw new NotFoundException(`"Approve Case Reopening" task not found for case ${caseId}`);
-      }
-
-      let reopeningMetadata: any = {};
-      let requesterId: string | null = null;
-      let requesterRole: string | null = null;
-
-      if (reopeningTask.comments.length > 0) {
-        try {
-          const comment = reopeningTask.comments[0];
-          const metadata = JSON.parse(comment.note);
-          reopeningMetadata = metadata;
-          requesterId = metadata.requestedBy;
-          requesterRole = metadata.requesterRole;
-        } catch (parseError) {
-          const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
-          const errorStack = parseError instanceof Error ? parseError.stack : undefined;
-          this.loggerService.warn(`Failed to parse reopening metadata: ${errorMessage}`, errorStack, CaseReopeningService.name);
-        }
-      }
-
-      let newCaseStatus: CaseStatus;
-      let newTaskStatus: TaskStatus;
+      const newCaseStatus: CaseStatus = CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
+      const newTaskStatus: TaskStatus = TaskStatus.STATUS_01_UNASSIGNED;
       let assignedUserId: string | undefined;
-      let candidateGroup: string;
-
-      const isAnalystOrInvestigator = isInvestigatorRole(requesterRole);
-
-      if (isAnalystOrInvestigator && requesterId) {
-        newCaseStatus = CaseStatus.STATUS_10_ASSIGNED;
-        newTaskStatus = TaskStatus.STATUS_10_ASSIGNED;
-        assignedUserId = requesterId;
-        candidateGroup = CANDIDATE_GROUPS.INVESTIGATIONS;
-
-        this.loggerService.log(`Reopening approved - assigning to original requester ${requesterId}`, CaseReopeningService.name);
-      } else {
-        newCaseStatus = CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
-        newTaskStatus = TaskStatus.STATUS_01_UNASSIGNED;
-        assignedUserId = undefined;
-        candidateGroup = CANDIDATE_GROUPS.INVESTIGATIONS;
-
-        this.loggerService.log(
-          `Reopening approved - assigning to investigations queue (requester role: ${requesterRole ?? 'unknown'})`,
-          CaseReopeningService.name,
-        );
-      }
+      const candidateGroup: string = CANDIDATE_GROUPS.INVESTIGATIONS;
+      const caseData = await this.validateReopeningPreconditions(caseId, tenantId);
 
       const result = await this.caseRepository.transaction(async (tx) => {
-        // Update case status
+        const reopeningTask = await this.caseRepository.findUnassignedTaskForReopening(caseId, tenantId, tx);
+        if (!reopeningTask) {
+          throw new NotFoundException(`"Approve Case Reopening" task not found for case ${caseId}`);
+        }
+
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
           data: {
             status: newCaseStatus,
-            case_owner_user_id: assignedUserId ?? null,
             updated_at: new Date(),
           },
         });
 
         if (updatedCase.parent_id) {
-          const subCase = await tx.case.findFirst({
-            where: {
-              parent_id: updatedCase.parent_id,
-              NOT: {
-                case_id: updatedCase.case_id,
-              },
-            },
+          await tx.case.update({
+            where: { case_id: updatedCase.parent_id },
+            data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
           });
-
-          if (
-            updatedCase.status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT &&
-            (subCase?.status === CaseStatus.STATUS_82_CLOSED_CONFIRMED ||
-              subCase?.status === CaseStatus.STATUS_81_CLOSED_REFUTED ||
-              subCase?.status === CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE)
-          ) {
-            await tx.case.update({
-              where: { case_id: updatedCase.parent_id },
-              data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
-            });
-          }
         }
 
         const completedTask = await tx.task.update({
@@ -346,69 +258,45 @@ export class CaseReopeningService {
           supervisorId,
           {
             caseId,
-            note: `Case reopening approved by supervisor. Previous status: ${caseData.status}. Reason: ${reopeningMetadata.reason ?? 'Not specified'}`,
+            note: `Case reopening approved by supervisor. Previous status: ${caseData.status}.`,
             tenantId,
           },
           tx,
         );
 
-        return { updatedCase, completedTask };
-      });
-
-      const investigationTask = await this.taskService.createTask(
-        {
-          caseId,
-          status: newTaskStatus,
-          assignedUserId,
-          name: TASK_NAMES.INVESTIGATE_CASE,
-          description: `Case reopened for additional investigation. ${reopeningMetadata.reason ?? ''}`,
-          candidateGroup,
-        },
-        supervisorId,
-        tenantId,
-      );
-
-      this.flowableService.handleCaseStatusChanged({
-        caseId,
-        newStatus: newCaseStatus,
-      });
-
-      if (assignedUserId) {
-        try {
-          await this.notificationService.sendNotification({
-            userId: assignedUserId,
-            type: 'CASE_REOPENED_ASSIGNED',
-            message: `Case ${caseId} has been reopened and assigned to you`,
-            metadata: {
-              caseId,
-              taskId: investigationTask.task_id,
-              approvedBy: supervisorId,
-              reason: reopeningMetadata.reason,
-              taskTitle: investigationTask.name,
-            },
-          });
-        } catch (notificationError) {
-          const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
-          const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
-          this.loggerService.warn(`Failed to send analyst notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
-        }
-      } else {
-        try {
-          await this.notificationService.sendGroupNotification({
+        const investigationTask = await this.taskService.createTask(
+          {
+            caseId,
+            status: newTaskStatus,
+            assignedUserId,
+            name: TASK_NAMES.INVESTIGATE_CASE,
+            description: 'Case reopened for additional investigation.',
             candidateGroup,
-            type: 'CASE_REOPENED_AVAILABLE',
-            message: `Case ${caseId} has been reopened and is available in the work queue`,
-            metadata: {
-              caseId,
-              taskId: investigationTask.task_id,
-              approvedBy: supervisorId,
-            },
-          });
-        } catch (notificationError) {
-          const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
-          const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
-          this.loggerService.warn(`Failed to send group notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
-        }
+          },
+          supervisorId,
+          tenantId,
+        );
+
+        return { updatedCase, completedTask, investigationTask };
+      });
+
+      await this.executeFlowableOperations(caseId, tenantId, 'CMS_SUPERVISOR', newCaseStatus, true);
+
+      try {
+        await this.notificationService.sendGroupNotification({
+          candidateGroup,
+          type: 'CASE_REOPENED_AVAILABLE',
+          message: `Case ${caseId} has been reopened and is available in the work queue`,
+          metadata: {
+            caseId,
+            taskId: result.investigationTask.task_id,
+            approvedBy: supervisorId,
+          },
+        });
+      } catch (notificationError) {
+        const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
+        const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
+        this.loggerService.warn(`Failed to send group notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
       }
 
       await this.loggingOrchestrationService.logActionsWithHistory(
@@ -416,15 +304,14 @@ export class CaseReopeningService {
           userId: supervisorId,
           operation: 'approveCaseReopening',
           entityName: CaseReopeningService.name,
-          actionPerformed: `Case ${caseId} reopening approved. New investigation task ${investigationTask.task_id} created${assignedUserId ? ` and assigned to ${assignedUserId}` : ' in investigations queue'}`,
+          actionPerformed: `Case ${caseId} reopening approved.`,
           outcome: Outcome.SUCCESS,
         },
         caseId,
         caseData.tenant_id,
       );
 
-      this.loggerService.log(`Case ${caseId} reopening approved. Status: ${newCaseStatus}`, CaseReopeningService.name);
-
+      this.loggerService.log('End - approveCaseReopening', CaseReopeningService.name);
       return {
         success: true,
         message: 'Case reopening approved',
@@ -439,9 +326,9 @@ export class CaseReopeningService {
           status: result.completedTask.status,
         },
         investigation_task: {
-          task_id: investigationTask.task_id,
-          name: investigationTask.name,
-          status: investigationTask.status,
+          task_id: result.investigationTask.task_id,
+          name: result.investigationTask.name,
+          status: result.investigationTask.status,
           assigned_to: assignedUserId ?? candidateGroup,
           candidateGroup,
         },
@@ -477,43 +364,19 @@ export class CaseReopeningService {
   }> {
     try {
       this.loggerService.log(`Supervisor ${supervisorId} rejecting case reopening for ${caseId}`, CaseReopeningService.name);
-
       if (!rejectionReason || rejectionReason.trim().length < VALIDATION_LENGTHS.MIN_REJECTION_REASON) {
-        const errorMsg = `Rejection reason must be at least ${VALIDATION_LENGTHS.MIN_REJECTION_REASON} characters`;
-        await this.loggingOrchestrationService.logActions({
-          userId: supervisorId,
-          operation: 'rejectCaseReopening',
-          entityName: CaseReopeningService.name,
-          actionPerformed: `Failed to reject case reopening for ${caseId}: ${errorMsg}`,
-          outcome: Outcome.FAILURE,
-        });
-        throw new BadRequestException(errorMsg);
+        throw new BadRequestException(`Rejection reason must be at least ${VALIDATION_LENGTHS.MIN_REJECTION_REASON} characters`);
       }
-
       const caseData = await this.validateReopeningPreconditions(caseId, tenantId);
 
       const reopeningTask = await this.caseRepository.findReopeningTaskForRejection(caseId, tenantId);
-
       if (!reopeningTask) {
         throw new NotFoundException(`"Approve Case Reopening" task not found for case ${caseId}`);
-      }
-
-      let requesterId: string | null = null;
-      if (reopeningTask.comments.length > 0) {
-        try {
-          const metadata = JSON.parse(reopeningTask.comments[0].note);
-          requesterId = metadata.requestedBy;
-        } catch (parseError) {
-          const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
-          const errorStack = parseError instanceof Error ? parseError.stack : undefined;
-          this.loggerService.warn(`Failed to parse reopening metadata: ${errorMessage}`, errorStack, CaseReopeningService.name);
-        }
       }
 
       const originalClosedStatus = caseData.final_outcome ?? CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE;
 
       const result = await this.caseRepository.transaction(async (tx) => {
-        // Restore case to original closed status
         const updatedCase = await tx.case.update({
           where: { case_id: caseId },
           data: {
@@ -544,31 +407,14 @@ export class CaseReopeningService {
         return { updatedCase, completedTask };
       });
 
-      this.flowableService.handleCaseStatusChanged({
+      await this.flowableService.handleTaskCompleted({
         caseId,
-        newStatus: originalClosedStatus,
+        newStatus: TaskStatus.STATUS_30_COMPLETED,
+        taskName: 'Approve Case Reopening',
+        completionVariables: {
+          reopenApprovalDecision: 'reject',
+        },
       });
-
-      if (requesterId) {
-        try {
-          await this.notificationService.sendNotification({
-            userId: requesterId,
-            type: 'CASE_REOPENING_REJECTED',
-            message: `Your case reopening request for case ${caseId} was rejected`,
-            metadata: {
-              caseId,
-              rejectionReason,
-              rejectedBy: supervisorId,
-              restoredStatus: originalClosedStatus,
-              taskTitle: reopeningTask.name,
-            },
-          });
-        } catch (notificationError) {
-          const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
-          const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
-          this.loggerService.warn(`Failed to send rejection notification: ${errorMessage}`, errorStack, CaseReopeningService.name);
-        }
-      }
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
@@ -639,4 +485,73 @@ export class CaseReopeningService {
 
     return caseData;
   }
+
+  private readonly executeFlowableOperations = async (
+    caseId: number,
+    tenantId: string,
+    role: string,
+    newCaseStatus?: string,
+    approvalDecision?: boolean,
+  ): Promise<void> => {
+    const flowableOperations = async (): Promise<void> => {
+      if (role === 'CMS_SUPERVISOR') {
+        if (approvalDecision === undefined) {
+          await this.flowableService.handleCaseCreated({
+            caseId,
+            tenantId,
+            caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+            creationType: CaseCreationType.MANUAL,
+            creatorRole: 'SUPERVISOR',
+            isReopened: true,
+            isFraudNAML: false,
+          });
+        } else if (approvalDecision) {
+          await this.flowableService.handleTaskCompleted({
+            caseId,
+            newStatus: TaskStatus.STATUS_30_COMPLETED,
+            taskName: 'Approve Case Reopening',
+            completionVariables: {
+              reopenApprovalDecision: 'approve',
+            },
+          });
+
+          await this.flowableService.handleCaseStatusChanged({
+            caseId,
+            newStatus: newCaseStatus!,
+          });
+        } else {
+          await this.flowableService.handleTaskCompleted({
+            caseId,
+            newStatus: TaskStatus.STATUS_30_COMPLETED,
+            taskName: 'Approve Case Reopening',
+            completionVariables: {
+              reopenApprovalDecision: 'reject',
+            },
+          });
+        }
+      } else {
+        await this.flowableService.handleCaseCreated({
+          caseId,
+          tenantId,
+          caseStatus: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
+          creationType: CaseCreationType.MANUAL,
+          creatorRole: 'INVESTIGATOR',
+          isReopened: true,
+          isFraudNAML: false,
+        });
+      }
+    };
+
+    await this.retryFlowableOperations(flowableOperations, 5);
+  };
+
+  private readonly retryFlowableOperations = async (fn: () => Promise<void>, maxRetries: number, attempt = 1): Promise<void> => {
+    try {
+      await fn();
+    } catch (error) {
+      if (attempt > maxRetries) throw error;
+      await setTimeout(1000 * attempt);
+      await this.retryFlowableOperations(fn, maxRetries, attempt + 1);
+    }
+  };
 }

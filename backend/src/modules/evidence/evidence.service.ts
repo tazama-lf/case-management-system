@@ -157,7 +157,7 @@ export class EvidenceService {
     for (const file of files) {
       // Validate MIME type
       const allowed = allowedMimeTypes[dto.evidenceType];
-      if (!allowed?.includes(file.mimetype)) {
+      if (!allowed.includes(file.mimetype)) {
         throw new BadRequestException(
           `File type ${file.mimetype} is not allowed for ${dto.evidenceType} evidence. File: ${file.originalname}`,
         );
@@ -213,6 +213,7 @@ export class EvidenceService {
       const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
       const hash = this.sha256(encrypted);
 
+      // eslint-disable-next-line no-await-in-loop -- CouchDB requires sequential attachment uploads with updated revision
       const attachmentResult = await this.couchdb.insertAttachment(evidenceId, currentRev, file.originalname, encrypted, file.mimetype);
 
       metadata.metadata.push({
@@ -226,7 +227,7 @@ export class EvidenceService {
 
       currentRev = attachmentResult.rev;
 
-      this.evidenceRepository.createEvidence(userId, {
+      const createEvidenceDto: CreateEvidenceDto = {
         id: evidenceId,
         taskId: dto.taskId,
         fileName: file.originalname,
@@ -241,7 +242,9 @@ export class EvidenceService {
         caseId: task.case_id,
         tenant_id: tenantId,
         metadata,
-      } as CreateEvidenceDto);
+      };
+
+      this.evidenceRepository.createEvidence(userId, createEvidenceDto);
     }
     await this.couchdb.updateDocument(evidenceId, metadata);
 
@@ -275,7 +278,7 @@ export class EvidenceService {
   }
 
   async deleteEvidence(evidenceId: string, fileName: string, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
-    if (evidenceId === undefined || evidenceId.trim() === '' || fileName === undefined || fileName.trim() === '') {
+    if (evidenceId.trim() === '' || fileName.trim() === '') {
       this.logger.log(`Evidence Id  ${evidenceId} or fileName  ${fileName} is not found`);
       this.logger.error(`Evidence Id or fileName is not found: ${evidenceId} , ${fileName}`);
       throw new BadRequestException(`Evidence Id is not found: ${evidenceId}, or fileName is empty: ${fileName}`);
@@ -323,7 +326,7 @@ export class EvidenceService {
     }
 
     const result = await this.couchdb.queryDocuments(query);
-    const evidenceDoc = result.data?.[0];
+    const [evidenceDoc] = result.data;
 
     if (!evidenceDoc) {
       throw new ForbiddenException('Access denied or evidence not found');
@@ -373,7 +376,7 @@ export class EvidenceService {
     }
     const result = await this.couchdb.queryDocuments(query);
 
-    const evidenceDoc = result.data?.[0];
+    const [evidenceDoc] = result.data;
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
     const attachments = evidenceDoc.metadata ?? [];
@@ -386,7 +389,7 @@ export class EvidenceService {
     const files: Array<{ file: Buffer; attachmentMeta: any }> = [];
 
     try {
-      for (const att of targets) {
+      const downloadPromises = targets.map(async (att) => {
         const encryptedRaw = await this.couchdb.getAttachment(evidenceId, att.fileName);
         const encryptedBuffer: Buffer = Buffer.isBuffer(encryptedRaw) ? encryptedRaw : Buffer.from(encryptedRaw);
 
@@ -400,7 +403,7 @@ export class EvidenceService {
 
         const file = this.decrypt(encryptedBuffer, att.encryption.key, att.encryption.iv, att.encryption.authTag);
 
-        files.push({
+        return {
           file,
           attachmentMeta: {
             fileName: att.fileName,
@@ -410,8 +413,10 @@ export class EvidenceService {
             encryption: att.encryption,
             filePath: att.filePath,
           },
-        });
-      }
+        };
+      });
+
+      files.push(...(await Promise.all(downloadPromises)));
 
       await this.auditLog.logAction({
         userId,
@@ -465,7 +470,7 @@ export class EvidenceService {
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
-    const evidenceDoc = result.data?.[0];
+    const [evidenceDoc] = result.data;
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
     const attachments = evidenceDoc.metadata ?? [];
@@ -476,51 +481,50 @@ export class EvidenceService {
     if (!targets.length) throw new NotFoundException('Requested attachment not found');
 
     const details: any[] = [];
-    let allVerified = true;
 
     try {
-      for (const att of targets) {
+      const verifyPromises = targets.map(async (att) => {
         const encryptedRaw = await this.couchdb.getAttachment(evidenceId, att.fileName);
         const encryptedBuffer: Buffer = Buffer.isBuffer(encryptedRaw) ? encryptedRaw : Buffer.from(encryptedRaw);
 
         const encryptedHash = this.sha256(encryptedBuffer);
         if (encryptedHash !== att.hash) {
-          details.push({
+          return {
             fileName: att.fileName,
             verified: false,
             reason: 'encrypted hash mismatch',
             expectedHash: att.hash,
             actualHash: encryptedHash,
-          });
-          allVerified = false;
-          continue;
+          };
         }
 
-        let decrypted: Buffer;
-        try {
-          decrypted = this.decrypt(encryptedBuffer, att.encryption.key, att.encryption.iv, att.encryption.authTag);
-        } catch (decErr) {
-          const errorMessage = decErr instanceof Error ? decErr.message : String(decErr);
-          const errorStack = decErr instanceof Error ? decErr.stack : undefined;
-          this.logger.error(`Decryption failed for ${evidenceId}:${att.fileName} - ${errorMessage}`, errorStack);
-          details.push({
-            fileName: att.fileName,
-            verified: false,
-            reason: 'decryption failed',
-            error: errorMessage,
-          });
-          allVerified = false;
-          continue;
-        }
+        // try {
+        //   let decrypted: Buffer;
+        //   decrypted = this.decrypt(encryptedBuffer, att.encryption.key, att.encryption.iv, att.encryption.authTag);
+        // } catch (decErr) {
+        //   const errorMessage = decErr instanceof Error ? decErr.message : String(decErr);
+        //   const errorStack = decErr instanceof Error ? decErr.stack : undefined;
+        //   this.logger.error(`Decryption failed for ${evidenceId}:${att.fileName} - ${errorMessage}`, errorStack);
+        //   return {
+        //     fileName: att.fileName,
+        //     verified: false,
+        //     reason: 'decryption failed',
+        //     error: errorMessage,
+        //   };
+        // }
 
-        details.push({
+        return {
           fileName: att.fileName,
           verified: true,
           reason: 'ok',
           expectedEncryptedHash: att.hash,
           encryptedHash,
-        });
-      }
+        };
+      });
+
+      const verificationResults = await Promise.all(verifyPromises);
+      details.push(...verificationResults);
+      const allVerified = verificationResults.every((result) => result.verified);
 
       await this.auditLog.logAction({
         userId,
@@ -553,7 +557,7 @@ export class EvidenceService {
     if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
-    const docs = result.data || [];
+    const docs = result.data;
 
     const evidence = docs.map((item) => ({
       id: item.evidenceId,
@@ -597,7 +601,7 @@ export class EvidenceService {
 
     const result = await this.couchdb.queryDocuments(query);
 
-    const docs = result.data || [];
+    const docs = result.data;
     allDocs.push(...docs);
 
     const evidence = allDocs.map((item) => ({
@@ -636,7 +640,7 @@ export class EvidenceService {
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
-    const docs = result.data || [];
+    const docs = result.data;
 
     const evidence = docs.map((item) => ({
       id: item.evidenceId,

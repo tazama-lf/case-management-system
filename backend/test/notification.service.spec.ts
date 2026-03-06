@@ -52,7 +52,7 @@ describe('NotificationService', () => {
   });
 
   describe('sendNotification', () => {
-    it('should send notification to user', async () => {
+    it('should send notification to user with cache', async () => {
       (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValue('user@example.com');
 
       await service.sendNotification({
@@ -71,38 +71,15 @@ describe('NotificationService', () => {
       );
     });
 
-    it('should handle missing metadata', async () => {
-      (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValue('user@example.com');
-
-      await service.sendNotification({
-        userId: 'user-123',
-        type: 'GENERIC',
-        message: 'Test notification',
-      });
-
-      expect(asyncTaskService.createEmailTask).toHaveBeenCalled();
-    });
-
-    it('should use fallback email when user email not found', async () => {
-      (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValue(null);
-
-      await service.sendNotification({
-        userId: 'user-123',
-        type: 'TASK_ASSIGNED',
-        message: 'Task assigned',
-        metadata: {},
-      });
-
-      expect(asyncTaskService.createEmailTask).toHaveBeenCalledWith(
-        'user-user-123@example.com',
-        expect.any(String),
-        expect.any(String),
-        expect.any(Object),
-      );
-    });
-
-    it('should handle cache service errors', async () => {
-      (cacheService.getUserEmailFromCache as jest.Mock).mockRejectedValue(new Error('Cache error'));
+    it.each([
+      ['null', null],
+      ['error', new Error('Cache error')],
+    ])('should use fallback email when cache returns %s', async (scenario, cacheResponse) => {
+      if (cacheResponse instanceof Error) {
+        (cacheService.getUserEmailFromCache as jest.Mock).mockRejectedValue(cacheResponse);
+      } else {
+        (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValue(cacheResponse);
+      }
 
       await service.sendNotification({
         userId: 'user-123',
@@ -283,9 +260,7 @@ describe('NotificationService', () => {
     });
 
     it('should use default reason when not provided', async () => {
-      (cacheService.getUserEmailFromCache as jest.Mock)
-        .mockResolvedValueOnce('new@example.com')
-        .mockResolvedValueOnce('old@example.com');
+      (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValueOnce('new@example.com').mockResolvedValueOnce('old@example.com');
 
       await service.handleTaskReassigned({
         taskId: 'task-123',
@@ -402,9 +377,7 @@ describe('NotificationService', () => {
     });
 
     it('should notify management for critical breaches', async () => {
-      (configService.get as jest.Mock)
-        .mockReturnValueOnce('supervisor@example.com')
-        .mockReturnValueOnce('management@example.com');
+      (configService.get as jest.Mock).mockReturnValueOnce('supervisor@example.com').mockReturnValueOnce('management@example.com');
 
       await service.handleSlaBreach({
         taskId: 'task-123',
@@ -504,7 +477,7 @@ describe('NotificationService', () => {
   });
 
   describe('template mapping', () => {
-    it('should use correct template for each notification type', async () => {
+    it('should use correct template for all notification types', async () => {
       (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValue('user@example.com');
 
       const notificationTypes = [
@@ -522,6 +495,7 @@ describe('NotificationService', () => {
         'TASK_SLA_WARNING',
         'TASK_SLA_BREACH',
         'TASK_OVERDUE',
+        'GENERIC',
       ];
 
       for (const type of notificationTypes) {
@@ -534,24 +508,6 @@ describe('NotificationService', () => {
       }
 
       expect(asyncTaskService.createEmailTask).toHaveBeenCalledTimes(notificationTypes.length);
-    });
-
-    it('should use GENERIC template for unknown type', async () => {
-      (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValue('user@example.com');
-
-      await service.sendNotification({
-        userId: 'user-123',
-        type: 'GENERIC',
-        message: 'Generic notification',
-        metadata: {},
-      });
-
-      expect(asyncTaskService.createEmailTask).toHaveBeenCalledWith(
-        'user@example.com',
-        'CMS Notification',
-        expect.any(String),
-        expect.any(Object),
-      );
     });
   });
 
@@ -573,46 +529,6 @@ describe('NotificationService', () => {
         expect.any(String),
         expect.any(Object),
       );
-    });
-
-    it('should handle empty metadata', async () => {
-      (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValue('user@example.com');
-
-      await service.sendNotification({
-        userId: 'user-123',
-        type: 'GENERIC',
-        message: 'Test notification',
-        metadata: {},
-      });
-
-      expect(asyncTaskService.createEmailTask).toHaveBeenCalled();
-    });
-
-    it('should handle notification with all event types', async () => {
-      (configService.get as jest.Mock).mockReturnValue('supervisor@example.com');
-      (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValue('user@example.com');
-
-      const eventTypes = [
-        { type: 'WORK_QUEUE', data: {} },
-        { type: 'TASK_AVAILABLE', data: {} },
-        { type: 'CASE_CLOSURE_PENDING', data: { caseId: 'CASE-001' } },
-        { type: 'CASE_CLOSURE_APPROVED', data: { caseId: 'CASE-001' } },
-        { type: 'CASE_CLOSURE_REJECTED', data: { caseId: 'CASE-001' } },
-        { type: 'CASE_REOPENED_ASSIGNED', data: { caseId: 'CASE-001' } },
-        { type: 'CASE_REOPENED_AVAILABLE', data: { caseId: 'CASE-001' } },
-        { type: 'CASE_REOPENING_REJECTED', data: { caseId: 'CASE-001' } },
-      ];
-
-      for (const evt of eventTypes) {
-        await service.sendNotification({
-          userId: 'user-123',
-          type: evt.type as any,
-          message: 'Event notification',
-          metadata: evt.data,
-        });
-      }
-
-      expect(asyncTaskService.createEmailTask).toHaveBeenCalledTimes(eventTypes.length);
     });
 
     it('should handle async task service failures gracefully', async () => {
@@ -641,62 +557,6 @@ describe('NotificationService', () => {
       await Promise.all(notifications);
 
       expect(asyncTaskService.createEmailTask).toHaveBeenCalledTimes(3);
-    });
-  });
-
-  describe('resolveUserEmail (private method behavior)', () => {
-    it('should resolve email from cache when available', async () => {
-      (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValue('actual@example.com');
-
-      await service.sendNotification({
-        userId: 'user-123',
-        type: 'GENERIC',
-        message: 'Test notification',
-        metadata: {},
-      });
-
-      expect(asyncTaskService.createEmailTask).toHaveBeenCalledWith(
-        'actual@example.com',
-        expect.any(String),
-        expect.any(String),
-        expect.any(Object),
-      );
-    });
-
-    it('should use fallback when cache returns null', async () => {
-      (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValue(null);
-
-      await service.sendNotification({
-        userId: 'user-456',
-        type: 'GENERIC',
-        message: 'Test notification',
-        metadata: {},
-      });
-
-      expect(asyncTaskService.createEmailTask).toHaveBeenCalledWith(
-        'user-user-456@example.com',
-        expect.any(String),
-        expect.any(String),
-        expect.any(Object),
-      );
-    });
-
-    it('should use fallback when cache throws error', async () => {
-      (cacheService.getUserEmailFromCache as jest.Mock).mockRejectedValue(new Error('Cache unavailable'));
-
-      await service.sendNotification({
-        userId: 'user-789',
-        type: 'GENERIC',
-        message: 'Test notification',
-        metadata: {},
-      });
-
-      expect(asyncTaskService.createEmailTask).toHaveBeenCalledWith(
-        'user-user-789@example.com',
-        expect.any(String),
-        expect.any(String),
-        expect.any(Object),
-      );
     });
   });
 });

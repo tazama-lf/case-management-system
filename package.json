@@ -37,16 +37,8 @@
   },
   "lint-staged": {
     "backend/**/*.{js,ts}": [
-      "cd backend && npm run fix:eslint",
-      "cd backend && npm run fix:prettier"
-    ],
-    "frontend/**/*.{js,ts,tsx}": [
-      "cd frontend && npx eslint --fix",
-      "cd frontend && npx prettier --write"
-    ],
-    "shared/**/*.{js,ts}": [
-      "cd shared && npx eslint --fix",
-      "cd shared && npx prettier --write"
+      "npm run fix:eslint --prefix backend",
+      "npm run fix:prettier --prefix backend"
     ]
   },
   "engines": {

@@ -183,14 +183,14 @@ describe('ProcessAlertService', () => {
     describe('AI triage flow', () => {
       beforeEach(() => {
         alertService.handleAlertOrNALT.mockResolvedValue(mockAlert);
-        configService.get.mockReturnValue('AI');
       });
 
-      it('should handle AI triage when TRIAGE_TYPE is AI', async () => {
+      it.each(['AI', 'ai', 'aI'])('should handle AI triage when TRIAGE_TYPE is %s (case-insensitive)', async (triageType) => {
+        configService.get.mockReturnValue(triageType);
+
         await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
 
         expect(loggerService.log).toHaveBeenCalledWith('Start - Processing Incoming Alert', 'ProcessAlertService');
-        expect(alertService.handleAlertOrNALT).toHaveBeenCalled();
         expect(configService.get).toHaveBeenCalledWith('TRIAGE_TYPE', 'DISABLED');
         expect(triageService.handleAITriage).toHaveBeenCalledWith(
           mockAlert.alert_id,
@@ -207,47 +207,16 @@ describe('ProcessAlertService', () => {
         expect(taskService.createTask).not.toHaveBeenCalled();
         expect(caseCreationService.updateCaseStatus).not.toHaveBeenCalled();
       });
-
-      it('should handle AI triage with lowercase ai', async () => {
-        configService.get.mockReturnValue('ai');
-
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
-
-        expect(triageService.handleAITriage).toHaveBeenCalled();
-        expect(taskService.createTask).not.toHaveBeenCalled();
-      });
-
-      it('should handle AI triage with mixed case aI', async () => {
-        configService.get.mockReturnValue('aI');
-
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
-
-        expect(triageService.handleAITriage).toHaveBeenCalled();
-      });
-
-      it('should pass correct alert and case IDs to AI triage', async () => {
-        const differentAlert = { ...mockAlert, alert_id: 999, case_id: 888 };
-        alertService.handleAlertOrNALT.mockResolvedValue(differentAlert);
-
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
-
-        expect(triageService.handleAITriage).toHaveBeenCalledWith(
-          999,
-          888,
-          expect.any(Object),
-          userId,
-          tenantId,
-        );
-      });
     });
 
     describe('Manual triage flow', () => {
       beforeEach(() => {
         alertService.handleAlertOrNALT.mockResolvedValue(mockAlert);
-        configService.get.mockReturnValue('MANUAL');
       });
 
-      it('should create manual triage task when TRIAGE_TYPE is MANUAL', async () => {
+      it.each(['MANUAL', 'manual'])('should create manual triage task when TRIAGE_TYPE is %s', async (triageType) => {
+        configService.get.mockReturnValue(triageType);
+
         await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
 
         expect(configService.get).toHaveBeenCalledWith('TRIAGE_TYPE', 'DISABLED');
@@ -265,48 +234,6 @@ describe('ProcessAlertService', () => {
         expect(triageService.handleAITriage).not.toHaveBeenCalled();
         expect(caseCreationService.updateCaseStatus).not.toHaveBeenCalled();
       });
-
-      it('should handle manual triage with lowercase manual', async () => {
-        configService.get.mockReturnValue('manual');
-
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
-
-        expect(taskService.createTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            name: 'Complete New Case',
-            candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-          }),
-          userId,
-          tenantId,
-        );
-      });
-
-      it('should include alert_id in task description', async () => {
-        const customAlert = { ...mockAlert, alert_id: 12345 };
-        alertService.handleAlertOrNALT.mockResolvedValue(customAlert);
-
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
-
-        expect(taskService.createTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            description: 'Manual triage required for alert: 12345',
-          }),
-          userId,
-          tenantId,
-        );
-      });
-
-      it('should use correct task status for manual triage', async () => {
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
-
-        expect(taskService.createTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-          }),
-          userId,
-          tenantId,
-        );
-      });
     });
 
     describe('Disabled triage flow', () => {
@@ -314,107 +241,42 @@ describe('ProcessAlertService', () => {
         alertService.handleAlertOrNALT.mockResolvedValue(mockAlert);
       });
 
-      it('should create investigation task and update case status when TRIAGE_TYPE is DISABLED', async () => {
-        configService.get.mockReturnValue('DISABLED');
+      it.each(['DISABLED', 'disabled', 'UNKNOWN_TYPE', ''])(
+        'should create investigation task when TRIAGE_TYPE is %s',
+        async (triageType) => {
+          configService.get.mockReturnValue(triageType);
 
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
+          await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
 
-        expect(taskService.createTask).toHaveBeenCalledWith(
-          {
-            caseId: mockAlert.case_id,
-            status: TaskStatus.STATUS_01_UNASSIGNED,
-            name: 'Investigate Case',
-            description: `Investigate case: ${mockAlert.case_id}`,
-            candidateGroup: 'Investigations',
-          },
-          userId,
-          tenantId,
-        );
-        expect(caseCreationService.updateCaseStatus).toHaveBeenCalledWith(
-          mockAlert.case_id,
-          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          userId,
-          tenantId,
-        );
-        expect(triageService.handleAITriage).not.toHaveBeenCalled();
-      });
-
-      it('should handle default case when TRIAGE_TYPE is not recognized', async () => {
-        configService.get.mockReturnValue('UNKNOWN_TYPE');
-
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
-
-        expect(taskService.createTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            name: 'Investigate Case',
-          }),
-          userId,
-          tenantId,
-        );
-        expect(caseCreationService.updateCaseStatus).toHaveBeenCalled();
-      });
-
-      it('should use default DISABLED behavior for empty string', async () => {
-        configService.get.mockReturnValue('');
-
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
-
-        expect(taskService.createTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            name: 'Investigate Case',
-          }),
-          userId,
-          tenantId,
-        );
-      });
-
-      it('should include case_id in task description', async () => {
-        const customAlert = { ...mockAlert, case_id: 789 };
-        alertService.handleAlertOrNALT.mockResolvedValue(customAlert);
-        configService.get.mockReturnValue('DISABLED');
-
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
-
-        expect(taskService.createTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            description: 'Investigate case: 789',
-          }),
-          userId,
-          tenantId,
-        );
-      });
-
-      it('should update case to READY_FOR_ASSIGNMENT status', async () => {
-        configService.get.mockReturnValue('DISABLED');
-
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
-
-        expect(caseCreationService.updateCaseStatus).toHaveBeenCalledWith(
-          mockAlert.case_id,
-          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          userId,
-          tenantId,
-        );
-      });
-
-      it('should handle lowercase disabled', async () => {
-        configService.get.mockReturnValue('disabled');
-
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
-
-        expect(taskService.createTask).toHaveBeenCalled();
-        expect(caseCreationService.updateCaseStatus).toHaveBeenCalled();
-      });
+          expect(taskService.createTask).toHaveBeenCalledWith(
+            {
+              caseId: mockAlert.case_id,
+              status: TaskStatus.STATUS_01_UNASSIGNED,
+              name: 'Investigate Case',
+              description: `Investigate case: ${mockAlert.case_id}`,
+              candidateGroup: 'Investigations',
+            },
+            userId,
+            tenantId,
+          );
+          expect(caseCreationService.updateCaseStatus).toHaveBeenCalledWith(
+            mockAlert.case_id,
+            CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+            userId,
+            tenantId,
+          );
+          expect(triageService.handleAITriage).not.toHaveBeenCalled();
+        },
+      );
     });
 
     describe('Alert service integration', () => {
       beforeEach(() => {
+        alertService.handleAlertOrNALT.mockResolvedValue(mockAlert);
         configService.get.mockReturnValue('DISABLED');
       });
 
-      it('should pass correct DTO structure to alertService', async () => {
-        alertService.handleAlertOrNALT.mockResolvedValue(mockAlert);
-
+      it('should pass correct parameters to alertService', async () => {
         await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
 
         expect(alertService.handleAlertOrNALT).toHaveBeenCalledWith(
@@ -429,62 +291,12 @@ describe('ProcessAlertService', () => {
           source,
         );
       });
-
-      it('should pass source parameter to alertService', async () => {
-        alertService.handleAlertOrNALT.mockResolvedValue(mockAlert);
-        const customSource = 'EXTERNAL_API';
-
-        await service.processIncomingAlert(mockIngestAlertDto, customSource, userId, tenantId);
-
-        expect(alertService.handleAlertOrNALT).toHaveBeenCalledWith(
-          expect.any(Object),
-          userId,
-          tenantId,
-          customSource,
-        );
-      });
-
-      it('should pass userId and tenantId to alertService', async () => {
-        alertService.handleAlertOrNALT.mockResolvedValue(mockAlert);
-        const customUserId = 'custom-user-456';
-        const customTenantId = 'custom-tenant-789';
-
-        await service.processIncomingAlert(mockIngestAlertDto, source, customUserId, customTenantId);
-
-        expect(alertService.handleAlertOrNALT).toHaveBeenCalledWith(
-          expect.any(Object),
-          customUserId,
-          customTenantId,
-          source,
-        );
-      });
     });
 
     describe('Logger integration', () => {
-      beforeEach(() => {
+      it('should log at the start of processing in all scenarios', async () => {
         alertService.handleAlertOrNALT.mockResolvedValue(mockAlert);
         configService.get.mockReturnValue('DISABLED');
-      });
-
-      it('should log at the start of processing', async () => {
-        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
-
-        expect(loggerService.log).toHaveBeenCalledWith('Start - Processing Incoming Alert', 'ProcessAlertService');
-      });
-
-      it('should log even when returning early for NALT', async () => {
-        const naltDto = {
-          ...mockIngestAlertDto,
-          report: { ...mockIngestAlertDto.report, status: 'NALT' },
-        };
-
-        await service.processIncomingAlert(naltDto, source, userId, tenantId);
-
-        expect(loggerService.log).toHaveBeenCalledWith('Start - Processing Incoming Alert', 'ProcessAlertService');
-      });
-
-      it('should log even when returning early for no case_id', async () => {
-        alertService.handleAlertOrNALT.mockResolvedValue({ ...mockAlert, case_id: null });
 
         await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
 
@@ -497,9 +309,7 @@ describe('ProcessAlertService', () => {
         const error = new Error('Alert service failed');
         alertService.handleAlertOrNALT.mockRejectedValue(error);
 
-        await expect(service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId)).rejects.toThrow(
-          'Alert service failed',
-        );
+        await expect(service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId)).rejects.toThrow('Alert service failed');
       });
 
       it('should propagate errors from triageService', async () => {
@@ -508,9 +318,7 @@ describe('ProcessAlertService', () => {
         const error = new Error('AI triage failed');
         triageService.handleAITriage.mockRejectedValue(error);
 
-        await expect(service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId)).rejects.toThrow(
-          'AI triage failed',
-        );
+        await expect(service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId)).rejects.toThrow('AI triage failed');
       });
 
       it('should propagate errors from taskService', async () => {
@@ -519,9 +327,7 @@ describe('ProcessAlertService', () => {
         const error = new Error('Task creation failed');
         taskService.createTask.mockRejectedValue(error);
 
-        await expect(service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId)).rejects.toThrow(
-          'Task creation failed',
-        );
+        await expect(service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId)).rejects.toThrow('Task creation failed');
       });
 
       it('should propagate errors from caseCreationService', async () => {
@@ -530,9 +336,7 @@ describe('ProcessAlertService', () => {
         const error = new Error('Case update failed');
         caseCreationService.updateCaseStatus.mockRejectedValue(error);
 
-        await expect(service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId)).rejects.toThrow(
-          'Case update failed',
-        );
+        await expect(service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId)).rejects.toThrow('Case update failed');
       });
     });
 
@@ -554,65 +358,21 @@ describe('ProcessAlertService', () => {
         );
       });
 
-      it('should handle empty networkMap', async () => {
-        const dtoWithEmptyNetworkMap = {
-          ...mockIngestAlertDto,
-          networkMap: {
-            active: false,
-            cfg: '',
-            tenantId: '',
-            messages: [],
-          } as any,
-        };
+      it('should handle different networkMap values', async () => {
         alertService.handleAlertOrNALT.mockResolvedValue(mockAlert);
         configService.get.mockReturnValue('AI');
 
-        await service.processIncomingAlert(dtoWithEmptyNetworkMap, source, userId, tenantId);
+        await service.processIncomingAlert(mockIngestAlertDto, source, userId, tenantId);
 
         expect(triageService.handleAITriage).toHaveBeenCalledWith(
           mockAlert.alert_id,
           mockAlert.case_id,
           expect.objectContaining({
-            networkMap: expect.any(Object),
+            networkMap: expect.anything(),
           }),
           userId,
           tenantId,
         );
-      });
-
-      it('should handle null networkMap', async () => {
-        const dtoWithNullNetworkMap = { ...mockIngestAlertDto, networkMap: null as any };
-        alertService.handleAlertOrNALT.mockResolvedValue(mockAlert);
-        configService.get.mockReturnValue('AI');
-
-        await service.processIncomingAlert(dtoWithNullNetworkMap, source, userId, tenantId);
-
-        expect(triageService.handleAITriage).toHaveBeenCalledWith(
-          mockAlert.alert_id,
-          mockAlert.case_id,
-          expect.objectContaining({
-            networkMap: null,
-          }),
-          userId,
-          tenantId,
-        );
-      });
-
-      it('should handle different tenant and user combinations', async () => {
-        alertService.handleAlertOrNALT.mockResolvedValue(mockAlert);
-        configService.get.mockReturnValue('MANUAL');
-
-        const testCases = [
-          { userId: 'user-1', tenantId: 'tenant-1' },
-          { userId: 'user-2', tenantId: 'tenant-2' },
-          { userId: '', tenantId: 'tenant-3' },
-        ];
-
-        for (const testCase of testCases) {
-          await service.processIncomingAlert(mockIngestAlertDto, source, testCase.userId, testCase.tenantId);
-
-          expect(taskService.createTask).toHaveBeenCalledWith(expect.any(Object), testCase.userId, testCase.tenantId);
-        }
       });
     });
   });

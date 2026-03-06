@@ -174,7 +174,7 @@ export class CaseService {
 
     if (existingCase.status !== CaseStatus.STATUS_21_SUSPENDED) throw new BadRequestException('Only suspended cases can be resumed');
 
-    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) || [];
+    const allTasks = await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId);
     this.logger.error(`All Tasks: ${JSON.stringify(allTasks)}`);
     // const investigateTask = allTasks.find((t) => t.name === (TASK_NAMES.INVESTIGATE_CASE || TASK_NAMES.INVESTIGATE_AML ||TASK_NAMES.INVESTIGATE_FRAUD));
     const investigateTask = allTasks.filter(
@@ -290,7 +290,7 @@ export class CaseService {
     if (!existingCase) throw new BadRequestException(`Case doesn't exist for caseId ${caseId}`);
     if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) throw new BadRequestException('Cannot abandon case other than draft status');
 
-    const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) || [];
+    const allTasks = await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId);
     const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
     if (!completeNewCaseTask) throw new BadRequestException('No complete new Case Task exists');
     if (completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
@@ -653,7 +653,6 @@ export class CaseService {
 
     // Validate required fields are provided
     const missingFields: string[] = [];
-    if (!updateData.priority && !existingCase.priority) missingFields.push('priority');
     if (!updateData.caseType && !existingCase.case_type) missingFields.push('caseType');
 
     if (missingFields.length > 0) {
@@ -683,7 +682,7 @@ export class CaseService {
           newStatus: targetStatus,
         });
 
-        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) || [];
+        const allTasks = await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId);
         const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
 
         if (!completeNewCaseTask) {
@@ -702,21 +701,28 @@ export class CaseService {
           userId,
           tenantId,
         );
+        // targetStatus can only be STATUS_02_READY_FOR_ASSIGNMENT or STATUS_01_PENDING_CASE_CREATION_APPROVAL
+        // so isAutoCloseEligible is always false
+        const isAutoCloseEligible = false;
         await this.flowableService.handleTaskCompleted({
           caseId: completedTask.case_id,
           taskName: completedTask.name!,
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
-            autoCloseEligible: targetStatus === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT ? false : true,
+            autoCloseEligible: isAutoCloseEligible,
             caseType: updateData.caseType ?? existingCase.case_type!,
             casePriority: updateData.priority ?? existingCase.priority,
+            draftApprovalRequired: isSupervisor ? false : true,
           },
         });
 
-        await this.commentService.addComment(
-          { caseId, taskId: completeNewCaseTask.task_id, note: updateData.note, tenantId } as CreateCommentDto,
-          userId,
-        );
+        const createCommentDto = new CreateCommentDto();
+        createCommentDto.caseId = caseId;
+        createCommentDto.taskId = completeNewCaseTask.task_id;
+        createCommentDto.note = updateData.note ?? 'Completed case creation';
+        createCommentDto.tenantId = tenantId;
+
+        await this.commentService.addComment(createCommentDto, userId);
         return { case: updatedCase, completedTask };
       });
 

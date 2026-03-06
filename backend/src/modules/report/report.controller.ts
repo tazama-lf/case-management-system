@@ -25,8 +25,6 @@ import {
 } from 'src/decorators/auth.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { UploadReportDto } from './dto/upload-report.dto';
-// import { Multer } from 'multer';
-import { Express } from 'express';
 import { FraudReport, FraudReportOutcome } from './report.model';
 
 @ApiTags('Reports')

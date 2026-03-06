@@ -4,7 +4,7 @@ import { Outcome } from '../../../utils/types/outcome';
 import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, Alert, Task } from '@prisma/client-cms';
 import { ManualCreateCaseDto, CreateCaseDto } from '../dto';
 import { TaskService } from 'src/modules/task/task.service';
-import { TASK_NAMES, CANDIDATE_GROUPS, VALIDATION_LENGTHS } from '../../../constants/case.constants';
+import { TASK_NAMES, CANDIDATE_GROUPS } from '../../../constants/case.constants';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { CasePriorityUtil } from '../../shared/utils/case-priority.util';
 import { CaseQueryService } from './case-query.service';
@@ -52,11 +52,9 @@ export class CaseCreationApprovalService {
 
     if (existingAlert.case_id ?? (existingAlert.alert_data as any)?.status !== 'NALT') {
       throw new BadRequestException(
-        !existingAlert
-          ? `Alert ${dto.alertId} not found`
-          : existingAlert.case_id
-            ? `Case already exists for alertId ${dto.alertId}`
-            : 'Can only create manual cases from alerts with NALT status',
+        existingAlert.case_id
+          ? `Case already exists for alertId ${dto.alertId}`
+          : 'Can only create manual cases from alerts with NALT status',
       );
     }
 
@@ -278,12 +276,6 @@ export class CaseCreationApprovalService {
           status: CaseStatus.STATUS_00_DRAFT,
         });
 
-        // const approvalTask = await tx.task.findFirst({
-        //   where: { case_id: caseId, name: 'Approve Case Creation', status: TaskStatus.STATUS_01_UNASSIGNED },
-        // });
-
-        // if (!approvalTask) throw new NotFoundException('Approve Case Creation task not found');
-
         await this.taskService.updateTask(
           approvalTask.task_id,
           { status: TaskStatus.STATUS_30_COMPLETED, assignedUserId: supervisorId },
@@ -331,7 +323,7 @@ export class CaseCreationApprovalService {
         taskName: 'Approve Case Creation',
         completionVariables: {
           creationApproval: 'reject',
-          creationComments: `Case creation rejected by supervisor.`,
+          creationComments: 'Case creation rejected by supervisor.',
         },
       });
 
@@ -391,7 +383,7 @@ export class CaseCreationApprovalService {
     try {
       const result = await this.caseRepository.executeTransaction(async (tx) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, userId);
-        const allTasks = (await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId)) || [];
+        const allTasks = await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId);
         const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
         if (!completeNewCaseTask) throw new BadRequestException('No Complete New Case task found');
         if (completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
@@ -412,6 +404,7 @@ export class CaseCreationApprovalService {
             autoCloseEligible: false,
             CaseType: updatedCase.case_type,
             casePriority: existingCase.priority,
+            draftApprovalRequired: false,
           },
         });
         return { case: updatedCase, completedTask: updatedTask };
@@ -536,7 +529,6 @@ export class CaseCreationApprovalService {
     }
 
     const missingFields: string[] = [];
-    if (!caseData.priority) missingFields.push('priority');
     if (!caseData.case_type) missingFields.push('case_type');
     if (!caseData.case_creator_user_id) missingFields.push('case_creator_user_id');
 
@@ -547,7 +539,7 @@ export class CaseCreationApprovalService {
       });
     }
 
-    const approvalTask = caseData.tasks[0];
+    const approvalTask = caseData.tasks.find((t) => t.name === 'Approve Case Creation' && t.status === TaskStatus.STATUS_01_UNASSIGNED);
     if (!approvalTask) {
       throw new NotFoundException('Approve Case Creation task not found');
     }

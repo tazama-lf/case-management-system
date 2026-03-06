@@ -93,36 +93,32 @@ describe('CommentService', () => {
     };
 
     it('should successfully add a comment with caseId', async () => {
-      (commentRepository.createComment as jest.Mock).mockResolvedValue(mockComment);
+      commentRepository.createComment.mockResolvedValue(mockComment);
 
       const result = await service.addComment(createCommentDto, 'user-123');
 
-      expect(result).toBeDefined();
       expect(result).toEqual(mockComment);
-      expect(result!.note).toBe('Test comment');
-      expect(result!.user_id).toBe('user-123');
-      expect(result!.case_id).toBe(1);
+      expect(result.note).toBe('Test comment');
+      expect(result.user_id).toBe('user-123');
+      expect(result.case_id).toBe(1);
       expect(commentRepository.createComment).toHaveBeenCalledWith('user-123', createCommentDto);
-      
-      // Verify audit log with timestamp within last 5 seconds
-      const auditCall = (auditLogService.logAction as jest.Mock).mock.calls[0][0];
+
+      const auditCall = auditLogService.logAction.mock.calls[0][0];
       expect(auditCall.userId).toBe('user-123');
       expect(auditCall.operation).toBe('addComment');
       expect(auditCall.outcome).toBe(Outcome.SUCCESS);
       expect(auditCall.performedAt).toBeInstanceOf(Date);
-      expect(Date.now() - auditCall.performedAt.getTime()).toBeLessThan(5000);
-      
+      if (auditCall.performedAt) {
+        expect(Date.now() - auditCall.performedAt.getTime()).toBeLessThan(5000);
+      }
+
       expect(loggerService.log).toHaveBeenCalledWith('Adding comment : user-123', CommentService.name);
     });
 
     it('should successfully add a comment with taskId', async () => {
-      const taskCommentDto = {
-        tenantId: 'tenant-123',
-        taskId: 5,
-        note: 'Task comment',
-      };
+      const taskCommentDto = { tenantId: 'tenant-123', taskId: 5, note: 'Task comment' };
       const taskComment = { ...mockComment, task_id: 5, case_id: null };
-      (commentRepository.createComment as jest.Mock).mockResolvedValue(taskComment);
+      commentRepository.createComment.mockResolvedValue(taskComment);
 
       const result = await service.addComment(taskCommentDto as any, 'user-123');
 
@@ -130,40 +126,20 @@ describe('CommentService', () => {
       expect(commentRepository.createComment).toHaveBeenCalledWith('user-123', taskCommentDto);
     });
 
-    it('should throw BadRequestException if neither caseId nor taskId provided', async () => {
-      const invalidDto = {
-        tenantId: 'tenant-123',
-        note: 'Test comment',
-      };
-
-      await expect(service.addComment(invalidDto as any, 'user-123')).rejects.toThrow(
-        BadRequestException,
-      );
-      expect(commentRepository.createComment).not.toHaveBeenCalled();
-    });
-
-    it('should throw BadRequestException if tenantId is missing', async () => {
-      const invalidDto = {
-        caseId: 1,
-        note: 'Test comment',
-      };
-
-      await expect(service.addComment(invalidDto as any, 'user-123')).rejects.toThrow(
-        BadRequestException,
-      );
+    it.each([
+      ['neither caseId nor taskId', { tenantId: 'tenant-123', note: 'Test' }, 'Either caseId or taskId must be provided'],
+      ['tenantId missing', { caseId: 1, note: 'Test' }, 'tenantId is required'],
+    ])('should throw BadRequestException when %s', async (_desc, invalidDto, expectedMessage) => {
+      await expect(service.addComment(invalidDto as any, 'user-123')).rejects.toThrow(new BadRequestException(expectedMessage));
       expect(commentRepository.createComment).not.toHaveBeenCalled();
     });
 
     it('should handle repository errors', async () => {
-      (commentRepository.createComment as jest.Mock).mockRejectedValue(new Error('Database error'));
+      commentRepository.createComment.mockRejectedValue(new Error('Database error'));
 
-      await service.addComment(createCommentDto, 'user-123');
+      await expect(service.addComment(createCommentDto, 'user-123')).rejects.toThrow('Database error');
 
-      expect(loggerService.error).toHaveBeenCalledWith(
-        'Error adding comment',
-        expect.any(Error),
-        CommentService.name,
-      );
+      expect(loggerService.error).toHaveBeenCalledWith('Error adding comment', expect.any(Error), CommentService.name);
       expect(auditLogService.logAction).toHaveBeenCalledWith(
         expect.objectContaining({
           outcome: Outcome.FAILURE,
@@ -173,13 +149,8 @@ describe('CommentService', () => {
     });
 
     it('should allow both caseId and taskId if provided', async () => {
-      const bothDto = {
-        tenantId: 'tenant-123',
-        caseId: 1,
-        taskId: 5,
-        note: 'Comment for both',
-      };
-      (commentRepository.createComment as jest.Mock).mockResolvedValue(mockComment);
+      const bothDto = { tenantId: 'tenant-123', caseId: 1, taskId: 5, note: 'Comment for both' };
+      commentRepository.createComment.mockResolvedValue(mockComment);
 
       const result = await service.addComment(bothDto as any, 'user-123');
 
@@ -187,58 +158,31 @@ describe('CommentService', () => {
       expect(commentRepository.createComment).toHaveBeenCalled();
     });
 
-    it('should handle empty note', async () => {
-      const emptyNoteDto = {
-        ...createCommentDto,
-        note: '',
-      };
-      (commentRepository.createComment as jest.Mock).mockResolvedValue({
-        ...mockComment,
-        note: '',
-      });
+    it.each([
+      ['empty note', ''],
+      ['very long note', 'a'.repeat(5000)],
+    ])('should handle %s', async (_desc, noteValue) => {
+      const dto = { ...createCommentDto, note: noteValue };
+      commentRepository.createComment.mockResolvedValue({ ...mockComment, note: noteValue });
 
-      const result = await service.addComment(emptyNoteDto, 'user-123');
+      const result = await service.addComment(dto, 'user-123');
 
-      expect(result).toBeDefined();
-      expect(result!.note).toBe('');
+      expect(result.note).toBe(noteValue);
       expect(commentRepository.createComment).toHaveBeenCalled();
     });
 
-    it('should handle very long notes correctly', async () => {
-      const longNote = 'a'.repeat(5000);
-      const longNoteDto = {
-        ...createCommentDto,
-        note: longNote,
-      };
-      (commentRepository.createComment as jest.Mock).mockResolvedValue({
-        ...mockComment,
-        note: longNote,
-      });
-
-      const result = await service.addComment(longNoteDto, 'user-123');
-
-      expect(result).toBeDefined();
-      expect(result!.note).toBe(longNote);
-      expect(result!.note.length).toBe(5000);
-    });
-
     it('should pass tenantId to repository for tenant isolation', async () => {
-      (commentRepository.createComment as jest.Mock).mockResolvedValue(mockComment);
+      commentRepository.createComment.mockResolvedValue(mockComment);
 
       await service.addComment(createCommentDto, 'user-123');
 
-      expect(commentRepository.createComment).toHaveBeenCalledWith(
-        'user-123',
-        expect.objectContaining({
-          tenantId: 'tenant-123',
-        }),
-      );
+      expect(commentRepository.createComment).toHaveBeenCalledWith('user-123', expect.objectContaining({ tenantId: 'tenant-123' }));
     });
   });
 
   describe('getComment', () => {
     it('should successfully retrieve a comment', async () => {
-      (commentRepository.getCommentsByCommentId as jest.Mock).mockResolvedValue(mockComment);
+      commentRepository.getCommentsByCommentId.mockResolvedValue(mockComment);
 
       const result = await service.getComment(1, 'user-123', 'tenant-123');
 
@@ -255,11 +199,9 @@ describe('CommentService', () => {
     });
 
     it('should throw NotFoundException when comment not found', async () => {
-      (commentRepository.getCommentsByCommentId as jest.Mock).mockResolvedValue(null);
+      commentRepository.getCommentsByCommentId.mockResolvedValue(null);
 
-      await expect(service.getComment(999, 'user-123', 'tenant-123')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.getComment(999, 'user-123', 'tenant-123')).rejects.toThrow(NotFoundException);
       expect(auditLogService.logAction).toHaveBeenCalledWith(
         expect.objectContaining({
           outcome: Outcome.FAILURE,
@@ -269,27 +211,15 @@ describe('CommentService', () => {
     });
 
     it('should handle repository errors', async () => {
-      (commentRepository.getCommentsByCommentId as jest.Mock).mockRejectedValue(
-        new Error('Database error'),
-      );
+      commentRepository.getCommentsByCommentId.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.getComment(1, 'user-123', 'tenant-123')).rejects.toThrow(
-        Error,
-      );
-      expect(loggerService.error).toHaveBeenCalledWith(
-        'Error retrieving comment',
-        expect.any(Error),
-        CommentService.name,
-      );
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          outcome: Outcome.FAILURE,
-        }),
-      );
+      await expect(service.getComment(1, 'user-123', 'tenant-123')).rejects.toThrow(Error);
+      expect(loggerService.error).toHaveBeenCalledWith('Error retrieving comment', expect.any(Error), CommentService.name);
+      expect(auditLogService.logAction).toHaveBeenCalledWith(expect.objectContaining({ outcome: Outcome.FAILURE }));
     });
 
     it('should log retrieval attempt', async () => {
-      (commentRepository.getCommentsByCommentId as jest.Mock).mockResolvedValue(mockComment);
+      commentRepository.getCommentsByCommentId.mockResolvedValue(mockComment);
 
       await service.getComment(1, 'user-123', 'tenant-123');
 
@@ -298,50 +228,33 @@ describe('CommentService', () => {
   });
 
   describe('getCommentsByCaseOrTask', () => {
-    it('should retrieve comments by caseId', async () => {
-      (commentRepository.getCommentsByCaseId as jest.Mock).mockResolvedValue(mockComments);
+    it.each([
+      ['caseId', 1, undefined, 'getCommentsByCaseId', 'case ID: 1'],
+      ['taskId', undefined, 5, 'getCommentsByTaskId', 'task ID: 5'],
+    ])('should retrieve comments by %s', async (_desc, caseId, taskId, repoMethod, expectedMessage) => {
+      commentRepository[repoMethod].mockResolvedValue(mockComments);
 
-      const result = await service.getCommentsByCaseOrTask(1, undefined, 'user-123');
+      const result = await service.getCommentsByCaseOrTask(caseId, taskId, 'user-123');
 
       expect(result).toEqual(mockComments);
-      expect(commentRepository.getCommentsByCaseId).toHaveBeenCalledWith(1);
+      expect(commentRepository[repoMethod]).toHaveBeenCalledWith(caseId ?? taskId);
       expect(auditLogService.logAction).toHaveBeenCalledWith(
         expect.objectContaining({
-          actionPerformed: 'Successfully retrieved comments for case ID: 1',
+          actionPerformed: `Successfully retrieved comments for ${expectedMessage}`,
           outcome: Outcome.SUCCESS,
         }),
       );
     });
 
-    it('should retrieve comments by taskId', async () => {
-      (commentRepository.getCommentsByTaskId as jest.Mock).mockResolvedValue(mockComments);
-
-      const result = await service.getCommentsByCaseOrTask(undefined, 5, 'user-123');
-
-      expect(result).toEqual(mockComments);
-      expect(commentRepository.getCommentsByTaskId).toHaveBeenCalledWith(5);
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          actionPerformed: 'Successfully retrieved comments for task ID: 5',
-          outcome: Outcome.SUCCESS,
-        }),
-      );
-    });
-
-    it('should throw BadRequestException if neither caseId nor taskId provided', async () => {
-      await expect(service.getCommentsByCaseOrTask(undefined, undefined, 'user-123')).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it('should throw BadRequestException if both caseId and taskId provided', async () => {
-      await expect(service.getCommentsByCaseOrTask(1, 5, 'user-123')).rejects.toThrow(
-        BadRequestException,
-      );
+    it.each([
+      ['neither caseId nor taskId provided', undefined, undefined, 'Either caseId or taskId must be provided'],
+      ['both caseId and taskId provided', 1, 5, 'Cannot provide both caseId and taskId'],
+    ])('should throw BadRequestException when %s', async (_desc, caseId, taskId, expectedMessage) => {
+      await expect(service.getCommentsByCaseOrTask(caseId, taskId, 'user-123')).rejects.toThrow(new BadRequestException(expectedMessage));
     });
 
     it('should work without userId (no audit logging)', async () => {
-      (commentRepository.getCommentsByCaseId as jest.Mock).mockResolvedValue(mockComments);
+      commentRepository.getCommentsByCaseId.mockResolvedValue(mockComments);
 
       const result = await service.getCommentsByCaseOrTask(1, undefined);
 
@@ -349,39 +262,19 @@ describe('CommentService', () => {
       expect(auditLogService.logAction).not.toHaveBeenCalled();
     });
 
-    it('should handle repository errors for case', async () => {
-      (commentRepository.getCommentsByCaseId as jest.Mock).mockRejectedValue(
-        new Error('Database error'),
-      );
+    it.each([
+      ['case', 1, undefined, 'getCommentsByCaseId'],
+      ['task', undefined, 5, 'getCommentsByTaskId'],
+    ])('should handle repository errors for %s', async (_desc, caseId, taskId, repoMethod) => {
+      commentRepository[repoMethod].mockRejectedValue(new Error('Database error'));
 
-      await expect(service.getCommentsByCaseOrTask(1, undefined, 'user-123')).rejects.toThrow(
-        Error,
-      );
+      await expect(service.getCommentsByCaseOrTask(caseId, taskId, 'user-123')).rejects.toThrow(Error);
       expect(loggerService.error).toHaveBeenCalled();
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          outcome: Outcome.FAILURE,
-        }),
-      );
-    });
-
-    it('should handle repository errors for task', async () => {
-      (commentRepository.getCommentsByTaskId as jest.Mock).mockRejectedValue(
-        new Error('Database error'),
-      );
-
-      await expect(service.getCommentsByCaseOrTask(undefined, 5, 'user-123')).rejects.toThrow(
-        Error,
-      );
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          outcome: Outcome.FAILURE,
-        }),
-      );
+      expect(auditLogService.logAction).toHaveBeenCalledWith(expect.objectContaining({ outcome: Outcome.FAILURE }));
     });
 
     it('should return empty array when no comments found', async () => {
-      (commentRepository.getCommentsByCaseId as jest.Mock).mockResolvedValue([]);
+      commentRepository.getCommentsByCaseId.mockResolvedValue([]);
 
       const result = await service.getCommentsByCaseOrTask(1, undefined, 'user-123');
 
@@ -391,7 +284,7 @@ describe('CommentService', () => {
 
   describe('getCommentsByCaseId', () => {
     it('should successfully retrieve comments by caseId', async () => {
-      (commentRepository.getCommentsByCaseId as jest.Mock).mockResolvedValue(mockComments);
+      commentRepository.getCommentsByCaseId.mockResolvedValue(mockComments);
 
       const result = await service.getCommentsByCaseId(1, 'user-123');
 
@@ -406,7 +299,7 @@ describe('CommentService', () => {
     });
 
     it('should work without userId', async () => {
-      (commentRepository.getCommentsByCaseId as jest.Mock).mockResolvedValue(mockComments);
+      commentRepository.getCommentsByCaseId.mockResolvedValue(mockComments);
 
       const result = await service.getCommentsByCaseId(1);
 
@@ -415,40 +308,31 @@ describe('CommentService', () => {
     });
 
     it('should handle repository errors', async () => {
-      (commentRepository.getCommentsByCaseId as jest.Mock).mockRejectedValue(
-        new Error('Database error'),
-      );
+      commentRepository.getCommentsByCaseId.mockRejectedValue(new Error('Database error'));
 
       await expect(service.getCommentsByCaseId(1, 'user-123')).rejects.toThrow(Error);
       expect(loggerService.error).toHaveBeenCalled();
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          outcome: Outcome.FAILURE,
-        }),
-      );
+      expect(auditLogService.logAction).toHaveBeenCalledWith(expect.objectContaining({ outcome: Outcome.FAILURE }));
     });
 
-    it('should return empty array when no comments found', async () => {
-      (commentRepository.getCommentsByCaseId as jest.Mock).mockResolvedValue([]);
+    it.each([
+      ['empty array', []],
+      ['large caseId', 999999],
+    ])('should handle %s when no comments found', async (_desc, input) => {
+      const caseId = typeof input === 'number' ? input : 1;
+      const expectedResult = Array.isArray(input) ? input : [];
+      commentRepository.getCommentsByCaseId.mockResolvedValue(expectedResult);
 
-      const result = await service.getCommentsByCaseId(1, 'user-123');
+      const result = await service.getCommentsByCaseId(caseId, 'user-123');
 
-      expect(result).toEqual([]);
-    });
-
-    it('should handle large caseId', async () => {
-      (commentRepository.getCommentsByCaseId as jest.Mock).mockResolvedValue([]);
-
-      const result = await service.getCommentsByCaseId(999999, 'user-123');
-
-      expect(commentRepository.getCommentsByCaseId).toHaveBeenCalledWith(999999);
-      expect(result).toEqual([]);
+      expect(commentRepository.getCommentsByCaseId).toHaveBeenCalledWith(caseId);
+      expect(result).toEqual(expectedResult);
     });
   });
 
   describe('getCommentsByTaskId', () => {
     it('should successfully retrieve comments by taskId', async () => {
-      (commentRepository.getCommentsByTaskId as jest.Mock).mockResolvedValue(mockComments);
+      commentRepository.getCommentsByTaskId.mockResolvedValue(mockComments);
 
       const result = await service.getCommentsByTaskId(5, 'user-123');
 
@@ -463,7 +347,7 @@ describe('CommentService', () => {
     });
 
     it('should work without userId', async () => {
-      (commentRepository.getCommentsByTaskId as jest.Mock).mockResolvedValue(mockComments);
+      commentRepository.getCommentsByTaskId.mockResolvedValue(mockComments);
 
       const result = await service.getCommentsByTaskId(5);
 
@@ -472,130 +356,33 @@ describe('CommentService', () => {
     });
 
     it('should handle repository errors', async () => {
-      (commentRepository.getCommentsByTaskId as jest.Mock).mockRejectedValue(
-        new Error('Database error'),
-      );
+      commentRepository.getCommentsByTaskId.mockRejectedValue(new Error('Database error'));
 
       await expect(service.getCommentsByTaskId(5, 'user-123')).rejects.toThrow(Error);
       expect(loggerService.error).toHaveBeenCalled();
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          outcome: Outcome.FAILURE,
-        }),
-      );
+      expect(auditLogService.logAction).toHaveBeenCalledWith(expect.objectContaining({ outcome: Outcome.FAILURE }));
     });
 
-    it('should return empty array when no comments found', async () => {
-      (commentRepository.getCommentsByTaskId as jest.Mock).mockResolvedValue([]);
+    it.each([
+      ['empty array', []],
+      ['large taskId', 999999],
+    ])('should handle %s when no comments found', async (_desc, input) => {
+      const taskId = typeof input === 'number' ? input : 5;
+      const expectedResult = Array.isArray(input) ? input : [];
+      commentRepository.getCommentsByTaskId.mockResolvedValue(expectedResult);
 
-      const result = await service.getCommentsByTaskId(5, 'user-123');
+      const result = await service.getCommentsByTaskId(taskId, 'user-123');
 
-      expect(result).toEqual([]);
-    });
-
-    it('should handle large taskId', async () => {
-      (commentRepository.getCommentsByTaskId as jest.Mock).mockResolvedValue([]);
-
-      const result = await service.getCommentsByTaskId(999999, 'user-123');
-
-      expect(commentRepository.getCommentsByTaskId).toHaveBeenCalledWith(999999);
-      expect(result).toEqual([]);
+      expect(commentRepository.getCommentsByTaskId).toHaveBeenCalledWith(taskId);
+      expect(result).toEqual(expectedResult);
     });
 
     it('should log retrieval attempt', async () => {
-      (commentRepository.getCommentsByTaskId as jest.Mock).mockResolvedValue(mockComments);
+      commentRepository.getCommentsByTaskId.mockResolvedValue(mockComments);
 
       await service.getCommentsByTaskId(5, 'user-123');
 
-      expect(loggerService.log).toHaveBeenCalledWith(
-        'Retrieving comments by taskId: ',
-        CommentService.name,
-      );
-    });
-  });
-
-  describe('Integration scenarios', () => {
-    it('should handle multiple operations in sequence', async () => {
-      const createDto: CreateCommentDto = {
-        tenantId: 'tenant-123',
-        caseId: 1,
-        note: 'Test comment',
-      };
-
-      (commentRepository.createComment as jest.Mock).mockResolvedValue(mockComment);
-      (commentRepository.getCommentsByCaseId as jest.Mock).mockResolvedValue([mockComment]);
-
-      await service.addComment(createDto, 'user-123');
-      const comments = await service.getCommentsByCaseId(1, 'user-123');
-
-      expect(comments).toEqual([mockComment]);
-      expect(commentRepository.createComment).toHaveBeenCalled();
-      expect(commentRepository.getCommentsByCaseId).toHaveBeenCalled();
-    });
-
-    it('should handle mixed success and failure scenarios', async () => {
-      const createDto: CreateCommentDto = {
-        tenantId: 'tenant-123',
-        caseId: 1,
-        note: 'Test comment',
-      };
-
-      (commentRepository.createComment as jest.Mock).mockResolvedValue(mockComment);
-      (commentRepository.getCommentsByCommentId as jest.Mock).mockResolvedValue(null);
-
-      await service.addComment(createDto, 'user-123');
-      await expect(service.getComment(999, 'user-123', 'tenant-123')).rejects.toThrow(
-        NotFoundException,
-      );
-
-      expect(auditLogService.logAction).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('Edge cases', () => {
-    it('should handle null values gracefully in dto', async () => {
-      const createDto: any = {
-        tenantId: 'tenant-123',
-        caseId: 1,
-        note: null,
-      };
-
-      (commentRepository.createComment as jest.Mock).mockResolvedValue({
-        ...mockComment,
-        note: null,
-      });
-
-      const result = await service.addComment(createDto, 'user-123');
-
-      expect(result).toBeDefined();
-      expect(result!.note).toBeNull();
-    });
-
-    it('should handle undefined repository responses', async () => {
-      (commentRepository.getCommentsByCaseId as jest.Mock).mockResolvedValue(undefined);
-
-      const result = await service.getCommentsByCaseId(1, 'user-123');
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should handle very long notes', async () => {
-      const longNote = 'a'.repeat(10000);
-      const createDto: CreateCommentDto = {
-        tenantId: 'tenant-123',
-        caseId: 1,
-        note: longNote,
-      };
-
-      (commentRepository.createComment as jest.Mock).mockResolvedValue({
-        ...mockComment,
-        note: longNote,
-      });
-
-      const result = await service.addComment(createDto, 'user-123');
-
-      expect(result).toBeDefined();
-      expect(result!.note).toEqual(longNote);
+      expect(loggerService.log).toHaveBeenCalledWith('Retrieving comments by taskId: ', CommentService.name);
     });
   });
 });

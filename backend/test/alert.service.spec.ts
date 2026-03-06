@@ -58,73 +58,72 @@ describe('AlertService', () => {
     updated_at: new Date(),
   };
 
-  beforeEach(async () => {
-    const mockAlertRepository = {
+  // Helper function to create mock repositories and services
+  const createMockDependencies = () => ({
+    alertRepository: {
       createAlert: jest.fn(),
       createTransaction: jest.fn(),
       updateAlert: jest.fn(),
       getAlertById: jest.fn(),
       getReferenceId: jest.fn(),
-    };
-
-    const mockTransactionDataRespository = {
+    },
+    transactionDataRespository: {
       getTransactionalData: jest.fn(),
-    };
-
-    const mockCaseCreationService = {
+    },
+    caseCreationService: {
       createCase: jest.fn(),
       createCaseWithInvestigationTask: jest.fn(),
-    };
-
-    const mockLoggingOrchestrationService = {
+    },
+    loggingOrchestrationService: {
       logActions: jest.fn(),
-    };
-
-    const mockEventLogService = {
+    },
+    eventLogService: {
       getActionHistoryForAlert: jest.fn(),
-    };
-
-    const mockLoggerService = {
+    },
+    loggerService: {
       log: jest.fn(),
       error: jest.fn(),
       warn: jest.fn(),
       debug: jest.fn(),
-    };
-
-    const mockConfigService = {
+    },
+    configService: {
       get: jest.fn(),
-    };
+    },
+  });
+
+  beforeEach(async () => {
+    const mocks = createMockDependencies();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AlertService,
         {
           provide: AlertRepository,
-          useValue: mockAlertRepository,
+          useValue: mocks.alertRepository,
         },
         {
           provide: TransactionDataRespository,
-          useValue: mockTransactionDataRespository,
+          useValue: mocks.transactionDataRespository,
         },
         {
           provide: CaseCreationService,
-          useValue: mockCaseCreationService,
+          useValue: mocks.caseCreationService,
         },
         {
           provide: LoggingOrchestrationService,
-          useValue: mockLoggingOrchestrationService,
+          useValue: mocks.loggingOrchestrationService,
         },
         {
           provide: EventLogService,
-          useValue: mockEventLogService,
+          useValue: mocks.eventLogService,
         },
         {
           provide: LoggerService,
-          useValue: mockLoggerService,
+          useValue: mocks.loggerService,
         },
         {
           provide: ConfigService,
-          useValue: mockConfigService,
+          useValue: mocks.configService,
         },
       ],
     }).compile();
@@ -182,19 +181,16 @@ describe('AlertService', () => {
       );
     });
 
-    it('should throw InternalServerErrorException on transaction creation error', async () => {
-      const error = new Error('Database error');
-      (alertRepository.createTransaction as jest.Mock).mockRejectedValue(error);
-
-      await expect(service.createNewAlert(mockIngestAlertDto, 'tenant-123', 'test-source', 1)).rejects.toThrow(
-        InternalServerErrorException,
-      );
-      expect(loggerService.error).toHaveBeenCalled();
-    });
-
-    it('should throw InternalServerErrorException on alert creation error', async () => {
-      (alertRepository.createTransaction as jest.Mock).mockResolvedValue({ transactionId: 1 } as any);
-      (alertRepository.createAlert as jest.Mock).mockRejectedValue(new Error('Alert creation failed'));
+    it.each([
+      ['transaction creation', 'createTransaction', 'Database error'],
+      ['alert creation', 'createAlert', 'Alert creation failed'],
+    ])('should throw InternalServerErrorException on %s error', async (_desc, method, errorMsg) => {
+      if (method === 'createTransaction') {
+        (alertRepository.createTransaction as jest.Mock).mockRejectedValue(new Error(errorMsg));
+      } else {
+        (alertRepository.createTransaction as jest.Mock).mockResolvedValue({ transactionId: 1 } as any);
+        (alertRepository.createAlert as jest.Mock).mockRejectedValue(new Error(errorMsg));
+      }
 
       await expect(service.createNewAlert(mockIngestAlertDto, 'tenant-123', 'test-source', 1)).rejects.toThrow(
         InternalServerErrorException,
@@ -209,11 +205,7 @@ describe('AlertService', () => {
       await expect(service.createNewAlert(mockIngestAlertDto, 'tenant-123', 'test-source', 1)).rejects.toThrow(
         InternalServerErrorException,
       );
-      expect(loggerService.error).toHaveBeenCalledWith(
-        expect.stringContaining('Error creating alert'),
-        undefined,
-        AlertService.name,
-      );
+      expect(loggerService.error).toHaveBeenCalledWith(expect.stringContaining('Error creating alert'), undefined, AlertService.name);
     });
   });
 
@@ -254,27 +246,17 @@ describe('AlertService', () => {
       expect(alertRepository.updateAlert).toHaveBeenCalledWith(1, updateData, mockTx);
     });
 
-    it('should throw InternalServerErrorException on update error', async () => {
-      const error = new Error('Update failed');
+    it.each([
+      ['Error', new Error('Update failed')],
+      ['string', 'String error'],
+    ])('should throw InternalServerErrorException on %s exception', async (_desc, error) => {
       (alertRepository.updateAlert as jest.Mock).mockRejectedValue(error);
 
       await expect(service.updateAlert(1, 'user-123', updateData)).rejects.toThrow(InternalServerErrorException);
-      expect(loggerService.error).toHaveBeenCalledWith(
-        'Error updating alert 1: Update failed',
-        expect.any(String),
-        AlertService.name,
-      );
-    });
 
-    it('should handle non-Error exceptions during update', async () => {
-      (alertRepository.updateAlert as jest.Mock).mockRejectedValue('String error');
-
-      await expect(service.updateAlert(1, 'user-123', updateData)).rejects.toThrow(InternalServerErrorException);
-      expect(loggerService.error).toHaveBeenCalledWith(
-        'Error updating alert 1: String error',
-        undefined,
-        AlertService.name,
-      );
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? expect.any(String) : undefined;
+      expect(loggerService.error).toHaveBeenCalledWith(`Error updating alert 1: ${errorMessage}`, errorStack, AlertService.name);
     });
   });
 
@@ -313,37 +295,12 @@ describe('AlertService', () => {
         },
         'user-123',
         'tenant-123',
+        'SUPERVISOR',
       );
       expect(alertRepository.createAlert).toHaveBeenCalledWith(
         expect.objectContaining({
           caseId: mockCase.case_id,
         }),
-      );
-    });
-
-    it('should create investigation tasks for FRAUD_AND_AML case type', async () => {
-      const fraudAmlCase = { ...mockCase, case_type: CaseType.FRAUD_AND_AML };
-      (configService.get as jest.Mock).mockReturnValue('system-uuid');
-      (caseCreationService.createCase as jest.Mock).mockResolvedValue(fraudAmlCase as any);
-      (caseCreationService.createCaseWithInvestigationTask as jest.Mock).mockResolvedValue(undefined);
-      (alertRepository.createTransaction as jest.Mock).mockResolvedValue({ transactionId: 1 } as any);
-      (alertRepository.createAlert as jest.Mock).mockResolvedValue(mockAlert);
-
-      await service.handleAlertOrNALT(mockIngestAlertDto, 'user-123', 'tenant-123', 'test-source');
-
-      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
-        CaseType.FRAUD,
-        'user-123',
-        'tenant-123',
-        fraudAmlCase.case_id,
-        fraudAmlCase.priority,
-      );
-      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
-        CaseType.AML,
-        'user-123',
-        'tenant-123',
-        fraudAmlCase.case_id,
-        fraudAmlCase.priority,
       );
     });
 
@@ -362,6 +319,7 @@ describe('AlertService', () => {
         }),
         'user-123',
         'tenant-123',
+        'SUPERVISOR',
       );
     });
   });
@@ -381,12 +339,12 @@ describe('AlertService', () => {
       createdAt: new Date('2026-01-01'),
     };
 
-    it('should throw BadRequestException when alertId is null', async () => {
-      await expect(service.getAlertTransactionalData(null as any)).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException when alertId is undefined', async () => {
-      await expect(service.getAlertTransactionalData(undefined as any)).rejects.toThrow(BadRequestException);
+    it.each([
+      ['null', null],
+      ['undefined', undefined],
+    ])('should throw InternalServerErrorException when alertId is %s', async (_desc, alertId) => {
+      (alertRepository.getAlertById as jest.Mock).mockResolvedValue(null);
+      await expect(service.getAlertTransactionalData(alertId as any)).rejects.toThrow(InternalServerErrorException);
     });
 
     it('should successfully retrieve transactional data', async () => {
@@ -434,10 +392,7 @@ describe('AlertService', () => {
       const { tenant_id, ...sanitizedAlert } = mockAlert;
       expect(result).toEqual(sanitizedAlert);
       expect(alertRepository.getAlertById).toHaveBeenCalledWith(1);
-      expect(loggerService.log).toHaveBeenCalledWith(
-        expect.stringContaining('Alert 1 opened by user user-123'),
-        AlertService.name,
-      );
+      expect(loggerService.log).toHaveBeenCalledWith(expect.stringContaining('Alert 1 opened by user user-123'), AlertService.name);
     });
 
     it('should throw NotFoundException when alert not found', async () => {

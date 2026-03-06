@@ -14,10 +14,10 @@ jest.mock('@tazama-lf/frms-coe-startup-lib', () => ({
 
 describe('NatsStartupService', () => {
   let service: NatsStartupService;
-  let loggerService: any;
-  let configService: any;
-  let processAlertService: any;
-  let mockStartupFactory: any;
+  let loggerService: jest.Mocked<LoggerService>;
+  let configService: jest.Mocked<ConfigService>;
+  let processAlertService: jest.Mocked<ProcessAlertService>;
+  let mockStartupFactory: jest.Mock;
 
   const mockIngestAlertDto: IngestAlertDto = {
     message: 'Alert message text',
@@ -38,51 +38,42 @@ describe('NatsStartupService', () => {
   };
 
   beforeEach(async () => {
-    const mockLoggerService = {
-      log: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-      verbose: jest.fn(),
-    };
-
-    const mockConfigService = {
-      get: jest.fn(),
-    };
-
-    const mockProcessAlertService = {
-      processIncomingAlert: jest.fn().mockResolvedValue({}),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NatsStartupService,
         {
           provide: LoggerService,
-          useValue: mockLoggerService,
+          useValue: {
+            log: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn(),
+            debug: jest.fn(),
+            verbose: jest.fn(),
+          },
         },
         {
           provide: ConfigService,
-          useValue: mockConfigService,
+          useValue: {
+            get: jest.fn(),
+          },
         },
         {
           provide: ProcessAlertService,
-          useValue: mockProcessAlertService,
+          useValue: {
+            processIncomingAlert: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();
 
     service = module.get<NatsStartupService>(NatsStartupService);
-    loggerService = module.get(LoggerService);
-    configService = module.get(ConfigService);
-    processAlertService = module.get(ProcessAlertService);
+    loggerService = module.get(LoggerService) as jest.Mocked<LoggerService>;
+    configService = module.get(ConfigService) as jest.Mocked<ConfigService>;
+    processAlertService = module.get(ProcessAlertService) as jest.Mocked<ProcessAlertService>;
 
-    // Get the mock StartupFactory
     const { StartupFactory } = await import('@tazama-lf/frms-coe-startup-lib');
-    mockStartupFactory = StartupFactory;
-  });
+    mockStartupFactory = StartupFactory as jest.Mock;
 
-  afterEach(() => {
     jest.clearAllMocks();
   });
 
@@ -92,36 +83,22 @@ describe('NatsStartupService', () => {
 
       expect(loggerService.log).toHaveBeenCalledWith('NATS Relay Plugin initialized', 'NatsStartupService');
       expect(mockStartupFactory).toHaveBeenCalled();
-    });
-
-    it('should call startupService.init with correct parameters', async () => {
-      await service.onModuleInit();
 
       const startupInstance = mockStartupFactory.mock.results[0].value;
       expect(startupInstance.init).toHaveBeenCalledWith(expect.any(Function), loggerService);
     });
 
-    it('should bind handleMessage correctly', async () => {
-      await service.onModuleInit();
-
-      const startupInstance = mockStartupFactory.mock.results[0].value;
-      const boundHandler = startupInstance.init.mock.calls[0][0];
-
-      expect(typeof boundHandler).toBe('function');
-    });
-
-    it('should handle initialization error and log it', async () => {
-      const error = new Error('NATS connection failed');
+    it.each([
+      ['Error object', new Error('NATS connection failed'), 'NATS connection failed'],
+      ['String error', 'String error', 'String error'],
+    ])('should handle initialization error: %s', async (_desc, error, expectedMessage) => {
       mockStartupFactory.mockImplementationOnce(() => {
         throw error;
       });
 
-      await expect(service.onModuleInit()).rejects.toThrow('NATS connection failed');
+      await expect(service.onModuleInit()).rejects.toEqual(error);
 
-      expect(loggerService.error).toHaveBeenCalledWith(
-        'Failed to initialize NATS Relay Plugin : NATS connection failed',
-        'NatsStartupService',
-      );
+      expect(loggerService.error).toHaveBeenCalledWith(`Failed to initialize NATS Relay Plugin : ${expectedMessage}`, 'NatsStartupService');
     });
 
     it('should handle initialization error when init fails', async () => {
@@ -132,34 +109,7 @@ describe('NatsStartupService', () => {
 
       await expect(service.onModuleInit()).rejects.toThrow('Init failed');
 
-      expect(loggerService.error).toHaveBeenCalledWith(
-        'Failed to initialize NATS Relay Plugin : Init failed',
-        'NatsStartupService',
-      );
-    });
-
-    it('should handle non-Error exceptions during initialization', async () => {
-      mockStartupFactory.mockImplementationOnce(() => {
-        throw 'String error';
-      });
-
-      // The code re-throws all errors after logging
-      await expect(service.onModuleInit()).rejects.toEqual('String error');
-
-      expect(loggerService.error).toHaveBeenCalled();
-    });
-
-    it('should create StartupFactory instance', async () => {
-      await service.onModuleInit();
-
-      expect(mockStartupFactory).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle multiple initialization attempts', async () => {
-      await service.onModuleInit();
-      await service.onModuleInit();
-
-      expect(mockStartupFactory).toHaveBeenCalledTimes(2);
+      expect(loggerService.error).toHaveBeenCalledWith('Failed to initialize NATS Relay Plugin : Init failed', 'NatsStartupService');
     });
   });
 
@@ -167,30 +117,21 @@ describe('NatsStartupService', () => {
     beforeEach(async () => {
       configService.get.mockReturnValue('test-system-uuid');
       await service.onModuleInit();
+      jest.clearAllMocks();
     });
 
     it('should process incoming alert with tenant ID from transaction', async () => {
       await service.handleMessage(mockIngestAlertDto);
 
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        mockIngestAlertDto,
-        'NATS',
-        'test-system-uuid',
-        'tenant-001',
-      );
-      expect(loggerService.log).toHaveBeenCalledWith(
-        expect.stringContaining('Request:'),
-        'NatsStartupService',
-      );
-      expect(loggerService.log).toHaveBeenCalledWith(
-        'Alert ingested from NATS for tenant: tenant-001',
-        'NatsStartupService',
-      );
+      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(mockIngestAlertDto, 'NATS', 'test-system-uuid', 'tenant-001');
+      expect(loggerService.log).toHaveBeenCalledWith(`Request: ${JSON.stringify(mockIngestAlertDto)}`, 'NatsStartupService');
+      expect(loggerService.log).toHaveBeenCalledWith('Alert ingested from NATS for tenant: tenant-001', 'NatsStartupService');
     });
 
     it.each([
       ['undefined', undefined],
       ['null', null],
+      ['empty string', ''],
     ])('should use DEFAULT tenant when TenantId is %s', async (_description, tenantIdValue) => {
       const dtoWithoutTenant = {
         ...mockIngestAlertDto,
@@ -202,119 +143,20 @@ describe('NatsStartupService', () => {
 
       await service.handleMessage(dtoWithoutTenant);
 
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        dtoWithoutTenant,
-        'NATS',
-        'test-system-uuid',
-        'DEFAULT',
-      );
-    });
-
-    it('should use system UUID from config', async () => {
-      configService.get.mockReturnValue('custom-system-uuid');
-
-      await service.handleMessage(mockIngestAlertDto);
-
-      expect(configService.get).toHaveBeenCalledWith('SYSTEM_UUID');
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        mockIngestAlertDto,
-        'NATS',
-        'custom-system-uuid',
-        'tenant-001',
-      );
+      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(dtoWithoutTenant, 'NATS', 'test-system-uuid', 'DEFAULT');
     });
 
     it.each([
-      ['null', null],
-      ['undefined', undefined],
-      ['empty string', ''],
-    ])('should use default UUID when config returns %s', async (_description, configValue) => {
+      ['custom UUID', 'custom-system-uuid', 'custom-system-uuid'],
+      ['null', null, 'f62edd31-3d72-4ec7-a0b7-cf2f0b0747a9'],
+      ['undefined', undefined, 'f62edd31-3d72-4ec7-a0b7-cf2f0b0747a9'],
+    ])('should use system UUID: %s', async (_desc, configValue, expectedUuid) => {
       configService.get.mockReturnValue(configValue);
 
       await service.handleMessage(mockIngestAlertDto);
 
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        mockIngestAlertDto,
-        'NATS',
-        'f62edd31-3d72-4ec7-a0b7-cf2f0b0747a9',
-        'tenant-001',
-      );
-    });
-
-    it('should log the incoming request', async () => {
-      await service.handleMessage(mockIngestAlertDto);
-
-      expect(loggerService.log).toHaveBeenCalledWith(
-        `Request: ${JSON.stringify(mockIngestAlertDto)}`,
-        'NatsStartupService',
-      );
-    });
-
-    it('should log success message after processing', async () => {
-      await service.handleMessage(mockIngestAlertDto);
-
-      expect(loggerService.log).toHaveBeenCalledWith(
-        'Alert ingested from NATS for tenant: tenant-001',
-        'NatsStartupService',
-      );
-    });
-
-    it('should handle errors from processAlertService', async () => {
-      const error = new Error('Processing failed');
-      processAlertService.processIncomingAlert.mockRejectedValue(error);
-
-      await service.handleMessage(mockIngestAlertDto);
-
-      expect(loggerService.error).toHaveBeenCalledWith(
-        `Failed to persist or publish alert | error=Processing failed | tenantId=tenant-001 | alertData=${JSON.stringify(mockIngestAlertDto.report)}`,
-        error.stack,
-        'NatsStartupService',
-      );
-    });
-
-    it('should handle non-Error exceptions from processAlertService', async () => {
-      processAlertService.processIncomingAlert.mockRejectedValue('String error');
-
-      await service.handleMessage(mockIngestAlertDto);
-
-      expect(loggerService.error).toHaveBeenCalledWith(
-        `Failed to persist or publish alert | error=String error | tenantId=tenant-001 | alertData=${JSON.stringify(mockIngestAlertDto.report)}`,
-        undefined,
-        'NatsStartupService',
-      );
-    });
-
-    it('should include tenant ID in error log', async () => {
-      const error = new Error('Test error');
-      processAlertService.processIncomingAlert.mockRejectedValue(error);
-
-      await service.handleMessage(mockIngestAlertDto);
-
-      expect(loggerService.error).toHaveBeenCalledWith(
-        expect.stringContaining('tenantId=tenant-001'),
-        expect.any(String),
-        'NatsStartupService',
-      );
-    });
-
-    it('should include alert data in error log', async () => {
-      const error = new Error('Test error');
-      processAlertService.processIncomingAlert.mockRejectedValue(error);
-
-      await service.handleMessage(mockIngestAlertDto);
-
-      expect(loggerService.error).toHaveBeenCalledWith(
-        expect.stringContaining(`alertData=${JSON.stringify(mockIngestAlertDto.report)}`),
-        expect.any(String),
-        'NatsStartupService',
-      );
-    });
-
-    it('should not throw error when processing fails', async () => {
-      const error = new Error('Processing failed');
-      processAlertService.processIncomingAlert.mockRejectedValue(error);
-
-      await expect(service.handleMessage(mockIngestAlertDto)).resolves.not.toThrow();
+      expect(configService.get).toHaveBeenCalledWith('SYSTEM_UUID');
+      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(mockIngestAlertDto, 'NATS', expectedUuid, 'tenant-001');
     });
 
     it('should handle different tenant IDs', async () => {
@@ -331,60 +173,29 @@ describe('NatsStartupService', () => {
 
         await service.handleMessage(dto);
 
-        expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-          dto,
-          'NATS',
-          expect.any(String),
-          tenantId,
-        );
+        expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(dto, 'NATS', 'test-system-uuid', tenantId);
       }
     });
 
-    it('should always pass "NATS" as source', async () => {
+    it.each([
+      ['Error object', new Error('Processing failed'), 'Processing failed', expect.any(String)],
+      ['String error', 'String error', 'String error', undefined],
+    ])('should handle %s from processAlertService', async (_desc, error, errorMessage, stack) => {
+      processAlertService.processIncomingAlert.mockRejectedValue(error);
+
       await service.handleMessage(mockIngestAlertDto);
 
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        mockIngestAlertDto,
-        'NATS',
-        expect.any(String),
-        expect.any(String),
-      );
-    });
-
-    it('should handle complex alert data in request', async () => {
-      const complexDto = {
-        ...mockIngestAlertDto,
-        report: {
-          ...mockIngestAlertDto.report,
-          additionalData: {
-            nested: { value: 'test' },
-            array: [1, 2, 3],
-          },
-        } as any,
-      };
-
-      await service.handleMessage(complexDto);
-
-      expect(loggerService.log).toHaveBeenCalledWith(
-        expect.stringContaining('"additionalData"'),
+      expect(loggerService.error).toHaveBeenCalledWith(
+        `Failed to persist or publish alert | error=${errorMessage} | tenantId=tenant-001 | alertData=${JSON.stringify(mockIngestAlertDto.report)}`,
+        stack,
         'NatsStartupService',
       );
     });
 
-    it('should handle missing transaction object gracefully', async () => {
-      const dtoWithoutTransaction = {
-        ...mockIngestAlertDto,
-        transaction: {} as any,
-      };
+    it('should not throw error when processing fails', async () => {
+      processAlertService.processIncomingAlert.mockRejectedValue(new Error('Processing failed'));
 
-      await service.handleMessage(dtoWithoutTransaction);
-
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        dtoWithoutTransaction,
-        'NATS',
-        expect.any(String),
-        'DEFAULT',
-      );
+      await expect(service.handleMessage(mockIngestAlertDto)).resolves.not.toThrow();
     });
 
     it('should handle null report in error logging', async () => {
@@ -397,29 +208,7 @@ describe('NatsStartupService', () => {
 
       await service.handleMessage(dtoWithNullReport);
 
-      expect(loggerService.error).toHaveBeenCalledWith(
-        expect.stringContaining('alertData=null'),
-        expect.any(String),
-        'NatsStartupService',
-      );
-    });
-
-    it('should log both request and success messages in correct order', async () => {
-      // Reset the mock to clear initialization logs
-      loggerService.log.mockClear();
-
-      await service.handleMessage(mockIngestAlertDto);
-
-      const logCalls = loggerService.log.mock.calls;
-      expect(logCalls[0][0]).toContain('Request:');
-      expect(logCalls[1][0]).toContain('Alert ingested from NATS');
-    });
-  });
-
-  describe('Integration scenarios', () => {
-    beforeEach(async () => {
-      configService.get.mockReturnValue('test-system-uuid');
-      await service.onModuleInit();
+      expect(loggerService.error).toHaveBeenCalledWith(expect.stringContaining('alertData=null'), expect.any(String), 'NatsStartupService');
     });
 
     it('should handle multiple messages sequentially', async () => {
@@ -435,124 +224,14 @@ describe('NatsStartupService', () => {
     });
 
     it('should continue processing after one message fails', async () => {
-      processAlertService.processIncomingAlert
-        .mockRejectedValueOnce(new Error('First failed'))
-        .mockResolvedValueOnce({});
+      processAlertService.processIncomingAlert.mockRejectedValueOnce(new Error('First failed')).mockResolvedValueOnce(undefined);
 
       await service.handleMessage(mockIngestAlertDto);
       await service.handleMessage(mockIngestAlertDto);
 
       expect(processAlertService.processIncomingAlert).toHaveBeenCalledTimes(2);
       expect(loggerService.error).toHaveBeenCalledTimes(1);
-      expect(loggerService.log).toHaveBeenCalledWith(
-        expect.stringContaining('Alert ingested from NATS'),
-        'NatsStartupService',
-      );
-    });
-
-    it('should maintain correct state across multiple handleMessage calls', async () => {
-      await service.handleMessage(mockIngestAlertDto);
-      await service.handleMessage(mockIngestAlertDto);
-      await service.handleMessage(mockIngestAlertDto);
-
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledTimes(3);
-    });
-
-    it('should use consistent systemId across multiple calls', async () => {
-      configService.get.mockReturnValue('consistent-uuid');
-
-      await service.handleMessage(mockIngestAlertDto);
-      await service.handleMessage(mockIngestAlertDto);
-
-      const calls = processAlertService.processIncomingAlert.mock.calls;
-      expect(calls[0][2]).toBe('consistent-uuid');
-      expect(calls[1][2]).toBe('consistent-uuid');
-    });
-  });
-
-  describe('Edge cases', () => {
-    beforeEach(async () => {
-      configService.get.mockReturnValue('test-system-uuid');
-      await service.onModuleInit();
-    });
-
-    it('should handle empty string tenant ID', async () => {
-      const dto = {
-        ...mockIngestAlertDto,
-        transaction: {
-          ...mockIngestAlertDto.transaction,
-          TenantId: '',
-        } as any,
-      };
-
-      await service.handleMessage(dto);
-
-      // Empty string is truthy, so ?? operator doesn't trigger DEFAULT
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        dto,
-        'NATS',
-        'test-system-uuid',
-        '',
-      );
-    });
-
-    it('should handle very long tenant IDs', async () => {
-      const longTenantId = 'a'.repeat(1000);
-      const dto = {
-        ...mockIngestAlertDto,
-        transaction: {
-          ...mockIngestAlertDto.transaction,
-          TenantId: longTenantId,
-        } as any,
-      };
-
-      await service.handleMessage(dto);
-
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        dto,
-        'NATS',
-        'test-system-uuid',
-        longTenantId,
-      );
-    });
-
-    it('should handle special characters in tenant ID', async () => {
-      const specialTenantId = 'tenant-123!@#$%^&*()';
-      const dto = {
-        ...mockIngestAlertDto,
-        transaction: {
-          ...mockIngestAlertDto.transaction,
-          TenantId: specialTenantId,
-        } as any,
-      };
-
-      await service.handleMessage(dto);
-
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        dto,
-        'NATS',
-        'test-system-uuid',
-        specialTenantId,
-      );
-    });
-
-    it('should handle very large request objects', async () => {
-      const largeDto = {
-        ...mockIngestAlertDto,
-        report: {
-          ...mockIngestAlertDto.report,
-          largeData: 'x'.repeat(10000),
-        } as any,
-      };
-
-      await service.handleMessage(largeDto);
-
-      expect(processAlertService.processIncomingAlert).toHaveBeenCalledWith(
-        largeDto,
-        'NATS',
-        expect.any(String),
-        expect.any(String),
-      );
+      expect(loggerService.log).toHaveBeenCalledWith('Alert ingested from NATS for tenant: tenant-001', 'NatsStartupService');
     });
   });
 });

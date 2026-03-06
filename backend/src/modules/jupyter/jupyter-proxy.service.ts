@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GoldLakehouseService } from '../gold-lakehouse/gold-lakehouse.service';
 import { CounterpartyNetworkResponseDto, TransactionNetworkResponseDto } from '../gold-lakehouse/dto/network-analysis.dto';
+import { Alerts, Edge, Node } from '../gold-lakehouse/types/gold-lakehouse.types';
 
 @Injectable()
 export class JupyterProxyService {
@@ -17,12 +18,12 @@ export class JupyterProxyService {
   ): Promise<{
     network: {
       rootNodeId: string;
-      nodes: any[];
-      edges: any[];
+      nodes: Node[];
+      edges: Edge[];
     };
     counterpartyDetails: {
       counterpartyId: string;
-      name: any;
+      name: string;
       type: string;
       transactions: number;
       totalValue: number;
@@ -76,7 +77,7 @@ export class JupyterProxyService {
     page = 1,
     limit = 20,
   ): Promise<{
-    alerts: any;
+    alerts: Alerts[];
     pagination: {
       total: number;
       page: number;
@@ -98,12 +99,12 @@ export class JupyterProxyService {
   ): Promise<{
     network: {
       rootNodeId: string;
-      nodes: any[];
-      edges: any[];
+      nodes: Node[];
+      edges: Edge[];
     };
     accountDetails: {
       accountId: string;
-      accountHolder: any;
+      accountHolder: string;
       relationship: string;
       transactions: number;
       totalValue: number;

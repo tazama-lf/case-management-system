@@ -17,6 +17,7 @@ import {
   CounterpartyNetworkSummaryDto,
   CounterpartyNetworkEdgeDto,
 } from './dto/network-analysis.dto';
+import { Alerts, Cumulative, Edge, Node, RecentTransaction, Timeline } from './types/gold-lakehouse.types';
 
 @Injectable()
 export class GoldLakehouseService {
@@ -52,28 +53,30 @@ export class GoldLakehouseService {
       }
 
       return response.data;
-    } catch (error) {
-      this.logger.error(`Error querying Gold Lakehouse: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error querying Gold Lakehouse: ${errorMessage}`);
 
-      if (error.code === 'ECONNREFUSED') {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'ECONNREFUSED') {
         this.logger.error(`Gold Lakehouse API is not reachable at ${this.apiUrl}`);
         throw new HttpException(`Gold Lakehouse API is not running or not reachable at ${this.apiUrl}`, HttpStatus.SERVICE_UNAVAILABLE);
       }
 
-      if (error.response) {
-        this.logger.error(`Response status: ${error.response.status}`);
-        this.logger.error(`Response data: ${JSON.stringify(error.response.data)}`);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const response = error.response as { status?: number; data?: unknown };
+        this.logger.error(`Response status: ${response.status}`);
+        this.logger.error(`Response data: ${JSON.stringify(response.data)}`);
       }
 
       if (error instanceof HttpException) {
         throw error;
       }
 
-      throw new HttpException(`Failed to query Gold Lakehouse: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(`Failed to query Gold Lakehouse: ${errorMessage}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async runSqlQuery(sql: string, limit = 1) {
+  async runSqlQuery(sql: string, limit = 1): Promise<any> {
     try {
       this.logger.log('Running raw SQL query on Gold Lakehouse');
       this.logger.debug(sql);
@@ -94,8 +97,9 @@ export class GoldLakehouseService {
       }
 
       return response.data;
-    } catch (error) {
-      this.logger.error(`Error running SQL query: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error running SQL query: ${errorMessage}`);
 
       if (error instanceof HttpException) {
         throw error;
@@ -105,7 +109,16 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertNavigatorMetrics(alertId: number, tenantId = 'DEFAULT') {
+  async getAlertNavigatorMetrics(
+    alertId: number,
+    tenantId = 'DEFAULT',
+  ): Promise<{
+    total_typologies: number;
+    total_rules: number;
+    avg_typology_score: number | null;
+    alertId: number;
+    tenantId: string;
+  }> {
     try {
       this.logger.log(`Fetching Alert Navigator metrics for alert: ${alertId}`);
 
@@ -136,14 +149,49 @@ export class GoldLakehouseService {
         alertId,
         tenantId,
       };
-    } catch (error) {
-      this.logger.error(`Error fetching Alert Navigator metrics: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching Alert Navigator metrics: ${errorMessage}`, errorStack);
 
       throw new HttpException('Failed to fetch Alert Navigator metrics', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getAlertNavigatorData(alertId: number, tenantId = 'DEFAULT') {
+  async getAlertNavigatorData(
+    alertId: number,
+    tenantId = 'DEFAULT',
+  ): Promise<{
+    alertMetadata: {
+      alertId: number;
+      transactionId: string;
+      timestamp: string;
+      transactionType: string;
+      amount: number;
+      currency: string;
+      status: string;
+      reason: string;
+      blockReason: string;
+    };
+    typologies: Array<{
+      typologyId: string;
+      typologyCfg: string;
+      typologyScore: number;
+      alertThreshold: number;
+      interdictionThreshold: number;
+      ruleCount: number;
+      rules: string;
+    }>;
+    statistics: {
+      totalTypologies: number;
+      totalRules: number;
+      avgScore: number;
+    };
+    meta: {
+      alertId: number;
+      tenantId: string;
+    };
+  }> {
     try {
       this.logger.log(`Fetching Alert Navigator data for alert: ${alertId}`);
 
@@ -209,20 +257,20 @@ export class GoldLakehouseService {
       }
 
       const combined = this.stripHudiMetadata(combinedRaw);
-      const typologiesRaw = typologiesResponse.data || [];
+      const typologiesRaw = typologiesResponse.data;
       const rulesRaw = rulesResponse?.data ?? [];
 
       // Alert Metadata
       const alertMetadata = {
-        alertId: combined.alert_id,
-        transactionId: combined.tx_transaction_id ?? combined.end_to_end_id ?? combined.transaction_id,
-        timestamp: combined.created_at_ts ?? combined.ingested_at_ts,
-        transactionType: combined.alert_tx_type ?? combined.tx_type,
-        amount: combined.alert_tx_amount ?? combined.tx_amount,
-        currency: combined.alert_tx_ccy ?? combined.tx_ccy,
-        status: combined.alert_status,
-        reason: combined.alert_reason,
-        blockReason: combined.block_or_override_status,
+        alertId: Number(combined.alert_id),
+        transactionId: String(combined.tx_transaction_id) || String(combined.end_to_end_id) || String(combined.transaction_id),
+        timestamp: String(combined.created_at_ts) || String(combined.ingested_at_ts),
+        transactionType: String(combined.alert_tx_type) || String(combined.tx_type),
+        amount: Number(combined.alert_tx_amount) || Number(combined.tx_amount),
+        currency: String(combined.alert_tx_ccy) || String(combined.tx_ccy),
+        status: String(combined.alert_status),
+        reason: String(combined.alert_reason),
+        blockReason: String(combined.block_or_override_status),
       };
 
       // Typologies
@@ -246,27 +294,27 @@ export class GoldLakehouseService {
           });
 
         return {
-          typologyId: typology.typology_id,
-          typologyCfg: typology.typology_cfg,
-          typologyScore: typology.typology_score,
-          alertThreshold: typology.alert_threshold,
-          interdictionThreshold: typology.interdiction_threshold,
-          ruleCount: typology.rule_count_in_typology,
-          rules: typologyRules,
+          typologyId: String(typology.typology_id),
+          typologyCfg: String(typology.typology_cfg),
+          typologyScore: Number(typology.typology_score),
+          alertThreshold: Number(typology.alert_threshold),
+          interdictionThreshold: Number(typology.interdiction_threshold),
+          ruleCount: Number(typology.rule_count_in_typology),
+          rules: String(typologyRules),
         };
       });
 
       // Calculate summary statistics
       const totalTypologies = typologies.length;
       const totalRules = rulesRaw.length;
-      const avgScore = totalTypologies > 0 ? typologies.reduce((sum, t) => sum + (t.typologyScore ?? 0), 0) / totalTypologies : 0;
+      const avgScore = totalTypologies > 0 ? typologies.reduce((sum, t) => sum + t.typologyScore, 0) / totalTypologies : 0;
 
       return {
         alertMetadata,
         typologies,
         statistics: {
           totalTypologies,
-          totalRules,
+          totalRules: Number(totalRules),
           avgScore: Math.round(avgScore * 100) / 100,
         },
         meta: {
@@ -274,13 +322,92 @@ export class GoldLakehouseService {
           tenantId,
         },
       };
-    } catch (error) {
-      this.logger.error(`Error fetching Alert Navigator data: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching Alert Navigator data: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch Alert Navigator data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getTransactionDetailData(transactionId: number, tenantId = 'DEFAULT') {
+  async getTransactionDetailData(
+    transactionId: number,
+    tenantId = 'DEFAULT',
+  ): Promise<{
+    transactionOverview: {
+      transactionId: string;
+      transactionType: string;
+      timestamp: string;
+    };
+    transactionFlow: {
+      debtor: {
+        name: string;
+        account: {
+          iban: string;
+          type: string;
+        };
+        bank: string;
+      };
+      amount: {
+        amount: number;
+        currency: string;
+      };
+      creditor: {
+        name: string;
+        account: {
+          iban: string;
+          type: string;
+        };
+        bankName: string;
+      };
+    };
+    debtorProfile: {
+      name: string;
+      account: {
+        iban: string;
+        type: string;
+      };
+      bank: string;
+      swiftCode: string;
+      address: string;
+      accountType: string;
+    };
+    creditorProfile: {
+      name: string;
+      account: {
+        iban: string;
+        type: string;
+      };
+      bank: string;
+      swiftCode: string;
+      address: string;
+      accountType: string;
+    };
+    amountAndCurrency: Array<
+      | {
+          originalAmount: number;
+          exchangeRate: number;
+          convertedAmount: number;
+        }
+      | {
+          senderCharges: never[];
+          intermediaryCharges: never[];
+          receiverCharges: never[];
+        }
+      | {
+          totalCharges: number;
+        }
+    >;
+    settlementDetails: {
+      settlementDate: string;
+      reference: string;
+      purpose: string;
+    };
+    links: Array<{
+      rel: string;
+      href: string;
+    }>;
+  }> {
     try {
       this.logger.log(`Fetching Transaction Detail UI data for transaction: ${transactionId}`);
 
@@ -311,7 +438,8 @@ export class GoldLakehouseService {
         ],
       });
 
-      const rowRaw = response.data?.[0];
+      const [rowRaw] = response.data;
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Safety check for empty result set
       if (!rowRaw) {
         throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
       }
@@ -321,59 +449,59 @@ export class GoldLakehouseService {
       // Transform to frontend-expected format
       return {
         transactionOverview: {
-          transactionId: row.transaction_id ?? '',
-          transactionType: row.tx_type ?? '',
-          timestamp: row.tx_event_ts ?? '',
+          transactionId: String(row.transaction_id),
+          transactionType: String(row.tx_type),
+          timestamp: String(row.tx_event_ts),
         },
         transactionFlow: {
           debtor: {
-            name: row.debtor_name ?? '',
+            name: String(row.debtor_name),
             account: {
-              iban: row.debtor_account_id ?? '',
+              iban: String(row.debtor_account_id),
               type: 'CHECKING',
             },
-            bank: row.instd_mmb_id ?? '',
+            bank: String(row.instd_mmb_id),
           },
           amount: {
-            amount: row.interbank_settlement_amount ?? 0,
-            currency: row.interbank_settlement_currency ?? 'USD',
+            amount: Number(row.interbank_settlement_amount),
+            currency: String(row.interbank_settlement_currency) || 'USD',
           },
           creditor: {
-            name: row.creditor_name ?? '',
+            name: String(row.creditor_name),
             account: {
-              iban: row.creditor_account_id ?? '',
+              iban: String(row.creditor_account_id),
               type: 'CHECKING',
             },
-            bankName: row.instg_mmb_id ?? '',
+            bankName: String(row.instg_mmb_id),
           },
         },
         debtorProfile: {
-          name: row.debtor_name ?? '',
+          name: String(row.debtor_name),
           account: {
-            iban: row.debtor_account_id ?? '',
+            iban: String(row.debtor_account_id),
             type: 'CHECKING',
           },
-          bank: row.instd_mmb_id ?? '',
+          bank: String(row.instd_mmb_id),
           swiftCode: '',
           address: '',
           accountType: 'CHECKING',
         },
         creditorProfile: {
-          name: row.creditor_name ?? '',
+          name: String(row.creditor_name),
           account: {
-            iban: row.creditor_account_id ?? '',
+            iban: String(row.creditor_account_id),
             type: 'CHECKING',
           },
-          bank: row.instg_mmb_id ?? '',
+          bank: String(row.instg_mmb_id),
           swiftCode: '',
           address: '',
           accountType: 'CHECKING',
         },
         amountAndCurrency: [
           {
-            originalAmount: row.instructed_amount ?? 0,
-            exchangeRate: row.exchange_rate ?? 1,
-            convertedAmount: row.interbank_settlement_amount ?? 0,
+            originalAmount: Number(row.instructed_amount) || 0,
+            exchangeRate: Number(row.exchange_rate) || 1,
+            convertedAmount: Number(row.interbank_settlement_amount) || 0,
           },
           {
             senderCharges: [],
@@ -381,12 +509,12 @@ export class GoldLakehouseService {
             receiverCharges: [],
           },
           {
-            totalCharges: row.charge_total_amount ?? 0,
+            totalCharges: Number(row.charge_total_amount),
           },
         ],
         settlementDetails: {
-          settlementDate: row.tx_event_date ?? '',
-          reference: row.transaction_id ?? '',
+          settlementDate: String(row.tx_event_date),
+          reference: String(row.transaction_id),
           purpose: '',
         },
         links: [
@@ -396,14 +524,16 @@ export class GoldLakehouseService {
           },
         ],
       };
-    } catch (error) {
-      this.logger.error(`Error fetching Transaction Detail data: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching Transaction Detail data: ${errorMessage}`, errorStack);
 
       throw new HttpException('Failed to fetch Transaction Detail data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getTransactionOverviewUIData(transactionId: number, tenantId = 'DEFAULT') {
+  async getTransactionOverviewUIData(transactionId: number, tenantId = 'DEFAULT'): Promise<any> {
     try {
       this.logger.log(`Fetching Transaction Overview UI data for transaction: ${transactionId}`);
 
@@ -425,7 +555,7 @@ export class GoldLakehouseService {
 
       const row = this.stripHudiMetadata(rowRaw);
 
-      const mapField = (field: string) => {
+      const mapField = (field: string): string | null | number => {
         if (!(field in row)) {
           return 'no mapping found';
         }
@@ -502,14 +632,25 @@ export class GoldLakehouseService {
           tenantId,
         },
       };
-    } catch (error) {
-      this.logger.error(`Error building Transaction Overview UI data: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error building Transaction Overview UI data: ${errorMessage}`, errorStack);
 
       throw new HttpException('Failed to fetch Transaction Overview data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getConditionsSummary(accountId: string, tenantId?: string, fromDate?: string) {
+  async getConditionsSummary(
+    accountId: string,
+    tenantId?: string,
+    fromDate?: string,
+  ): Promise<{
+    activeConditions: number;
+    blockedTransactions: number;
+    overriddenTransactions: number;
+    futureConditions: number;
+  }> {
     try {
       const tenantFilter = tenantId ? `AND cond_tenant_id = '${tenantId}'` : '';
       const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
@@ -537,13 +678,14 @@ export class GoldLakehouseService {
         overriddenTransactions: Number(row.overridden_transactions ?? 0),
         futureConditions: Number(row.future_conditions ?? 0),
       };
-    } catch (error) {
-      this.logger.error('Error fetching conditions summary', error.stack);
+    } catch (error: unknown) {
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching conditions summary', errorStack);
       throw new HttpException('Failed to fetch conditions summary', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getConditionsList(accountId: string, tenantId?: string) {
+  async getConditionsList(accountId: string, tenantId?: string): Promise<any[]> {
     try {
       const filters: any = {
         account_id: accountId,
@@ -558,9 +700,9 @@ export class GoldLakehouseService {
         filters,
       });
 
-      const rows = response.data || [];
+      const rows = response.data;
 
-      return rows.map((r) => {
+      return rows.map((r): any => {
         const row = this.stripHudiMetadata(r);
 
         let status: 'ACTIVE' | 'EXPIRED' | 'FUTURE' = 'ACTIVE';
@@ -578,13 +720,14 @@ export class GoldLakehouseService {
           notes: row.condition_reason,
         };
       });
-    } catch (error) {
-      this.logger.error('Error fetching conditions list', error.stack);
+    } catch (error: unknown) {
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching conditions list', errorStack);
       throw new HttpException('Failed to fetch conditions list', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getActiveConditions(accountId: string, tenantId = 'DEFAULT', fromDate?: string) {
+  async getActiveConditions(accountId: string, tenantId = 'DEFAULT', fromDate?: string): Promise<any[]> {
     try {
       const dateFilter = fromDate ? `AND ct.bucket_start >= '${fromDate}'` : '';
 
@@ -619,13 +762,14 @@ export class GoldLakehouseService {
         notes: r.condition_reason,
         action: r.condition_type === 'overridable-block' ? 'OVERRIDE' : 'BLOCK',
       }));
-    } catch (error) {
-      this.logger.error('Error fetching active conditions', error.stack);
+    } catch (error: unknown) {
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching active conditions', errorStack);
       throw new HttpException('Failed to fetch active conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getExpiredConditions(accountId: string, tenantId = 'DEFAULT') {
+  async getExpiredConditions(accountId: string, tenantId = 'DEFAULT'): Promise<any[]> {
     try {
       const sql = `
       SELECT
@@ -649,13 +793,14 @@ export class GoldLakehouseService {
         startDate: r.condition_inception_ts,
         endDate: r.condition_expiry_ts,
       }));
-    } catch (error) {
-      this.logger.error('Error fetching expired conditions', error.stack);
+    } catch (error: unknown) {
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching expired conditions', errorStack);
       throw new HttpException('Failed to fetch expired conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getFutureConditions(accountId: string, tenantId = 'DEFAULT') {
+  async getFutureConditions(accountId: string, tenantId = 'DEFAULT'): Promise<any[]> {
     try {
       const sql = `
       SELECT
@@ -678,13 +823,14 @@ export class GoldLakehouseService {
         title: r.condition_reason,
         startDate: r.condition_inception_ts,
       }));
-    } catch (error) {
-      this.logger.error('Error fetching future conditions', error.stack);
+    } catch (error: unknown) {
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching future conditions', errorStack);
       throw new HttpException('Failed to fetch future conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getEvaluatedTransactions(accountId: string, tenantId = 'DEFAULT', fromDate?: string) {
+  async getEvaluatedTransactions(accountId: string, tenantId = 'DEFAULT', fromDate?: string): Promise<any[]> {
     try {
       const tenantFilter = tenantId ? `AND cond_tenant_id = '${tenantId}'` : '';
       const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
@@ -719,8 +865,9 @@ export class GoldLakehouseService {
         conditionId: r.cond_condition_id ?? '-',
         reason: r.cond_reason ?? 'No conditions triggered',
       }));
-    } catch (error) {
-      this.logger.error('Error fetching evaluated transactions', error.stack);
+    } catch (error: unknown) {
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching evaluated transactions', errorStack);
       throw new HttpException('Failed to fetch evaluated transactions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -729,14 +876,23 @@ export class GoldLakehouseService {
     const hudiFields = ['_hoodie_commit_time', '_hoodie_commit_seqno', '_hoodie_record_key', '_hoodie_partition_path', '_hoodie_file_name'];
 
     const cleaned = { ...record };
-    hudiFields.forEach((field) => delete cleaned[field]);
+    hudiFields.forEach((field) => {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Hudi metadata fields are dynamic keys that need to be removed
+      delete cleaned[field];
+    });
     return cleaned;
   }
 
-  async getTransactionHistoryData(id: string, tenantId = 'DEFAULT', startDate?: string, endDate?: string, granularity?: string) {
+  async getTransactionHistoryData(
+    id: string,
+    tenantId = 'DEFAULT',
+    startDate?: string,
+    endDate?: string,
+    granularity?: string,
+  ): Promise<unknown> {
     try {
       // Smart detection: Check if ID is a UUID (end_to_end_id) or entity_id
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iv;
       const isEndToEndId = uuidRegex.test(id);
 
       if (isEndToEndId) {
@@ -748,8 +904,10 @@ export class GoldLakehouseService {
         this.logger.log(`Fetching Transaction History by entity_id: ${id}`);
         return await this.getTransactionHistoryByEntityId(id, tenantId, startDate, endDate, granularity);
       }
-    } catch (error) {
-      this.logger.error(`Error fetching Transaction History data: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching Transaction History data: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch Transaction History data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -760,7 +918,48 @@ export class GoldLakehouseService {
     startDate?: string,
     endDate?: string,
     granularity?: string,
-  ) {
+  ): Promise<{
+    summary: {
+      totalVolume: number;
+      totalTransactions: number;
+      transactionCount: number;
+      alertsTriggered: number;
+      alertsPercentage: number;
+      investigated: number;
+      investigatedPercentage: number;
+      avgTransactionsPerDay: number;
+      durationDays: number;
+      bucketTotalVolume: number;
+      bucketTotalTransactions: number;
+      expected: {
+        transactionCount: number | null;
+        volume: number | null;
+      };
+      actual: {
+        transactionCount: number;
+        volume: number;
+      };
+    };
+    timeline: Timeline[];
+    cumulative: Cumulative;
+    volumeDistribution: Array<{
+      bucketStart: string;
+      granularity: string;
+      transactionCount: number;
+      totalVolume: number;
+    }>;
+    recentTransactions: RecentTransaction[];
+    meta: {
+      entityId: string;
+      tenantId: string;
+      granularity: string | null;
+      startDate: string | null;
+      endDate: string | null;
+      eventRowCount: number;
+      aggRowCount: number;
+      queryTimestamp: string;
+    };
+  }> {
     try {
       this.logger.log(`Fetching Transaction History for entity: ${entityId}`);
 
@@ -845,7 +1044,7 @@ export class GoldLakehouseService {
         const baseline = baselineResponse?.data?.[0];
         if (baseline) {
           const baselineData = this.stripHudiMetadata(baseline);
-          expectedTxCount = parseInt(baselineData.total_tx_count) || null;
+          expectedTxCount = parseInt(baselineData.total_tx_count, 10) || null;
           expectedVolume = parseFloat(baselineData.total_amount) || null;
         }
       } catch (error) {
@@ -872,7 +1071,7 @@ export class GoldLakehouseService {
 
       // Calculate aggregates from bucket data
       const bucketTotalVolume = aggregates.reduce((sum, a) => sum + (parseFloat(a.bucket_tx_amount) || 0), 0);
-      const bucketTotalTransactions = aggregates.reduce((sum, a) => sum + (parseInt(a.bucket_tx_count) || 0), 0);
+      const bucketTotalTransactions = aggregates.reduce((sum, a) => sum + (parseInt(a.bucket_tx_count, 10) || 0), 0);
 
       // Calculate percentages and averages
       const alertsPercentage = totalTransactions > 0 ? (alertsTriggered / totalTransactions) * 100 : 0;
@@ -880,35 +1079,35 @@ export class GoldLakehouseService {
       const avgTransactionsPerDay = durationDays > 0 ? totalTransactions / durationDays : 0;
 
       // Transform timeline data with cumulative values
-      const timeline = events.map((e) => ({
-        transactionId: e.transaction_id,
-        date: e.event_date,
+      const timeline: Timeline[] = events.map((e) => ({
+        transactionId: String(e.transaction_id),
+        date: String(e.event_date),
         amount: parseFloat(e.tx_amount) || 0,
-        currency: e.tx_ccy,
-        type: e.tx_type ?? 'Unknown',
+        currency: String(e.tx_ccy),
+        type: String(e.tx_type) || 'Unknown',
         isAlerted: e.is_alerted === 1,
         isInvestigated: e.is_investigated === 1,
       }));
 
       // Transform cumulative data (sorted by date ascending)
-      const cumulative = events
+      const cumulative: Cumulative = events
         .map((e) => ({
-          date: e.event_date,
+          date: String(e.event_date),
           cumulativeAmount: parseFloat(e.cum_tx_amount) || 0,
-          cumulativeCount: parseInt(e.cum_tx_count) || 0,
+          cumulativeCount: parseInt(e.cum_tx_count, 10) || 0,
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       // Transform volume distribution
       const volumeDistribution = aggregates.map((a) => ({
-        bucketStart: a.bucket_start,
-        granularity: a.bucket_granularity,
-        transactionCount: parseInt(a.bucket_tx_count) || 0,
+        bucketStart: String(a.bucket_start),
+        granularity: String(a.bucket_granularity),
+        transactionCount: parseInt(a.bucket_tx_count, 10) || 0,
         totalVolume: parseFloat(a.bucket_tx_amount) || 0,
       }));
 
       // Transform recent transactions table (top 20)
-      const recentTransactions = events.slice(0, 20).map((e) => {
+      const recentTransactions: RecentTransaction[] = events.slice(0, 20).map((e) => {
         // Determine counterparty based on entity role
         const counterparty = e.entity_role === 'DEBTOR' ? (e.creditor_name ?? 'Unknown Creditor') : (e.debtor_name ?? 'Unknown Debtor');
 
@@ -917,12 +1116,12 @@ export class GoldLakehouseService {
         if (e.is_investigated === 1) status.push('Investigated');
 
         return {
-          transactionId: e.transaction_id,
-          date: e.event_date,
-          type: e.tx_type ?? 'Unknown',
-          counterparty,
+          transactionId: String(e.transaction_id),
+          date: String(e.event_date),
+          type: String(e.tx_type) || 'Unknown',
+          counterparty: String(counterparty),
           amount: parseFloat(e.tx_amount) || 0,
-          currency: e.tx_ccy,
+          currency: String(e.tx_ccy),
           status,
           actions: {
             viewDetailsLink: `/triage/transaction-detail/${e.transaction_id}`,
@@ -933,22 +1132,22 @@ export class GoldLakehouseService {
       return {
         summary: {
           totalVolume: Math.round(totalVolume * 100) / 100,
-          totalTransactions,
-          transactionCount: totalTransactions,
-          alertsTriggered,
+          totalTransactions: Number(totalTransactions),
+          transactionCount: Number(totalTransactions),
+          alertsTriggered: Number(alertsTriggered),
           alertsPercentage: Math.round(alertsPercentage * 100) / 100,
-          investigated,
+          investigated: Number(investigated),
           investigatedPercentage: Math.round(investigatedPercentage * 100) / 100,
           avgTransactionsPerDay: Math.round(avgTransactionsPerDay * 100) / 100,
           durationDays,
           bucketTotalVolume: Math.round(bucketTotalVolume * 100) / 100,
-          bucketTotalTransactions,
+          bucketTotalTransactions: Number(bucketTotalTransactions),
           expected: {
             transactionCount: expectedTxCount,
             volume: expectedVolume ? Math.round(expectedVolume * 100) / 100 : null,
           },
           actual: {
-            transactionCount: totalTransactions,
+            transactionCount: Number(totalTransactions),
             volume: Math.round(totalVolume * 100) / 100,
           },
         },
@@ -962,13 +1161,15 @@ export class GoldLakehouseService {
           granularity: granularity ?? null,
           startDate: startDate ?? null,
           endDate: endDate ?? null,
-          eventRowCount: events.length,
+          eventRowCount: Number(events.length),
           aggRowCount: aggregates.length,
           queryTimestamp: new Date().toISOString(),
         },
       };
-    } catch (error) {
-      this.logger.error(`Error fetching Transaction History by entity_id: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching Transaction History by entity_id: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch Transaction History by entity_id', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1122,7 +1323,7 @@ export class GoldLakehouseService {
         };
       });
 
-      const firstEvent = events[0];
+      const [firstEvent] = events;
 
       return {
         summary: {
@@ -1224,7 +1425,7 @@ export class GoldLakehouseService {
       }
 
       // Extract common transaction details from first perspective
-      const firstPerspective = perspectives[0];
+      const [firstPerspective] = perspectives;
       const transactionDetails = {
         transactionId: firstPerspective.transaction_id,
         endToEndId: firstPerspective.end_to_end_id,
@@ -1264,8 +1465,10 @@ export class GoldLakehouseService {
           message: `Retrieved ${perspectives.length} entity perspective(s) for transaction`,
         },
       };
-    } catch (error) {
-      this.logger.error(`Error fetching Transaction Perspectives by end_to_end_id: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching Transaction Perspectives by end_to_end_id: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch Transaction Perspectives', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1340,21 +1543,14 @@ export class GoldLakehouseService {
         sarFilings: Number(row.sar_filings ?? 0),
         totalValue: parseFloat(row.total_value) || 0,
       };
-    } catch (error) {
-      this.logger.error('Error fetching alert history summary', error.stack);
+    } catch (error: unknown) {
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching alert history summary', errorStack);
       throw new HttpException('Failed to fetch alert history summary', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getAlertHistoryTimeline(
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
-    granularity = 'day',
-  ): Promise<{
-    alertCountOverTime: any;
-    alertValueOverTime: any;
-  }> {
+  async getAlertHistoryTimeline(endToEndId?: string, tenantId?: string, dateRange?: string, granularity = 'day'): Promise<any> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
@@ -1424,8 +1620,9 @@ export class GoldLakehouseService {
         alertCountOverTime,
         alertValueOverTime,
       };
-    } catch (error) {
-      this.logger.error('Error fetching alert history timeline', error.stack);
+    } catch (error: unknown) {
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching alert history timeline', errorStack);
       throw new HttpException('Failed to fetch alert history timeline', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1437,7 +1634,7 @@ export class GoldLakehouseService {
     page = 1,
     limit = 20,
   ): Promise<{
-    alerts: any;
+    alerts: Alerts[];
     pagination: {
       total: number;
       page: number;
@@ -1514,7 +1711,7 @@ export class GoldLakehouseService {
       const response = await this.runSqlQuery(sql, limit);
       const rows = response.data ?? [];
 
-      const alerts = rows.map((r) => {
+      const alerts: Alerts[] = rows.map((r) => {
         let outcome = 'Pending';
         if (r.case_status) {
           if (r.case_status.includes('COMPLETED')) outcome = 'Closed';
@@ -1546,8 +1743,9 @@ export class GoldLakehouseService {
           totalPages: Math.ceil(total / limit),
         },
       };
-    } catch (error) {
-      this.logger.error('Error fetching alert history alerts', error.stack);
+    } catch (error: unknown) {
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching alert history alerts', errorStack);
       throw new HttpException('Failed to fetch alert history alerts', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1594,8 +1792,10 @@ export class GoldLakehouseService {
           testUrl: `/api/v1/lakehouse/network-analysis/transaction/${acc.account_id}?timeRange=30d`,
         })),
       };
-    } catch (error) {
-      this.logger.error(`Error fetching test account IDs: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching test account IDs: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch test account IDs', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1729,8 +1929,10 @@ export class GoldLakehouseService {
         tenantId,
         queryTimestamp: new Date().toISOString(),
       };
-    } catch (error) {
-      this.logger.error(`Error fetching transaction network data: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching transaction network data: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch transaction network data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1752,12 +1954,12 @@ export class GoldLakehouseService {
   ): Promise<{
     network: {
       rootNodeId: string;
-      nodes: any[];
-      edges: any[];
+      nodes: Node[];
+      edges: Edge[];
     };
     accountDetails: {
       accountId: string;
-      accountHolder: any;
+      accountHolder: string;
       relationship: string;
       transactions: number;
       totalValue: number;
@@ -1797,8 +1999,8 @@ export class GoldLakehouseService {
       const networkResp = await this.runSqlQuery(networkSql, 1000);
       const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
 
-      const nodesMap = new Map<string, any>();
-      const edges: any[] = [];
+      const nodesMap = new Map<string, Node>();
+      const edges: Edge[] = [];
 
       nodesMap.set(accountId, {
         id: accountId,
@@ -1835,9 +2037,9 @@ export class GoldLakehouseService {
           });
         }
 
-        const root = nodesMap.get(accountId);
-        root.flags.alerted ??= r.is_alerted_edge === 1;
-        root.flags.investigated ??= r.is_investigated_edge === 1;
+        const root = nodesMap.get(accountId)!;
+        root.flags.alerted ||= r.is_alerted_edge === 1;
+        root.flags.investigated ||= r.is_investigated_edge === 1;
 
         edges.push({
           source: fromId,
@@ -1914,7 +2116,7 @@ export class GoldLakehouseService {
         },
         accountDetails: {
           accountId,
-          accountHolder: holderRow?.holder_name ?? 'Unknown',
+          accountHolder: String(holderRow?.holder_name) || 'Unknown',
           relationship: 'Primary Owner',
           transactions: txCount,
           totalValue: Number(metrics.total_value ?? 0),
@@ -1930,8 +2132,10 @@ export class GoldLakehouseService {
           generatedAt: new Date().toISOString(),
         },
       };
-    } catch (error) {
-      this.logger.error(`Error fetching full account node data: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching full account node data: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch account network and details', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1943,12 +2147,12 @@ export class GoldLakehouseService {
   ): Promise<{
     network: {
       rootNodeId: string;
-      nodes: any[];
-      edges: any[];
+      nodes: Node[];
+      edges: Edge[];
     };
     counterpartyDetails: {
       counterpartyId: string;
-      name: any;
+      name: string;
       type: string;
       transactions: number;
       totalValue: number;
@@ -1988,8 +2192,8 @@ export class GoldLakehouseService {
       const networkResp = await this.runSqlQuery(networkSql, 1000);
       const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
 
-      const nodesMap = new Map<string, any>();
-      const edges: any[] = [];
+      const nodesMap = new Map<string, Node>();
+      const edges: Edge[] = [];
 
       nodesMap.set(counterpartyId, {
         id: counterpartyId,
@@ -2026,9 +2230,9 @@ export class GoldLakehouseService {
           });
         }
 
-        const root = nodesMap.get(counterpartyId);
-        root.flags.alerted ??= r.is_alerted_edge === 1;
-        root.flags.investigated ??= r.is_investigated_edge === 1;
+        const root = nodesMap.get(counterpartyId)!;
+        root.flags.alerted ||= r.is_alerted_edge === 1;
+        root.flags.investigated ||= r.is_investigated_edge === 1;
 
         edges.push({
           source: fromId,
@@ -2099,8 +2303,10 @@ export class GoldLakehouseService {
           generatedAt: new Date().toISOString(),
         },
       };
-    } catch (error) {
-      this.logger.error(`Error in getCounterpartyNodeFullData: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error in getCounterpartyNodeFullData: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch counterparty network details', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -2152,7 +2358,7 @@ export class GoldLakehouseService {
       let total = 0;
 
       for (const value of amounts) {
-        const s = value.toString().replace('.', '').replace(/^0+/u, '');
+        const s = value.toString().replace('.', '').replace(/^0+/v, '');
         if (!s) continue;
 
         const digit = parseInt(s[0], 10);
@@ -2178,8 +2384,10 @@ export class GoldLakehouseService {
           toDate,
         },
       };
-    } catch (error) {
-      this.logger.error(`Error running Benford analysis for account ${accountId}: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error running Benford analysis for account ${accountId}: ${errorMessage}`, errorStack);
 
       throw new HttpException('Failed to perform Benford analysis', HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -2226,7 +2434,7 @@ export class GoldLakehouseService {
         throw new HttpException('No counterparties found for account', HttpStatus.NOT_FOUND);
       }
 
-      const centerCounterpartyId = counterpartyIds[0];
+      const [centerCounterpartyId] = counterpartyIds;
 
       const networkEdgesSql = `
         SELECT 
@@ -2326,7 +2534,7 @@ export class GoldLakehouseService {
       const networkEdges: CounterpartyNetworkEdgeDto[] = [];
 
       edges.forEach((edge, index) => {
-        const edgeKey = [edge.from_counterparty_id, edge.to_counterparty_id].sort().join('->');
+        const edgeKey = [edge.from_counterparty_id, edge.to_counterparty_id].sort((a, b) => a.localeCompare(b)).join('->');
         if (!seenEdges.has(edgeKey)) {
           seenEdges.add(edgeKey);
           networkEdges.push({
@@ -2373,8 +2581,10 @@ export class GoldLakehouseService {
         tenantId,
         queryTimestamp: new Date().toISOString(),
       };
-    } catch (error) {
-      this.logger.error(`Error fetching counterparty network data: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching counterparty network data: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch counterparty network data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }

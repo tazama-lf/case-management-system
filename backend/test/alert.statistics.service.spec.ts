@@ -35,18 +35,31 @@ describe('AlertStatisticsService', () => {
     },
   ];
 
-  beforeEach(async () => {
-    const mockAlertRepository = {
-      findMany: jest.fn(),
-      count: jest.fn(),
-    };
+  const defaultParams = {
+    tenantId: 'tenant-123',
+    page: 1,
+    limit: 10,
+    sortBy: 'created_at',
+    sortOrder: 'desc' as const,
+  };
 
-    const mockLogger = {
-      error: jest.fn(),
-      log: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-    };
+  // Helper function to create mock repository
+  const createMockRepository = () => ({
+    findMany: jest.fn(),
+    count: jest.fn(),
+  });
+
+  // Helper function to create mock logger
+  const createMockLogger = () => ({
+    error: jest.fn(),
+    log: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  });
+
+  beforeEach(async () => {
+    const mockAlertRepository = createMockRepository();
+    const mockLogger = createMockLogger();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -72,57 +85,29 @@ describe('AlertStatisticsService', () => {
   });
 
   describe('getAlertsForUser', () => {
-    const defaultParams = {
-      tenantId: 'tenant-123',
-      page: 1,
-      limit: 10,
-      sortBy: 'created_at',
-      sortOrder: 'desc' as const,
-    };
-
     describe('Validation', () => {
-      it('should throw BadRequestException when page is not a positive integer', async () => {
+      it.each([
+        ['zero', 0],
+        ['negative', -1],
+        ['decimal', 1.5],
+      ])('should throw BadRequestException when page is %s', async (_desc, page) => {
         await expect(
           service.getAlertsForUser({
             ...defaultParams,
-            page: 0,
-          }),
-        ).rejects.toThrow(new BadRequestException('Page must be a positive integer'));
-
-        await expect(
-          service.getAlertsForUser({
-            ...defaultParams,
-            page: -1,
-          }),
-        ).rejects.toThrow(new BadRequestException('Page must be a positive integer'));
-
-        await expect(
-          service.getAlertsForUser({
-            ...defaultParams,
-            page: 1.5,
+            page,
           }),
         ).rejects.toThrow(new BadRequestException('Page must be a positive integer'));
       });
 
-      it('should throw BadRequestException when limit is not a positive integer', async () => {
+      it.each([
+        ['zero', 0],
+        ['negative', -5],
+        ['decimal', 2.7],
+      ])('should throw BadRequestException when limit is %s', async (_desc, limit) => {
         await expect(
           service.getAlertsForUser({
             ...defaultParams,
-            limit: 0,
-          }),
-        ).rejects.toThrow(new BadRequestException('Limit must be a positive integer'));
-
-        await expect(
-          service.getAlertsForUser({
-            ...defaultParams,
-            limit: -5,
-          }),
-        ).rejects.toThrow(new BadRequestException('Limit must be a positive integer'));
-
-        await expect(
-          service.getAlertsForUser({
-            ...defaultParams,
-            limit: 2.7,
+            limit,
           }),
         ).rejects.toThrow(new BadRequestException('Limit must be a positive integer'));
       });
@@ -189,37 +174,22 @@ describe('AlertStatisticsService', () => {
     });
 
     describe('Filter by priority', () => {
-      it('should filter alerts by valid priority', async () => {
+      it.each([
+        ['lowercase', 'critical', Priority.CRITICAL],
+        ['mixed case', 'UrGeNt', Priority.URGENT],
+      ])('should filter alerts by priority with %s', async (_desc, input, expected) => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
 
         await service.getAlertsForUser({
           ...defaultParams,
-          priority: 'critical',
+          priority: input,
         });
 
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
-              priority: Priority.CRITICAL,
-            }),
-          }),
-        );
-      });
-
-      it('should accept priority in different cases', async () => {
-        alertRepository.findMany.mockResolvedValue([mockAlerts[1]]);
-        alertRepository.count.mockResolvedValue(1);
-
-        await service.getAlertsForUser({
-          ...defaultParams,
-          priority: 'UrGeNt',
-        });
-
-        expect(alertRepository.findMany).toHaveBeenCalledWith(
-          expect.objectContaining({
-            where: expect.objectContaining({
-              priority: Priority.URGENT,
+              priority: expected,
             }),
           }),
         );
@@ -227,37 +197,22 @@ describe('AlertStatisticsService', () => {
     });
 
     describe('Filter by alertType', () => {
-      it('should filter alerts by valid alertType', async () => {
+      it.each([
+        ['fraud lowercase', 'fraud', CaseType.FRAUD],
+        ['aml lowercase', 'aml', CaseType.AML],
+      ])('should filter alerts by %s', async (_desc, input, expected) => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
 
         await service.getAlertsForUser({
           ...defaultParams,
-          alertType: 'fraud',
+          alertType: input,
         });
 
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
-              alert_type: CaseType.FRAUD,
-            }),
-          }),
-        );
-      });
-
-      it('should accept alertType in different cases', async () => {
-        alertRepository.findMany.mockResolvedValue([mockAlerts[1]]);
-        alertRepository.count.mockResolvedValue(1);
-
-        await service.getAlertsForUser({
-          ...defaultParams,
-          alertType: 'aml',
-        });
-
-        expect(alertRepository.findMany).toHaveBeenCalledWith(
-          expect.objectContaining({
-            where: expect.objectContaining({
-              alert_type: CaseType.AML,
+              alert_type: expected,
             }),
           }),
         );
@@ -326,13 +281,16 @@ describe('AlertStatisticsService', () => {
         );
       });
 
-      it('should add case_id null filter when reportStatus is NALT', async () => {
+      it.each([
+        ['uppercase', 'NALT'],
+        ['lowercase', 'nalt'],
+      ])('should add case_id null filter when reportStatus is %s', async (_desc, status) => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
 
         await service.getAlertsForUser({
           ...defaultParams,
-          reportStatus: 'NALT',
+          reportStatus: status,
         });
 
         expect(alertRepository.findMany).toHaveBeenCalledWith(
@@ -340,26 +298,8 @@ describe('AlertStatisticsService', () => {
             where: expect.objectContaining({
               alert_data: {
                 path: ['status'],
-                equals: 'NALT',
+                equals: status,
               },
-              case_id: null,
-            }),
-          }),
-        );
-      });
-
-      it('should handle reportStatus case-insensitively for NALT', async () => {
-        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
-        alertRepository.count.mockResolvedValue(1);
-
-        await service.getAlertsForUser({
-          ...defaultParams,
-          reportStatus: 'nalt',
-        });
-
-        expect(alertRepository.findMany).toHaveBeenCalledWith(
-          expect.objectContaining({
-            where: expect.objectContaining({
               case_id: null,
             }),
           }),
@@ -380,9 +320,7 @@ describe('AlertStatisticsService', () => {
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
-              OR: expect.arrayContaining([
-                { txtp: { contains: 'pacs', mode: 'insensitive' } },
-              ]),
+              OR: expect.arrayContaining([{ txtp: { contains: 'pacs', mode: 'insensitive' } }]),
             }),
           }),
         );
@@ -400,15 +338,13 @@ describe('AlertStatisticsService', () => {
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
-              OR: expect.arrayContaining([
-                { source: { contains: 'system', mode: 'insensitive' } },
-              ]),
+              OR: expect.arrayContaining([{ source: { contains: 'system', mode: 'insensitive' } }]),
             }),
           }),
         );
       });
 
-      it('should search by numeric alert_id', async () => {
+      it('should search by numeric alert_id and case_id', async () => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
 
@@ -420,10 +356,7 @@ describe('AlertStatisticsService', () => {
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
-              OR: expect.arrayContaining([
-                { alert_id: { equals: 123 } },
-                { case_id: { equals: 123 } },
-              ]),
+              OR: expect.arrayContaining([{ alert_id: { equals: 123 } }, { case_id: { equals: 123 } }]),
             }),
           }),
         );
@@ -441,16 +374,14 @@ describe('AlertStatisticsService', () => {
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
-              OR: expect.arrayContaining([
-                { priority: { equals: Priority.CRITICAL } },
-              ]),
+              OR: expect.arrayContaining([{ priority: { equals: Priority.CRITICAL } }]),
             }),
           }),
         );
       });
 
       it('should search by alert_type when search matches CaseType value', async () => {
-        alertRepository.findMany.mockResolvedValue([mockAlerts[1]]);
+        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
 
         await service.getAlertsForUser({
@@ -461,9 +392,7 @@ describe('AlertStatisticsService', () => {
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
-              OR: expect.arrayContaining([
-                { alert_type: { equals: CaseType.AML } },
-              ]),
+              OR: expect.arrayContaining([{ alert_type: { equals: CaseType.AML } }]),
             }),
           }),
         );
@@ -500,12 +429,7 @@ describe('AlertStatisticsService', () => {
         });
 
         const callArgs = alertRepository.findMany.mock.calls[0][0];
-        expect(callArgs.where?.OR).toEqual(
-          expect.arrayContaining([
-            { alert_id: { equals: 456 } },
-            { case_id: { equals: 456 } },
-          ]),
-        );
+        expect(callArgs.where?.OR).toEqual(expect.arrayContaining([{ alert_id: { equals: 456 } }, { case_id: { equals: 456 } }]));
       });
     });
 
@@ -558,38 +482,23 @@ describe('AlertStatisticsService', () => {
     });
 
     describe('Sorting and pagination', () => {
-      it('should apply correct sorting order - asc', async () => {
+      it.each([
+        ['asc', 'priority', 'asc'],
+        ['desc', 'created_at', 'desc'],
+      ])('should apply correct sorting order - %s', async (_desc, sortBy, sortOrder) => {
         alertRepository.findMany.mockResolvedValue(mockAlerts);
         alertRepository.count.mockResolvedValue(2);
 
         await service.getAlertsForUser({
           ...defaultParams,
-          sortBy: 'priority',
-          sortOrder: 'asc',
+          sortBy,
+          sortOrder: sortOrder as 'asc' | 'desc',
         });
 
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
-            sortBy: 'priority',
-            sortOrder: 'asc',
-          }),
-        );
-      });
-
-      it('should apply correct sorting order - desc', async () => {
-        alertRepository.findMany.mockResolvedValue(mockAlerts);
-        alertRepository.count.mockResolvedValue(2);
-
-        await service.getAlertsForUser({
-          ...defaultParams,
-          sortBy: 'created_at',
-          sortOrder: 'desc',
-        });
-
-        expect(alertRepository.findMany).toHaveBeenCalledWith(
-          expect.objectContaining({
-            sortBy: 'created_at',
-            sortOrder: 'desc',
+            sortBy,
+            sortOrder,
           }),
         );
       });
@@ -612,40 +521,20 @@ describe('AlertStatisticsService', () => {
         );
       });
 
-      it('should calculate totalPages correctly', async () => {
+      it.each([
+        ['with remainder', 25, 10, 3],
+        ['exact division', 20, 10, 2],
+        ['single page', 1, 10, 1],
+      ])('should calculate totalPages correctly - %s', async (_desc, total, limit, expectedPages) => {
         alertRepository.findMany.mockResolvedValue(mockAlerts);
-        alertRepository.count.mockResolvedValue(25);
+        alertRepository.count.mockResolvedValue(total);
 
         const result = await service.getAlertsForUser({
           ...defaultParams,
-          limit: 10,
+          limit,
         });
 
-        expect(result.totalPages).toBe(3); // 25 / 10 = 3
-      });
-
-      it('should calculate totalPages correctly with exact division', async () => {
-        alertRepository.findMany.mockResolvedValue(mockAlerts);
-        alertRepository.count.mockResolvedValue(20);
-
-        const result = await service.getAlertsForUser({
-          ...defaultParams,
-          limit: 10,
-        });
-
-        expect(result.totalPages).toBe(2); // 20 / 10 = 2
-      });
-
-      it('should handle single page correctly', async () => {
-        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
-        alertRepository.count.mockResolvedValue(1);
-
-        const result = await service.getAlertsForUser({
-          ...defaultParams,
-          limit: 10,
-        });
-
-        expect(result.totalPages).toBe(1);
+        expect(result.totalPages).toBe(expectedPages);
       });
     });
 
@@ -720,8 +609,31 @@ describe('AlertStatisticsService', () => {
     });
 
     describe('Error handling', () => {
-      it('should handle repository findMany error and throw InternalServerErrorException', async () => {
-        const error = new Error('Database connection failed');
+      it.each([
+        ['findMany error', 'findMany', 'Database connection failed'],
+        ['count error', 'count', 'Count query failed'],
+      ])('should handle repository %s and throw InternalServerErrorException', async (_desc, method, errorMsg) => {
+        const error = new Error(errorMsg);
+        if (method === 'findMany') {
+          alertRepository.findMany.mockRejectedValue(error);
+        } else {
+          alertRepository.findMany.mockResolvedValue(mockAlerts);
+          alertRepository.count.mockRejectedValue(error);
+        }
+
+        await expect(
+          service.getAlertsForUser({
+            ...defaultParams,
+          }),
+        ).rejects.toThrow(new InternalServerErrorException('Unable to fetch alert list'));
+
+        expect(logger.error).toHaveBeenCalledWith(`Failed to fetch alerts: ${errorMsg}`, error.stack, 'AlertStatisticsService');
+      });
+
+      it.each([
+        ['string error', 'String error'],
+        ['custom error object', { message: 'Custom error object' }],
+      ])('should handle non-Error exceptions - %s', async (_desc, error) => {
         alertRepository.findMany.mockRejectedValue(error);
 
         await expect(
@@ -730,61 +642,7 @@ describe('AlertStatisticsService', () => {
           }),
         ).rejects.toThrow(new InternalServerErrorException('Unable to fetch alert list'));
 
-        expect(logger.error).toHaveBeenCalledWith(
-          'Failed to fetch alerts: Database connection failed',
-          error.stack,
-          'AlertStatisticsService',
-        );
-      });
-
-      it('should handle repository count error and throw InternalServerErrorException', async () => {
-        alertRepository.findMany.mockResolvedValue(mockAlerts);
-        const error = new Error('Count query failed');
-        alertRepository.count.mockRejectedValue(error);
-
-        await expect(
-          service.getAlertsForUser({
-            ...defaultParams,
-          }),
-        ).rejects.toThrow(new InternalServerErrorException('Unable to fetch alert list'));
-
-        expect(logger.error).toHaveBeenCalledWith(
-          'Failed to fetch alerts: Count query failed',
-          error.stack,
-          'AlertStatisticsService',
-        );
-      });
-
-      it('should handle non-Error exceptions', async () => {
-        alertRepository.findMany.mockRejectedValue('String error');
-
-        await expect(
-          service.getAlertsForUser({
-            ...defaultParams,
-          }),
-        ).rejects.toThrow(new InternalServerErrorException('Unable to fetch alert list'));
-
-        expect(logger.error).toHaveBeenCalledWith(
-          'Failed to fetch alerts: String error',
-          undefined,
-          'AlertStatisticsService',
-        );
-      });
-
-      it('should log error without stack when error is not an Error instance', async () => {
-        alertRepository.findMany.mockRejectedValue({ message: 'Custom error object' });
-
-        await expect(
-          service.getAlertsForUser({
-            ...defaultParams,
-          }),
-        ).rejects.toThrow(new InternalServerErrorException('Unable to fetch alert list'));
-
-        expect(logger.error).toHaveBeenCalledWith(
-          'Failed to fetch alerts: [object Object]',
-          undefined,
-          'AlertStatisticsService',
-        );
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to fetch alerts:'), undefined, 'AlertStatisticsService');
       });
     });
 
@@ -816,60 +674,36 @@ describe('AlertStatisticsService', () => {
         );
       });
 
-      it('should handle very large page numbers', async () => {
-        alertRepository.findMany.mockResolvedValue([]);
-        alertRepository.count.mockResolvedValue(0);
-
-        const result = await service.getAlertsForUser({
-          ...defaultParams,
-          page: 999999,
-        });
-
-        expect(result.page).toBe(999999);
-        expect(alertRepository.findMany).toHaveBeenCalledWith(
-          expect.objectContaining({
-            page: 999999,
-          }),
-        );
-      });
-
-      it('should handle very large limit values', async () => {
+      it.each([
+        ['very large page numbers', 999999, 10],
+        ['very large limit values', 1, 10000],
+      ])('should handle %s', async (_desc, page, limit) => {
         alertRepository.findMany.mockResolvedValue(mockAlerts);
         alertRepository.count.mockResolvedValue(2);
 
         const result = await service.getAlertsForUser({
           ...defaultParams,
-          limit: 10000,
+          page,
+          limit,
         });
 
-        expect(result.limit).toBe(10000);
+        expect(result.page).toBe(page);
+        expect(result.limit).toBe(limit);
       });
 
-      it('should not add OR clause for empty string search', async () => {
+      it.each([
+        ['empty string', ''],
+        ['zero', 0],
+      ])('should not add OR clause for %s search', async (_desc, search) => {
         alertRepository.findMany.mockResolvedValue(mockAlerts);
         alertRepository.count.mockResolvedValue(2);
 
         await service.getAlertsForUser({
           ...defaultParams,
-          search: '',
+          search,
         });
 
         const callArgs = alertRepository.findMany.mock.calls[0][0];
-        // Empty string is falsy, so OR clause won't be added
-        expect(callArgs.where?.OR).toBeUndefined();
-      });
-
-      it('should not add OR clause for zero search value', async () => {
-        alertRepository.findMany.mockResolvedValue(mockAlerts);
-        alertRepository.count.mockResolvedValue(2);
-
-        await service.getAlertsForUser({
-          ...defaultParams,
-          search: 0,
-        });
-
-        const callArgs = alertRepository.findMany.mock.calls[0][0];
-        // Zero is falsy, so OR clause won't be added
         expect(callArgs.where?.OR).toBeUndefined();
       });
 

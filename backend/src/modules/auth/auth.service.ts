@@ -15,7 +15,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
     private readonly cacheService: CacheService,
-  ) { }
+  ) {}
 
   async login(username: string, password: string): Promise<{ message: string; token: string; expiresIn: number | null }> {
     const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
@@ -202,7 +202,7 @@ export class AuthService {
     }
     // Remove /v1/auth/login suffix if present and replace with base path
 
-    const baseUrl = authUrl.replace(/\/v1\/auth\/login\/?$/u, '');
+    const baseUrl = authUrl.replace(/\/v1\/auth\/login\/?$/v, '');
     return baseUrl;
   }
 

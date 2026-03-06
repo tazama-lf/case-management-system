@@ -421,6 +421,7 @@ export class TriageService {
             autoCloseEligible: true,
             caseType: updateAlertDto.alertType,
             casePriority: alert.priority,
+            draftApprovalRequired: false,
           },
         });
 
@@ -442,6 +443,7 @@ export class TriageService {
             autoCloseEligible: false,
             caseType: updateAlertDto.alertType,
             casePriority: alert.priority,
+            draftApprovalRequired: false,
           },
         });
       }
@@ -531,6 +533,7 @@ export class TriageService {
             autoCloseEligible: false,
             caseType: predictedAlertType,
             casePriority: priority,
+            draftApprovalRequired: false,
           },
         });
         return await this.createInvestigationTask(
@@ -553,6 +556,7 @@ export class TriageService {
             autoCloseEligible: true,
             caseType: predictedAlertType,
             casePriority: priority,
+            draftApprovalRequired: false,
           },
         });
         return await this.autoCloseCase(
@@ -585,6 +589,7 @@ export class TriageService {
               autoCloseEligible: false,
               caseType: predictedAlertType,
               casePriority: priority,
+              draftApprovalRequired: false,
             },
           });
 
@@ -627,6 +632,7 @@ export class TriageService {
               autoCloseEligible: false,
               caseType: predictedAlertType,
               casePriority: priority,
+              draftApprovalRequired: false,
             },
           });
           return await this.createInvestigationTask(
@@ -648,6 +654,7 @@ export class TriageService {
                 autoCloseEligible: true,
                 caseType: predictedAlertType,
                 casePriority: priority,
+                draftApprovalRequired: false,
               },
             });
             return await this.autoCloseCase(
@@ -669,6 +676,7 @@ export class TriageService {
               autoCloseEligible: false,
               caseType: predictedAlertType,
               casePriority: priority,
+              draftApprovalRequired: false,
             },
           });
           return await this.createInvestigationTask(

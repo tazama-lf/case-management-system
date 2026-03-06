@@ -54,7 +54,7 @@ export class FeatureExtractionService {
       }
 
       const typologyResults = alert.report.tadpResult.typologyResult[0];
-      const ruleResults = typologyResults.ruleResults;
+      const { ruleResults } = typologyResults;
       features[0] = typologyResults.result;
 
       for (const ruleResult of ruleResults) {
@@ -62,11 +62,11 @@ export class FeatureExtractionService {
         const indpdntVarbl = Number((ruleResult as any).indpdntVarbl) || 0;
 
         const ruleIndex = this.RULE_SEQUENCE.indexOf(ruleId);
-        if (ruleIndex !== -1) {
+        if (ruleIndex === -1) {
+          this.logger.warn(`Rule ${ruleId} not found in rule sequence`);
+        } else {
           features[ruleIndex] = indpdntVarbl;
           this.logger.debug(`Mapped rule ${ruleId} (index ${ruleIndex}) with value ${indpdntVarbl}`);
-        } else {
-          this.logger.warn(`Rule ${ruleId} not found in rule sequence`);
         }
       }
 
@@ -75,7 +75,9 @@ export class FeatureExtractionService {
 
       return extractedFeatures;
     } catch (error) {
-      this.logger.error(`Error extracting features: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error extracting features: ${errorMessage}`, errorStack, FeatureExtractionService.name);
       throw error;
     }
   }

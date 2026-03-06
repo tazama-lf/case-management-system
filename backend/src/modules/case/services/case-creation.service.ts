@@ -224,7 +224,7 @@ export class CaseCreationService {
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
           userId,
-          actionPerformed: `Manual case ${createdCase.case_id} created for alert ${dto.alertId}'}`,
+          actionPerformed: `Manual case ${createdCase.case_id} created for alert ${dto.alertId}`,
           entityName: CaseCreationService.name,
           operation: 'createManualCase',
           outcome: Outcome.SUCCESS,
@@ -234,7 +234,7 @@ export class CaseCreationService {
       );
 
       this.loggerService.log(
-        `End - Manual Case Creation. Case ${createdCase.case_id} created for alert ${dto.alertId} }`,
+        `End - Manual Case Creation. Case ${createdCase.case_id} created for alert ${dto.alertId}`,
         CaseCreationService.name,
       );
 

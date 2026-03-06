@@ -84,7 +84,7 @@ export function determineOriginalClosedStatus(caseData: any): CaseStatus {
 export function isInvestigatorRole(role: string | null): boolean {
   if (!role) return false;
   const upperRole = role.toUpperCase();
-  return upperRole === 'ANALYST' || upperRole === 'INVESTIGATOR' || upperRole === 'CMS_INVESTIGATOR';
+  return upperRole === 'INVESTIGATOR' || upperRole === 'CMS_INVESTIGATOR';
 }
 
 /**

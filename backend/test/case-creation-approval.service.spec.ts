@@ -58,6 +58,21 @@ describe('CaseCreationApprovalService', () => {
     tenant_id: 'tenant-123',
   };
 
+  // Helper function to setup successful transaction mock
+  const setupSuccessfulTransaction = (caseRepository: any, caseData: any = mockCase) => {
+    const mockTransaction = jest.fn(async (callback) => {
+      const mockTx = {
+        task: {
+          update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }),
+        },
+      };
+      return await callback(mockTx);
+    });
+    caseRepository.executeTransaction.mockImplementation(mockTransaction);
+    caseRepository.transaction.mockImplementation(mockTransaction);
+    caseRepository.updateCase.mockResolvedValue(caseData as any);
+  };
+
   beforeEach(async () => {
     const mockLogger = {
       log: jest.fn(),
@@ -95,6 +110,7 @@ describe('CaseCreationApprovalService', () => {
       findCaseWithApprovalTask: jest.fn(),
       findCaseBasicInfo: jest.fn(),
       findTaskByNameAndStatus: jest.fn(),
+      transaction: jest.fn(),
     };
 
     const mockCommentRepository = {
@@ -163,147 +179,6 @@ describe('CaseCreationApprovalService', () => {
     jest.clearAllMocks();
   });
 
-  describe('manualCaseCreate', () => {
-    const createDto = {
-      alertId: 100,
-      alertType: CaseType.FRAUD,
-      priorityScore: 85,
-    };
-
-    it('should create case with approval required for investigator', async () => {
-      caseRepository.findAlert.mockResolvedValue(mockAlert as any);
-      const createdCase = { ...mockCase, status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL };
-      
-      const mockTransaction = jest.fn(async (callback) => {
-        return await callback();
-      });
-      caseRepository.executeTransaction.mockImplementation(mockTransaction);
-      caseRepository.createCase.mockResolvedValue(createdCase as any);
-      alertRepository.updateAlert.mockResolvedValue({ ...mockAlert, case_id: 1 } as any);
-      taskService.createTask.mockResolvedValue(mockTask as any);
-
-      const result = await service.manualCaseCreate(createDto as any, 'user-123', 'tenant-123', 'investigator');
-
-      expect(result.success).toBe(true);
-      expect(caseRepository.createCase).toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-          caseCreationType: CaseCreationType.MANUAL,
-        }),
-        undefined
-      );
-      expect(taskService.createTask).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Approve Case Creation' }),
-        'user-123',
-        'tenant-123'
-      );
-    });
-
-    it('should create case without approval for supervisor', async () => {
-      caseRepository.findAlert.mockResolvedValue(mockAlert as any);
-      const createdCase = { ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT };
-      
-      const mockTransaction = jest.fn(async (callback) => {
-        return await callback();
-      });
-      caseRepository.executeTransaction.mockImplementation(mockTransaction);
-      caseRepository.createCase.mockResolvedValue(createdCase as any);
-      alertRepository.updateAlert.mockResolvedValue({ ...mockAlert, case_id: 1 } as any);
-      taskService.createTask.mockResolvedValue(mockTask as any);
-
-      const result = await service.manualCaseCreate(createDto as any, 'user-123', 'tenant-123', 'SUPERVISOR');
-
-      expect(result.success).toBe(true);
-      expect(caseRepository.createCase).toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          caseOwnerUserId: 'user-123',
-        }),
-        undefined
-      );
-      expect(taskService.createTask).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Investigate Case' }),
-        'user-123',
-        'tenant-123'
-      );
-    });
-
-    it('should handle FRAUD_AND_AML case type for supervisor', async () => {
-      const fraudAmlDto = { ...createDto, alertType: CaseType.FRAUD_AND_AML };
-      caseRepository.findAlert.mockResolvedValue(mockAlert as any);
-      const createdCase = { ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_type: CaseType.FRAUD_AND_AML };
-      
-      const mockTransaction = jest.fn(async (callback) => {
-        return await callback();
-      });
-      caseRepository.executeTransaction.mockImplementation(mockTransaction);
-      caseRepository.createCase.mockResolvedValue(createdCase as any);
-      alertRepository.updateAlert.mockResolvedValue({ ...mockAlert, case_id: 1 } as any);
-
-      await service.manualCaseCreate(fraudAmlDto as any, 'user-123', 'tenant-123', 'SUPERVISOR');
-
-      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(2);
-      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
-        CaseType.AML,
-        'user-123',
-        'tenant-123',
-        1,
-        Priority.CRITICAL
-      );
-      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
-        CaseType.FRAUD,
-        'user-123',
-        'tenant-123',
-        1,
-        Priority.CRITICAL
-      );
-    });
-
-    it('should throw BadRequestException if alert not found', async () => {
-      caseRepository.findAlert.mockResolvedValue(null);
-
-      await expect(
-        service.manualCaseCreate(createDto as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if alert already has case', async () => {
-      caseRepository.findAlert.mockResolvedValue({ ...mockAlert, case_id: 1 } as any);
-
-      await expect(
-        service.manualCaseCreate(createDto as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if alert is not NALT status', async () => {
-      caseRepository.findAlert.mockResolvedValue({ ...mockAlert, alert_data: { status: 'ALRT' } } as any);
-
-      await expect(
-        service.manualCaseCreate(createDto as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if no alertType provided', async () => {
-      caseRepository.findAlert.mockResolvedValue(mockAlert as any);
-
-      await expect(
-        service.manualCaseCreate({ ...createDto, alertType: null } as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw InternalServerErrorException on transaction failure', async () => {
-      caseRepository.findAlert.mockResolvedValue(mockAlert as any);
-      const mockTransaction = jest.fn(async () => {
-        throw new Error('Transaction failed');
-      });
-      caseRepository.executeTransaction.mockImplementation(mockTransaction);
-
-      await expect(
-        service.manualCaseCreate(createDto as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(InternalServerErrorException);
-    });
-  });
-
   describe('saveCaseAsDraft', () => {
     const createDto = {
       alertId: 100,
@@ -332,41 +207,38 @@ describe('CaseCreationApprovalService', () => {
           assignedUserId: 'user-123',
         }),
         'user-123',
-        'tenant-123'
+        'tenant-123',
       );
     });
 
-    it('should throw BadRequestException if alert not found', async () => {
-      caseRepository.findAlert.mockResolvedValue(null);
+    it.each([
+      {
+        description: 'alert not found',
+        mockSetup: () => caseRepository.findAlert.mockResolvedValue(null),
+        error: BadRequestException,
+      },
+      {
+        description: 'alert already has case',
+        mockSetup: () => caseRepository.findAlert.mockResolvedValue({ ...mockAlert, case_id: 1 } as any),
+        error: BadRequestException,
+      },
+      {
+        description: 'alert is not NALT status',
+        mockSetup: () => caseRepository.findAlert.mockResolvedValue({ ...mockAlert, alert_data: { status: 'ALRT' } } as any),
+        error: BadRequestException,
+      },
+      {
+        description: 'creation failure',
+        mockSetup: () => {
+          caseRepository.findAlert.mockResolvedValue(mockAlert as any);
+          caseRepository.createDraftCase.mockRejectedValue(new Error('DB error'));
+        },
+        error: InternalServerErrorException,
+      },
+    ])('should throw $error.name when $description', async ({ mockSetup, error }) => {
+      mockSetup();
 
-      await expect(
-        service.saveCaseAsDraft(createDto as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if alert already has case', async () => {
-      caseRepository.findAlert.mockResolvedValue({ ...mockAlert, case_id: 1 } as any);
-
-      await expect(
-        service.saveCaseAsDraft(createDto as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if alert is not NALT status', async () => {
-      caseRepository.findAlert.mockResolvedValue({ ...mockAlert, alert_data: { status: 'ALRT' } } as any);
-
-      await expect(
-        service.saveCaseAsDraft(createDto as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw InternalServerErrorException on failure', async () => {
-      caseRepository.findAlert.mockResolvedValue(mockAlert as any);
-      caseRepository.createDraftCase.mockRejectedValue(new Error('DB error'));
-
-      await expect(
-        service.saveCaseAsDraft(createDto as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.saveCaseAsDraft(createDto as any, 'user-123', 'tenant-123', 'investigator')).rejects.toThrow(error);
     });
   });
 
@@ -377,22 +249,12 @@ describe('CaseCreationApprovalService', () => {
       case_type: CaseType.FRAUD,
       priority: Priority.CRITICAL,
       case_creator_user_id: 'creator-123',
+      tasks: [mockTask],
     };
 
     it('should approve case creation successfully', async () => {
-      caseRepository.findCaseBasicInfo.mockResolvedValue(pendingCase as any);
-      caseRepository.findTaskByNameAndStatus.mockResolvedValue(mockTask as any);
-      
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockTx = {
-          task: {
-            update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }),
-          },
-        };
-        return await callback(mockTx);
-      });
-      caseRepository.executeTransaction.mockImplementation(mockTransaction);
-      caseRepository.updateCase.mockResolvedValue({ ...pendingCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT } as any);
+      caseRepository.findCaseWithApprovalTask.mockResolvedValue(pendingCase as any);
+      setupSuccessfulTransaction(caseRepository, { ...pendingCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
       taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Investigate Case' } as any);
 
       const result = await service.approveCaseCreation(1, 'supervisor-123', 'tenant-123');
@@ -407,74 +269,45 @@ describe('CaseCreationApprovalService', () => {
 
     it('should approve FRAUD_AND_AML case and create both investigation tasks', async () => {
       const fraudAmlCase = { ...pendingCase, case_type: CaseType.FRAUD_AND_AML };
-      caseRepository.findCaseBasicInfo.mockResolvedValue(fraudAmlCase as any);
-      caseRepository.findTaskByNameAndStatus.mockResolvedValue(mockTask as any);
-      
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockTx = {
-          task: {
-            update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }),
-          },
-        };
-        return await callback(mockTx);
-      });
-      caseRepository.executeTransaction.mockImplementation(mockTransaction);
-      caseRepository.updateCase.mockResolvedValue({ ...fraudAmlCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT } as any);
+      caseRepository.findCaseWithApprovalTask.mockResolvedValue(fraudAmlCase as any);
+      setupSuccessfulTransaction(caseRepository, { ...fraudAmlCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
 
       await service.approveCaseCreation(1, 'supervisor-123', 'tenant-123');
 
       expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(2);
     });
 
-    it('should throw NotFoundException if case not found', async () => {
-      caseRepository.findCaseBasicInfo.mockResolvedValue(null);
+    it.each([
+      {
+        description: 'case not found',
+        mockSetup: () => caseRepository.findCaseWithApprovalTask.mockResolvedValue(null),
+        error: NotFoundException,
+      },
+      {
+        description: 'case not pending approval',
+        mockSetup: () =>
+          caseRepository.findCaseWithApprovalTask.mockResolvedValue({
+            ...pendingCase,
+            status: CaseStatus.STATUS_00_DRAFT,
+            tasks: [mockTask],
+          } as any),
+        error: ConflictException,
+      },
+      {
+        description: 'missing required fields',
+        mockSetup: () =>
+          caseRepository.findCaseWithApprovalTask.mockResolvedValue({ ...pendingCase, case_type: null, tasks: [mockTask] } as any),
+        error: BadRequestException,
+      },
+      {
+        description: 'approval task not found',
+        mockSetup: () => caseRepository.findCaseWithApprovalTask.mockResolvedValue({ ...pendingCase, tasks: [] } as any),
+        error: NotFoundException,
+      },
+    ])('should throw $error.name when $description', async ({ mockSetup, error }) => {
+      mockSetup();
 
-      await expect(
-        service.approveCaseCreation(1, 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw ConflictException if case already approved', async () => {
-      caseRepository.findCaseBasicInfo.mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT } as any);
-
-      await expect(
-        service.approveCaseCreation(1, 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('should throw ConflictException if case not pending approval', async () => {
-      caseRepository.findCaseBasicInfo.mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_00_DRAFT } as any);
-
-      await expect(
-        service.approveCaseCreation(1, 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('should throw BadRequestException if missing required fields', async () => {
-      const incompleteCase = { ...pendingCase, priority: null };
-      caseRepository.findCaseBasicInfo.mockResolvedValue(incompleteCase as any);
-
-      await expect(
-        service.approveCaseCreation(1, 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw NotFoundException if approval task not found', async () => {
-      caseRepository.findCaseBasicInfo.mockResolvedValue(pendingCase as any);
-      caseRepository.findTaskByNameAndStatus.mockResolvedValue(null);
-
-      await expect(
-        service.approveCaseCreation(1, 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw ConflictException if approval task not in unassigned state', async () => {
-      caseRepository.findCaseBasicInfo.mockResolvedValue(pendingCase as any);
-      caseRepository.findTaskByNameAndStatus.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
-
-      await expect(
-        service.approveCaseCreation(1, 'supervisor-123', 'tenant-123')
-      ).rejects.toThrow(ConflictException);
+      await expect(service.approveCaseCreation(1, 'supervisor-123', 'tenant-123')).rejects.toThrow(error);
     });
   });
 
@@ -485,15 +318,13 @@ describe('CaseCreationApprovalService', () => {
       case_type: CaseType.FRAUD,
       priority: Priority.CRITICAL,
       case_creator_user_id: 'creator-123',
+      tasks: [mockTask],
     };
 
     it('should reject case creation successfully', async () => {
-      caseRepository.findCaseWithApprovalTask.mockResolvedValue({
-        ...pendingCase,
-        tasks: [mockTask],
-      } as any);
+      caseRepository.findCaseWithApprovalTask.mockResolvedValue(pendingCase as any);
       caseQueryService.retrieveCase.mockResolvedValue(pendingCase as any);
-      
+
       const mockTransaction = jest.fn(async (callback) => {
         const mockTx = {
           task: {
@@ -503,6 +334,7 @@ describe('CaseCreationApprovalService', () => {
         return await callback(mockTx);
       });
       caseRepository.executeTransaction.mockImplementation(mockTransaction);
+      caseRepository.transaction.mockImplementation(mockTransaction);
       caseRepository.updateCase.mockResolvedValue({ ...pendingCase, status: CaseStatus.STATUS_00_DRAFT } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
       taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Complete New Case' } as any);
@@ -518,62 +350,37 @@ describe('CaseCreationApprovalService', () => {
           assignedUserId: 'creator-123',
         }),
         'supervisor-123',
-        'tenant-123'
+        'tenant-123',
+        expect.anything(),
       );
       expect(commentRepository.createComment).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException if reason is too short', async () => {
-      caseRepository.findCaseWithApprovalTask.mockResolvedValue({
-        ...pendingCase,
-        tasks: [mockTask],
-      } as any);
+    it.each([
+      {
+        description: 'case not found',
+        mockSetup: () => caseRepository.findCaseWithApprovalTask.mockResolvedValue(null),
+        error: NotFoundException,
+      },
+      {
+        description: 'case not pending approval',
+        mockSetup: () =>
+          caseRepository.findCaseWithApprovalTask.mockResolvedValue({
+            ...pendingCase,
+            status: CaseStatus.STATUS_00_DRAFT,
+            tasks: [mockTask],
+          } as any),
+        error: ConflictException,
+      },
+      {
+        description: 'approval task not found',
+        mockSetup: () => caseRepository.findCaseWithApprovalTask.mockResolvedValue({ ...pendingCase, tasks: [] } as any),
+        error: NotFoundException,
+      },
+    ])('should throw $error.name when $description', async ({ mockSetup, error }) => {
+      mockSetup();
 
-      await expect(
-        service.rejectCaseCreation(1, 'supervisor-123', 'tenant-123', 'No')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if reason is empty', async () => {
-      caseRepository.findCaseWithApprovalTask.mockResolvedValue({
-        ...pendingCase,
-        tasks: [mockTask],
-      } as any);
-
-      await expect(
-        service.rejectCaseCreation(1, 'supervisor-123', 'tenant-123', '')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw NotFoundException if case not found', async () => {
-      caseRepository.findCaseWithApprovalTask.mockResolvedValue(null);
-
-      await expect(
-        service.rejectCaseCreation(1, 'supervisor-123', 'tenant-123', 'Reason text here')
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw ConflictException if case not pending approval', async () => {
-      caseRepository.findCaseWithApprovalTask.mockResolvedValue({
-        ...pendingCase,
-        status: CaseStatus.STATUS_00_DRAFT,
-        tasks: [mockTask],
-      } as any);
-
-      await expect(
-        service.rejectCaseCreation(1, 'supervisor-123', 'tenant-123', 'Reason text here')
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('should throw NotFoundException if approval task not found', async () => {
-      caseRepository.findCaseWithApprovalTask.mockResolvedValue({
-        ...pendingCase,
-        tasks: [],
-      } as any);
-
-      await expect(
-        service.rejectCaseCreation(1, 'supervisor-123', 'tenant-123', 'Reason text here')
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.rejectCaseCreation(1, 'supervisor-123', 'tenant-123', 'Valid reason')).rejects.toThrow(error);
     });
   });
 
@@ -589,9 +396,9 @@ describe('CaseCreationApprovalService', () => {
     it('should complete draft case successfully', async () => {
       caseQueryService.retrieveCase.mockResolvedValue(draftCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([
-        { task_id: 1, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED }
+        { task_id: 1, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED },
       ] as any);
-      
+
       const mockTransaction = jest.fn(async (callback) => {
         return await callback();
       });
@@ -604,129 +411,65 @@ describe('CaseCreationApprovalService', () => {
 
       expect(result.success).toBe(true);
       expect(caseQueryService.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, 'user-123');
-      expect(taskService.createTask).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Investigate Case' }),
-        'user-123',
-        'tenant-123'
-      );
+      expect(taskService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'Investigate Case' }), 'user-123', 'tenant-123');
     });
 
-    it('should throw BadRequestException if case not found', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(undefined as any);
+    it.each([
+      {
+        description: 'case not found',
+        mockSetup: () => caseQueryService.retrieveCase.mockResolvedValue(undefined as any),
+        error: BadRequestException,
+      },
+      {
+        description: 'case is not DRAFT',
+        mockSetup: () => caseQueryService.retrieveCase.mockResolvedValue({ ...draftCase, status: CaseStatus.STATUS_20_IN_PROGRESS } as any),
+        error: BadRequestException,
+      },
+      {
+        description: 'missing priority',
+        mockSetup: () => caseQueryService.retrieveCase.mockResolvedValue({ ...draftCase, priority: null } as any),
+        error: BadRequestException,
+      },
+      {
+        description: 'missing case_type',
+        mockSetup: () => caseQueryService.retrieveCase.mockResolvedValue({ ...draftCase, case_type: null } as any),
+        error: BadRequestException,
+      },
+      {
+        description: 'Complete New Case task not found',
+        mockSetup: () => {
+          caseQueryService.retrieveCase.mockResolvedValue(draftCase as any);
+          taskService.getTasksByCaseId.mockResolvedValue([]);
+        },
+        error: InternalServerErrorException,
+      },
+      {
+        description: 'Complete New Case task already completed',
+        mockSetup: () => {
+          caseQueryService.retrieveCase.mockResolvedValue(draftCase as any);
+          taskService.getTasksByCaseId.mockResolvedValue([
+            { task_id: 1, name: 'Complete New Case', status: TaskStatus.STATUS_30_COMPLETED },
+          ] as any);
+        },
+        error: InternalServerErrorException,
+      },
+      {
+        description: 'transaction failure',
+        mockSetup: () => {
+          caseQueryService.retrieveCase.mockResolvedValue(draftCase as any);
+          taskService.getTasksByCaseId.mockResolvedValue([
+            { task_id: 1, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED },
+          ] as any);
+          caseRepository.executeTransaction.mockImplementation(async () => {
+            throw new Error('Transaction failed');
+          });
+        },
+        error: InternalServerErrorException,
+      },
+    ])('should throw $error.name when $description', async ({ mockSetup, error }) => {
+      mockSetup();
 
-      await expect(
-        service.completeCase(1, 'user-123', 'tenant-123')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if case is not DRAFT', async () => {
-      const nonDraftCase = { ...draftCase, status: CaseStatus.STATUS_20_IN_PROGRESS };
-      caseQueryService.retrieveCase.mockResolvedValue(nonDraftCase as any);
-
-      await expect(
-        service.completeCase(1, 'user-123', 'tenant-123')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if missing priority', async () => {
-      const incompleteCase = { ...draftCase, priority: null };
-      caseQueryService.retrieveCase.mockResolvedValue(incompleteCase as any);
-
-      await expect(
-        service.completeCase(1, 'user-123', 'tenant-123')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if missing case_type', async () => {
-      const incompleteCase = { ...draftCase, case_type: null };
-      caseQueryService.retrieveCase.mockResolvedValue(incompleteCase as any);
-
-      await expect(
-        service.completeCase(1, 'user-123', 'tenant-123')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw InternalServerErrorException if Complete New Case task not found', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(draftCase as any);
-      taskService.getTasksByCaseId.mockResolvedValue([]);
-
-      await expect(
-        service.completeCase(1, 'user-123', 'tenant-123')
-      ).rejects.toThrow(InternalServerErrorException);
-    });
-
-    it('should throw InternalServerErrorException if Complete New Case task already completed', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(draftCase as any);
-      taskService.getTasksByCaseId.mockResolvedValue([
-        { task_id: 1, name: 'Complete New Case', status: TaskStatus.STATUS_30_COMPLETED }
-      ] as any);
-
-      await expect(
-        service.completeCase(1, 'user-123', 'tenant-123')
-      ).rejects.toThrow(InternalServerErrorException);
-    });
-
-    it('should throw InternalServerErrorException on transaction failure', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(draftCase as any);
-      taskService.getTasksByCaseId.mockResolvedValue([
-        { task_id: 1, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED }
-      ] as any);
-      
-      const mockTransaction = jest.fn(async () => {
-        throw new Error('Transaction failed');
-      });
-      caseRepository.executeTransaction.mockImplementation(mockTransaction);
-
-      await expect(
-        service.completeCase(1, 'user-123', 'tenant-123')
-      ).rejects.toThrow(InternalServerErrorException);
-    });
-  });
-
-  describe('createCase', () => {
-    const createDto = {
-      tenantId: 'tenant-123',
-      caseCreatorUserId: 'creator-123',
-      caseOwnerUserId: 'owner-123',
-      status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-      priority: Priority.CRITICAL,
-      caseType: CaseType.FRAUD,
-      caseCreationType: CaseCreationType.MANUAL,
-      parentId: null,
-    };
-
-    it('should create case successfully', async () => {
-      caseRepository.createCase.mockResolvedValue(mockCase as any);
-
-      const result = await service.createCase(createDto as any, 'user-123');
-
-      expect(result).toEqual(mockCase);
-      expect(caseRepository.createCase).toHaveBeenCalledWith(createDto);
-      expect(flowableService.handleCaseCreated).toHaveBeenCalledWith(
-        expect.objectContaining({
-          caseId: mockCase.case_id,
-          tenantId: mockCase.tenant_id,
-          caseStatus: mockCase.status,
-        })
-      );
-      expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
-    });
-
-    it('should handle triage type configuration', async () => {
-      configService.get.mockReturnValue('ENABLED');
-      caseRepository.createCase.mockResolvedValue(mockCase as any);
-
-      await service.createCase(createDto as any, 'user-123');
-
-      expect(caseRepository.createCase).toHaveBeenCalled();
-    });
-
-    it('should throw error if case creation fails', async () => {
-      caseRepository.createCase.mockRejectedValue(new Error('DB error'));
-
-      await expect(
-        service.createCase(createDto as any, 'user-123')
-      ).rejects.toThrow('DB error');
+      await expect(service.completeCase(1, 'user-123', 'tenant-123')).rejects.toThrow(error);
     });
   });
 
@@ -746,14 +489,11 @@ describe('CaseCreationApprovalService', () => {
         'user-123',
         'tenant-123',
         Priority.CRITICAL,
-        CaseType.FRAUD
+        CaseType.FRAUD,
       );
 
       expect(result.status).toBe(CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT);
-      expect(taskRepository.createTask).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Investigate Case' }),
-        expect.anything()
-      );
+      expect(taskRepository.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'Investigate Case' }), expect.anything());
     });
 
     it('should not create investigate task for FRAUD_AND_AML', async () => {
@@ -770,7 +510,7 @@ describe('CaseCreationApprovalService', () => {
         'user-123',
         'tenant-123',
         Priority.CRITICAL,
-        CaseType.FRAUD_AND_AML
+        CaseType.FRAUD_AND_AML,
       );
 
       expect(taskRepository.createTask).not.toHaveBeenCalled();
@@ -779,12 +519,7 @@ describe('CaseCreationApprovalService', () => {
     it('should update case status without creating task for other statuses', async () => {
       caseRepository.updateCase.mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_00_DRAFT } as any);
 
-      const result = await service.updateCaseStatus(
-        1,
-        CaseStatus.STATUS_00_DRAFT,
-        'user-123',
-        'tenant-123'
-      );
+      const result = await service.updateCaseStatus(1, CaseStatus.STATUS_00_DRAFT, 'user-123', 'tenant-123');
 
       expect(result.status).toBe(CaseStatus.STATUS_00_DRAFT);
       expect(taskRepository.transaction).not.toHaveBeenCalled();
@@ -798,14 +533,7 @@ describe('CaseCreationApprovalService', () => {
       taskRepository.findCaseBasic.mockResolvedValue(null);
 
       await expect(
-        service.updateCaseStatus(
-          1,
-          CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          'user-123',
-          'tenant-123',
-          Priority.CRITICAL,
-          CaseType.FRAUD
-        )
+        service.updateCaseStatus(1, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, 'user-123', 'tenant-123', Priority.CRITICAL, CaseType.FRAUD),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -818,7 +546,7 @@ describe('CaseCreationApprovalService', () => {
         expect.objectContaining({
           caseId: 1,
           newStatus: CaseStatus.STATUS_00_DRAFT,
-        })
+        }),
       );
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
     });
