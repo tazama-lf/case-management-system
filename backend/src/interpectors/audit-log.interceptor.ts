@@ -1,6 +1,6 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Inject, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { type IAuditService, type IAuditLogInput, EventPhase } from '@tazama-lf/audit-lib';
 import type { Request } from 'express';
@@ -16,36 +16,38 @@ import { IAuditLogBaseDto } from '../modules/audit/dto/audit-log.dto';
 export class AuditInterceptor implements NestInterceptor {
   private readonly logger = new Logger(AuditInterceptor.name);
 
-  constructor(
-    @Inject('AUDIT_LOGGER') private readonly auditService: IAuditService,
-  ) { }
+  constructor(@Inject('AUDIT_LOGGER') private readonly auditService: IAuditService) {}
 
   /**
    * Intercepts HTTP requests to critical endpoints and logs audit information
    */
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const authenticatedRequest = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const request = context.switchToHttp().getRequest<Request>();
-    const response = context.switchToHttp().getResponse<Response>();
     const startTime = Date.now();
     const correlationId = randomUUID();
-    const baseAuditData = this.buildBaseAuditData(context, authenticatedRequest, response);
+    const baseAuditData = this.buildBaseAuditData(context, authenticatedRequest);
 
     this.logAuditAsync({ ...baseAuditData, outcome: {} }, EventPhase.INTENT, correlationId);
 
+    const { method } = authenticatedRequest;
+
     return next.handle().pipe(
       tap((responseData) => {
+        const isModifyingRequest = method === 'PUT' || method === 'PATCH';
         const outcome = {
           executionTimeMs: Date.now() - startTime,
           responseSize: JSON.stringify(responseData ?? {}).length,
-          responseData: this.sanitizeData(responseData, ['password', 'token', 'secret', 'accessToken', 'refreshToken']),
+          ...(isModifyingRequest ? this.sanitizeData(responseData, ['password', 'token', 'secret', 'accessToken', 'refreshToken']) : {}),
         };
-        
-        this.logAuditAsync({
-          ...baseAuditData,
-          resourceId: this.extractResourceIdFromResponse(responseData) ?? baseAuditData.resourceId,
-          outcome,
-        }, EventPhase.SUCCESS, correlationId);
+        this.logAuditAsync(
+          {
+            ...baseAuditData,
+            resourceId: this.extractResourceIdFromResponse(responseData) ?? baseAuditData.resourceId,
+            outcome,
+          },
+          EventPhase.SUCCESS,
+          correlationId,
+        );
       }),
       catchError((error) => {
         const outcome = {
@@ -55,7 +57,7 @@ export class AuditInterceptor implements NestInterceptor {
         };
 
         this.logAuditAsync({ ...baseAuditData, outcome }, EventPhase.FAILED, correlationId);
-        throw error;
+        return throwError(() => error);
       }),
     );
   }
@@ -67,7 +69,6 @@ export class AuditInterceptor implements NestInterceptor {
   private buildBaseAuditData(
     context: ExecutionContext,
     request: AuthenticatedRequest,
-    response: Response
   ): Omit<IAuditLogInput, 'outcome' | 'correlationId' | 'eventPhase'> {
     const { method, url, body, params, query, headers } = request;
     const userData = request.user ? extractUserData(request) : this.getDefaultUserData(request.body);
@@ -76,22 +77,24 @@ export class AuditInterceptor implements NestInterceptor {
     const { description, eventType } = this.createDescriptionAndEventType(method, url, handler);
 
     return {
-      actorId: userData.userId ?? 'anonymous',
-      actorRole: userData.role ?? 'anonymous',
+      actorId: userData.userId,
+      actorRole: userData.role,
       actorName: userData.fullName ?? 'Anonymous User',
-      resourceId: this.extractResourceIdFromRequest(params),
+      resourceId: this.extractResourceIdFromRequest(request),
       resourceType: this.mapControllerToResourceType(controller),
       sourceIp: this.extractSourceIp(request),
       description,
       eventType,
-      tenantId: userData.tenantId ?? 'default',
+      tenantId: userData.tenantId,
       actionPerformed: {
         method,
         endpoint: url,
         handler,
         controller,
         userAgent: headers['user-agent'],
-        requestBody: this.sanitizeData(body, ['password', 'token', 'secret', 'key', 'auth', 'credential']),
+        ...(method === 'PUT' || method === 'PATCH'
+          ? { requestBody: this.sanitizeData(body, ['password', 'token', 'secret', 'key', 'auth', 'credential']) }
+          : {}),
         pathParameters: params,
         queryParameters: query,
         timestamp: new Date().toISOString(),
@@ -99,12 +102,12 @@ export class AuditInterceptor implements NestInterceptor {
     };
   }
 
-  private getDefaultUserData(body: any) {
+  private getDefaultUserData(body: any): { userId: string; fullName: string; role: string; tenantId: string } {
     return {
       userId: body?.username ?? 'system',
       fullName: body?.username ?? 'System User',
       role: 'system',
-      tenantId: 'default'
+      tenantId: 'default',
     };
   }
 
@@ -112,8 +115,11 @@ export class AuditInterceptor implements NestInterceptor {
    * Extracts resource ID from request parameters
    * @private
    */
-  private extractResourceIdFromRequest(params: Record<string, any>): string | undefined {
-    return params.caseId || params.taskId || params.id || params.alertId || params.roleName || params.systemName || params.changeId;
+  private extractResourceIdFromRequest(request: Record<string, any>): string | undefined {
+    const { params, body } = request;
+    return (
+      params.caseId ?? params.taskId ?? params.id ?? params.alertId ?? params.roleName ?? params.systemName ?? params.changeId ?? body?.txtp
+    );
   }
 
   /**
@@ -122,7 +128,7 @@ export class AuditInterceptor implements NestInterceptor {
    */
   private extractResourceIdFromResponse(responseData: any): string | undefined {
     if (!responseData || typeof responseData !== 'object') return undefined;
-    return responseData.caseId || responseData.taskId || responseData.id || responseData._id || responseData.alert_id;
+    return responseData.caseId ?? responseData.taskId ?? responseData.id ?? responseData._id ?? responseData.alert_id ?? responseData.txtp;
   }
 
   /**
@@ -163,12 +169,15 @@ export class AuditInterceptor implements NestInterceptor {
   private extractSourceIp(request: Request): string {
     const xForwardedFor = request.headers['x-forwarded-for'] as string;
     const xRealIp = request.headers['x-real-ip'] as string;
+    if (xForwardedFor) {
+      return xForwardedFor.split(',')[0].trim();
+    }
 
-    return xForwardedFor?.split(',')[0].trim() 
-      || xRealIp 
-      || request.ip 
-      || request.socket.remoteAddress 
-      || 'unknown';
+    if (xRealIp) {
+      return xRealIp;
+    }
+
+    return request.ip ?? request.socket.remoteAddress ?? 'unknown';
   }
 
   /**
@@ -339,9 +348,8 @@ export class AuditInterceptor implements NestInterceptor {
       },
     };
 
-    return actionMap[handler] || { description: `${method} request to ${url}`, eventType: 'UNKNOWN' };
+    return actionMap[handler] ?? { description: `${method} ${url}`, eventType: handler.toUpperCase() };
   }
-
   /**
    * Sanitizes data by removing sensitive fields and truncating large payloads
    * @private
@@ -350,31 +358,31 @@ export class AuditInterceptor implements NestInterceptor {
     if (!data || typeof data !== 'object') return data;
 
     const cleanData = { ...data };
-    sensitiveFields.forEach(field => delete cleanData[field]);
+    sensitiveFields.forEach((field) => {
+      Reflect.deleteProperty(cleanData, field);
+    });
 
     const serialized = JSON.stringify(cleanData);
-    return serialized.length > 10000 
-      ? { _truncated: true, _originalSize: serialized.length }
-      : cleanData;
+    return serialized.length > 10000 ? { _truncated: true, _originalSize: serialized.length } : cleanData;
   }
-
   /**
    * Logs audit data asynchronously without blocking the main operation
    * @private
    */
   private logAuditAsync(auditData: IAuditLogBaseDto, eventPhase: EventPhase, correlationId: string): void {
-    this.auditService.log({ ...auditData, correlationId, eventPhase })
-      .catch((error: unknown) => {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.logger.error(`Audit logging failed for ${auditData.eventType} by ${auditData.actorName}`, {
-          error: errorMessage,
-          auditData: {
-            eventType: auditData.eventType,
-            actorId: auditData.actorId,
-            resourceType: auditData.resourceType,
-            resourceId: auditData.resourceId,
-          },
-        });
+    this.auditService.log({ ...auditData, correlationId, eventPhase }).catch((error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Audit logging failed for ${auditData.eventType} by ${auditData.actorName}`, {
+        error: errorMessage,
+        stack: errorStack,
+        auditData: {
+          eventType: auditData.eventType,
+          actorId: auditData.actorId,
+          resourceType: auditData.resourceType,
+          resourceId: auditData.resourceId,
+        },
       });
+    });
   }
 }
