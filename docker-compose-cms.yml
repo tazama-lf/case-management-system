@@ -65,6 +65,17 @@ services:
       - "5173:5173"
     networks:
       - tazama_default
+  
+  viola:
+    build:
+      context: .
+      dockerfile: Dockerfile.viola
+    container_name: tazama-cms-viola
+    restart: unless-stopped
+    ports:
+      - "8866:8866"
+    networks:
+      - tazama_default
 
 volumes:
   couchdb_data:
