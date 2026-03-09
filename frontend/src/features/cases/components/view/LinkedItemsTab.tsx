@@ -3,6 +3,7 @@ import { LinkIcon } from '@heroicons/react/24/outline';
 import { caseService } from '../../services/caseService';
 import triageService from '@/features/alerts/services/triageservice';
 import AlertsDetailModal from '@/features/alerts/components/AlertsDetailModal';
+import { CaseType } from '@/features/alerts/types/triage.types';
 
 interface LinkedItemsTabProps {
   caseId: number;
@@ -52,89 +53,131 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
         // Fetch current case details
         const currentCase = await caseService.getCaseDetails(caseId);
 
-        // Fetch all alerts to find related ones
-        const alertsResponse = await triageService.getAlerts({ limit: 1000 });
-        const allAlerts = alertsResponse.alerts;
+        if (currentCase.parent_id) {
+          // For FRAUD_AND_AML Cases, map parent alert
 
-        // Find alerts linked to this case
-        const caseAlerts = allAlerts.filter(
-          (alert) => alert.case_id === caseId,
-        );
+          if (currentCase.parent_id) {
+            const parentCase = await caseService.getCaseDetails(currentCase.parent_id);
+
+            if (parentCase?.alert.alert_id) {
+              const alert = await triageService.getAlertById(parentCase.alert.alert_id);
+
+              const mappedAlerts: LinkedAlert[] = [alert].map(alert => ({
+                id: alert.alert_id,
+                label: alert.message || 'Alert',
+                type: alert.alert_type || 'N/A'
+              }));
+
+              setLinkedAlerts(mappedAlerts);
+
+
+
+            }
+
+          }
+
+        } else {
+
+          if (currentCase?.alert.alert_id) {
+            const alert = await triageService.getAlertById(currentCase.alert.alert_id);
+
+            const mappedAlerts: LinkedAlert[] = [alert].map(alert => ({
+              id: alert.alert_id,
+              label: alert.message || 'Alert',
+              type: alert.alert_type || 'N/A'
+            }));
+
+            setLinkedAlerts(mappedAlerts);
+
+
+
+          }
+        }
+
+
+
+
+        // Fetch all alerts to find related ones
+        // const alertsResponse = await triageService.getAlerts({ limit: 1000 });
+        // const allAlerts = alertsResponse.alerts;
+
+        // // Find alerts linked to this case
+        // const caseAlerts = allAlerts.filter(
+        //   (alert) => alert.case_id === caseId,
+        // );
 
         // Extract transaction IDs from alerts
-        const transactionIds = new Set<number>();
-        const alertTransactionMap = new Map<number, { label: string; description: string }>();
 
-        caseAlerts.forEach((alert) => {
-          if (alert.transaction && typeof alert.transaction === 'object') {
-            const txn = alert.transaction as Record<string, unknown>;
-            const txnId = (txn.TransactionID || txn.transaction_id || txn.id) as number | null;
-            if (txnId) {
-              transactionIds.add(txnId);
-              alertTransactionMap.set(txnId, {
-                label: alert.message ?? 'Transaction Alert',
-                description: alert.txtp ?? 'Suspicious activity detected',
-              });
-            }
-          }
-        });
+
+        // caseAlerts.forEach((alert) => {
+        //   if (alert.transaction && typeof alert.transaction === 'object') {
+        //     const txn = alert.transaction as Record<string, unknown>;
+        //     const txnId = (txn.TransactionID || txn.transaction_id || txn.id) as number | null;
+        //     if (txnId) {
+        //       transactionIds.add(txnId);
+        //       alertTransactionMap.set(txnId, {
+        //         label: alert.message ?? 'Transaction Alert',
+        //         description: alert.txtp ?? 'Suspicious activity detected',
+        //       });
+        //     }
+        //   }
+        // });
 
         // Map alerts for display
-        const mappedAlerts: LinkedAlert[] = caseAlerts.map(alert => ({
-          id: alert.alert_id,
-          label: alert.message || 'Alert',
-          type: alert.alert_type || 'N/A'
-        }));
+        // const mappedAlerts: LinkedAlert[] = caseAlerts.map(alert => ({
+        //   id: alert.alert_id,
+        //   label: alert.message || 'Alert',
+        //   type: alert.alert_type || 'N/A'
+        // }));
 
         // Map transactions for display
-        const mappedTransactions: LinkedTransaction[] = Array.from(
-          transactionIds,
-        ).map((txnId) => ({
-          id: txnId,
-          label: alertTransactionMap.get(txnId)?.label ?? 'Transaction',
-          description:
-            alertTransactionMap.get(txnId)?.description ??
-            'Related transaction',
-        }));
+        // const mappedTransactions: LinkedTransaction[] = Array.from(
+        //   transactionIds,
+        // ).map((txnId) => ({
+        //   id: txnId,
+        //   label: alertTransactionMap.get(txnId)?.label ?? 'Transaction',
+        //   description:
+        //     alertTransactionMap.get(txnId)?.description ??
+        //     'Related transaction',
+        // }));
 
         // Fetch all cases to find related ones
-        const casesResponse = await caseService.getAllCases({ limit: 1000 });
-        const allCases = casesResponse.cases;
+        // const casesResponse = await caseService.getAllCases({ limit: 1000 });
+        // const allCases = casesResponse.cases;
+
+
 
         // Find related cases (cases with shared alert IDs)
-        const alertIds = caseAlerts.map(alert => alert.alert_id);
-        const relatedCaseIds = new Set<number>();
+        // const alertIds = caseAlerts.map(alert => alert.alert_id);
+        // const relatedCaseIds = new Set<number>();
 
         // Find cases that reference any of our alerts
-        allAlerts.forEach(alert => {
-          if (alert.case_id && alert.case_id !== caseId && alertIds.includes(alert.alert_id)) {
-            relatedCaseIds.add(alert.case_id);
-          }
-        });
+        // allAlerts.forEach(alert => {
+        //   if (alert.case_id && alert.case_id !== caseId && alertIds.includes(alert.alert_id)) {
+        //     relatedCaseIds.add(alert.case_id);
+        //   }
+        // });
 
         // Also find cases with the same parent_id or where parent_id equals caseId
-        allCases.forEach((caseItem) => {
-          if (caseItem.case_id !== caseId) {
-            if (
-              caseItem.case_id === currentCase.parent_id ||
-              caseItem.case_id === caseId ||
-              (currentCase.parent_id && caseItem.case_id === currentCase.parent_id)) {
-              relatedCaseIds.add(caseItem.case_id);
-            }
-          }
-        });
+        // allCases.forEach((caseItem) => {
+        //   if (caseItem.case_id !== caseId) {
+        //     if (
+        //       caseItem.case_id === currentCase.parent_id ||
+        //       caseItem.case_id === caseId ||
+        //       (currentCase.parent_id && caseItem.case_id === currentCase.parent_id)) {
+        //       relatedCaseIds.add(caseItem.case_id);
+        //     }
+        //   }
+        // });
 
-        const mappedCases: LinkedCase[] = allCases
-          .filter(caseItem => relatedCaseIds.has(caseItem.case_id))
-          .map(caseItem => ({
-            id: caseItem.case_id,
-            label: caseItem.case_type || 'Investigation',
-            status: caseItem.status || 'Unknown'
-          }));
+        // const mappedCases: LinkedCase[] = allCases
+        //   .filter(caseItem => relatedCaseIds.has(caseItem.case_id))
+        //   .map(caseItem => ({
+        //     id: caseItem.case_id,
+        //     label: caseItem.case_type || 'Investigation',
+        //     status: caseItem.status || 'Unknown'
+        //   }));
 
-        setLinkedCases(mappedCases);
-        setLinkedAlerts(mappedAlerts);
-        setLinkedTransactions(mappedTransactions);
 
         setLoading(false);
       } catch (error) {
@@ -158,7 +201,7 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
     <div className="py-4 space-y-8">
       <h2 className="text-lg font-semibold text-gray-900">Related Items</h2>
 
-      {/* Related Cases Section */}
+      {/* Related Cases Section
       <div>
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Related Cases</h3>
         <div className="space-y-2">
@@ -177,9 +220,10 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
             <p className="text-sm text-gray-500">No related cases found</p>
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* Related Alerts Section */}
+      <br></br>
       <div>
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Related Alerts</h3>
         <div className="space-y-2">
@@ -201,7 +245,7 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
       </div>
 
       {/* Related Transactions Section */}
-      <div>
+      {/* <div>
         <h3 className="text-sm font-semibold text-gray-700 mb-3">
           Related Transactions
         </h3>
@@ -225,7 +269,7 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
             </p>
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* Alert Detail Modal */}
       <AlertsDetailModal

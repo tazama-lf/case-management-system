@@ -486,7 +486,7 @@ export class CaseReopeningService {
     return caseData;
   }
 
-  private executeFlowableOperations = async (
+  private readonly executeFlowableOperations = async (
     caseId: number,
     tenantId: string,
     role: string,
@@ -545,7 +545,7 @@ export class CaseReopeningService {
     await this.retryFlowableOperations(flowableOperations, 5);
   };
 
-  private retryFlowableOperations = async (fn: () => Promise<void>, maxRetries: number, attempt = 1): Promise<void> => {
+  private readonly retryFlowableOperations = async (fn: () => Promise<void>, maxRetries: number, attempt = 1): Promise<void> => {
     try {
       await fn();
     } catch (error) {
