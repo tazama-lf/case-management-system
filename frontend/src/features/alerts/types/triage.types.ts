@@ -106,6 +106,7 @@ export interface Alert extends Record<string, unknown> {
 }
 
 export interface Case {
+  alert: Alert;
   case_id: number;
   case_creator_user_id: string;
   case_owner_user_id: string;
@@ -151,10 +152,10 @@ export interface ManualTriageDto {
   priorityScore: number;
   alertType?: AlertType;
   predictionOutcome?:
-    | 'FALSE_POSITIVE'
-    | 'TRUE_POSITIVE'
-    | 'FALSE_NEGATIVE'
-    | 'TRUE_NEGATIVE';
+  | 'FALSE_POSITIVE'
+  | 'TRUE_POSITIVE'
+  | 'FALSE_NEGATIVE'
+  | 'TRUE_NEGATIVE';
   note: string;
   status: CaseStatus;
 }
