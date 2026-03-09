@@ -56,6 +56,36 @@ describe('CaseQueryService', () => {
     ],
   };
 
+  const setupGetAllCasesMocks = (caseData: any = mockCase, includeOldestUnassigned = false) => {
+    // Ensure tasks array exists in the case data
+    const caseWithTasks = { ...caseData, tasks: caseData.tasks || mockCase.tasks };
+
+    prismaService.case.count.mockResolvedValueOnce(1);
+    prismaService.case.findMany.mockResolvedValueOnce([caseWithTasks]);
+    prismaService.case.groupBy
+      .mockResolvedValueOnce([{ status: caseWithTasks.status, _count: { case_id: 1 } }])
+      .mockResolvedValueOnce([{ priority: caseWithTasks.priority, _count: { case_id: 1 } }])
+      .mockResolvedValueOnce([{ case_type: caseWithTasks.case_type, _count: { case_id: 1 } }]);
+    prismaService.case.count.mockResolvedValueOnce(includeOldestUnassigned ? 1 : 0);
+    if (includeOldestUnassigned) {
+      prismaService.case.findFirst.mockResolvedValueOnce({
+        case_id: 1,
+        created_at: new Date('2024-01-01'),
+      });
+    }
+  };
+
+  const setupGetUserCasesMocks = (caseData = mockCase) => {
+    prismaService.case.count.mockResolvedValueOnce(1); // total count
+    prismaService.case.findMany.mockResolvedValueOnce([caseData]);
+    prismaService.case.count
+      .mockResolvedValueOnce(1) // ownedCasesCount
+      .mockResolvedValueOnce(0); // taskAssignmentCasesCount
+    prismaService.case.groupBy
+      .mockResolvedValueOnce([{ status: caseData.status, _count: { case_id: 1 } }])
+      .mockResolvedValueOnce([{ priority: caseData.priority, _count: { case_id: 1 } }]);
+  };
+
   beforeEach(async () => {
     const mockPrismaService = {
       case: {
@@ -93,7 +123,7 @@ describe('CaseQueryService', () => {
       getUserAssignedTasks: jest.fn().mockReturnValue([]),
       validateTask: jest.fn(),
       validateApprovalTask: jest.fn(),
-      getTaskStatusCounts: jest.fn().mockReturnValue({ total: 0, completed: 0, in_progress: 0, unassigned: 0 }),
+      getTaskStatusCounts: jest.fn().mockReturnValue({ total: 0, completed: 0, in_progress: 0, unassigned: 0, pending: 0 }),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -142,22 +172,10 @@ describe('CaseQueryService', () => {
       const queryWithOwned: GetUserCasesQueryDto = { ...query, includeOwnedCases: true };
       const caseWithoutTaskAssignment = {
         ...mockCase,
-        tasks: [
-          {
-            ...mockCase.tasks[0],
-            assigned_user_id: 'other-user',
-          },
-        ],
+        tasks: [{ ...mockCase.tasks[0], assigned_user_id: 'other-user' }],
       };
 
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([caseWithoutTaskAssignment]);
-      prismaService.case.count
-        .mockResolvedValueOnce(1) // ownedCasesCount
-        .mockResolvedValueOnce(0); // taskAssignmentCasesCount
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
+      setupGetUserCasesMocks(caseWithoutTaskAssignment);
 
       const result = await service.getUserCases(userId, queryWithOwned);
 
@@ -170,17 +188,10 @@ describe('CaseQueryService', () => {
 
     it('should get user cases with task assignments only', async () => {
       const queryWithTasks: GetUserCasesQueryDto = { ...query, includeTaskAssignments: true };
-
-      // Mock to return tasks for user
       taskValidationUtil.getUserAssignedTasks.mockReturnValueOnce([{ task_id: 1, assigned_user_id: userId }]);
 
       prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([
-        {
-          ...mockCase,
-          case_owner_user_id: 'other-user',
-        },
-      ]);
+      prismaService.case.findMany.mockResolvedValueOnce([{ ...mockCase, case_owner_user_id: 'other-user' }]);
       prismaService.case.count
         .mockResolvedValueOnce(0) // ownedCasesCount
         .mockResolvedValueOnce(1); // taskAssignmentCasesCount
@@ -200,15 +211,11 @@ describe('CaseQueryService', () => {
         includeOwnedCases: true,
         includeTaskAssignments: true,
       };
-
-      // Mock to return tasks for user
       taskValidationUtil.getUserAssignedTasks.mockReturnValueOnce([{ task_id: 1, assigned_user_id: userId }]);
 
       prismaService.case.count.mockResolvedValueOnce(1);
       prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.count
-        .mockResolvedValueOnce(1) // ownedCasesCount
-        .mockResolvedValueOnce(1); // taskAssignmentCasesCount
+      prismaService.case.count.mockResolvedValueOnce(1).mockResolvedValueOnce(1);
       prismaService.case.groupBy
         .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
         .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
@@ -219,58 +226,25 @@ describe('CaseQueryService', () => {
       expect(result.cases[0].user_role).toBe('both');
     });
 
-    it('should filter by status', async () => {
-      const queryWithStatus: GetUserCasesQueryDto = {
-        ...query,
-        includeOwnedCases: true,
-        status: CaseStatus.STATUS_20_IN_PROGRESS,
-      };
+    it.each([
+      ['status', { status: CaseStatus.STATUS_20_IN_PROGRESS }],
+      ['priority', { priority: Priority.CRITICAL }],
+    ])('should filter by %s', async (filterName, filterValue) => {
+      const queryWithFilter: GetUserCasesQueryDto = { ...query, includeOwnedCases: true, ...filterValue };
+      setupGetUserCasesMocks();
 
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.count
-        .mockResolvedValueOnce(1)
-        .mockResolvedValueOnce(0);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
-
-      const result = await service.getUserCases(userId, queryWithStatus);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should filter by priority', async () => {
-      const queryWithPriority: GetUserCasesQueryDto = {
-        ...query,
-        includeOwnedCases: true,
-        priority: Priority.CRITICAL,
-      };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.count
-        .mockResolvedValueOnce(1)
-        .mockResolvedValueOnce(0);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
-
-      const result = await service.getUserCases(userId, queryWithPriority);
+      const result = await service.getUserCases(userId, queryWithFilter);
 
       expect(result.cases).toHaveLength(1);
     });
 
     it('should handle compliance officer filtering', async () => {
       const queryWithOwned: GetUserCasesQueryDto = { ...query, includeOwnedCases: true };
+      const closedCase = { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED };
 
       prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([
-        { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-      ]);
-      prismaService.case.count
-        .mockResolvedValueOnce(1)
-        .mockResolvedValueOnce(0);
+      prismaService.case.findMany.mockResolvedValueOnce([closedCase]);
+      prismaService.case.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
       prismaService.case.groupBy
         .mockResolvedValueOnce([{ status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, _count: { case_id: 1 } }])
         .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
@@ -285,9 +259,7 @@ describe('CaseQueryService', () => {
 
       prismaService.case.count.mockResolvedValueOnce(15);
       prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.count
-        .mockResolvedValueOnce(1)
-        .mockResolvedValueOnce(0);
+      prismaService.case.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
       prismaService.case.groupBy
         .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
         .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
@@ -318,14 +290,7 @@ describe('CaseQueryService', () => {
     };
 
     it('should get all cases with basic filters', async () => {
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-      prismaService.case.findFirst.mockResolvedValueOnce(null);
+      setupGetAllCasesMocks();
 
       const result = await service.getAllCases(query, tenantId);
 
@@ -334,84 +299,35 @@ describe('CaseQueryService', () => {
       expect(logger.log).toHaveBeenCalled();
     });
 
-    it('should filter by status', async () => {
-      const queryWithStatus: GetAllCasesQueryDto = { ...query, status: CaseStatus.STATUS_20_IN_PROGRESS };
+    it.each([
+      ['status', { status: CaseStatus.STATUS_20_IN_PROGRESS }],
+      ['priority', { priority: Priority.CRITICAL }],
+      ['case type', { caseType: CaseType.FRAUD }],
+      ['owner id', { ownerId: 'user-123' }],
+      ['date range', { createdAfter: '2024-01-01', createdBefore: '2024-01-31' }],
+      ['exclude draft', { excludeDraft: true }],
+      ['exclude closed', { excludeClosed: true }],
+    ])('should filter by %s', async (filterName, filterValue) => {
+      const queryWithFilter: GetAllCasesQueryDto = { ...query, ...filterValue };
+      setupGetAllCasesMocks();
 
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithStatus, tenantId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should filter by priority', async () => {
-      const queryWithPriority: GetAllCasesQueryDto = { ...query, priority: Priority.CRITICAL };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithPriority, tenantId);
+      const result = await service.getAllCases(queryWithFilter, tenantId);
 
       expect(result.cases).toHaveLength(1);
     });
 
-    it('should filter by case type', async () => {
-      const queryWithType: GetAllCasesQueryDto = { ...query, caseType: CaseType.FRAUD };
+    it('should filter by closed only', async () => {
+      const queryWithFilter: GetAllCasesQueryDto = { ...query, closedOnly: true };
+      setupGetAllCasesMocks({ ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED });
 
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithType, tenantId);
+      const result = await service.getAllCases(queryWithFilter, tenantId);
 
       expect(result.cases).toHaveLength(1);
     });
 
-    it('should filter by owner id', async () => {
-      const queryWithOwner: GetAllCasesQueryDto = { ...query, ownerId: 'user-123' };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithOwner, tenantId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should filter unassigned cases only', async () => {
+    it('should filter unassigned cases and include oldest unassigned case', async () => {
       const queryUnassigned: GetAllCasesQueryDto = { ...query, unassignedOnly: true };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([{ ...mockCase, case_owner_user_id: null }]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findFirst.mockResolvedValueOnce({
-        case_id: 1,
-        created_at: new Date('2024-01-01'),
-      });
+      setupGetAllCasesMocks({ ...mockCase, case_owner_user_id: null }, true);
 
       const result = await service.getAllCases(queryUnassigned, tenantId);
 
@@ -419,118 +335,28 @@ describe('CaseQueryService', () => {
       expect(result.statistics.oldestUnassignedCase).toBeDefined();
     });
 
-    it('should filter by date range', async () => {
-      const queryWithDates: GetAllCasesQueryDto = {
-        ...query,
-        createdAfter: '2024-01-01',
-        createdBefore: '2024-01-31',
-      };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithDates, tenantId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should exclude draft cases', async () => {
-      const queryExcludeDraft: GetAllCasesQueryDto = { ...query, excludeDraft: true };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryExcludeDraft, tenantId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should exclude closed cases', async () => {
-      const queryExcludeClosed: GetAllCasesQueryDto = { ...query, excludeClosed: true };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryExcludeClosed, tenantId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should show closed cases only', async () => {
-      const queryClosedOnly: GetAllCasesQueryDto = { ...query, closedOnly: true };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([
-        { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-      ]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryClosedOnly, tenantId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should filter by SAR/STR status', async () => {
-      const queryWithSarStr: GetAllCasesQueryDto = { ...query, sarStrStatus: TaskStatus.STATUS_30_COMPLETED };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
+    it.each([
+      ['STATUS_30_COMPLETED', TaskStatus.STATUS_30_COMPLETED],
+      ['N/A', 'N/A' as any],
+    ])('should filter by SAR/STR status %s', async (statusName, sarStrStatus) => {
+      const queryWithSarStr: GetAllCasesQueryDto = { ...query, sarStrStatus };
+      setupGetAllCasesMocks();
 
       const result = await service.getAllCases(queryWithSarStr, tenantId);
 
       expect(result.cases).toHaveLength(1);
     });
 
-    it('should filter by SAR/STR status N/A', async () => {
-      const queryWithSarStrNA: GetAllCasesQueryDto = { ...query, sarStrStatus: 'N/A' as any };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithSarStrNA, tenantId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should search by case id', async () => {
-      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: '1' };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
+    it.each([
+      ['case id', '1'],
+      ['case type partial match', 'fr'],
+      ['status partial match', 'pending'],
+      ['alert message', 'suspicious'],
+      ['confidence score', '85'],
+      ['whitespace handling', '  suspicious  '],
+    ])('should search by %s', async (searchType, searchTerm) => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: searchTerm };
+      setupGetAllCasesMocks();
 
       const result = await service.getAllCases(queryWithSearch, tenantId);
 
@@ -538,186 +364,53 @@ describe('CaseQueryService', () => {
       expect(logger.log).toHaveBeenCalled();
     });
 
-    it('should search by case type partial match', async () => {
-      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'fr' };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithSearch, tenantId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should search by status partial match', async () => {
-      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'pending' };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithSearch, tenantId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should search by alert message', async () => {
-      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'suspicious' };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithSearch, tenantId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should search by confidence score', async () => {
-      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: '85' };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithSearch, tenantId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
     it('should search for N/A cases', async () => {
       const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'N/A' };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
+      setupGetAllCasesMocks();
 
       const result = await service.getAllCases(queryWithSearch, tenantId);
 
       expect(result.cases).toHaveLength(1);
-      expect(logger.log).toHaveBeenCalledWith(
-        expect.stringContaining('N/A search filter created'),
-        'CaseQueryService',
-      );
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('N/A search filter created'), 'CaseQueryService');
     });
 
-    it('should search with whitespace handling', async () => {
-      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: '  suspicious  ' };
+    it('should handle no search conditions', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'xyz123abc' };
 
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0);
+      prismaService.case.findMany.mockResolvedValueOnce([]);
+      prismaService.case.groupBy.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
       prismaService.case.count.mockResolvedValueOnce(0);
 
       const result = await service.getAllCases(queryWithSearch, tenantId);
 
-      expect(result.cases).toHaveLength(1);
+      expect(result.cases).toHaveLength(0);
+      expect(logger.log).toHaveBeenCalled();
     });
 
-    it('should handle compliance officer filtering', async () => {
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([
-        { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-      ]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
+    it.each([
+      ['basic filtering', query, undefined],
+      ['with SAR/STR search', { ...query, search: 'assigned' }, undefined],
+      ['with SAR/STR filter', { ...query, sarStrStatus: TaskStatus.STATUS_30_COMPLETED }, undefined],
+    ])('should handle compliance officer %s', async (testName, testQuery, _) => {
+      const closedCase = { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED };
+      setupGetAllCasesMocks(closedCase);
 
-      const result = await service.getAllCases(query, tenantId, undefined, true);
+      const result = await service.getAllCases(testQuery, tenantId, undefined, true);
 
       expect(result.cases).toHaveLength(1);
+      expect(logger.log).toHaveBeenCalled();
     });
 
-    it('should handle compliance officer with SAR/STR search', async () => {
-      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'assigned' };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([
-        { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-      ]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithSearch, tenantId, undefined, true);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should handle investigator filtering', async () => {
+    it.each([
+      ['basic filtering', query],
+      ['with search', { ...query, search: 'fraud' }],
+      ['with SAR/STR status', { ...query, sarStrStatus: TaskStatus.STATUS_30_COMPLETED }],
+    ])('should handle investigator %s', async (testName, testQuery) => {
       const investigatorId = 'investigator-123';
+      setupGetAllCasesMocks();
 
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(query, tenantId, investigatorId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should handle investigator filtering with search', async () => {
-      const investigatorId = 'investigator-123';
-      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'fraud' };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithSearch, tenantId, investigatorId);
-
-      expect(result.cases).toHaveLength(1);
-    });
-
-    it('should handle investigator filtering with SAR/STR status', async () => {
-      const investigatorId = 'investigator-123';
-      const queryWithSarStr: GetAllCasesQueryDto = { ...query, sarStrStatus: TaskStatus.STATUS_30_COMPLETED };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([mockCase]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithSarStr, tenantId, investigatorId);
+      const result = await service.getAllCases(testQuery, tenantId, investigatorId);
 
       expect(result.cases).toHaveLength(1);
     });
@@ -737,42 +430,6 @@ describe('CaseQueryService', () => {
       const result = await service.getAllCases(query, tenantId);
 
       expect(result.statistics.averageTasksPerCase).toBeGreaterThan(0);
-    });
-
-    it('should handle no search conditions', async () => {
-      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'xyz123abc' };
-
-      prismaService.case.count.mockResolvedValueOnce(0);
-      prismaService.case.findMany.mockResolvedValueOnce([]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithSearch, tenantId);
-
-      expect(result.cases).toHaveLength(0);
-      expect(logger.log).toHaveBeenCalled();
-    });
-
-    it('should handle compliance officer with SAR/STR filter', async () => {
-      const queryWithSarStr: GetAllCasesQueryDto = { ...query, sarStrStatus: TaskStatus.STATUS_30_COMPLETED };
-
-      prismaService.case.count.mockResolvedValueOnce(1);
-      prismaService.case.findMany.mockResolvedValueOnce([
-        { ...mockCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-      ]);
-      prismaService.case.groupBy
-        .mockResolvedValueOnce([{ status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 1 } }]);
-      prismaService.case.count.mockResolvedValueOnce(0);
-
-      const result = await service.getAllCases(queryWithSarStr, tenantId, undefined, true);
-
-      expect(result.cases).toHaveLength(1);
-      expect(logger.log).toHaveBeenCalled();
     });
 
     it('should handle errors', async () => {
@@ -867,10 +524,12 @@ describe('CaseQueryService', () => {
       expect(caseRepository.findCaseById).toHaveBeenCalledWith(caseId, tenantId);
     });
 
-    it('should throw NotFoundException when case not found', async () => {
+    it('should return null when case not found', async () => {
       caseRepository.findCaseById.mockResolvedValueOnce(null);
 
-      await expect(service.retrieveCase(caseId, tenantId)).rejects.toThrow(NotFoundException);
+      const result = await service.retrieveCase(caseId, tenantId);
+
+      expect(result).toBeNull();
     });
 
     it('should allow compliance officer to access STATUS_82_CLOSED_CONFIRMED case', async () => {
@@ -906,10 +565,12 @@ describe('CaseQueryService', () => {
       expect(result[0].parent_id).toBe(caseId);
     });
 
-    it('should throw BadRequestException when no sub-cases exist', async () => {
+    it('should return null when no sub-cases exist', async () => {
       prismaService.case.findMany.mockResolvedValueOnce(null);
 
-      await expect(service.getSubCasesDetails(caseId)).rejects.toThrow(BadRequestException);
+      const result = await service.getSubCasesDetails(caseId);
+
+      expect(result).toBeNull();
     });
 
     it('should return empty array when no sub-cases found', async () => {
@@ -964,11 +625,7 @@ describe('CaseQueryService', () => {
       caseRepository.updateCase.mockRejectedValueOnce(new Error('Update failed'));
 
       await expect(service.updateCase(caseId, updateData, userId)).rejects.toThrow('Update failed');
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Error updating case'),
-        expect.any(String),
-        'CaseQueryService',
-      );
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error updating case'), expect.any(String), 'CaseQueryService');
     });
   });
 });

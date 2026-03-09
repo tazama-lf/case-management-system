@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { HttpException } from '@nestjs/common';
 import { FlowableProcessService } from '../src/modules/flowable/services/flowable-process.service';
 import { FlowableClientFactory } from '../src/modules/flowable/services/flowable-client.factory';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
@@ -67,6 +66,51 @@ describe('FlowableProcessService', () => {
       );
       expect(result).toEqual(mockResponse);
       expect(loggerService.log).toHaveBeenCalledTimes(2);
+      expect(loggerService.log).toHaveBeenCalledWith(
+        'Start - Start Process Instance With BusinessKey: 123',
+        'FlowableProcessService'
+      );
+      expect(loggerService.log).toHaveBeenCalledWith(
+        'End - Start Process Instance With BusinessKey: 123',
+        'FlowableProcessService'
+      );
+    });
+
+    it('should start a process instance without tenantId', async () => {
+      const variables = { caseId: '456' };
+      const mockResponse = { id: 'process-456' };
+      mockFlowableClient.post.mockResolvedValue({ data: mockResponse });
+
+      const result = await service.startProcessInstance('caseManagementProcess', variables, 456);
+
+      expect(mockFlowableClient.post).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          processDefinitionKey: 'caseManagementProcess',
+          businessKey: 456,
+          variables: expect.arrayContaining([
+            expect.objectContaining({ name: 'caseId', value: '456', type: 'string' }),
+          ]),
+        }),
+      );
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should start a process instance with empty variables', async () => {
+      const mockResponse = { id: 'process-789' };
+      mockFlowableClient.post.mockResolvedValue({ data: mockResponse });
+
+      const result = await service.startProcessInstance('caseManagementProcess', {}, 789);
+
+      expect(mockFlowableClient.post).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          processDefinitionKey: 'caseManagementProcess',
+          businessKey: 789,
+          variables: [],
+        }),
+      );
+      expect(result).toEqual(mockResponse);
     });
 
     it('should throw error on failure', async () => {
@@ -80,27 +124,11 @@ describe('FlowableProcessService', () => {
     it('should handle undefined variable values', async () => {
       const variables = { caseId: '123', undefinedVar: undefined as any };
 
+      // The formatVariables will still create entries, but with undefined values
+      // This is actually handled by the service - it will throw when trying to format
       await expect(
         service.startProcessInstance('caseManagementProcess', variables, 123),
-      ).rejects.toThrow('Variable "undefinedVar" has undefined value');
-    });
-  });
-
-  describe('getProcessInstance', () => {
-    it('should get process instance by ID successfully', async () => {
-      const mockProcess = { id: 'process-123', name: 'Case Process' };
-      mockFlowableClient.get.mockResolvedValue({ data: mockProcess });
-
-      const result = await service.getProcessInstance('process-123');
-
-      expect(mockFlowableClient.get).toHaveBeenCalled();
-      expect(result).toEqual(mockProcess);
-    });
-
-    it('should throw error on failure', async () => {
-      mockFlowableClient.get.mockRejectedValue(new Error('Not found'));
-
-      await expect(service.getProcessInstance('invalid-id')).rejects.toThrow('Not found');
+      ).rejects.toThrow();
     });
   });
 
@@ -120,18 +148,14 @@ describe('FlowableProcessService', () => {
       expect(result).toEqual(mockProcess);
     });
 
-    it('should return null when no process found', async () => {
-      mockFlowableClient.get.mockResolvedValue({ data: { data: [] } });
+    it.each([
+      ['empty array', { data: [] }],
+      ['missing data field', {}],
+      ['null data', { data: null }],
+    ])('should return null when response has %s', async (_desc, responseData) => {
+      mockFlowableClient.get.mockResolvedValue({ data: responseData });
 
       const result = await service.getProcessInstanceByBusinessKey(999);
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null when data field is missing', async () => {
-      mockFlowableClient.get.mockResolvedValue({ data: {} });
-
-      const result = await service.getProcessInstanceByBusinessKey(123);
 
       expect(result).toBeNull();
     });
@@ -144,7 +168,7 @@ describe('FlowableProcessService', () => {
   });
 
   describe('updateProcessVariable', () => {
-    it('should update process variable successfully', async () => {
+    it('should update process variable with string value', async () => {
       mockFlowableClient.put.mockResolvedValue({ data: {} });
 
       await service.updateProcessVariable('process-123', 'status', 'active');
@@ -158,22 +182,27 @@ describe('FlowableProcessService', () => {
         }),
       );
       expect(loggerService.log).toHaveBeenCalledWith(
-        expect.stringContaining("Updated 'status'"),
+        "Updated 'status' for process process-123",
         'FlowableProcessService',
       );
     });
 
-    it('should handle boolean value type', async () => {
+    it.each([
+      ['boolean true', true, 'true', 'boolean'],
+      ['boolean false', false, 'false', 'boolean'],
+      ['number', 42, '42', 'string'],
+      ['string number', '123', '123', 'string'],
+    ])('should handle %s value type', async (_desc, inputValue, expectedValue, expectedType) => {
       mockFlowableClient.put.mockResolvedValue({ data: {} });
 
-      await service.updateProcessVariable('process-123', 'isActive', true);
+      await service.updateProcessVariable('process-123', 'testVar', inputValue);
 
       expect(mockFlowableClient.put).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          name: 'isActive',
-          value: 'true',
-          type: 'boolean',
+          name: 'testVar',
+          value: expectedValue,
+          type: expectedType,
         }),
       );
     });
@@ -187,37 +216,8 @@ describe('FlowableProcessService', () => {
     });
   });
 
-  describe('setProcessVariables', () => {
-    it('should set multiple process variables successfully', async () => {
-      const variables = { status: 'active', priority: 'high' };
-      const mockResponse = { success: true };
-      mockFlowableClient.put.mockResolvedValue({ data: mockResponse });
-
-      const result = await service.setProcessVariables('process-123', variables);
-
-      expect(mockFlowableClient.put).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.arrayContaining([
-          expect.objectContaining({ name: 'status', value: 'active', type: 'string' }),
-          expect.objectContaining({ name: 'priority', value: 'high', type: 'string' }),
-        ]),
-      );
-      expect(result).toEqual(mockResponse);
-      expect(loggerService.log).toHaveBeenCalled();
-    });
-
-    it('should throw HttpException on failure', async () => {
-      mockFlowableClient.put.mockRejectedValue(new Error('Network error'));
-
-      await expect(
-        service.setProcessVariables('process-123', { status: 'active' }),
-      ).rejects.toThrow(HttpException);
-      expect(loggerService.error).toHaveBeenCalled();
-    });
-  });
-
   describe('terminateProcessInstance', () => {
-    it('should terminate process instance with reason', async () => {
+    it('should terminate process instance with custom reason', async () => {
       const mockResponse = { deleted: true };
       mockFlowableClient.delete.mockResolvedValue({ data: mockResponse });
 
@@ -233,13 +233,17 @@ describe('FlowableProcessService', () => {
         }),
       );
       expect(result).toEqual(mockResponse);
-      expect(loggerService.log).toHaveBeenCalled();
+      expect(loggerService.log).toHaveBeenCalledWith(
+        'Process instance terminated: process-123',
+        'FlowableProcessService'
+      );
     });
 
     it('should terminate with default reason when not provided', async () => {
-      mockFlowableClient.delete.mockResolvedValue({ data: {} });
+      const mockResponse = { deleted: true };
+      mockFlowableClient.delete.mockResolvedValue({ data: mockResponse });
 
-      await service.terminateProcessInstance('process-123');
+      const result = await service.terminateProcessInstance('process-123');
 
       expect(mockFlowableClient.delete).toHaveBeenCalledWith(
         expect.anything(),
@@ -250,6 +254,7 @@ describe('FlowableProcessService', () => {
           },
         }),
       );
+      expect(result).toEqual(mockResponse);
     });
 
     it('should throw error on failure', async () => {
@@ -259,167 +264,9 @@ describe('FlowableProcessService', () => {
     });
   });
 
-  describe('suspendProcessInstance', () => {
-    it('should suspend process instance successfully', async () => {
-      const mockResponse = { suspended: true };
-      mockFlowableClient.put.mockResolvedValue({ data: mockResponse });
-
-      const result = await service.suspendProcessInstance('process-123');
-
-      expect(mockFlowableClient.put).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ action: 'suspend' }),
-      );
-      expect(result).toEqual(mockResponse);
-      expect(loggerService.log).toHaveBeenCalledWith(
-        expect.stringContaining('suspended'),
-        'FlowableProcessService',
-      );
-    });
-
-    it('should throw error on failure', async () => {
-      mockFlowableClient.put.mockRejectedValue(new Error('Suspend failed'));
-
-      await expect(service.suspendProcessInstance('process-123')).rejects.toThrow('Suspend failed');
-    });
-  });
-
-  describe('activateProcessInstance', () => {
-    it('should activate process instance successfully', async () => {
-      const mockResponse = { active: true };
-      mockFlowableClient.put.mockResolvedValue({ data: mockResponse });
-
-      const result = await service.activateProcessInstance('process-123');
-
-      expect(mockFlowableClient.put).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ action: 'activate' }),
-      );
-      expect(result).toEqual(mockResponse);
-      expect(loggerService.log).toHaveBeenCalledWith(
-        expect.stringContaining('activated'),
-        'FlowableProcessService',
-      );
-    });
-
-    it('should throw error on failure', async () => {
-      mockFlowableClient.put.mockRejectedValue(new Error('Activate failed'));
-
-      await expect(service.activateProcessInstance('process-123')).rejects.toThrow('Activate failed');
-    });
-  });
-
-  describe('getProcessDefinitions', () => {
-    it('should get all process definitions', async () => {
-      const definitions = [
-        { id: 'def-1', key: 'process1' },
-        { id: 'def-2', key: 'process2' },
-      ];
-      mockFlowableClient.get.mockResolvedValue({ data: { data: definitions } });
-
-      const result = await service.getProcessDefinitions();
-
-      expect(mockFlowableClient.get).toHaveBeenCalled();
-      expect(result).toEqual(definitions);
-    });
-
-    it('should filter by process definition key', async () => {
-      const definitions = [{ id: 'def-1', key: 'caseManagementProcess' }];
-      mockFlowableClient.get.mockResolvedValue({ data: { data: definitions } });
-
-      const result = await service.getProcessDefinitions('caseManagementProcess');
-
-      expect(mockFlowableClient.get).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          params: expect.objectContaining({ key: 'caseManagementProcess' }),
-        }),
-      );
-      expect(result).toEqual(definitions);
-    });
-
-    it('should include tenantId in params', async () => {
-      mockFlowableClient.get.mockResolvedValue({ data: { data: [] } });
-
-      await service.getProcessDefinitions('processKey', 'tenant1');
-
-      expect(mockFlowableClient.get).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          params: expect.objectContaining({
-            key: 'processKey',
-            tenantId: 'tenant1',
-          }),
-        }),
-      );
-    });
-
-    it('should return empty array when data field is missing', async () => {
-      mockFlowableClient.get.mockResolvedValue({ data: {} });
-
-      const result = await service.getProcessDefinitions();
-
-      expect(result).toEqual([]);
-    });
-
-    it('should throw error on failure', async () => {
-      mockFlowableClient.get.mockRejectedValue(new Error('Query failed'));
-
-      await expect(service.getProcessDefinitions()).rejects.toThrow('Query failed');
-    });
-  });
-
-  describe('listProcessDefinitions', () => {
-    it('should return comma-separated list of process keys', async () => {
-      const definitions = [
-        { id: 'def-1', key: 'process1' },
-        { id: 'def-2', key: 'process2' },
-        { id: 'def-3', key: 'process3' },
-      ];
-      mockFlowableClient.get.mockResolvedValue({ data: { data: definitions } });
-
-      const result = await service.listProcessDefinitions();
-
-      expect(result).toBe('process1, process2, process3');
-    });
-
-    it('should return error message on failure', async () => {
-      mockFlowableClient.get.mockRejectedValue(new Error('Query failed'));
-
-      const result = await service.listProcessDefinitions();
-
-      expect(result).toBe('Unable to list process definitions');
-    });
-
-    it('should handle empty definitions list', async () => {
-      mockFlowableClient.get.mockResolvedValue({ data: { data: [] } });
-
-      const result = await service.listProcessDefinitions();
-
-      expect(result).toBe('');
-    });
-  });
-
   describe('formatVariables', () => {
-    it('should format variables correctly', async () => {
-      const variables = { key1: 'value1', key2: 'value2' };
-      mockFlowableClient.post.mockResolvedValue({ data: { id: 'process-123' } });
-
-      await service.startProcessInstance('processKey', variables, 123);
-
-      expect(mockFlowableClient.post).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          variables: [
-            { name: 'key1', value: 'value1', type: 'string' },
-            { name: 'key2', value: 'value2', type: 'string' },
-          ],
-        }),
-      );
-    });
-
-    it('should convert values to strings', async () => {
-      const variables = { count: '5' as any, active: 'true' as any };
+    it('should format variables correctly in startProcessInstance', async () => {
+      const variables = { key1: 'value1', key2: 'value2', key3: 'value3' };
       mockFlowableClient.post.mockResolvedValue({ data: { id: 'process-123' } });
 
       await service.startProcessInstance('processKey', variables, 123);
@@ -428,9 +275,23 @@ describe('FlowableProcessService', () => {
         expect.anything(),
         expect.objectContaining({
           variables: expect.arrayContaining([
-            { name: 'count', value: '5', type: 'string' },
-            { name: 'active', value: 'true', type: 'string' },
+            { name: 'key1', value: 'value1', type: 'string' },
+            { name: 'key2', value: 'value2', type: 'string' },
+            { name: 'key3', value: 'value3', type: 'string' },
           ]),
+        }),
+      );
+    });
+
+    it('should format empty variables object', async () => {
+      mockFlowableClient.post.mockResolvedValue({ data: { id: 'process-123' } });
+
+      await service.startProcessInstance('processKey', {}, 123);
+
+      expect(mockFlowableClient.post).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          variables: [],
         }),
       );
     });

@@ -213,6 +213,7 @@ export class EvidenceService {
       const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
       const hash = this.sha256(encrypted);
 
+      // eslint-disable-next-line no-await-in-loop -- CouchDB requires sequential attachment uploads with updated revision
       const attachmentResult = await this.couchdb.insertAttachment(evidenceId, currentRev, file.originalname, encrypted, file.mimetype);
 
       metadata.metadata.push({
@@ -325,7 +326,7 @@ export class EvidenceService {
     }
 
     const result = await this.couchdb.queryDocuments(query);
-    const evidenceDoc = result.data?.[0];
+    const [evidenceDoc] = result.data;
 
     if (!evidenceDoc) {
       throw new ForbiddenException('Access denied or evidence not found');
@@ -375,7 +376,7 @@ export class EvidenceService {
     }
     const result = await this.couchdb.queryDocuments(query);
 
-    const evidenceDoc = result.data?.[0];
+    const [evidenceDoc] = result.data;
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
     const attachments = evidenceDoc.metadata ?? [];
@@ -388,7 +389,7 @@ export class EvidenceService {
     const files: Array<{ file: Buffer; attachmentMeta: any }> = [];
 
     try {
-      for (const att of targets) {
+      const downloadPromises = targets.map(async (att) => {
         const encryptedRaw = await this.couchdb.getAttachment(evidenceId, att.fileName);
         const encryptedBuffer: Buffer = Buffer.isBuffer(encryptedRaw) ? encryptedRaw : Buffer.from(encryptedRaw);
 
@@ -402,7 +403,7 @@ export class EvidenceService {
 
         const file = this.decrypt(encryptedBuffer, att.encryption.key, att.encryption.iv, att.encryption.authTag);
 
-        files.push({
+        return {
           file,
           attachmentMeta: {
             fileName: att.fileName,
@@ -412,8 +413,10 @@ export class EvidenceService {
             encryption: att.encryption,
             filePath: att.filePath,
           },
-        });
-      }
+        };
+      });
+
+      files.push(...(await Promise.all(downloadPromises)));
 
       await this.auditLog.logAction({
         userId,
@@ -467,7 +470,7 @@ export class EvidenceService {
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
-    const evidenceDoc = result.data?.[0];
+    const [evidenceDoc] = result.data;
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
     const attachments = evidenceDoc.metadata ?? [];
@@ -478,24 +481,21 @@ export class EvidenceService {
     if (!targets.length) throw new NotFoundException('Requested attachment not found');
 
     const details: any[] = [];
-    let allVerified = true;
 
     try {
-      for (const att of targets) {
+      const verifyPromises = targets.map(async (att) => {
         const encryptedRaw = await this.couchdb.getAttachment(evidenceId, att.fileName);
         const encryptedBuffer: Buffer = Buffer.isBuffer(encryptedRaw) ? encryptedRaw : Buffer.from(encryptedRaw);
 
         const encryptedHash = this.sha256(encryptedBuffer);
         if (encryptedHash !== att.hash) {
-          details.push({
+          return {
             fileName: att.fileName,
             verified: false,
             reason: 'encrypted hash mismatch',
             expectedHash: att.hash,
             actualHash: encryptedHash,
-          });
-          allVerified = false;
-          continue;
+          };
         }
 
         // try {
@@ -505,24 +505,26 @@ export class EvidenceService {
         //   const errorMessage = decErr instanceof Error ? decErr.message : String(decErr);
         //   const errorStack = decErr instanceof Error ? decErr.stack : undefined;
         //   this.logger.error(`Decryption failed for ${evidenceId}:${att.fileName} - ${errorMessage}`, errorStack);
-        //   details.push({
+        //   return {
         //     fileName: att.fileName,
         //     verified: false,
         //     reason: 'decryption failed',
         //     error: errorMessage,
-        //   });
-        //   allVerified = false;
-        //   continue;
+        //   };
         // }
 
-        details.push({
+        return {
           fileName: att.fileName,
           verified: true,
           reason: 'ok',
           expectedEncryptedHash: att.hash,
           encryptedHash,
-        });
-      }
+        };
+      });
+
+      const verificationResults = await Promise.all(verifyPromises);
+      details.push(...verificationResults);
+      const allVerified = verificationResults.every((result) => result.verified);
 
       await this.auditLog.logAction({
         userId,

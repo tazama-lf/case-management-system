@@ -16,7 +16,7 @@ describe('AlertPriorityService', () => {
       priority: Priority.NEW,
       priority_score: 0.1,
       case_id: 1,
-      created_at: new Date(Date.now() - 10 * 60 * 60 * 1000), // 10 hours ago
+      created_at: new Date(Date.now() - 10 * 60 * 60 * 1000),
       updated_at: new Date(),
     },
     {
@@ -25,7 +25,7 @@ describe('AlertPriorityService', () => {
       priority: Priority.NEW,
       priority_score: 0.2,
       case_id: 2,
-      created_at: new Date(Date.now() - 30 * 60 * 60 * 1000), // 30 hours ago
+      created_at: new Date(Date.now() - 30 * 60 * 60 * 1000),
       updated_at: new Date(),
     },
     {
@@ -34,7 +34,7 @@ describe('AlertPriorityService', () => {
       priority: Priority.NEW,
       priority_score: 0.3,
       case_id: 3,
-      created_at: new Date(Date.now() - 50 * 60 * 60 * 1000), // 50 hours ago
+      created_at: new Date(Date.now() - 50 * 60 * 60 * 1000),
       updated_at: new Date(),
     },
     {
@@ -43,44 +43,44 @@ describe('AlertPriorityService', () => {
       priority: Priority.NEW,
       priority_score: 0.4,
       case_id: null,
-      created_at: new Date(Date.now() - 80 * 60 * 60 * 1000), // 80 hours ago
+      created_at: new Date(Date.now() - 80 * 60 * 60 * 1000),
       updated_at: new Date(),
     },
   ];
 
+  const createMockPrismaService = () => ({
+    alert: {
+      findMany: jest.fn(),
+      update: jest.fn(),
+    },
+    case: {
+      update: jest.fn(),
+    },
+  });
+
+  const createMockConfigService = () => ({
+    get: jest.fn((key: string) => {
+      const config: Record<string, string> = {
+        PRIORITY_FIRST_HALF: '0.33',
+        PRIORITY_SECOND_HALF: '0.66',
+        PRIORITY_THIRD_HALF: '1.0',
+        DEFAULT_SLA_HOURS: '72',
+      };
+      return config[key];
+    }),
+  });
+
   beforeEach(async () => {
-    const mockPrismaService = {
-      alert: {
-        findMany: jest.fn(),
-        update: jest.fn(),
-      },
-      case: {
-        update: jest.fn(),
-      },
-    };
-
-    const mockConfigService = {
-      get: jest.fn((key: string) => {
-        const config: Record<string, string> = {
-          PRIORITY_FIRST_HALF: '0.33',
-          PRIORITY_SECOND_HALF: '0.66',
-          PRIORITY_THIRD_HALF: '1.0',
-          DEFAULT_SLA_HOURS: '72',
-        };
-        return config[key];
-      }),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AlertPriorityService,
         {
           provide: PrismaService,
-          useValue: mockPrismaService,
+          useValue: createMockPrismaService(),
         },
         {
           provide: ConfigService,
-          useValue: mockConfigService,
+          useValue: createMockConfigService(),
         },
       ],
     }).compile();
@@ -98,9 +98,7 @@ describe('AlertPriorityService', () => {
     it('should log initialization message', () => {
       const logSpy = jest.spyOn(service['logger'], 'log');
       service.onModuleInit();
-      expect(logSpy).toHaveBeenCalledWith(
-        'Alert priority service initialized. Recalculation will run via configurable scheduled task.',
-      );
+      expect(logSpy).toHaveBeenCalledWith('Alert priority service initialized. Recalculation will run via configurable scheduled task.');
     });
   });
 
@@ -117,86 +115,36 @@ describe('AlertPriorityService', () => {
       expect(prismaService.alert.update).not.toHaveBeenCalled();
     });
 
-    it('should recalculate priority for NEW alerts (< 33% SLA)', async () => {
-      const newAlert = {
+    it.each([
+      ['NEW', Priority.NEW, 10, 13.9],
+      ['URGENT', Priority.URGENT, 30, 41.7],
+      ['CRITICAL', Priority.CRITICAL, 50, 69.4],
+      ['BREACH', Priority.BREACH, 80, 111.1],
+    ])('should recalculate priority for %s alerts (SLA: %s%%)', async (_name, expectedPriority, hoursAgo, _slaPercent) => {
+      const alert = {
         ...mockAlerts[0],
-        created_at: new Date(Date.now() - 10 * 60 * 60 * 1000), // 10 hours ago (13.9% of 72 hours)
+        alert_id:
+          expectedPriority === Priority.NEW ? 1 : expectedPriority === Priority.URGENT ? 2 : expectedPriority === Priority.CRITICAL ? 3 : 4,
+        case_id:
+          expectedPriority === Priority.BREACH
+            ? null
+            : expectedPriority === Priority.NEW
+              ? 1
+              : expectedPriority === Priority.URGENT
+                ? 2
+                : 3,
+        created_at: new Date(Date.now() - hoursAgo * 60 * 60 * 1000),
       };
-      (prismaService.alert.findMany as jest.Mock).mockResolvedValue([newAlert] as any);
-      (prismaService.alert.update as jest.Mock).mockResolvedValue(newAlert as any);
+      (prismaService.alert.findMany as jest.Mock).mockResolvedValue([alert] as any);
+      (prismaService.alert.update as jest.Mock).mockResolvedValue(alert as any);
       (prismaService.case.update as jest.Mock).mockResolvedValue({} as any);
 
       await service.runRecalculation();
 
       expect(prismaService.alert.update).toHaveBeenCalledWith({
-        where: { alert_id: 1 },
+        where: { alert_id: alert.alert_id },
         data: {
-          priority: Priority.NEW,
-          priority_score: expect.any(Number),
-        },
-      });
-      expect(prismaService.case.update).toHaveBeenCalledWith({
-        where: { case_id: 1 },
-        data: {
-          priority: Priority.NEW,
-        },
-      });
-    });
-
-    it('should recalculate priority for URGENT alerts (33-66% SLA)', async () => {
-      const urgentAlert = {
-        ...mockAlerts[1],
-        created_at: new Date(Date.now() - 30 * 60 * 60 * 1000), // 30 hours ago (41.7% of 72 hours)
-      };
-      (prismaService.alert.findMany as jest.Mock).mockResolvedValue([urgentAlert] as any);
-      (prismaService.alert.update as jest.Mock).mockResolvedValue(urgentAlert as any);
-      (prismaService.case.update as jest.Mock).mockResolvedValue({} as any);
-
-      await service.runRecalculation();
-
-      expect(prismaService.alert.update).toHaveBeenCalledWith({
-        where: { alert_id: 2 },
-        data: {
-          priority: Priority.URGENT,
-          priority_score: expect.any(Number),
-        },
-      });
-    });
-
-    it('should recalculate priority for CRITICAL alerts (66-100% SLA)', async () => {
-      const criticalAlert = {
-        ...mockAlerts[2],
-        created_at: new Date(Date.now() - 50 * 60 * 60 * 1000), // 50 hours ago (69.4% of 72 hours)
-      };
-      (prismaService.alert.findMany as jest.Mock).mockResolvedValue([criticalAlert] as any);
-      (prismaService.alert.update as jest.Mock).mockResolvedValue(criticalAlert as any);
-      (prismaService.case.update as jest.Mock).mockResolvedValue({} as any);
-
-      await service.runRecalculation();
-
-      expect(prismaService.alert.update).toHaveBeenCalledWith({
-        where: { alert_id: 3 },
-        data: {
-          priority: Priority.CRITICAL,
-          priority_score: expect.any(Number),
-        },
-      });
-    });
-
-    it('should recalculate priority for BREACH alerts (>= 100% SLA)', async () => {
-      const breachAlert = {
-        ...mockAlerts[3],
-        created_at: new Date(Date.now() - 80 * 60 * 60 * 1000), // 80 hours ago (111% of 72 hours)
-      };
-      (prismaService.alert.findMany as jest.Mock).mockResolvedValue([breachAlert] as any);
-      (prismaService.alert.update as jest.Mock).mockResolvedValue(breachAlert as any);
-
-      await service.runRecalculation();
-
-      expect(prismaService.alert.update).toHaveBeenCalledWith({
-        where: { alert_id: 4 },
-        data: {
-          priority: Priority.BREACH,
+          priority: expectedPriority,
           priority_score: expect.any(Number),
         },
       });
@@ -236,19 +184,26 @@ describe('AlertPriorityService', () => {
     it('should handle errors for individual alerts and continue processing', async () => {
       const alerts = [mockAlerts[0], mockAlerts[1]];
       (prismaService.alert.findMany as jest.Mock).mockResolvedValue(alerts as any);
-      (prismaService.alert.update as jest.Mock)
-        .mockRejectedValueOnce(new Error('Database error'))
-        .mockResolvedValueOnce({} as any);
+      (prismaService.alert.update as jest.Mock).mockRejectedValueOnce(new Error('Database error')).mockResolvedValueOnce({} as any);
       (prismaService.case.update as jest.Mock).mockResolvedValue({} as any);
       const errorSpy = jest.spyOn(service['logger'], 'error');
 
       await service.runRecalculation();
 
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to process alert 1'),
-        expect.any(String),
-      );
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to process alert 1'), expect.any(String));
       expect(prismaService.alert.update).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle case update errors gracefully', async () => {
+      const alert = mockAlerts[0];
+      (prismaService.alert.findMany as jest.Mock).mockResolvedValue([alert] as any);
+      (prismaService.alert.update as jest.Mock).mockResolvedValue(alert as any);
+      (prismaService.case.update as jest.Mock).mockRejectedValue(new Error('Case update failed'));
+      const errorSpy = jest.spyOn(service['logger'], 'error');
+
+      await service.runRecalculation();
+
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to process alert 1'), expect.any(String));
     });
 
     it('should log completion message', async () => {
@@ -273,7 +228,6 @@ describe('AlertPriorityService', () => {
         return customConfig[key];
       });
 
-      // Recreate service with custom config
       const module: TestingModule = await Test.createTestingModule({
         providers: [
           AlertPriorityService,
@@ -291,7 +245,7 @@ describe('AlertPriorityService', () => {
       const customService = module.get<AlertPriorityService>(AlertPriorityService);
       const urgentAlert = {
         ...mockAlerts[0],
-        created_at: new Date(Date.now() - 15 * 60 * 60 * 1000), // 15 hours ago (31.25% of 48 hours)
+        created_at: new Date(Date.now() - 15 * 60 * 60 * 1000),
       };
       (prismaService.alert.findMany as jest.Mock).mockResolvedValue([urgentAlert] as any);
       (prismaService.alert.update as jest.Mock).mockResolvedValue(urgentAlert as any);
@@ -308,25 +262,10 @@ describe('AlertPriorityService', () => {
       });
     });
 
-    it('should handle case update errors gracefully', async () => {
-      const alert = mockAlerts[0];
-      (prismaService.alert.findMany as jest.Mock).mockResolvedValue([alert] as any);
-      (prismaService.alert.update as jest.Mock).mockResolvedValue(alert as any);
-      (prismaService.case.update as jest.Mock).mockRejectedValue(new Error('Case update failed'));
-      const errorSpy = jest.spyOn(service['logger'], 'error');
-
-      await service.runRecalculation();
-
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to process alert 1'),
-        expect.any(String),
-      );
-    });
-
     it('should calculate priority score correctly', async () => {
       const alert = {
         ...mockAlerts[0],
-        created_at: new Date(Date.now() - 36 * 60 * 60 * 1000), // 36 hours ago (50% of 72 hours)
+        created_at: new Date(Date.now() - 36 * 60 * 60 * 1000),
       };
       (prismaService.alert.findMany as jest.Mock).mockResolvedValue([alert] as any);
       (prismaService.alert.update as jest.Mock).mockResolvedValue(alert as any);

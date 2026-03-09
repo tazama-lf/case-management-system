@@ -35,18 +35,18 @@ describe('AdminService', () => {
     },
   ];
 
-  beforeEach(async () => {
-    const mockAdminRepository = {
-      registerReferenceId: jest.fn(),
-      getReferenceId: jest.fn(),
-    };
+  const createMockAdminRepository = () => ({
+    registerReferenceId: jest.fn(),
+    getReferenceId: jest.fn(),
+  });
 
+  beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminService,
         {
           provide: AdminRepository,
-          useValue: mockAdminRepository,
+          useValue: createMockAdminRepository(),
         },
       ],
     }).compile();
@@ -75,32 +75,33 @@ describe('AdminService', () => {
       expect(adminRepository.registerReferenceId).toHaveBeenCalledTimes(1);
     });
 
-    it('should call adminRepository.registerReferenceId with correct parameters', async () => {
-      adminRepository.registerReferenceId.mockResolvedValue(mockReferenceId);
+    it.each([
+      ['pacs.008.001.10', 'InstrId', 2, new Date('2026-01-02')],
+      ['pain.001.001.11', 'MsgId', 3, new Date('2026-01-03')],
+      ['pain.013.001.09', 'TxId', 4, new Date('2026-01-04')],
+    ])('should register reference ID with txTp=%s and referenceIdName=%s', async (txTp, referenceIdName, id, createdAt) => {
+      const data: Prisma.ReferenceIdCreateInput = { txTp, referenceIdName };
+      const mockResult = { id, txTp, referenceIdName, createdAt };
 
-      await service.registerReferenceId(referenceIdData);
+      adminRepository.registerReferenceId.mockResolvedValue(mockResult);
 
-      expect(adminRepository.registerReferenceId).toHaveBeenCalledWith(
-        expect.objectContaining({
-          txTp: 'pacs.002.001.12',
-          referenceIdName: 'EndToEndId',
-        }),
-      );
+      const result = await service.registerReferenceId(data);
+
+      expect(result).toEqual(mockResult);
+      expect(result.txTp).toBe(txTp);
+      expect(result.referenceIdName).toBe(referenceIdName);
+      expect(adminRepository.registerReferenceId).toHaveBeenCalledWith(data);
     });
 
-    it('should handle repository error and re-throw it', async () => {
-      const error = new Error('Database error');
+    it.each([
+      ['Database error', new Error('Database error')],
+      ['Unique constraint violation', new Error('Unique constraint violation')],
+      ['Query timeout', new Error('Query timeout')],
+    ])('should handle %s and re-throw it', async (_desc, error) => {
       adminRepository.registerReferenceId.mockRejectedValue(error);
 
-      await expect(service.registerReferenceId(referenceIdData)).rejects.toThrow('Database error');
+      await expect(service.registerReferenceId(referenceIdData)).rejects.toThrow(error.message);
       expect(adminRepository.registerReferenceId).toHaveBeenCalledWith(referenceIdData);
-    });
-
-    it('should handle custom error from repository', async () => {
-      const customError = new Error('Unique constraint violation');
-      adminRepository.registerReferenceId.mockRejectedValue(customError);
-
-      await expect(service.registerReferenceId(referenceIdData)).rejects.toThrow('Unique constraint violation');
     });
 
     it('should handle non-Error exceptions', async () => {
@@ -109,70 +110,7 @@ describe('AdminService', () => {
       await expect(service.registerReferenceId(referenceIdData)).rejects.toBe('String error');
     });
 
-    it('should register reference ID with different txTp', async () => {
-      const differentData: Prisma.ReferenceIdCreateInput = {
-        txTp: 'pacs.008.001.10',
-        referenceIdName: 'InstrId',
-      };
-
-      const mockResult = {
-        id: 2,
-        txTp: 'pacs.008.001.10',
-        referenceIdName: 'InstrId',
-        createdAt: new Date('2026-01-02'),
-      };
-
-      adminRepository.registerReferenceId.mockResolvedValue(mockResult);
-
-      const result = await service.registerReferenceId(differentData);
-
-      expect(result).toEqual(mockResult);
-      expect(adminRepository.registerReferenceId).toHaveBeenCalledWith(differentData);
-    });
-
-    it('should register reference ID with various message types', async () => {
-      const data: Prisma.ReferenceIdCreateInput = {
-        txTp: 'pain.001.001.11',
-        referenceIdName: 'MsgId',
-      };
-
-      const mockResult = {
-        id: 3,
-        txTp: 'pain.001.001.11',
-        referenceIdName: 'MsgId',
-        createdAt: new Date('2026-01-03'),
-      };
-
-      adminRepository.registerReferenceId.mockResolvedValue(mockResult);
-
-      const result = await service.registerReferenceId(data);
-
-      expect(result).toEqual(mockResult);
-      expect(result.txTp).toBe('pain.001.001.11');
-    });
-
-    it('should register reference ID with different reference name', async () => {
-      const data: Prisma.ReferenceIdCreateInput = {
-        txTp: 'pain.013.001.09',
-        referenceIdName: 'TxId',
-      };
-
-      const mockResult = {
-        id: 4,
-        txTp: 'pain.013.001.09',
-        referenceIdName: 'TxId',
-        createdAt: new Date('2026-01-04'),
-      };
-
-      adminRepository.registerReferenceId.mockResolvedValue(mockResult);
-
-      const result = await service.registerReferenceId(data);
-
-      expect(result).toEqual(mockResult);
-      expect(result.referenceIdName).toBe('TxId');
-    });
-
-    it('should return the complete reference ID object with id and timestamp', async () => {
+    it('should return the complete reference ID object with all properties', async () => {
       adminRepository.registerReferenceId.mockResolvedValue(mockReferenceId);
 
       const result = await service.registerReferenceId(referenceIdData);
@@ -181,6 +119,13 @@ describe('AdminService', () => {
       expect(result).toHaveProperty('txTp');
       expect(result).toHaveProperty('referenceIdName');
       expect(result).toHaveProperty('createdAt');
+    });
+
+    it('should handle null return from repository', async () => {
+      adminRepository.registerReferenceId.mockResolvedValue(null as any);
+
+      const result = await service.registerReferenceId(referenceIdData);
+      expect(result).toBeNull();
     });
   });
 
@@ -195,30 +140,42 @@ describe('AdminService', () => {
       expect(adminRepository.getReferenceId).toHaveBeenCalledWith();
     });
 
-    it('should return empty array when no reference IDs exist', async () => {
-      adminRepository.getReferenceId.mockResolvedValue([]);
+    it.each([
+      ['empty array', []],
+      ['single reference ID', [mockReferenceId]],
+      ['multiple reference IDs', mockReferenceIds],
+    ])('should return %s when repository returns it', async (_desc, mockData) => {
+      adminRepository.getReferenceId.mockResolvedValue(mockData);
 
       const result = await service.getReferenceIds();
 
-      expect(result).toEqual([]);
-      expect(Array.isArray(result)).toBe(true);
-      expect(result).toHaveLength(0);
+      expect(result).toEqual(mockData);
+      expect(result).toHaveLength(mockData.length);
     });
 
-    it('should return multiple reference IDs', async () => {
-      adminRepository.getReferenceId.mockResolvedValue(mockReferenceIds);
+    it('should return large number of reference IDs', async () => {
+      const largeArray = Array.from({ length: 100 }, (_, i) => ({
+        id: i + 1,
+        txTp: `pacs.002.001.${i}`,
+        referenceIdName: `EndToEndId_${i}`,
+        createdAt: new Date('2026-01-01'),
+      }));
+
+      adminRepository.getReferenceId.mockResolvedValue(largeArray);
 
       const result = await service.getReferenceIds();
 
-      expect(result).toHaveLength(3);
-      expect(result).toEqual(mockReferenceIds);
+      expect(result).toHaveLength(100);
+      expect(result).toEqual(largeArray);
     });
 
-    it('should handle repository error and re-throw it', async () => {
-      const error = new Error('Database connection failed');
+    it.each([
+      ['Database connection failed', new Error('Database connection failed')],
+      ['Network error', new Error('Network error')],
+    ])('should handle %s and re-throw it', async (_desc, error) => {
       adminRepository.getReferenceId.mockRejectedValue(error);
 
-      await expect(service.getReferenceIds()).rejects.toThrow('Database connection failed');
+      await expect(service.getReferenceIds()).rejects.toThrow(error.message);
       expect(adminRepository.getReferenceId).toHaveBeenCalledTimes(1);
     });
 
@@ -242,9 +199,7 @@ describe('AdminService', () => {
     });
 
     it('should return reference IDs sorted by creation date (if repository does so)', async () => {
-      const sortedMockReferenceIds = [...mockReferenceIds].sort(
-        (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
-      );
+      const sortedMockReferenceIds = [...mockReferenceIds].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
       adminRepository.getReferenceId.mockResolvedValue(sortedMockReferenceIds);
 
       const result = await service.getReferenceIds();
@@ -254,38 +209,11 @@ describe('AdminService', () => {
       expect(result[2].createdAt).toEqual(new Date('2026-01-03'));
     });
 
-    it('should handle a single reference ID', async () => {
-      adminRepository.getReferenceId.mockResolvedValue([mockReferenceId]);
+    it('should handle undefined return from repository', async () => {
+      adminRepository.getReferenceId.mockResolvedValue(undefined as any);
 
       const result = await service.getReferenceIds();
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual(mockReferenceId);
-    });
-
-    it('should handle large number of reference IDs', async () => {
-      const largeArray = Array.from({ length: 100 }, (_, i) => ({
-        id: i + 1,
-        txTp: `pacs.002.001.${i}`,
-        referenceIdName: `EndToEndId_${i}`,
-        createdAt: new Date('2026-01-01'),
-      }));
-
-      adminRepository.getReferenceId.mockResolvedValue(largeArray);
-
-      const result = await service.getReferenceIds();
-
-      expect(result).toHaveLength(100);
-      expect(result).toEqual(largeArray);
-    });
-
-    it('should call repository method without any parameters', async () => {
-      adminRepository.getReferenceId.mockResolvedValue(mockReferenceIds);
-
-      await service.getReferenceIds();
-
-      expect(adminRepository.getReferenceId).toHaveBeenCalledWith();
-      expect(adminRepository.getReferenceId).toHaveBeenCalledTimes(1);
+      expect(result).toBeUndefined();
     });
   });
 
@@ -299,11 +227,9 @@ describe('AdminService', () => {
       adminRepository.registerReferenceId.mockResolvedValue(mockReferenceId);
       adminRepository.getReferenceId.mockResolvedValue([mockReferenceId]);
 
-      // Register
       const registered = await service.registerReferenceId(referenceIdData);
       expect(registered).toEqual(mockReferenceId);
 
-      // Retrieve
       const allReferenceIds = await service.getReferenceIds();
       expect(allReferenceIds).toContainEqual(mockReferenceId);
     });
@@ -319,9 +245,7 @@ describe('AdminService', () => {
         referenceIdName: 'InstrId',
       };
 
-      adminRepository.registerReferenceId
-        .mockResolvedValueOnce(mockReferenceIds[0])
-        .mockResolvedValueOnce(mockReferenceIds[1]);
+      adminRepository.registerReferenceId.mockResolvedValueOnce(mockReferenceIds[0]).mockResolvedValueOnce(mockReferenceIds[1]);
 
       const result1 = await service.registerReferenceId(data1);
       const result2 = await service.registerReferenceId(data2);
@@ -340,52 +264,10 @@ describe('AdminService', () => {
       adminRepository.registerReferenceId.mockRejectedValue(new Error('Registration failed'));
       adminRepository.getReferenceId.mockResolvedValue([]);
 
-      // First operation fails
       await expect(service.registerReferenceId(referenceIdData)).rejects.toThrow('Registration failed');
 
-      // Second operation succeeds
       const result = await service.getReferenceIds();
       expect(result).toEqual([]);
-    });
-  });
-
-  describe('Edge cases and error scenarios', () => {
-    it('should handle null return from repository', async () => {
-      adminRepository.registerReferenceId.mockResolvedValue(null as any);
-
-      const referenceIdData: Prisma.ReferenceIdCreateInput = {
-        txTp: 'pacs.002.001.12',
-        referenceIdName: 'EndToEndId',
-      };
-
-      const result = await service.registerReferenceId(referenceIdData);
-      expect(result).toBeNull();
-    });
-
-    it('should handle undefined return from repository', async () => {
-      adminRepository.getReferenceId.mockResolvedValue(undefined as any);
-
-      const result = await service.getReferenceIds();
-      expect(result).toBeUndefined();
-    });
-
-    it('should handle timeout errors', async () => {
-      const timeoutError = new Error('Query timeout');
-      adminRepository.registerReferenceId.mockRejectedValue(timeoutError);
-
-      const referenceIdData: Prisma.ReferenceIdCreateInput = {
-        txTp: 'pacs.002.001.12',
-        referenceIdName: 'EndToEndId',
-      };
-
-      await expect(service.registerReferenceId(referenceIdData)).rejects.toThrow('Query timeout');
-    });
-
-    it('should handle network errors', async () => {
-      const networkError = new Error('Network error');
-      adminRepository.getReferenceId.mockRejectedValue(networkError);
-
-      await expect(service.getReferenceIds()).rejects.toThrow('Network error');
     });
   });
 });

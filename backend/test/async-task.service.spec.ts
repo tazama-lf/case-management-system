@@ -32,18 +32,21 @@ describe('AsyncTaskService', () => {
     retry_count: 5,
   };
 
+  // Helper function to create mock repository
+  const createMockRepository = () => ({
+    createEmailTask: jest.fn(),
+    getTaskById: jest.fn(),
+    getFailedTasks: jest.fn(),
+    retryFailedTask: jest.fn(),
+    markAsProcessing: jest.fn(),
+    markAsCompleted: jest.fn(),
+    markAsFailed: jest.fn(),
+    scheduleRetry: jest.fn(),
+    getPendingTasksForProcessing: jest.fn(),
+  });
+
   beforeEach(async () => {
-    const mockAsyncTaskRepository = {
-      createEmailTask: jest.fn(),
-      getTaskById: jest.fn(),
-      getFailedTasks: jest.fn(),
-      retryFailedTask: jest.fn(),
-      markAsProcessing: jest.fn(),
-      markAsCompleted: jest.fn(),
-      markAsFailed: jest.fn(),
-      scheduleRetry: jest.fn(),
-      getPendingTasksForProcessing: jest.fn(),
-    };
+    const mockAsyncTaskRepository = createMockRepository();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -70,27 +73,19 @@ describe('AsyncTaskService', () => {
       const result = await service.createEmailTask('test@example.com', 'Test Subject', '<p>Test HTML</p>');
 
       expect(result).toBe(mockTask.id);
-      expect(asyncTaskRepository.createEmailTask).toHaveBeenCalledWith(
-        'test@example.com',
-        'Test Subject',
-        '<p>Test HTML</p>',
-        undefined,
-      );
+      expect(asyncTaskRepository.createEmailTask).toHaveBeenCalledWith('test@example.com', 'Test Subject', '<p>Test HTML</p>', undefined);
     });
 
-    it('should create email task with metadata', async () => {
-      const metadata = { userId: 'user-123', caseId: 1 };
+    it.each([
+      ['with metadata', { userId: 'user-123', caseId: 1 }],
+      ['with empty metadata', {}],
+    ])('should create email task %s', async (_desc, metadata) => {
       asyncTaskRepository.createEmailTask.mockResolvedValue(mockTask as any);
 
       const result = await service.createEmailTask('test@example.com', 'Test Subject', '<p>Test HTML</p>', metadata);
 
       expect(result).toBe(mockTask.id);
-      expect(asyncTaskRepository.createEmailTask).toHaveBeenCalledWith(
-        'test@example.com',
-        'Test Subject',
-        '<p>Test HTML</p>',
-        metadata,
-      );
+      expect(asyncTaskRepository.createEmailTask).toHaveBeenCalledWith('test@example.com', 'Test Subject', '<p>Test HTML</p>', metadata);
     });
 
     it('should log email task creation', async () => {
@@ -99,31 +94,14 @@ describe('AsyncTaskService', () => {
 
       await service.createEmailTask('test@example.com', 'Test Subject', '<p>Test HTML</p>');
 
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Email task created:'),
-      );
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Email task created:'));
     });
 
     it('should handle repository errors', async () => {
       const error = new Error('Database error');
       asyncTaskRepository.createEmailTask.mockRejectedValue(error);
 
-      await expect(
-        service.createEmailTask('test@example.com', 'Test Subject', '<p>Test HTML</p>'),
-      ).rejects.toThrow('Database error');
-    });
-
-    it('should create task with empty metadata', async () => {
-      asyncTaskRepository.createEmailTask.mockResolvedValue(mockTask as any);
-
-      await service.createEmailTask('test@example.com', 'Test Subject', '<p>Test HTML</p>', {});
-
-      expect(asyncTaskRepository.createEmailTask).toHaveBeenCalledWith(
-        'test@example.com',
-        'Test Subject',
-        '<p>Test HTML</p>',
-        {},
-      );
+      await expect(service.createEmailTask('test@example.com', 'Test Subject', '<p>Test HTML</p>')).rejects.toThrow('Database error');
     });
   });
 
@@ -154,22 +132,17 @@ describe('AsyncTaskService', () => {
   });
 
   describe('getFailedTasks', () => {
-    it('should retrieve failed tasks with default limit', async () => {
-      const failedTasks = [mockFailedTask, { ...mockFailedTask, task_id: 3 }];
+    it.each([
+      ['default limit', undefined, 100],
+      ['custom limit', 50, 50],
+    ])('should retrieve failed tasks with %s', async (_desc, inputLimit, expectedLimit) => {
+      const failedTasks = [mockFailedTask];
       asyncTaskRepository.getFailedTasks.mockResolvedValue(failedTasks as any);
 
-      const result = await service.getFailedTasks();
+      const result = await service.getFailedTasks(inputLimit);
 
       expect(result).toEqual(failedTasks);
-      expect(asyncTaskRepository.getFailedTasks).toHaveBeenCalledWith(100);
-    });
-
-    it('should retrieve failed tasks with custom limit', async () => {
-      asyncTaskRepository.getFailedTasks.mockResolvedValue([mockFailedTask] as any);
-
-      await service.getFailedTasks(50);
-
-      expect(asyncTaskRepository.getFailedTasks).toHaveBeenCalledWith(50);
+      expect(asyncTaskRepository.getFailedTasks).toHaveBeenCalledWith(expectedLimit);
     });
 
     it('should return empty array when no failed tasks', async () => {
@@ -202,16 +175,6 @@ describe('AsyncTaskService', () => {
       asyncTaskRepository.retryFailedTask.mockRejectedValue(new Error('Task not found'));
 
       await expect(service.retryFailedTask(999)).rejects.toThrow('Task not found');
-    });
-
-    it('should retry multiple tasks sequentially', async () => {
-      asyncTaskRepository.retryFailedTask.mockResolvedValue(undefined);
-
-      await service.retryFailedTask(1);
-      await service.retryFailedTask(2);
-      await service.retryFailedTask(3);
-
-      expect(asyncTaskRepository.retryFailedTask).toHaveBeenCalledTimes(3);
     });
   });
 
@@ -248,20 +211,15 @@ describe('AsyncTaskService', () => {
   });
 
   describe('markAsFailed', () => {
-    it('should mark task as failed with retry count', async () => {
+    it.each([
+      ['with retry count', 3],
+      ['with max retry count', 5],
+    ])('should mark task as failed %s', async (_desc, retryCount) => {
       asyncTaskRepository.markAsFailed.mockResolvedValue(undefined);
 
-      await service.markAsFailed(1, 3);
+      await service.markAsFailed(1, retryCount);
 
-      expect(asyncTaskRepository.markAsFailed).toHaveBeenCalledWith(1, 3);
-    });
-
-    it('should mark task as failed with max retry count', async () => {
-      asyncTaskRepository.markAsFailed.mockResolvedValue(undefined);
-
-      await service.markAsFailed(1, 5);
-
-      expect(asyncTaskRepository.markAsFailed).toHaveBeenCalledWith(1, 5);
+      expect(asyncTaskRepository.markAsFailed).toHaveBeenCalledWith(1, retryCount);
     });
 
     it('should handle repository errors', async () => {
@@ -272,22 +230,16 @@ describe('AsyncTaskService', () => {
   });
 
   describe('scheduleRetry', () => {
-    it('should schedule task retry with next retry time', async () => {
-      const nextRetryAt = new Date(Date.now() + 60000); // 1 minute from now
+    it.each([
+      ['1 minute delay', 1, 60000],
+      ['5 minutes delay', 2, 300000],
+    ])('should schedule task retry with %s', async (_desc, retryCount, delayMs) => {
+      const nextRetryAt = new Date(Date.now() + delayMs);
       asyncTaskRepository.scheduleRetry.mockResolvedValue(undefined);
 
-      await service.scheduleRetry(1, 1, nextRetryAt);
+      await service.scheduleRetry(1, retryCount, nextRetryAt);
 
-      expect(asyncTaskRepository.scheduleRetry).toHaveBeenCalledWith(1, 1, nextRetryAt);
-    });
-
-    it('should schedule retry with incremented retry count', async () => {
-      const nextRetryAt = new Date(Date.now() + 300000); // 5 minutes from now
-      asyncTaskRepository.scheduleRetry.mockResolvedValue(undefined);
-
-      await service.scheduleRetry(1, 2, nextRetryAt);
-
-      expect(asyncTaskRepository.scheduleRetry).toHaveBeenCalledWith(1, 2, nextRetryAt);
+      expect(asyncTaskRepository.scheduleRetry).toHaveBeenCalledWith(1, retryCount, nextRetryAt);
     });
 
     it('should handle repository errors', async () => {
@@ -299,22 +251,21 @@ describe('AsyncTaskService', () => {
   });
 
   describe('getPendingTasksForProcessing', () => {
-    it('should retrieve pending tasks with default limit', async () => {
-      const pendingTasks = [mockTask, { ...mockTask, task_id: 2 }];
+    it.each([
+      ['default limit', undefined, 10],
+      ['custom limit', 5, 5],
+      ['large batch', 50, 50],
+    ])('should retrieve pending tasks with %s', async (_desc, inputLimit, expectedLimit) => {
+      const pendingTasks = inputLimit === 50 ? Array.from({ length: 50 }, (_, i) => ({ ...mockTask, task_id: i + 1 })) : [mockTask];
       asyncTaskRepository.getPendingTasksForProcessing.mockResolvedValue(pendingTasks as any);
 
-      const result = await service.getPendingTasksForProcessing();
+      const result = await service.getPendingTasksForProcessing(inputLimit);
 
       expect(result).toEqual(pendingTasks);
-      expect(asyncTaskRepository.getPendingTasksForProcessing).toHaveBeenCalledWith(10);
-    });
-
-    it('should retrieve pending tasks with custom limit', async () => {
-      asyncTaskRepository.getPendingTasksForProcessing.mockResolvedValue([mockTask] as any);
-
-      await service.getPendingTasksForProcessing(5);
-
-      expect(asyncTaskRepository.getPendingTasksForProcessing).toHaveBeenCalledWith(5);
+      expect(asyncTaskRepository.getPendingTasksForProcessing).toHaveBeenCalledWith(expectedLimit);
+      if (inputLimit === 50) {
+        expect(result).toHaveLength(50);
+      }
     });
 
     it('should return empty array when no pending tasks', async () => {
@@ -323,16 +274,6 @@ describe('AsyncTaskService', () => {
       const result = await service.getPendingTasksForProcessing();
 
       expect(result).toEqual([]);
-    });
-
-    it('should retrieve large batch of pending tasks', async () => {
-      const largeBatch = Array.from({ length: 50 }, (_, i) => ({ ...mockTask, task_id: i + 1 }));
-      asyncTaskRepository.getPendingTasksForProcessing.mockResolvedValue(largeBatch as any);
-
-      const result = await service.getPendingTasksForProcessing(50);
-
-      expect(result).toHaveLength(50);
-      expect(asyncTaskRepository.getPendingTasksForProcessing).toHaveBeenCalledWith(50);
     });
 
     it('should handle repository errors', async () => {

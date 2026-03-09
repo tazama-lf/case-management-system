@@ -111,6 +111,23 @@ describe('CaseHistoryService', () => {
       });
     });
 
+    it.each([
+      ['not provided', undefined],
+      ['invalid UUID', 'invalid-uuid'],
+      ['empty string', ''],
+    ])('should generate UUID when userId is %s', async (_desc, userId) => {
+      prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
+
+      await service.logCaseHistoryAction({
+        ...actionData,
+        userId: userId as any,
+      });
+
+      const callData = prismaService.caseHistory.create.mock.calls[0][0].data;
+      expect(callData.user_id).not.toBe(userId);
+      expect(isUuid(callData.user_id)).toBe(true);
+    });
+
     it('should use provided userId when it is a valid UUID', async () => {
       const validUUID = '550e8400-e29b-41d4-a716-446655440000';
       prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
@@ -122,49 +139,6 @@ describe('CaseHistoryService', () => {
 
       const callData = prismaService.caseHistory.create.mock.calls[0][0].data;
       expect(callData.user_id).toBe(validUUID);
-      expect(isUuid(callData.user_id)).toBe(true);
-    });
-
-    it('should generate UUID when userId is not provided', async () => {
-      prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
-
-      const dataWithoutUserId = {
-        operation: 'CREATE_CASE',
-        entityName: 'Case',
-        actionPerformed: 'Created case 456',
-        case_id: 456,
-        tenant_id: 'tenant-123',
-      };
-
-      await service.logCaseHistoryAction(dataWithoutUserId);
-
-      const callData = prismaService.caseHistory.create.mock.calls[0][0].data;
-      expect(isUuid(callData.user_id)).toBe(true);
-    });
-
-    it('should generate UUID when userId is invalid', async () => {
-      prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
-
-      await service.logCaseHistoryAction({
-        ...actionData,
-        userId: 'invalid-uuid',
-      });
-
-      const callData = prismaService.caseHistory.create.mock.calls[0][0].data;
-      expect(callData.user_id).not.toBe('invalid-uuid');
-      expect(isUuid(callData.user_id)).toBe(true);
-    });
-
-    it('should generate UUID when userId is empty string', async () => {
-      prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
-
-      await service.logCaseHistoryAction({
-        ...actionData,
-        userId: '',
-      });
-
-      const callData = prismaService.caseHistory.create.mock.calls[0][0].data;
-      expect(callData.user_id).not.toBe('');
       expect(isUuid(callData.user_id)).toBe(true);
     });
 
@@ -189,91 +163,45 @@ describe('CaseHistoryService', () => {
 
       const afterCall = new Date();
       const callData = prismaService.caseHistory.create.mock.calls[0][0].data;
-      
+
       expect(callData.performed_at).toBeInstanceOf(Date);
       expect(callData.performed_at.getTime()).toBeGreaterThanOrEqual(beforeCall.getTime());
       expect(callData.performed_at.getTime()).toBeLessThanOrEqual(afterCall.getTime());
     });
 
-    it('should include case_id in the log', async () => {
+    it.each([
+      ['case_id', { case_id: 456 }, 'case_id', 456],
+      ['tenant_id', { tenant_id: 'tenant-123' }, 'tenant_id', 'tenant-123'],
+      ['case_id of 0', { case_id: 0 }, 'case_id', 0],
+    ])('should include %s in the log', async (_desc, dataOverride, field, expectedValue) => {
       prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
 
-      await service.logCaseHistoryAction(actionData);
+      await service.logCaseHistoryAction({
+        ...actionData,
+        ...dataOverride,
+      });
 
       const callData = prismaService.caseHistory.create.mock.calls[0][0].data;
-      expect(callData.case_id).toBe(456);
+      expect(callData[field]).toBe(expectedValue);
     });
 
-    it('should include tenant_id in the log', async () => {
+    it.each([
+      ['operations', 'operation', ['CREATE_CASE', 'UPDATE_CASE', 'DELETE_CASE', 'CLOSE_CASE', 'REOPEN_CASE']],
+      ['entity names', 'entityName', ['Case', 'CaseService', 'Alert', 'Task']],
+      ['case IDs', 'case_id', [1, 100, 999, 12345]],
+      ['tenant IDs', 'tenant_id', ['tenant-123', 'tenant-456', 'org-789', 'company-abc']],
+    ])('should handle different %s correctly', async (_desc, field, values) => {
       prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
 
-      await service.logCaseHistoryAction(actionData);
-
-      const callData = prismaService.caseHistory.create.mock.calls[0][0].data;
-      expect(callData.tenant_id).toBe('tenant-123');
-    });
-
-    it('should handle different operations correctly', async () => {
-      prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
-
-      const operations = ['CREATE_CASE', 'UPDATE_CASE', 'DELETE_CASE', 'CLOSE_CASE', 'REOPEN_CASE'];
-      
-      for (const operation of operations) {
+      for (const value of values) {
         await service.logCaseHistoryAction({
           ...actionData,
-          operation,
+          [field]: value,
         });
 
         const callData = prismaService.caseHistory.create.mock.calls[prismaService.caseHistory.create.mock.calls.length - 1][0].data;
-        expect(callData.operation).toBe(operation);
-      }
-    });
-
-    it('should handle different entity names', async () => {
-      prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
-
-      const entityNames = ['Case', 'CaseService', 'Alert', 'Task'];
-      
-      for (const entityName of entityNames) {
-        await service.logCaseHistoryAction({
-          ...actionData,
-          entityName,
-        });
-
-        const callData = prismaService.caseHistory.create.mock.calls[prismaService.caseHistory.create.mock.calls.length - 1][0].data;
-        expect(callData.entity_name).toBe(entityName);
-      }
-    });
-
-    it('should handle different case IDs', async () => {
-      prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
-
-      const caseIds = [1, 100, 999, 12345];
-      
-      for (const case_id of caseIds) {
-        await service.logCaseHistoryAction({
-          ...actionData,
-          case_id,
-        });
-
-        const callData = prismaService.caseHistory.create.mock.calls[prismaService.caseHistory.create.mock.calls.length - 1][0].data;
-        expect(callData.case_id).toBe(case_id);
-      }
-    });
-
-    it('should handle different tenant IDs', async () => {
-      prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
-
-      const tenantIds = ['tenant-123', 'tenant-456', 'org-789', 'company-abc'];
-      
-      for (const tenant_id of tenantIds) {
-        await service.logCaseHistoryAction({
-          ...actionData,
-          tenant_id,
-        });
-
-        const callData = prismaService.caseHistory.create.mock.calls[prismaService.caseHistory.create.mock.calls.length - 1][0].data;
-        expect(callData.tenant_id).toBe(tenant_id);
+        const expectedField = field === 'entityName' ? 'entity_name' : field;
+        expect(callData[expectedField]).toBe(value);
       }
     });
 
@@ -296,18 +224,6 @@ describe('CaseHistoryService', () => {
 
       await expect(service.logCaseHistoryAction(actionData)).rejects.toThrow('Database error');
     });
-
-    it('should handle case_id of 0', async () => {
-      prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
-
-      await service.logCaseHistoryAction({
-        ...actionData,
-        case_id: 0,
-      });
-
-      const callData = prismaService.caseHistory.create.mock.calls[0][0].data;
-      expect(callData.case_id).toBe(0);
-    });
   });
 
   describe('getLogs', () => {
@@ -327,55 +243,35 @@ describe('CaseHistoryService', () => {
       });
     });
 
-    it('should retrieve logs with custom limit', async () => {
+    it.each([
+      ['custom limit', 10, undefined, 10, 0],
+      ['custom offset', undefined, 100, 50, 100],
+      ['both custom', 25, 75, 25, 75],
+      ['limit of 1', 1, undefined, 1, 0],
+      ['large limit', 1000, undefined, 1000, 0],
+      ['large offset', 50, 10000, 50, 10000],
+      ['zero limit', 0, undefined, 0, 0],
+    ])('should retrieve logs with %s', async (_desc, limit, offset, expectedTake, expectedSkip) => {
       prismaService.caseHistory.findMany.mockResolvedValue(mockCaseHistories);
 
-      const result = await service.getLogs(tenantId, 10);
+      const result = await service.getLogs(tenantId, limit, offset);
 
       expect(result).toEqual(mockCaseHistories);
       expect(prismaService.caseHistory.findMany).toHaveBeenCalledWith({
         where: { tenant_id: tenantId },
         orderBy: { performed_at: 'desc' },
-        take: 10,
-        skip: 0,
+        take: expectedTake,
+        skip: expectedSkip,
       });
     });
 
-    it('should retrieve logs with custom offset', async () => {
+    it.each([['tenant-456'], ['org-789'], ['']])('should filter by tenant_id: %s', async (tid) => {
       prismaService.caseHistory.findMany.mockResolvedValue(mockCaseHistories);
 
-      const result = await service.getLogs(tenantId, 50, 100);
-
-      expect(result).toEqual(mockCaseHistories);
-      expect(prismaService.caseHistory.findMany).toHaveBeenCalledWith({
-        where: { tenant_id: tenantId },
-        orderBy: { performed_at: 'desc' },
-        take: 50,
-        skip: 100,
-      });
-    });
-
-    it('should retrieve logs with both custom limit and offset', async () => {
-      prismaService.caseHistory.findMany.mockResolvedValue(mockCaseHistories);
-
-      const result = await service.getLogs(tenantId, 25, 75);
-
-      expect(result).toEqual(mockCaseHistories);
-      expect(prismaService.caseHistory.findMany).toHaveBeenCalledWith({
-        where: { tenant_id: tenantId },
-        orderBy: { performed_at: 'desc' },
-        take: 25,
-        skip: 75,
-      });
-    });
-
-    it('should filter by tenant_id', async () => {
-      prismaService.caseHistory.findMany.mockResolvedValue(mockCaseHistories);
-
-      await service.getLogs('tenant-456');
+      await service.getLogs(tid);
 
       const callArgs = prismaService.caseHistory.findMany.mock.calls[0][0];
-      expect(callArgs.where.tenant_id).toBe('tenant-456');
+      expect(callArgs.where.tenant_id).toBe(tid);
     });
 
     it('should return empty array when no logs found', async () => {
@@ -399,86 +295,11 @@ describe('CaseHistoryService', () => {
       );
     });
 
-    it('should handle limit of 1', async () => {
-      prismaService.caseHistory.findMany.mockResolvedValue([mockCaseHistories[0]]);
-
-      const result = await service.getLogs(tenantId, 1);
-
-      expect(result).toHaveLength(1);
-      expect(prismaService.caseHistory.findMany).toHaveBeenCalledWith({
-        where: { tenant_id: tenantId },
-        orderBy: { performed_at: 'desc' },
-        take: 1,
-        skip: 0,
-      });
-    });
-
-    it('should handle large limit values', async () => {
-      prismaService.caseHistory.findMany.mockResolvedValue(mockCaseHistories);
-
-      await service.getLogs(tenantId, 1000);
-
-      expect(prismaService.caseHistory.findMany).toHaveBeenCalledWith({
-        where: { tenant_id: tenantId },
-        orderBy: { performed_at: 'desc' },
-        take: 1000,
-        skip: 0,
-      });
-    });
-
-    it('should handle large offset values', async () => {
-      prismaService.caseHistory.findMany.mockResolvedValue([]);
-
-      await service.getLogs(tenantId, 50, 10000);
-
-      expect(prismaService.caseHistory.findMany).toHaveBeenCalledWith({
-        where: { tenant_id: tenantId },
-        orderBy: { performed_at: 'desc' },
-        take: 50,
-        skip: 10000,
-      });
-    });
-
     it('should handle database error and throw', async () => {
       const error = new Error('Query failed');
       prismaService.caseHistory.findMany.mockRejectedValue(error);
 
       await expect(service.getLogs(tenantId)).rejects.toThrow('Query failed');
-    });
-
-    it('should handle zero limit', async () => {
-      prismaService.caseHistory.findMany.mockResolvedValue([]);
-
-      await service.getLogs(tenantId, 0);
-
-      expect(prismaService.caseHistory.findMany).toHaveBeenCalledWith({
-        where: { tenant_id: tenantId },
-        orderBy: { performed_at: 'desc' },
-        take: 0,
-        skip: 0,
-      });
-    });
-
-    it('should handle different tenant IDs', async () => {
-      prismaService.caseHistory.findMany.mockResolvedValue(mockCaseHistories);
-
-      const tenantIds = ['tenant-123', 'tenant-456', 'org-789'];
-      
-      for (const tid of tenantIds) {
-        await service.getLogs(tid);
-
-        const callArgs = prismaService.caseHistory.findMany.mock.calls[prismaService.caseHistory.findMany.mock.calls.length - 1][0];
-        expect(callArgs.where.tenant_id).toBe(tid);
-      }
-    });
-
-    it('should handle empty tenant ID', async () => {
-      prismaService.caseHistory.findMany.mockResolvedValue([]);
-
-      await service.getLogs('');
-
-      const callArgs = prismaService.caseHistory.findMany.mock.calls[0][0];
-      expect(callArgs.where.tenant_id).toBe('');
     });
   });
 
@@ -500,22 +321,18 @@ describe('CaseHistoryService', () => {
       });
     });
 
-    it('should filter by case_id', async () => {
+    it.each([
+      ['different case_id', 789, 'tenant-123', 789, 'tenant-123'],
+      ['different tenant_id', 456, 'tenant-456', 456, 'tenant-456'],
+      ['case ID 0', 0, 'tenant-123', 0, 'tenant-123'],
+    ])('should filter by %s', async (_desc, cid, tid, expectedCid, expectedTid) => {
       prismaService.caseHistory.findMany.mockResolvedValue(mockCaseHistories);
 
-      await service.getCaseHistory(789, tenantId);
+      await service.getCaseHistory(cid, tid);
 
       const callArgs = prismaService.caseHistory.findMany.mock.calls[0][0];
-      expect(callArgs.where.case_id).toBe(789);
-    });
-
-    it('should filter by tenant_id', async () => {
-      prismaService.caseHistory.findMany.mockResolvedValue(mockCaseHistories);
-
-      await service.getCaseHistory(caseId, 'tenant-456');
-
-      const callArgs = prismaService.caseHistory.findMany.mock.calls[0][0];
-      expect(callArgs.where.tenant_id).toBe('tenant-456');
+      expect(callArgs.where.case_id).toBe(expectedCid);
+      expect(callArgs.where.tenant_id).toBe(expectedTid);
     });
 
     it('should return empty array when no history found', async () => {
@@ -527,46 +344,7 @@ describe('CaseHistoryService', () => {
       expect(result).toHaveLength(0);
     });
 
-    it('should handle different case IDs', async () => {
-      prismaService.caseHistory.findMany.mockResolvedValue(mockCaseHistories);
-
-      const caseIds = [1, 100, 999, 12345];
-      
-      for (const id of caseIds) {
-        await service.getCaseHistory(id, tenantId);
-
-        const callArgs = prismaService.caseHistory.findMany.mock.calls[prismaService.caseHistory.findMany.mock.calls.length - 1][0];
-        expect(callArgs.where.case_id).toBe(id);
-      }
-    });
-
-    it('should handle case ID 0', async () => {
-      prismaService.caseHistory.findMany.mockResolvedValue([]);
-
-      await service.getCaseHistory(0, tenantId);
-
-      const callArgs = prismaService.caseHistory.findMany.mock.calls[0][0];
-      expect(callArgs.where.case_id).toBe(0);
-    });
-
-    it('should handle database error and throw', async () => {
-      const error = new Error('Database query failed');
-      prismaService.caseHistory.findMany.mockRejectedValue(error);
-
-      await expect(service.getCaseHistory(caseId, tenantId)).rejects.toThrow('Database query failed');
-    });
-
-    it('should filter by both case_id and tenant_id simultaneously', async () => {
-      prismaService.caseHistory.findMany.mockResolvedValue(mockCaseHistories);
-
-      await service.getCaseHistory(456, 'tenant-123');
-
-      const callArgs = prismaService.caseHistory.findMany.mock.calls[0][0];
-      expect(callArgs.where.case_id).toBe(456);
-      expect(callArgs.where.tenant_id).toBe('tenant-123');
-    });
-
-    it('should not apply any ordering by default', async () => {
+    it('should not apply ordering by default', async () => {
       prismaService.caseHistory.findMany.mockResolvedValue(mockCaseHistories);
 
       await service.getCaseHistory(caseId, tenantId);
@@ -596,48 +374,12 @@ describe('CaseHistoryService', () => {
 
       expect(result).toHaveLength(100);
     });
-  });
 
-  describe('Integration scenarios', () => {
-    it('should log action and then retrieve it', async () => {
-      const tenantId = 'tenant-123';
-      prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
-      prismaService.caseHistory.findMany.mockResolvedValue([mockCaseHistory]);
+    it('should handle database error and throw', async () => {
+      const error = new Error('Database query failed');
+      prismaService.caseHistory.findMany.mockRejectedValue(error);
 
-      await service.logCaseHistoryAction({
-        userId: '550e8400-e29b-41d4-a716-446655440000',
-        operation: 'CREATE_CASE',
-        entityName: 'Case',
-        actionPerformed: 'Created case 456',
-        case_id: 456,
-        tenant_id: tenantId,
-      });
-
-      const logs = await service.getLogs(tenantId);
-
-      expect(logs).toContainEqual(mockCaseHistory);
-    });
-
-    it('should log action and retrieve by case ID', async () => {
-      const caseId = 456;
-      const tenantId = 'tenant-123';
-      prismaService.caseHistory.create.mockResolvedValue(mockCaseHistory);
-      prismaService.caseHistory.findMany.mockResolvedValue([mockCaseHistory]);
-
-      await service.logCaseHistoryAction({
-        userId: '550e8400-e29b-41d4-a716-446655440000',
-        operation: 'CREATE_CASE',
-        entityName: 'Case',
-        actionPerformed: 'Created case 456',
-        case_id: caseId,
-        tenant_id: tenantId,
-      });
-
-      const history = await service.getCaseHistory(caseId, tenantId);
-
-      expect(history).toContainEqual(mockCaseHistory);
-      expect(prismaService.caseHistory.create).toHaveBeenCalled();
-      expect(prismaService.caseHistory.findMany).toHaveBeenCalled();
+      await expect(service.getCaseHistory(caseId, tenantId)).rejects.toThrow('Database query failed');
     });
   });
 });

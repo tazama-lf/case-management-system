@@ -192,20 +192,23 @@ describe('CaseService', () => {
   });
 
   describe('suspendCase', () => {
-    it('should successfully suspend a case as case owner', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(mockCase as any);
-      taskService.getTasksByCaseId.mockResolvedValue([mockTask] as any);
-      
+    const setupMockTransaction = (findFirstResult: any = null, updateResult: any = null) => {
       const mockTransaction = jest.fn(async (callback) => {
         const mockPrisma = {
           case: {
-            findFirst: jest.fn().mockResolvedValue(null),
-            update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED }),
+            findFirst: jest.fn().mockResolvedValue(findFirstResult),
+            update: jest.fn().mockResolvedValue(updateResult || { ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED }),
           },
         };
         return await callback(mockPrisma);
       });
       prismaService.$transaction.mockImplementation(mockTransaction);
+    };
+
+    it('should successfully suspend a case as case owner', async () => {
+      caseQueryService.retrieveCase.mockResolvedValue(mockCase as any);
+      taskService.getTasksByCaseId.mockResolvedValue([mockTask] as any);
+      setupMockTransaction();
       caseQueryService.updateCase.mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED } as any);
 
@@ -221,17 +224,7 @@ describe('CaseService', () => {
       const differentOwnerCase = { ...mockCase, case_owner_user_id: 'other-user' };
       caseQueryService.retrieveCase.mockResolvedValue(differentOwnerCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([mockTask] as any);
-      
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {
-          case: {
-            findFirst: jest.fn().mockResolvedValue(null),
-            update: jest.fn().mockResolvedValue({ ...differentOwnerCase, status: CaseStatus.STATUS_21_SUSPENDED }),
-          },
-        };
-        return await callback(mockPrisma);
-      });
-      prismaService.$transaction.mockImplementation(mockTransaction);
+      setupMockTransaction(null, { ...differentOwnerCase, status: CaseStatus.STATUS_21_SUSPENDED });
       caseQueryService.updateCase.mockResolvedValue({ ...differentOwnerCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED } as any);
 
@@ -240,77 +233,35 @@ describe('CaseService', () => {
       expect(caseQueryService.updateCase).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException if case not found', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(null as any);
+    it.each([
+      { name: 'case not found', retrieveResult: null, message: 'Case not found' },
+      { name: 'non-owner tries to suspend', retrieveResult: { ...mockCase, case_owner_user_id: 'other-user' }, message: 'Only Case owner' },
+      {
+        name: 'case is not in progress',
+        retrieveResult: { ...mockCase, status: CaseStatus.STATUS_00_DRAFT },
+        message: 'Only cases in "IN PROGRESS"',
+      },
+      { name: 'reason is empty', retrieveResult: mockCase, message: 'Reason for suspension is required', reason: '' },
+    ])('should throw BadRequestException if $name', async ({ retrieveResult, message, reason = 'Test reason' }) => {
+      caseQueryService.retrieveCase.mockResolvedValue(retrieveResult as any);
 
-      await expect(
-        service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', {}, 'investigator')
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.suspendCase(1, reason, [1], 'user-123', 'tenant-123', {}, 'investigator')).rejects.toThrow(message);
     });
 
-    it('should throw BadRequestException if non-owner tries to suspend', async () => {
-      const differentOwnerCase = { ...mockCase, case_owner_user_id: 'other-user' };
-      caseQueryService.retrieveCase.mockResolvedValue(differentOwnerCase as any);
-
-      await expect(
-        service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', {}, 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if case is not in progress', async () => {
-      const draftCase = { ...mockCase, status: CaseStatus.STATUS_00_DRAFT };
-      caseQueryService.retrieveCase.mockResolvedValue(draftCase as any);
-
-      await expect(
-        service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', {}, 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if reason is empty', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(mockCase as any);
-
-      await expect(
-        service.suspendCase(1, '', [1], 'user-123', 'tenant-123', {}, 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should handle empty task list for case', async () => {
+    it('should throw BadRequestException if no matching tasks found', async () => {
       caseQueryService.retrieveCase.mockResolvedValue(mockCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([]);
 
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {
-          case: {
-            update: jest.fn().mockResolvedValue(mockCase),
-            findFirst: jest.fn().mockResolvedValue(null),
-          },
-        };
-        return await callback(mockPrisma);
-      });
-      prismaService.$transaction.mockImplementation(mockTransaction);
-      caseQueryService.updateCase.mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
-      taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED } as any);
-
-      const result = await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', {}, 'investigator');
-
-      expect(result.case.status).toBe(CaseStatus.STATUS_21_SUSPENDED);
+      await expect(service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', {}, 'investigator')).rejects.toThrow(
+        'No "Investigate Case" task found for this case',
+      );
     });
 
     it('should suspend parent case if both subcases are suspended', async () => {
       const subCase = { ...mockCase, parent_id: 10 };
       caseQueryService.retrieveCase.mockResolvedValue(subCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([mockTask] as any);
-      
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {
-          case: {
-            findFirst: jest.fn().mockResolvedValue({ ...subCase, status: CaseStatus.STATUS_21_SUSPENDED }),
-            update: jest.fn().mockResolvedValue({ case_id: 10, status: CaseStatus.STATUS_21_SUSPENDED }),
-          },
-        };
-        return await callback(mockPrisma);
-      });
-      prismaService.$transaction.mockImplementation(mockTransaction);
+      setupMockTransaction({ ...subCase, status: CaseStatus.STATUS_21_SUSPENDED }, { case_id: 10, status: CaseStatus.STATUS_21_SUSPENDED });
       caseQueryService.updateCase.mockResolvedValue({ ...subCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED } as any);
 
@@ -323,17 +274,7 @@ describe('CaseService', () => {
       const taskWithAssignee = { ...mockTask, assigned_user_id: 'assigned-user-123' };
       caseQueryService.retrieveCase.mockResolvedValue(mockCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([taskWithAssignee] as any);
-      
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {
-          case: {
-            findFirst: jest.fn().mockResolvedValue(null),
-            update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED }),
-          },
-        };
-        return await callback(mockPrisma);
-      });
-      prismaService.$transaction.mockImplementation(mockTransaction);
+      setupMockTransaction();
       caseQueryService.updateCase.mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...taskWithAssignee, status: TaskStatus.STATUS_21_BLOCKED } as any);
       cacheService.getUserFromCache.mockResolvedValue({ username: 'testuser', fullName: 'Test User' } as any);
@@ -346,7 +287,7 @@ describe('CaseService', () => {
         expect.objectContaining({
           userId: 'assigned-user-123',
           type: 'CASE_SUSPENDED',
-        })
+        }),
       );
     });
 
@@ -354,17 +295,7 @@ describe('CaseService', () => {
       const taskWithAssignee = { ...mockTask, assigned_user_id: 'assigned-user-123' };
       caseQueryService.retrieveCase.mockResolvedValue(mockCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([taskWithAssignee] as any);
-      
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {
-          case: {
-            findFirst: jest.fn().mockResolvedValue(null),
-            update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED }),
-          },
-        };
-        return await callback(mockPrisma);
-      });
-      prismaService.$transaction.mockImplementation(mockTransaction);
+      setupMockTransaction();
       caseQueryService.updateCase.mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...taskWithAssignee, status: TaskStatus.STATUS_21_BLOCKED } as any);
       cacheService.getUserFromCache.mockResolvedValue({ username: 'testuser', fullName: 'Test User' } as any);
@@ -378,21 +309,24 @@ describe('CaseService', () => {
   });
 
   describe('resumeCase', () => {
-    it('should successfully resume a suspended case', async () => {
-      const suspendedCase = { ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED };
-      caseQueryService.retrieveCase.mockResolvedValue(suspendedCase as any);
-      taskService.getTasksByCaseId.mockResolvedValue([{ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED }] as any);
-      
+    const setupMockTransaction = (findFirstResult: any = null, updateResult: any = null) => {
       const mockTransaction = jest.fn(async (callback) => {
         const mockPrisma = {
           case: {
-            findFirst: jest.fn().mockResolvedValue(null),
-            update: jest.fn().mockResolvedValue({ ...suspendedCase, status: CaseStatus.STATUS_20_IN_PROGRESS }),
+            findFirst: jest.fn().mockResolvedValue(findFirstResult),
+            update: jest.fn().mockResolvedValue(updateResult || { ...mockCase, status: CaseStatus.STATUS_20_IN_PROGRESS }),
           },
         };
         return await callback(mockPrisma);
       });
       prismaService.$transaction.mockImplementation(mockTransaction);
+    };
+
+    it('should successfully resume a suspended case', async () => {
+      const suspendedCase = { ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED };
+      caseQueryService.retrieveCase.mockResolvedValue(suspendedCase as any);
+      taskService.getTasksByCaseId.mockResolvedValue([{ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED }] as any);
+      setupMockTransaction(null, { ...suspendedCase, status: CaseStatus.STATUS_20_IN_PROGRESS });
       caseQueryService.updateCase.mockResolvedValue({ ...suspendedCase, status: CaseStatus.STATUS_20_IN_PROGRESS } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_10_ASSIGNED } as any);
 
@@ -402,46 +336,29 @@ describe('CaseService', () => {
       expect(taskService.updateTask).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException if case not found', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(null as any);
+    it.each([
+      { name: 'case not found', retrieveResult: null, message: 'Case not found' },
+      { name: 'case is not suspended', retrieveResult: mockCase, message: 'Only suspended cases can be resumed' },
+      {
+        name: 'reason is empty',
+        retrieveResult: { ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED },
+        message: 'Reason for resumption is required',
+        reason: '',
+      },
+    ])('should throw BadRequestException if $name', async ({ retrieveResult, message, reason = 'Resume reason' }) => {
+      caseQueryService.retrieveCase.mockResolvedValue(retrieveResult as any);
 
-      await expect(
-        service.resumeCase(1, 'Resume reason', 'user-123', 'tenant-123', {})
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if case is not suspended', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(mockCase as any);
-
-      await expect(
-        service.resumeCase(1, 'Resume reason', 'user-123', 'tenant-123', {})
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if reason is empty', async () => {
-      const suspendedCase = { ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED };
-      caseQueryService.retrieveCase.mockResolvedValue(suspendedCase as any);
-
-      await expect(
-        service.resumeCase(1, '', 'user-123', 'tenant-123', {})
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.resumeCase(1, reason, 'user-123', 'tenant-123', {})).rejects.toThrow(message);
     });
 
     it('should resume parent case if at least one subcase is resumed', async () => {
       const subCase = { ...mockCase, parent_id: 10, status: CaseStatus.STATUS_21_SUSPENDED };
       caseQueryService.retrieveCase.mockResolvedValue(subCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([{ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED }] as any);
-      
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {
-          case: {
-            findFirst: jest.fn().mockResolvedValue({ ...subCase, status: CaseStatus.STATUS_20_IN_PROGRESS }),
-            update: jest.fn().mockResolvedValue({ case_id: 10, status: CaseStatus.STATUS_20_IN_PROGRESS }),
-          },
-        };
-        return await callback(mockPrisma);
-      });
-      prismaService.$transaction.mockImplementation(mockTransaction);
+      setupMockTransaction(
+        { ...subCase, status: CaseStatus.STATUS_20_IN_PROGRESS },
+        { case_id: 10, status: CaseStatus.STATUS_20_IN_PROGRESS },
+      );
       caseQueryService.updateCase.mockResolvedValue({ ...subCase, status: CaseStatus.STATUS_20_IN_PROGRESS } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_10_ASSIGNED } as any);
 
@@ -455,17 +372,7 @@ describe('CaseService', () => {
       const taskWithAssignee = { ...mockTask, status: TaskStatus.STATUS_21_BLOCKED, assigned_user_id: 'assigned-user-123' };
       caseQueryService.retrieveCase.mockResolvedValue(suspendedCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([taskWithAssignee] as any);
-      
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {
-          case: {
-            findFirst: jest.fn().mockResolvedValue(null),
-            update: jest.fn().mockResolvedValue({ ...suspendedCase, status: CaseStatus.STATUS_20_IN_PROGRESS }),
-          },
-        };
-        return await callback(mockPrisma);
-      });
-      prismaService.$transaction.mockImplementation(mockTransaction);
+      setupMockTransaction(null, { ...suspendedCase, status: CaseStatus.STATUS_20_IN_PROGRESS });
       caseQueryService.updateCase.mockResolvedValue({ ...suspendedCase, status: CaseStatus.STATUS_20_IN_PROGRESS } as any);
       taskService.updateTask.mockResolvedValue({ ...taskWithAssignee, status: TaskStatus.STATUS_20_IN_PROGRESS } as any);
       cacheService.getUserFromCache.mockResolvedValue({ username: 'testuser', email: 'test@example.com' } as any);
@@ -478,7 +385,7 @@ describe('CaseService', () => {
         expect.objectContaining({
           userId: 'assigned-user-123',
           type: 'CASE_RESUMED',
-        })
+        }),
       );
     });
 
@@ -487,17 +394,7 @@ describe('CaseService', () => {
       const taskWithAssignee = { ...mockTask, status: TaskStatus.STATUS_21_BLOCKED, assigned_user_id: 'assigned-user-123' };
       caseQueryService.retrieveCase.mockResolvedValue(suspendedCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([taskWithAssignee] as any);
-      
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {
-          case: {
-            findFirst: jest.fn().mockResolvedValue(null),
-            update: jest.fn().mockResolvedValue({ ...suspendedCase, status: CaseStatus.STATUS_20_IN_PROGRESS }),
-          },
-        };
-        return await callback(mockPrisma);
-      });
-      prismaService.$transaction.mockImplementation(mockTransaction);
+      setupMockTransaction(null, { ...suspendedCase, status: CaseStatus.STATUS_20_IN_PROGRESS });
       caseQueryService.updateCase.mockResolvedValue({ ...suspendedCase, status: CaseStatus.STATUS_20_IN_PROGRESS } as any);
       taskService.updateTask.mockResolvedValue({ ...taskWithAssignee, status: TaskStatus.STATUS_20_IN_PROGRESS } as any);
       cacheService.getUserFromCache.mockResolvedValue({ username: 'testuser', email: 'test@example.com' } as any);
@@ -511,18 +408,21 @@ describe('CaseService', () => {
   });
 
   describe('abandonCase', () => {
-    it('should successfully abandon a case', async () => {
-      const draftCase = { ...mockCase, status: CaseStatus.STATUS_00_DRAFT };
-      caseQueryService.retrieveCase.mockResolvedValue(draftCase as any);
-      taskService.getTasksByCaseId.mockResolvedValue([
-        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 }
-      ] as any);
-      
+    const setupMockTransaction = () => {
       const mockTransaction = jest.fn(async (callback) => {
         const mockPrisma = {};
         return await callback(mockPrisma);
       });
       prismaService.$transaction.mockImplementation(mockTransaction);
+    };
+
+    it('should successfully abandon a case', async () => {
+      const draftCase = { ...mockCase, status: CaseStatus.STATUS_00_DRAFT };
+      caseQueryService.retrieveCase.mockResolvedValue(draftCase as any);
+      taskService.getTasksByCaseId.mockResolvedValue([
+        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 },
+      ] as any);
+      setupMockTransaction();
       caseQueryService.updateCase.mockResolvedValue({ ...draftCase, status: CaseStatus.STATUS_99_ABANDONED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
 
@@ -533,176 +433,145 @@ describe('CaseService', () => {
       expect(taskService.updateTask).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException if case not found', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(null as any);
+    it.each([
+      { name: 'case not found', retrieveResult: null, message: "Case doesn't exist for caseId" },
+      {
+        name: 'reason is empty',
+        retrieveResult: { ...mockCase, status: CaseStatus.STATUS_00_DRAFT },
+        message: 'Reason for abandonment is required',
+        reason: '',
+      },
+    ])('should throw BadRequestException if $name', async ({ retrieveResult, message, reason = 'Abandon reason' }) => {
+      caseQueryService.retrieveCase.mockResolvedValue(retrieveResult as any);
+      if (retrieveResult) {
+        taskService.getTasksByCaseId.mockResolvedValue([
+          { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 },
+        ] as any);
+      }
 
-      await expect(
-        service.abandonCase(1, 'Abandon reason', 'user-123', 'tenant-123')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if reason is empty', async () => {
-      const draftCase = { ...mockCase, status: CaseStatus.STATUS_00_DRAFT };
-      caseQueryService.retrieveCase.mockResolvedValue(draftCase as any);
-      taskService.getTasksByCaseId.mockResolvedValue([
-        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 }
-      ] as any);
-
-      await expect(
-        service.abandonCase(1, '', 'user-123', 'tenant-123')
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.abandonCase(1, reason, 'user-123', 'tenant-123')).rejects.toThrow(message);
     });
   });
 
   describe('delegation methods', () => {
-    it('should delegate saveCaseAsDraft to caseCreationApprovalService', async () => {
-      const dto = { alertId: 1 } as any;
-      caseCreationApprovalService.saveCaseAsDraft.mockResolvedValue({} as any);
+    const delegationTests = [
+      {
+        method: 'saveCaseAsDraft',
+        service: 'caseCreationApprovalService',
+        args: [{ alertId: 1 } as any, 'user-123', 'tenant-123', 'investigator'],
+        expectedArgs: [{ alertId: 1 } as any, 'user-123', 'tenant-123', 'investigator'],
+      },
+      {
+        method: 'reopenCase',
+        service: 'caseReopeningService',
+        args: [1, 'reason', 'user-123', 'tenant-123', 'investigator'],
+        expectedArgs: [1, 'reason', 'user-123', 'tenant-123', 'investigator'],
+      },
+      {
+        method: 'approveCaseReopening',
+        service: 'caseReopeningService',
+        args: [1, 'supervisor-123', 'tenant-123'],
+        expectedArgs: [1, 'supervisor-123', 'tenant-123'],
+      },
+      {
+        method: 'rejectCaseReopening',
+        service: 'caseReopeningService',
+        args: [1, 'reason', 'supervisor-123', 'tenant-123'],
+        expectedArgs: [1, 'reason', 'supervisor-123', 'tenant-123'],
+      },
+      {
+        method: 'closeCase',
+        service: 'caseClosureApprovalService',
+        args: [1, {} as any, 'user-123', 'tenant-123', 'investigator'],
+        expectedArgs: [1, {} as any, 'user-123', 'tenant-123', 'investigator'],
+      },
+      {
+        method: 'approveCaseClosure',
+        service: 'caseClosureApprovalService',
+        args: [1, 'outcome', 'comments', 'supervisor-123', 'tenant-123'],
+        expectedArgs: [1, 'outcome', 'comments', 'supervisor-123', 'tenant-123'],
+      },
+      {
+        method: 'rejectCaseClosure',
+        service: 'caseClosureApprovalService',
+        args: [1, 'comments', 'supervisor-123', 'tenant-123'],
+        expectedArgs: [1, 'comments', 'supervisor-123', 'tenant-123'],
+      },
+      {
+        method: 'returnCaseForReview',
+        service: 'caseClosureApprovalService',
+        args: [1, 'comments', 'supervisor-123', 'tenant-123'],
+        expectedArgs: [1, 'comments', 'supervisor-123', 'tenant-123'],
+      },
+      {
+        method: 'approveCaseCreation',
+        service: 'caseCreationApprovalService',
+        args: [1, 'supervisor-123', 'tenant-123'],
+        expectedArgs: [1, 'supervisor-123', 'tenant-123'],
+      },
+      {
+        method: 'rejectCaseCreation',
+        service: 'caseCreationApprovalService',
+        args: [1, 'supervisor-123', 'tenant-123', 'reason'],
+        expectedArgs: [1, 'supervisor-123', 'tenant-123', 'reason'],
+      },
+      {
+        method: 'completeCase',
+        service: 'caseCreationApprovalService',
+        args: [1, 'user-123', 'tenant-123'],
+        expectedArgs: [1, 'user-123', 'tenant-123'],
+      },
+      {
+        method: 'getAllCases',
+        service: 'caseQueryService',
+        args: [{} as any, 'tenant-123', 'user-123', false],
+        expectedArgs: [{} as any, 'tenant-123', 'user-123', false],
+      },
+      {
+        method: 'getUserCases',
+        service: 'caseQueryService',
+        args: ['user-123', {} as any, false],
+        expectedArgs: ['user-123', {} as any, false],
+      },
+      {
+        method: 'getUserWorkloadStats',
+        service: 'caseQueryService',
+        args: ['user-123', false],
+        expectedArgs: ['user-123', false],
+      },
+      {
+        method: 'updateCase',
+        service: 'caseQueryService',
+        args: [1, { priority: Priority.CRITICAL } as any, 'user-123'],
+        expectedArgs: [1, { priority: Priority.CRITICAL } as any, 'user-123'],
+      },
+      {
+        method: 'retrieveCase',
+        service: 'caseQueryService',
+        args: [1, 'tenant-123', false],
+        expectedArgs: [1, 'tenant-123', false],
+      },
+      {
+        method: 'getSubCasesDetails',
+        service: 'caseQueryService',
+        args: [1],
+        expectedArgs: [1],
+      },
+    ];
 
-      await service.saveCaseAsDraft(dto, 'user-123', 'tenant-123', 'investigator');
+    it.each(delegationTests)('should delegate $method to $service', async ({ method, service: serviceName, args, expectedArgs }) => {
+      const serviceMap = {
+        caseCreationApprovalService,
+        caseReopeningService,
+        caseClosureApprovalService,
+        caseQueryService,
+      };
+      const targetService = serviceMap[serviceName as keyof typeof serviceMap];
+      (targetService as any)[method].mockResolvedValue({} as any);
 
-      expect(caseCreationApprovalService.saveCaseAsDraft).toHaveBeenCalledWith(dto, 'user-123', 'tenant-123', 'investigator');
-    });
+      await (service as any)[method](...args);
 
-    it('should delegate reopenCase to caseReopeningService', async () => {
-      caseReopeningService.reopenCase.mockResolvedValue({} as any);
-
-      await service.reopenCase(1, 'reason', 'user-123', 'tenant-123', 'investigator');
-
-      expect(caseReopeningService.reopenCase).toHaveBeenCalledWith(1, 'reason', 'user-123', 'tenant-123', 'investigator');
-    });
-
-    it('should delegate approveCaseReopening to caseReopeningService', async () => {
-      caseReopeningService.approveCaseReopening.mockResolvedValue({} as any);
-
-      await service.approveCaseReopening(1, 'supervisor-123', 'tenant-123');
-
-      expect(caseReopeningService.approveCaseReopening).toHaveBeenCalledWith(1, 'supervisor-123', 'tenant-123');
-    });
-
-    it('should delegate rejectCaseReopening to caseReopeningService', async () => {
-      caseReopeningService.rejectCaseReopening.mockResolvedValue({} as any);
-
-      await service.rejectCaseReopening(1, 'reason', 'supervisor-123', 'tenant-123');
-
-      expect(caseReopeningService.rejectCaseReopening).toHaveBeenCalledWith(1, 'reason', 'supervisor-123', 'tenant-123');
-    });
-
-    it('should delegate closeCase to caseClosureApprovalService', async () => {
-      const dto = {} as any;
-      caseClosureApprovalService.closeCase.mockResolvedValue({} as any);
-
-      await service.closeCase(1, dto, 'user-123', 'tenant-123', 'investigator');
-
-      expect(caseClosureApprovalService.closeCase).toHaveBeenCalledWith(1, dto, 'user-123', 'tenant-123', 'investigator');
-    });
-
-    it('should delegate approveCaseClosure to caseClosureApprovalService', async () => {
-      caseClosureApprovalService.approveCaseClosure.mockResolvedValue({} as any);
-
-      await service.approveCaseClosure(1, 'outcome', 'comments', 'supervisor-123', 'tenant-123');
-
-      expect(caseClosureApprovalService.approveCaseClosure).toHaveBeenCalledWith(1, 'outcome', 'comments', 'supervisor-123', 'tenant-123');
-    });
-
-    it('should delegate rejectCaseClosure to caseClosureApprovalService', async () => {
-      caseClosureApprovalService.rejectCaseClosure.mockResolvedValue({} as any);
-
-      await service.rejectCaseClosure(1, 'comments', 'supervisor-123', 'tenant-123');
-
-      expect(caseClosureApprovalService.rejectCaseClosure).toHaveBeenCalledWith(1, 'comments', 'supervisor-123', 'tenant-123');
-    });
-
-    it('should delegate returnCaseForReview to caseClosureApprovalService', async () => {
-      caseClosureApprovalService.returnCaseForReview.mockResolvedValue({} as any);
-
-      await service.returnCaseForReview(1, 'comments', 'supervisor-123', 'tenant-123');
-
-      expect(caseClosureApprovalService.returnCaseForReview).toHaveBeenCalledWith(1, 'comments', 'supervisor-123', 'tenant-123');
-    });
-
-    it('should delegate manualCaseCreate to caseCreationApprovalService', async () => {
-      const dto = {} as any;
-      caseCreationApprovalService.manualCaseCreate.mockResolvedValue({} as any);
-
-      await service.manualCaseCreate(dto, 'user-123', 'tenant-123', 'investigator');
-
-      expect(caseCreationApprovalService.manualCaseCreate).toHaveBeenCalledWith(dto, 'user-123', 'tenant-123', 'investigator');
-    });
-
-    it('should delegate approveCaseCreation to caseCreationApprovalService', async () => {
-      caseCreationApprovalService.approveCaseCreation.mockResolvedValue({} as any);
-
-      await service.approveCaseCreation(1, 'supervisor-123', 'tenant-123');
-
-      expect(caseCreationApprovalService.approveCaseCreation).toHaveBeenCalledWith(1, 'supervisor-123', 'tenant-123');
-    });
-
-    it('should delegate rejectCaseCreation to caseCreationApprovalService', async () => {
-      caseCreationApprovalService.rejectCaseCreation.mockResolvedValue({} as any);
-
-      await service.rejectCaseCreation(1, 'supervisor-123', 'tenant-123', 'reason');
-
-      expect(caseCreationApprovalService.rejectCaseCreation).toHaveBeenCalledWith(1, 'supervisor-123', 'tenant-123', 'reason');
-    });
-
-    it('should delegate completeCase to caseCreationApprovalService', async () => {
-      caseCreationApprovalService.completeCase.mockResolvedValue({} as any);
-
-      await service.completeCase(1, 'user-123', 'tenant-123');
-
-      expect(caseCreationApprovalService.completeCase).toHaveBeenCalledWith(1, 'user-123', 'tenant-123');
-    });
-
-    it('should delegate getAllCases to caseQueryService', async () => {
-      const query = {} as any;
-      caseQueryService.getAllCases.mockResolvedValue({} as any);
-
-      await service.getAllCases(query, 'tenant-123', 'user-123', false);
-
-      expect(caseQueryService.getAllCases).toHaveBeenCalledWith(query, 'tenant-123', 'user-123', false);
-    });
-
-    it('should delegate getUserCases to caseQueryService', async () => {
-      const query = {} as any;
-      caseQueryService.getUserCases.mockResolvedValue({} as any);
-
-      await service.getUserCases('user-123', query, false);
-
-      expect(caseQueryService.getUserCases).toHaveBeenCalledWith('user-123', query, false);
-    });
-
-    it('should delegate getUserWorkloadStats to caseQueryService', async () => {
-      caseQueryService.getUserWorkloadStats.mockResolvedValue({} as any);
-
-      await service.getUserWorkloadStats('user-123', false);
-
-      expect(caseQueryService.getUserWorkloadStats).toHaveBeenCalledWith('user-123', false);
-    });
-
-    it('should delegate updateCase to caseQueryService', async () => {
-      const updateData = { priority: Priority.CRITICAL } as any;
-      caseQueryService.updateCase.mockResolvedValue({} as any);
-
-      await service.updateCase(1, updateData, 'user-123');
-
-      expect(caseQueryService.updateCase).toHaveBeenCalledWith(1, updateData, 'user-123');
-    });
-
-    it('should delegate retrieveCase to caseQueryService', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue({} as any);
-
-      await service.retrieveCase(1, 'tenant-123', false);
-
-      expect(caseQueryService.retrieveCase).toHaveBeenCalledWith(1, 'tenant-123', false);
-    });
-
-    it('should delegate getSubCasesDetails to caseQueryService', async () => {
-      caseQueryService.getSubCasesDetails.mockResolvedValue({} as any);
-
-      await service.getSubCasesDetails(1);
-
-      expect(caseQueryService.getSubCasesDetails).toHaveBeenCalledWith(1);
+      expect((targetService as any)[method]).toHaveBeenCalledWith(...expectedArgs);
     });
   });
 
@@ -723,18 +592,21 @@ describe('CaseService', () => {
       case_type: null,
     };
 
-    it('should complete case creation by investigator with approval required', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(mockDraftCase as any);
-      taskService.getTasksByCaseId.mockResolvedValue([
-        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 }
-      ] as any);
-      const updatedCase = { ...mockDraftCase, ...updateData, status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL };
-
+    const setupMockTransaction = () => {
       const mockTransaction = jest.fn(async (callback) => {
         const mockPrisma = {};
         return await callback(mockPrisma);
       });
       prismaService.$transaction.mockImplementation(mockTransaction);
+    };
+
+    it('should complete case creation by investigator with approval required', async () => {
+      caseQueryService.retrieveCase.mockResolvedValue(mockDraftCase as any);
+      taskService.getTasksByCaseId.mockResolvedValue([
+        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 },
+      ] as any);
+      const updatedCase = { ...mockDraftCase, ...updateData, status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL };
+      setupMockTransaction();
       caseQueryService.updateCase.mockResolvedValue(updatedCase as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
       taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Approve Case Creation' } as any);
@@ -747,22 +619,17 @@ describe('CaseService', () => {
       expect(taskService.createTask).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Approve Case Creation' }),
         'user-123',
-        'tenant-123'
+        'tenant-123',
       );
     });
 
     it('should complete case creation by supervisor without approval', async () => {
       caseQueryService.retrieveCase.mockResolvedValue(mockDraftCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([
-        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 }
+        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 },
       ] as any);
       const updatedCase = { ...mockDraftCase, ...updateData, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT };
-
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {};
-        return await callback(mockPrisma);
-      });
-      prismaService.$transaction.mockImplementation(mockTransaction);
+      setupMockTransaction();
       caseQueryService.updateCase.mockResolvedValue(updatedCase as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
       taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Investigate Case' } as any);
@@ -772,11 +639,7 @@ describe('CaseService', () => {
 
       expect(result.requiresApproval).toBe(false);
       expect(result.message).toContain('ready for investigation');
-      expect(taskService.createTask).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Investigate Case' }),
-        'user-123',
-        'tenant-123'
-      );
+      expect(taskService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'Investigate Case' }), 'user-123', 'tenant-123');
     });
 
     it('should handle FRAUD_AND_AML case type for supervisor', async () => {
@@ -784,15 +647,10 @@ describe('CaseService', () => {
       const fraudAmlCase = { ...mockDraftCase, case_type: CaseType.FRAUD_AND_AML };
       caseQueryService.retrieveCase.mockResolvedValue(fraudAmlCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([
-        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 }
+        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 },
       ] as any);
       const updatedCase = { ...fraudAmlCase, ...fraudAmlData, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT };
-
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {};
-        return await callback(mockPrisma);
-      });
-      prismaService.$transaction.mockImplementation(mockTransaction);
+      setupMockTransaction();
       caseQueryService.updateCase.mockResolvedValue(updatedCase as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
       alertRepository.getAlertByCaseId.mockResolvedValue(undefined as any);
@@ -805,73 +663,61 @@ describe('CaseService', () => {
         'user-123',
         'tenant-123',
         1,
-        Priority.CRITICAL
+        Priority.CRITICAL,
+        CaseCreationType.AUTOMATIC_SYSTEM,
+        'SUPERVISOR',
       );
       expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
         CaseType.AML,
         'user-123',
         'tenant-123',
         1,
-        Priority.CRITICAL
+        Priority.CRITICAL,
+        CaseCreationType.AUTOMATIC_SYSTEM,
+        'SUPERVISOR',
       );
     });
 
-    it('should throw BadRequestException if case not found', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(null as any);
+    it.each([
+      { name: 'case not found', retrieveResult: null, message: 'Case not found' },
+      { name: 'case is not in DRAFT status', retrieveResult: mockCase, message: 'Only cases in DRAFT status can be completed' },
+      {
+        name: 'missing required fields',
+        retrieveResult: mockDraftCase,
+        updateData: { note: 'test' } as any,
+        message: 'Missing required fields',
+      },
+    ])('should throw BadRequestException if $name', async ({ retrieveResult, message, updateData: testUpdateData }) => {
+      caseQueryService.retrieveCase.mockResolvedValue(retrieveResult as any);
 
       await expect(
-        service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
+        service.completeCaseCreation(1, testUpdateData || (updateData as any), 'user-123', 'tenant-123', 'investigator'),
+      ).rejects.toThrow(message);
     });
 
-    it('should throw BadRequestException if case is not in DRAFT status', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(mockCase as any);
-
-      await expect(
-        service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if missing required fields', async () => {
+    it.each([
+      { name: 'Complete New Case task not found', tasks: [], expectedError: InternalServerErrorException },
+      {
+        name: 'Complete New Case task already completed',
+        tasks: [{ ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_30_COMPLETED, task_id: 1 }],
+        expectedError: InternalServerErrorException,
+      },
+    ])('should throw InternalServerErrorException if $name', async ({ tasks, expectedError }) => {
       caseQueryService.retrieveCase.mockResolvedValue(mockDraftCase as any);
+      taskService.getTasksByCaseId.mockResolvedValue(tasks as any);
 
-      await expect(
-        service.completeCaseCreation(1, { note: 'test' } as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw InternalServerErrorException if Complete New Case task not found', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(mockDraftCase as any);
-      taskService.getTasksByCaseId.mockResolvedValue([]);
-
-      await expect(
-        service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(InternalServerErrorException);
-    });
-
-    it('should throw InternalServerErrorException if Complete New Case task already completed', async () => {
-      caseQueryService.retrieveCase.mockResolvedValue(mockDraftCase as any);
-      taskService.getTasksByCaseId.mockResolvedValue([
-        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_30_COMPLETED, task_id: 1 }
-      ] as any);
-
-      await expect(
-        service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator')).rejects.toThrow(
+        expectedError,
+      );
     });
 
     it('should update alert if exists', async () => {
       caseQueryService.retrieveCase.mockResolvedValue(mockDraftCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([
-        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 }
+        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 },
       ] as any);
       const updatedCase = { ...mockDraftCase, ...updateData, status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL };
-
-      const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {};
-        return await callback(mockPrisma);
-      });
-      prismaService.$transaction.mockImplementation(mockTransaction);
+      setupMockTransaction();
       caseQueryService.updateCase.mockResolvedValue(updatedCase as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED, task_id: 1 } as any);
       taskService.createTask.mockResolvedValue({ task_id: 2 } as any);
@@ -886,14 +732,14 @@ describe('CaseService', () => {
           priority_score: 85,
           priority: Priority.CRITICAL,
           alertType: CaseType.FRAUD,
-        })
+        }),
       );
     });
 
     it('should throw InternalServerErrorException on transaction failure', async () => {
       caseQueryService.retrieveCase.mockResolvedValue(mockDraftCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([
-        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 }
+        { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 },
       ] as any);
 
       const mockTransaction = jest.fn(async () => {
@@ -901,9 +747,9 @@ describe('CaseService', () => {
       });
       prismaService.$transaction.mockImplementation(mockTransaction);
 
-      await expect(
-        service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator')
-      ).rejects.toThrow(InternalServerErrorException);
+      await expect(service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator')).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 });

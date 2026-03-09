@@ -33,7 +33,9 @@ export class CouchdbService implements OnModuleInit {
       this.db = this.nanoInstance.use(this.dbName);
       this.logger.log(`Connected to CouchDB database: ${this.dbName}`);
     } catch (error) {
-      this.logger.error(`Failed to initialize CouchDB: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to initialize CouchDB: ${errorMessage}`, errorStack, CouchdbService.name);
       throw error;
     }
   }
@@ -53,8 +55,10 @@ export class CouchdbService implements OnModuleInit {
 
       return { ok: true, id: evidenceId, rev: '' };
     } catch (error) {
-      this.logger.error(`Failed to delete document: ${error.message}`, error.stack);
-      throw new Error(error.message ?? 'Failed to delete attachment', { cause: error });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to delete document: ${errorMessage}`, errorStack, CouchdbService.name);
+      throw new Error(errorMessage, { cause: error });
     }
   }
 
@@ -81,10 +85,9 @@ export class CouchdbService implements OnModuleInit {
     try {
       return await this.db.get(docId);
     } catch (error) {
-      if (error.statusCode === 404) {
-        return null;
-      }
-      this.logger.error(`Failed to get document: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get document: ${errorMessage}`, errorStack, CouchdbService.name);
       throw error;
     }
   }
@@ -103,7 +106,7 @@ export class CouchdbService implements OnModuleInit {
     search?: string;
     page: number;
     limit: number;
-  }) {
+  }): Promise<{ data: any[]; page: number; limit: number; total: number; totalPages: number }> {
     const { id, evidenceId, reportId, tenantId, uploadedBy, taskId, caseId, evidenceType, verified, archive, search, page, limit } = params;
 
     if (!Number.isInteger(page) || page < 1) {
@@ -155,7 +158,9 @@ export class CouchdbService implements OnModuleInit {
         totalPages: Math.ceil(totalCountResult.docs.length / limit),
       };
     } catch (error) {
-      this.logger.error(`Failed to query documents: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to query documents: ${errorMessage}`, errorStack, CouchdbService.name);
       throw new InternalServerErrorException('Unable to fetch document list');
     }
   }
@@ -178,7 +183,9 @@ export class CouchdbService implements OnModuleInit {
       const attachment = await this.db.attachment.get(docId, attachmentName);
       return attachment;
     } catch (error) {
-      this.logger.error(`Failed to get attachment: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get attachment: ${errorMessage}`, errorStack, CouchdbService.name);
       throw error;
     }
   }
@@ -187,7 +194,9 @@ export class CouchdbService implements OnModuleInit {
     try {
       return await this.db.list(params ?? {});
     } catch (error) {
-      this.logger.error(`Failed to list documents: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to list documents: ${errorMessage}`, errorStack, CouchdbService.name);
       throw error;
     }
   }
@@ -196,7 +205,9 @@ export class CouchdbService implements OnModuleInit {
     try {
       return await this.db.destroy(docId, rev);
     } catch (error) {
-      this.logger.error(`Failed to delete document: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to delete document: ${errorMessage}`, errorStack, CouchdbService.name);
       throw error;
     }
   }
@@ -209,7 +220,9 @@ export class CouchdbService implements OnModuleInit {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to create index: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to create index: ${errorMessage}`, errorStack, CouchdbService.name);
       throw error;
     }
   }
@@ -224,23 +237,26 @@ export class CouchdbService implements OnModuleInit {
         include_docs: true,
       });
 
-      for (const row of result.rows) {
-        const { doc } = row;
-
-        if (!doc.archiveFlag) {
+      const updatePromises = result.rows
+        .filter((row) => !row.doc.archiveFlag)
+        .map(async (row) => {
+          const { doc } = row;
           doc.archive = true;
 
-          await this.db.insert({
+          return await this.db.insert({
             ...doc,
             _id: doc._id,
             _rev: doc._rev,
           });
-        }
-      }
+        });
 
-      this.logger.log(`Auto-archived ${result.rows.length} evidence older than 7 days`);
+      await Promise.all(updatePromises);
+
+      this.logger.log(`Auto-archived ${result.rows.length} evidence older than 7 days`, CouchdbService.name);
     } catch (error) {
-      this.logger.error(`Failed to auto-archive evidence: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to auto-archive evidence: ${errorMessage}`, errorStack, CouchdbService.name);
     }
   }
 }

@@ -38,13 +38,16 @@ describe('AuditLogService', () => {
     },
   ];
 
+  // Helper function to create mock PrismaService
+  const createMockPrismaService = () => ({
+    auditLog: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+    },
+  });
+
   beforeEach(async () => {
-    const mockPrismaService = {
-      auditLog: {
-        create: jest.fn(),
-        findMany: jest.fn(),
-      },
-    };
+    const mockPrismaService = createMockPrismaService();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -105,46 +108,23 @@ describe('AuditLogService', () => {
       expect(isUuid(callData.user_id)).toBe(true);
     });
 
-    it('should generate UUID when userId is not provided', async () => {
-      prismaService.auditLog.create.mockResolvedValue(mockAuditLog);
-
-      const dataWithoutUserId = {
-        operation: 'CREATE',
-        entityName: 'Case',
-        actionPerformed: 'Created case 123',
-        outcome: 'success',
-      };
-
-      await service.logAction(dataWithoutUserId);
-
-      const callData = prismaService.auditLog.create.mock.calls[0][0].data;
-      expect(isUuid(callData.user_id)).toBe(true);
-    });
-
-    it('should generate UUID when userId is invalid', async () => {
+    it.each([
+      ['not provided', undefined],
+      ['invalid', 'invalid-uuid'],
+      ['empty string', ''],
+    ])('should generate UUID when userId is %s', async (_desc, userId) => {
       prismaService.auditLog.create.mockResolvedValue(mockAuditLog);
 
       await service.logAction({
         ...actionData,
-        userId: 'invalid-uuid',
+        userId,
       });
 
       const callData = prismaService.auditLog.create.mock.calls[0][0].data;
-      expect(callData.user_id).not.toBe('invalid-uuid');
       expect(isUuid(callData.user_id)).toBe(true);
-    });
-
-    it('should generate UUID when userId is empty string', async () => {
-      prismaService.auditLog.create.mockResolvedValue(mockAuditLog);
-
-      await service.logAction({
-        ...actionData,
-        userId: '',
-      });
-
-      const callData = prismaService.auditLog.create.mock.calls[0][0].data;
-      expect(callData.user_id).not.toBe('');
-      expect(isUuid(callData.user_id)).toBe(true);
+      if (userId !== undefined) {
+        expect(callData.user_id).not.toBe(userId);
+      }
     });
 
     it('should use provided performedAt date', async () => {
@@ -168,65 +148,46 @@ describe('AuditLogService', () => {
 
       const afterCall = new Date();
       const callData = prismaService.auditLog.create.mock.calls[0][0].data;
-      
+
       expect(callData.performed_at).toBeInstanceOf(Date);
       expect(callData.performed_at.getTime()).toBeGreaterThanOrEqual(beforeCall.getTime());
       expect(callData.performed_at.getTime()).toBeLessThanOrEqual(afterCall.getTime());
     });
 
-    it('should log different operations correctly', async () => {
+    it.each([['CREATE'], ['UPDATE'], ['DELETE'], ['VIEW'], ['APPROVE']])('should log operation %s correctly', async (operation) => {
       prismaService.auditLog.create.mockResolvedValue(mockAuditLog);
 
-      const operations = ['CREATE', 'UPDATE', 'DELETE', 'VIEW', 'APPROVE'];
-      
-      for (const operation of operations) {
-        await service.logAction({
-          ...actionData,
-          operation,
-        });
+      await service.logAction({
+        ...actionData,
+        operation,
+      });
 
-        const callData = prismaService.auditLog.create.mock.calls[prismaService.auditLog.create.mock.calls.length - 1][0].data;
-        expect(callData.operation).toBe(operation);
-      }
+      const callData = prismaService.auditLog.create.mock.calls[0][0].data;
+      expect(callData.operation).toBe(operation);
     });
 
-    it('should log different outcomes correctly', async () => {
+    it.each([['success'], ['failure'], ['denied'], ['error']])('should log outcome %s correctly', async (outcome) => {
       prismaService.auditLog.create.mockResolvedValue(mockAuditLog);
 
-      const outcomes = ['success', 'failure', 'denied', 'error'];
-      
-      for (const outcome of outcomes) {
-        await service.logAction({
-          ...actionData,
-          outcome,
-        });
+      await service.logAction({
+        ...actionData,
+        outcome,
+      });
 
-        const callData = prismaService.auditLog.create.mock.calls[prismaService.auditLog.create.mock.calls.length - 1][0].data;
-        expect(callData.outcome).toBe(outcome);
-      }
+      const callData = prismaService.auditLog.create.mock.calls[0][0].data;
+      expect(callData.outcome).toBe(outcome);
     });
 
-    it('should handle database error and throw', async () => {
-      const error = new Error('Database error');
-      prismaService.auditLog.create.mockRejectedValue(error);
-
-      await expect(service.logAction(actionData)).rejects.toThrow('Database error');
-    });
-
-    it('should handle different entity names', async () => {
+    it.each([['Case'], ['Alert'], ['Task'], ['Comment'], ['Evidence']])('should handle entity name %s', async (entityName) => {
       prismaService.auditLog.create.mockResolvedValue(mockAuditLog);
 
-      const entityNames = ['Case', 'Alert', 'Task', 'Comment', 'Evidence'];
-      
-      for (const entityName of entityNames) {
-        await service.logAction({
-          ...actionData,
-          entityName,
-        });
+      await service.logAction({
+        ...actionData,
+        entityName,
+      });
 
-        const callData = prismaService.auditLog.create.mock.calls[prismaService.auditLog.create.mock.calls.length - 1][0].data;
-        expect(callData.entity_name).toBe(entityName);
-      }
+      const callData = prismaService.auditLog.create.mock.calls[0][0].data;
+      expect(callData.entity_name).toBe(entityName);
     });
 
     it('should handle long action descriptions', async () => {
@@ -240,6 +201,13 @@ describe('AuditLogService', () => {
 
       const callData = prismaService.auditLog.create.mock.calls[0][0].data;
       expect(callData.action_performed).toBe(longAction);
+    });
+
+    it('should handle database error and throw', async () => {
+      const error = new Error('Database error');
+      prismaService.auditLog.create.mockRejectedValue(error);
+
+      await expect(service.logAction(actionData)).rejects.toThrow('Database error');
     });
   });
 
@@ -263,30 +231,14 @@ describe('AuditLogService', () => {
       });
     });
 
-    it('should use "unknown" when user is null', async () => {
+    it.each([
+      ['null', null],
+      ['undefined', undefined],
+      ['without sub', { id: 'test' }],
+    ])('should generate UUID when user is %s', async (_desc, user) => {
       prismaService.auditLog.create.mockResolvedValue(mockAuditLog);
 
-      await service.logPermissionDenied(null, 'Alert', 'UPDATE');
-
-      const callData = prismaService.auditLog.create.mock.calls[0][0].data;
-      expect(callData.user_id).not.toBe('unknown');
-      // Since 'unknown' is not a valid UUID, it should generate a new UUID
-      expect(isUuid(callData.user_id)).toBe(true);
-    });
-
-    it('should use "unknown" when user is undefined', async () => {
-      prismaService.auditLog.create.mockResolvedValue(mockAuditLog);
-
-      await service.logPermissionDenied(undefined, 'Task', 'CREATE');
-
-      const callData = prismaService.auditLog.create.mock.calls[0][0].data;
-      expect(isUuid(callData.user_id)).toBe(true);
-    });
-
-    it('should use "unknown" when user.sub is not present', async () => {
-      prismaService.auditLog.create.mockResolvedValue(mockAuditLog);
-
-      await service.logPermissionDenied({ id: 'test' }, 'Evidence', 'VIEW');
+      await service.logPermissionDenied(user, 'Alert', 'UPDATE');
 
       const callData = prismaService.auditLog.create.mock.calls[0][0].data;
       expect(isUuid(callData.user_id)).toBe(true);
@@ -365,42 +317,20 @@ describe('AuditLogService', () => {
       });
     });
 
-    it('should retrieve logs with custom limit', async () => {
+    it.each([
+      ['custom limit', 10, undefined, 10, 0],
+      ['custom offset', undefined, 100, 50, 100],
+      ['both custom', 25, 75, 25, 75],
+    ])('should retrieve logs with %s', async (_desc, limit, offset, expectedTake, expectedSkip) => {
       prismaService.auditLog.findMany.mockResolvedValue(mockAuditLogs);
 
-      const result = await service.getLogs(10);
+      const result = await service.getLogs(limit, offset);
 
       expect(result).toEqual(mockAuditLogs);
       expect(prismaService.auditLog.findMany).toHaveBeenCalledWith({
         orderBy: { performed_at: 'desc' },
-        take: 10,
-        skip: 0,
-      });
-    });
-
-    it('should retrieve logs with custom offset', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue(mockAuditLogs);
-
-      const result = await service.getLogs(50, 100);
-
-      expect(result).toEqual(mockAuditLogs);
-      expect(prismaService.auditLog.findMany).toHaveBeenCalledWith({
-        orderBy: { performed_at: 'desc' },
-        take: 50,
-        skip: 100,
-      });
-    });
-
-    it('should retrieve logs with both custom limit and offset', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue(mockAuditLogs);
-
-      const result = await service.getLogs(25, 75);
-
-      expect(result).toEqual(mockAuditLogs);
-      expect(prismaService.auditLog.findMany).toHaveBeenCalledWith({
-        orderBy: { performed_at: 'desc' },
-        take: 25,
-        skip: 75,
+        take: expectedTake,
+        skip: expectedSkip,
       });
     });
 
@@ -425,40 +355,20 @@ describe('AuditLogService', () => {
       );
     });
 
-    it('should handle limit of 1', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue([mockAuditLogs[0]]);
+    it.each([
+      ['limit of 1', 1, 0],
+      ['large limit', 1000, 0],
+      ['large offset', 50, 10000],
+      ['zero limit', 0, 0],
+    ])('should handle %s', async (_desc, limit, offset) => {
+      prismaService.auditLog.findMany.mockResolvedValue(limit === 1 ? [mockAuditLogs[0]] : []);
 
-      const result = await service.getLogs(1);
-
-      expect(result).toHaveLength(1);
-      expect(prismaService.auditLog.findMany).toHaveBeenCalledWith({
-        orderBy: { performed_at: 'desc' },
-        take: 1,
-        skip: 0,
-      });
-    });
-
-    it('should handle large limit values', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue(mockAuditLogs);
-
-      await service.getLogs(1000);
+      await service.getLogs(limit, offset);
 
       expect(prismaService.auditLog.findMany).toHaveBeenCalledWith({
         orderBy: { performed_at: 'desc' },
-        take: 1000,
-        skip: 0,
-      });
-    });
-
-    it('should handle large offset values', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue([]);
-
-      await service.getLogs(50, 10000);
-
-      expect(prismaService.auditLog.findMany).toHaveBeenCalledWith({
-        orderBy: { performed_at: 'desc' },
-        take: 50,
-        skip: 10000,
+        take: limit,
+        skip: offset,
       });
     });
 
@@ -467,18 +377,6 @@ describe('AuditLogService', () => {
       prismaService.auditLog.findMany.mockRejectedValue(error);
 
       await expect(service.getLogs()).rejects.toThrow('Query failed');
-    });
-
-    it('should handle zero limit', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue([]);
-
-      await service.getLogs(0);
-
-      expect(prismaService.auditLog.findMany).toHaveBeenCalledWith({
-        orderBy: { performed_at: 'desc' },
-        take: 0,
-        skip: 0,
-      });
     });
   });
 
@@ -521,39 +419,15 @@ describe('AuditLogService', () => {
       });
     });
 
-    it('should filter by operation ALERT_UPDATED', async () => {
+    it.each([[1], [100], [999], [12345], [0]])('should handle alert ID %i', async (id) => {
       prismaService.auditLog.findMany.mockResolvedValue(mockAlertHistory);
 
-      await service.getActionHistoryForAlert(alertId);
+      await service.getActionHistoryForAlert(id);
 
       const callArgs = prismaService.auditLog.findMany.mock.calls[0][0];
+      expect(callArgs.where.action_performed).toEqual({ contains: `${id}` });
       expect(callArgs.where.operation).toBe('ALERT_UPDATED');
-    });
-
-    it('should filter by entity_name AlertService', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue(mockAlertHistory);
-
-      await service.getActionHistoryForAlert(alertId);
-
-      const callArgs = prismaService.auditLog.findMany.mock.calls[0][0];
       expect(callArgs.where.entity_name).toBe('AlertService');
-    });
-
-    it('should filter by action_performed containing alertId', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue(mockAlertHistory);
-
-      await service.getActionHistoryForAlert(456);
-
-      const callArgs = prismaService.auditLog.findMany.mock.calls[0][0];
-      expect(callArgs.where.action_performed).toEqual({ contains: '456' });
-    });
-
-    it('should order results by performed_at in ascending order', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue(mockAlertHistory);
-
-      await service.getActionHistoryForAlert(alertId);
-
-      const callArgs = prismaService.auditLog.findMany.mock.calls[0][0];
       expect(callArgs.orderBy).toEqual({ performed_at: 'asc' });
     });
 
@@ -564,28 +438,6 @@ describe('AuditLogService', () => {
 
       expect(result).toEqual([]);
       expect(result).toHaveLength(0);
-    });
-
-    it('should handle different alert IDs', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue(mockAlertHistory);
-
-      const alertIds = [1, 100, 999, 12345];
-      
-      for (const id of alertIds) {
-        await service.getActionHistoryForAlert(id);
-        
-        const callArgs = prismaService.auditLog.findMany.mock.calls[prismaService.auditLog.findMany.mock.calls.length - 1][0];
-        expect(callArgs.where.action_performed).toEqual({ contains: `${id}` });
-      }
-    });
-
-    it('should handle alert ID 0', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue([]);
-
-      await service.getActionHistoryForAlert(0);
-
-      const callArgs = prismaService.auditLog.findMany.mock.calls[0][0];
-      expect(callArgs.where.action_performed).toEqual({ contains: '0' });
     });
 
     it('should handle database error and throw', async () => {
@@ -638,34 +490,18 @@ describe('AuditLogService', () => {
       });
     });
 
-    it('should search for case ID in multiple formats', async () => {
+    it.each([[1], [100], [789], [12345], [0]])('should search for case ID %i in multiple formats', async (id) => {
       prismaService.auditLog.findMany.mockResolvedValue(mockCaseHistory);
 
-      await service.getActionHistoryForCase(789);
+      await service.getActionHistoryForCase(id);
 
       const callArgs = prismaService.auditLog.findMany.mock.calls[0][0];
       expect(callArgs.where.OR).toEqual([
-        { action_performed: { contains: '789' } },
-        { action_performed: { contains: 'case 789' } },
-        { action_performed: { contains: 'Case 789' } },
+        { action_performed: { contains: id.toString() } },
+        { action_performed: { contains: `case ${id}` } },
+        { action_performed: { contains: `Case ${id}` } },
       ]);
-    });
-
-    it('should filter by entity_name in Alert or Case', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue(mockCaseHistory);
-
-      await service.getActionHistoryForCase(caseId);
-
-      const callArgs = prismaService.auditLog.findMany.mock.calls[0][0];
       expect(callArgs.where.entity_name).toEqual({ in: ['Alert', 'Case'] });
-    });
-
-    it('should order results by performed_at in ascending order', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue(mockCaseHistory);
-
-      await service.getActionHistoryForCase(caseId);
-
-      const callArgs = prismaService.auditLog.findMany.mock.calls[0][0];
       expect(callArgs.orderBy).toEqual({ performed_at: 'asc' });
     });
 
@@ -678,30 +514,6 @@ describe('AuditLogService', () => {
       expect(result).toHaveLength(0);
     });
 
-    it('should handle different case IDs', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue(mockCaseHistory);
-
-      const caseIds = [1, 100, 999, 12345];
-      
-      for (const id of caseIds) {
-        await service.getActionHistoryForCase(id);
-        
-        const callArgs = prismaService.auditLog.findMany.mock.calls[prismaService.auditLog.findMany.mock.calls.length - 1][0];
-        expect(callArgs.where.OR).toContainEqual({ action_performed: { contains: id.toString() } });
-        expect(callArgs.where.OR).toContainEqual({ action_performed: { contains: `case ${id}` } });
-        expect(callArgs.where.OR).toContainEqual({ action_performed: { contains: `Case ${id}` } });
-      }
-    });
-
-    it('should handle case ID 0', async () => {
-      prismaService.auditLog.findMany.mockResolvedValue([]);
-
-      await service.getActionHistoryForCase(0);
-
-      const callArgs = prismaService.auditLog.findMany.mock.calls[0][0];
-      expect(callArgs.where.OR).toContainEqual({ action_performed: { contains: '0' } });
-    });
-
     it('should handle database error and throw', async () => {
       const error = new Error('Connection timeout');
       prismaService.auditLog.findMany.mockRejectedValue(error);
@@ -709,28 +521,15 @@ describe('AuditLogService', () => {
       await expect(service.getActionHistoryForCase(caseId)).rejects.toThrow('Connection timeout');
     });
 
-    it('should find logs with lowercase case prefix', async () => {
-      const logsWithLowercase = [{
-        ...mockCaseHistory[0],
-        action_performed: 'Updated case 456',
-      }];
-      prismaService.auditLog.findMany.mockResolvedValue(logsWithLowercase);
+    it.each([
+      ['lowercase', { ...mockCaseHistory[0], action_performed: 'Updated case 456' }],
+      ['uppercase', { ...mockCaseHistory[0], action_performed: 'Updated Case 456' }],
+    ])('should find logs with %s case prefix', async (_desc, log) => {
+      prismaService.auditLog.findMany.mockResolvedValue([log]);
 
       const result = await service.getActionHistoryForCase(caseId);
 
-      expect(result).toEqual(logsWithLowercase);
-    });
-
-    it('should find logs with uppercase Case prefix', async () => {
-      const logsWithUppercase = [{
-        ...mockCaseHistory[0],
-        action_performed: 'Updated Case 456',
-      }];
-      prismaService.auditLog.findMany.mockResolvedValue(logsWithUppercase);
-
-      const result = await service.getActionHistoryForCase(caseId);
-
-      expect(result).toEqual(logsWithUppercase);
+      expect(result).toEqual([log]);
     });
 
     it('should find logs from both Alert and Case entities', async () => {
