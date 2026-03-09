@@ -28,6 +28,14 @@ class EnvironmentVariables {
   TAZAMA_AUTH_URL: string;
 
   @IsString()
+  @IsOptional()
+  AI_MODEL_ENDPOINT: string;
+
+  @IsOptional()
+  @IsString()
+  KEYCLOAK_GROUP_NAME?: string;
+
+  @IsString()
   AUTH_PUBLIC_KEY_PATH: string;
 
   @IsString()
@@ -76,9 +84,49 @@ class EnvironmentVariables {
 
   @IsString()
   ALERT_PRIORITY_CRON_SCHEDULE: string;
+
+  @IsOptional()
+  @IsString()
+  FLOWABLE_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  FLOWABLE_USERNAME?: string;
+
+  @IsOptional()
+  @IsString()
+  FLOWABLE_PASSWORD?: string;
+
+  @IsOptional()
+  @IsString()
+  COUCHDB_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  COUCHDB_USERNAME?: string;
+
+  @IsOptional()
+  @IsString()
+  COUCHDB_PASSWORD?: string;
+
+  @IsOptional()
+  @IsString()
+  COUCHDB_DATABASE?: string;
+
+  @IsOptional()
+  @IsString()
+  VOILA_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  GOLD_LAKEHOUSE_API_URL?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  GOLD_LAKEHOUSE_TIMEOUT?: string;
 }
 
-export const validate = (config: Record<string, unknown>) => {
+export const validate = (config: Record<string, unknown>): EnvironmentVariables => {
   const validatedConfig = plainToClass(EnvironmentVariables, config);
   const errors = validateSync(validatedConfig);
 

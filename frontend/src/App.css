@@ -11,9 +11,11 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -22,6 +24,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -39,4 +42,29 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* MDX Editor Link Dialog - Ensure it appears above modals */
+._linkDialogPopoverContent_1e2ox_601 {
+  z-index: 9999 !important;
+}
+
+._popupContainer_1e2ox_1240 {
+  z-index: 9999 !important;
+}
+
+/* Additional MDX Editor popups and dialogs */
+[class*='linkDialogPopover'],
+[class*='popupContainer'],
+[class*='_linkDialog'],
+[class*='_dialogPopover'] {
+  z-index: 9999 !important;
+}
+
+/* Ensure all MDX editor overlays appear above modals (modals are z-50) */
+.mdx-editor-container [role='dialog'],
+.mdx-editor-container [role='alertdialog'],
+.mdx-editor [role='dialog'],
+.mdx-editor [role='alertdialog'] {
+  z-index: 9999 !important;
 }

@@ -1,20 +1,48 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import LayoutWithProvider from '../shared/components/layout/LayoutWithProvider';
-import ProtectedRoute from '../features/auth/components/ProtectedRoute';
-import Login from '../features/auth/pages/Login';
-import AlertsDashboard from '../features/alerts/pages/AlertsDashboard';
-import CasesDashboard from '../features/cases/pages/CasesDashboard';
-import SupervisorDashboard from '../features/supervisor/pages/SupervisorDashboard';
-import AdminDashboard from '../features/admin/pages/AdminDashboard';
+import { lazy, Suspense } from 'react';
+import LayoutWithProvider from '@/shared/components/layout/LayoutWithProvider';
+import ProtectedRoute from '@/features/auth/components/ProtectedRoute';
+import RoleBasedRedirect from '@/shared/components/navigation/RoleBasedRedirect';
+
+// Dynamic imports for route-level code splitting
+const Login = lazy(async () => await import('@/features/auth/pages/Login'));
+const Dashboard = lazy(
+  async () => await import('@/features/dashboard/pages/Dashboard'),
+);
+const Reports = lazy(
+  async () => await import('@/features/reports/pages/CaseStatusReport'),
+);
+const AlertsDashboard = lazy(
+  async () => await import('@/features/alerts/pages/AlertsDashboard'),
+);
+const CasesDashboard = lazy(
+  async () => await import('@/features/cases/pages/CasesDashboard'),
+);
+const AdminDashboard = lazy(
+  async () => await import('@/features/admin/pages/AdminDashboard'),
+);
+const ReferenceIdDashboard = lazy(
+  async () => await import('@/features/admin/pages/ReferenceIdDashboard'),
+);
+
+// Loading fallback component
+const PageLoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-gray-600">Loading page...</p>
+    </div>
+  </div>
+);
 
 export const router = createBrowserRouter([
   {
     path: '/login',
-    element: <Login />,
-  },
-  {
-    path: '/',
-    element: <Navigate to="/alerts" replace />,
+    element: (
+      <Suspense fallback={<PageLoadingFallback />}>
+        <Login />
+      </Suspense>
+    ),
   },
   {
     path: '/',
@@ -25,25 +53,129 @@ export const router = createBrowserRouter([
     ),
     children: [
       {
+        index: true,
+        element: <RoleBasedRedirect />,
+      },
+      {
+        path: 'dashboard',
+        element: (
+          <ProtectedRoute>
+            <Suspense fallback={<PageLoadingFallback />}>
+              <Dashboard />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports',
+        element: (
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+          >
+            <Suspense fallback={<PageLoadingFallback />}>
+              <Reports />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: 'alerts',
-        element: <AlertsDashboard />,
+        element: (
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+          >
+            <Suspense fallback={<PageLoadingFallback />}>
+              <AlertsDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'cases',
-        element: <CasesDashboard />,
+        element: (
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={[
+              'CMS_SUPERVISOR',
+              'CMS_INVESTIGATOR',
+              'CMS_COMPLIANCE_OFFICER',
+            ]}
+          >
+            <Suspense fallback={<PageLoadingFallback />}>
+              <CasesDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        ),
       },
       {
-        path: 'supervisor',
-        element: <SupervisorDashboard />,
+        path: 'cases/:caseId',
+        element: (
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={[
+              'CMS_SUPERVISOR',
+              'CMS_INVESTIGATOR',
+              'CMS_COMPLIANCE_OFFICER',
+            ]}
+          >
+            <Suspense fallback={<PageLoadingFallback />}>
+              <CasesDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'alerts/:alertId',
+        element: (
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+          >
+            <Suspense fallback={<PageLoadingFallback />}>
+              <AlertsDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports/:reportType?',
+        element: (
+          <ProtectedRoute
+            requireBackendAccess
+            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
+          >
+            <Suspense fallback={<PageLoadingFallback />}>
+              <Reports />
+            </Suspense>
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'admin',
-        element: <AdminDashboard />,
+        element: (
+          <ProtectedRoute requireBackendAccess requiredRoles={['CMS_ADMIN']}>
+            <Suspense fallback={<PageLoadingFallback />}>
+              <AdminDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reference_id',
+        element: (
+          <ProtectedRoute requireBackendAccess requiredRoles={['CMS_ADMIN']}>
+            <Suspense fallback={<PageLoadingFallback />}>
+              <ReferenceIdDashboard />
+            </Suspense>
+          </ProtectedRoute>
+        ),
       },
     ],
   },
   {
     path: '*',
-    element: <Navigate to="/alerts" replace />,
+    element: <Navigate to="/dashboard" replace />,
   },
 ]);

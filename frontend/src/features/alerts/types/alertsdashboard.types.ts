@@ -1,29 +1,27 @@
-import React from 'react';
+import type React from 'react';
 
-// Re-export Alert from triage types to maintain consistency
+import type { TablePaginationInfo } from '@/shared/types/pagination.types';
+
 export type { Alert, Priority, AlertType } from './triage.types';
 
-// Transaction message interface
 export interface TransactionMessage {
-  id: string;
+  id: number | string;
   type: string;
   description: string;
   timestamp: string;
   status: 'sent' | 'received' | 'processing' | 'failed';
 }
 
-// Search and filter interfaces
 export interface AlertsSearchFilters {
   query: string;
   source: string;
-  type: string; // Alert type filter
-  priority: string; // Priority filter
+  type: string;
+  priority: string;
   timeRange: string;
   startDate?: string;
   endDate?: string;
 }
 
-// Table column interface for alerts
 export interface AlertsTableColumn<T> {
   key: keyof T | string;
   header: string;
@@ -33,7 +31,6 @@ export interface AlertsTableColumn<T> {
   align?: 'left' | 'center' | 'right';
 }
 
-// Table action interface for alerts
 export interface AlertsTableAction<T> {
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
@@ -42,20 +39,13 @@ export interface AlertsTableAction<T> {
   disabled?: (row: T) => boolean;
 }
 
-// Props interfaces for components
 export interface AlertsTableProps<T> {
   data: T[];
-  columns: AlertsTableColumn<T>[];
-  actions?: AlertsTableAction<T>[];
+  columns: Array<AlertsTableColumn<T>>;
+  actions?: Array<AlertsTableAction<T>>;
   loading?: boolean;
   emptyMessage?: string;
-  pagination?: {
-    currentPage: number;
-    totalPages: number;
-    pageSize: number;
-    totalItems: number;
-    onPageChange: (page: number) => void;
-  };
+  pagination?: TablePaginationInfo;
   onSort?: (column: keyof T | string, direction: 'asc' | 'desc') => void;
   sortColumn?: keyof T | string;
   sortDirection?: 'asc' | 'desc';

@@ -1,93 +1,152 @@
 import React from 'react';
-
-export type CaseRow = {
-  id: number;
-  type: string;
-  typeColor: string; // tailwind ring/background text classes
-  status: string;
-  statusColor: string; // tailwind classes
-  typologyId: string;
-  score: number;
-  createdOn: string;
-  pickedOn: string;
-  action: 'View' | 'Complete';
-  reassignEnabled: boolean;
-  assignee?: string;
-};
+import type { CaseRow } from './casesTable.utils';
+import {
+  getScoreColor,
+  getSarStrStatusColor,
+  formatSarStrStatus,
+} from './casesTable.utils';
+import { getCaseStatusBadge } from '@/shared/constants/case.constant';
+import { TablePagination, type TablePaginationInfo } from '@/shared';
 
 interface CasesTableProps {
   rows: CaseRow[];
   onView: (row: CaseRow) => void;
-  onComplete: (row: CaseRow) => void;
-  onReassign: (row: CaseRow) => void;
+  pagination?: TablePaginationInfo;
+  isComplianceOfficer?: boolean;
 }
 
-const CasesTable: React.FC<CasesTableProps> = ({ rows, onView, onComplete, onReassign }) => {
-  return (
+const CasesTable: React.FC<CasesTableProps> = ({
+  rows,
+  onView,
+  pagination,
+  isComplianceOfficer = false,
+}) => (
+  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Case ID</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Case Type</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Typology ID</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Typology Score</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created on</th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Picked on</th>
-            <th scope="col" className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              <span className="hidden sm:inline">Case ID</span>
+              <span className="sm:hidden">ID</span>
+            </th>
+
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              <span className="hidden lg:inline">Case Type</span>
+              <span className="lg:hidden">Type</span>
+            </th>
+
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Status
+            </th>
+
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              <span className="hidden sm:inline">Score</span>
+              <span className="sm:hidden">%</span>
+            </th>
+
+            {isComplianceOfficer && (
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                <span className="hidden lg:inline">SAR/STR Status</span>
+                <span className="lg:hidden">SAR/STR</span>
+              </th>
+            )}
+
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Created
+            </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100 bg-white">
-          {rows.map((c) => (
-            <tr key={c.id} className="hover:bg-gray-50/50">
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{c.id}</td>
-              <td className="whitespace-nowrap px-4 py-3">
-                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${c.typeColor}`}>
-                  {c.type}
-                </span>
-              </td>
-              <td className="whitespace-nowrap px-4 py-3">
-                <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${c.statusColor}`}>
-                  {c.status}
-                </span>
-              </td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{c.typologyId}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{c.score}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{c.createdOn}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{c.pickedOn}</td>
-              <td className="whitespace-nowrap px-4 py-3">
-                <div className="flex justify-end gap-2">
-                  {c.action === 'Complete' ? (
-                    <button
-                      onClick={() => onComplete(c)}
-                      className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      Complete
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => onView(c)}
-                      className="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      View
-                    </button>
-                  )}
-                  <button
-                    onClick={() => onReassign(c)}
-                    className="inline-flex items-center rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50"
-                    disabled={!c.reassignEnabled}
-                  >
-                    Reassign
-                  </button>
-                </div>
+
+        <tbody className="bg-white divide-y divide-gray-200">
+          {rows.length === 0 ? (
+            <tr>
+              <td
+                colSpan={isComplianceOfficer ? 6 : 5}
+                className="px-6 py-12 text-center text-gray-500"
+              >
+                No cases available.
               </td>
             </tr>
-          ))}
+          ) : (
+            rows.map((c) => (
+              <tr
+                key={c.id}
+                className="hover:bg-gray-50 cursor-pointer"
+                onClick={() => {
+                  onView(c);
+                }}
+              >
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                  CASE-{c.id}
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {c.type || 'N/A'}
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <span
+                    className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ring-1 ring-gray-200 ${c.statusColor}`}
+                  >
+                    {getCaseStatusBadge(c.status)}
+                  </span>
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <span
+                    className={`inline-flex px-2 py-0.5 text-xs font-bold rounded-full ${getScoreColor(
+                      c.score,
+                    )}`}
+                  >
+                    {c.score}%
+                  </span>
+                </td>
+
+                {isComplianceOfficer && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span
+                      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ring-1 ring-gray-200 ${getSarStrStatusColor(
+                        c.sarStrStatus ?? 'N/A',
+                      )}`}
+                    >
+                      {formatSarStrStatus(c.sarStrStatus ?? 'N/A')}
+                    </span>
+                  </td>
+                )}
+
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {c.createdOn}
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
-  );
-};
+
+    {pagination && (
+      <TablePagination pagination={pagination} itemLabel="cases" />
+    )}
+  </div>
+);
 
 export default CasesTable;

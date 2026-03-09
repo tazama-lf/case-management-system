@@ -2,15 +2,40 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
-import type { SidebarProps, NavItem } from '../../types/navigation.types';
+import { useAuth } from '@/features/auth/components/AuthContext';
+import type { SidebarProps, NavItem } from '@/shared/types/navigation.types';
 
-const Sidebar: React.FC<SidebarProps> = ({ navigation, user, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ navigation, onLogout }) => {
   const location = useLocation();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const {
+    hasAdminRole,
+    hasCMSAdminRole,
+    hasInvestigatorRole,
+    hasSupervisorRole,
+    hasComplianceOfficerRole,
+    hasBackendClaim,
+  } = useAuth();
 
   const hasAccess = (item: NavItem): boolean => {
-    if (!item.roles || !user?.roles) return true;
-    return item.roles.some((role) => user.roles.includes(role));
+    if (!item.roles || item.roles.length === 0) return true;
+
+    return item.roles.some((role) => {
+      switch (role) {
+        case 'CMS_ADMIN':
+          return hasCMSAdminRole();
+        case 'alert-triage':
+          return hasAdminRole(); // Legacy admin role includes alert-triage
+        case 'CMS_INVESTIGATOR':
+          return hasInvestigatorRole();
+        case 'CMS_SUPERVISOR':
+          return hasSupervisorRole();
+        case 'CMS_COMPLIANCE_OFFICER':
+          return hasComplianceOfficerRole();
+        default:
+          return hasBackendClaim(role);
+      }
+    });
   };
 
   const isActive = (href: string): boolean => {
@@ -41,7 +66,9 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, user, onLogout }) => {
         <div className="flex items-center">
           {hasChildren ? (
             <button
-              onClick={() => toggleExpanded(item.href)}
+              onClick={() => {
+                toggleExpanded(item.href);
+              }}
               className={`
                 group flex w-full items-center gap-x-3 rounded-md p-2 text-left text-sm font-semibold leading-6 transition-colors duration-200
                 ${
@@ -116,19 +143,17 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, user, onLogout }) => {
 
   return (
     <div className="flex h-full grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-2">
-      {/* Logo/Brand */}
+      {}
       <div className="flex h-16 shrink-0 items-center">
         <div className="flex items-center">
-          {/* <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">T</span>
-          </div> */}
+          {}
           <span className="ml-3 text-xl font-semibold text-gray-900">
             Investigation Platform
           </span>
         </div>
       </div>
 
-      {/* Navigation */}
+      {}
       <nav className="flex flex-1 flex-col">
         <ul role="list" className="flex flex-1 flex-col gap-y-7">
           <li>
@@ -137,8 +162,9 @@ const Sidebar: React.FC<SidebarProps> = ({ navigation, user, onLogout }) => {
             </ul>
           </li>
 
-          {/* User section */}
-          <li className="mt-auto">
+          {/* User profile section and logout */}
+          <li className="mt-auto border-t border-gray-200 pt-4">
+            {/* Logout button */}
             {onLogout && (
               <button
                 onClick={onLogout}

@@ -1,6 +1,5 @@
-import React from 'react';
+import type React from 'react';
 
-// Constants matching backend Prisma schema
 export const Priority = {
   NEW: 'NEW',
   URGENT: 'URGENT',
@@ -22,12 +21,12 @@ export const AlertType = {
   FRAUD: 'FRAUD',
   AML: 'AML',
   FRAUD_AND_AML: 'FRAUD_AND_AML',
-  NONE: 'NONE',
 } as const;
 
 export const CaseStatus = {
   STATUS_00_DRAFT: 'STATUS_00_DRAFT',
-  STATUS_01_PENDING_CASE_CREATION_APPROVAL: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
+  STATUS_01_PENDING_CASE_CREATION_APPROVAL:
+    'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
   STATUS_02_READY_FOR_ASSIGNMENT: 'STATUS_02_READY_FOR_ASSIGNMENT',
   STATUS_03_RETURNED: 'STATUS_03_RETURNED',
   STATUS_10_ASSIGNED: 'STATUS_10_ASSIGNED',
@@ -44,9 +43,8 @@ export const CaseStatus = {
   STATUS_99_ABANDONED: 'STATUS_99_ABANDONED',
 } as const;
 
-// Action History types
 export interface ActionHistory {
-  audit_log_id: string;
+  audit_log_id: number;
   user_id: string;
   operation: string;
   entity_name: string;
@@ -55,7 +53,13 @@ export interface ActionHistory {
   performed_at: string;
 }
 
-// Type aliases
+export interface TransactionHistoryDto {
+  transactionId: number;
+  tenantId: string;
+  endToEndId: string;
+  transactionData: unknown;
+  createdAt: Date;
+}
 
 export const CaseType = {
   FRAUD: 'FRAUD',
@@ -68,7 +72,6 @@ export const CaseCreationType = {
   ALERT_CONVERSION: 'ALERT_CONVERSION',
 } as const;
 
-// Type unions from constants
 export type Priority = (typeof Priority)[keyof typeof Priority];
 export type AlertStatus = (typeof AlertStatus)[keyof typeof AlertStatus];
 export type AlertType = (typeof AlertType)[keyof typeof AlertType];
@@ -77,27 +80,33 @@ export type CaseType = (typeof CaseType)[keyof typeof CaseType];
 export type CaseCreationType =
   (typeof CaseCreationType)[keyof typeof CaseCreationType];
 
-// Core Alert interface matching backend schema
+export interface AlertData {
+  status?: string;
+  metaData?: Record<string, unknown>;
+  timestamp?: string;
+  tadpResult?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 export interface Alert extends Record<string, unknown> {
-  alert_id: string;
+  alert_id: number;
   tenant_id: string;
   priority: Priority;
   alert_type?: AlertType | null;
   source?: string;
   txtp?: string;
   message: string;
-  alert_data: unknown;
+  alert_data?: AlertData;
   transaction: unknown;
   network_map: unknown;
   confidence_per: number;
   created_at: string;
-  case_id?: string;
+  case_id?: number;
   prediction_outcome?: string;
 }
 
-// Case interface matching backend schema
 export interface Case {
-  case_id: string;
+  case_id: number;
   case_creator_user_id: string;
   case_owner_user_id: string;
   tenant_id: string;
@@ -105,12 +114,11 @@ export interface Case {
   priority: Priority;
   created_at: string;
   updated_at: string;
-  parent_id?: string;
+  parent_id?: number;
   case_type: CaseType;
   case_creation_type: CaseCreationType;
 }
 
-// Filter interface for alerts API
 export interface AlertsFilter {
   priority?: string;
   status?: string;
@@ -118,13 +126,13 @@ export interface AlertsFilter {
   alertType?: string;
   source?: string;
   search?: string;
+  reportStatus?: string;
   page?: number;
   limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
 
-// Pagination response interface
 export interface PaginationResponse {
   currentPage: number;
   totalPages: number;
@@ -132,26 +140,25 @@ export interface PaginationResponse {
   pageSize: number;
 }
 
-// Alerts API response interface
 export interface AlertsApiResponse {
   alerts: Alert[];
   pagination: PaginationResponse;
 }
 
-// DTO interfaces matching backend DTOs
-
-// Manual Triage DTO - matches backend ManualTriageDto
 export interface ManualTriageDto {
   confidence_per?: number;
   priority?: Priority;
   priorityScore: number;
   alertType?: AlertType;
-  predictionOutcome?: 'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE';
+  predictionOutcome?:
+    | 'FALSE_POSITIVE'
+    | 'TRUE_POSITIVE'
+    | 'FALSE_NEGATIVE'
+    | 'TRUE_NEGATIVE';
   note: string;
   status: CaseStatus;
 }
 
-// Update Alert DTO
 export interface UpdateAlertDto {
   confidence_per?: number;
   priority?: Priority;
@@ -159,69 +166,58 @@ export interface UpdateAlertDto {
   note?: string;
 }
 
-// Convert Alert to Case DTO
 export interface ConvertToCaseDto {
   priority: Priority;
   caseType: 'FRAUD' | 'AML' | 'FRAUD_AND_AML';
   caseOwnerUserId?: string;
-  // Optional risk info extracted from alert.alert_data.tadpResult.typologyResult[0]
   riskCategory?: string;
   riskScore?: number;
   riskComponents?: RiskComponent[];
 }
 
-// Risk types extracted from alert data
 export interface RiskComponent {
-  id: string;
+  id: number;
   wght: number;
 }
 
 export interface RiskCategory {
-  id: string;
+  id: number;
   result: number;
   ruleResults: RiskComponent[];
 }
 
-// Convert Alert to Case Response
 export interface ConvertToCaseResponse {
-  case_id: string;
-  alert_id: string;
+  case_id: number;
+  alert_id: number;
   message: string;
   success: boolean;
 }
 
-// Close Alert DTO
 export interface CloseAlertDto {
   status?: AlertStatus;
   reason: string;
 }
 
-// Submit Alert DTO (for reference)
 export interface SubmitAlertDto {
   result: {
     message: string;
-  report: unknown;
-  transaction: unknown;
-  networkMap: unknown;
+    report: unknown;
+    transaction: unknown;
+    networkMap: unknown;
   };
 }
 
-// UI-specific interfaces for components
-
-// Convert to Case Modal Data
 export interface ConvertToCaseData {
-  caseId?: string;
+  caseId?: number;
   assignedTo?: string;
   caseOwnerUserId?: string;
-  // UI uses lowercase priority values ('new'|'urgent'|'critical'|'breach'), but backend uses uppercase Priority.
   priority: 'new' | 'urgent' | 'critical' | 'breach' | Priority;
   caseType: CaseType;
   linkedCases: string[];
   notes: string;
-  alertId: string;
+  alertId: number;
 }
 
-// Alert table column configuration
 export interface AlertTableColumn {
   key: keyof Alert | string;
   header: string;
@@ -231,7 +227,6 @@ export interface AlertTableColumn {
   align?: 'left' | 'center' | 'right';
 }
 
-// Alert table action configuration
 export interface AlertTableAction {
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
@@ -240,7 +235,6 @@ export interface AlertTableAction {
   disabled?: (alert: Alert) => boolean;
 }
 
-// Search and filters for UI
 export interface AlertsSearchFilters {
   query: string;
   source: string;
@@ -252,7 +246,6 @@ export interface AlertsSearchFilters {
   endDate?: string;
 }
 
-// API Error interface
 export interface ApiError {
   message: string;
   statusCode?: number;
@@ -260,7 +253,6 @@ export interface ApiError {
   details?: unknown;
 }
 
-// Enhanced API Error Response interface
 export interface ApiErrorResponse {
   message: string;
   statusCode: number;
@@ -270,7 +262,6 @@ export interface ApiErrorResponse {
   details?: Record<string, unknown>;
 }
 
-// Service response wrapper
 export interface ServiceResponse<T> {
   data?: T;
   error?: ApiError;

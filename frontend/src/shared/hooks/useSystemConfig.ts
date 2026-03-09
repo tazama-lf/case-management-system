@@ -2,20 +2,32 @@ import { useState, useEffect } from 'react';
 import systemConfigService from '../services/systemConfigService';
 import type { SystemConfig, TriageType } from '../services/systemConfigService';
 
-export const useSystemConfig = () => {
+export const useSystemConfig = (): {
+  config: SystemConfig | null;
+  loading: boolean;
+  error: string | null;
+  refetchConfig: () => Promise<void>;
+  triageType: TriageType;
+  isAIMode: boolean;
+  isManualMode: boolean;
+  isDisabledMode: boolean;
+} => {
   const [config, setConfig] = useState<SystemConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchConfig = async () => {
+  const fetchConfig = async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
       const systemConfig = await systemConfigService.getSystemConfig();
       setConfig(systemConfig);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load system configuration');
-      // Set fallback configuration
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to load system configuration',
+      );
       setConfig({
         triageType: 'MANUAL',
         confidenceThreshold: 95,
@@ -30,7 +42,7 @@ export const useSystemConfig = () => {
     fetchConfig();
   }, []);
 
-  const refetchConfig = async () => {
+  const refetchConfig = async (): Promise<void> => {
     await fetchConfig();
   };
 
@@ -39,7 +51,7 @@ export const useSystemConfig = () => {
     loading,
     error,
     refetchConfig,
-    triageType: config?.triageType || 'MANUAL',
+    triageType: config?.triageType ?? 'MANUAL',
     isAIMode: config?.triageType === 'AI',
     isManualMode: config?.triageType === 'MANUAL',
     isDisabledMode: config?.triageType === 'DISABLED',

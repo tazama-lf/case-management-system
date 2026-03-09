@@ -31,17 +31,15 @@ export const Spinner: React.FC<SpinnerProps> = ({
   size = 'md',
   color = 'primary',
   className = '',
-}) => {
-  return (
-    <div
-      className={`animate-spin rounded-full border-2 border-t-transparent ${getSpinnerSize(size)} ${getSpinnerColor(color)} ${className}`}
-      role="status"
-      aria-label="Loading"
-    >
-      <span className="sr-only">Loading...</span>
-    </div>
-  );
-};
+}) => (
+  <div
+    className={`animate-spin rounded-full border-2 border-t-transparent ${getSpinnerSize(size)} ${getSpinnerColor(color)} ${className}`}
+    role="status"
+    aria-label="Loading"
+  >
+    <span className="sr-only">Loading...</span>
+  </div>
+);
 
 interface DotsSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
@@ -74,12 +72,25 @@ export const DotsSpinner: React.FC<DotsSpinnerProps> = ({
   className = '',
 }) => {
   const dotClass = `${getDotSize(size)} ${getDotColor(color)} rounded-full`;
-  
+
   return (
-    <div className={`flex space-x-1 ${className}`} role="status" aria-label="Loading">
-      <div className={`${dotClass} animate-bounce`} style={{ animationDelay: '0ms' }}></div>
-      <div className={`${dotClass} animate-bounce`} style={{ animationDelay: '150ms' }}></div>
-      <div className={`${dotClass} animate-bounce`} style={{ animationDelay: '300ms' }}></div>
+    <div
+      className={`flex space-x-1 ${className}`}
+      role="status"
+      aria-label="Loading"
+    >
+      <div
+        className={`${dotClass} animate-bounce`}
+        style={{ animationDelay: '0ms' }}
+      ></div>
+      <div
+        className={`${dotClass} animate-bounce`}
+        style={{ animationDelay: '150ms' }}
+      ></div>
+      <div
+        className={`${dotClass} animate-bounce`}
+        style={{ animationDelay: '300ms' }}
+      ></div>
       <span className="sr-only">Loading...</span>
     </div>
   );
@@ -114,17 +125,15 @@ export const PulseSpinner: React.FC<PulseSpinnerProps> = ({
   size = 'md',
   color = 'primary',
   className = '',
-}) => {
-  return (
-    <div
-      className={`animate-pulse rounded-full ${getPulseSize(size)} ${getPulseColor(color)} ${className}`}
-      role="status"
-      aria-label="Loading"
-    >
-      <span className="sr-only">Loading...</span>
-    </div>
-  );
-};
+}) => (
+  <div
+    className={`animate-pulse rounded-full ${getPulseSize(size)} ${getPulseColor(color)} ${className}`}
+    role="status"
+    aria-label="Loading"
+  >
+    <span className="sr-only">Loading...</span>
+  </div>
+);
 
 interface SpinnerWithTextProps {
   text?: string;

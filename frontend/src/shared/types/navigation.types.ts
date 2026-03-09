@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 
 export interface NavItem {
   name: string;
@@ -6,7 +6,7 @@ export interface NavItem {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   current?: boolean;
   badge?: number;
-  roles?: string[]; // Role-based access
+  roles?: string[];
   children?: NavItem[];
 }
 
@@ -14,9 +14,13 @@ export interface User {
   user_id: string;
   username: string;
   email?: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
   tenantId: string;
   roles: string[];
   permissions?: string[];
+  backendClaims?: string[];
   name?: string;
   initials?: string;
 }
@@ -36,7 +40,6 @@ export interface LayoutProps {
 
 export interface SidebarProps {
   navigation: NavItem[];
-  user?: User;
   onNavigate?: (href: string) => void;
   onLogout?: () => void;
 }
@@ -48,9 +51,9 @@ export interface HeaderProps {
   title?: string;
 }
 
-export type NavigationContextType = {
+export interface NavigationContextType {
   currentPath: string;
   navigate: (path: string) => void;
   user: User | null;
   setUser: (user: User | null) => void;
-};
+}

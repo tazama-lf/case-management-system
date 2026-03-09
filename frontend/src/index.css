@@ -397,3 +397,251 @@ p {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* SimpleMDE Editor Custom Styles */
+.simplemde-wrapper .CodeMirror {
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  min-height: 200px;
+}
+
+.simplemde-wrapper .CodeMirror-focused {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.simplemde-wrapper .editor-toolbar {
+  border: 1px solid #d1d5db;
+  border-bottom: none;
+  border-radius: 0.375rem 0.375rem 0 0;
+  background-color: #f9fafb;
+  padding: 0.5rem;
+}
+
+.simplemde-wrapper .editor-toolbar button {
+  border: none;
+  background: none;
+  color: #6b7280;
+  padding: 0.375rem;
+  border-radius: 0.25rem;
+  margin: 0 0.125rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.simplemde-wrapper .editor-toolbar button:hover {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.simplemde-wrapper .editor-toolbar button.active {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.simplemde-wrapper .editor-toolbar i.separator {
+  border-left: 1px solid #d1d5db;
+  margin: 0 0.5rem;
+}
+
+.simplemde-wrapper .CodeMirror .CodeMirror-placeholder {
+  color: #9ca3af;
+}
+
+.simplemde-wrapper .editor-preview {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.simplemde-wrapper .editor-preview h1,
+.simplemde-wrapper .editor-preview h2,
+.simplemde-wrapper .editor-preview h3,
+.simplemde-wrapper .editor-preview h4,
+.simplemde-wrapper .editor-preview h5,
+.simplemde-wrapper .editor-preview h6 {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.simplemde-wrapper .editor-preview p {
+  margin-bottom: 1rem;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.simplemde-wrapper .editor-preview ul,
+.simplemde-wrapper .editor-preview ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.simplemde-wrapper .editor-preview a {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+.simplemde-wrapper .editor-preview a:hover {
+  color: #2563eb;
+}
+
+.simplemde-wrapper .editor-preview code {
+  background-color: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+
+.simplemde-wrapper .editor-preview blockquote {
+  border-left: 4px solid #e5e7eb;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Markdown Content Rendering Styles */
+.markdown-content {
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  line-height: 1.3 !important;
+}
+
+.markdown-content ul {
+  list-style-type: disc !important;
+  padding-left: 1rem !important;
+  margin: 0.3rem 0 !important;
+}
+
+.markdown-content ol {
+  list-style-type: decimal !important;
+  padding-left: 1rem !important;
+  margin: 0.3rem 0 !important;
+}
+
+.markdown-content li {
+  display: list-item !important;
+  margin: 0.1rem 0 !important;
+  line-height: 1.3 !important;
+}
+
+.markdown-content li p {
+  display: block !important;
+  margin: 0 !important;
+  line-height: 1.3 !important;
+}
+
+.markdown-content p {
+  margin: 0.1rem 0 !important;
+  line-height: 1.3 !important;
+  display: block !important;
+}
+
+.markdown-content br {
+  display: block !important;
+  content: '' !important;
+  margin: 0.1rem 0 !important;
+}
+
+.markdown-content strong {
+  font-weight: 600 !important;
+}
+
+.markdown-content em {
+  font-style: italic !important;
+}
+
+.markdown-content a {
+  color: #2563eb !important;
+  text-decoration: underline !important;
+}
+
+/* MDX Editor Styles */
+.mdx-editor-container [contenteditable] ul {
+  list-style-type: disc !important;
+  padding-left: 2rem !important;
+  margin: 1rem 0 !important;
+}
+
+/* MDX Editor Styles */
+.mdx-editor-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mdx-editor-container .mdx-editor {
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  overflow: hidden;
+}
+
+.mdx-editor-container [role='toolbar'] {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.mdx-editor-container [contenteditable] {
+  overflow-y: auto !important;
+  max-height: 400px !important;
+  padding: 1rem;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.mdx-editor-container [contenteditable] ul {
+  list-style-type: disc !important;
+  padding-left: 2rem !important;
+  margin: 1rem 0 !important;
+}
+
+.mdx-editor-container [contenteditable] ol {
+  list-style-type: decimal !important;
+  padding-left: 2rem !important;
+  margin: 1rem 0 !important;
+}
+
+.mdx-editor-container [contenteditable] li {
+  display: list-item !important;
+  margin: 0.25rem 0 !important;
+}
+
+/* Ensure link dialog appears above modal */
+[class*='linkDialog'],
+[class*='popupContainer'],
+[class*='_linkDialog'],
+[class*='_popupContainer'],
+[role='dialog'],
+[role='alertdialog'] {
+  z-index: 9999 !important;
+}
+
+/* Ensure links open properly */
+.mdx-editor-container a {
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.mdx-editor-container a:hover {
+  color: #1d4ed8;
+}

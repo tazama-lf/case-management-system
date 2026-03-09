@@ -21,13 +21,13 @@ export const Container: React.FC<ContainerProps> = ({
   children,
   size = 'lg',
   className = '',
-}) => {
-  return (
-    <div className={`mx-auto px-4 sm:px-6 lg:px-8 ${getContainerSize(size)} ${className}`}>
-      {children}
-    </div>
-  );
-};
+}) => (
+  <div
+    className={`mx-auto px-4 sm:px-6 lg:px-8 ${getContainerSize(size)} ${className}`}
+  >
+    {children}
+  </div>
+);
 
 interface CardProps {
   children: React.ReactNode;
@@ -74,15 +74,13 @@ export const Card: React.FC<CardProps> = ({
   padding = 'md',
   shadow = 'sm',
   rounded = 'lg',
-}) => {
-  return (
-    <div
-      className={`bg-white border border-gray-200 ${getPaddingClass(padding)} ${getShadowClass(shadow)} ${getRoundedClass(rounded)} ${className}`}
-    >
-      {children}
-    </div>
-  );
-};
+}) => (
+  <div
+    className={`bg-white border border-gray-200 ${getPaddingClass(padding)} ${getShadowClass(shadow)} ${getRoundedClass(rounded)} ${className}`}
+  >
+    {children}
+  </div>
+);
 
 interface PageContainerProps {
   children: React.ReactNode;
@@ -98,30 +96,28 @@ export const PageContainer: React.FC<PageContainerProps> = ({
   subtitle,
   actions,
   className = '',
-}) => {
-  return (
-    <div className={`min-h-screen bg-gray-50 ${className}`}>
-      <Container>
-        {(title || subtitle || actions) && (
-          <div className="py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                {title && (
-                  <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
-                )}
-                {subtitle && (
-                  <p className="mt-2 text-gray-600">{subtitle}</p>
-                )}
-              </div>
-              {actions && <div className="flex items-center space-x-3">{actions}</div>}
+}) => (
+  <div className={`min-h-screen bg-gray-50 ${className}`}>
+    <Container>
+      {(title ?? subtitle ?? actions) && (
+        <div className="py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              {title && (
+                <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+              )}
+              {subtitle && <p className="mt-2 text-gray-600">{subtitle}</p>}
             </div>
+            {actions && (
+              <div className="flex items-center space-x-3">{actions}</div>
+            )}
           </div>
-        )}
-        <div className="pb-6">{children}</div>
-      </Container>
-    </div>
-  );
-};
+        </div>
+      )}
+      <div className="pb-6">{children}</div>
+    </Container>
+  </div>
+);
 
 interface SectionProps {
   children: React.ReactNode;
@@ -137,25 +133,23 @@ export const Section: React.FC<SectionProps> = ({
   subtitle,
   actions,
   className = '',
-}) => {
-  return (
-    <div className={`space-y-6 ${className}`}>
-      {(title || subtitle || actions) && (
-        <div className="flex items-center justify-between">
-          <div>
-            {title && (
-              <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-            )}
-            {subtitle && (
-              <p className="mt-1 text-sm text-gray-600">{subtitle}</p>
-            )}
-          </div>
-          {actions && <div className="flex items-center space-x-3">{actions}</div>}
+}) => (
+  <div className={`space-y-6 ${className}`}>
+    {(title ?? subtitle ?? actions) && (
+      <div className="flex items-center justify-between">
+        <div>
+          {title && (
+            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+          )}
+          {subtitle && <p className="mt-1 text-sm text-gray-600">{subtitle}</p>}
         </div>
-      )}
-      {children}
-    </div>
-  );
-};
+        {actions && (
+          <div className="flex items-center space-x-3">{actions}</div>
+        )}
+      </div>
+    )}
+    {children}
+  </div>
+);
 
 export default Container;

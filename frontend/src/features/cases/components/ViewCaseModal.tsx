@@ -1,22 +1,75 @@
 import React from 'react';
-import type { CaseRow } from './CasesTable';
-import CollaborateButton from './view/CollaborateButton';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import type { CaseRow } from './casesTable.utils';
+// import CollaborateButton from './view/CollaborateButton';
 import CollaboratePanel from './view/CollaboratePanel';
-import EvidenceDocumentsTab from './view/EvidenceDocumentsTab';
-import LinkedItemsTab from './view/LinkedItemsTab';
 import TaskLogTab from './view/TaskLogTab';
-import InvestigationNotesTab from './view/InvestigationNotesTab';
+import CommentHistoryTab from './view/CommentHistoryTab';
 import CaseDetailsTab from './view/CaseDetailsTab';
+import CaseHistoryTab from './view/CaseHistoryTab';
+import CaseActionsPanel from './view/CaseActionsPanel';
+import { caseService, type CaseWithTasksDto } from '../services/caseService';
+import { transformBackendCaseToUI } from './casesTable.utils';
+
+type ViewTabKey = 'details' | 'tasks' | 'history' | 'comments';
 
 interface ViewCaseModalProps {
   open: boolean;
   onClose: () => void;
   row?: CaseRow | null;
+  onRefreshCases?: () => Promise<void>;
+  canManageSupervisorActions?: boolean;
+  onComplete?: (row: CaseRow) => void;
+  onCloseCase?: (row: CaseRow) => void;
+  onReopenCase?: (row: CaseRow) => void;
+  onAbandonCase?: (row: CaseRow) => void;
+  onSuspendCase?: (row: CaseRow) => void;
+  onResumeCase?: (row: CaseRow) => void;
+  onApproveCase?: (row: CaseRow) => void;
+  onApproveCaseReopen?: (row: CaseRow) => void;
+  onRejectCaseReopen?: (row: CaseRow) => void;
+  onApproveCaseCreation?: (row: CaseRow) => void;
+  onRejectCaseCreation?: (row: CaseRow) => void;
+  onAfterTaskReassign?: () => void;
+  generateReport?: (caseId: number) => void;
+  setSubCasesDetails?: (rows: CaseRow[]) => void;
 }
 
-const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => {
-  const [tab, setTab] = React.useState<'details' | 'evidence' | 'linked' | 'tasks' | 'notes'>('details');
+const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
+  open,
+  onClose,
+  row,
+  onRefreshCases,
+  onAfterTaskReassign,
+  canManageSupervisorActions = false,
+  onComplete,
+  onCloseCase,
+  onReopenCase,
+  onAbandonCase,
+  onSuspendCase,
+  onResumeCase,
+  onApproveCase,
+  onApproveCaseReopen,
+  onRejectCaseReopen,
+  onApproveCaseCreation,
+  onRejectCaseCreation,
+  setSubCasesDetails,
+}) => {
+  const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
+  const [localCaseData, setLocalCaseData] = React.useState<CaseRow | null>(
+    null,
+  );
+  const [subCases, setSubCases] = React.useState<CaseRow[]>([]);
+  const [parentCase, setparentCase] = React.useState<CaseRow | null>(null);
+
+  // Initialize local case data when row changes
+  React.useEffect(() => {
+    setLocalCaseData(null); // Clear previous data while loading new data
+    if (row) {
+      setLocalCaseData(row);
+    }
+  }, [row]);
 
   React.useEffect(() => {
     if (open) {
@@ -25,52 +78,106 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
     }
   }, [open]);
 
-  if (!open || !row) return null;
+  // Function to refresh case data
+  const refreshCaseData = React.useCallback(async () => {
+    if (!row?.id) return;
+    try {
+      const caseDetails = await caseService.getCaseDetails(row.id);
+      const transformedCase = transformBackendCaseToUI(
+        caseDetails as unknown as CaseWithTasksDto,
+      );
+      setLocalCaseData(transformedCase);
+    } catch (error) {
+      console.error('Failed to refresh case data:', error);
+    }
+  }, [row?.id]);
+
+  const getParentCaseData = React.useCallback(async () => {
+    if (!row?.id || !row?.parentId) return;
+    try {
+      const caseDetails = await caseService.getCaseDetails(row.parentId);
+      const transformedCase = transformBackendCaseToUI(
+        caseDetails as unknown as CaseWithTasksDto,
+      );
+      setparentCase(transformedCase);
+    } catch (error) {
+      console.error('Failed to refresh case data:', error);
+    }
+  }, [row?.id, row?.parentId]);
+
+  const getSubCasesData = React.useCallback(async () => {
+    if (!localCaseData?.type || !localCaseData?.id) return;
+
+    if (localCaseData.type === 'FRAUD_AND_AML') {
+      try {
+        const subCasesDetails = await caseService.getSubCasesDetails(
+          localCaseData.id,
+        );
+        const transformed = subCasesDetails.map((c) =>
+          transformBackendCaseToUI(c as unknown as CaseWithTasksDto),
+        );
+
+        setSubCases(transformed);
+        setSubCasesDetails?.(transformed);
+      } catch (error) {
+        console.error('Failed to fetch subCases data:', error);
+      }
+    } else {
+      setSubCases([]);
+      setSubCasesDetails?.([]);
+    }
+  }, [localCaseData?.type, localCaseData?.id]);
+
+  React.useEffect(() => {
+    if (open && localCaseData) {
+      getSubCasesData();
+      getParentCaseData();
+    }
+  }, [open, localCaseData, getSubCasesData, getParentCaseData]);
+
+  if (!open || !localCaseData) return null;
+
+  const displayData = localCaseData;
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
       <div className="mt-6 w-full max-w-5xl rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b px-6 py-4">
+        { }
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-gray-900">{showCollaborate ? 'Case Collaboration' : 'Case Details'}</h3>
-            <CollaborateButton onClick={() => setShowCollaborate(true)} />
-            {showCollaborate && (
-              <button
-                onClick={() => setShowCollaborate(false)}
-                className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
-                title="Back to Details"
-              >
-                ← Back
-              </button>
-            )}
-            <button className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-gray-50" title="Download">
-              <span className="text-base">⬇️</span>
-            </button>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {showCollaborate ? 'Case Collaboration' : 'Case Details'}
+            </h3>
           </div>
-          <button onClick={onClose} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
-            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Close"
+          >
+            <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Tabs */}
+        { }
         {!showCollaborate && (
-          <div className="flex items-center gap-2 border-b px-6 pt-3">
-            {[
-              { key: 'details', label: 'Case Details' },
-              { key: 'evidence', label: 'Evidence & Documents' },
-              { key: 'linked', label: 'Linked Items' },
-              { key: 'tasks', label: 'Task Log' },
-              { key: 'notes', label: 'Investigation Notes' },
-            ].map((t) => (
+          <div className="flex items-center gap-2 px-6 pt-3 border-b border-gray-200">
+            {(
+              [
+                { key: 'details', label: 'Case Details' },
+                { key: 'tasks', label: 'Task Log' },
+                { key: 'history', label: 'Case History' },
+                { key: 'comments', label: 'Comments History' },
+              ] satisfies Array<{ key: ViewTabKey; label: string }>
+            ).map((t) => (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key as any)}
-                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${
-                  tab === t.key ? 'border-b-2 border-indigo-600 text-indigo-700' : 'text-gray-600 hover:text-gray-800'
-                }`}
+                onClick={() => {
+                  setTab(t.key);
+                }}
+                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${tab === t.key
+                    ? 'border-b-2 border-indigo-600 text-indigo-700'
+                    : 'text-gray-600 hover:text-gray-800'
+                  }`}
               >
                 {t.label}
               </button>
@@ -78,20 +185,86 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({ open, onClose, row }) => 
           </div>
         )}
 
-        {/* Content */}
+        { }
         <div className="px-6 py-5 overflow-y-auto flex-1">
           {showCollaborate ? (
             <CollaboratePanel />
           ) : (
             <>
-              {tab === 'details' && <CaseDetailsTab row={row} />}
-              {tab === 'evidence' && <EvidenceDocumentsTab />}
-              {tab === 'linked' && <LinkedItemsTab />}
-              {tab === 'tasks' && <TaskLogTab />}
-              {tab === 'notes' && <InvestigationNotesTab />}
+              {tab === 'details' && (
+                <CaseDetailsTab
+                  row={displayData}
+                  subCasesDetails={
+                    displayData.type === 'FRAUD_AND_AML' ? subCases : undefined
+                  }
+                  parentCaseDetails={displayData?.parentId ? parentCase : null}
+                  canManageSupervisorActions={canManageSupervisorActions}
+                  showActions={false}
+                  onComplete={onComplete}
+                  onCloseCase={onCloseCase}
+                  onReopenCase={onReopenCase}
+                  onAbandonCase={onAbandonCase}
+                  onSuspendCase={onSuspendCase}
+                  onResumeCase={onResumeCase}
+                  onApproveCase={onApproveCase}
+                  onApproveCaseReopen={onApproveCaseReopen}
+                  onRejectCaseReopen={onRejectCaseReopen}
+                  onApproveCaseCreation={onApproveCaseCreation}
+                  onRejectCaseCreation={onRejectCaseCreation}
+                />
+              )}
+              {tab === 'tasks' && (
+                <TaskLogTab
+                  caseId={displayData.id}
+                  alertId={displayData.alertId}
+                  onAfterTaskReassign={onAfterTaskReassign}
+                  onRefreshCases={async () => {
+                    // Refresh both the main case list and the local case data
+                    await Promise.all([onRefreshCases?.(), refreshCaseData()]);
+                  }}
+                  canManageSupervisorActions={canManageSupervisorActions}
+                  caseData={displayData}
+                  caseStatus={displayData.status}
+                  onApproveCase={onApproveCase}
+                  onApproveCaseCreation={onApproveCaseCreation}
+                  onRejectCaseCreation={onRejectCaseCreation}
+                  onAbandonCase={onAbandonCase}
+                />
+              )}
+              {tab === 'comments' && (
+                <CommentHistoryTab caseId={displayData.id} />
+              )}
+              {tab === 'history' && (
+                <CaseHistoryTab caseId={displayData.id} row={displayData} />
+              )}
             </>
           )}
         </div>
+
+        { }
+        {!showCollaborate && tab === 'details' && (
+          <div className="border-t border-gray-200 bg-white px-6 py-4">
+            <CaseActionsPanel
+              caseData={displayData}
+              subCasesDetails={
+                displayData.type === 'FRAUD_AND_AML' ? subCases : undefined
+              }
+              parentCaseDetails={displayData?.parentId ? parentCase : null}
+              canManageSupervisorActions={canManageSupervisorActions}
+              onComplete={onComplete}
+              onCloseCase={onCloseCase}
+              onReopenCase={onReopenCase}
+              onAbandonCase={onAbandonCase}
+              onSuspendCase={onSuspendCase}
+              onResumeCase={onResumeCase}
+              onApproveCase={onApproveCase}
+              onApproveCaseReopen={onApproveCaseReopen}
+              onRejectCaseReopen={onRejectCaseReopen}
+              onApproveCaseCreation={onApproveCaseCreation}
+              onRejectCaseCreation={onRejectCaseCreation}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

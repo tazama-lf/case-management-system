@@ -1,39 +1,55 @@
-# =============================================================================
-# Backend Development Dockerfile
-# =============================================================================
+# SPDX-License-Identifier: Apache-2.0
+ARG BUILD_IMAGE=node:20-bullseye
+ARG RUN_IMAGE=gcr.io/distroless/nodejs20-debian11:nonroot
 
-FROM node:18-alpine
+# Builder stage: Build the application
+FROM ${BUILD_IMAGE} AS builder
+LABEL stage=build
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+WORKDIR /home/app
 
-# Create app directory
-WORKDIR /app
+COPY ./src ./src
+COPY ./prisma ./prisma
+COPY ./prismaDWH ./prismaDWH
+COPY ./package*.json ./
+COPY ./tsconfig.json ./
+COPY .npmrc ./
+COPY ./migrate.sh ./migrate.sh
+ARG GH_TOKEN
 
-# Copy package files
-COPY package*.json ./
+RUN npm ci --ignore-scripts
 
-# Install dependencies
-RUN npm ci
-
-# Copy source code
-COPY . .
-
-# Generate Prisma client
 RUN npx prisma generate
+RUN npx prisma generate --schema=prismaDWH/schema.dwh.prisma
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001 -G nodejs
-RUN chown -R nestjs:nodejs /app
-USER nestjs
+RUN npm run build
 
-# Expose port
-EXPOSE 3000
+RUN mkdir -p dist/src/modules/bpmn && \
+    cp src/modules/bpmn/*.xml dist/src/modules/bpmn/
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+FROM ${BUILD_IMAGE} AS migrate
 
-# Start the application in development mode
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "run", "start:dev"]
+WORKDIR /home/app
+
+# Copy everything from builder
+COPY --from=builder /home/app ./
+
+# Install tools needed for DB setup
+RUN apt-get update && apt-get install -y postgresql-client netcat
+
+CMD ["sh"]
+
+# Runtime stage: Set up runtime environment
+FROM ${RUN_IMAGE} AS run-env
+
+USER nonroot
+
+WORKDIR /home/app
+
+COPY --from=builder /home/app/node_modules ./node_modules
+COPY --from=builder /home/app/dist ./dist
+COPY --from=builder /home/app/package.json ./package.json
+
+EXPOSE 3090
+
+CMD ["dist/src/main.js"]

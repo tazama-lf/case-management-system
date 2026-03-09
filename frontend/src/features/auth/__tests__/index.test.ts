@@ -1,0 +1,31 @@
+import { describe, it, expect } from 'vitest';
+
+// Test that all exports from index.ts are available
+describe('auth/index.ts exports', () => {
+  it('exports ProtectedRoute component', async () => {
+    const module = await import('../index');
+    expect(module.ProtectedRoute).toBeDefined();
+  });
+
+  it('exports AuthProvider and useAuth', async () => {
+    const module = await import('../index');
+    expect(module.AuthProvider).toBeDefined();
+    expect(module.useAuth).toBeDefined();
+  });
+
+  it('exports auth types', async () => {
+    const module = await import('../index');
+    // Types are compile-time only, but we can verify the module loads
+    expect(module).toBeDefined();
+  });
+
+  it('exports authService', async () => {
+    const module = await import('../index');
+    expect(module.authService).toBeDefined();
+  });
+
+  it('exports Login page component', async () => {
+    const module = await import('../index');
+    expect(module.Login).toBeDefined();
+  });
+});

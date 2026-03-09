@@ -20,32 +20,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize auth state on app start
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = (): void => {
       try {
         const storedToken = authService.getToken();
         const storedUser = authService.getUser();
 
-        console.log('🚀 Auth initialization:', {
-          hasStoredToken: !!storedToken,
-          hasStoredUser: !!storedUser,
-          isTokenValid: storedToken ? !authService.isTokenExpired(storedToken) : false,
-          isAuthenticated: authService.isAuthenticated()
-        });
-
         if (storedToken && authService.isAuthenticated()) {
-          console.log('✅ Restoring authenticated session');
           setToken(storedToken);
           setUser(storedUser);
           setIsAuthenticated(true);
         } else {
-          console.log('❌ No valid session found, cleaning up');
-          // Clean up if token is expired
           authService.logout();
         }
       } catch (error) {
-        console.error('❌ Auth initialization error:', error);
+        console.error('Auth initialization error:', error);
         authService.logout();
       } finally {
         setLoading(false);
@@ -55,36 +44,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  // Auto-refresh token before expiration
   useEffect(() => {
-    let refreshTimer: NodeJS.Timeout;
+    const handleStorageChange = (e: StorageEvent): void => {
+      // Another tab logged out
+      if (e.key === 'ACTIVE_SESSION_KEY' && !e.newValue) {
+        logout();
+      }
+
+      // Token replaced by a different user
+      if (e.key === 'ACTIVE_SESSION_USER' && e.newValue !== e.oldValue) {
+        logout();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Token expiration monitoring - logout when token expires
+  useEffect(() => {
+    let expirationCheckTimer: NodeJS.Timeout;
 
     if (token && isAuthenticated) {
       const tokenExpiration = authService.getTokenExpiration(token);
       if (tokenExpiration) {
-        // Refresh 5 minutes before expiration
-        const refreshTime =
-          tokenExpiration.getTime() - Date.now() - 5 * 60 * 1000;
+        const timeUntilExpiration = tokenExpiration.getTime() - Date.now();
 
-        if (refreshTime > 0) {
-          refreshTimer = setTimeout(async () => {
-            const refreshed = await authService.refreshToken();
-            if (!refreshed) {
-              // If refresh fails, logout user
-              logout();
-            } else {
-              // Update token state
-              const newToken = authService.getToken();
-              setToken(newToken);
-            }
-          }, refreshTime);
+        // If token is already expired or will expire soon, logout
+        if (timeUntilExpiration <= 0) {
+          logout();
+        } else {
+          // Set timer to logout when token expires
+          expirationCheckTimer = setTimeout(() => {
+            logout();
+          }, timeUntilExpiration);
         }
       }
     }
 
     return () => {
-      if (refreshTimer) {
-        clearTimeout(refreshTimer);
+      if (expirationCheckTimer) {
+        clearTimeout(expirationCheckTimer);
       }
     };
   }, [token, isAuthenticated]);
@@ -94,33 +96,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      console.log('🚀 AuthContext.login() - Starting login...');
       const response = await authService.login(credentials);
 
       if (response.token && response.user) {
-        console.log('✅ AuthContext.login() - Setting auth state', {
-          hasToken: !!response.token,
-          hasUser: !!response.user,
-          userClaims: response.user.backendClaims
-        });
-        
         setToken(response.token);
         setUser(response.user);
         setIsAuthenticated(true);
-        
-        console.log('✅ AuthContext.login() - Auth state updated successfully');
-      } else {
-        console.log('❌ AuthContext.login() - Missing token or user in response', response);
       }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Login failed';
-      console.error('❌ AuthContext.login() - Login failed:', errorMessage);
+      console.error('AuthContext.login() - Login failed:', errorMessage);
       setError(errorMessage);
       throw error;
     } finally {
       setLoading(false);
-      console.log('🏁 AuthContext.login() - Login process completed');
     }
   };
 
@@ -131,29 +121,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsAuthenticated(false);
     setError(null);
 
-    // Redirect to login page
     window.location.href = '/login';
   };
 
   const clearError = (): void => {
     setError(null);
-  };
-
-  // Backend claim utility functions
-  const hasBackendClaim = (claim: string): boolean => {
-    return authService.hasBackendClaim(claim);
-  };
-
-  const hasCMSTestRole = (): boolean => {
-    return authService.hasCMSTestRole();
-  };
-
-  const hasAlertTriageRole = (): boolean => {
-    return authService.hasAlertTriageRole();
-  };
-
-  const validateBackendAccess = (): boolean => {
-    return authService.validateBackendAccess();
   };
 
   const value: AuthContextType = {
@@ -165,16 +137,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     clearError,
-    hasBackendClaim,
-    hasCMSTestRole,
-    hasAlertTriageRole,
-    validateBackendAccess,
+    hasBackendClaim: authService.hasBackendClaim.bind(authService),
+    // hasCMSTestRole: authService.hasCMSTestRole.bind(authService),
+    // hasAlertTriageRole: authService.hasAlertTriageRole.bind(authService),
+    hasInvestigatorRole: authService.hasInvestigatorRole.bind(authService),
+    hasSupervisorRole: authService.hasSupervisorRole.bind(authService),
+    hasComplianceOfficerRole:
+      authService.hasComplianceOfficerRole.bind(authService),
+    hasCMSAdminRole: authService.hasCMSAdminRole.bind(authService),
+    hasAdminRole: authService.hasAdminRole.bind(authService),
+    hasAnyRole: authService.hasAnyRole.bind(authService),
+    hasAllRoles: authService.hasAllRoles.bind(authService),
+    validateBackendAccess: authService.validateBackendAccess.bind(authService),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Custom hook to use auth context
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {

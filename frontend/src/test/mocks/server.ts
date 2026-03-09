@@ -1,11 +1,14 @@
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import type { Alert, ActionHistory } from '../../features/alerts/types/triage.types';
+import type {
+  Alert,
+  ActionHistory,
+} from '../../features/alerts/types/triage.types';
+import { caseHandlers } from './caseHandlers';
 
-// Mock data
 const mockAlerts: Alert[] = [
   {
-    alert_id: 'ALERT-001',
+    alert_id: 1,
     tenant_id: 'tenant-1',
     case_id: undefined,
     priority: 'CRITICAL',
@@ -31,15 +34,13 @@ const mockAlerts: Alert[] = [
         { id: 'ACC-001', type: 'account' },
         { id: 'ACC-002', type: 'account' },
       ],
-      edges: [
-        { from: 'ACC-001', to: 'ACC-002', weight: 50000 },
-      ],
+      edges: [{ from: 'ACC-001', to: 'ACC-002', weight: 50000 }],
     },
   },
   {
-    alert_id: 'ALERT-002',
+    alert_id: 2,
     tenant_id: 'tenant-1',
-    case_id: 'CASE-001',
+    case_id: 1,
     priority: 'URGENT',
     source: 'AML',
     alert_type: 'AML',
@@ -58,7 +59,7 @@ const mockAlerts: Alert[] = [
 
 const mockActionHistory: ActionHistory[] = [
   {
-    audit_log_id: 'LOG-001',
+    audit_log_id: 1,
     user_id: 'SYSTEM',
     operation: 'CREATE',
     entity_name: 'ALERT-001',
@@ -67,7 +68,7 @@ const mockActionHistory: ActionHistory[] = [
     performed_at: '2024-01-15T10:30:00Z',
   },
   {
-    audit_log_id: 'LOG-002',
+    audit_log_id: 2,
     user_id: 'analyst@example.com',
     operation: 'UPDATE',
     entity_name: 'ALERT-001',
@@ -77,9 +78,7 @@ const mockActionHistory: ActionHistory[] = [
   },
 ];
 
-// API handlers
 export const handlers = [
-  // Get alerts with filtering and pagination
   http.get('/api/v1/triage/alerts', ({ request }) => {
     const url = new URL(request.url);
     const search = url.searchParams.get('search') || '';
@@ -89,26 +88,27 @@ export const handlers = [
 
     let filteredAlerts = [...mockAlerts];
 
-    // Apply search filter
     if (search) {
       filteredAlerts = filteredAlerts.filter(
         (alert) =>
-          alert.alert_id.toLowerCase().includes(search.toLowerCase()) ||
-          alert.message.toLowerCase().includes(search.toLowerCase())
+          alert.alert_id
+            .toString()
+            .toLowerCase()
+            .includes(search.toLowerCase()) ||
+          alert.message.toLowerCase().includes(search.toLowerCase()),
       );
     }
 
-    // Apply priority filter
     if (priority) {
-      filteredAlerts = filteredAlerts.filter((alert) => alert.priority === priority);
+      filteredAlerts = filteredAlerts.filter(
+        (alert) => alert.priority === priority,
+      );
     }
 
-    // Apply pagination
     const start = (page - 1) * limit;
     const end = start + limit;
     const paginatedAlerts = filteredAlerts.slice(start, end);
 
-    // Match backend response format
     const response = {
       data: paginatedAlerts,
       page,
@@ -120,22 +120,17 @@ export const handlers = [
     return HttpResponse.json(response);
   }),
 
-  // Get single alert
   http.get('/api/v1/triage/alerts/:alertId', ({ params }) => {
     const { alertId } = params;
-    const alert = mockAlerts.find((a) => a.alert_id === alertId);
+    const alert = mockAlerts.find((a) => a.alert_id.toString() === alertId);
 
     if (!alert) {
-      return HttpResponse.json(
-        { error: 'Alert not found' },
-        { status: 404 }
-      );
+      return HttpResponse.json({ error: 'Alert not found' }, { status: 404 });
     }
 
     return HttpResponse.json(alert);
   }),
 
-  // Get alert action history
   http.get('/api/v1/triage/alerts/:alertId/history', ({ params }) => {
     const { alertId } = params;
     const history = mockActionHistory.filter((h) => h.entity_name === alertId);
@@ -143,48 +138,50 @@ export const handlers = [
     return HttpResponse.json(history);
   }),
 
-  // Manual triage endpoint
   http.patch('/api/v1/triage/alerts/:alertId', async ({ params, request }) => {
     const { alertId } = params;
-    const updates = await request.json() as any;
-    
-    const alertIndex = mockAlerts.findIndex((a) => a.alert_id === alertId);
+    const updates = (await request.json()) as any;
+
+    const alertIndex = mockAlerts.findIndex(
+      (a) => a.alert_id.toString() === alertId,
+    );
     if (alertIndex === -1) {
-      return HttpResponse.json(
-        { error: 'Alert not found' },
-        { status: 404 }
-      );
+      return HttpResponse.json({ error: 'Alert not found' }, { status: 404 });
     }
 
-    // Check if this is a manual triage request (has specific fields)
-    if (updates.priorityScore !== undefined || updates.predictionOutcome !== undefined) {
-      // This is a manual triage request - validate AlertType
-      if (updates.alertType && !['FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE'].includes(updates.alertType)) {
+    if (
+      updates.priorityScore !== undefined ||
+      updates.predictionOutcome !== undefined
+    ) {
+      if (
+        updates.alertType &&
+        !['FRAUD', 'AML', 'FRAUD_AND_AML'].includes(updates.alertType)
+      ) {
         return HttpResponse.json(
           {
             message: [
-              "alertType must be one of the following values: FRAUD, AML, FRAUD_AND_AML, NONE"
+              'alertType must be one of the following values: FRAUD, AML, FRAUD_AND_AML',
             ],
-            error: "Bad Request",
-            statusCode: 400
+            error: 'Bad Request',
+            statusCode: 400,
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
-      
+
       const updatedAlert = {
         ...mockAlerts[alertIndex],
         priority: updates.priority || mockAlerts[alertIndex].priority,
-        confidence_per: updates.confidence_per || mockAlerts[alertIndex].confidence_per,
+        confidence_per:
+          updates.confidence_per || mockAlerts[alertIndex].confidence_per,
         alert_type: updates.alertType || mockAlerts[alertIndex].alert_type,
         prediction_outcome: updates.predictionOutcome,
       };
-      
+
       mockAlerts[alertIndex] = updatedAlert;
-      
-      // Add action history entry
+
       const newHistoryEntry: ActionHistory = {
-        audit_log_id: `LOG-${Date.now()}`,
+        audit_log_id: mockActionHistory.length + 1,
         user_id: 'test-user@example.com',
         operation: 'MANUAL_TRIAGE',
         entity_name: String(alertId),
@@ -193,10 +190,9 @@ export const handlers = [
         performed_at: new Date().toISOString(),
       };
       mockActionHistory.push(newHistoryEntry);
-      
+
       return HttpResponse.json(updatedAlert);
     } else {
-      // Regular alert update
       mockAlerts[alertIndex] = {
         ...mockAlerts[alertIndex],
         ...updates,
@@ -205,66 +201,54 @@ export const handlers = [
     }
   }),
 
-  // Convert alert to case
-  http.post('/api/v1/triage/alerts/:alertId/convert-to-case', async ({ params }) => {
-    const { alertId } = params;
-    
-    const alertIndex = mockAlerts.findIndex((a) => a.alert_id === alertId);
-    if (alertIndex === -1) {
-      return HttpResponse.json(
-        { error: 'Alert not found' },
-        { status: 404 }
+  http.post(
+    '/api/v1/triage/alerts/:alertId/convert-to-case',
+    async ({ params }) => {
+      const { alertId } = params;
+
+      const alertIndex = mockAlerts.findIndex(
+        (a) => a.alert_id.toString() === alertId,
       );
-    }
+      if (alertIndex === -1) {
+        return HttpResponse.json({ error: 'Alert not found' }, { status: 404 });
+      }
 
-    // Update alert with case ID
-    const caseId = `CASE-${Date.now()}`;
-    mockAlerts[alertIndex] = {
-      ...mockAlerts[alertIndex],
-      case_id: caseId,
-    };
+      const caseId = 1;
+      mockAlerts[alertIndex] = {
+        ...mockAlerts[alertIndex],
+        case_id: caseId,
+      };
 
-    return HttpResponse.json({
-      case_id: caseId,
-      alert: mockAlerts[alertIndex],
-    });
-  }),
+      return HttpResponse.json({
+        case_id: caseId,
+        alert: mockAlerts[alertIndex],
+      });
+    },
+  ),
 
-  // Close alert
   http.patch('/api/v1/triage/alerts/:alertId/close', async ({ params }) => {
     const { alertId } = params;
-    
-    const alertIndex = mockAlerts.findIndex((a) => a.alert_id === alertId);
-    if (alertIndex === -1) {
-      return HttpResponse.json(
-        { error: 'Alert not found' },
-        { status: 404 }
-      );
-    }
 
-    // Update alert (no status to update since alerts don't have status anymore)
-    // mockAlerts[alertIndex] = {
-    //   ...mockAlerts[alertIndex],
-    // };
+    const alertIndex = mockAlerts.findIndex(
+      (a) => a.alert_id.toString() === alertId,
+    );
+    if (alertIndex === -1) {
+      return HttpResponse.json({ error: 'Alert not found' }, { status: 404 });
+    }
 
     return HttpResponse.json(mockAlerts[alertIndex]);
   }),
 
-  // Error simulation endpoints for testing
   http.get('/api/v1/triage/alerts/error-test', () => {
     return HttpResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }),
 
   http.get('/api/v1/triage/alerts/timeout-test', () => {
-    // Simulate network timeout
-    return new Promise(() => {
-      // Never resolves, simulating timeout
-    });
+    return new Promise(() => {});
   }),
 ];
 
-// Create and export the server
-export const server = setupServer(...handlers);
+export const server = setupServer(...handlers, ...caseHandlers);

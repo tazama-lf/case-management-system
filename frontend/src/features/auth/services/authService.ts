@@ -1,26 +1,24 @@
+import { resetData } from '@/shared/utils/storage';
 import type {
   LoginCredentials,
   LoginResponse,
   User,
   DecodedToken,
+  Investigator,
+  Supervisor,
 } from '../types/auth.types';
+import { ACTIVE_SESSION_KEY } from './sessionLock';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
 
 class AuthService {
-  private tokenKey = 'authToken';
-  private userKey = 'user';
-
-  /**
-   * Login user with credentials
-   */
+  private readonly tokenKey = 'authToken';
+  private readonly userKey = 'user';
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      console.log('🚀 Starting login process...');
-      
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -33,238 +31,119 @@ class AuthService {
       }
 
       const data: LoginResponse = await response.json();
-      console.log('✅ Login API response received:', { hasToken: !!data.token, hasUser: !!data.user });
 
-      // Store token and user data
       if (data.token) {
         this.setToken(data.token);
 
-        // Decode JWT and extract user info
-        const user = this.decodeToken(data.token);
-        if (user) {
-          console.log('✅ User decoded from token successfully');
-          this.setUser(user);
-          data.user = user;
-        } else {
-          console.log('❌ Failed to decode user from token');
+        localStorage.setItem(ACTIVE_SESSION_KEY, Date.now().toString());
+
+        // Fetch user details from /me endpoint for accurate profile data
+        try {
+          const user = await this.fetchUserProfile(data.token);
+          if (user) {
+            this.setUser(user);
+            localStorage.setItem('ACTIVE_SESSION_USER', user.userId);
+            data.user = user;
+          }
+        } catch (error) {
+          console.warn(
+            'Failed to fetch user profile, falling back to token decode:',
+            error,
+          );
         }
       }
 
       return data;
     } catch (error) {
-      console.error('❌ Login error:', error);
+      console.error('Login error:', error);
       throw error;
     }
   }
 
   /**
-   * Logout user
+   * Fetches the authenticated user's profile from the backend /v1/auth/me endpoint.
+   * This provides the most accurate and up-to-date user information.
    */
+  async fetchUserProfile(token?: string): Promise<User | null> {
+    try {
+      const authToken = token ?? this.getToken();
+      if (!authToken) {
+        throw new Error('No authentication token available');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/v1/auth/me`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch user profile: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const data = await response.json();
+
+      // Map backend response to User interface
+      const user: User = {
+        userId: data.clientId,
+        tenantId: data.tenantId,
+        email: data.email,
+        fullName: data.fullName,
+        tenantName: data.tenantName,
+        validatedClaims: data.validatedClaims,
+      };
+
+      return user;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      return null;
+    }
+  }
+
   logout(): void {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
+    localStorage.removeItem('ACTIVE_SESSION_USER');
+    localStorage.removeItem(ACTIVE_SESSION_KEY);
+    resetData();
   }
 
-  /**
-   * Get stored token
-   */
   getToken(): string | null {
     return localStorage.getItem(this.tokenKey);
   }
 
-  /**
-   * Set token in localStorage
-   */
   setToken(token: string): void {
     localStorage.setItem(this.tokenKey, token);
   }
 
-  /**
-   * Get stored user
-   */
   getUser(): User | null {
     const userData = localStorage.getItem(this.userKey);
     return userData ? JSON.parse(userData) : null;
   }
 
-  /**
-   * Set user in localStorage
-   */
   setUser(user: User): void {
     localStorage.setItem(this.userKey, JSON.stringify(user));
   }
 
-  /**
-   * Check if user is authenticated
-   */
   isAuthenticated(): boolean {
     const token = this.getToken();
     return token ? !this.isTokenExpired(token) : false;
   }
 
-  /**
-   * Decode JWT token and extract user information
-   */
-  decodeToken(token: string): User | null {
-    const decoded = this.getDecodedToken(token);
-    if (!decoded) {
-      console.log('❌ decodeToken failed: could not decode token');
-      return null;
-    }
-
-    try {
-      // Extract user information from the decoded token
-      const user: User = {
-        user_id: decoded.sub || decoded.clientId || '',
-        username: decoded.preferred_username || decoded.username || '',
-        email: decoded.email || '',
-        firstName: decoded.given_name || decoded.first_name || '',
-        lastName: decoded.family_name || decoded.last_name || '',
-        fullName: decoded.name || this.buildFullName(decoded.given_name || decoded.first_name, decoded.family_name || decoded.last_name),
-        tenantId: decoded.tenant_id || '',
-        roles: this.extractRoles(decoded),
-        permissions: decoded.claims || [],
-        backendClaims: this.extractBackendClaims(decoded),
-      };
-
-      console.log('✅ decodeToken success:', {
-        user_id: user.user_id,
-        username: user.username,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.fullName,
-        tenantId: user.tenantId,
-        roles: user.roles,
-        backendClaims: user.backendClaims
-      });
-
-      return user;
-    } catch (error) {
-      console.error('❌ Error extracting user info from decoded token:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Extract roles from token payload
-   */
-  private extractRoles(payload: DecodedToken): string[] {
-    const roles: string[] = [];
-
-    // Look specifically for CMS roles first
-    if (payload.resource_access?.CMS?.roles) {
-      roles.push(...payload.resource_access.CMS.roles);
-    }
-
-    // Fallback: look in all resources if no CMS roles found
-    if (roles.length === 0 && payload.resource_access) {
-      Object.values(payload.resource_access).forEach(
-        (resource: { roles: string[] }) => {
-          if (resource.roles) {
-            roles.push(...resource.roles);
-          }
-        },
-      );
-    }
-    
-    return roles;
-  }
-
-  /**
-   * Extract backend claims from token payload
-   * Looks for claims in multiple possible locations in the JWT token
-   */
-  private extractBackendClaims(payload: DecodedToken): string[] {
-    const claims: string[] = [];
-
-    // Check claims array (standard location)
-    if (payload.claims && Array.isArray(payload.claims)) {
-      claims.push(...payload.claims);
-    }
-
-    // Check realm_access roles (Keycloak format)
-    if (payload.realm_access?.roles) {
-      claims.push(...payload.realm_access.roles);
-    }
-
-    // Check resource_access for CMS-specific claims
-    if (payload.resource_access) {
-      Object.entries(payload.resource_access).forEach(([, access]) => {
-        if (access.roles) {
-          // Add resource-specific roles as claims
-          access.roles.forEach(role => {
-            claims.push(role);
-          });
-        }
-      });
-    }
-
-    // Ensure required backend claims are available
-    // If user has any roles, map them to required backend claims
-    
-    // EXPLICIT check for CMS-TEST-ROLE - this should always be preserved
-    const hasCMSTestRole = claims.includes('CMS-TEST-ROLE');
-    
-    if (claims.length > 0) {
-      // Map common roles to alert-triage claim
-      const alertTriageRoles = ['analyst', 'investigator', 'supervisor', 'admin', 'CMS-TEST-ROLE'];
-      const hasAlertTriageRole = claims.some(claim => 
-        alertTriageRoles.includes(claim) || claim.toLowerCase().includes('alert') || claim.toLowerCase().includes('triage')
-      );
-      
-      if (hasAlertTriageRole && !claims.includes('alert-triage')) {
-        claims.push('alert-triage');
-      }
-      
-      // ALWAYS ensure CMS-TEST-ROLE is present if user has ANY role
-      // This provides backward compatibility
-      if (!claims.includes('CMS-TEST-ROLE')) {
-        claims.push('CMS-TEST-ROLE');
-      }
-    }
-
-    console.log('🎯 extractBackendClaims() Debug:', {
-      originalClaims: [...claims].filter(c => c !== 'alert-triage'),
-      hasCMSTestRoleInToken: hasCMSTestRole,
-      finalClaims: claims,
-      payloadStructure: {
-        claims: payload.claims,
-        realm_access: payload.realm_access,
-        resource_access: Object.keys(payload.resource_access || {})
-      }
-    });
-
-    return [...new Set(claims)]; // Remove duplicates
-  }
-
   private getDecodedToken(token: string): DecodedToken | null {
     try {
       const payload = token.split('.')[1];
-      return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+      return JSON.parse(atob(payload.replace(/-/gu, '+').replace(/_/gu, '/')));
     } catch (error) {
       console.error('Error decoding token:', error);
       return null;
     }
   }
 
-  /**
-
-    private getDecodedToken(token: string): any | null {
-        try {
-            const payload = token.split('.')[1];
-            if (!payload) return null;
-
-            // Decode base64 URL
-            return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-        } catch (error) {
-            console.error('Error decoding token:', error);
-            return null;
-        }
-    }
-
-    /**
-     * Check if token is expired
-     */
   isTokenExpired(token: string): boolean {
     const decoded = this.getDecodedToken(token);
     if (!decoded || typeof decoded.exp !== 'number') {
@@ -275,9 +154,6 @@ class AuthService {
     return decoded.exp < currentTime;
   }
 
-  /**
-   * Get token expiration time
-   */
   getTokenExpiration(token: string): Date | null {
     const decoded = this.getDecodedToken(token);
     if (!decoded || typeof decoded.exp !== 'number') {
@@ -286,104 +162,159 @@ class AuthService {
     return new Date(decoded.exp * 1000);
   }
 
-  /**
-   * Refresh token (if refresh endpoint exists)
-   */
-  async refreshToken(): Promise<boolean> {
-    try {
-      const token = this.getToken();
-      if (!token) return false;
-
-      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.token) {
-          this.setToken(data.token);
-          return true;
-        }
-      }
-
-      return false;
-    } catch (error) {
-      console.error('Token refresh error:', error);
+  hasBackendClaim(claim: string): boolean {
+    const user: User | null = this.getUser();
+    if (!user) {
       return false;
     }
+
+    return user.validatedClaims?.[claim] || false;
   }
 
-  /**
-   * Check if current user has a specific backend claim
-   */
-  hasBackendClaim(claim: string): boolean {
-    const user = this.getUser();
-    return user?.backendClaims?.includes(claim) || false;
-  }
-
-  /**
-   * Check if current user has CMS-TEST-ROLE claim (required by backend)
-   */
   hasCMSTestRole(): boolean {
     return this.hasBackendClaim('CMS-TEST-ROLE');
   }
 
-  /**
-   * Check if current user has alert-triage claim (required by backend controllers)
-   */
   hasAlertTriageRole(): boolean {
     return this.hasBackendClaim('alert-triage');
   }
 
-  /**
-   * Validate that user has minimum required claims for backend access
-   */
-  validateBackendAccess(): boolean {
-    const hasAlertTriage = this.hasAlertTriageRole();
-    const hasCMSTest = this.hasCMSTestRole();
-    const user = this.getUser();
-    const result = hasAlertTriage || hasCMSTest;
-    
-    console.log('🔐 validateBackendAccess() Debug:', {
-      hasAlertTriage,
-      hasCMSTest,
-      userClaims: user?.backendClaims,
-      allUserData: user,
-      result
-    });
-    
-    // Primary requirement: alert-triage claim for accessing controllers
-    // Fallback: CMS-TEST-ROLE for backward compatibility
-    // If user has CMS-TEST-ROLE, they should ALWAYS get access
-    return result;
+  hasInvestigatorRole(): boolean {
+    return this.hasBackendClaim('CMS_INVESTIGATOR');
+  }
+
+  hasSupervisorRole(): boolean {
+    return this.hasBackendClaim('CMS_SUPERVISOR');
+  }
+
+  hasComplianceOfficerRole(): boolean {
+    return this.hasBackendClaim('CMS_COMPLIANCE_OFFICER');
+  }
+
+  hasCMSAdminRole(): boolean {
+    return this.hasBackendClaim('CMS_ADMIN');
+  }
+
+  hasCMSComplianceOfficerRole(): boolean {
+    return this.hasBackendClaim('CMS_COMPLIANCE_OFFICER');
   }
 
   /**
-   * Get authorization header
+   * @deprecated Legacy admin check. Use hasCMSAdminRole() for CMS_ADMIN role.
+   * This checks for legacy admin roles (alert-triage or CMS-TEST-ROLE).
    */
+  hasAdminRole(): boolean {
+    return this.hasAlertTriageRole() || this.hasCMSTestRole();
+  }
+
+  hasAnyRole(roles: string[]): boolean {
+    return roles.some((role) => this.hasBackendClaim(role));
+  }
+
+  hasAllRoles(roles: string[]): boolean {
+    return roles.every((role) => this.hasBackendClaim(role));
+  }
+
+  /**
+   * Validates if the user has any valid CMS role for backend access.
+   * This checks for core CMS roles that grant access to the application.
+   * @returns true if user has at least one valid CMS role
+   */
+  validateBackendAccess(): boolean {
+    const validRoles = [
+      'CMS_INVESTIGATOR',
+      'CMS_SUPERVISOR',
+      'CMS_ADMIN',
+      'CMS_COMPLIANCE_OFFICER',
+    ];
+
+    // Also allow legacy admin roles for backward compatibility
+    return (
+      this.hasAnyRole(validRoles) ||
+      this.hasAlertTriageRole() ||
+      this.hasCMSTestRole()
+    );
+  }
+
+  /**
+   * Refreshes the current user's profile from the backend.
+   * Useful for getting updated user information without re-logging in.
+   */
+  async refreshUserProfile(): Promise<User | null> {
+    const user = await this.fetchUserProfile();
+    if (user) {
+      this.setUser(user);
+    }
+    return user;
+  }
+
   getAuthHeader(): Record<string, string> {
     const token = this.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
   /**
-   * Build full name from first and last name
+   * Fetches all users with the CMS_INVESTIGATOR role from the backend.
+   * Uses the backend's /v1/auth/user/:roleName endpoint.
    */
-  private buildFullName(firstName?: string, lastName?: string): string {
-    const first = firstName?.trim() || '';
-    const last = lastName?.trim() || '';
-    
-    if (first && last) {
-      return `${first} ${last}`;
+  async fetchAllInvestigators(): Promise<Investigator[]> {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/v1/user/list-by-role/CMS_INVESTIGATOR`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.getAuthHeader(),
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch investigators: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const data: Investigator[] = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching investigators:', error);
+      throw error;
     }
-    return first || last || '';
+  }
+
+  /**
+   * Fetches all users with the CMS_SUPERVISOR role from the backend.
+   * Uses the backend's /v1/auth/user/:roleName endpoint.
+   */
+  async fetchAllSupervisors(): Promise<Supervisor[]> {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/v1/user/list-by-role/CMS_SUPERVISOR`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.getAuthHeader(),
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch investigators: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const data: Investigator[] = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching investigators:', error);
+      throw error;
+    }
   }
 }
 
-// Create singleton instance
 const authService = new AuthService();
 export default authService;

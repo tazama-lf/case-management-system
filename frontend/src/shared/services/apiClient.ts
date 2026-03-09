@@ -8,7 +8,7 @@ interface ApiRequestOptions extends RequestInit {
 }
 
 class ApiClient {
-  private baseUrl: string;
+  private readonly baseUrl: string;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
@@ -22,13 +22,11 @@ class ApiClient {
 
     const url = `${this.baseUrl}${endpoint}`;
 
-    // Default headers
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...fetchOptions.headers,
     };
 
-    // Add authentication header if not skipped
     if (!skipAuth) {
       const authHeaders = authService.getAuthHeader();
       Object.assign(headers, authHeaders);
@@ -42,12 +40,9 @@ class ApiClient {
     try {
       const response = await fetch(url, config);
 
-      // Handle token expiration
       if (response.status === 401 && !skipAuth) {
-        // Try to refresh token
-        const refreshed = await authService.refreshToken();
+        const refreshed = await authService.refreshUserProfile();
         if (refreshed) {
-          // Retry the request with new token
           const newAuthHeaders = authService.getAuthHeader();
           const retryConfig: RequestInit = {
             ...config,
@@ -59,7 +54,6 @@ class ApiClient {
           const retryResponse = await fetch(url, retryConfig);
           return this.handleResponse<T>(retryResponse);
         } else {
-          // Refresh failed, logout user
           authService.logout();
           window.location.href = '/login';
           throw new Error('Session expired. Please login again.');
@@ -77,21 +71,22 @@ class ApiClient {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
-        errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+        errorData.message ||
+          `HTTP ${response.status}: ${response.statusText}` ||
+          'An error occurred',
       );
     }
 
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      return response.json();
+      return await response.json();
     }
 
     return response.text() as unknown as T;
   }
 
-  // HTTP methods
   async get<T>(endpoint: string, options?: ApiRequestOptions): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'GET' });
+    return await this.request<T>(endpoint, { ...options, method: 'GET' });
   }
 
   async post<T>(
@@ -99,7 +94,7 @@ class ApiClient {
     data?: any,
     options?: ApiRequestOptions,
   ): Promise<T> {
-    return this.request<T>(endpoint, {
+    return await this.request<T>(endpoint, {
       ...options,
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
@@ -111,7 +106,7 @@ class ApiClient {
     data?: any,
     options?: ApiRequestOptions,
   ): Promise<T> {
-    return this.request<T>(endpoint, {
+    return await this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
@@ -123,7 +118,7 @@ class ApiClient {
     data?: any,
     options?: ApiRequestOptions,
   ): Promise<T> {
-    return this.request<T>(endpoint, {
+    return await this.request<T>(endpoint, {
       ...options,
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,
@@ -131,10 +126,9 @@ class ApiClient {
   }
 
   async delete<T>(endpoint: string, options?: ApiRequestOptions): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+    return await this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 
-  // File upload
   async upload<T>(
     endpoint: string,
     formData: FormData,
@@ -142,27 +136,63 @@ class ApiClient {
   ): Promise<T> {
     const { skipAuth = false, ...fetchOptions } = options || {};
 
+    const url = `${this.baseUrl}${endpoint}`;
+
+    // For multipart uploads, we need to handle auth headers manually
+    // and NOT set Content-Type (browser will set it with boundary)
     const headers: HeadersInit = {
-      // Don't set Content-Type for FormData, let browser set it with boundary
       ...fetchOptions.headers,
     };
 
-    // Remove Content-Type if it was set
-    if (headers && 'Content-Type' in headers) {
-      delete (headers as any)['Content-Type'];
+    if (!skipAuth) {
+      const authHeaders = authService.getAuthHeader();
+      Object.assign(headers, authHeaders);
     }
 
-    return this.request<T>(endpoint, {
+    // Remove Content-Type if it exists - browser will set it automatically for FormData
+    if (headers && 'Content-Type' in headers) {
+      delete headers['Content-Type'];
+    }
+
+    const config: RequestInit = {
       ...fetchOptions,
       method: 'POST',
       body: formData,
       headers,
-      skipAuth,
-    });
+    };
+
+    try {
+      const response = await fetch(url, config);
+
+      if (response.status === 401 && !skipAuth) {
+        const refreshed = await authService.refreshUserProfile();
+        if (refreshed) {
+          const newAuthHeaders = authService.getAuthHeader();
+          const retryHeaders = { ...headers, ...newAuthHeaders };
+          if ('Content-Type' in retryHeaders) {
+            delete (retryHeaders as Record<string, string>)['Content-Type'];
+          }
+          const retryConfig: RequestInit = {
+            ...config,
+            headers: retryHeaders,
+          };
+          const retryResponse = await fetch(url, retryConfig);
+          return this.handleResponse<T>(retryResponse);
+        } else {
+          authService.logout();
+          window.location.href = '/login';
+          throw new Error('Session expired. Please login again.');
+        }
+      }
+
+      return this.handleResponse<T>(response);
+    } catch (error) {
+      console.error(`API upload failed: ${endpoint}`, error);
+      throw error;
+    }
   }
 }
 
-// Create singleton instance
 const apiClient = new ApiClient();
 
 export default apiClient;

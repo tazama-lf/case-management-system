@@ -1,7 +1,9 @@
-// Backend claim constants (must match backend TazamaClaims)
 export const BACKEND_CLAIMS = {
-  ALERT_TRIAGE: 'alert-triage',  // Primary claim required by all controllers
-  CMS_TEST_ROLE: 'CMS-TEST-ROLE', // Legacy claim for backward compatibility
+  ALERT_TRIAGE: 'alert-triage',
+  CMS_TEST_ROLE: 'CMS-TEST-ROLE',
+  CMS_INVESTIGATOR: 'CMS_INVESTIGATOR',
+  CMS_SUPERVISOR: 'CMS_SUPERVISOR',
+  CMS_ADMIN: 'CMS_ADMIN',
   MANAGE_ACCOUNT: 'manage-account',
   MANAGE_ACCOUNT_LINKS: 'manage-account-links',
   VIEW_PROFILE: 'view-profile',
@@ -10,24 +12,20 @@ export const BACKEND_CLAIMS = {
   UMA_AUTHORIZATION: 'uma_authorization',
 } as const;
 
-export type BackendClaim = typeof BACKEND_CLAIMS[keyof typeof BACKEND_CLAIMS];
-
-export interface User {
-  user_id: string;
-  username: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  fullName?: string;
-  tenantId: string;
-  roles: string[];
-  permissions: string[];
-  backendClaims: string[]; // Claims expected by backend (e.g., CMS-TEST-ROLE)
-}
+export type BackendClaim = (typeof BACKEND_CLAIMS)[keyof typeof BACKEND_CLAIMS];
 
 export interface LoginCredentials {
   username: string;
   password: string;
+}
+
+export interface User {
+  userId: string;
+  tenantId: string;
+  email: string;
+  fullName: string;
+  tenantName: string;
+  validatedClaims: Record<string, boolean>;
 }
 
 export interface LoginResponse {
@@ -35,6 +33,36 @@ export interface LoginResponse {
   token: string;
   expiresIn?: number;
   user?: User;
+}
+
+export interface DecodedToken {
+  exp: number;
+  sid: string;
+  iss: string;
+  tokenString: string;
+  clientId: string;
+  tenantId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  tenantName: string;
+  claims: string[];
+}
+
+export interface Investigator {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+export interface Supervisor {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface AuthState {
@@ -50,31 +78,12 @@ export interface AuthContextType extends AuthState {
   logout: () => void;
   clearError: () => void;
   hasBackendClaim: (claim: string) => boolean;
-  hasCMSTestRole: () => boolean;
-  hasAlertTriageRole: () => boolean; // New method for alert-triage claim
+  hasInvestigatorRole: () => boolean;
+  hasSupervisorRole: () => boolean;
+  hasCMSAdminRole: () => boolean;
+  hasComplianceOfficerRole: () => boolean;
+  hasAdminRole: () => boolean;
+  hasAnyRole: (roles: string[]) => boolean;
+  hasAllRoles: (roles: string[]) => boolean;
   validateBackendAccess: () => boolean;
-}
-
-export interface DecodedToken {
-  exp: number;
-  sub: string;
-  clientId?: string;
-  preferred_username?: string;
-  username?: string;
-  email?: string;
-  given_name?: string;        // First name
-  family_name?: string;       // Last name
-  name?: string;              // Full name
-  first_name?: string;        // Alternative first name field
-  last_name?: string;         // Alternative last name field
-  tenant_id?: string;
-  claims?: string[];
-  realm_access?: {
-    roles: string[];
-  };
-  resource_access?: {
-    [key: string]: {
-      roles: string[];
-    };
-  };
 }

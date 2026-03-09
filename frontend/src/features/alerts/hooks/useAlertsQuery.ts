@@ -4,48 +4,59 @@ import { useMemo } from 'react';
 import triageService from '../services/triageservice';
 import { useNotifications } from '../../../shared/providers/NotificationProvider';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
-import type { Alert, AlertsFilter, ManualTriageDto } from '../types/triage.types';
-import type { AlertStatus } from '../types/triage.types';
+import type {
+  Alert,
+  AlertsFilter,
+  ManualTriageDto,
+  AlertStatus,
+  ActionHistory,
+} from '../types/triage.types';
 
-// Query keys for consistent cache management
 export const alertsQueryKeys = {
   all: ['alerts'] as const,
   lists: () => [...alertsQueryKeys.all, 'list'] as const,
-  list: (filters: AlertsFilter) => [...alertsQueryKeys.lists(), filters] as const,
+  list: (filters: AlertsFilter) =>
+    [...alertsQueryKeys.lists(), filters] as const,
   details: () => [...alertsQueryKeys.all, 'detail'] as const,
-  detail: (id: string) => [...alertsQueryKeys.details(), id] as const,
-  actionHistory: (id: string) => [...alertsQueryKeys.detail(id), 'actionHistory'] as const,
+  detail: (id: number) => [...alertsQueryKeys.details(), id] as const,
+  actionHistory: (id: number) =>
+    [...alertsQueryKeys.detail(id), 'actionHistory'] as const,
   filterOptions: () => [...alertsQueryKeys.all, 'filterOptions'] as const,
 };
 
-// Enhanced useAlerts hook with React Query
-export const useAlerts = (filters: AlertsFilter = {}) => {
-  // Debounce search to avoid excessive API calls
+export const useAlerts = (filters: AlertsFilter = {}): {
+  alerts: Alert[];
+  pagination: { currentPage: number; totalPages: number; totalItems: number; pageSize: number };
+  isLoading: boolean;
+  isFetching: boolean;
+  isError: boolean;
+  error: Error | null;
+  refetch: () => void;
+  refreshAlerts: () => void;
+} => {
   const [debouncedSearch] = useDebounce(filters.search, 300);
-  
-  const debouncedFilters = useMemo(() => ({
-    ...filters,
-    search: debouncedSearch,
-  }), [filters, debouncedSearch]);
 
-  const {
-    data,
-    isLoading,
-    error,
-    refetch,
-    isFetching,
-    isError,
-  } = useQuery({
+  const debouncedFilters = useMemo(
+    () => ({
+      ...filters,
+      search: debouncedSearch,
+    }),
+    [filters, debouncedSearch],
+  );
+
+  const { data, isLoading, error, refetch, isFetching, isError } = useQuery({
     queryKey: alertsQueryKeys.list(debouncedFilters),
-    queryFn: () => triageService.getAlerts(debouncedFilters),
+    queryFn: async () => await triageService.getAlerts(debouncedFilters),
     enabled: true,
-    staleTime: 30000, // 30 seconds
-    gcTime: 300000, // 5 minutes
+    staleTime: 30000,
+    gcTime: 300000,
   });
 
   return {
-    alerts: (data?.alerts || []).map(alert => transformBackendAlertToUI(alert)),
-    pagination: data?.pagination || {
+    alerts: (data?.alerts ?? []).map((alert) =>
+      transformBackendAlertToUI(alert),
+    ),
+    pagination: data?.pagination ?? {
       currentPage: 1,
       totalPages: 1,
       totalItems: 0,
@@ -54,14 +65,18 @@ export const useAlerts = (filters: AlertsFilter = {}) => {
     isLoading,
     isFetching,
     isError,
-    error: error as Error | null,
+    error,
     refetch,
     refreshAlerts: refetch,
   };
 };
 
-// Enhanced useAlertDetails hook
-export const useAlertDetails = (alertId: string | null) => {
+export const useAlertDetails = (alertId: number | null): {
+  alert: Alert | undefined;
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => void;
+} => {
   const {
     data: alert,
     isLoading,
@@ -69,109 +84,137 @@ export const useAlertDetails = (alertId: string | null) => {
     refetch,
   } = useQuery({
     queryKey: alertsQueryKeys.detail(alertId!),
-    queryFn: () => triageService.getAlertById(alertId!),
+    queryFn: async () => await triageService.getAlertById(alertId!),
     enabled: !!alertId,
-    staleTime: 60000, // 1 minute
+    staleTime: 60000,
   });
 
   return {
     alert,
     isLoading,
-    error: error as Error | null,
+    error,
     refetch,
   };
 };
 
-// Enhanced useAlertActionHistory hook
-export const useAlertActionHistory = (alertId: string | null) => {
+export const useAlertActionHistory = (alertId: number | null): {
+  actionHistory: ActionHistory[];
+  isLoading: boolean;
+  error: Error | null;
+} => {
   const {
     data: actionHistory,
     isLoading,
     error,
   } = useQuery({
     queryKey: alertsQueryKeys.actionHistory(alertId!),
-    queryFn: () => triageService.getAlertActionHistory(alertId!),
+    queryFn: async () => await triageService.getAlertActionHistory(alertId!),
     enabled: !!alertId,
-    staleTime: 30000, // 30 seconds
+    staleTime: 30000,
   });
 
   return {
-    actionHistory: actionHistory || [],
+    actionHistory: actionHistory ?? [],
     isLoading,
-    error: error as Error | null,
+    error,
   };
 };
 
-// Enhanced useAlertOperations hook with React Query mutations
-export const useAlertOperations = () => {
+export const useAlertOperations = (): {
+  closeAlert: (variables: { alertId: number; status: AlertStatus; notes: string }) => void;
+  updateAlert: (variables: { alertId: number; data: Record<string, unknown> }) => void;
+  performManualTriage: (variables: { alertId: number; data: ManualTriageDto }) => void;
+  isClosingAlert: boolean;
+  isUpdatingAlert: boolean;
+  isPerformingManualTriage: boolean;
+  operationStates: { closingAlert: Set<string>; updatingAlert: Set<string>; performingManualTriage: Set<string>; loadingDetails: Set<string> };
+} => {
   const queryClient = useQueryClient();
-  const { showSuccess, showError } = useNotifications();
+  const { showError } = useNotifications();
 
   const closeAlertMutation = useMutation({
-    mutationFn: ({ alertId, status, notes }: { alertId: string; status: AlertStatus; notes: string }) =>
-      triageService.closeAlert(alertId, status, notes),
+    mutationFn: async ({
+      alertId,
+      status,
+      notes,
+    }: {
+      alertId: number;
+      status: AlertStatus;
+      notes: string;
+    }) => await triageService.closeAlert(alertId, status, notes),
     onSuccess: (data, variables) => {
-      showSuccess('Alert closed successfully');
-      // Invalidate and refetch alerts list
+      // showSuccess('Alert closed successfully');
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
-      // Update the specific alert in cache
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),
-        (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
+        (oldData: Alert | undefined) =>
+          oldData ? { ...oldData, ...data } : data,
       );
-      
-      // Invalidate case query to update case status in real-time
-      const caseId = data.case_id || 
-        queryClient.getQueryData<Alert>(alertsQueryKeys.detail(variables.alertId))?.case_id;
+
+      const caseId =
+        data.case_id ??
+        queryClient.getQueryData<Alert>(
+          alertsQueryKeys.detail(variables.alertId),
+        )?.case_id;
       if (caseId) {
         queryClient.invalidateQueries({ queryKey: ['case', caseId] });
       }
     },
     onError: (error: Error) => {
-      showError(error.message || 'Failed to close alert');
+      showError(error.message ?? 'Failed to close alert');
     },
   });
 
   const updateAlertMutation = useMutation({
-    mutationFn: ({ alertId, data }: { alertId: string; data: Record<string, unknown> }) =>
-      triageService.updateAlert(alertId, data),
+    mutationFn: async ({
+      alertId,
+      data,
+    }: {
+      alertId: number;
+      data: Record<string, unknown>;
+    }) => await triageService.updateAlert(alertId, data),
     onSuccess: (data, variables) => {
-      showSuccess('Alert updated successfully');
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
+      // Refetch the specific alert detail
+      queryClient.invalidateQueries({
+        queryKey: alertsQueryKeys.detail(variables.alertId),
+      });
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),
-        (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
+        (oldData: Alert | undefined) =>
+          oldData ? { ...oldData, ...data } : data,
       );
-      
-      // Invalidate case query to update case status in real-time
-      const caseId = data.case_id || 
-        queryClient.getQueryData<Alert>(alertsQueryKeys.detail(variables.alertId))?.case_id;
+
+      const caseId =
+        data.case_id ??
+        queryClient.getQueryData<Alert>(
+          alertsQueryKeys.detail(variables.alertId),
+        )?.case_id;
       if (caseId) {
         queryClient.invalidateQueries({ queryKey: ['case', caseId] });
       }
     },
     onError: (error: Error) => {
-      showError(error.message || 'Failed to update alert');
+      showError(error.message ?? 'Failed to update alert');
     },
   });
 
   const manualTriageMutation = useMutation({
-    mutationFn: ({ alertId, data }: { alertId: string; data: ManualTriageDto }) =>
-      triageService.performManualTriage(alertId, data),
+    mutationFn: async ({
+      alertId,
+      data,
+    }: {
+      alertId: number;
+      data: ManualTriageDto;
+    }) => await triageService.performManualTriage(alertId, data),
     onSuccess: (data, variables) => {
-      showSuccess('Manual triage completed successfully');
+      // showSuccess('Manual triage completed successfully');
       queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),
-        (oldData: Alert | undefined) => oldData ? { ...oldData, ...data } : data
+        (oldData: Alert | undefined) =>
+          oldData ? { ...oldData, ...data } : data,
       );
-      
-      // Invalidate case query to update case status in real-time
-      const caseId = data.case_id || 
-        queryClient.getQueryData<Alert>(alertsQueryKeys.detail(variables.alertId))?.case_id;
-      if (caseId) {
-        queryClient.invalidateQueries({ queryKey: ['case', caseId] });
-      }
     },
     onError: (error: Error) => {
       showError(error.message || 'Failed to complete manual triage');
@@ -185,19 +228,22 @@ export const useAlertOperations = () => {
     isClosingAlert: closeAlertMutation.isPending,
     isUpdatingAlert: updateAlertMutation.isPending,
     isPerformingManualTriage: manualTriageMutation.isPending,
-    // Legacy support for existing components
     operationStates: {
       closingAlert: new Set(closeAlertMutation.isPending ? ['pending'] : []),
       updatingAlert: new Set(updateAlertMutation.isPending ? ['pending'] : []),
-      performingManualTriage: new Set(manualTriageMutation.isPending ? ['pending'] : []),
+      performingManualTriage: new Set(
+        manualTriageMutation.isPending ? ['pending'] : [],
+      ),
       loadingDetails: new Set([]),
     },
   };
 };
 
-// Hook for filter options
-export const useAlertFilterOptions = () => {
-  // For now, return static filter options since backend doesn't support this endpoint yet
+export const useAlertFilterOptions = (): {
+  filterOptions: { priorities: string[]; alertTypes: string[]; sources: string[] };
+  isLoading: boolean;
+  error: null;
+} => {
   const filterOptions = {
     priorities: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
     alertTypes: ['FRAUD', 'AML', 'FRAUD_AND_AML'],

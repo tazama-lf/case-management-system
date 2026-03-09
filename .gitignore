@@ -125,6 +125,8 @@ dist
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
+.idea
+
 # yarn v3
 .pnp.*
 .yarn/*
@@ -139,3 +141,4 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 /generated/prisma
+/backend/prisma/migrations

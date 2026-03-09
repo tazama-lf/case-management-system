@@ -22,14 +22,12 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
   useEffect(() => {
     if (!active) return;
 
-    // Store the element that was focused before the trap activated
     previousActiveElement.current = document.activeElement as HTMLElement;
 
     const container = containerRef.current;
     if (!container) return;
 
-    // Get all focusable elements within the trap
-    const getFocusableElements = () => {
+    const getFocusableElements = (): Element[] => {
       const focusableSelectors = [
         'button:not([disabled])',
         'input:not([disabled])',
@@ -40,42 +38,38 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
         '[contenteditable="true"]',
       ].join(', ');
 
-      return Array.from(container.querySelectorAll(focusableSelectors)) as HTMLElement[];
+      return Array.from(container.querySelectorAll(focusableSelectors));
     };
 
     const focusableElements = getFocusableElements();
     const firstElement = focusableElements[0];
 
-    // Focus the first element when trap activates
     if (firstElement) {
       firstElement.focus();
     }
 
-    const handleTabKey = (e: KeyboardEvent) => {
+    const handleTabKey = (e: KeyboardEvent): void => {
       if (!active || e.key !== 'Tab') return;
 
       const currentFocusableElements = getFocusableElements();
       const currentFirstElement = currentFocusableElements[0];
-      const currentLastElement = currentFocusableElements[currentFocusableElements.length - 1];
+      const currentLastElement =
+        currentFocusableElements[currentFocusableElements.length - 1];
 
       if (!currentFirstElement) return;
 
       if (e.shiftKey) {
-        // Shift + Tab
         if (document.activeElement === currentFirstElement) {
           e.preventDefault();
           currentLastElement?.focus();
         }
-      } else {
-        // Tab
-        if (document.activeElement === currentLastElement) {
-          e.preventDefault();
-          currentFirstElement.focus();
-        }
+      } else if (document.activeElement === currentLastElement) {
+        e.preventDefault();
+        currentFirstElement.focus();
       }
     };
 
-    const handleEscapeKey = (e: KeyboardEvent) => {
+    const handleEscapeKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape' && onEscape) {
         onEscape();
       }
@@ -88,7 +82,6 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
       document.removeEventListener('keydown', handleTabKey);
       document.removeEventListener('keydown', handleEscapeKey);
 
-      // Restore focus to the previously focused element
       if (restoreFocus && previousActiveElement.current) {
         previousActiveElement.current.focus();
       }
@@ -99,8 +92,9 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
     <div
       ref={containerRef}
       className={className}
-      // Prevent clicks outside from moving focus
-      onMouseDown={(e) => e.preventDefault()}
+      onMouseDown={(e) => {
+        e.preventDefault();
+      }}
     >
       {children}
     </div>
@@ -116,7 +110,7 @@ export const SkipToContent: React.FC<SkipToContentProps> = ({
   targetId,
   className = '',
 }) => {
-  const handleSkip = () => {
+  const handleSkip = (): void => {
     const target = document.getElementById(targetId);
     if (target) {
       target.focus();
@@ -128,7 +122,7 @@ export const SkipToContent: React.FC<SkipToContentProps> = ({
     <button
       onClick={handleSkip}
       className={`
-        fixed top-0 left-0 z-50 px-4 py-2 bg-blue-600 text-white 
+        fixed top-0 left-0 z-50 px-4 py-2 bg-blue-600 text-white
         transform -translate-y-full focus:translate-y-0 transition-transform
         ${className}
       `}
@@ -152,13 +146,7 @@ interface ScreenReaderTextProps {
 export const ScreenReaderText: React.FC<ScreenReaderTextProps> = ({
   children,
   as: Component = 'span',
-}) => {
-  return (
-    <Component className="sr-only">
-      {children}
-    </Component>
-  );
-};
+}) => <Component className="sr-only">{children}</Component>;
 
 interface AnnouncementProps {
   message: string;
@@ -170,34 +158,30 @@ export const LiveRegion: React.FC<AnnouncementProps> = ({
   message,
   priority = 'polite',
   id,
-}) => {
-  return (
-    <div
-      id={id}
-      aria-live={priority}
-      aria-atomic="true"
-      className="sr-only"
-    >
-      {message}
-    </div>
-  );
-};
+}) => (
+  <div id={id} aria-live={priority} aria-atomic="true" className="sr-only">
+    {message}
+  </div>
+);
 
-// Hook for managing live announcements
-export const useAnnouncer = () => {
+export const useAnnouncer = (): {
+  announce: (message: string, priority?: 'polite' | 'assertive') => void;
+  announcement: { message: string; priority: 'polite' | 'assertive' } | null;
+} => {
   const [announcement, setAnnouncement] = React.useState<{
     message: string;
     priority: 'polite' | 'assertive';
   } | null>(null);
 
-  const announce = React.useCallback((
-    message: string,
-    priority: 'polite' | 'assertive' = 'polite'
-  ) => {
-    setAnnouncement({ message, priority });
-    // Clear after a short delay to ensure it's announced
-    setTimeout(() => setAnnouncement(null), 1000);
-  }, []);
+  const announce = React.useCallback(
+    (message: string, priority: 'polite' | 'assertive' = 'polite') => {
+      setAnnouncement({ message, priority });
+      setTimeout(() => {
+        setAnnouncement(null);
+      }, 1000);
+    },
+    [],
+  );
 
   return {
     announce,
@@ -205,7 +189,6 @@ export const useAnnouncer = () => {
   };
 };
 
-// Accessible button component with loading and disabled states
 interface AccessibleButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   isLoading?: boolean;
@@ -224,12 +207,16 @@ export const AccessibleButton: React.FC<AccessibleButtonProps> = ({
   className = '',
   ...props
 }) => {
-  const baseClasses = 'font-medium rounded focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors';
-  
+  const baseClasses =
+    'font-medium rounded focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors';
+
   const variantClasses = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-300',
-    secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500 disabled:bg-gray-100',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-300',
+    primary:
+      'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-300',
+    secondary:
+      'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500 disabled:bg-gray-100',
+    danger:
+      'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-300',
   };
 
   const sizeClasses = {
@@ -241,13 +228,16 @@ export const AccessibleButton: React.FC<AccessibleButtonProps> = ({
   return (
     <button
       {...props}
-      disabled={disabled || isLoading}
-      aria-disabled={disabled || isLoading}
+      disabled={disabled ?? isLoading}
+      aria-disabled={disabled ?? isLoading}
       className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
     >
       {isLoading ? (
         <>
-          <span aria-hidden="true" className="inline-block w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          <span
+            aria-hidden="true"
+            className="inline-block w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent"
+          />
           {loadingText}
           <ScreenReaderText>Loading, please wait</ScreenReaderText>
         </>
@@ -258,7 +248,6 @@ export const AccessibleButton: React.FC<AccessibleButtonProps> = ({
   );
 };
 
-// Hook for keyboard navigation
 export const useKeyboardNavigation = (
   items: any[],
   options: {
@@ -266,70 +255,70 @@ export const useKeyboardNavigation = (
     loop?: boolean;
     onSelect?: (index: number, item: any) => void;
     onEscape?: () => void;
-  } = {}
+  } = {},
 ) => {
-  const {
-    initialIndex = 0,
-    loop = true,
-    onSelect,
-    onEscape,
-  } = options;
+  const { initialIndex = 0, loop = true, onSelect, onEscape } = options;
 
   const [selectedIndex, setSelectedIndex] = React.useState(initialIndex);
 
-  const handleKeyDown = React.useCallback((e: KeyboardEvent) => {
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex(prev => {
-          const next = prev + 1;
-          if (next >= items.length) {
-            return loop ? 0 : prev;
+  const handleKeyDown = React.useCallback(
+    (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex((prev) => {
+            const next = prev + 1;
+            if (next >= items.length) {
+              return loop ? 0 : prev;
+            }
+            return next;
+          });
+          break;
+
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex((prev) => {
+            const next = prev - 1;
+            if (next < 0) {
+              return loop ? items.length - 1 : prev;
+            }
+            return next;
+          });
+          break;
+
+        case 'Home':
+          e.preventDefault();
+          setSelectedIndex(0);
+          break;
+
+        case 'End':
+          e.preventDefault();
+          setSelectedIndex(items.length - 1);
+          break;
+
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          if (onSelect) {
+            onSelect(selectedIndex, items[selectedIndex]);
           }
-          return next;
-        });
-        break;
+          break;
 
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex(prev => {
-          const next = prev - 1;
-          if (next < 0) {
-            return loop ? items.length - 1 : prev;
+        case 'Escape':
+          if (onEscape) {
+            onEscape();
           }
-          return next;
-        });
-        break;
-
-      case 'Home':
-        e.preventDefault();
-        setSelectedIndex(0);
-        break;
-
-      case 'End':
-        e.preventDefault();
-        setSelectedIndex(items.length - 1);
-        break;
-
-      case 'Enter':
-      case ' ':
-        e.preventDefault();
-        if (onSelect) {
-          onSelect(selectedIndex, items[selectedIndex]);
-        }
-        break;
-
-      case 'Escape':
-        if (onEscape) {
-          onEscape();
-        }
-        break;
-    }
-  }, [items, selectedIndex, loop, onSelect, onEscape]);
+          break;
+      }
+    },
+    [items, selectedIndex, loop, onSelect, onEscape],
+  );
 
   React.useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [handleKeyDown]);
 
   return {

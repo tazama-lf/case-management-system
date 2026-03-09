@@ -1,5 +1,27 @@
 import React from 'react';
 
+// Utility function to map frontend column names to user-friendly display names
+const getColumnDisplayName = (column: string): string => {
+  const columnDisplayNames: Record<string, string> = {
+    lastUpdated: 'Date Created',
+    created_at: 'Date Created',
+    updated_at: 'Last Updated',
+    priority: 'Priority',
+    confidence_per: 'Confidence %',
+    source: 'Source',
+    alert_type: 'Alert Type',
+    txtp: 'Transaction Type',
+    alert_id: 'Alert ID',
+    case_id: 'Case ID',
+    status: 'Status',
+  };
+
+  return (
+    columnDisplayNames[column] ||
+    column.charAt(0).toUpperCase() + column.slice(1)
+  );
+};
+
 interface ResultsSummaryProps {
   pagination: {
     currentPage: number;
@@ -13,26 +35,19 @@ interface ResultsSummaryProps {
     column: string;
     direction: 'asc' | 'desc';
   };
+  itemType?: string;
 }
 
-const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination, loading, lastUpdated, onPageSizeChange, sort }) => {
-  const { currentPage, pageSize, totalItems } = pagination;
+const ResultsSummary: React.FC<ResultsSummaryProps> = ({
+  pagination,
+  onPageSizeChange,
+  sort,
+}) => {
+  const { pageSize } = pagination;
 
   return (
     <div className="mb-4 flex items-center justify-between">
-      <div className="text-sm text-gray-600">
-        Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems} alerts
-        {loading && (
-          <span className="ml-2">
-            <div className="inline-block animate-spin h-4 w-4 border-2 border-gray-400 rounded-full border-t-transparent"></div>
-          </span>
-        )}
-        {lastUpdated && !loading && (
-          <span className="ml-4 text-xs text-gray-500">
-            Last updated: {lastUpdated.toLocaleTimeString()}
-          </span>
-        )}
-      </div>
+      {<div className="text-sm text-gray-600"></div>}
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
           <label htmlFor="pageSize" className="text-sm text-gray-600">
@@ -41,11 +56,14 @@ const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination, loading, la
           <select
             id="pageSize"
             value={pageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            onChange={(e) => {
+              onPageSizeChange(Number(e.target.value));
+            }}
             className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value={5}>5</option>
             <option value={10}>10</option>
+            <option value={20}>20</option>
             <option value={25}>25</option>
             <option value={50}>50</option>
             <option value={100}>100</option>
@@ -53,7 +71,8 @@ const ResultsSummary: React.FC<ResultsSummaryProps> = ({ pagination, loading, la
           <span className="text-sm text-gray-600">per page</span>
         </div>
         <div className="text-sm text-gray-600">
-          Sorted by {sort.column} ({sort.direction === 'asc' ? 'ascending' : 'descending'})
+          Sorted by {getColumnDisplayName(sort.column)} (
+          {sort.direction === 'asc' ? 'Ascending' : 'Descending'})
         </div>
       </div>
     </div>

@@ -9,15 +9,16 @@ export interface SystemConfig {
 }
 
 class SystemConfigService {
-  private baseUrl = '/api/v1/config';
+  private readonly baseUrl = '/api/v1/config';
 
   async getSystemConfig(): Promise<SystemConfig> {
     try {
-      const response = await apiClient.get<SystemConfig>(`${this.baseUrl}/system`);
+      const response = await apiClient.get<SystemConfig>(
+        `${this.baseUrl}/system`,
+      );
       return response;
     } catch (error) {
       console.error('Failed to fetch system config:', error);
-      // Fallback to default configuration
       return {
         triageType: 'MANUAL',
         confidenceThreshold: 95,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { TablePagination } from '@/shared';
 import type {
   AlertsTableColumn,
   AlertsTableProps,
@@ -76,7 +77,6 @@ const AlertsTable = <T extends Record<string, unknown>>({
       return column.render(row[column.key as keyof T], row);
     }
     const value = row[column.key as keyof T];
-    // Convert value to string if it's not already a React node
     if (value === null || value === undefined) return '';
     if (typeof value === 'string' || typeof value === 'number') return value;
     return String(value);
@@ -95,7 +95,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      {/* Loading State */}
+      {}
       {loading && (
         <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
           <div className="flex items-center space-x-2">
@@ -107,10 +107,10 @@ const AlertsTable = <T extends Record<string, unknown>>({
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          {/* Table Header */}
+          {}
           <thead className="bg-gray-50">
             <tr>
-              {/* Selection Header */}
+              {}
               {selectable && (
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <input
@@ -119,13 +119,15 @@ const AlertsTable = <T extends Record<string, unknown>>({
                     ref={(input) => {
                       if (input) input.indeterminate = isPartiallySelected;
                     }}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    onChange={(e) => {
+                      handleSelectAll(e.target.checked);
+                    }}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                 </th>
               )}
 
-              {/* Column Headers */}
+              {}
               {columns.map((column) => (
                 <th
                   key={String(column.key)}
@@ -148,7 +150,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
             </tr>
           </thead>
 
-          {/* Table Body */}
+          {}
           <tbody className="bg-white divide-y divide-gray-200">
             {data.length === 0 ? (
               <tr>
@@ -170,26 +172,28 @@ const AlertsTable = <T extends Record<string, unknown>>({
                   <tr
                     key={String(key)}
                     className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''} ${onRowClick ? 'cursor-pointer' : ''}`}
-                    onClick={() => onRowClick && onRowClick(row)}
+                    onClick={() => onRowClick?.(row)}
                   >
-                    {/* Selection Cell */}
+                    {}
                     {selectable && (
                       <td
                         className="px-6 py-4 whitespace-nowrap"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
                       >
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={(e) =>
-                            handleRowSelect(key, e.target.checked)
-                          }
+                          onChange={(e) => {
+                            handleRowSelect(key, e.target.checked);
+                          }}
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
                       </td>
                     )}
 
-                    {/* Data Cells */}
+                    {}
                     {columns.map((column) => (
                       <td
                         key={String(column.key)}
@@ -212,108 +216,7 @@ const AlertsTable = <T extends Record<string, unknown>>({
         </table>
       </div>
 
-      {/* Pagination */}
-      {pagination && (
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Showing{' '}
-                <span className="font-medium">
-                  {Math.min(
-                    (pagination.currentPage - 1) * pagination.pageSize + 1,
-                    pagination.totalItems,
-                  )}
-                </span>{' '}
-                to{' '}
-                <span className="font-medium">
-                  {Math.min(
-                    pagination.currentPage * pagination.pageSize,
-                    pagination.totalItems,
-                  )}
-                </span>{' '}
-                of <span className="font-medium">{pagination.totalItems}</span>{' '}
-                results
-              </p>
-            </div>
-            <div>
-              <nav
-                className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-                aria-label="Pagination"
-              >
-                <button
-                  onClick={() =>
-                    pagination.onPageChange(Math.max(1, pagination.currentPage - 1))
-                  }
-                  disabled={pagination.currentPage <= 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                {/* Page Numbers with sliding window and ellipses */}
-                {(() => {
-                  const { currentPage, totalPages } = pagination;
-                  const pages: (number | 'ellipsis')[] = [];
-                  const windowSize = 5; // total number buttons to display (excluding first/last if separated by ellipses)
-                  const half = Math.floor(windowSize / 2);
-
-                  // Always include first and last page when there is enough room
-                  const addPage = (p: number) => pages.push(p);
-                  const addEllipsis = () => pages.push('ellipsis');
-
-                  if (totalPages <= windowSize + 2) {
-                    // Small number of pages, show all
-                    for (let p = 1; p <= totalPages; p++) addPage(p);
-                  } else {
-                    // Large number of pages, show window around currentPage
-                    const start = Math.max(2, currentPage - half);
-                    const end = Math.min(totalPages - 1, currentPage + half);
-
-                    addPage(1);
-                    if (start > 2) addEllipsis();
-                    for (let p = start; p <= end; p++) addPage(p);
-                    if (end < totalPages - 1) addEllipsis();
-                    addPage(totalPages);
-                  }
-
-      return pages.map((p, idx) =>
-                    p === 'ellipsis' ? (
-                      <span
-        key={`ellipsis-${idx}`}
-                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-400 select-none"
-                      >
-                        …
-                      </span>
-                    ) : (
-                      <button
-                        key={p}
-                        onClick={() => pagination.onPageChange(p)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                          pagination.currentPage === p
-                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                        }`}
-                        aria-current={pagination.currentPage === p ? 'page' : undefined}
-                      >
-                        {p}
-                      </button>
-                    ),
-                  );
-                })()}
-                <button
-                  onClick={() =>
-                    pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))
-                  }
-                  disabled={pagination.currentPage >= pagination.totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </nav>
-            </div>
-          </div>
-        </div>
-      )}
+      {pagination && <TablePagination pagination={pagination} />}
     </div>
   );
 };

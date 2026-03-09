@@ -1,7 +1,11 @@
 import React, { createContext, useContext } from 'react';
-import { XMarkIcon, ExclamationTriangleIcon, ClockIcon } from '@heroicons/react/24/outline';
-import type { Alert } from '../types/triage.types';
-import type { ActionHistory } from '../types/triage.types';
+import {
+  XMarkIcon,
+  ExclamationTriangleIcon,
+  ClockIcon,
+} from '@heroicons/react/24/outline';
+import type { Alert, ActionHistory } from '../types/triage.types';
+import { formatDate } from '@/shared/utils/dateUtils';
 
 interface AlertDetailsContextType {
   alert: Alert | null;
@@ -17,7 +21,9 @@ const AlertDetailsContext = createContext<AlertDetailsContextType | null>(null);
 const useAlertDetailsContext = () => {
   const context = useContext(AlertDetailsContext);
   if (!context) {
-    throw new Error('Alert details components must be used within AlertDetails.Root');
+    throw new Error(
+      'Alert details components must be used within AlertDetails.Root',
+    );
   }
   return context;
 };
@@ -114,7 +120,9 @@ const AlertDetailsHeader: React.FC<AlertDetailsHeaderProps> = ({
               Alert Details
             </h2>
           </div>
-          <span className={`px-3 py-1 text-sm font-medium rounded-full ${getPriorityColor(alert.priority)}`}>
+          <span
+            className={`px-3 py-1 text-sm font-medium rounded-full ${getPriorityColor(alert.priority)}`}
+          >
             {alert.priority}
           </span>
         </div>
@@ -130,7 +138,8 @@ const AlertDetailsHeader: React.FC<AlertDetailsHeaderProps> = ({
       </div>
       <div className="mt-2">
         <p className="text-sm text-gray-600">
-          Alert ID: <span className="font-mono font-medium">{alert.alert_id}</span>
+          Alert ID:{' '}
+          <span className="font-mono font-medium">{alert.alert_id}</span>
         </p>
       </div>
     </div>
@@ -139,7 +148,7 @@ const AlertDetailsHeader: React.FC<AlertDetailsHeaderProps> = ({
 
 interface AlertDetailsContentProps {
   className?: string;
-  sections?: ('basic' | 'message' | 'data' | 'transaction' | 'network')[];
+  sections?: Array<'basic' | 'message' | 'data' | 'transaction' | 'network'>;
 }
 
 const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
@@ -166,14 +175,6 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
 
   if (!alert) return null;
 
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleString();
-    } catch {
-      return dateString;
-    }
-  };
-
   const renderJSONData = (data: unknown, title: string) => {
     if (!data) return null;
 
@@ -193,34 +194,50 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Alert Type</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Alert Type
+              </label>
               <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                {alert.alert_type || 'N/A'}
+                {alert.alert_type ?? 'N/A'}
               </span>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Source</label>
-              <p className="text-sm text-gray-900">{alert.source || 'N/A'}</p>
+              <label className="block text-sm font-medium text-gray-700">
+                Source
+              </label>
+              <p className="text-sm text-gray-900">{alert.source ?? 'N/A'}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Type</label>
-              <p className="text-sm text-gray-900">{alert.alert_type || 'N/A'}</p>
+              <label className="block text-sm font-medium text-gray-700">
+                Type
+              </label>
+              <p className="text-sm text-gray-900">
+                {alert.alert_type ?? 'N/A'}
+              </p>
             </div>
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Confidence</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Confidence
+              </label>
               <p className="text-sm text-gray-900">
                 {alert.confidence_per ? `${alert.confidence_per}%` : 'N/A'}
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Created</label>
-              <p className="text-sm text-gray-900">{formatDate(alert.created_at)}</p>
+              <label className="block text-sm font-medium text-gray-700">
+                Created
+              </label>
+              <p className="text-sm text-gray-900">
+                {formatDate(alert.created_at)}
+              </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Case ID</label>
-              <p className="text-sm text-gray-900">{alert.case_id || 'N/A'}</p>
+              <label className="block text-sm font-medium text-gray-700">
+                Case ID
+              </label>
+              <p className="text-sm text-gray-900">{alert.case_id ?? 'N/A'}</p>
             </div>
           </div>
         </div>
@@ -230,21 +247,26 @@ const AlertDetailsContent: React.FC<AlertDetailsContentProps> = ({
         <div>
           <h4 className="text-sm font-medium text-gray-900 mb-2">Message</h4>
           <div className="bg-gray-50 p-4 rounded border">
-            <p className="text-sm text-gray-700">{alert.message}</p>
+            <p className="text-sm text-gray-700">
+              {alert.message || 'No message available'}
+            </p>
           </div>
         </div>
       )}
 
-      {sections.includes('data') && renderJSONData(alert.alert_data, 'Alert Data')}
-      {sections.includes('transaction') && renderJSONData(alert.transaction, 'Transaction Data')}
-      {sections.includes('network') && renderJSONData(alert.network_map, 'Network Map')}
+      {sections.includes('data') &&
+        renderJSONData(alert.alert_data, 'Alert Data')}
+      {sections.includes('transaction') &&
+        renderJSONData(alert.transaction, 'Transaction Data')}
+      {sections.includes('network') &&
+        renderJSONData(alert.network_map, 'Network Map')}
     </div>
   );
 };
 
 interface AlertDetailsActionsProps {
   className?: string;
-  actions?: ('update' | 'close')[];
+  actions?: Array<'update' | 'close'>;
 }
 
 const AlertDetailsActions: React.FC<AlertDetailsActionsProps> = ({
@@ -267,16 +289,20 @@ const AlertDetailsActions: React.FC<AlertDetailsActionsProps> = ({
       <div className="flex justify-end space-x-3">
         {canUpdate && (
           <button
-            onClick={() => onUpdate(alert)}
+            onClick={() => {
+              onUpdate(alert);
+            }}
             className="px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-blue-300 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             Update Alert
           </button>
         )}
-  {/* Convert to Case removed */}
+        { }
         {canClose && (
           <button
-            onClick={() => onCloseAlert(alert)}
+            onClick={() => {
+              onCloseAlert(alert);
+            }}
             className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
           >
             Close Alert
@@ -301,7 +327,9 @@ const AlertDetailsHistory: React.FC<AlertDetailsHistoryProps> = ({
   if (isLoading) {
     return (
       <div className={`p-6 border-t border-gray-200 ${className}`}>
-        <h4 className="text-sm font-medium text-gray-900 mb-4">Action History</h4>
+        <h4 className="text-sm font-medium text-gray-900 mb-4">
+          Action History
+        </h4>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="animate-pulse flex space-x-3">
@@ -320,7 +348,9 @@ const AlertDetailsHistory: React.FC<AlertDetailsHistoryProps> = ({
   if (!actionHistory || actionHistory.length === 0) {
     return (
       <div className={`p-6 border-t border-gray-200 ${className}`}>
-        <h4 className="text-sm font-medium text-gray-900 mb-4">Action History</h4>
+        <h4 className="text-sm font-medium text-gray-900 mb-4">
+          Action History
+        </h4>
         <p className="text-sm text-gray-500">No action history available</p>
       </div>
     );
@@ -345,15 +375,11 @@ const AlertDetailsHistory: React.FC<AlertDetailsHistoryProps> = ({
                 {action.action_performed && ` - ${action.action_performed}`}
               </p>
               <div className="flex items-center space-x-2 text-xs text-gray-500">
-                <span>
-                  {new Date(action.performed_at).toLocaleString()}
-                </span>
+                <span>{new Date(action.performed_at).toLocaleString()}</span>
                 {action.user_id && (
                   <>
                     <span>•</span>
-                    <span className="font-medium">
-                      User: {action.user_id}
-                    </span>
+                    <span className="font-medium">User: {action.user_id}</span>
                   </>
                 )}
               </div>
@@ -375,7 +401,6 @@ const AlertDetailsHistory: React.FC<AlertDetailsHistoryProps> = ({
   );
 };
 
-// Compound component export
 export const AlertDetails = {
   Root: AlertDetailsRoot,
   Header: AlertDetailsHeader,

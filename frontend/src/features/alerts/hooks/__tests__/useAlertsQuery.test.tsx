@@ -6,7 +6,32 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NotificationProvider } from '../../../../shared/providers/NotificationProvider';
 import { useAlerts, useAlertOperations } from '../../hooks/useAlertsQuery';
 
-// Test component that uses the hook
+// Mocks for triage service used by the alerts hooks
+const mockGetAlerts = vi.fn();
+const mockGetAlertById = vi.fn();
+const mockGetAlertActionHistory = vi.fn();
+const mockPerformManualTriage = vi.fn();
+const mockUpdateAlert = vi.fn();
+const mockCloseAlert = vi.fn();
+const mockGetFilterOptions = vi.fn();
+const mockGetNALTAlerts = vi.fn();
+
+vi.mock('../../services/triageservice', () => ({
+  __esModule: true,
+  default: {
+    getAlerts: (...args: unknown[]) => mockGetAlerts(...args),
+    getAlertById: (...args: unknown[]) => mockGetAlertById(...args),
+    getAlertActionHistory: (...args: unknown[]) =>
+      mockGetAlertActionHistory(...args),
+    performManualTriage: (...args: unknown[]) =>
+      mockPerformManualTriage(...args),
+    updateAlert: (...args: unknown[]) => mockUpdateAlert(...args),
+    closeAlert: (...args: unknown[]) => mockCloseAlert(...args),
+    getFilterOptions: (...args: unknown[]) => mockGetFilterOptions(...args),
+    getNALTAlerts: (...args: unknown[]) => mockGetNALTAlerts(...args),
+  },
+}));
+
 const TestComponent = () => {
   const { alerts, isLoading, error, refetch } = useAlerts({
     search: '',
@@ -21,7 +46,7 @@ const TestComponent = () => {
     <div>
       <div data-testid="alerts-count">{alerts.length}</div>
       <button onClick={() => refetch()}>Refetch</button>
-  {alerts.map((alert) => (
+      {alerts.map((alert) => (
         <div key={alert.alert_id} data-testid={`alert-${alert.alert_id}`}>
           {alert.message}
         </div>
@@ -68,30 +93,62 @@ const renderWithProviders = (component: React.ReactElement) => {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <NotificationProvider>
-        {component}
-      </NotificationProvider>
-    </QueryClientProvider>
+      <NotificationProvider>{component}</NotificationProvider>
+    </QueryClientProvider>,
   );
 };
 
 describe('useAlerts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    const baseAlerts = [
+      {
+        alert_id: 'ALERT-001',
+        message: 'First alert',
+      },
+      {
+        alert_id: 'ALERT-002',
+        message: 'Second alert',
+      },
+    ];
+
+    mockGetAlerts.mockImplementation(
+      async (filters: { search?: string } = {}) => {
+        const { search } = filters;
+        let alerts = baseAlerts;
+
+        if (search) {
+          const term = search.toLowerCase();
+          alerts = alerts.filter(
+            (a) =>
+              a.alert_id.toLowerCase().includes(term) ||
+              a.message.toLowerCase().includes(term),
+          );
+        }
+
+        return {
+          alerts,
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: alerts.length,
+            pageSize: 10,
+          },
+        };
+      },
+    );
   });
 
   it('should fetch alerts successfully', async () => {
     renderWithProviders(<TestComponent />);
 
-    // Should show loading initially
     expect(screen.getByText('Loading...')).toBeInTheDocument();
 
-    // Wait for data to load
     await waitFor(() => {
       expect(screen.getByTestId('alerts-count')).toHaveTextContent('2');
     });
 
-    // Should display mock alerts
     expect(screen.getByTestId('alert-ALERT-001')).toBeInTheDocument();
     expect(screen.getByTestId('alert-ALERT-002')).toBeInTheDocument();
   });
@@ -102,51 +159,37 @@ describe('useAlerts', () => {
 
     const searchInput = screen.getByTestId('search-input');
 
-    // Type in search input
     await user.type(searchInput, 'ALERT-001');
 
-    // Should debounce and search
-    await waitFor(() => {
-      expect(screen.getByTestId('alerts-count')).toHaveTextContent('1');
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('alerts-count')).toHaveTextContent('1');
+      },
+      { timeout: 1000 },
+    );
   });
 
   it('should handle refetch', async () => {
     const user = userEvent.setup();
     renderWithProviders(<TestComponent />);
 
-    // Wait for initial load
     await waitFor(() => {
       expect(screen.getByTestId('alerts-count')).toHaveTextContent('2');
     });
 
-    // Click refetch button
     const refetchButton = screen.getByText('Refetch');
     await user.click(refetchButton);
 
-    // Should refetch data
     await waitFor(() => {
       expect(screen.getByTestId('alerts-count')).toHaveTextContent('2');
     });
   });
 
   it('should handle API errors', async () => {
-    // Mock API to return error
-    const { server } = await import('../../../../test/mocks/server');
-    const { http, HttpResponse } = await import('msw');
-    
-    server.use(
-      http.get('/api/v1/triage/alerts', () => {
-        return HttpResponse.json(
-          { error: 'Internal server error' },
-          { status: 500 }
-        );
-      })
-    );
+    mockGetAlerts.mockRejectedValueOnce(new Error('Internal server error'));
 
     renderWithProviders(<TestComponent />);
 
-    // Should show error
     await waitFor(() => {
       expect(screen.getByText(/Error:/)).toBeInTheDocument();
     });
@@ -155,26 +198,39 @@ describe('useAlerts', () => {
 
 describe('useAlertOperations', () => {
   const TestAlertOperations = () => {
-    const { 
-      updateAlert, 
+    const {
+      updateAlert,
       closeAlert,
+      performManualTriage,
       isUpdatingAlert,
-      isClosingAlert
+      isClosingAlert,
+      isPerformingManualTriage,
     } = useAlertOperations();
 
     const handleUpdate = () => {
       updateAlert({
         alertId: 'ALERT-001',
-        data: { priority: 'CRITICAL' }
+        data: { priority: 'CRITICAL' },
       });
     };
 
-
     const handleClose = () => {
-      closeAlert({ 
-        alertId: 'ALERT-001', 
-        status: 'CLOSED', 
-        notes: 'Test closure' 
+      closeAlert({
+        alertId: 'ALERT-001',
+        status: 'CLOSED',
+        notes: 'Test closure',
+      });
+    };
+
+    const handleManualTriage = () => {
+      performManualTriage({
+        alertId: 'ALERT-001',
+        data: {
+          priorityScore: 85,
+          predictionOutcome: 'TRUE_POSITIVE',
+          status: 'STATUS_82_CLOSED_CONFIRMED',
+          note: 'Manual triage test',
+        },
       });
     };
 
@@ -185,6 +241,12 @@ describe('useAlertOperations', () => {
         </button>
         <button onClick={handleClose} disabled={isClosingAlert}>
           Close Alert
+        </button>
+        <button
+          onClick={handleManualTriage}
+          disabled={isPerformingManualTriage}
+        >
+          Perform Manual Triage
         </button>
       </div>
     );
@@ -197,19 +259,17 @@ describe('useAlertOperations', () => {
     const updateButton = screen.getByText('Update Alert');
     await user.click(updateButton);
 
-    // Should handle the mutation (success handled by notifications)
     expect(updateButton).toBeInTheDocument();
   });
 
-  it('should handle convert to case mutation', async () => {
+  it('should handle manual triage mutation', async () => {
     const user = userEvent.setup();
     renderWithProviders(<TestAlertOperations />);
 
-    const convertButton = screen.getByText('Convert to Case');
-    await user.click(convertButton);
+    const manualTriageButton = screen.getByText('Perform Manual Triage');
+    await user.click(manualTriageButton);
 
-    // Should handle the mutation (success handled by notifications)
-    expect(convertButton).toBeInTheDocument();
+    expect(manualTriageButton).toBeInTheDocument();
   });
 
   it('should handle close alert mutation', async () => {
@@ -219,7 +279,6 @@ describe('useAlertOperations', () => {
     const closeButton = screen.getByText('Close Alert');
     await user.click(closeButton);
 
-    // Should handle the mutation (success handled by notifications)
     expect(closeButton).toBeInTheDocument();
   });
 });

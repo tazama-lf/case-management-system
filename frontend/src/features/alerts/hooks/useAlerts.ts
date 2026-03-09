@@ -1,67 +1,15 @@
-
 import { useReducer, useCallback, useEffect, useMemo } from 'react';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
-import type { Alert, AlertsSearchFilters as UIAlertsSearchFilters } from '../types/alertsdashboard.types';
-
-// Helper function to check if date is within time range
-const isDateInRange = (dateString: string, timeRange: string, customDateRange?: { startDate: string; endDate: string }) => {
-  const date = new Date(dateString);
-  const now = new Date();
-  
-  switch (timeRange) {
-    case 'today': {
-      return date.toDateString() === now.toDateString();
-    }
-    case 'yesterday': {
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      return date.toDateString() === yesterday.toDateString();
-    }
-    case 'last7days': {
-      const sevenDaysAgo = new Date(now);
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      return date >= sevenDaysAgo;
-    }
-    case 'last30days': {
-      const thirtyDaysAgo = new Date(now);
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      return date >= thirtyDaysAgo;
-    }
-    case 'last90days': {
-      const ninetyDaysAgo = new Date(now);
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-      return date >= ninetyDaysAgo;
-    }
-    case 'thisWeek': {
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay());
-      startOfWeek.setHours(0, 0, 0, 0);
-      return date >= startOfWeek;
-    }
-    case 'thisMonth': {
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      return date >= startOfMonth;
-    }
-    case 'custom': {
-      if (customDateRange?.startDate && customDateRange?.endDate) {
-        const startDate = new Date(customDateRange.startDate);
-        const endDate = new Date(customDateRange.endDate);
-        endDate.setHours(23, 59, 59, 999); // Include the entire end date
-        return date >= startDate && date <= endDate;
-      }
-      return true;
-    }
-    default:
-      return true;
-  }
-};
+import type {
+  Alert,
+  AlertsSearchFilters as UIAlertsSearchFilters,
+} from '../types/alertsdashboard.types';
 
 interface AlertsSearchFilters extends UIAlertsSearchFilters {
-    customDateRange?: { startDate: string; endDate: string };
+  customDateRange?: { startDate: string; endDate: string };
 }
 
-// State structure for the hook
 interface AlertsState {
   allAlerts: Alert[];
   filteredAlerts: Alert[];
@@ -81,18 +29,21 @@ interface AlertsState {
   lastUpdated: Date | null;
 }
 
-// Action types for the reducer
 type Action =
   | { type: 'FETCH_START' }
-  | { type: 'FETCH_SUCCESS'; payload: { alerts: Alert[]; totalItems: number; totalPages: number; } }
+  | {
+      type: 'FETCH_SUCCESS';
+      payload: { alerts: Alert[]; totalItems: number; totalPages: number };
+    }
   | { type: 'FETCH_FAILURE'; payload: string }
   | { type: 'SET_FILTERS'; payload: Partial<AlertsSearchFilters> }
-  | { type: 'SET_SORT'; payload: { column: keyof Alert | string; direction: 'asc' | 'desc' } }
+  | {
+      type: 'SET_SORT';
+      payload: { column: keyof Alert | string; direction: 'asc' | 'desc' };
+    }
   | { type: 'SET_PAGE'; payload: number }
-  | { type: 'SET_PAGE_SIZE'; payload: number }
-  | { type: 'APPLY_FILTERS_AND_SORT' };
+  | { type: 'SET_PAGE_SIZE'; payload: number };
 
-// Initial state
 const initialState: AlertsState = {
   allAlerts: [],
   filteredAlerts: [],
@@ -110,7 +61,7 @@ const initialState: AlertsState = {
     timeRange: '',
   },
   sort: {
-    column: 'lastUpdated',
+    column: 'created_at',
     direction: 'desc',
   },
   loading: true,
@@ -118,7 +69,6 @@ const initialState: AlertsState = {
   lastUpdated: null,
 };
 
-// Reducer function
 const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
   switch (action.type) {
     case 'FETCH_START':
@@ -128,6 +78,7 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
         ...state,
         loading: false,
         allAlerts: action.payload.alerts,
+        filteredAlerts: action.payload.alerts, // Backend already filtered, so allAlerts = filteredAlerts
         pagination: {
           ...state.pagination,
           totalItems: action.payload.totalItems,
@@ -138,101 +89,56 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
     case 'FETCH_FAILURE':
       return { ...state, loading: false, error: action.payload };
     case 'SET_FILTERS':
-      return { ...state, filters: { ...state.filters, ...action.payload }, pagination: { ...state.pagination, currentPage: 1 } };
-    case 'SET_SORT':
-      return { ...state, sort: action.payload, pagination: { ...state.pagination, currentPage: 1 } };
-    case 'SET_PAGE':
-      return { ...state, pagination: { ...state.pagination, currentPage: action.payload } };
-    case 'SET_PAGE_SIZE':
-        return { ...state, pagination: { ...state.pagination, pageSize: action.payload, currentPage: 1 } };
-    case 'APPLY_FILTERS_AND_SORT': {
-      let filtered = [...state.allAlerts];
-
-      // Text query filter
-      if (state.filters.query && state.filters.query.trim() !== '') {
-        const q = state.filters.query.trim().toLowerCase();
-        filtered = filtered.filter((a: Alert) => {
-          const alertId = String(a.alert_id || '').toLowerCase();
-          const message = String(a.message || '').toLowerCase();
-          const txId = String(a.txtp || '').toLowerCase();
-          const source = String(a.source || '').toLowerCase();
-          const type = String(a.alert_type || '').toLowerCase();
-          const transactionJson = a.transaction ? JSON.stringify(a.transaction).toLowerCase() : '';
-          const networkMap = a.network_map ? JSON.stringify(a.network_map).toLowerCase() : '';
-
-          return (
-            alertId.includes(q) ||
-            message.includes(q) ||
-            txId.includes(q) ||
-            source.includes(q) ||
-            type.includes(q) ||
-            transactionJson.includes(q) ||
-            networkMap.includes(q)
-          );
-        });
-      }
-
-      // Source filter
-      if (state.filters.source) {
-        filtered = filtered.filter(a => (a.source || '').toLowerCase() === state.filters.source.toLowerCase());
-      }
-
-      // Type filter
-      if (state.filters.type) {
-        filtered = filtered.filter(a => (a.alert_type || '').toLowerCase() === state.filters.type.toLowerCase());
-      }
-
-      // Priority filter
-      if (state.filters.priority) {
-        filtered = filtered.filter(a => (a.priority || '').toLowerCase() === state.filters.priority.toLowerCase());
-      }
-
-      // Alert type filter
-      if (state.filters.type) {
-        filtered = filtered.filter(a => (a.alert_type || '').toLowerCase() === state.filters.type.toLowerCase());
-      }
-
-      // Time range filter
-      if (state.filters.timeRange) {
-        filtered = filtered.filter((alert: Alert) => isDateInRange(alert.created_at as string, state.filters.timeRange, state.filters.customDateRange));
-      }
-
-      // Sorting
-      const getValue = (item: Alert, key: string) => {
-        const v = item[key as keyof Alert] as unknown;
-        if (v === undefined || v === null) return '';
-        if (typeof v === 'string') return v.toLowerCase();
-        if (typeof v === 'number') return v;
-        if (v instanceof Date) return v.getTime();
-        return String(v);
+      return {
+        ...state,
+        filters: { ...state.filters, ...action.payload },
+        pagination: { ...state.pagination, currentPage: 1 },
       };
-
-      filtered.sort((a: Alert, b: Alert) => {
-        const aVal = getValue(a, state.sort.column as string);
-        const bVal = getValue(b, state.sort.column as string);
-
-        if (aVal < bVal) return state.sort.direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return state.sort.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-
-      return { ...state, filteredAlerts: filtered, pagination: { ...state.pagination, totalItems: filtered.length, totalPages: Math.max(1, Math.ceil(filtered.length / state.pagination.pageSize)) } };
-    }
+    case 'SET_SORT':
+      return {
+        ...state,
+        sort: action.payload,
+        pagination: { ...state.pagination, currentPage: 1 },
+      };
+    case 'SET_PAGE':
+      return {
+        ...state,
+        pagination: { ...state.pagination, currentPage: action.payload },
+      };
+    case 'SET_PAGE_SIZE':
+      return {
+        ...state,
+        pagination: {
+          ...state.pagination,
+          pageSize: action.payload,
+          currentPage: 1,
+        },
+      };
     default:
       return state;
   }
 };
 
-// The custom hook
 export const useAlerts = () => {
   const [state, dispatch] = useReducer(alertsReducer, initialState);
 
   const fetchAlerts = useCallback(async () => {
     dispatch({ type: 'FETCH_START' });
     try {
-      // Fetch all alerts. In a real-world scenario with large datasets,
-      // filtering and pagination should be done on the server.
-      const response = await triageService.getAlerts({ limit: 1000 }); // Fetch a large number to simulate all data
+      // Build the filters object with proper pagination and sorting
+      // Remove search from server-side filters - we'll do client-side search like cases
+      const filters = {
+        page: state.pagination.currentPage,
+        limit: state.pagination.pageSize,
+        sortBy: String(state.sort.column),
+        sortOrder: state.sort.direction,
+        // Remove search from server-side: ...(state.filters.query && { search: state.filters.query }),
+        ...(state.filters.source && { source: state.filters.source }),
+        ...(state.filters.type && { alertType: state.filters.type }),
+        ...(state.filters.priority && { priority: state.filters.priority }),
+      };
+
+      const response = await triageService.getAlerts(filters);
       const transformedAlerts = response.alerts.map(transformBackendAlertToUI);
       dispatch({
         type: 'FETCH_SUCCESS',
@@ -243,20 +149,30 @@ export const useAlerts = () => {
         },
       });
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-        dispatch({ type: 'FETCH_FAILURE', payload: errorMessage });
+      const errorMessage =
+        error instanceof Error ? error.message : 'An unknown error occurred';
+      dispatch({ type: 'FETCH_FAILURE', payload: errorMessage });
     }
-  }, []);
+  }, [
+    state.pagination.currentPage,
+    state.pagination.pageSize,
+    state.sort.column,
+    state.sort.direction,
+    state.filters.source,
+    state.filters.type,
+    state.filters.priority,
+  ]);
 
   useEffect(() => {
     fetchAlerts();
   }, [fetchAlerts]);
 
+  // Reset to page 1 when search query changes (similar to cases)
   useEffect(() => {
-    // This effect will re-run whenever the filters or sorting change
-    // and apply them to the `allAlerts` list.
-    dispatch({ type: 'APPLY_FILTERS_AND_SORT' });
-  }, [state.allAlerts, state.filters, state.sort]);
+    if (state.filters.query !== '' && state.pagination.currentPage > 1) {
+      setPage(1);
+    }
+  }, [state.filters.query]);
 
   const setFilters = (filters: Partial<AlertsSearchFilters>) => {
     dispatch({ type: 'SET_FILTERS', payload: filters });
@@ -274,17 +190,65 @@ export const useAlerts = () => {
     dispatch({ type: 'SET_PAGE_SIZE', payload: pageSize });
   };
 
-  // Memoize the paginated alerts to prevent re-calculation on every render
-  const paginatedAlerts = useMemo(() => {
-    const { currentPage, pageSize } = state.pagination;
-    const start = (currentPage - 1) * pageSize;
-    const end = start + pageSize;
-    return state.filteredAlerts.slice(start, end);
-  }, [state.filteredAlerts, state.pagination]);
+  // Apply client-side search filter (same logic as cases)
+  const searchFilteredAlerts = useMemo(() => {
+    if (state.filters.query === '') return state.allAlerts;
+    return state.allAlerts.filter((alert) =>
+      [
+        alert.alert_id,
+        alert.txtp,
+        alert.source,
+        alert.message,
+        alert.priority,
+        alert.alert_type,
+        String(alert.confidence_per),
+        alert.case_id,
+        // Add any additional searchable fields
+      ]
+        .filter(Boolean) // Remove null/undefined values
+        .join(' ')
+        .toLowerCase()
+        .includes(state.filters.query.toLowerCase()),
+    );
+  }, [state.allAlerts, state.filters.query]);
 
+  const paginatedAlerts = useMemo(() => {
+    // For client-side search: if there's a search query, paginate the filtered results
+    if (state.filters.query !== '') {
+      const start =
+        (state.pagination.currentPage - 1) * state.pagination.pageSize;
+      const end = start + state.pagination.pageSize;
+      return searchFilteredAlerts.slice(start, end);
+    }
+    // Otherwise, use backend pagination (no search)
+    return state.filteredAlerts;
+  }, [
+    searchFilteredAlerts,
+    state.filteredAlerts,
+    state.pagination.currentPage,
+    state.pagination.pageSize,
+    state.filters.query,
+  ]);
 
   return {
     ...state,
+    // Update pagination info based on whether we're doing client-side search
+    pagination: {
+      ...state.pagination,
+      totalItems:
+        state.filters.query !== ''
+          ? searchFilteredAlerts.length
+          : state.pagination.totalItems,
+      totalPages:
+        state.filters.query !== ''
+          ? Math.max(
+              1,
+              Math.ceil(
+                searchFilteredAlerts.length / state.pagination.pageSize,
+              ),
+            )
+          : state.pagination.totalPages,
+    },
     paginatedAlerts,
     setFilters,
     setSort,

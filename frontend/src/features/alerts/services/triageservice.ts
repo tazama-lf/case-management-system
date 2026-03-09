@@ -1,25 +1,28 @@
 import apiClient from '../../../shared/services/apiClient';
 import type { Alert } from '../types/alertsdashboard.types';
-import type { 
-  ManualTriageDto, 
-  UpdateAlertDto, 
-  CloseAlertDto, 
+import type {
+  ManualTriageDto,
+  UpdateAlertDto,
+  CloseAlertDto,
   AlertStatus,
   AlertsFilter,
-  ActionHistory
+  ActionHistory,
+  TransactionHistoryDto,
 } from '../types/triage.types';
 
 class TriageService {
-  private baseUrl = '/api/v1/triage/alerts';
+  private readonly baseUrl = '/api/v1/triage/alerts';
+  private readonly alertBaseUrl = '/api/v1/alert';
 
-  // Error handling utility
   private handleError(error: unknown, operation: string): Error {
     console.error(`TriageService Error - ${operation}:`, error);
 
-    const err = error as { response?: { data?: { message?: string } }; message?: string } | undefined;
+    const err = error as
+      | { response?: { data?: { message?: string } }; message?: string }
+      | undefined;
     if (err?.response?.data) {
       const apiError = err.response.data;
-      return new Error(apiError.message || `Failed to ${operation}`);
+      return new Error(apiError.message ?? `Failed to ${operation}`);
     }
 
     if (err?.message) {
@@ -29,7 +32,6 @@ class TriageService {
     return new Error(`Failed to ${operation}`);
   }
 
-  // Response validation utility
   private validateAlertResponse(data: unknown): Alert {
     if (!data || typeof data !== 'object') {
       throw new Error('Invalid alert data received');
@@ -40,11 +42,9 @@ class TriageService {
       throw new Error('Alert ID is missing from response');
     }
 
-
     return data as Alert;
   }
 
-  // GET /api/v1/triage/alerts
   async getAlerts(filters: AlertsFilter = {}): Promise<{
     alerts: Alert[];
     pagination: {
@@ -61,18 +61,19 @@ class TriageService {
     if (filters.alertType) params.append('alertType', filters.alertType);
     if (filters.source) params.append('source', filters.source);
     if (filters.search) params.append('search', filters.search);
+    params.append('reportStatus', filters.reportStatus ?? 'ALRT');
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.sortBy) params.append('sortBy', filters.sortBy);
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
-    
-    // Request full details including alert_data for risk score calculation
+
     params.append('includeData', 'true');
 
     const queryString = params.toString();
-    const url = queryString ? `${this.baseUrl}?${queryString}` : this.baseUrl;
+    const url = queryString
+      ? `${this.alertBaseUrl}?${queryString}`
+      : this.alertBaseUrl;
 
-    // Get the raw backend response
     const backendResponse = await apiClient.get<{
       data: Alert[];
       page: number;
@@ -81,41 +82,19 @@ class TriageService {
       totalPages: number;
     }>(url);
 
-    // Transform to expected frontend format
-    const alerts = backendResponse.data || [];
-    
-    // Optionally fetch detailed data for each alert to get risk scores
-    // This adds extra API calls but ensures we have complete data
-    const detailedAlerts = await Promise.all(
-      alerts.map(async (alert) => {
-        try {
-          // Try to get detailed alert data
-          const detailedAlert = await this.getAlertById(alert.alert_id);
-          // Preserve alert_type from list response if detailed response doesn't have it
-          return {
-            ...detailedAlert,
-            alert_type: detailedAlert.alert_type || alert.alert_type,
-          };
-        } catch (error) {
-          // If individual fetch fails, return the basic alert
-          console.warn(`Failed to fetch details for alert ${alert.alert_id}:`, error);
-          return alert;
-        }
-      })
-    );
+    const alerts = backendResponse.data ?? [];
 
     return {
-      alerts: detailedAlerts,
+      alerts,
       pagination: {
-        currentPage: backendResponse.page || 1,
-        totalPages: backendResponse.totalPages || 1,
-        totalItems: backendResponse.total || 0,
-        pageSize: backendResponse.limit || 10,
+        currentPage: backendResponse.page ?? 1,
+        totalPages: backendResponse.totalPages ?? 1,
+        totalItems: backendResponse.total ?? 0,
+        pageSize: backendResponse.limit ?? 10,
       },
     };
   }
 
-  // GET /api/v1/triage/alerts/filter-options
   async getFilterOptions(): Promise<{
     priorities: string[];
     statuses: string[];
@@ -135,21 +114,21 @@ class TriageService {
     }
   }
 
-  // GET /api/v1/triage/alerts/:alertId
-  async getAlertById(alertId: string): Promise<Alert> {
+  async getAlertById(alertId: number): Promise<Alert> {
     try {
-      const response = await apiClient.get<Alert>(`${this.baseUrl}/${alertId}`);
+      const response = await apiClient.get<Alert>(
+        `${this.alertBaseUrl}/${alertId}`,
+      );
       return this.validateAlertResponse(response);
     } catch (error) {
       throw this.handleError(error, 'fetch alert details');
     }
   }
 
-  // GET /api/v1/triage/alerts/:alertId/action-history
-  async getAlertActionHistory(alertId: string): Promise<ActionHistory[]> {
+  async getAlertActionHistory(alertId: number): Promise<ActionHistory[]> {
     try {
       const response = await apiClient.get<{ history: ActionHistory[] }>(
-        `${this.baseUrl}/${alertId}/action-history`,
+        `${this.alertBaseUrl}/${alertId}/action-history`,
       );
       return response.history;
     } catch (error) {
@@ -157,8 +136,10 @@ class TriageService {
     }
   }
 
-  // PATCH /api/v1/triage/alerts/:alertId - Manual Triage
-  async performManualTriage(alertId: string, data: ManualTriageDto): Promise<Alert> {
+  async performManualTriage(
+    alertId: number,
+    data: ManualTriageDto,
+  ): Promise<Alert> {
     try {
       const response = await apiClient.patch<Alert>(
         `${this.baseUrl}/${alertId}`,
@@ -170,8 +151,7 @@ class TriageService {
     }
   }
 
-  // PATCH /api/v1/triage/alerts/:alertId - Update Alert (legacy)
-  async updateAlert(alertId: string, data: UpdateAlertDto): Promise<Alert> {
+  async updateAlert(alertId: number, data: UpdateAlertDto): Promise<Alert> {
     try {
       const response = await apiClient.patch<Alert>(
         `${this.baseUrl}/${alertId}`,
@@ -183,19 +163,71 @@ class TriageService {
     }
   }
 
-  // PATCH /api/v1/triage/alerts/:alertId/close
-  async closeAlert(alertId: string, status: AlertStatus, notes: string): Promise<Alert> {
+  async closeAlert(
+    alertId: number,
+    status: AlertStatus,
+    notes: string,
+  ): Promise<Alert> {
     try {
       const data: CloseAlertDto = { status, reason: notes };
-      const response = await apiClient.patch<Alert>(`${this.baseUrl}/${alertId}/close`, data);
+      const response = await apiClient.patch<Alert>(
+        `${this.baseUrl}/${alertId}/close`,
+        data,
+      );
       return this.validateAlertResponse(response);
     } catch (error) {
       throw this.handleError(error, 'close alert');
     }
   }
 
-  // Removed convert-to-case functionality from frontend
-  // Removed getTransactionMessages - now extracted from alert data using transactionUtils
+  async getAlertTransactionalData(alertId: number) {
+    try {
+      const response = await apiClient.get<TransactionHistoryDto[]>(
+        `${this.alertBaseUrl}/${alertId}/transaction-data`,
+      );
+      return response;
+    } catch (error) {
+      throw this.handleError(error, 'close alert');
+    }
+  }
+
+  async getNALTAlerts(
+    search?: string,
+    pagination?: {
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+    },
+  ): Promise<{
+    alerts: Alert[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      pageSize: number;
+    };
+  }> {
+    try {
+      const filters: AlertsFilter = {
+        reportStatus: 'NALT',
+        limit: pagination?.limit ?? 10,
+        page: pagination?.page ?? 1,
+        sortBy: pagination?.sortBy ?? 'created_at',
+        sortOrder: pagination?.sortOrder ?? 'desc',
+      };
+
+      if (search) {
+        filters.search = search;
+      }
+
+      // Call getAlerts, which will use reportStatus=NALT from filters
+      const response = await this.getAlerts(filters);
+      return response;
+    } catch (error) {
+      throw this.handleError(error, 'fetch NALT alerts');
+    }
+  }
 }
 
 export default new TriageService();
