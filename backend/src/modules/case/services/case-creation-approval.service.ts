@@ -27,7 +27,7 @@ export class CaseCreationApprovalService {
     private readonly caseQueryService: CaseQueryService,
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) { }
+  ) {}
 
   private validateCaseCompletionFields(existingCase: any): string[] {
     const missing: string[] = [];

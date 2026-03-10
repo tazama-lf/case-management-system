@@ -141,4 +141,22 @@ export class JupyterProxyService {
   }> {
     return await this.goldLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, from, to);
   }
+
+  // ================ CONDITIONS PROXY METHODS ================
+
+  async getConditionsContextByTransaction(transactionId: number, tenantId = 'DEFAULT', asOfDate?: string) {
+    return await this.goldLakehouseService.getConditionsContextByTransaction(transactionId, tenantId, asOfDate);
+  }
+
+  async getConditionsSummary(accountId: string, tenantId = 'DEFAULT', asOfDate?: string) {
+    return await this.goldLakehouseService.getConditionsSummaryByAccount(accountId, tenantId, undefined, asOfDate);
+  }
+
+  async getConditionsDetails(accountId: string, tenantId = 'DEFAULT', asOfDate?: string, showInactive?: boolean) {
+    return await this.goldLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive || false);
+  }
+
+  async getConditionsEvaluatedTransactions(accountId: string, tenantId = 'DEFAULT', fromDate?: string) {
+    return await this.goldLakehouseService.getEvaluatedTransactionsByAccount(accountId, tenantId, fromDate);
+  }
 }
