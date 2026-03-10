@@ -64,6 +64,11 @@ The notebooks are parameterized to accept data from the frontend. When running v
 
 - **`transaction-viz.ipynb`**: Interactive analysis of transaction history, featuring dual-axis timelines, cumulative value charts, volume distribution, and a recent transactions table.
 - **`transaction-network.ipynb`**: Transaction network diagram. Fetches from the network-analysis API, places the center account in the middle, and shows connected accounts in a circle. Used by the Transaction Network tab.
+- **`alert-history.ipynb`**: Alert history visualization showing alert counts, cases opened, investigations over time, and alert value trends.
+- **`conditions-context.ipynb`**: Transaction-based conditions context view showing both parties (debtor/creditor), their accounts, and condition statistics. Entry point for conditions timeline visualization.
+- **`conditions-summary.ipynb`**: Conditions summary by account ID showing total, active, expired, and future conditions with a distribution donut chart.
+- **`conditions-details.ipynb`**: Detailed condition records view with timeline visualization and full condition information (type, reason, dates, status).
+- **`conditions-evaluated-transactions.ipynb`**: Evaluated transactions view showing transactions that were evaluated against conditions with outcomes (blocked, overridden, passed).
 
 ## Maintenance
 

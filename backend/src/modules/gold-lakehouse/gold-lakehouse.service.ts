@@ -17,7 +17,6 @@ import {
   CounterpartyNetworkSummaryDto,
   CounterpartyNetworkEdgeDto,
 } from './dto/network-analysis.dto';
-import { Alerts, Cumulative, Edge, Node, RecentTransaction, Timeline } from './types/gold-lakehouse.types';
 
 @Injectable()
 export class GoldLakehouseService {
@@ -31,7 +30,7 @@ export class GoldLakehouseService {
     private readonly configService: ConfigService,
   ) {
     this.apiUrl = this.configService.getOrThrow<string>('GOLD_LAKEHOUSE_API_URL');
-    this.timeout = this.configService.get<number>('GOLD_LAKEHOUSE_TIMEOUT') ?? 30000;
+    this.timeout = this.configService.get<number>('GOLD_LAKEHOUSE_TIMEOUT') || 30000;
     this.alertHistoryFallbackE2EId = this.configService.get<string>('ALERT_HISTORY_FALLBACK_E2E_ID', '05c7ead85a1343d5a959561523a965fb');
   }
 
@@ -53,36 +52,34 @@ export class GoldLakehouseService {
       }
 
       return response.data;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Error querying Gold Lakehouse: ${errorMessage}`);
+    } catch (error) {
+      this.logger.error(`Error querying Gold Lakehouse: ${error.message}`);
 
-      if (error && typeof error === 'object' && 'code' in error && error.code === 'ECONNREFUSED') {
+      if (error.code === 'ECONNREFUSED') {
         this.logger.error(`Gold Lakehouse API is not reachable at ${this.apiUrl}`);
         throw new HttpException(`Gold Lakehouse API is not running or not reachable at ${this.apiUrl}`, HttpStatus.SERVICE_UNAVAILABLE);
       }
 
-      if (error && typeof error === 'object' && 'response' in error) {
-        const response = error.response as { status?: number; data?: unknown };
-        this.logger.error(`Response status: ${response.status}`);
-        this.logger.error(`Response data: ${JSON.stringify(response.data)}`);
+      if (error.response) {
+        this.logger.error(`Response status: ${error.response.status}`);
+        this.logger.error(`Response data: ${JSON.stringify(error.response.data)}`);
       }
 
       if (error instanceof HttpException) {
         throw error;
       }
 
-      throw new HttpException(`Failed to query Gold Lakehouse: ${errorMessage}`, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(`Failed to query Gold Lakehouse: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async runSqlQuery(sql: string, limit = 1): Promise<any> {
+  async runSqlQuery(sql: string, limit = 1) {
     try {
       this.logger.log('Running raw SQL query on Gold Lakehouse');
       this.logger.debug(sql);
 
       const response = await firstValueFrom(
-        this.httpService.post(
+        this.httpService.post<any>(
           `${this.apiUrl}/execute_sql`,
           {
             sql_query: sql,
@@ -93,13 +90,12 @@ export class GoldLakehouseService {
       );
 
       if (response.data.status !== 'success') {
-        throw new HttpException('Gold Lakehouse SQL query failed', response.data.code ?? HttpStatus.INTERNAL_SERVER_ERROR);
+        throw new HttpException('Gold Lakehouse SQL query failed', response.data.code || HttpStatus.INTERNAL_SERVER_ERROR);
       }
 
       return response.data;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Error running SQL query: ${errorMessage}`);
+    } catch (error) {
+      this.logger.error(`Error running SQL query: ${error.message}`);
 
       if (error instanceof HttpException) {
         throw error;
@@ -109,16 +105,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertNavigatorMetrics(
-    alertId: number,
-    tenantId = 'DEFAULT',
-  ): Promise<{
-    total_typologies: number;
-    total_rules: number;
-    avg_typology_score: number | null;
-    alertId: number;
-    tenantId: string;
-  }> {
+  async getAlertNavigatorMetrics(alertId: number, tenantId: string = 'DEFAULT') {
     try {
       this.logger.log(`Fetching Alert Navigator metrics for alert: ${alertId}`);
 
@@ -145,53 +132,18 @@ export class GoldLakehouseService {
       return {
         total_typologies: Number(row?.total_typologies ?? 0),
         total_rules: Number(row?.total_rules ?? 0),
-        avg_typology_score: row?.avg_typology_score === null ? null : Number(row.avg_typology_score),
+        avg_typology_score: row?.avg_typology_score !== null ? Number(row.avg_typology_score) : null,
         alertId,
         tenantId,
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching Alert Navigator metrics: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching Alert Navigator metrics: ${error.message}`, error.stack);
 
       throw new HttpException('Failed to fetch Alert Navigator metrics', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getAlertNavigatorData(
-    alertId: number,
-    tenantId = 'DEFAULT',
-  ): Promise<{
-    alertMetadata: {
-      alertId: number;
-      transactionId: string;
-      timestamp: string;
-      transactionType: string;
-      amount: number;
-      currency: string;
-      status: string;
-      reason: string;
-      blockReason: string;
-    };
-    typologies: Array<{
-      typologyId: string;
-      typologyCfg: string;
-      typologyScore: number;
-      alertThreshold: number;
-      interdictionThreshold: number;
-      ruleCount: number;
-      rules: string;
-    }>;
-    statistics: {
-      totalTypologies: number;
-      totalRules: number;
-      avgScore: number;
-    };
-    meta: {
-      alertId: number;
-      tenantId: string;
-    };
-  }> {
+  async getAlertNavigatorData(alertId: number, tenantId: string = 'DEFAULT') {
     try {
       this.logger.log(`Fetching Alert Navigator data for alert: ${alertId}`);
 
@@ -257,20 +209,20 @@ export class GoldLakehouseService {
       }
 
       const combined = this.stripHudiMetadata(combinedRaw);
-      const typologiesRaw = typologiesResponse.data;
-      const rulesRaw = rulesResponse?.data ?? [];
+      const typologiesRaw = typologiesResponse.data || [];
+      const rulesRaw = rulesResponse?.data || [];
 
       // Alert Metadata
       const alertMetadata = {
-        alertId: Number(combined.alert_id),
-        transactionId: String(combined.tx_transaction_id) || String(combined.end_to_end_id) || String(combined.transaction_id),
-        timestamp: String(combined.created_at_ts) || String(combined.ingested_at_ts),
-        transactionType: String(combined.alert_tx_type) || String(combined.tx_type),
-        amount: Number(combined.alert_tx_amount) || Number(combined.tx_amount),
-        currency: String(combined.alert_tx_ccy) || String(combined.tx_ccy),
-        status: String(combined.alert_status),
-        reason: String(combined.alert_reason),
-        blockReason: String(combined.block_or_override_status),
+        alertId: combined.alert_id,
+        transactionId: combined.tx_transaction_id || combined.end_to_end_id || combined.transaction_id,
+        timestamp: combined.created_at_ts || combined.ingested_at_ts,
+        transactionType: combined.alert_tx_type || combined.tx_type,
+        amount: combined.alert_tx_amount || combined.tx_amount,
+        currency: combined.alert_tx_ccy || combined.tx_ccy,
+        status: combined.alert_status,
+        reason: combined.alert_reason,
+        blockReason: combined.block_or_override_status,
       };
 
       // Typologies
@@ -294,27 +246,27 @@ export class GoldLakehouseService {
           });
 
         return {
-          typologyId: String(typology.typology_id),
-          typologyCfg: String(typology.typology_cfg),
-          typologyScore: Number(typology.typology_score),
-          alertThreshold: Number(typology.alert_threshold),
-          interdictionThreshold: Number(typology.interdiction_threshold),
-          ruleCount: Number(typology.rule_count_in_typology),
-          rules: String(typologyRules),
+          typologyId: typology.typology_id,
+          typologyCfg: typology.typology_cfg,
+          typologyScore: typology.typology_score,
+          alertThreshold: typology.alert_threshold,
+          interdictionThreshold: typology.interdiction_threshold,
+          ruleCount: typology.rule_count_in_typology,
+          rules: typologyRules,
         };
       });
 
       // Calculate summary statistics
       const totalTypologies = typologies.length;
       const totalRules = rulesRaw.length;
-      const avgScore = totalTypologies > 0 ? typologies.reduce((sum, t) => sum + t.typologyScore, 0) / totalTypologies : 0;
+      const avgScore = totalTypologies > 0 ? typologies.reduce((sum, t) => sum + (t.typologyScore || 0), 0) / totalTypologies : 0;
 
       return {
         alertMetadata,
         typologies,
         statistics: {
           totalTypologies,
-          totalRules: Number(totalRules),
+          totalRules,
           avgScore: Math.round(avgScore * 100) / 100,
         },
         meta: {
@@ -322,92 +274,13 @@ export class GoldLakehouseService {
           tenantId,
         },
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching Alert Navigator data: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching Alert Navigator data: ${error.message}`, error.stack);
       throw new HttpException('Failed to fetch Alert Navigator data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getTransactionDetailData(
-    transactionId: number,
-    tenantId = 'DEFAULT',
-  ): Promise<{
-    transactionOverview: {
-      transactionId: string;
-      transactionType: string;
-      timestamp: string;
-    };
-    transactionFlow: {
-      debtor: {
-        name: string;
-        account: {
-          iban: string;
-          type: string;
-        };
-        bank: string;
-      };
-      amount: {
-        amount: number;
-        currency: string;
-      };
-      creditor: {
-        name: string;
-        account: {
-          iban: string;
-          type: string;
-        };
-        bankName: string;
-      };
-    };
-    debtorProfile: {
-      name: string;
-      account: {
-        iban: string;
-        type: string;
-      };
-      bank: string;
-      swiftCode: string;
-      address: string;
-      accountType: string;
-    };
-    creditorProfile: {
-      name: string;
-      account: {
-        iban: string;
-        type: string;
-      };
-      bank: string;
-      swiftCode: string;
-      address: string;
-      accountType: string;
-    };
-    amountAndCurrency: Array<
-      | {
-        originalAmount: number;
-        exchangeRate: number;
-        convertedAmount: number;
-      }
-      | {
-        senderCharges: never[];
-        intermediaryCharges: never[];
-        receiverCharges: never[];
-      }
-      | {
-        totalCharges: number;
-      }
-    >;
-    settlementDetails: {
-      settlementDate: string;
-      reference: string;
-      purpose: string;
-    };
-    links: Array<{
-      rel: string;
-      href: string;
-    }>;
-  }> {
+  async getTransactionDetailData(transactionId: number, tenantId: string = 'DEFAULT') {
     try {
       this.logger.log(`Fetching Transaction Detail UI data for transaction: ${transactionId}`);
 
@@ -438,8 +311,7 @@ export class GoldLakehouseService {
         ],
       });
 
-      const [rowRaw] = response.data;
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Safety check for empty result set
+      const rowRaw = response.data?.[0];
       if (!rowRaw) {
         throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
       }
@@ -449,59 +321,59 @@ export class GoldLakehouseService {
       // Transform to frontend-expected format
       return {
         transactionOverview: {
-          transactionId: String(row.transaction_id),
-          transactionType: String(row.tx_type),
-          timestamp: String(row.tx_event_ts),
+          transactionId: row.transaction_id || '',
+          transactionType: row.tx_type || '',
+          timestamp: row.tx_event_ts || '',
         },
         transactionFlow: {
           debtor: {
-            name: String(row.debtor_name),
+            name: row.debtor_name || '',
             account: {
-              iban: String(row.debtor_account_id),
+              iban: row.debtor_account_id || '',
               type: 'CHECKING',
             },
-            bank: String(row.instd_mmb_id),
+            bank: row.instd_mmb_id || '',
           },
           amount: {
-            amount: Number(row.interbank_settlement_amount),
-            currency: String(row.interbank_settlement_currency) || 'USD',
+            amount: row.interbank_settlement_amount || 0,
+            currency: row.interbank_settlement_currency || 'USD',
           },
           creditor: {
-            name: String(row.creditor_name),
+            name: row.creditor_name || '',
             account: {
-              iban: String(row.creditor_account_id),
+              iban: row.creditor_account_id || '',
               type: 'CHECKING',
             },
-            bankName: String(row.instg_mmb_id),
+            bankName: row.instg_mmb_id || '',
           },
         },
         debtorProfile: {
-          name: String(row.debtor_name),
+          name: row.debtor_name || '',
           account: {
-            iban: String(row.debtor_account_id),
+            iban: row.debtor_account_id || '',
             type: 'CHECKING',
           },
-          bank: String(row.instd_mmb_id),
+          bank: row.instd_mmb_id || '',
           swiftCode: '',
           address: '',
           accountType: 'CHECKING',
         },
         creditorProfile: {
-          name: String(row.creditor_name),
+          name: row.creditor_name || '',
           account: {
-            iban: String(row.creditor_account_id),
+            iban: row.creditor_account_id || '',
             type: 'CHECKING',
           },
-          bank: String(row.instg_mmb_id),
+          bank: row.instg_mmb_id || '',
           swiftCode: '',
           address: '',
           accountType: 'CHECKING',
         },
         amountAndCurrency: [
           {
-            originalAmount: Number(row.instructed_amount) || 0,
-            exchangeRate: Number(row.exchange_rate) || 1,
-            convertedAmount: Number(row.interbank_settlement_amount) || 0,
+            originalAmount: row.instructed_amount || 0,
+            exchangeRate: row.exchange_rate || 1,
+            convertedAmount: row.interbank_settlement_amount || 0,
           },
           {
             senderCharges: [],
@@ -509,12 +381,12 @@ export class GoldLakehouseService {
             receiverCharges: [],
           },
           {
-            totalCharges: Number(row.charge_total_amount),
+            totalCharges: row.charge_total_amount || 0,
           },
         ],
         settlementDetails: {
-          settlementDate: String(row.tx_event_date),
-          reference: String(row.transaction_id),
+          settlementDate: row.tx_event_date || '',
+          reference: row.transaction_id || '',
           purpose: '',
         },
         links: [
@@ -524,16 +396,14 @@ export class GoldLakehouseService {
           },
         ],
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching Transaction Detail data: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching Transaction Detail data: ${error.message}`, error.stack);
 
       throw new HttpException('Failed to fetch Transaction Detail data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getTransactionOverviewUIData(transactionId: number, tenantId = 'DEFAULT'): Promise<any> {
+  async getTransactionOverviewUIData(transactionId: number, tenantId: string = 'DEFAULT') {
     try {
       this.logger.log(`Fetching Transaction Overview UI data for transaction: ${transactionId}`);
 
@@ -555,11 +425,11 @@ export class GoldLakehouseService {
 
       const row = this.stripHudiMetadata(rowRaw);
 
-      const mapField = (field: string): string | null | number => {
+      const mapField = (field: string) => {
         if (!(field in row)) {
           return 'no mapping found';
         }
-        return row[field] === null ? null : row[field];
+        return row[field] === null ? 'no data found' : row[field];
       };
 
       return {
@@ -632,28 +502,115 @@ export class GoldLakehouseService {
           tenantId,
         },
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error building Transaction Overview UI data: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error building Transaction Overview UI data: ${error.message}`, error.stack);
 
       throw new HttpException('Failed to fetch Transaction Overview data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getConditionsSummary(
-    accountId: string,
-    tenantId?: string,
-    fromDate?: string,
-  ): Promise<{
-    activeConditions: number;
-    blockedTransactions: number;
-    overriddenTransactions: number;
-    futureConditions: number;
-  }> {
+  /**
+   * Given an arbitrary identifier (transaction id, end-to-end id, entity id, or account id),
+   * return the list of account ids that should be used when fetching conditions.
+   *
+   * - Numeric string     -> look up transaction_detail.transaction_id
+   * - UUID string        -> look up transaction_detail.end_to_end_id
+   * - Entity ID (exists in account_holder.source) -> resolve to multiple accounts
+   * - Account ID (no entity mapping) -> use directly as single account
+   */
+  private async resolveToAccounts(id: string, tenantId: string): Promise<string[]> {
+    // numeric transaction id?
+    if (/^\d+$/.test(id)) {
+      const resp = await this.query({
+        table_name: 'transaction_detail',
+        filters: { transaction_id: parseInt(id, 10), tenant_id: tenantId },
+        columns: ['debtor_account_id', 'creditor_account_id'],
+      });
+      const row = resp.data?.[0] || {};
+      return [row.debtor_account_id, row.creditor_account_id].filter(Boolean) as string[];
+    }
+
+    // uuid end-to-end id?
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+    if (uuidRegex.test(id)) {
+      const resp = await this.query({
+        table_name: 'transaction_detail',
+        filters: { end_to_end_id: id, tenant_id: tenantId },
+        columns: ['debtor_account_id', 'creditor_account_id'],
+      });
+      const row = resp.data?.[0] || {};
+      return [row.debtor_account_id, row.creditor_account_id].filter(Boolean) as string[];
+    }
+
+    // Try to resolve as entity ID (entity → multiple accounts)
+    const resp = await this.query({
+      table_name: 'account_holder',
+      filters: { source: id, tenant_id: tenantId },
+      columns: ['destination'],
+    });
+    const accts = (resp.data?.map((r) => r.destination).filter(Boolean) || []) as string[];
+
+    // If entity lookup returned accounts, use those (entity-level query)
+    if (accts.length > 0) {
+      return Array.from(new Set(accts));
+    }
+
+    // Otherwise, treat the ID as a direct account ID (account-level query)
+    // This handles cases where account IDs are passed directly without entity mapping
+    return [id];
+  }
+
+  /**
+   * Get all accounts associated with an entity ID
+   */
+  async getEntityAccounts(entityId: string, tenantId: string) {
     try {
+      const resp = await this.query({
+        table_name: 'account_holder',
+        filters: { source: entityId, tenant_id: tenantId },
+        columns: ['destination', 'account_id'],
+      });
+
+      const accounts = resp.data?.map((r) => r.destination || r.account_id).filter(Boolean) || [];
+      const uniqueAccounts = Array.from(new Set(accounts));
+
+      return {
+        entityId,
+        accountCount: uniqueAccounts.length,
+        accounts: uniqueAccounts,
+        tenantId,
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching entity accounts for ${entityId}`, error.stack);
+      return {
+        entityId,
+        accountCount: 0,
+        accounts: [],
+        tenantId,
+      };
+    }
+  }
+
+  async getConditionsSummary(identifier: string, tenantId?: string, fromDate?: string) {
+    try {
+      const accounts = await this.resolveToAccounts(identifier, tenantId || 'DEFAULT');
+      if (accounts.length === 0) {
+        return {
+          activeConditions: 0,
+          blockedTransactions: 0,
+          overriddenTransactions: 0,
+          futureConditions: 0,
+          metadata: {
+            queriedBy: identifier,
+            accountCount: 0,
+            accounts: [],
+          },
+        };
+      }
+
       const tenantFilter = tenantId ? `AND cond_tenant_id = '${tenantId}'` : '';
       const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
+      const accountFilter = accounts.map((a) => `'${a}'`).join(',');
 
       const sql = `
       SELECT
@@ -664,31 +621,46 @@ export class GoldLakehouseService {
         COUNT(DISTINCT cond_condition_id)
           FILTER (WHERE cond_is_active = 0 AND cond_is_expired = 0) AS future_conditions
       FROM conditions_timeline
-      WHERE cond_account_id = '${accountId}'
+      WHERE cond_account_id IN (${accountFilter})
         ${tenantFilter}
         ${dateFilter}
     `;
 
       const response = await this.runSqlQuery(sql, 1);
-      const row = response.data?.[0] ?? {};
+      const row = response.data?.[0] || {};
+
+      // Determine if this was an entity-level query (not transaction_id or account_id)
+      const isNumeric = /^\d+$/.test(identifier);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(identifier);
+      const isEntityLevel = !isNumeric && !isUuid && accounts.length > 1;
 
       return {
         activeConditions: Number(row.active_conditions ?? 0),
         blockedTransactions: Number(row.blocked_transactions ?? 0),
         overriddenTransactions: Number(row.overridden_transactions ?? 0),
         futureConditions: Number(row.future_conditions ?? 0),
+        metadata: {
+          queriedBy: identifier,
+          accountCount: accounts.length,
+          accounts: isEntityLevel ? accounts : undefined,
+          isEntityLevel,
+        },
       };
-    } catch (error: unknown) {
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error('Error fetching conditions summary', errorStack);
+    } catch (error) {
+      this.logger.error('Error fetching conditions summary', error.stack);
       throw new HttpException('Failed to fetch conditions summary', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getConditionsList(accountId: string, tenantId?: string): Promise<any[]> {
+  async getConditionsList(identifier: string, tenantId?: string) {
     try {
+      const accounts = await this.resolveToAccounts(identifier, tenantId || 'DEFAULT');
+      if (accounts.length === 0) {
+        return [];
+      }
+
       const filters: any = {
-        account_id: accountId,
+        account_id: accounts.length === 1 ? accounts[0] : accounts,
       };
 
       if (tenantId) {
@@ -697,12 +669,12 @@ export class GoldLakehouseService {
 
       const response = await this.query({
         table_name: 'conditions',
-        filters,
+        filters: filters,
       });
 
-      const rows = response.data;
+      const rows = response.data || [];
 
-      return rows.map((r): any => {
+      return rows.map((r) => {
         const row = this.stripHudiMetadata(r);
 
         let status: 'ACTIVE' | 'EXPIRED' | 'FUTURE' = 'ACTIVE';
@@ -720,140 +692,359 @@ export class GoldLakehouseService {
           notes: row.condition_reason,
         };
       });
-    } catch (error: unknown) {
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error('Error fetching conditions list', errorStack);
+    } catch (error) {
+      this.logger.error('Error fetching conditions list', error.stack);
       throw new HttpException('Failed to fetch conditions list', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getActiveConditions(accountId: string, tenantId = 'DEFAULT', fromDate?: string): Promise<any[]> {
+  async getActiveConditions(identifier: string, tenantId: string = 'DEFAULT', fromDate?: string) {
     try {
+      const accounts = await this.resolveToAccounts(identifier, tenantId);
+      if (accounts.length === 0) {
+        return {
+          conditions: [],
+          metadata: {
+            queriedBy: identifier,
+            accountCount: 0,
+            accounts: [],
+          },
+        };
+      }
       const dateFilter = fromDate ? `AND ct.bucket_start >= '${fromDate}'` : '';
+      const accountFilter = accounts.map((a) => `'${a}'`).join(',');
 
+      // Query with LEFT JOIN to transaction_detail to show transactions during active condition
       const sql = `
-      SELECT DISTINCT
-        c.condition_id,
-        c.condition_reason,
-        c.condition_type,
-        c.created_by_user,
-        c.condition_inception_ts,
-        c.condition_expiry_ts
+      SELECT
+        ct.cond_condition_id as condition_id,
+        ct.cond_reason as condition_reason,
+        ct.cond_type as condition_type,
+        ct.cond_inception_ts as condition_inception_ts,
+        ct.cond_expiry_ts as condition_expiry_ts,
+        ct.cond_account_id as account_id,
+        ct.cond_created_ts as created_ts,
+        td.transaction_id,
+        td.end_to_end_id,
+        td.tx_type,
+        td.tx_event_ts,
+        td.interbank_settlement_amount,
+        td.interbank_settlement_currency,
+        td.debtor_id,
+        td.creditor_id,
+        CASE 
+          WHEN td.debtor_account_id = ct.cond_account_id THEN 'debtor'
+          WHEN td.creditor_account_id = ct.cond_account_id THEN 'creditor'
+          ELSE NULL
+        END as account_role
       FROM conditions_timeline ct
-      JOIN conditions c
-        ON c.condition_id = ct.cond_condition_id
-       AND c.tenant_id = ct.cond_tenant_id
-      WHERE ct.cond_account_id = '${accountId}'
+      LEFT JOIN transaction_detail td ON (
+        (td.debtor_account_id = ct.cond_account_id OR td.creditor_account_id = ct.cond_account_id)
+        AND td.tx_event_ts >= ct.cond_inception_ts
+        AND (ct.cond_expiry_ts IS NULL OR td.tx_event_ts <= ct.cond_expiry_ts)
+        AND td.tenant_id = ct.cond_tenant_id
+      )
+      WHERE ct.cond_account_id IN (${accountFilter})
         AND ct.cond_tenant_id = '${tenantId}'
         AND ct.cond_is_active = 1
         ${dateFilter}
-      ORDER BY c.condition_inception_ts DESC
+      ORDER BY ct.cond_inception_ts DESC, td.tx_event_ts DESC
+      LIMIT 1000
     `;
 
-      const response = await this.runSqlQuery(sql, 100);
-      const rows = response.data ?? [];
+      this.logger.log(`Fetching active conditions with transactions for accounts: ${accountFilter}`);
+      const response = await this.runSqlQuery(sql, 1000);
+      const rows = response.data || [];
 
-      return rows.map((r) => ({
-        conditionId: r.condition_id,
-        title: r.condition_reason,
-        createdBy: r.created_by_user,
-        startDate: r.condition_inception_ts,
-        endDate: r.condition_expiry_ts ?? null,
-        notes: r.condition_reason,
-        action: r.condition_type === 'overridable-block' ? 'OVERRIDE' : 'BLOCK',
-      }));
-    } catch (error: unknown) {
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error('Error fetching active conditions', errorStack);
+      // Group by condition_id and aggregate transactions
+      const conditionsMap = new Map();
+      rows.forEach((r) => {
+        if (!conditionsMap.has(r.condition_id)) {
+          conditionsMap.set(r.condition_id, {
+            conditionId: r.condition_id,
+            title: r.condition_reason,
+            type: r.condition_type,
+            createdBy: 'no mapping found',
+            startDate: r.condition_inception_ts,
+            endDate: r.condition_expiry_ts ?? 'no data found',
+            notes: r.condition_reason,
+            action: r.condition_type === 'overridable-block' ? 'OVERRIDE' : 'BLOCK',
+            accountId: r.account_id,
+            transactions: [],
+          });
+        }
+        // Add transaction if it exists
+        if (r.transaction_id) {
+          conditionsMap.get(r.condition_id).transactions.push({
+            transactionId: r.transaction_id,
+            endToEndId: r.end_to_end_id,
+            type: r.tx_type,
+            date: r.tx_event_ts,
+            amount: r.interbank_settlement_amount,
+            currency: r.interbank_settlement_currency,
+            debtorId: r.debtor_id,
+            creditorId: r.creditor_id,
+            accountRole: r.account_role,
+          });
+        }
+      });
+
+      const conditions = Array.from(conditionsMap.values());
+
+      // Determine if this was an entity-level query
+      const isNumeric = /^\d+$/.test(identifier);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(identifier);
+      const isEntityLevel = !isNumeric && !isUuid && accounts.length > 1;
+
+      this.logger.log(`Found ${conditions.length} active conditions with ${rows.filter(r => r.transaction_id).length} transaction links`);
+
+      return {
+        conditions,
+        metadata: {
+          queriedBy: identifier,
+          accountCount: accounts.length,
+          accounts: isEntityLevel ? accounts : undefined,
+          isEntityLevel,
+          totalTransactionLinks: rows.filter(r => r.transaction_id).length,
+        },
+      };
+    } catch (error) {
+      this.logger.error('Error fetching active conditions', error.stack);
       throw new HttpException('Failed to fetch active conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getExpiredConditions(accountId: string, tenantId = 'DEFAULT'): Promise<any[]> {
+  async getExpiredConditions(identifier: string, tenantId: string = 'DEFAULT') {
     try {
+      const accounts = await this.resolveToAccounts(identifier, tenantId);
+      if (accounts.length === 0) {
+        return {
+          conditions: [],
+          metadata: {
+            queriedBy: identifier,
+            accountCount: 0,
+            accounts: [],
+          },
+        };
+      }
+      const accountFilter = accounts.map((a) => `'${a}'`).join(',');
+
+      // Query conditions_timeline with LEFT JOIN to transaction_detail
+      // to show transactions that occurred during condition period
       const sql = `
       SELECT
-        condition_id,
-        condition_reason,
-        condition_inception_ts,
-        condition_expiry_ts
-      FROM conditions
-      WHERE account_id = '${accountId}'
-        AND tenant_id = '${tenantId}'
-        AND is_expired = 1
-      ORDER BY condition_expiry_ts DESC
+        ct.cond_condition_id as condition_id,
+        ct.cond_reason as condition_reason,
+        ct.cond_inception_ts as condition_inception_ts,
+        ct.cond_expiry_ts as condition_expiry_ts,
+        ct.cond_type as condition_type,
+        ct.cond_account_id as account_id,
+        td.transaction_id,
+        td.end_to_end_id,
+        td.tx_type,
+        td.tx_event_ts,
+        td.interbank_settlement_amount,
+        td.interbank_settlement_currency,
+        td.debtor_id,
+        td.creditor_id,
+        CASE 
+          WHEN td.debtor_account_id = ct.cond_account_id THEN 'debtor'
+          WHEN td.creditor_account_id = ct.cond_account_id THEN 'creditor'
+          ELSE NULL
+        END as account_role
+      FROM conditions_timeline ct
+      LEFT JOIN transaction_detail td ON (
+        (td.debtor_account_id = ct.cond_account_id OR td.creditor_account_id = ct.cond_account_id)
+        AND td.tx_event_ts >= ct.cond_inception_ts
+        AND td.tx_event_ts <= ct.cond_expiry_ts
+        AND td.tenant_id = ct.cond_tenant_id
+      )
+      WHERE ct.cond_account_id IN (${accountFilter})
+        AND ct.cond_tenant_id = '${tenantId}'
+        AND ct.cond_is_expired = 1
+      ORDER BY ct.cond_expiry_ts DESC, td.tx_event_ts DESC
+      LIMIT 1000
     `;
 
-      const response = await this.runSqlQuery(sql, 100);
-      const rows = response.data ?? [];
+      this.logger.log(`Fetching expired conditions with transactions for accounts: ${accountFilter}`);
+      const response = await this.runSqlQuery(sql, 1000);
+      const rows = response.data || [];
 
-      return rows.map((r) => ({
-        conditionId: r.condition_id,
-        title: r.condition_reason,
-        startDate: r.condition_inception_ts,
-        endDate: r.condition_expiry_ts,
-      }));
-    } catch (error: unknown) {
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error('Error fetching expired conditions', errorStack);
+      // Group by condition_id and aggregate transactions
+      const conditionsMap = new Map();
+      rows.forEach((r) => {
+        if (!conditionsMap.has(r.condition_id)) {
+          conditionsMap.set(r.condition_id, {
+            conditionId: r.condition_id,
+            title: r.condition_reason,
+            type: r.condition_type,
+            startDate: r.condition_inception_ts,
+            endDate: r.condition_expiry_ts,
+            accountId: r.account_id,
+            transactions: [],
+          });
+        }
+        // Add transaction if it exists
+        if (r.transaction_id) {
+          conditionsMap.get(r.condition_id).transactions.push({
+            transactionId: r.transaction_id,
+            endToEndId: r.end_to_end_id,
+            type: r.tx_type,
+            date: r.tx_event_ts,
+            amount: r.interbank_settlement_amount,
+            currency: r.interbank_settlement_currency,
+            debtorId: r.debtor_id,
+            creditorId: r.creditor_id,
+            accountRole: r.account_role,
+          });
+        }
+      });
+
+      const conditions = Array.from(conditionsMap.values());
+
+      // Determine if this was an entity-level query
+      const isNumeric = /^\d+$/.test(identifier);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(identifier);
+      const isEntityLevel = !isNumeric && !isUuid && accounts.length > 1;
+
+      this.logger.log(`Found ${conditions.length} expired conditions with ${rows.length} total transaction links`);
+
+      return {
+        conditions,
+        metadata: {
+          queriedBy: identifier,
+          accountCount: accounts.length,
+          accounts: isEntityLevel ? accounts : undefined,
+          isEntityLevel,
+          totalTransactionLinks: rows.filter(r => r.transaction_id).length,
+        },
+      };
+    } catch (error) {
+      this.logger.error('Error fetching expired conditions', error.stack);
       throw new HttpException('Failed to fetch expired conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getFutureConditions(accountId: string, tenantId = 'DEFAULT'): Promise<any[]> {
+  async getFutureConditions(identifier: string, tenantId: string = 'DEFAULT') {
     try {
+      const accounts = await this.resolveToAccounts(identifier, tenantId);
+      if (accounts.length === 0) {
+        return {
+          conditions: [],
+          metadata: {
+            queriedBy: identifier,
+            accountCount: 0,
+            accounts: [],
+          },
+        };
+      }
+      const accountFilter = accounts.map((a) => `'${a}'`).join(',');
+
+      // Query conditions_timeline for future conditions
+      // Note: Future conditions won't have transactions yet, but we keep the structure consistent
       const sql = `
       SELECT
-        condition_id,
-        condition_reason,
-        condition_inception_ts
-      FROM conditions
-      WHERE account_id = '${accountId}'
-        AND tenant_id = '${tenantId}'
-        AND is_active = 0
-        AND is_expired = 0
-      ORDER BY condition_inception_ts ASC
+        ct.cond_condition_id as condition_id,
+        ct.cond_reason as condition_reason,
+        ct.cond_type as condition_type,
+        ct.cond_inception_ts as condition_inception_ts,
+        ct.cond_expiry_ts as condition_expiry_ts,
+        ct.cond_account_id as account_id
+      FROM conditions_timeline ct
+      WHERE ct.cond_account_id IN (${accountFilter})
+        AND ct.cond_tenant_id = '${tenantId}'
+        AND ct.cond_is_active = 0
+        AND ct.cond_is_expired = 0
+      ORDER BY ct.cond_inception_ts ASC
+      LIMIT 500
     `;
 
-      const response = await this.runSqlQuery(sql, 100);
-      const rows = response.data ?? [];
+      this.logger.log(`Fetching future conditions for accounts: ${accountFilter}`);
+      const response = await this.runSqlQuery(sql, 500);
+      const rows = response.data || [];
 
-      return rows.map((r) => ({
-        conditionId: r.condition_id,
-        title: r.condition_reason,
-        startDate: r.condition_inception_ts,
-      }));
-    } catch (error: unknown) {
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error('Error fetching future conditions', errorStack);
+      // Determine if this was an entity-level query
+      const isNumeric = /^\d+$/.test(identifier);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(identifier);
+      const isEntityLevel = !isNumeric && !isUuid && accounts.length > 1;
+
+      this.logger.log(`Found ${rows.length} future conditions`);
+
+      return {
+        conditions: rows.map((r) => ({
+          conditionId: r.condition_id,
+          title: r.condition_reason,
+          type: r.condition_type,
+          startDate: r.condition_inception_ts,
+          endDate: r.condition_expiry_ts,
+          accountId: r.account_id,
+          transactions: [], // Future conditions won't have transactions yet
+        })),
+        metadata: {
+          queriedBy: identifier,
+          accountCount: accounts.length,
+          accounts: isEntityLevel ? accounts : undefined,
+          isEntityLevel,
+        },
+      };
+    } catch (error) {
+      this.logger.error('Error fetching future conditions', error.stack);
       throw new HttpException('Failed to fetch future conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getEvaluatedTransactions(accountId: string, tenantId = 'DEFAULT', fromDate?: string): Promise<any[]> {
+  async getEvaluatedTransactions(identifier: string, tenantId: string = 'DEFAULT', fromDate?: string) {
     try {
-      const tenantFilter = tenantId ? `AND cond_tenant_id = '${tenantId}'` : '';
-      const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
+      const accounts = await this.resolveToAccounts(identifier, tenantId);
+      if (accounts.length === 0) {
+        return [];
+      }
 
+      const accountFilter = accounts.map((a) => `'${a}'`).join(',');
+      const dateFilter = fromDate ? `AND ct.cond_inception_ts >= '${fromDate}'` : '';
+
+      // WORKAROUND: Since conditions_timeline.tx_transaction_id is null,
+      // we JOIN with transaction_detail to find transactions that occurred
+      // during the condition's active period (inception to expiry)
       const sql = `
-      SELECT
-        tx_transaction_id,
-        tx_event_ts,
-        tx_type,
-        tx_amount,
-        tx_ccy,
-        tx_block_override_status,
-        cond_condition_id,
-        cond_reason
-      FROM conditions_timeline
-      WHERE cond_account_id = '${accountId}'
-        ${tenantFilter}
+      SELECT DISTINCT
+        td.transaction_id as tx_transaction_id,
+        td.tx_event_ts,
+        td.tx_type,
+        td.interbank_settlement_amount as tx_amount,
+        td.interbank_settlement_currency as tx_ccy,
+        ct.cond_condition_id,
+        ct.cond_type,
+        ct.cond_reason,
+        ct.cond_inception_ts,
+        ct.cond_expiry_ts,
+        ct.cond_is_active,
+        ct.cond_is_expired,
+        ct.cond_account_id,
+        CASE 
+          WHEN td.debtor_account_id = ct.cond_account_id THEN 'debtor'
+          WHEN td.creditor_account_id = ct.cond_account_id THEN 'creditor'
+          ELSE 'unknown'
+        END as account_role
+      FROM conditions_timeline ct
+      INNER JOIN transaction_detail td ON (
+        (td.debtor_account_id = ct.cond_account_id OR td.creditor_account_id = ct.cond_account_id)
+        AND td.tx_event_ts >= ct.cond_inception_ts
+        AND td.tx_event_ts <= ct.cond_expiry_ts
+        AND td.tenant_id = ct.cond_tenant_id
+      )
+      WHERE ct.cond_account_id IN (${accountFilter})
+        AND ct.cond_tenant_id = '${tenantId}'
         ${dateFilter}
-      ORDER BY tx_event_ts DESC
+      ORDER BY td.tx_event_ts DESC
+      LIMIT 500
     `;
 
+      this.logger.log(`Fetching evaluated transactions with JOIN workaround for accounts: ${accountFilter}`);
       const response = await this.runSqlQuery(sql, 500);
-      const rows = response.data ?? [];
+      const rows = response.data || [];
+
+      this.logger.log(`Found ${rows.length} transactions evaluated during condition periods`);
 
       return rows.map((r) => ({
         transactionId: r.tx_transaction_id,
@@ -861,13 +1052,19 @@ export class GoldLakehouseService {
         type: r.tx_type,
         amount: r.tx_amount,
         currency: r.tx_ccy,
-        outcome: r.tx_block_override_status ?? 'PASSED',
-        conditionId: r.cond_condition_id ?? '-',
-        reason: r.cond_reason ?? 'No conditions triggered',
+        outcome: r.cond_type === 'overridable-block' ? 'BLOCKED_OVERRIDABLE' : 'BLOCKED',
+        conditionId: r.cond_condition_id,
+        conditionType: r.cond_type,
+        reason: r.cond_reason,
+        conditionPeriod: {
+          start: r.cond_inception_ts,
+          end: r.cond_expiry_ts,
+        },
+        accountRole: r.account_role,
+        accountId: r.cond_account_id,
       }));
-    } catch (error: unknown) {
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error('Error fetching evaluated transactions', errorStack);
+    } catch (error) {
+      this.logger.error('Error fetching evaluated transactions', error.stack);
       throw new HttpException('Failed to fetch evaluated transactions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -876,90 +1073,46 @@ export class GoldLakehouseService {
     const hudiFields = ['_hoodie_commit_time', '_hoodie_commit_seqno', '_hoodie_record_key', '_hoodie_partition_path', '_hoodie_file_name'];
 
     const cleaned = { ...record };
-    hudiFields.forEach((field) => {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Hudi metadata fields are dynamic keys that need to be removed
-      delete cleaned[field];
-    });
+    hudiFields.forEach((field) => delete cleaned[field]);
     return cleaned;
   }
 
-  async getTransactionHistoryData(
-    id: string,
-    tenantId = 'DEFAULT',
-    startDate?: string,
-    endDate?: string,
-    granularity?: string,
-  ): Promise<unknown> {
+  private stripRedundantFields(record: Record<string, any>): Record<string, any> {
+    const redundantFields = ['alert_id', 'tenant_id', 'tx_msg_id', 'alert_timestamp', 'pk', 'ingested_at_ts'];
+
+    const cleaned = { ...record };
+    redundantFields.forEach((field) => delete cleaned[field]);
+    return cleaned;
+  }
+
+  async getTransactionHistoryData(id: string, tenantId: string = 'DEFAULT', startDate?: string, endDate?: string, granularity?: string) {
     try {
       // Smart detection: Check if ID is a UUID (end_to_end_id) or entity_id
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iv;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const isEndToEndId = uuidRegex.test(id);
 
       if (isEndToEndId) {
         // Query by end_to_end_id - returns all 4 entity perspectives for single transaction
         this.logger.log(`Fetching Transaction History by end_to_end_id: ${id}`);
-        return await this.getTransactionHistoryByEndToEndId(id, tenantId, startDate, endDate);
+        return this.getTransactionHistoryByEndToEndId(id, tenantId, startDate, endDate, granularity);
       } else {
         // Query by entity_id - returns transaction history for entity
         this.logger.log(`Fetching Transaction History by entity_id: ${id}`);
-        return await this.getTransactionHistoryByEntityId(id, tenantId, startDate, endDate, granularity);
+        return this.getTransactionHistoryByEntityId(id, tenantId, startDate, endDate, granularity);
       }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching Transaction History data: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching Transaction History data: ${(error as any).message}`, (error as any).stack);
       throw new HttpException('Failed to fetch Transaction History data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   private async getTransactionHistoryByEntityId(
     entityId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string = 'DEFAULT',
     startDate?: string,
     endDate?: string,
     granularity?: string,
-  ): Promise<{
-    summary: {
-      totalVolume: number;
-      totalTransactions: number;
-      transactionCount: number;
-      alertsTriggered: number;
-      alertsPercentage: number;
-      investigated: number;
-      investigatedPercentage: number;
-      avgTransactionsPerDay: number;
-      durationDays: number;
-      bucketTotalVolume: number;
-      bucketTotalTransactions: number;
-      expected: {
-        transactionCount: number | null;
-        volume: number | null;
-      };
-      actual: {
-        transactionCount: number;
-        volume: number;
-      };
-    };
-    timeline: Timeline[];
-    cumulative: Cumulative;
-    volumeDistribution: Array<{
-      bucketStart: string;
-      granularity: string;
-      transactionCount: number;
-      totalVolume: number;
-    }>;
-    recentTransactions: RecentTransaction[];
-    meta: {
-      entityId: string;
-      tenantId: string;
-      granularity: string | null;
-      startDate: string | null;
-      endDate: string | null;
-      eventRowCount: number;
-      aggRowCount: number;
-      queryTimestamp: string;
-    };
-  }> {
+  ) {
     try {
       this.logger.log(`Fetching Transaction History for entity: ${entityId}`);
 
@@ -1017,10 +1170,10 @@ export class GoldLakehouseService {
           `,
           1000,
         );
-        aggregates = (aggResponse?.data ?? []).map((a) => this.stripHudiMetadata(a));
+        aggregates = (aggResponse?.data || []).map((a) => this.stripHudiMetadata(a));
       }
 
-      const events = (eventsResponse?.data ?? []).map((e) => this.stripHudiMetadata(e));
+      const events = (eventsResponse?.data || []).map((e) => this.stripHudiMetadata(e));
 
       if (events.length === 0) {
         this.logger.warn(`No transaction history found for entity: ${entityId}`);
@@ -1044,7 +1197,7 @@ export class GoldLakehouseService {
         const baseline = baselineResponse?.data?.[0];
         if (baseline) {
           const baselineData = this.stripHudiMetadata(baseline);
-          expectedTxCount = parseInt(baselineData.total_tx_count, 10) || null;
+          expectedTxCount = parseInt(baselineData.total_tx_count) || null;
           expectedVolume = parseFloat(baselineData.total_amount) || null;
         }
       } catch (error) {
@@ -1071,7 +1224,7 @@ export class GoldLakehouseService {
 
       // Calculate aggregates from bucket data
       const bucketTotalVolume = aggregates.reduce((sum, a) => sum + (parseFloat(a.bucket_tx_amount) || 0), 0);
-      const bucketTotalTransactions = aggregates.reduce((sum, a) => sum + (parseInt(a.bucket_tx_count, 10) || 0), 0);
+      const bucketTotalTransactions = aggregates.reduce((sum, a) => sum + (parseInt(a.bucket_tx_count) || 0), 0);
 
       // Calculate percentages and averages
       const alertsPercentage = totalTransactions > 0 ? (alertsTriggered / totalTransactions) * 100 : 0;
@@ -1079,50 +1232,50 @@ export class GoldLakehouseService {
       const avgTransactionsPerDay = durationDays > 0 ? totalTransactions / durationDays : 0;
 
       // Transform timeline data with cumulative values
-      const timeline: Timeline[] = events.map((e) => ({
-        transactionId: String(e.transaction_id),
-        date: String(e.event_date),
+      const timeline = events.map((e) => ({
+        transactionId: e.transaction_id,
+        date: e.event_date,
         amount: parseFloat(e.tx_amount) || 0,
-        currency: String(e.tx_ccy),
-        type: String(e.tx_type) || 'Unknown',
+        currency: e.tx_ccy,
+        type: e.tx_type || 'Unknown',
         isAlerted: e.is_alerted === 1,
         isInvestigated: e.is_investigated === 1,
       }));
 
       // Transform cumulative data (sorted by date ascending)
-      const cumulative: Cumulative = events
+      const cumulative = events
         .map((e) => ({
-          date: String(e.event_date),
+          date: e.event_date,
           cumulativeAmount: parseFloat(e.cum_tx_amount) || 0,
-          cumulativeCount: parseInt(e.cum_tx_count, 10) || 0,
+          cumulativeCount: parseInt(e.cum_tx_count) || 0,
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       // Transform volume distribution
       const volumeDistribution = aggregates.map((a) => ({
-        bucketStart: String(a.bucket_start),
-        granularity: String(a.bucket_granularity),
-        transactionCount: parseInt(a.bucket_tx_count, 10) || 0,
+        bucketStart: a.bucket_start,
+        granularity: a.bucket_granularity,
+        transactionCount: parseInt(a.bucket_tx_count) || 0,
         totalVolume: parseFloat(a.bucket_tx_amount) || 0,
       }));
 
       // Transform recent transactions table (top 20)
-      const recentTransactions: RecentTransaction[] = events.slice(0, 20).map((e) => {
+      const recentTransactions = events.slice(0, 20).map((e) => {
         // Determine counterparty based on entity role
-        const counterparty = e.entity_role === 'DEBTOR' ? (e.creditor_name ?? 'Unknown Creditor') : (e.debtor_name ?? 'Unknown Debtor');
+        const counterparty = e.entity_role === 'DEBTOR' ? e.creditor_name || 'Unknown Creditor' : e.debtor_name || 'Unknown Debtor';
 
         const status: string[] = [];
         if (e.is_alerted === 1) status.push('Alert');
         if (e.is_investigated === 1) status.push('Investigated');
 
         return {
-          transactionId: String(e.transaction_id),
-          date: String(e.event_date),
-          type: String(e.tx_type) || 'Unknown',
-          counterparty: String(counterparty),
+          transactionId: e.transaction_id,
+          date: e.event_date,
+          type: e.tx_type || 'Unknown',
+          counterparty: counterparty,
           amount: parseFloat(e.tx_amount) || 0,
-          currency: String(e.tx_ccy),
-          status,
+          currency: e.tx_ccy,
+          status: status,
           actions: {
             viewDetailsLink: `/triage/transaction-detail/${e.transaction_id}`,
           },
@@ -1132,54 +1285,53 @@ export class GoldLakehouseService {
       return {
         summary: {
           totalVolume: Math.round(totalVolume * 100) / 100,
-          totalTransactions: Number(totalTransactions),
-          transactionCount: Number(totalTransactions),
-          alertsTriggered: Number(alertsTriggered),
+          totalTransactions: totalTransactions,
+          transactionCount: totalTransactions,
+          alertsTriggered: alertsTriggered,
           alertsPercentage: Math.round(alertsPercentage * 100) / 100,
-          investigated: Number(investigated),
+          investigated: investigated,
           investigatedPercentage: Math.round(investigatedPercentage * 100) / 100,
           avgTransactionsPerDay: Math.round(avgTransactionsPerDay * 100) / 100,
-          durationDays,
+          durationDays: durationDays,
           bucketTotalVolume: Math.round(bucketTotalVolume * 100) / 100,
-          bucketTotalTransactions: Number(bucketTotalTransactions),
+          bucketTotalTransactions: bucketTotalTransactions,
           expected: {
             transactionCount: expectedTxCount,
             volume: expectedVolume ? Math.round(expectedVolume * 100) / 100 : null,
           },
           actual: {
-            transactionCount: Number(totalTransactions),
+            transactionCount: totalTransactions,
             volume: Math.round(totalVolume * 100) / 100,
           },
         },
-        timeline,
-        cumulative,
-        volumeDistribution,
-        recentTransactions,
+        timeline: timeline,
+        cumulative: cumulative,
+        volumeDistribution: volumeDistribution,
+        recentTransactions: recentTransactions,
         meta: {
-          entityId,
-          tenantId,
-          granularity: granularity ?? null,
-          startDate: startDate ?? null,
-          endDate: endDate ?? null,
-          eventRowCount: Number(events.length),
+          entityId: entityId,
+          tenantId: tenantId,
+          granularity: granularity || null,
+          startDate: startDate || null,
+          endDate: endDate || null,
+          eventRowCount: events.length,
           aggRowCount: aggregates.length,
           queryTimestamp: new Date().toISOString(),
         },
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching Transaction History by entity_id: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching Transaction History by entity_id: ${(error as any).message}`, (error as any).stack);
       throw new HttpException('Failed to fetch Transaction History by entity_id', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   private async getTransactionHistoryByEndToEndId(
     endToEndId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string = 'DEFAULT',
     startDate?: string,
     endDate?: string,
-  ): Promise<unknown> {
+    granularity?: string,
+  ) {
     try {
       this.logger.log(`Fetching Transaction History for end_to_end_id: ${endToEndId}`);
 
@@ -1220,7 +1372,7 @@ export class GoldLakehouseService {
         10,
       );
 
-      const events = (eventsResponse?.data ?? []).map((e) => this.stripHudiMetadata(e));
+      const events = (eventsResponse?.data || []).map((e) => this.stripHudiMetadata(e));
 
       if (events.length === 0) {
         this.logger.warn(`No transaction found for end_to_end_id: ${endToEndId}`);
@@ -1256,7 +1408,7 @@ export class GoldLakehouseService {
         entity_type: e.entity_type,
         entity_role: e.entity_role,
         entity_id: e.entity_id,
-        entity_name: e.entity_name ?? 'Unknown Entity',
+        entity_name: e.entity_name || 'Unknown Entity',
         transaction_id: e.transaction_id,
         tx_amount: parseFloat(e.tx_amount) || 0,
         tx_ccy: e.tx_ccy,
@@ -1274,15 +1426,15 @@ export class GoldLakehouseService {
         const isInvest = e.is_investigated === 1;
 
         totalVolume += amount;
-        if (isAlert) alertsTriggered += 1;
-        if (isInvest) investigatedCount += 1;
+        if (isAlert) alertsTriggered++;
+        if (isInvest) investigatedCount++;
 
         return {
           transactionId: e.transaction_id,
           date: e.event_ts,
-          amount,
+          amount: amount,
           currency: e.tx_ccy,
-          type: e.tx_type ?? 'Unknown',
+          type: e.tx_type || 'Unknown',
           isAlerted: isAlert,
           isInvestigated: isInvest,
           entityRole: e.entity_role,
@@ -1311,10 +1463,10 @@ export class GoldLakehouseService {
         return {
           transactionId: e.transaction_id,
           date: e.event_ts,
-          type: e.tx_type ?? 'Unknown',
-          counterparty: e.entity_name ?? 'Unknown',
+          type: e.tx_type || 'Unknown',
+          counterparty: e.entity_name || 'Unknown',
           role: `${e.entity_type} (${e.entity_role})`,
-          amount,
+          amount: amount,
           currency: e.tx_ccy,
           status: [...(isAlert ? ['Alert'] : []), ...(isInvest ? ['Investigated'] : [])],
           actions: {
@@ -1323,20 +1475,20 @@ export class GoldLakehouseService {
         };
       });
 
-      const [firstEvent] = events;
+      const firstEvent = events[0];
 
       return {
         summary: {
           totalVolume: Math.round(totalVolume * 100) / 100,
-          totalTransactions: Number(events.length),
-          transactionCount: Number(events.length),
-          alertsTriggered,
-          alertsPercentage: (alertsTriggered / Number(events.length)) * 100,
+          totalTransactions: events.length,
+          transactionCount: events.length,
+          alertsTriggered: alertsTriggered,
+          alertsPercentage: (alertsTriggered / events.length) * 100,
           investigated: investigatedCount,
-          investigatedPercentage: (investigatedCount / Number(events.length)) * 100,
-          avgTransactionsPerDay: Number(events.length), // Since it's one day effectively
+          investigatedPercentage: (investigatedCount / events.length) * 100,
+          avgTransactionsPerDay: events.length, // Since it's one day effectively
           durationDays: 1,
-          perspectiveCount: Number(events.length),
+          perspectiveCount: events.length,
         },
         timeline,
         cumulative,
@@ -1353,8 +1505,8 @@ export class GoldLakehouseService {
           creditorName: firstEvent.creditor_name,
           debtorAccountId: firstEvent.debtor_account_id,
           creditorAccountId: firstEvent.creditor_account_id,
-          startDate: startDate ?? null,
-          endDate: endDate ?? null,
+          startDate: startDate || null,
+          endDate: endDate || null,
           queryTimestamp: new Date().toISOString(),
         },
       };
@@ -1370,7 +1522,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTransactionPerspectivesByEndToEndId(endToEndId: string, tenantId = 'DEFAULT'): Promise<unknown> {
+  async getTransactionPerspectivesByEndToEndId(endToEndId: string, tenantId: string = 'DEFAULT') {
     try {
       this.logger.log(`Fetching Transaction Perspectives for end_to_end_id: ${endToEndId}`);
 
@@ -1407,7 +1559,7 @@ export class GoldLakehouseService {
         10,
       );
 
-      const perspectives = (response?.data ?? []).map((row) => this.stripHudiMetadata(row));
+      const perspectives = (response?.data || []).map((row) => this.stripHudiMetadata(row));
 
       if (perspectives.length === 0) {
         this.logger.warn(`No transaction perspectives found for end_to_end_id: ${endToEndId}`);
@@ -1425,13 +1577,13 @@ export class GoldLakehouseService {
       }
 
       // Extract common transaction details from first perspective
-      const [firstPerspective] = perspectives;
+      const firstPerspective = perspectives[0];
       const transactionDetails = {
         transactionId: firstPerspective.transaction_id,
         endToEndId: firstPerspective.end_to_end_id,
         amount: parseFloat(firstPerspective.tx_amount) || 0,
         currency: firstPerspective.tx_ccy,
-        type: firstPerspective.tx_type ?? 'Unknown',
+        type: firstPerspective.tx_type || 'Unknown',
         date: firstPerspective.event_date,
         timestamp: firstPerspective.event_ts,
         isAlerted: firstPerspective.is_alerted === 1,
@@ -1447,7 +1599,7 @@ export class GoldLakehouseService {
         entity_type: p.entity_type,
         entity_role: p.entity_role,
         entity_id: p.entity_id,
-        entity_name: p.entity_name ?? 'Unknown Entity',
+        entity_name: p.entity_name || 'Unknown Entity',
         transaction_id: p.transaction_id,
         tx_amount: parseFloat(p.tx_amount) || 0,
         tx_ccy: p.tx_ccy,
@@ -1465,27 +1617,20 @@ export class GoldLakehouseService {
           message: `Retrieved ${perspectives.length} entity perspective(s) for transaction`,
         },
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching Transaction Perspectives by end_to_end_id: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching Transaction Perspectives by end_to_end_id: ${error.message}`, error.stack);
       throw new HttpException('Failed to fetch Transaction Perspectives', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getAlertHistorySummary(
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
-  ): Promise<{
-    totalAlerts: number;
-    casesOpened: number;
-    investigations: number;
-    sarFilings: number;
-    totalValue: number;
-  }> {
+  private mapTransactionType(txType: string): string {
+    // Return raw transaction type code (e.g., 'pacs.008.001.10')
+    return txType || 'Unknown';
+  }
+
+  async getAlertHistorySummary(endToEndId?: string, tenantId?: string, dateRange?: string) {
     try {
-      const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
+      const effectiveEndToEndId = endToEndId || this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
       const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
 
@@ -1534,7 +1679,7 @@ export class GoldLakehouseService {
       `;
 
       const response = await this.runSqlQuery(sql, 1);
-      const row = response.data?.[0] ?? {};
+      const row = response.data?.[0] || {};
 
       return {
         totalAlerts: Number(row.total_alerts ?? 0),
@@ -1543,16 +1688,15 @@ export class GoldLakehouseService {
         sarFilings: Number(row.sar_filings ?? 0),
         totalValue: parseFloat(row.total_value) || 0,
       };
-    } catch (error: unknown) {
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error('Error fetching alert history summary', errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching alert history summary`, error.stack);
       throw new HttpException('Failed to fetch alert history summary', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getAlertHistoryTimeline(endToEndId?: string, tenantId?: string, dateRange?: string, granularity = 'day'): Promise<any> {
+  async getAlertHistoryTimeline(endToEndId?: string, tenantId?: string, dateRange?: string, granularity: string = 'day') {
     try {
-      const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
+      const effectiveEndToEndId = endToEndId || this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
       const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
 
@@ -1602,7 +1746,7 @@ export class GoldLakehouseService {
       `;
 
       const response = await this.runSqlQuery(sql, 1000);
-      const rows = response.data ?? [];
+      const rows = response.data || [];
 
       const alertCountOverTime = rows.map((r) => ({
         date: r.date,
@@ -1620,30 +1764,15 @@ export class GoldLakehouseService {
         alertCountOverTime,
         alertValueOverTime,
       };
-    } catch (error: unknown) {
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error('Error fetching alert history timeline', errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching alert history timeline`, error.stack);
       throw new HttpException('Failed to fetch alert history timeline', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getAlertHistoryAlerts(
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
-    page = 1,
-    limit = 20,
-  ): Promise<{
-    alerts: Alerts[];
-    pagination: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
-  }> {
+  async getAlertHistoryAlerts(endToEndId?: string, tenantId?: string, dateRange?: string, page: number = 1, limit: number = 20) {
     try {
-      const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
+      const effectiveEndToEndId = endToEndId || this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
       const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
 
@@ -1709,23 +1838,23 @@ export class GoldLakehouseService {
       `;
 
       const response = await this.runSqlQuery(sql, limit);
-      const rows = response.data ?? [];
+      const rows = response.data || [];
 
-      const alerts: Alerts[] = rows.map((r) => {
+      const alerts = rows.map((r) => {
         let outcome = 'Pending';
         if (r.case_status) {
           if (r.case_status.includes('COMPLETED')) outcome = 'Closed';
           else if (r.case_status.includes('DRAFT')) outcome = 'Draft';
-          else if (r.case_status.includes('ASSIGNED') ?? r.case_status.includes('PROGRESS')) outcome = 'Investigating';
+          else if (r.case_status.includes('ASSIGNED') || r.case_status.includes('PROGRESS')) outcome = 'Investigating';
         }
 
         return {
           alertId: r.alert_id,
           date: r.date,
-          type: r.type ?? 'Unknown',
-          severity: r.severity ?? 'Unknown',
-          status: r.status ?? 'Unknown',
-          caseId: r.case_id ?? null,
+          type: r.type || 'Unknown',
+          severity: r.severity || 'Unknown',
+          status: r.status || 'Unknown',
+          caseId: r.case_id || null,
           outcome,
           actions: {
             viewAlertNavigator: `/alert-navigator/${r.alert_id}`,
@@ -1743,14 +1872,13 @@ export class GoldLakehouseService {
           totalPages: Math.ceil(total / limit),
         },
       };
-    } catch (error: unknown) {
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error('Error fetching alert history alerts', errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching alert history alerts`, error.stack);
       throw new HttpException('Failed to fetch alert history alerts', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getTestAccountIds(tenantId = 'DEFAULT', minConnections = 1): Promise<unknown> {
+  async getTestAccountIds(tenantId: string = 'DEFAULT', minConnections: number = 1) {
     try {
       this.logger.log(`Fetching test account IDs from lakehouse (minConnections: ${minConnections})`);
 
@@ -1779,7 +1907,7 @@ export class GoldLakehouseService {
       `;
 
       const response = await this.runSqlQuery(sql, 10);
-      const accounts = (response?.data ?? []).map((row) => this.stripHudiMetadata(row));
+      const accounts = (response?.data || []).map((row) => this.stripHudiMetadata(row));
 
       return {
         message: 'Test account IDs with network activity',
@@ -1792,17 +1920,21 @@ export class GoldLakehouseService {
           testUrl: `/api/v1/lakehouse/network-analysis/transaction/${acc.account_id}?timeRange=30d`,
         })),
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching test account IDs: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching test account IDs: ${error.message}`, error.stack);
       throw new HttpException('Failed to fetch test account IDs', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getTransactionNetworkData(accountId: string, tenantId = 'DEFAULT', timeRange = '30d'): Promise<TransactionNetworkResponseDto> {
+  async getTransactionNetworkData(
+    accountId: string,
+    tenantId: string = 'DEFAULT',
+    timeRange: string = '30d',
+  ): Promise<TransactionNetworkResponseDto> {
     try {
       this.logger.log(`Fetching transaction network for account: ${accountId}, timeRange: ${timeRange}`);
+
+      const startDate = this.calculateStartDate(timeRange);
 
       const centerAccountSql = `
         SELECT DISTINCT 
@@ -1865,9 +1997,9 @@ export class GoldLakehouseService {
         this.runSqlQuery(alertFlagsSql, 10),
       ]);
 
-      const outboundData = (outboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
-      const inboundData = (inboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
-      const alertFlags = new Set((alertFlagsResponse?.data ?? []).map((row) => this.stripHudiMetadata(row).account_id));
+      const outboundData = (outboundResponse?.data || []).map((row) => this.stripHudiMetadata(row));
+      const inboundData = (inboundResponse?.data || []).map((row) => this.stripHudiMetadata(row));
+      const alertFlags = new Set((alertFlagsResponse?.data || []).map((row) => this.stripHudiMetadata(row).account_id));
 
       const allConnections = [...outboundData, ...inboundData];
 
@@ -1916,7 +2048,7 @@ export class GoldLakehouseService {
       };
 
       const centerAccount: CenterAccountDto = {
-        accountId,
+        accountId: accountId,
         accountHolder: centerAccountInfo.account_name,
         networkSummary,
       };
@@ -1929,10 +2061,8 @@ export class GoldLakehouseService {
         tenantId,
         queryTimestamp: new Date().toISOString(),
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching transaction network data: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching transaction network data: ${error.message}`, error.stack);
       throw new HttpException('Failed to fetch transaction network data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1947,34 +2077,34 @@ export class GoldLakehouseService {
     return 'LOW';
   }
 
-  async getAccountNodeFullData(
-    accountId: string,
-    tenantId = 'DEFAULT',
-    granularity: 'day' | 'month' | 'year' = 'month',
-  ): Promise<{
-    network: {
-      rootNodeId: string;
-      nodes: Node[];
-      edges: Edge[];
-    };
-    accountDetails: {
-      accountId: string;
-      accountHolder: string;
-      relationship: string;
-      transactions: number;
-      totalValue: number;
-      velocity: string;
-      flags: {
-        alerted: boolean;
-        investigated: boolean;
-      };
-    };
-    meta: {
-      tenantId: string;
-      granularity: 'day' | 'month' | 'year';
-      generatedAt: string;
-    };
-  }> {
+  private calculateStartDate(timeRange: string): string {
+    const now = new Date();
+    let startDate: Date;
+
+    switch (timeRange) {
+      case '7d':
+        startDate = new Date(now.setDate(now.getDate() - 7));
+        break;
+      case '30d':
+        startDate = new Date(now.setDate(now.getDate() - 30));
+        break;
+      case '90d':
+        startDate = new Date(now.setDate(now.getDate() - 90));
+        break;
+      case '1y':
+        startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+        break;
+      case 'all':
+        startDate = new Date('2000-01-01');
+        break;
+      default:
+        startDate = new Date(now.setDate(now.getDate() - 30));
+    }
+
+    return startDate.toISOString();
+  }
+
+  async getAccountNodeFullData(accountId: string, tenantId: string = 'DEFAULT', granularity: 'day' | 'month' | 'year' = 'month') {
     try {
       const networkSql = `
       SELECT
@@ -1997,10 +2127,10 @@ export class GoldLakehouseService {
     `;
 
       const networkResp = await this.runSqlQuery(networkSql, 1000);
-      const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
+      const networkRows = (networkResp.data || []).map((r) => this.stripHudiMetadata(r));
 
-      const nodesMap = new Map<string, Node>();
-      const edges: Edge[] = [];
+      const nodesMap = new Map<string, any>();
+      const edges: any[] = [];
 
       nodesMap.set(accountId, {
         id: accountId,
@@ -2037,7 +2167,7 @@ export class GoldLakehouseService {
           });
         }
 
-        const root = nodesMap.get(accountId)!;
+        const root = nodesMap.get(accountId);
         root.flags.alerted ||= r.is_alerted_edge === 1;
         root.flags.investigated ||= r.is_investigated_edge === 1;
 
@@ -2069,7 +2199,7 @@ export class GoldLakehouseService {
     `;
 
       const metricsResp = await this.runSqlQuery(metricsSql, 1);
-      const metrics = this.stripHudiMetadata(metricsResp.data?.[0] ?? {});
+      const metrics = this.stripHudiMetadata(metricsResp.data?.[0] || {});
 
       const holderSql = `
       SELECT debtor_name AS holder_name
@@ -2116,7 +2246,7 @@ export class GoldLakehouseService {
         },
         accountDetails: {
           accountId,
-          accountHolder: String(holderRow?.holder_name) || 'Unknown',
+          accountHolder: holderRow?.holder_name ?? 'Unknown',
           relationship: 'Primary Owner',
           transactions: txCount,
           totalValue: Number(metrics.total_value ?? 0),
@@ -2132,42 +2262,13 @@ export class GoldLakehouseService {
           generatedAt: new Date().toISOString(),
         },
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching full account node data: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching full account node data: ${error.message}`, error.stack);
       throw new HttpException('Failed to fetch account network and details', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getCounterpartyNodeFullData(
-    counterpartyId: string,
-    tenantId = 'DEFAULT',
-    granularity: 'day' | 'month' | 'year' = 'month',
-  ): Promise<{
-    network: {
-      rootNodeId: string;
-      nodes: Node[];
-      edges: Edge[];
-    };
-    counterpartyDetails: {
-      counterpartyId: string;
-      name: string;
-      type: string;
-      transactions: number;
-      totalValue: number;
-      velocity: string;
-      flags: {
-        alerted: boolean;
-        investigated: boolean;
-      };
-    };
-    meta: {
-      tenantId: string;
-      granularity: 'day' | 'month' | 'year';
-      generatedAt: string;
-    };
-  }> {
+  async getCounterpartyNodeFullData(counterpartyId: string, tenantId: string = 'DEFAULT', granularity: 'day' | 'month' | 'year' = 'month') {
     try {
       const networkSql = `
       SELECT
@@ -2190,10 +2291,10 @@ export class GoldLakehouseService {
     `;
 
       const networkResp = await this.runSqlQuery(networkSql, 1000);
-      const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
+      const networkRows = (networkResp.data || []).map((r) => this.stripHudiMetadata(r));
 
-      const nodesMap = new Map<string, Node>();
-      const edges: Edge[] = [];
+      const nodesMap = new Map<string, any>();
+      const edges: any[] = [];
 
       nodesMap.set(counterpartyId, {
         id: counterpartyId,
@@ -2230,7 +2331,7 @@ export class GoldLakehouseService {
           });
         }
 
-        const root = nodesMap.get(counterpartyId)!;
+        const root = nodesMap.get(counterpartyId);
         root.flags.alerted ||= r.is_alerted_edge === 1;
         root.flags.investigated ||= r.is_investigated_edge === 1;
 
@@ -2262,7 +2363,7 @@ export class GoldLakehouseService {
     `;
 
       const metricsResp = await this.runSqlQuery(metricsSql, 1);
-      const metrics = this.stripHudiMetadata(metricsResp.data?.[0] ?? {});
+      const metrics = this.stripHudiMetadata(metricsResp.data?.[0] || {});
 
       // For Name, we search in transaction_detail by any account that links to this counterparty
       const nameSql = `
@@ -2303,30 +2404,13 @@ export class GoldLakehouseService {
           generatedAt: new Date().toISOString(),
         },
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error in getCounterpartyNodeFullData: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error in getCounterpartyNodeFullData: ${error.message}`, error.stack);
       throw new HttpException('Failed to fetch counterparty network details', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getBenfordAnalysisByAccount(
-    accountId: string,
-    tenantId: string,
-    fromDate: string,
-    toDate: string,
-  ): Promise<{
-    expected: Record<number, number>;
-    actual: Record<number, number>;
-    sampleSize: number;
-    meta: {
-      accountId: string;
-      tenantId: string;
-      fromDate: string;
-      toDate: string;
-    };
-  }> {
+  async getBenfordAnalysisByAccount(accountId: string, tenantId: string, fromDate: string, toDate: string) {
     try {
       this.logger.log(`Running Benford analysis for account ${accountId}, tenant ${tenantId}, range ${fromDate} → ${toDate}`);
 
@@ -2345,12 +2429,12 @@ export class GoldLakehouseService {
     `;
 
       const response = await this.runSqlQuery(sql, 100000);
-      const rows = response?.data ?? [];
+      const rows = response?.data || [];
 
       const amounts: number[] = rows.map((r) => Number(r.amount)).filter((v) => !isNaN(v) && v > 0);
 
       const expected: Record<number, number> = {};
-      for (let d = 1; d <= 9; d += 1) {
+      for (let d = 1; d <= 9; d++) {
         expected[d] = Math.log10(1 + 1 / d);
       }
 
@@ -2358,18 +2442,18 @@ export class GoldLakehouseService {
       let total = 0;
 
       for (const value of amounts) {
-        const s = value.toString().replace('.', '').replace(/^0+/v, '');
+        const s = value.toString().replace('.', '').replace(/^0+/, '');
         if (!s) continue;
 
         const digit = parseInt(s[0], 10);
         if (digit >= 1 && digit <= 9) {
-          counts[digit] += 1;
-          total += 1;
+          counts[digit]++;
+          total++;
         }
       }
 
       const actual: Record<number, number> = {};
-      for (let d = 1; d <= 9; d += 1) {
+      for (let d = 1; d <= 9; d++) {
         actual[d] = total > 0 ? counts[d] / total : 0;
       }
 
@@ -2384,16 +2468,18 @@ export class GoldLakehouseService {
           toDate,
         },
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error running Benford analysis for account ${accountId}: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error running Benford analysis for account ${accountId}: ${error.message}`, error.stack);
 
       throw new HttpException('Failed to perform Benford analysis', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getCounterpartyNetworkData(accountId: string, tenantId = 'DEFAULT', timeRange = '30d'): Promise<CounterpartyNetworkResponseDto> {
+  async getCounterpartyNetworkData(
+    accountId: string,
+    tenantId: string = 'DEFAULT',
+    timeRange: string = '30d',
+  ): Promise<CounterpartyNetworkResponseDto> {
     try {
       this.logger.log(`Fetching counterparty network for account: ${accountId}`);
 
@@ -2428,13 +2514,13 @@ export class GoldLakehouseService {
       `;
 
       const counterpartyLinksResponse = await this.runSqlQuery(counterpartyLinksSql, 1);
-      const counterpartyIds = (counterpartyLinksResponse?.data ?? []).map((row) => this.stripHudiMetadata(row).counterparty_id);
+      const counterpartyIds = (counterpartyLinksResponse?.data || []).map((row) => this.stripHudiMetadata(row).counterparty_id);
 
       if (counterpartyIds.length === 0) {
         throw new HttpException('No counterparties found for account', HttpStatus.NOT_FOUND);
       }
 
-      const [centerCounterpartyId] = counterpartyIds;
+      const centerCounterpartyId = counterpartyIds[0];
 
       const networkEdgesSql = `
         SELECT 
@@ -2453,7 +2539,7 @@ export class GoldLakehouseService {
       `;
 
       const edgesResponse = await this.runSqlQuery(networkEdgesSql, 1000);
-      const edges = (edgesResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
+      const edges = (edgesResponse?.data || []).map((row) => this.stripHudiMetadata(row));
 
       const allCounterpartyIds = new Set<string>([centerCounterpartyId]);
       edges.forEach((edge) => {
@@ -2487,7 +2573,7 @@ export class GoldLakehouseService {
         `;
 
         const namesResponse = await this.runSqlQuery(namesSql, 1000);
-        const namesRows = (namesResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
+        const namesRows = (namesResponse?.data || []).map((row) => this.stripHudiMetadata(row));
 
         namesRows.forEach((row) => {
           if (row.counterparty_id && row.name) {
@@ -2516,7 +2602,7 @@ export class GoldLakehouseService {
 
           counterpartiesData.push({
             counterpartyId: connectedId,
-            counterpartyName: counterpartyNamesMap.get(connectedId) ?? connectedId,
+            counterpartyName: counterpartyNamesMap.get(connectedId) || connectedId,
             degree: 1,
             transactionCount: Number(edge.tx_count),
             totalValue: Math.round(Number(edge.total_amount) * 100) / 100,
@@ -2534,7 +2620,7 @@ export class GoldLakehouseService {
       const networkEdges: CounterpartyNetworkEdgeDto[] = [];
 
       edges.forEach((edge, index) => {
-        const edgeKey = [edge.from_counterparty_id, edge.to_counterparty_id].sort((a, b) => a.localeCompare(b)).join('->');
+        const edgeKey = [edge.from_counterparty_id, edge.to_counterparty_id].sort().join('->');
         if (!seenEdges.has(edgeKey)) {
           seenEdges.add(edgeKey);
           networkEdges.push({
@@ -2567,7 +2653,7 @@ export class GoldLakehouseService {
 
       const centerCounterparty: CenterCounterpartyDto = {
         counterpartyId: centerCounterpartyId,
-        counterpartyName: counterpartyNamesMap.get(centerCounterpartyId) ?? centerCounterpartyId,
+        counterpartyName: counterpartyNamesMap.get(centerCounterpartyId) || centerCounterpartyId,
         networkSummary,
       };
 
@@ -2581,10 +2667,8 @@ export class GoldLakehouseService {
         tenantId,
         queryTimestamp: new Date().toISOString(),
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching counterparty network data: ${errorMessage}`, errorStack);
+    } catch (error) {
+      this.logger.error(`Error fetching counterparty network data: ${error.message}`, error.stack);
       throw new HttpException('Failed to fetch counterparty network data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -2593,5 +2677,923 @@ export class GoldLakehouseService {
     if (transactionCount > 10) return 'HIGH';
     if (transactionCount >= 5) return 'MEDIUM';
     return 'LOW';
+  }
+
+  // ---------------- DEBUG METHODS FOR DATA ANALYSIS ----------------
+
+  async getAllConditionsTableData(tenantId: string) {
+    try {
+      this.logger.log('Fetching all conditions table data');
+      const sql = `SELECT * FROM conditions WHERE tenant_id = '${tenantId}' LIMIT 500`;
+      const response = await this.runSqlQuery(sql, 500);
+      return {
+        tableName: 'conditions',
+        totalRows: response.data?.length || 0,
+        data: response.data || [],
+        note: 'Now using primary conditions table with full data (132 rows)',
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching conditions table: ${error.message}`);
+      throw new HttpException('Failed to fetch conditions table data', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getAllConditionsTimelineData(tenantId: string) {
+    try {
+      this.logger.log('Fetching all conditions_timeline table data');
+      // Try without WHERE clause first in case tenant_id column doesn't exist or table is empty
+      const sql = `SELECT * FROM conditions_timeline LIMIT 500`;
+      this.logger.debug(`SQL Query: ${sql}`);
+      const response = await this.runSqlQuery(sql, 500);
+      this.logger.log(`Conditions timeline response: ${JSON.stringify(response)}`);
+      return {
+        tableName: 'conditions_timeline',
+        totalRows: response.data?.length || 0,
+        data: response.data || [],
+        note: 'Query executed without tenant filter to check table structure',
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching conditions_timeline table: ${error.message}`);
+      this.logger.error(`Error stack: ${error.stack}`);
+      // Return empty result instead of throwing to see if table exists but is empty
+      return {
+        tableName: 'conditions_timeline',
+        totalRows: 0,
+        data: [],
+        error: error.message,
+        note: 'Table may not exist or query failed',
+      };
+    }
+  }
+
+  async getAllAccountHolderData(tenantId: string) {
+    try {
+      this.logger.log('Fetching all account_holder table data');
+      const sql = `SELECT * FROM account_holder WHERE tenant_id = '${tenantId}' LIMIT 200`;
+      const response = await this.runSqlQuery(sql, 200);
+      return {
+        tableName: 'account_holder',
+        totalRows: response.data?.length || 0,
+        data: response.data || [],
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching account_holder table: ${error.message}`);
+      throw new HttpException('Failed to fetch account_holder table data', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getTransactionDetailSampleData(tenantId: string) {
+    try {
+      this.logger.log('Fetching sample transaction_detail table data');
+      const sql = `SELECT * FROM transaction_detail WHERE tenant_id = '${tenantId}' LIMIT 100`;
+      const response = await this.runSqlQuery(sql, 100);
+      return {
+        tableName: 'transaction_detail',
+        totalRows: response.data?.length || 0,
+        data: response.data || [],
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching transaction_detail table: ${error.message}`);
+      throw new HttpException('Failed to fetch transaction_detail table data', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // ---------------- SPECIFIC ID TYPE METHODS (NO RESOLUTION) ----------------
+
+  // Account ID based methods (direct from conditions_timeline)
+  async getConditionsSummaryByAccount(accountId: string, tenantId: string = 'DEFAULT', fromDate?: string, asOfDate?: string) {
+    try {
+      this.logger.log(`Fetching conditions summary for account: ${accountId}`);
+      const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
+
+      // If asOfDate is provided, filter conditions active at that time
+      let asOfDateFilter = '';
+      if (asOfDate) {
+        asOfDateFilter = `
+          AND condition_inception_ts <= '${asOfDate}'
+          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= '${asOfDate}')
+        `;
+      }
+
+      const sql = `
+      SELECT 
+        COUNT(*) as total_conditions,
+        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_conditions,
+        SUM(CASE WHEN is_expired = 1 THEN 1 ELSE 0 END) as expired_conditions,
+        SUM(CASE WHEN is_active = 0 AND is_expired = 0 THEN 1 ELSE 0 END) as future_conditions
+      FROM conditions
+      WHERE account_id = '${accountId}'
+        ${tenantId && tenantId !== 'DEFAULT' ? `AND tenant_id = '${tenantId}'` : ''}
+        ${asOfDateFilter}
+      `;
+
+      const response = await this.runSqlQuery(sql, 1);
+      const summary = response.data?.[0] || {};
+
+      // Get basic condition details for summary
+      const conditionsSql = `
+      SELECT 
+        condition_id,
+        condition_reason,
+        condition_type,
+        perspective,
+        condition_inception_ts,
+        condition_expiry_ts,
+        is_active,
+        is_expired,
+        created_by_user,
+        account_scheme,
+        account_agent_mmb_id
+      FROM conditions
+      WHERE account_id = '${accountId}'
+        ${tenantId && tenantId !== 'DEFAULT' ? `AND tenant_id = '${tenantId}'` : ''}
+        ${asOfDateFilter}
+      LIMIT 100
+      `;
+
+      const conditionsResponse = await this.runSqlQuery(conditionsSql, 100);
+      const conditions = (conditionsResponse.data || []).map(cond => ({
+        conditionId: cond.condition_id,
+        type: cond.condition_type || 'no data found',
+        perspective: cond.perspective || 'no data found',
+        reason: cond.condition_reason || 'no data found',
+        status: cond.is_active === 1 ? 'active' :
+          cond.is_expired === 1 ? 'expired' : 'future',
+        inceptionDate: cond.condition_inception_ts,
+        expiryDate: cond.condition_expiry_ts,
+        createdBy: cond.created_by_user || 'no data found'
+      }));
+
+      return {
+        accountId: accountId,
+        accountScheme: (conditionsResponse.data?.[0]?.account_scheme || 'no data found'),
+        fspId: (conditionsResponse.data?.[0]?.account_agent_mmb_id || 'no data found'),
+        totalConditions: summary.total_conditions || 0,
+        activeConditions: summary.active_conditions || 0,
+        expiredConditions: summary.expired_conditions || 0,
+        futureConditions: summary.future_conditions || 0,
+        conditions: conditions,
+        metadata: {
+          asOfDate: asOfDate || 'current',
+          queryTimestamp: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error fetching conditions summary by account: ${message}`, (error as any)?.stack);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        `Failed to fetch conditions summary: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async getActiveConditionsByAccount(accountId: string, tenantId: string = 'DEFAULT', fromDate?: string) {
+    try {
+      this.logger.log(`Fetching active conditions for account: ${accountId}`);
+      const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
+
+      const sql = `
+      SELECT
+        ct.condition_id,
+        ct.condition_reason,
+        ct.condition_type,
+        ct.condition_inception_ts,
+        ct.condition_expiry_ts,
+        ct.account_id,
+        ct.created_by_user
+      FROM conditions ct
+      WHERE (ct.account_id = '${accountId}' OR ct.entity_id = '${accountId}')
+        ${tenantId && tenantId !== 'DEFAULT' ? `AND ct.tenant_id = '${tenantId}'` : ''}
+        AND ct.is_active = 1
+      ORDER BY ct.condition_inception_ts DESC
+      LIMIT 500
+      `;
+
+      const response = await this.runSqlQuery(sql, 500);
+      const rows = response.data || [];
+
+      this.logger.log(`Found ${rows.length} active conditions for account ${accountId}`);
+
+      return {
+        conditions: rows.map((r) => ({
+          conditionId: r.condition_id,
+          title: r.condition_reason,
+          type: r.condition_type,
+          createdBy: r.created_by_user || 'no data found',
+          startDate: r.condition_inception_ts,
+          endDate: r.condition_expiry_ts ?? 'no data found',
+          notes: r.condition_reason,
+          action: r.condition_type === 'overridable-block' ? 'OVERRIDE' : 'BLOCK',
+          accountId: r.account_id,
+        })),
+        metadata: {
+          queriedBy: accountId,
+          accountCount: 1,
+          isEntityLevel: false,
+        },
+      };
+    } catch (error) {
+      this.logger.error('Error fetching active conditions by account', error.stack);
+      throw new HttpException('Failed to fetch active conditions', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+  async getFutureConditionsByAccount(accountId: string, tenantId: string = 'DEFAULT') {
+    try {
+      this.logger.log(`Fetching future conditions for account: ${accountId}`);
+      const sql = `
+      SELECT
+        ct.condition_id,
+        ct.condition_reason,
+        ct.condition_type,
+        ct.condition_inception_ts,
+        ct.condition_expiry_ts,
+        ct.account_id,
+        ct.created_by_user
+      FROM conditions ct
+      WHERE ct.account_id = '${accountId}'
+        AND ct.tenant_id = '${tenantId}'
+        AND ct.is_active = 0
+        AND ct.is_expired = 0
+      ORDER BY ct.condition_inception_ts ASC
+      LIMIT 500
+      `;
+
+      const response = await this.runSqlQuery(sql, 500);
+      const rows = response.data || [];
+
+      this.logger.log(`Found ${rows.length} future conditions for account ${accountId}`);
+
+      return {
+        conditions: rows.map((r) => ({
+          conditionId: r.condition_id,
+          title: r.condition_reason,
+          type: r.condition_type,
+          createdBy: r.created_by_user || 'no data found',
+          startDate: r.condition_inception_ts,
+          endDate: r.condition_expiry_ts,
+          accountId: r.account_id,
+          transactions: [],
+        })),
+        metadata: {
+          queriedBy: accountId,
+          accountCount: 1,
+          isEntityLevel: false,
+        },
+      };
+    } catch (error) {
+      this.logger.error('Error fetching future conditions by account', error.stack);
+      throw new HttpException('Failed to fetch future conditions', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getConditionsListByAccount(id: string, tenantId: string = 'DEFAULT', asOfDate?: string, showInactive: boolean = false) {
+    try {
+      this.logger.log(`Fetching all conditions for ID: ${id}`);
+
+      // Build date filter
+      let dateFilter = '';
+      if (asOfDate && !showInactive) {
+        // Show only conditions active at the specified date
+        dateFilter = `
+          AND condition_inception_ts <= '${asOfDate}'
+          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= '${asOfDate}')
+        `;
+      }
+
+      const sql = `
+      SELECT
+        ct.condition_id,
+        ct.condition_reason,
+        ct.condition_type,
+        ct.perspective,
+        ct.condition_inception_ts,
+        ct.condition_expiry_ts,
+        ct.condition_created_ts,
+        ct.is_active,
+        ct.is_expired,
+        ct.account_id,
+        ct.tenant_id,
+        ct.account_scheme,
+        ct.event_types_csv,
+        ct.created_by_user
+      FROM conditions ct
+      WHERE ct.account_id = '${id}'
+        ${tenantId && tenantId !== 'DEFAULT' ? `AND ct.tenant_id = '${tenantId}'` : ''}
+        ${dateFilter}
+      ORDER BY ct.condition_inception_ts DESC
+      LIMIT 500
+      `;
+
+      const response = await this.runSqlQuery(sql, 500);
+      const rows = response.data || [];
+
+      this.logger.log(`Found ${rows.length} conditions for ID ${id}`);
+
+      const formattedConditions = rows.map(row => ({
+        conditionId: row.condition_id,
+        pk: 'no mapping found',
+        tenantId: row.tenant_id || tenantId,
+        bucketGranularity: 'no data found',
+        bucketStart: 'no data found',
+        accountId: row.account_id,
+        accountScheme: row.account_scheme || 'no data found',
+        type: row.condition_type || 'no data found',
+        perspective: row.perspective || 'no data found',
+        reason: row.condition_reason || 'no data found',
+        eventTypes: row.event_types_csv || 'no data found',
+        inceptionDate: row.condition_inception_ts,
+        expiryDate: row.condition_expiry_ts,
+        createdDate: row.condition_created_ts,
+        isActive: row.is_active === 1,
+        isExpired: row.is_expired === 1,
+        createdBy: row.created_by_user || 'no data found'
+      }));
+
+      return {
+        accountId: id,
+        totalConditions: rows.length,
+        conditions: formattedConditions,
+        metadata: {
+          activeCount: rows.filter(r => r.is_active === 1).length,
+          expiredCount: rows.filter(r => r.is_expired === 1).length,
+          futureCount: rows.filter(r => r.is_active === 0 && r.is_expired === 0).length,
+          asOfDate: asOfDate || 'current',
+          showInactive,
+          queryTimestamp: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      this.logger.error('Error fetching conditions list by account', error.stack);
+      throw new HttpException('Failed to fetch conditions list', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getEvaluatedTransactionsByAccount(accountId: string, tenantId: string = 'DEFAULT', fromDate?: string) {
+    try {
+      this.logger.log(`Fetching evaluated transactions for account: ${accountId}`);
+      const dateFilter = fromDate ? `AND ct.cond_inception_ts >= '${fromDate}'` : '';
+
+      const sql = `
+      SELECT DISTINCT
+        td.transaction_id as tx_transaction_id,
+        td.tx_event_ts,
+        td.tx_type,
+        td.interbank_settlement_amount as tx_amount,
+        td.interbank_settlement_currency as tx_ccy,
+        ct.cond_condition_id,
+        ct.cond_type,
+        ct.cond_reason,
+        ct.cond_inception_ts,
+        ct.cond_expiry_ts,
+        ct.cond_account_id,
+        CASE 
+          WHEN td.debtor_account_id = ct.cond_account_id THEN 'debtor'
+          WHEN td.creditor_account_id = ct.cond_account_id THEN 'creditor'
+          ELSE 'unknown'
+        END as account_role
+      FROM conditions_timeline ct
+      INNER JOIN transaction_detail td ON (
+        (td.debtor_account_id = ct.cond_account_id OR td.creditor_account_id = ct.cond_account_id)
+        AND td.tx_event_ts >= ct.cond_inception_ts
+        AND td.tx_event_ts <= ct.cond_expiry_ts
+        AND td.tenant_id = ct.cond_tenant_id
+      )
+      WHERE ct.cond_account_id = '${accountId}'
+        AND ct.cond_tenant_id = '${tenantId}'
+        ${dateFilter}
+      ORDER BY td.tx_event_ts DESC
+      LIMIT 500
+      `;
+
+      const response = await this.runSqlQuery(sql, 500);
+      const rows = response.data || [];
+
+      this.logger.log(`Found ${rows.length} transactions for account ${accountId}`);
+
+      if (rows.length === 0) {
+        return {
+          transactions: [],
+          metadata: {
+            accountId,
+            status: 'DATA_NOT_FOUND',
+            message: 'No transactions found overlapping with condition windows (Temporal Join returned 0 results)',
+            queryTimestamp: new Date().toISOString()
+          }
+        };
+      }
+
+      return {
+        transactions: rows.map((r) => ({
+          transactionId: r.tx_transaction_id || 'NOT_MAPPED',
+          date: r.tx_event_ts || 'NOT_FOUND',
+          type: r.tx_type || 'UNKNOWN',
+          amount: r.tx_amount || 0,
+          currency: r.tx_ccy || 'N/A',
+          outcome: r.cond_type === 'overridable-block' ? 'BLOCKED_OVERRIDABLE' : 'BLOCKED',
+          conditionId: r.cond_condition_id || 'NOT_FOUND',
+          conditionType: r.cond_type || 'UNKNOWN',
+          reason: r.cond_reason || 'NO_REASON_PROVIDED',
+          conditionPeriod: {
+            start: r.cond_inception_ts || 'NOT_FOUND',
+            end: r.cond_expiry_ts || 'NOT_FOUND',
+          },
+          accountRole: r.account_role || 'UNMAPPED',
+          accountId: r.cond_account_id || accountId,
+        })),
+        metadata: {
+          accountId,
+          totalRecords: rows.length,
+          status: 'SUCCESS',
+          joinMethod: 'Temporal (Time-based)',
+          queryTimestamp: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      this.logger.error('Error fetching evaluated transactions by account', error.stack);
+      throw new HttpException('Failed to fetch evaluated transactions', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // Transaction ID based methods
+  async getConditionsSummaryByTransaction(transactionId: number, tenantId: string = 'DEFAULT') {
+    try {
+      this.logger.log(`Fetching conditions summary for transaction: ${transactionId}`);
+
+      // 1. Get transaction details to find debtor/creditor accounts
+      const txSql = `
+      SELECT debtor_account_id, creditor_account_id, tx_event_ts
+      FROM transaction_detail 
+      WHERE transaction_id = ${transactionId} AND tenant_id = '${tenantId}'
+      LIMIT 1
+      `;
+
+      const txResponse = await this.runSqlQuery(txSql, 1);
+      const txData = txResponse.data?.[0];
+      if (!txData) {
+        return { message: `Transaction ${transactionId} not found`, conditions: 0 };
+      }
+
+      // 2. Find conditions for both debtor and creditor accounts during transaction time
+      const condSql = `
+      SELECT COUNT(*) as total_conditions,
+             SUM(CASE WHEN cond_is_active = 1 THEN 1 ELSE 0 END) as active_conditions,
+             SUM(CASE WHEN cond_is_expired = 1 THEN 1 ELSE 0 END) as expired_conditions
+      FROM conditions_timeline ct
+      WHERE (ct.cond_account_id = '${txData.debtor_account_id}' OR ct.cond_account_id = '${txData.creditor_account_id}')
+        AND ct.cond_tenant_id = '${tenantId}'
+        AND ct.cond_inception_ts <= '${txData.tx_event_ts}'
+        AND (ct.cond_expiry_ts IS NULL OR ct.cond_expiry_ts >= '${txData.tx_event_ts}')
+      `;
+
+      const response = await this.runSqlQuery(condSql, 1);
+      const summary = response.data?.[0] || {};
+
+      return {
+        transactionId,
+        transactionDate: txData.tx_event_ts,
+        debtorAccount: txData.debtor_account_id,
+        creditorAccount: txData.creditor_account_id,
+        totalConditions: summary.total_conditions || 0,
+        activeConditions: summary.active_conditions || 0,
+        expiredConditions: summary.expired_conditions || 0,
+      };
+    } catch (error) {
+      this.logger.error('Error fetching conditions summary by transaction', error.stack);
+      throw new HttpException('Failed to fetch conditions summary', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getExpiredConditionsByTransaction(transactionId: number, tenantId: string = 'DEFAULT') {
+    try {
+      this.logger.log(`Fetching expired conditions for transaction: ${transactionId}`);
+
+      // 1. Get transaction details
+      const txSql = `
+      SELECT debtor_account_id, creditor_account_id, tx_event_ts
+      FROM transaction_detail 
+      WHERE transaction_id = ${transactionId} AND tenant_id = '${tenantId}'
+      LIMIT 1
+      `;
+
+      const txResponse = await this.runSqlQuery(txSql, 1);
+      const txData = txResponse.data?.[0];
+      if (!txData) {
+        return { conditions: [], metadata: { transactionId, message: 'Transaction not found' } };
+      }
+
+      // 2. Find expired conditions for both accounts
+      const condSql = `
+      SELECT
+        ct.cond_condition_id as condition_id,
+        ct.cond_reason as condition_reason,
+        ct.cond_type as condition_type,
+        ct.cond_inception_ts as condition_inception_ts,
+        ct.cond_expiry_ts as condition_expiry_ts,
+        ct.cond_account_id as account_id,
+        CASE 
+          WHEN ct.cond_account_id = '${txData.debtor_account_id}' THEN 'debtor'
+          WHEN ct.cond_account_id = '${txData.creditor_account_id}' THEN 'creditor'
+          ELSE 'unknown'
+        END as account_role
+      FROM conditions_timeline ct
+      WHERE (ct.cond_account_id = '${txData.debtor_account_id}' OR ct.cond_account_id = '${txData.creditor_account_id}')
+        AND ct.cond_tenant_id = '${tenantId}'
+        AND ct.cond_is_expired = 1
+        AND ct.cond_inception_ts <= '${txData.tx_event_ts}'
+        AND ct.cond_expiry_ts >= '${txData.tx_event_ts}'
+      ORDER BY ct.cond_expiry_ts DESC
+      LIMIT 500
+      `;
+
+      const response = await this.runSqlQuery(condSql, 500);
+      const rows = response.data || [];
+
+      return {
+        conditions: rows.map((r) => ({
+          conditionId: r.condition_id,
+          title: r.condition_reason,
+          type: r.condition_type,
+          startDate: r.condition_inception_ts,
+          endDate: r.condition_expiry_ts,
+          accountId: r.account_id,
+          accountRole: r.account_role,
+        })),
+        metadata: {
+          queriedBy: transactionId,
+          transactionDate: txData.tx_event_ts,
+          debtorAccount: txData.debtor_account_id,
+          creditorAccount: txData.creditor_account_id,
+          totalFound: rows.length,
+        },
+      };
+    } catch (error) {
+      this.logger.error('Error fetching expired conditions by transaction', error.stack);
+      throw new HttpException('Failed to fetch expired conditions', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getConditionDetails(conditionId: string, tenantId: string = 'DEFAULT') {
+    try {
+      this.logger.log(`Fetching condition details for: ${conditionId}`);
+      const sql = `
+      SELECT 
+        *,
+        ROW_NUMBER() OVER (PARTITION BY cond_condition_id ORDER BY bucket_start DESC) as latest_v
+      FROM conditions_timeline
+      WHERE cond_condition_id = '${conditionId}'
+        ${tenantId && tenantId !== 'DEFAULT' ? `AND cond_tenant_id = '${tenantId}'` : ''}
+      LIMIT 1
+      `;
+
+      const response = await this.runSqlQuery(sql, 1);
+      const raw = response.data?.[0];
+
+      if (!raw) {
+        throw new HttpException('Condition not found', HttpStatus.NOT_FOUND);
+      }
+
+      const row = this.stripHudiMetadata(raw);
+      return {
+        conditionId: row.cond_condition_id,
+        reason: row.cond_reason || 'no data found',
+        type: row.cond_type || 'no data found',
+        startDate: row.cond_inception_ts,
+        endDate: row.cond_expiry_ts || 'no data found',
+        status: row.cond_is_active === 1 ? 'active' : row.cond_is_expired === 1 ? 'expired' : 'future',
+        accountId: row.cond_account_id,
+        entityId: row.cond_entity_id || 'no data found',
+        tenantId: row.cond_tenant_id,
+        transactionId: row.tx_transaction_id || 'no data found',
+        metadata: {
+          queryTimestamp: new Date().toISOString(),
+          bucketGranularity: row.bucket_granularity || 'no data found',
+          bucketStart: row.bucket_start,
+          createdDate: row.cond_created_ts
+        }
+      };
+    } catch (error) {
+      this.logger.error('Error fetching condition details', error.stack);
+      throw new HttpException('Failed to fetch condition details', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // ================ NEW METHODS FOR CONDITIONS VIEW ================
+
+  /**
+   * Get full conditions context by Transaction ID
+   * Returns transaction details with both parties, their accounts, and condition counts
+   * Used for Conditions Timeline view
+   */
+  async getConditionsContextByTransaction(transactionId: number, tenantId: string = 'DEFAULT', asOfDate?: string) {
+    try {
+      this.logger.log(`Fetching conditions context for transaction: ${transactionId}`);
+
+      // 1. Get transaction details
+      const txSql = `
+      SELECT 
+        transaction_id,
+        end_to_end_id,
+        tx_event_ts,
+        tx_event_date,
+        tx_type,
+        interbank_settlement_amount,
+        interbank_settlement_currency,
+        debtor_id,
+        debtor_name,
+        debtor_account_id,
+        creditor_id,
+        creditor_name,
+        creditor_account_id
+      FROM transaction_detail 
+      WHERE transaction_id = ${transactionId} 
+        AND tenant_id = '${tenantId}'
+      LIMIT 1
+      `;
+
+      const txResponse = await this.runSqlQuery(txSql, 1);
+      const tx = txResponse.data?.[0];
+
+      if (!tx) {
+        throw new HttpException(`Transaction ${transactionId} not found`, HttpStatus.NOT_FOUND);
+      }
+
+      // Use asOfDate or transaction timestamp for condition filtering
+      const filterDate = asOfDate || tx.tx_event_ts;
+
+      // Format transaction display ID
+      const displayId = `TXN-${tx.tx_event_date?.replace(/-/g, '')}${transactionId}`;
+
+      // 2. Get debtor entity accounts and condition counts
+      const debtorAccounts = await this.getEntityAccountsWithConditionCounts(
+        tx.debtor_id,
+        tx.debtor_account_id,
+        tenantId,
+        filterDate
+      );
+
+      // 3. Get creditor entity accounts and condition counts
+      const creditorAccounts = await this.getEntityAccountsWithConditionCounts(
+        tx.creditor_id,
+        tx.creditor_account_id,
+        tenantId,
+        filterDate
+      );
+
+      return {
+        transaction: {
+          transactionId: tx.transaction_id,
+          displayId: displayId,
+          endToEndId: tx.end_to_end_id || 'no data found',
+          timestamp: tx.tx_event_ts,
+          type: tx.tx_type || 'no data found',
+          amount: tx.interbank_settlement_amount,
+          currency: tx.interbank_settlement_currency || 'no data found'
+        },
+        debtor: {
+          entityId: tx.debtor_id || 'no data found',
+          entityName: tx.debtor_name || 'no data found',
+          primaryAccountId: tx.debtor_account_id || 'no data found',
+          accounts: debtorAccounts
+        },
+        creditor: {
+          entityId: tx.creditor_id || 'no data found',
+          entityName: tx.creditor_name || 'no data found',
+          primaryAccountId: tx.creditor_account_id || 'no data found',
+          accounts: creditorAccounts
+        },
+        metadata: {
+          asOfDate: filterDate,
+          queryTimestamp: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching conditions context by transaction: ${error.message}`, error.stack);
+      throw new HttpException('Failed to fetch conditions context', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Helper: Get all accounts for an entity with condition counts
+   * Uses hybrid approach: includes transaction accounts + entity accounts from account_holder
+   */
+  private async getEntityAccountsWithConditionCounts(
+    entityId: string,
+    primaryAccountId: string,
+    tenantId: string,
+    asOfDate: string
+  ) {
+    try {
+      // Use Set for automatic deduplication
+      const accountIdsSet = new Set<string>();
+
+      // PRIORITY 1: Always include the primary transaction account first (direct link)
+      if (primaryAccountId && primaryAccountId !== 'no data found') {
+        accountIdsSet.add(primaryAccountId);
+      }
+
+      // PRIORITY 2: Add all other accounts for this entity from account_holder (comprehensive view)
+      if (entityId && entityId !== 'no data found') {
+        const accountsSql = `
+        SELECT DISTINCT destination as account_id
+        FROM account_holder
+        WHERE source = '${entityId}'
+          AND tenant_id = '${tenantId}'
+        `;
+
+        const accountsResponse = await this.runSqlQuery(accountsSql, 100);
+        accountsResponse.data?.forEach(r => {
+          if (r.account_id) {
+            accountIdsSet.add(r.account_id);
+          }
+        });
+      }
+
+      // Convert Set back to Array
+      const accountIds = Array.from(accountIdsSet);
+
+      // Log for debugging
+      this.logger.debug(
+        `Found ${accountIds.length} unique accounts for entity ${entityId}: ` +
+        `${primaryAccountId ? '1 transaction account' : 'no transaction account'} + ` +
+        `${accountIds.length - (primaryAccountId ? 1 : 0)} from account_holder`
+      );
+
+      if (accountIds.length === 0) {
+        this.logger.warn(`No accounts found for entity ${entityId}`);
+        return [];
+      }
+
+      // Get condition counts for each account
+      const accountsWithCounts = await Promise.all(
+        accountIds.map(async (accountId) => {
+          const conditionsSql = `
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE 
+              WHEN condition_inception_ts <= '${asOfDate}' 
+              AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= '${asOfDate}')
+              AND is_active = 1 
+              THEN 1 ELSE 0 
+            END) as active,
+            SUM(CASE 
+              WHEN condition_expiry_ts < '${asOfDate}' 
+              AND is_expired = 1 
+              THEN 1 ELSE 0 
+            END) as expired,
+            SUM(CASE 
+              WHEN condition_inception_ts > '${asOfDate}' 
+              AND is_active = 0 
+              AND is_expired = 0 
+              THEN 1 ELSE 0 
+            END) as future
+          FROM conditions
+          WHERE account_id = '${accountId}'
+            AND tenant_id = '${tenantId}'
+          `;
+
+          const countsResponse = await this.runSqlQuery(conditionsSql, 1);
+          const counts = countsResponse.data?.[0] || {};
+
+          // Get account details from transaction_detail (for account type/number)
+          const accountDetailsSql = `
+          SELECT DISTINCT
+            CASE 
+              WHEN debtor_account_id = '${accountId}' THEN debtor_account_id
+              WHEN creditor_account_id = '${accountId}' THEN creditor_account_id
+              ELSE '${accountId}'
+            END as full_account_id
+          FROM transaction_detail
+          WHERE (debtor_account_id = '${accountId}' OR creditor_account_id = '${accountId}')
+            AND tenant_id = '${tenantId}'
+          LIMIT 1
+          `;
+
+          const detailsResponse = await this.runSqlQuery(accountDetailsSql, 1);
+          const accountNumber = accountId.slice(-12);  // Last 12 chars for display
+
+          return {
+            accountId: accountId,
+            accountNumber: `****${accountNumber}`,
+            accountType: 'no mapping found', // Not available in current tables
+            isTransactionAccount: accountId === primaryAccountId,
+            activeConditionsCount: Number(counts.active || 0),
+            expiredConditionsCount: Number(counts.expired || 0),
+            futureConditionsCount: Number(counts.future || 0)
+          };
+        })
+      );
+
+      return accountsWithCounts;
+    } catch (error) {
+      this.logger.error(`Error fetching entity accounts with condition counts: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Get conditions for all accounts under an entity
+   * Used for Entity Level view in Conditions Timeline
+   */
+  async getConditionsByEntity(
+    entityId: string,
+    tenantId: string = 'DEFAULT',
+    asOfDate?: string,
+    showInactive: boolean = false
+  ) {
+    try {
+      this.logger.log(`Fetching conditions for entity: ${entityId}`);
+
+      // 1. Get all accounts for this entity
+      const accountsSql = `
+      SELECT DISTINCT destination as account_id
+      FROM account_holder
+      WHERE source = '${entityId}'
+        AND tenant_id = '${tenantId}'
+      `;
+
+      const accountsResponse = await this.runSqlQuery(accountsSql, 100);
+      const accountIds = accountsResponse.data?.map(r => r.account_id).filter(Boolean) || [];
+
+      if (accountIds.length === 0) {
+        return {
+          entityId,
+          accounts: [],
+          conditions: [],
+          metadata: {
+            message: 'No accounts found for this entity',
+            queryTimestamp: new Date().toISOString()
+          }
+        };
+      }
+
+      // 2. Build date filter
+      let dateFilter = '';
+      if (asOfDate && !showInactive) {
+        dateFilter = `
+          AND condition_inception_ts <= '${asOfDate}'
+          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= '${asOfDate}')
+        `;
+      }
+
+      // 3. Get conditions for all accounts AND entity-level conditions
+      const accountFilter = accountIds.map(id => `'${id}'`).join(',');
+      const conditionsSql = `
+      SELECT
+        condition_id,
+        condition_reason,
+        condition_type,
+        condition_inception_ts,
+        condition_expiry_ts,
+        is_active,
+        is_expired,
+        account_id,
+        entity_id,
+        condition_created_ts,
+        created_by_user
+      FROM conditions
+      WHERE ((account_id IN (${accountFilter}) AND identity_type = 'ACCOUNT')
+             OR (entity_id = '${entityId}' AND identity_type = 'ENTITY'))
+        AND tenant_id = '${tenantId}'
+        ${dateFilter}
+      ORDER BY condition_inception_ts DESC
+      LIMIT 500
+      `;
+
+      const response = await this.runSqlQuery(conditionsSql, 500);
+      const rows = response.data || [];
+
+      return {
+        entityId,
+        accounts: accountIds,
+        conditions: rows.map(r => ({
+          conditionId: r.condition_id,
+          title: r.condition_reason || 'no data found',
+          type: r.condition_type || 'no data found',
+          createdBy: r.created_by_user || 'no data found',
+          startDate: r.condition_inception_ts,
+          endDate: r.condition_expiry_ts ?? 'no data found',
+          status: r.is_active === 1 ? 'ACTIVE' : r.is_expired === 1 ? 'EXPIRED' : 'FUTURE',
+          accountId: r.account_id || r.entity_id,
+          notes: r.condition_reason || 'no data found'
+        })),
+        metadata: {
+          entityId,
+          accountCount: accountIds.length,
+          totalConditions: rows.length,
+          asOfDate: asOfDate || 'current',
+          showInactive,
+          queryTimestamp: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      this.logger.error('Error fetching conditions by entity', error.stack);
+      throw new HttpException('Failed to fetch conditions by entity', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 }
