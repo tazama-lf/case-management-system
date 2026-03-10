@@ -5,7 +5,7 @@ import { Alerts, Edge, Node } from '../gold-lakehouse/types/gold-lakehouse.types
 
 @Injectable()
 export class JupyterProxyService {
-  constructor(private readonly goldLakehouseService: GoldLakehouseService) {}
+  constructor(private readonly goldLakehouseService: GoldLakehouseService) { }
 
   async getCounterpartyNetworkData(accountId: string, tenantId: string, timeRange: string): Promise<CounterpartyNetworkResponseDto> {
     return await this.goldLakehouseService.getCounterpartyNetworkData(accountId, tenantId, timeRange);
@@ -153,7 +153,7 @@ export class JupyterProxyService {
   }
 
   async getConditionsDetails(accountId: string, tenantId = 'DEFAULT', asOfDate?: string, showInactive?: boolean) {
-    return await this.goldLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive || false);
+    return await this.goldLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive ?? false);
   }
 
   async getConditionsEvaluatedTransactions(accountId: string, tenantId = 'DEFAULT', fromDate?: string) {

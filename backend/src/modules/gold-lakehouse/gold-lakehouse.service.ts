@@ -257,7 +257,7 @@ export class GoldLakehouseService {
       }
 
       const combined = this.stripHudiMetadata(combinedRaw);
-      const typologiesRaw = typologiesResponse.data;
+      const typologiesRaw = typologiesResponse.data || [];
       const rulesRaw = rulesResponse?.data ?? [];
 
       // Alert Metadata
@@ -455,7 +455,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTransactionOverviewUIData(transactionId: number, tenantId = 'DEFAULT'): Promise<any> {
+  async getTransactionOverviewUIData(transactionId: number, tenantId = 'DEFAULT') {
     try {
       this.logger.log(`Fetching Transaction Overview UI data for transaction: ${transactionId}`);
 
@@ -617,7 +617,15 @@ export class GoldLakehouseService {
   /**
    * Get all accounts associated with an entity ID
    */
-  async getEntityAccounts(entityId: string, tenantId: string) {
+  async getEntityAccounts(
+    entityId: string,
+    tenantId: string,
+  ): Promise<{
+    entityId: string;
+    accountCount: number;
+    accounts: unknown[];
+    tenantId: string;
+  }> {
     try {
       const resp = await this.query({
         table_name: 'account_holder',
@@ -625,7 +633,7 @@ export class GoldLakehouseService {
         columns: ['destination', 'account_id'],
       });
 
-      const accounts = resp.data?.map((r) => r.destination || r.account_id).filter(Boolean) || [];
+      const accounts = resp.data?.map((r) => r.destination ?? r.account_id).filter(Boolean) || [];
       const uniqueAccounts = Array.from(new Set(accounts));
 
       return {
@@ -647,7 +655,7 @@ export class GoldLakehouseService {
 
   async getConditionsSummary(identifier: string, tenantId?: string, fromDate?: string) {
     try {
-      const accounts = await this.resolveToAccounts(identifier, tenantId || 'DEFAULT');
+      const accounts = await this.resolveToAccounts(identifier, tenantId ?? 'DEFAULT');
       if (accounts.length === 0) {
         return {
           activeConditions: 0,
@@ -681,7 +689,7 @@ export class GoldLakehouseService {
     `;
 
       const response = await this.runSqlQuery(sql, 1);
-      const row = response.data?.[0] || {};
+      const row = response.data?.[0] ?? {};
 
       // Determine if this was an entity-level query (not transaction_id or account_id)
       const isNumeric = /^\d+$/.test(identifier);
@@ -709,7 +717,7 @@ export class GoldLakehouseService {
 
   async getConditionsList(identifier: string, tenantId?: string) {
     try {
-      const accounts = await this.resolveToAccounts(identifier, tenantId || 'DEFAULT');
+      const accounts = await this.resolveToAccounts(identifier, tenantId ?? 'DEFAULT');
       if (accounts.length === 0) {
         return [];
       }
@@ -1147,7 +1155,7 @@ export class GoldLakehouseService {
       if (isEndToEndId) {
         // Query by end_to_end_id - returns all 4 entity perspectives for single transaction
         this.logger.log(`Fetching Transaction History by end_to_end_id: ${id}`);
-        return await this.getTransactionHistoryByEndToEndId(id, tenantId, startDate, endDate);
+        return await this.getTransactionHistoryByEndToEndId(id, tenantId, startDate, endDate, granularity);
       } else {
         // Query by entity_id - returns transaction history for entity
         this.logger.log(`Fetching Transaction History by entity_id: ${id}`);
@@ -3534,8 +3542,8 @@ export class GoldLakehouseService {
       // Log for debugging
       this.logger.debug(
         `Found ${accountIds.length} unique accounts for entity ${entityId}: ` +
-          `${primaryAccountId ? '1 transaction account' : 'no transaction account'} + ` +
-          `${accountIds.length - (primaryAccountId ? 1 : 0)} from account_holder`,
+        `${primaryAccountId ? '1 transaction account' : 'no transaction account'} + ` +
+        `${accountIds.length - (primaryAccountId ? 1 : 0)} from account_holder`,
       );
 
       if (accountIds.length === 0) {

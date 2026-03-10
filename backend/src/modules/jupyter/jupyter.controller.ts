@@ -1,16 +1,17 @@
 import { Controller, Get, Param, Query, BadRequestException, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { JupyterProxyService } from './jupyter-proxy.service';
+import { CounterpartyNetworkResponseDto, TransactionNetworkResponseDto } from '../gold-lakehouse/dto/network-analysis.dto';
 
 @Controller('api/v1/jupyter/proxy')
 @ApiTags('Jupyter Proxy')
 export class JupyterProxyController {
-  constructor(private readonly proxyService: JupyterProxyService) {}
+  constructor(private readonly proxyService: JupyterProxyService) { }
 
-  private validateSecret(headers: Record<string, any>) {
+  private validateSecret(headers: Record<string, any>): void {
     const required = process.env.JUPYTER_SHARED_SECRET;
     if (!required) return; // no secret configured -> allow (dev)
-    const header = headers['x-jupyter-secret'] || headers['X-Jupyter-Secret'] || headers['x-jupyter-secret'.toLowerCase()];
+    const header = headers['x-jupyter-secret'] ?? headers['X-Jupyter-Secret'] ?? headers['x-jupyter-secret'.toLowerCase()];
     if (!header || header !== required) {
       throw new BadRequestException('Invalid jupyter secret');
     }
@@ -25,15 +26,15 @@ export class JupyterProxyController {
     @Query('timeRange') timeRange?: string,
     @Query('tenantId') tenantId?: string,
     @Headers() headers?: Record<string, any>,
-  ) {
-    this.validateSecret(headers || {});
+  ): Promise<CounterpartyNetworkResponseDto> {
+    this.validateSecret(headers ?? {});
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    return await this.proxyService.getCounterpartyNetworkData(accountId, tenantId || 'DEFAULT', timeRange || '30d');
+    return await this.proxyService.getCounterpartyNetworkData(accountId, tenantId ?? 'DEFAULT', timeRange ?? '30d');
   }
 
   @Get('network-analysis/counterparty-node/:counterpartyId')
@@ -45,8 +46,31 @@ export class JupyterProxyController {
     @Query('granularity') granularity?: string,
     @Query('tenantId') tenantId?: string,
     @Headers() headers?: Record<string, any>,
-  ) {
-    this.validateSecret(headers || {});
+  ): Promise<{
+    network: {
+      rootNodeId: string;
+      nodes: any[];
+      edges: any[];
+    };
+    counterpartyDetails: {
+      counterpartyId: string;
+      name: any;
+      type: string;
+      transactions: number;
+      totalValue: number;
+      velocity: string;
+      flags: {
+        alerted: boolean;
+        investigated: boolean;
+      };
+    };
+    meta: {
+      tenantId: string;
+      granularity: 'month' | 'day' | 'year';
+      generatedAt: string;
+    };
+  }> {
+    this.validateSecret(headers ?? {});
     if (!counterpartyId || counterpartyId.trim() === '') {
       throw new BadRequestException('counterpartyId is required');
     }
@@ -55,7 +79,7 @@ export class JupyterProxyController {
     }
     return await this.proxyService.getCounterpartyNodeFullData(
       counterpartyId,
-      tenantId || 'DEFAULT',
+      tenantId ?? 'DEFAULT',
       (granularity as 'day' | 'month' | 'year') || 'month',
     );
   }
@@ -70,12 +94,18 @@ export class JupyterProxyController {
     @Query('tenantId') tenantId?: string,
     @Query('dateRange') dateRange?: string,
     @Headers() headers?: Record<string, any>,
-  ) {
-    this.validateSecret(headers || {});
+  ): Promise<{
+    totalAlerts: number;
+    casesOpened: number;
+    investigations: number;
+    sarFilings: number;
+    totalValue: number;
+  }> {
+    this.validateSecret(headers ?? {});
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
-    return await this.proxyService.getAlertHistorySummary(endToEndId, tenantId, dateRange || 'all');
+    return await this.proxyService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all');
   }
 
   @Get('alert-history/timeline')
@@ -91,14 +121,14 @@ export class JupyterProxyController {
     @Query('granularity') granularity = 'day',
     @Headers() headers?: Record<string, any>,
   ) {
-    this.validateSecret(headers || {});
+    this.validateSecret(headers ?? {});
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
     if (granularity && !['day', 'week', 'month', 'year'].includes(granularity)) {
       throw new BadRequestException('Invalid granularity. Must be one of: day, week, month, year');
     }
-    return await this.proxyService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange || 'all', granularity);
+    return await this.proxyService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity);
   }
 
   @Get('alert-history/alerts')
@@ -115,15 +145,23 @@ export class JupyterProxyController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Headers() headers?: Record<string, any>,
-  ) {
-    this.validateSecret(headers || {});
+  ): Promise<{
+    alerts: any;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> {
+    this.validateSecret(headers ?? {});
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
     return await this.proxyService.getAlertHistoryAlerts(
       endToEndId,
       tenantId,
-      dateRange || 'all',
+      dateRange ?? 'all',
       page ? Number(page) : 1,
       limit ? Number(limit) : 20,
     );
@@ -143,17 +181,17 @@ export class JupyterProxyController {
     @Query('granularity') granularity?: string,
     @Headers() headers?: Record<string, any>,
   ) {
-    this.validateSecret(headers || {});
+    this.validateSecret(headers ?? {});
     if (!entityId || entityId.trim() === '') {
       throw new BadRequestException('entityId is required');
     }
     // reuse same validation as gold-lakehouse
-    if (startDate || endDate) {
+    if (startDate ?? endDate) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if ((startDate && !dateRegex.test(startDate)) || (endDate && !dateRegex.test(endDate))) {
+      if ((startDate && !dateRegex.test(startDate)) ?? (endDate && !dateRegex.test(endDate))) {
         throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
       }
-      if ((startDate && !endDate) || (!startDate && endDate)) {
+      if ((startDate && !endDate) ?? (!startDate && endDate)) {
         throw new BadRequestException('Both startDate and endDate must be provided together');
       }
     }
@@ -172,8 +210,8 @@ export class JupyterProxyController {
     @Query('timeRange') timeRange?: string,
     @Query('tenantId') tenantId?: string,
     @Headers() headers?: Record<string, any>,
-  ) {
-    this.validateSecret(headers || {});
+  ): Promise<TransactionNetworkResponseDto> {
+    this.validateSecret(headers ?? {});
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
@@ -189,8 +227,31 @@ export class JupyterProxyController {
     @Query('tenantId') tenantId?: string,
     @Query('granularity') granularity: 'day' | 'month' | 'year' = 'month',
     @Headers() headers?: Record<string, any>,
-  ) {
-    this.validateSecret(headers || {});
+  ): Promise<{
+    network: {
+      rootNodeId: string;
+      nodes: any[];
+      edges: any[];
+    };
+    accountDetails: {
+      accountId: string;
+      accountHolder: any;
+      relationship: string;
+      transactions: number;
+      totalValue: number;
+      velocity: string;
+      flags: {
+        alerted: boolean;
+        investigated: boolean;
+      };
+    };
+    meta: {
+      tenantId: string;
+      granularity: 'month' | 'day' | 'year';
+      generatedAt: string;
+    };
+  }> {
+    this.validateSecret(headers ?? {});
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
@@ -211,8 +272,18 @@ export class JupyterProxyController {
     @Query('from') from: string,
     @Query('to') to: string,
     @Headers() headers?: Record<string, any>,
-  ) {
-    this.validateSecret(headers || {});
+  ): Promise<{
+    expected: Record<number, number>;
+    actual: Record<number, number>;
+    sampleSize: number;
+    meta: {
+      accountId: string;
+      tenantId: string;
+      fromDate: string;
+      toDate: string;
+    };
+  }> {
+    this.validateSecret(headers ?? {});
     if (!tenantId || !from || !to) {
       throw new BadRequestException('tenantId, from and to are required');
     }
@@ -231,12 +302,12 @@ export class JupyterProxyController {
     @Query('asOfDate') asOfDate?: string,
     @Headers() headers?: Record<string, any>,
   ) {
-    this.validateSecret(headers || {});
+    this.validateSecret(headers ?? {});
     const txId = parseInt(transactionId, 10);
     if (isNaN(txId)) {
       throw new BadRequestException('transactionId must be a valid number');
     }
-    return await this.proxyService.getConditionsContextByTransaction(txId, tenantId || 'DEFAULT', asOfDate);
+    return await this.proxyService.getConditionsContextByTransaction(txId, tenantId ?? 'DEFAULT', asOfDate);
   }
 
   @Get('conditions/summary')
@@ -249,12 +320,25 @@ export class JupyterProxyController {
     @Query('tenantId') tenantId?: string,
     @Query('asOfDate') asOfDate?: string,
     @Headers() headers?: Record<string, any>,
-  ) {
-    this.validateSecret(headers || {});
+  ): Promise<{
+    accountId: string;
+    accountScheme: any;
+    fspId: any;
+    totalConditions: any;
+    activeConditions: any;
+    expiredConditions: any;
+    futureConditions: any;
+    conditions: any;
+    metadata: {
+      asOfDate: string;
+      queryTimestamp: string;
+    };
+  }> {
+    this.validateSecret(headers ?? {});
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
-    return await this.proxyService.getConditionsSummary(accountId, tenantId || 'DEFAULT', asOfDate);
+    return await this.proxyService.getConditionsSummary(accountId, tenantId ?? 'DEFAULT', asOfDate);
   }
 
   @Get('conditions/details')
@@ -269,12 +353,24 @@ export class JupyterProxyController {
     @Query('asOfDate') asOfDate?: string,
     @Query('showInactive') showInactive?: boolean,
     @Headers() headers?: Record<string, any>,
-  ) {
-    this.validateSecret(headers || {});
+  ): Promise<{
+    accountId: string;
+    totalConditions: any;
+    conditions: any;
+    metadata: {
+      activeCount: any;
+      expiredCount: any;
+      futureCount: any;
+      asOfDate: string;
+      showInactive: boolean;
+      queryTimestamp: string;
+    };
+  }> {
+    this.validateSecret(headers ?? {});
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
-    return await this.proxyService.getConditionsDetails(accountId, tenantId || 'DEFAULT', asOfDate, showInactive);
+    return await this.proxyService.getConditionsDetails(accountId, tenantId ?? 'DEFAULT', asOfDate, showInactive);
   }
 
   @Get('conditions/evaluated-transactions/:accountId')
@@ -286,11 +382,34 @@ export class JupyterProxyController {
     @Query('tenantId') tenantId?: string,
     @Query('fromDate') fromDate?: string,
     @Headers() headers?: Record<string, any>,
-  ) {
-    this.validateSecret(headers || {});
+  ): Promise<
+    | {
+      transactions: never[];
+      metadata: {
+        accountId: string;
+        status: string;
+        message: string;
+        queryTimestamp: string;
+        totalRecords?: undefined;
+        joinMethod?: undefined;
+      };
+    }
+    | {
+      transactions: any;
+      metadata: {
+        accountId: string;
+        totalRecords: any;
+        status: string;
+        joinMethod: string;
+        queryTimestamp: string;
+        message?: undefined;
+      };
+    }
+  > {
+    this.validateSecret(headers ?? {});
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
-    return await this.proxyService.getConditionsEvaluatedTransactions(accountId, tenantId || 'DEFAULT', fromDate);
+    return await this.proxyService.getConditionsEvaluatedTransactions(accountId, tenantId ?? 'DEFAULT', fromDate);
   }
 }
