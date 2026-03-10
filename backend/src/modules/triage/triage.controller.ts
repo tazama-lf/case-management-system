@@ -7,6 +7,7 @@ import { RequireAnyClaims, RequireInvestigatorOrSupervisorRole } from 'src/decor
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
 import { Alert } from '@prisma/client-cms';
+import { Audit } from '../audit/decorators/audit-log.decorator';
 import { AlertNavigatorDto } from './dto/alert-navigator.dto';
 import { TransactionDetailDto } from './dto/transaction-detail.dto';
 
@@ -34,6 +35,7 @@ export class TriageController {
 
   @Patch(':alertId')
   @RequireInvestigatorOrSupervisorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Perform manual triage on an alert',

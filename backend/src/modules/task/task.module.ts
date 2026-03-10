@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { PrismaModule } from '../../../prisma/prisma.module';
-import { AuditLogModule } from 'src/modules/audit/auditLog.module';
 import { LoggerModule } from '../../logger/logger.module';
 import { TaskController } from './task.controller';
 import { AuthModule } from '../auth/auth.module';
@@ -17,7 +16,6 @@ import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orc
 @Module({
   imports: [
     PrismaModule,
-    AuditLogModule,
     LoggerModule,
     AuthModule,
     NotificationModule,

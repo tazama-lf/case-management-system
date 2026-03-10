@@ -7,7 +7,6 @@ import {
   ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuditLogService } from '../audit/auditLog.service';
 import * as crypto from 'node:crypto';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType, CreateEvidenceDto } from './dto';
 import { PrismaService } from 'prisma/prisma.service';
@@ -24,7 +23,6 @@ export class EvidenceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly couchdb: CouchdbService,
-    private readonly auditLog: AuditLogService,
     private readonly evidenceRepository: EvidenceRepository,
     private readonly taskRepository: TaskRepository,
     private readonly eventLogSerice: EventLogService,
@@ -248,14 +246,6 @@ export class EvidenceService {
     }
     await this.couchdb.updateDocument(evidenceId, metadata);
 
-    await this.auditLog.logAction({
-      userId,
-      operation: 'upload',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_UPLOADED',
-      outcome: 'SUCCESS',
-    });
-
     await this.eventLogSerice.logEventAction({
       userId,
       operation: 'upload',
@@ -293,18 +283,15 @@ export class EvidenceService {
       throw new NotFoundException(`Evidence ${evidenceId} not found`);
     }
 
-    this.logger.log(`Deleting attachment ${fileName} from evidence ${doc._id} and revision ${doc._rev}`);
-    const deleteResult = await this.couchdb.deleteEvidence(doc._id, decodeURIComponent(fileName), doc._rev);
-    this.logger.log(`Attachment deletion result: ${JSON.stringify(deleteResult)}`);
-    this.evidenceRepository.deleteEvidenceById(evidenceId, tenantId);
+    try {
+      this.logger.log(`Deleting attachment ${fileName} from evidence ${doc._id} and revision ${doc._rev}`);
+      const deleteResult = await this.couchdb.deleteEvidence(doc._id, decodeURIComponent(fileName), doc._rev);
+      this.logger.log(`Attachment deletion result: ${JSON.stringify(deleteResult)}`);
 
-    await this.auditLog.logAction({
-      userId,
-      operation: 'delete',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_DELETED',
-      outcome: 'SUCCESS',
-    });
+      this.evidenceRepository.deleteEvidenceById(evidenceId, tenantId);
+    } catch (error) {
+      throw error;
+    }
     return doc;
   }
 
@@ -331,14 +318,6 @@ export class EvidenceService {
     if (!evidenceDoc) {
       throw new ForbiddenException('Access denied or evidence not found');
     }
-
-    await this.auditLog.logAction({
-      userId,
-      operation: 'view',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_VIEWED',
-      outcome: 'SUCCESS',
-    });
 
     return {
       id: evidenceDoc.evidenceId,
@@ -417,14 +396,6 @@ export class EvidenceService {
       });
 
       files.push(...(await Promise.all(downloadPromises)));
-
-      await this.auditLog.logAction({
-        userId,
-        operation: 'download',
-        entityName: 'Evidence',
-        actionPerformed: 'EVIDENCE_DOWNLOADED',
-        outcome: 'SUCCESS',
-      });
 
       return {
         files,
@@ -526,14 +497,6 @@ export class EvidenceService {
       details.push(...verificationResults);
       const allVerified = verificationResults.every((result) => result.verified);
 
-      await this.auditLog.logAction({
-        userId,
-        operation: 'verify',
-        entityName: 'Evidence',
-        actionPerformed: allVerified ? 'EVIDENCE_VERIFIED' : 'EVIDENCE_VERIFICATION_FAILED',
-        outcome: allVerified ? 'SUCCESS' : 'FAILURE',
-      });
-
       return {
         evidenceId,
         expectedHash: targets.length === 1 ? targets[0].hash : undefined,
@@ -577,14 +540,6 @@ export class EvidenceService {
       archive: item.archive,
     }));
 
-    await this.auditLog.logAction({
-      userId,
-      operation: 'view',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_LIST_VIEWED',
-      outcome: 'SUCCESS',
-    });
-
     return { evidence, total: evidence.length, taskId };
   }
 
@@ -623,13 +578,6 @@ export class EvidenceService {
       archive: item.archive,
     }));
 
-    await this.auditLog.logAction({
-      userId,
-      operation: 'view',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_LIST_VIEWED',
-      outcome: 'SUCCESS',
-    });
 
     return { evidence, total: evidence.length };
   }
@@ -659,14 +607,6 @@ export class EvidenceService {
       attachments: item.metadata,
       archive: item.archive,
     }));
-
-    await this.auditLog.logAction({
-      userId,
-      operation: 'view',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_LIST_VIEWED',
-      outcome: 'SUCCESS',
-    });
 
     return { evidence, total: evidence.length, evidenceType };
   }

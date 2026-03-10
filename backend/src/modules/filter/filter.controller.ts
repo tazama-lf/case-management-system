@@ -5,6 +5,7 @@ import { FilterService } from './filter.service';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { RequireInvestigatorOrSupervisorRoleOrComplianceRole } from 'src/decorators/auth.decorator';
 import { filters } from '@prisma/client-cms';
+import { Audit } from '../audit/decorators/audit-log.decorator';
 
 @Controller('api/v1/filter')
 @UseGuards(TazamaAuthGuard)
@@ -13,6 +14,7 @@ export class FilterController {
 
   @Post('create')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @Audit()
   async createFilter(@Body() createFilterDto: createFilterDto, @Req() req: AuthenticatedRequest): Promise<filters> {
     const userId = req.user.token.clientId;
     return await this.filterService.createFilter(createFilterDto, userId);

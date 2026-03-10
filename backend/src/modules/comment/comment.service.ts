@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AuditLogService } from 'src/modules/audit/auditLog.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Outcome } from '../../utils/types/outcome';
@@ -10,7 +9,6 @@ import { Comment } from '@prisma/client-cms';
 export class CommentService {
   constructor(
     private readonly logger: LoggerService,
-    private readonly auditLogService: AuditLogService,
     private readonly commentRepository: CommentRepository,
   ) {}
 
@@ -28,26 +26,9 @@ export class CommentService {
     try {
       const comment = await this.commentRepository.createComment(userId, createCommentDto);
 
-      this.auditLogService.logAction({
-        userId,
-        operation: 'addComment',
-        entityName: CommentService.name,
-        actionPerformed: createCommentDto.note,
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
-
       return comment;
     } catch (error) {
       this.logger.error('Error adding comment', error, CommentService.name);
-      this.auditLogService.logAction({
-        userId,
-        operation: 'addComment',
-        entityName: CommentService.name,
-        actionPerformed: `Attempt to write a comment: ${createCommentDto.note}`,
-        outcome: Outcome.FAILURE,
-        performedAt: new Date(),
-      });
       throw error;
     }
   }
@@ -61,26 +42,9 @@ export class CommentService {
         throw new NotFoundException('Comment not found');
       }
 
-      this.auditLogService.logAction({
-        userId,
-        operation: 'getComment',
-        entityName: CommentService.name,
-        actionPerformed: `Successfully retrieved comment with ID: ${commentId}`,
-        outcome: Outcome.SUCCESS,
-        performedAt: new Date(),
-      });
-
       return comment;
     } catch (error) {
       this.logger.error('Error retrieving comment', error, CommentService.name);
-      this.auditLogService.logAction({
-        userId,
-        operation: 'getComment',
-        entityName: CommentService.name,
-        actionPerformed: `Error retrieving comment with ID: ${commentId}`,
-        outcome: Outcome.FAILURE,
-        performedAt: new Date(),
-      });
       throw error;
     }
   }
@@ -100,30 +64,9 @@ export class CommentService {
         ? await this.commentRepository.getCommentsByCaseId(caseId)
         : await this.commentRepository.getCommentsByTaskId(taskId);
 
-      if (userId) {
-        this.auditLogService.logAction({
-          userId,
-          operation: 'getCommentsByCaseOrTask',
-          entityName: CommentService.name,
-          actionPerformed: `Successfully retrieved comments for ${caseId ? 'case' : 'task'} ID: ${caseId ?? taskId}`,
-          outcome: Outcome.SUCCESS,
-          performedAt: new Date(),
-        });
-      }
-
       return comments;
     } catch (error) {
       this.logger.error('Error retrieving comments', error, CommentService.name);
-      if (userId) {
-        this.auditLogService.logAction({
-          userId,
-          operation: 'getCommentsByCaseOrTask',
-          entityName: CommentService.name,
-          actionPerformed: `Error retrieving comments for ${caseId ? 'case' : 'task'} ID: ${caseId ?? taskId}`,
-          outcome: Outcome.FAILURE,
-          performedAt: new Date(),
-        });
-      }
       throw error;
     }
   }
@@ -134,30 +77,9 @@ export class CommentService {
     try {
       const comments = await this.commentRepository.getCommentsByCaseId(caseId);
 
-      if (userId) {
-        this.auditLogService.logAction({
-          userId,
-          operation: 'getCommentsByCaseId',
-          entityName: CommentService.name,
-          actionPerformed: `Successfully retrieved comments for case ID: ${caseId}`,
-          outcome: Outcome.SUCCESS,
-          performedAt: new Date(),
-        });
-      }
-
       return comments;
     } catch (error) {
       this.logger.error('Error retrieving comments', error, CommentService.name);
-      if (userId) {
-        this.auditLogService.logAction({
-          userId,
-          operation: 'getCommentsByCaseId',
-          entityName: CommentService.name,
-          actionPerformed: `Error retrieving comments for caseID: ${caseId}`,
-          outcome: Outcome.FAILURE,
-          performedAt: new Date(),
-        });
-      }
       throw error;
     }
   }
@@ -167,31 +89,9 @@ export class CommentService {
 
     try {
       const comments = await this.commentRepository.getCommentsByTaskId(taskId);
-
-      if (userId) {
-        this.auditLogService.logAction({
-          userId,
-          operation: 'getCommentsByTaskId',
-          entityName: CommentService.name,
-          actionPerformed: `Successfully retrieved comments for task ID: ${taskId}`,
-          outcome: Outcome.SUCCESS,
-          performedAt: new Date(),
-        });
-      }
-
       return comments;
     } catch (error) {
       this.logger.error('Error retrieving comments', error, CommentService.name);
-      if (userId) {
-        this.auditLogService.logAction({
-          userId,
-          operation: 'getCommentsByTaskId',
-          entityName: CommentService.name,
-          actionPerformed: `Error retrieving comments for task ID: ${taskId}`,
-          outcome: Outcome.FAILURE,
-          performedAt: new Date(),
-        });
-      }
       throw error;
     }
   }
