@@ -11,4 +11,4 @@ import { GoldLakehouseModule } from '../gold-lakehouse/gold-lakehouse.module';
   providers: [JupyterService, JupyterProxyService],
   exports: [JupyterService, JupyterProxyService],
 })
-export class JupyterModule { }
+export class JupyterModule {}

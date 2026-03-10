@@ -3,9 +3,9 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JupyterService {
-  private voilaUrl: string;
+  private readonly voilaUrl: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {
     // Require VOILA_URL to be provided via environment / config
     this.voilaUrl = this.configService.getOrThrow<string>('VOILA_URL');
   }
