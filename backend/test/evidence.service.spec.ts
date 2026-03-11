@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EvidenceService } from '../src/modules/evidence/evidence.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CouchdbService } from '../src/modules/couchdb/couchdb.service';
-import { AuditLogService } from '../src/modules/audit/auditLog.service';
 import { EvidenceRepository } from '../src/modules/repository/evidence.repository';
 import { TaskRepository } from '../src/modules/repository/task.repository';
 import { EventLogService } from '../src/modules/event_log/eventLog.service';
@@ -20,7 +19,6 @@ describe('EvidenceService', () => {
   let service: EvidenceService;
   let prismaService: any;
   let couchdbService: any;
-  let auditLogService: any;
   let evidenceRepository: any;
   let taskRepository: any;
   let eventLogService: any;
@@ -81,7 +79,6 @@ describe('EvidenceService', () => {
             getAttachment: jest.fn(),
           },
         },
-        { provide: AuditLogService, useValue: { logAction: jest.fn() } },
         { provide: EvidenceRepository, useValue: { createEvidence: jest.fn(), deleteEvidenceById: jest.fn() } },
         { provide: TaskRepository, useValue: { findTaskWithCase: jest.fn() } },
         { provide: EventLogService, useValue: { logEventAction: jest.fn() } },
@@ -92,7 +89,6 @@ describe('EvidenceService', () => {
     service = module.get<EvidenceService>(EvidenceService);
     prismaService = module.get(PrismaService);
     couchdbService = module.get(CouchdbService);
-    auditLogService = module.get(AuditLogService);
     evidenceRepository = module.get(EvidenceRepository);
     taskRepository = module.get(TaskRepository);
     eventLogService = module.get(EventLogService);
@@ -138,7 +134,6 @@ describe('EvidenceService', () => {
       expect(couchdbService.insertDocument).toHaveBeenCalled();
       expect(couchdbService.insertAttachment).toHaveBeenCalled();
       expect(evidenceRepository.createEvidence).toHaveBeenCalled();
-      expect(auditLogService.logAction).toHaveBeenCalled();
       expect(eventLogService.logEventAction).toHaveBeenCalled();
       expect(taskHistoryService.logTaskHistoryAction).toHaveBeenCalled();
     });
@@ -220,7 +215,6 @@ describe('EvidenceService', () => {
       expect(result).toBeDefined();
       expect(couchdbService.deleteEvidence).toHaveBeenCalled();
       expect(evidenceRepository.deleteEvidenceById).toHaveBeenCalledWith('ev_1_123456', tenantId);
-      expect(auditLogService.logAction).toHaveBeenCalled();
     });
 
     it.each([
@@ -265,7 +259,6 @@ describe('EvidenceService', () => {
       if (shouldFilterByUser) {
         expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ uploadedBy: userId }));
       }
-      expect(auditLogService.logAction).toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException for invalid role', async () => {
@@ -297,7 +290,6 @@ describe('EvidenceService', () => {
         expect(result).toBeDefined();
         expect(result.files).toHaveLength(1);
         expect(result.metadata).toBeDefined();
-        expect(auditLogService.logAction).toHaveBeenCalled();
       },
     );
 
@@ -371,12 +363,6 @@ describe('EvidenceService', () => {
       expect(result.verified).toBe(true);
       expect(result.details).toHaveLength(1);
       expect(result.details![0].verified).toBe(true);
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          actionPerformed: 'EVIDENCE_VERIFIED',
-          outcome: 'SUCCESS',
-        }),
-      );
     });
 
     it('should verify specific attachment by name', async () => {
@@ -393,12 +379,6 @@ describe('EvidenceService', () => {
       expect(result.verified).toBe(false);
       expect(result.details![0].verified).toBe(false);
       expect(result.details![0].reason).toBe('encrypted hash mismatch');
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          actionPerformed: 'EVIDENCE_VERIFICATION_FAILED',
-          outcome: 'FAILURE',
-        }),
-      );
     });
 
     it('should filter evidence by uploadedBy for CMS_INVESTIGATOR role', async () => {
@@ -455,7 +435,6 @@ describe('EvidenceService', () => {
         expect(result.evidence).toHaveLength(1);
         expect(result.total).toBe(1);
         expect(result.taskId).toBe(taskId);
-        expect(auditLogService.logAction).toHaveBeenCalled();
       },
     );
 
@@ -496,7 +475,6 @@ describe('EvidenceService', () => {
       if (shouldFilterByUser) {
         expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ uploadedBy: userId }));
       }
-      expect(auditLogService.logAction).toHaveBeenCalled();
     });
 
     it('should return empty array when no evidence found', async () => {
@@ -537,7 +515,6 @@ describe('EvidenceService', () => {
       if (shouldFilterByUser) {
         expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ uploadedBy: userId }));
       }
-      expect(auditLogService.logAction).toHaveBeenCalled();
     });
 
     it('should return empty array when no evidence found', async () => {

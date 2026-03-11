@@ -1,15 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FilterService } from '../src/modules/filter/filter.service';
-import { AuditLogService } from '../src/modules/audit/auditLog.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { Outcome } from '../src/utils/types/outcome';
 import { FilterRepository } from '../src/modules/repository/filter.repository';
 
 describe('FilterService', () => {
   let service: FilterService;
   let filterRepository: jest.Mocked<FilterRepository>;
-  let auditLogService: jest.Mocked<AuditLogService>;
   let loggerService: jest.Mocked<LoggerService>;
 
   const userId = '550e8400-e29b-41d4-a716-446655440000';
@@ -40,12 +37,6 @@ describe('FilterService', () => {
           },
         },
         {
-          provide: AuditLogService,
-          useValue: {
-            logAction: jest.fn(),
-          },
-        },
-        {
           provide: LoggerService,
           useValue: {
             log: jest.fn(),
@@ -57,7 +48,6 @@ describe('FilterService', () => {
 
     service = module.get<FilterService>(FilterService);
     filterRepository = module.get(FilterRepository) as jest.Mocked<FilterRepository>;
-    auditLogService = module.get(AuditLogService) as jest.Mocked<AuditLogService>;
     loggerService = module.get(LoggerService) as jest.Mocked<LoggerService>;
   });
 
@@ -76,14 +66,6 @@ describe('FilterService', () => {
       expect(loggerService.log).toHaveBeenCalledWith(`Adding user filter : ${userId}`, FilterService.name);
       expect(filterRepository.getFiltersByUserAndType).toHaveBeenCalledWith(userId, 'alerts');
       expect(filterRepository.createFilter).toHaveBeenCalledWith(userId, mockCreateFilterDto);
-      expect(auditLogService.logAction).toHaveBeenCalledWith({
-        userId,
-        operation: 'createFilter',
-        entityName: FilterService.name,
-        actionPerformed: `Saving user defined filter for ${mockCreateFilterDto.filterType}`,
-        outcome: Outcome.SUCCESS,
-        performedAt: expect.any(Date),
-      });
     });
 
     it('should throw BadRequestException when all required fields are missing', async () => {
@@ -95,15 +77,6 @@ describe('FilterService', () => {
 
       await expect(service.createFilter(invalidDto, userId)).rejects.toThrow(BadRequestException);
       await expect(service.createFilter(invalidDto, userId)).rejects.toThrow('user_id, filterType and userFilters must be provided');
-
-      expect(auditLogService.logAction).toHaveBeenCalledWith({
-        userId,
-        operation: 'createFilter',
-        entityName: FilterService.name,
-        actionPerformed: `Attempt user defined filter for ${invalidDto.filterType}`,
-        outcome: Outcome.FAILURE,
-        performedAt: expect.any(Date),
-      });
     });
 
     it('should throw ConflictException when filter with same criteria exists', async () => {
@@ -122,14 +95,6 @@ describe('FilterService', () => {
       await expect(service.createFilter(mockCreateFilterDto, userId)).rejects.toThrow('Filter with same criteria already exists');
 
       expect(loggerService.error).toHaveBeenCalledWith('Error adding filter', expect.any(ConflictException), FilterService.name);
-      expect(auditLogService.logAction).toHaveBeenCalledWith({
-        userId,
-        operation: 'createFilter',
-        entityName: FilterService.name,
-        actionPerformed: `Attempt user defined filter for ${mockCreateFilterDto.filterType}`,
-        outcome: Outcome.FAILURE,
-        performedAt: expect.any(Date),
-      });
     });
 
     it('should detect exact duplicate in multiple existing filters', async () => {
@@ -271,14 +236,6 @@ describe('FilterService', () => {
       await expect(service.createFilter(mockCreateFilterDto, userId)).rejects.toThrow('Database error');
 
       expect(loggerService.error).toHaveBeenCalledWith('Error adding filter', error, FilterService.name);
-      expect(auditLogService.logAction).toHaveBeenCalledWith({
-        userId,
-        operation: 'createFilter',
-        entityName: FilterService.name,
-        actionPerformed: `Attempt user defined filter for ${mockCreateFilterDto.filterType}`,
-        outcome: Outcome.FAILURE,
-        performedAt: expect.any(Date),
-      });
     });
 
     it('should handle query failures during duplicate check', async () => {
@@ -303,14 +260,6 @@ describe('FilterService', () => {
       expect(result).toEqual(filters);
       expect(loggerService.log).toHaveBeenCalledWith('Retrieving comment', FilterService.name);
       expect(filterRepository.getFiltersByUserAndType).toHaveBeenCalledWith(userId, filterType);
-      expect(auditLogService.logAction).toHaveBeenCalledWith({
-        userId,
-        operation: 'getFiltersByUserAndType',
-        entityName: FilterService.name,
-        actionPerformed: `Successfully retrieved  filter with ID: ${userId} and filterType: ${filterType}`,
-        outcome: Outcome.SUCCESS,
-        performedAt: expect.any(Date),
-      });
     });
 
     it.each([[null], [undefined]])('should throw NotFoundException when filter is %p', async (filterValue) => {
@@ -320,14 +269,6 @@ describe('FilterService', () => {
       await expect(service.getFiltersByUserAndType(userId, filterType)).rejects.toThrow('Filter not found');
 
       expect(loggerService.error).toHaveBeenCalledWith('Error retrieving filter', expect.any(NotFoundException), FilterService.name);
-      expect(auditLogService.logAction).toHaveBeenCalledWith({
-        userId,
-        operation: 'getFiltersByUserAndType',
-        entityName: FilterService.name,
-        actionPerformed: `Error retrieving filter with ID: ${userId} and filterType: ${filterType}`,
-        outcome: Outcome.FAILURE,
-        performedAt: expect.any(Date),
-      });
     });
 
     it('should return empty array (empty array is truthy)', async () => {
@@ -337,11 +278,6 @@ describe('FilterService', () => {
 
       expect(result).toEqual([]);
       expect(result).toHaveLength(0);
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          outcome: Outcome.SUCCESS,
-        }),
-      );
     });
 
     it('should return multiple filters', async () => {
@@ -372,12 +308,6 @@ describe('FilterService', () => {
         filterRepository.getFiltersByUserAndType.mockResolvedValue([mockFilter]);
 
         await service.getFiltersByUserAndType(uid, filterType);
-
-        expect(auditLogService.logAction).toHaveBeenCalledWith(
-          expect.objectContaining({
-            userId: uid,
-          }),
-        );
       },
     );
 
@@ -388,14 +318,6 @@ describe('FilterService', () => {
       await expect(service.getFiltersByUserAndType(userId, filterType)).rejects.toThrow('Database error');
 
       expect(loggerService.error).toHaveBeenCalledWith('Error retrieving filter', error, FilterService.name);
-      expect(auditLogService.logAction).toHaveBeenCalledWith({
-        userId,
-        operation: 'getFiltersByUserAndType',
-        entityName: FilterService.name,
-        actionPerformed: `Error retrieving filter with ID: ${userId} and filterType: ${filterType}`,
-        outcome: Outcome.FAILURE,
-        performedAt: expect.any(Date),
-      });
     });
 
     it('should handle special characters in filterType', async () => {

@@ -1,16 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CommentService } from '../src/modules/comment/comment.service';
 import { CommentRepository } from '../src/modules/repository/comment.repository';
-import { AuditLogService } from '../src/modules/audit/auditLog.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateCommentDto } from '../src/modules/comment/dto/create-comment.dto';
-import { Outcome } from '../src/utils/types/outcome';
 
 describe('CommentService', () => {
   let service: CommentService;
   let commentRepository: jest.Mocked<CommentRepository>;
-  let auditLogService: jest.Mocked<AuditLogService>;
   let loggerService: jest.Mocked<LoggerService>;
 
   const mockComment = {
@@ -46,10 +43,6 @@ describe('CommentService', () => {
       getCommentsByTaskId: jest.fn(),
     };
 
-    const mockAuditLogService = {
-      logAction: jest.fn(),
-    };
-
     const mockLoggerService = {
       log: jest.fn(),
       error: jest.fn(),
@@ -65,10 +58,6 @@ describe('CommentService', () => {
           useValue: mockCommentRepository,
         },
         {
-          provide: AuditLogService,
-          useValue: mockAuditLogService,
-        },
-        {
           provide: LoggerService,
           useValue: mockLoggerService,
         },
@@ -77,7 +66,6 @@ describe('CommentService', () => {
 
     service = module.get<CommentService>(CommentService);
     commentRepository = module.get(CommentRepository);
-    auditLogService = module.get(AuditLogService);
     loggerService = module.get(LoggerService);
   });
 
@@ -102,16 +90,6 @@ describe('CommentService', () => {
       expect(result.user_id).toBe('user-123');
       expect(result.case_id).toBe(1);
       expect(commentRepository.createComment).toHaveBeenCalledWith('user-123', createCommentDto);
-
-      const auditCall = auditLogService.logAction.mock.calls[0][0];
-      expect(auditCall.userId).toBe('user-123');
-      expect(auditCall.operation).toBe('addComment');
-      expect(auditCall.outcome).toBe(Outcome.SUCCESS);
-      expect(auditCall.performedAt).toBeInstanceOf(Date);
-      if (auditCall.performedAt) {
-        expect(Date.now() - auditCall.performedAt.getTime()).toBeLessThan(5000);
-      }
-
       expect(loggerService.log).toHaveBeenCalledWith('Adding comment : user-123', CommentService.name);
     });
 
@@ -140,12 +118,6 @@ describe('CommentService', () => {
       await expect(service.addComment(createCommentDto, 'user-123')).rejects.toThrow('Database error');
 
       expect(loggerService.error).toHaveBeenCalledWith('Error adding comment', expect.any(Error), CommentService.name);
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          outcome: Outcome.FAILURE,
-          operation: 'addComment',
-        }),
-      );
     });
 
     it('should allow both caseId and taskId if provided', async () => {
@@ -188,26 +160,12 @@ describe('CommentService', () => {
 
       expect(result).toEqual(mockComment);
       expect(commentRepository.getCommentsByCommentId).toHaveBeenCalledWith(1, 'tenant-123');
-      expect(auditLogService.logAction).toHaveBeenCalledWith({
-        userId: 'user-123',
-        operation: 'getComment',
-        entityName: CommentService.name,
-        actionPerformed: 'Successfully retrieved comment with ID: 1',
-        outcome: Outcome.SUCCESS,
-        performedAt: expect.any(Date),
-      });
     });
 
     it('should throw NotFoundException when comment not found', async () => {
       commentRepository.getCommentsByCommentId.mockResolvedValue(null);
 
       await expect(service.getComment(999, 'user-123', 'tenant-123')).rejects.toThrow(NotFoundException);
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          outcome: Outcome.FAILURE,
-          operation: 'getComment',
-        }),
-      );
     });
 
     it('should handle repository errors', async () => {
@@ -215,7 +173,6 @@ describe('CommentService', () => {
 
       await expect(service.getComment(1, 'user-123', 'tenant-123')).rejects.toThrow(Error);
       expect(loggerService.error).toHaveBeenCalledWith('Error retrieving comment', expect.any(Error), CommentService.name);
-      expect(auditLogService.logAction).toHaveBeenCalledWith(expect.objectContaining({ outcome: Outcome.FAILURE }));
     });
 
     it('should log retrieval attempt', async () => {
@@ -238,12 +195,6 @@ describe('CommentService', () => {
 
       expect(result).toEqual(mockComments);
       expect(commentRepository[repoMethod]).toHaveBeenCalledWith(caseId ?? taskId);
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          actionPerformed: `Successfully retrieved comments for ${expectedMessage}`,
-          outcome: Outcome.SUCCESS,
-        }),
-      );
     });
 
     it.each([
@@ -253,13 +204,12 @@ describe('CommentService', () => {
       await expect(service.getCommentsByCaseOrTask(caseId, taskId, 'user-123')).rejects.toThrow(new BadRequestException(expectedMessage));
     });
 
-    it('should work without userId (no audit logging)', async () => {
+    it('should work without userId', async () => {
       commentRepository.getCommentsByCaseId.mockResolvedValue(mockComments);
 
       const result = await service.getCommentsByCaseOrTask(1, undefined);
 
       expect(result).toEqual(mockComments);
-      expect(auditLogService.logAction).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -270,7 +220,6 @@ describe('CommentService', () => {
 
       await expect(service.getCommentsByCaseOrTask(caseId, taskId, 'user-123')).rejects.toThrow(Error);
       expect(loggerService.error).toHaveBeenCalled();
-      expect(auditLogService.logAction).toHaveBeenCalledWith(expect.objectContaining({ outcome: Outcome.FAILURE }));
     });
 
     it('should return empty array when no comments found', async () => {
@@ -290,12 +239,6 @@ describe('CommentService', () => {
 
       expect(result).toEqual(mockComments);
       expect(commentRepository.getCommentsByCaseId).toHaveBeenCalledWith(1);
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          actionPerformed: 'Successfully retrieved comments for case ID: 1',
-          outcome: Outcome.SUCCESS,
-        }),
-      );
     });
 
     it('should work without userId', async () => {
@@ -304,7 +247,6 @@ describe('CommentService', () => {
       const result = await service.getCommentsByCaseId(1);
 
       expect(result).toEqual(mockComments);
-      expect(auditLogService.logAction).not.toHaveBeenCalled();
     });
 
     it('should handle repository errors', async () => {
@@ -312,7 +254,6 @@ describe('CommentService', () => {
 
       await expect(service.getCommentsByCaseId(1, 'user-123')).rejects.toThrow(Error);
       expect(loggerService.error).toHaveBeenCalled();
-      expect(auditLogService.logAction).toHaveBeenCalledWith(expect.objectContaining({ outcome: Outcome.FAILURE }));
     });
 
     it.each([
@@ -338,12 +279,6 @@ describe('CommentService', () => {
 
       expect(result).toEqual(mockComments);
       expect(commentRepository.getCommentsByTaskId).toHaveBeenCalledWith(5);
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          actionPerformed: 'Successfully retrieved comments for task ID: 5',
-          outcome: Outcome.SUCCESS,
-        }),
-      );
     });
 
     it('should work without userId', async () => {
@@ -352,7 +287,6 @@ describe('CommentService', () => {
       const result = await service.getCommentsByTaskId(5);
 
       expect(result).toEqual(mockComments);
-      expect(auditLogService.logAction).not.toHaveBeenCalled();
     });
 
     it('should handle repository errors', async () => {
@@ -360,7 +294,6 @@ describe('CommentService', () => {
 
       await expect(service.getCommentsByTaskId(5, 'user-123')).rejects.toThrow(Error);
       expect(loggerService.error).toHaveBeenCalled();
-      expect(auditLogService.logAction).toHaveBeenCalledWith(expect.objectContaining({ outcome: Outcome.FAILURE }));
     });
 
     it.each([

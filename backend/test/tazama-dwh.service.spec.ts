@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TazamaDwhService } from '../src/modules/tazama-dwh/tazama-dwh.service';
 import { PrismaDWHService } from '../prismaDWH/prismaDWH.service';
-import { AuditLogService } from '../src/modules/audit/auditLog.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib/lib/services/logger';
 import { NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { GenerateProfileDto } from '../src/modules/tazama-dwh/dto/generate-profile.dto';
@@ -10,7 +9,6 @@ describe('TazamaDwhService', () => {
   let service: TazamaDwhService;
   let prismaDwh: jest.Mocked<PrismaDWHService>;
   let logger: jest.Mocked<LoggerService>;
-  let auditLog: jest.Mocked<AuditLogService>;
 
   const mockTransaction = {
     cre_dt_tm: '2026-01-15',
@@ -91,23 +89,17 @@ describe('TazamaDwhService', () => {
       debug: jest.fn(),
     };
 
-    const mockAuditLog = {
-      logAction: jest.fn(),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TazamaDwhService,
         { provide: PrismaDWHService, useValue: mockPrismaDwh },
         { provide: LoggerService, useValue: mockLogger },
-        { provide: AuditLogService, useValue: mockAuditLog },
       ],
     }).compile();
 
     service = module.get<TazamaDwhService>(TazamaDwhService);
     prismaDwh = module.get(PrismaDWHService) as any;
     logger = module.get(LoggerService);
-    auditLog = module.get(AuditLogService);
   });
 
   afterEach(() => {
@@ -129,7 +121,6 @@ describe('TazamaDwhService', () => {
 
     it('should generate profile successfully', async () => {
       (prismaDwh.transaction.findMany as jest.Mock).mockResolvedValue([mockTransaction] as any);
-      (auditLog.logAction as jest.Mock).mockResolvedValue({} as any);
 
       const result = await service.generateProfile(generateProfileDto, 'user-123');
 
@@ -140,13 +131,6 @@ describe('TazamaDwhService', () => {
       expect(result).toHaveProperty('detectedAnomalies');
       expect(result).toHaveProperty('transactionTable');
       expect(result.metrics.totalVolume).toBe(1);
-      expect(auditLog.logAction).toHaveBeenCalledWith({
-        userId: 'user-123',
-        operation: 'generate',
-        entityName: 'TransactionProfile',
-        actionPerformed: 'PROFILE_GENERATED',
-        outcome: 'SUCCESS',
-      });
     });
 
     it('should generate profile with different filter combinations', async () => {
@@ -156,7 +140,6 @@ describe('TazamaDwhService', () => {
       };
 
       (prismaDwh.transaction.findMany as jest.Mock).mockResolvedValue([mockTransaction] as any);
-      (auditLog.logAction as jest.Mock).mockResolvedValue({} as any);
 
       const result = await service.generateProfile(minimalDto, 'user-123');
 
@@ -166,7 +149,6 @@ describe('TazamaDwhService', () => {
 
     it('should handle empty transaction results', async () => {
       (prismaDwh.transaction.findMany as jest.Mock).mockResolvedValue([] as any);
-      (auditLog.logAction as jest.Mock).mockResolvedValue({} as any);
 
       const result = await service.generateProfile(generateProfileDto, 'user-123');
 
@@ -196,7 +178,6 @@ describe('TazamaDwhService', () => {
       (prismaDwh.transaction.findMany as jest.Mock)
         .mockResolvedValueOnce([highValueTx] as any)
         .mockResolvedValueOnce(peerTransactions as any);
-      (auditLog.logAction as jest.Mock).mockResolvedValue({} as any);
 
       const result = await service.generateProfile(generateProfileDto, 'user-123');
 
@@ -212,7 +193,6 @@ describe('TazamaDwhService', () => {
         amt: { toNumber: () => 3000 },
       };
       (prismaDwh.transaction.findMany as jest.Mock).mockResolvedValue([crossBorderTx] as any);
-      (auditLog.logAction as jest.Mock).mockResolvedValue({} as any);
 
       const result = await service.generateProfile(generateProfileDto, 'user-123');
 
@@ -226,7 +206,6 @@ describe('TazamaDwhService', () => {
         cre_dt_tm: null,
       };
       (prismaDwh.transaction.findMany as jest.Mock).mockResolvedValueOnce([sparseTx] as any).mockResolvedValueOnce([sparseTx] as any);
-      (auditLog.logAction as jest.Mock).mockResolvedValue({} as any);
 
       const result = await service.generateProfile(generateProfileDto, 'user-123');
 
@@ -236,7 +215,6 @@ describe('TazamaDwhService', () => {
 
     it('should handle empty peer transactions (hits || 1 division guard)', async () => {
       (prismaDwh.transaction.findMany as jest.Mock).mockResolvedValueOnce([mockTransaction] as any).mockResolvedValueOnce([] as any); // empty peers
-      (auditLog.logAction as jest.Mock).mockResolvedValue({} as any);
 
       const result = await service.generateProfile(generateProfileDto, 'user-123');
 
@@ -248,7 +226,6 @@ describe('TazamaDwhService', () => {
       const mediumTx = { ...mockTransaction, amt: { toNumber: () => 3000 } };
       const peerTx = { ...mockTransaction, amt: { toNumber: () => 100 } };
       (prismaDwh.transaction.findMany as jest.Mock).mockResolvedValueOnce([mediumTx] as any).mockResolvedValueOnce([peerTx] as any);
-      (auditLog.logAction as jest.Mock).mockResolvedValue({} as any);
 
       const result = await service.generateProfile(generateProfileDto, 'user-123');
 
@@ -259,7 +236,6 @@ describe('TazamaDwhService', () => {
       const lowTx = { ...mockTransaction, amt: { toNumber: () => 1500 } };
       const peerTx = { ...mockTransaction, amt: { toNumber: () => 100 } };
       (prismaDwh.transaction.findMany as jest.Mock).mockResolvedValueOnce([lowTx] as any).mockResolvedValueOnce([peerTx] as any);
-      (auditLog.logAction as jest.Mock).mockResolvedValue({} as any);
 
       const result = await service.generateProfile(generateProfileDto, 'user-123');
 
@@ -273,7 +249,6 @@ describe('TazamaDwhService', () => {
         { ...mockTransaction, geography: 'Cross-border', amt: { toNumber: () => 100 } }, // low cb peer
       ];
       (prismaDwh.transaction.findMany as jest.Mock).mockResolvedValueOnce([cbTx] as any).mockResolvedValueOnce(peerTxs as any);
-      (auditLog.logAction as jest.Mock).mockResolvedValue({} as any);
 
       const result = await service.generateProfile(generateProfileDto, 'user-123');
 
@@ -298,7 +273,6 @@ describe('TazamaDwhService', () => {
       (prismaDwh.transaction.findMany as jest.Mock)
         .mockResolvedValueOnce([txWithNestedGeography, txWithNestedTxTp] as any)
         .mockResolvedValueOnce(peerTxs as any);
-      (auditLog.logAction as jest.Mock).mockResolvedValue({} as any);
 
       const result = await service.generateProfile(generateProfileDto, 'user-123');
 
@@ -316,7 +290,6 @@ describe('TazamaDwhService', () => {
       (prismaDwh.transaction.findMany as jest.Mock)
         .mockResolvedValueOnce([txWithFinalFallback] as any)
         .mockResolvedValueOnce(peerTxs as any);
-      (auditLog.logAction as jest.Mock).mockResolvedValue({} as any);
 
       const result = await service.generateProfile(generateProfileDto, 'user-123');
 
