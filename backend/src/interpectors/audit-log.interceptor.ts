@@ -71,7 +71,7 @@ export class AuditInterceptor implements NestInterceptor {
     request: AuthenticatedRequest,
   ): Omit<IAuditLogInput, 'outcome' | 'correlationId' | 'eventPhase'> {
     const { method, url, body, params, query, headers } = request;
-    const userData = request.user ? extractUserData(request) : this.getDefaultUserData(request.body);
+    const userData = extractUserData(request);
     const handler = context.getHandler().name;
     const controller = context.getClass().name;
     const { description, eventType } = this.createDescriptionAndEventType(method, url, handler);
@@ -99,15 +99,6 @@ export class AuditInterceptor implements NestInterceptor {
         queryParameters: query,
         timestamp: new Date().toISOString(),
       },
-    };
-  }
-
-  private getDefaultUserData(body: any): { userId: string; fullName: string; role: string; tenantId: string } {
-    return {
-      userId: body?.username ?? 'system',
-      fullName: body?.username ?? 'System User',
-      role: 'system',
-      tenantId: 'default',
     };
   }
 
