@@ -290,6 +290,9 @@ export class EvidenceService {
 
       this.evidenceRepository.deleteEvidenceById(evidenceId, tenantId);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to delete evidence: ${errorMessage}`, errorStack);
       throw error;
     }
     return doc;
@@ -577,7 +580,6 @@ export class EvidenceService {
       attachments: item.metadata,
       archive: item.archive,
     }));
-
 
     return { evidence, total: evidence.length };
   }

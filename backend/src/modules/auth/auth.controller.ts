@@ -5,12 +5,10 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
 import { User } from '../../decorators/user.decorator';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
-import { Outcome } from 'src/utils/types/outcome';
 import type { AuthenticatedUser } from '../../utils/types/auth.types';
 import { AuthMeResponseDto } from 'src/modules/auth/dto/AuthMeResponse.dto';
 import { LoginRequestDto } from 'src/modules/auth/dto/LoginRequest.dto';
 import { LoginResponseDto } from 'src/modules/auth/dto/LoginResponse.dto';
-import { Audit } from '../audit/decorators/audit-log.decorator';
 
 @ApiTags('Auth')
 @ApiBearerAuth('jwt')
@@ -22,7 +20,6 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  @Audit()
   @HttpCode(200)
   @ApiOperation({ summary: 'Authenticate user', description: 'Authenticates a user and returns a JWT token.' })
   @ApiBody({ type: LoginRequestDto })

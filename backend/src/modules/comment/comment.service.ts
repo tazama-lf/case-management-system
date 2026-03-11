@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { Outcome } from '../../utils/types/outcome';
 import { CommentRepository } from '../repository/comment.repository';
 import { Comment } from '@prisma/client-cms';
 

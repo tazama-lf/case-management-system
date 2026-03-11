@@ -15,7 +15,7 @@ export class CommentController {
   @Post()
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @Audit()
-  async addComment(@Body() createCommentDto: CreateCommentDto, @Req() req: AuthenticatedRequest): Promise<Comment | void> {
+  async addComment(@Body() createCommentDto: CreateCommentDto, @Req() req: AuthenticatedRequest): Promise<Comment> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');

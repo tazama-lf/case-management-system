@@ -1,7 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { createFilterDto } from './dto/create-filter.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { Outcome } from '../../utils/types/outcome';
 import { FilterRepository } from '../repository/filter.repository';
 import { filters } from '@prisma/client-cms';
 

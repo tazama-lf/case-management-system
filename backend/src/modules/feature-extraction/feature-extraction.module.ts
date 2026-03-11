@@ -3,7 +3,7 @@ import { FeatureExtractionService } from './feature-extraction.service';
 import { LoggerModule } from 'src/logger/logger.module';
 
 @Module({
-  imports: [LoggerModule,],
+  imports: [LoggerModule],
   providers: [FeatureExtractionService],
   exports: [FeatureExtractionService],
 })

@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TriageService } from './triage.service';
 import { TriageController } from './triage.controller';
-// import { AuditLogModule } from '../audit/auditLog.module';
 import { LoggerModule } from '../../logger/logger.module';
 import { TaskModule } from '../task/task.module';
 import { CommentModule } from '../comment/comment.module';
@@ -21,7 +20,6 @@ import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orc
     RepositoryModule,
     AlertModule,
     LoggerModule,
-    // CaseCreationModule,
     CaseModule,
     TaskModule,
     CommentModule,

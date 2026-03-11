@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { AuditLogService } from '../audit/auditLog.service';
 import { CaseStatus, TaskStatus, CaseType, Priority } from '@prisma/client-cms';
 import { FraudReport, FraudReportOutcome } from './report.model';
 import { NotificationService } from '../notification/notification.service';
@@ -1337,7 +1336,6 @@ export class ReportsService {
     const db = this.couchdbService.getDatabase();
     const result = await db.find({ selector: { caseId, category: 'report' } });
     // Accept userId as an optional second argument for audit logging
-    const userId = arguments.length > 1 ? arguments[1] : 'SYSTEM';
     // Sort reports by version descending (latest first)
     const reports = (result.docs as FraudReport[]).sort((a, b) => (b.version || 0) - (a.version || 0));
     return reports;
