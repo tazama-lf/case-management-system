@@ -288,7 +288,7 @@ export class EvidenceService {
       const deleteResult = await this.couchdb.deleteEvidence(doc._id, decodeURIComponent(fileName), doc._rev);
       this.logger.log(`Attachment deletion result: ${JSON.stringify(deleteResult)}`);
 
-      this.evidenceRepository.deleteEvidenceById(evidenceId, tenantId);
+      await this.evidenceRepository.deleteEvidenceById(evidenceId, tenantId);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;

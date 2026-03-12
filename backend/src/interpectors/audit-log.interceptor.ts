@@ -25,7 +25,12 @@ export class AuditInterceptor implements NestInterceptor {
     const authenticatedRequest = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const startTime = Date.now();
     const correlationId = randomUUID();
-    const baseAuditData = this.buildBaseAuditData(context, authenticatedRequest);
+    let baseAuditData;
+    try {
+      baseAuditData = this.buildBaseAuditData(context, authenticatedRequest);
+    } catch (error) {
+      this.logger.error('Failed to build base audit data', error);
+    }
 
     this.logAuditAsync({ ...baseAuditData, outcome: {} }, EventPhase.INTENT, correlationId);
 

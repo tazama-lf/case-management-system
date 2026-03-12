@@ -126,6 +126,7 @@ export class TaskController {
   @Patch(':taskId/reassign')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @HttpCode(HttpStatus.OK)
+  @Audit()
   @ApiOperation({
     summary: 'Reassign a task to another user',
     description:
@@ -642,6 +643,7 @@ export class TaskController {
   @Post(':taskId/complete')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @HttpCode(HttpStatus.OK)
+  @Audit()
   @ApiOperation({
     summary: 'Complete a task',
     description: 'Marks a task as completed.',
