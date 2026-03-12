@@ -1,5 +1,5 @@
 import { plainToClass } from 'class-transformer';
-import { IsEnum, IsString, IsUUID, IsOptional, IsNumberString, validateSync } from 'class-validator';
+import { IsEnum, IsString, IsUUID, IsOptional, IsNumberString, validateSync, IsBooleanString } from 'class-validator';
 
 enum NodeEnv {
   DEVELOPMENT = 'dev',
@@ -140,10 +140,10 @@ class EnvironmentVariables {
   @IsString()
   OPENSEARCH_PASSWORD!: string;
 
-  @IsString()
+  @IsBooleanString()
   OPENSEARCH_SSL_REJECT_UNAUTHORIZED!: string;
 
-  @IsString()
+  @IsBooleanString()
   OPENSEARCH_REFRESH!: string;
 }
 
