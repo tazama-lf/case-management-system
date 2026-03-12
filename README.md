@@ -33,11 +33,11 @@ cd case-management-system
 ```bash
 # For Backend
 cd backend
-npm run install
+npm install
 
 # For Frontend
 cd frontend
-npm run install
+npm install
 ```
 
 ### 3. Environment Setup
@@ -157,8 +157,6 @@ case-management-system/
 
 ### Backend Commands (from backend/)
 
-````
-
 ```bash
 # Development
 npm run start:dev          # Start with hot reload
@@ -180,7 +178,7 @@ npm run lint              # Check linting
 npm run fix               # Fix linting issues
 npm run format            # Format code
 
-````
+```
 
 ### Frontend Commands (from frontend/)
 
@@ -355,9 +353,7 @@ docker-compose logs -f frontend
 
 The backend exposes an interactive Swagger UI for exploring and testing all available REST endpoints. To access it, start the backend server as described in the [Quick Start](#quick-start) guide, then navigate to:
 
-```
-http://localhost:3090/api/docs
-```
+**http://localhost:3090/api/docs**
 
 The documentation is automatically generated from the source code and reflects the current state of the API, including request/response schemas, authentication requirements, and available operations.
 
