@@ -17,15 +17,7 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
-    "types": [
-      "node",
-      "jest"
-    ]
+    "types": ["node", "jest"]
   },
-  "include": [
-    "src/**/*",
-    "prisma/**/*",
-    "test/**/*",
-    "jest.config.ts"
-  ]
+  "include": ["src/**/*", "prisma/**/*", "test/**/*", "jest.config.ts"]
 }

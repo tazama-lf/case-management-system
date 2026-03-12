@@ -8,6 +8,7 @@ import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorat
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { transaction } from '@prisma/client-dwh';
+import { Audit } from '../audit/decorators/audit-log.decorator';
 
 @ApiTags('Tazama DWH')
 @Controller('api/v1/dwh')
@@ -25,6 +26,7 @@ export class TazamaDWHController {
 
   @Post('profile/generate')
   @RequireInvestigatorOrSupervisorRole()
+  @Audit()
   @ApiOperation({ summary: 'Generate transaction profile for a case (DWH data)' })
   @ApiBody({
     type: GenerateProfileDto,

@@ -1,9 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReportsService } from '../src/modules/report/report.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CaseService } from '../src/modules/case/case.service';
-import { TaskService } from '../src/modules/task/task.service';
-import { AuditLogService } from '../src/modules/audit/auditLog.service';
 import { EvidenceService } from '../src/modules/evidence/evidence.service';
 import { CouchdbService } from '../src/modules/couchdb/couchdb.service';
 import { NotificationService } from '../src/modules/notification/notification.service';
@@ -15,9 +12,6 @@ import { FraudReportOutcome } from '../src/modules/report/report.model';
 describe('ReportsService', () => {
   let service: ReportsService;
   let prismaService: any;
-  let caseService: any;
-  let taskService: any;
-  let auditLogService: any;
   let evidenceService: any;
   let couchdbService: any;
   let notificationService: any;
@@ -41,16 +35,6 @@ describe('ReportsService', () => {
     name: 'Investigate transaction',
     status: TaskStatus.STATUS_20_IN_PROGRESS,
     assigned_user_id: 'user-123',
-  };
-
-  const mockAuditLog = {
-    audit_log_id: 1,
-    user_id: 'user-123',
-    operation: 'CREATE',
-    entity_name: 'Case',
-    action_performed: 'Case created',
-    outcome: 'SUCCESS',
-    performed_at: mockDate,
   };
 
   const mockEventLog = {
@@ -109,19 +93,6 @@ describe('ReportsService', () => {
       },
     };
 
-    const mockCaseService = {
-      updateCase: jest.fn(),
-    };
-
-    const mockTaskService = {
-      getTasks: jest.fn(),
-    };
-
-    const mockAuditLogService = {
-      getLogs: jest.fn(),
-      logAction: jest.fn(),
-    };
-
     const mockEvidenceService = {
       getEvidenceByCaseId: jest.fn(),
     };
@@ -146,9 +117,6 @@ describe('ReportsService', () => {
       providers: [
         ReportsService,
         { provide: PrismaService, useValue: mockPrismaService },
-        { provide: CaseService, useValue: mockCaseService },
-        { provide: TaskService, useValue: mockTaskService },
-        { provide: AuditLogService, useValue: mockAuditLogService },
         { provide: EvidenceService, useValue: mockEvidenceService },
         { provide: CouchdbService, useValue: mockCouchdbService },
         { provide: NotificationService, useValue: mockNotificationService },
@@ -158,9 +126,6 @@ describe('ReportsService', () => {
 
     service = module.get<ReportsService>(ReportsService);
     prismaService = module.get(PrismaService);
-    caseService = module.get(CaseService);
-    taskService = module.get(TaskService);
-    auditLogService = module.get(AuditLogService);
     evidenceService = module.get(EvidenceService);
     couchdbService = module.get(CouchdbService);
     notificationService = module.get(NotificationService);
@@ -341,77 +306,6 @@ describe('ReportsService', () => {
     });
   });
 
-  describe('getAuditLogs', () => {
-    beforeEach(() => {
-      auditLogService.getLogs.mockResolvedValue([mockAuditLog]);
-    });
-
-    it('should return audit logs report', async () => {
-      const result = await service.getAuditLogs('last30');
-
-      expect(result).toBeDefined();
-      expect(result.stats).toBeDefined();
-      expect(result.auditLogs).toBeDefined();
-      expect(Array.isArray(result.auditLogs)).toBe(true);
-    });
-
-    it('should filter logs by date range', async () => {
-      const today = new Date();
-      auditLogService.getLogs.mockResolvedValue([
-        { ...mockAuditLog, performed_at: today },
-        { ...mockAuditLog, performed_at: new Date('2025-01-01') },
-      ]);
-
-      const result = await service.getAuditLogs('today');
-
-      expect(result.auditLogs).toBeDefined();
-      expect(Array.isArray(result.auditLogs)).toBe(true);
-    });
-
-    it('should count case actions', async () => {
-      auditLogService.getLogs.mockResolvedValue([
-        { ...mockAuditLog, entity_name: 'Case', action_performed: 'Case created' },
-        { ...mockAuditLog, entity_name: 'User', action_performed: 'User updated' },
-      ]);
-
-      const result = await service.getAuditLogs('last30');
-
-      expect(result.stats.caseActions).toBeDefined();
-      expect(typeof result.stats.caseActions).toBe('number');
-    });
-
-    it('should count user sessions', async () => {
-      auditLogService.getLogs.mockResolvedValue([
-        { ...mockAuditLog, action_performed: 'login' },
-        { ...mockAuditLog, action_performed: 'session started' },
-      ]);
-
-      const result = await service.getAuditLogs('last30');
-
-      expect(result.stats.userSessions).toBeDefined();
-    });
-
-    it('should count system warnings', async () => {
-      auditLogService.getLogs.mockResolvedValue([
-        { ...mockAuditLog, outcome: 'WARNING' },
-        { ...mockAuditLog, outcome: 'ERROR' },
-        { ...mockAuditLog, outcome: 'SUCCESS' },
-      ]);
-
-      const result = await service.getAuditLogs('last30');
-
-      expect(result.stats.systemWarnings).toBe(2);
-    });
-
-    it('should format audit logs correctly', async () => {
-      const result = await service.getAuditLogs('last30');
-
-      expect(result.auditLogs[0]).toHaveProperty('audit_log_id');
-      expect(result.auditLogs[0]).toHaveProperty('user_id');
-      expect(result.auditLogs[0]).toHaveProperty('type');
-    });
-  });
-
   describe('getEventLogs', () => {
     beforeEach(() => {
       eventLogService.getLogs.mockResolvedValue([mockEventLog]);
@@ -548,7 +442,6 @@ describe('ReportsService', () => {
       couchdbService.insertAttachment.mockResolvedValue({ rev: 'rev-2', filePath: '/path' });
       couchdbService.updateDocument.mockResolvedValue({ rev: 'rev-3' });
       evidenceService.getEvidenceByCaseId.mockResolvedValue({ evidence: [] });
-      auditLogService.logAction.mockResolvedValue(undefined);
     });
 
     it('should generate fraud report successfully', async () => {
@@ -556,7 +449,6 @@ describe('ReportsService', () => {
 
       expect(result).toBeDefined();
       expect(result.reportId).toContain('InvestigationReport');
-      expect(auditLogService.logAction).toHaveBeenCalled();
     });
 
     it('should throw error for invalid file type', async () => {
@@ -628,7 +520,6 @@ describe('ReportsService', () => {
       couchdbService.getDocument.mockResolvedValue(mockFraudReport);
       couchdbService.updateDocument.mockResolvedValue({ rev: 'rev-2' });
       couchdbService.insertDocument.mockResolvedValue({ rev: 'rev-1' });
-      auditLogService.logAction.mockResolvedValue(undefined);
     });
 
     it('should edit unlocked fraud report', async () => {
@@ -658,38 +549,12 @@ describe('ReportsService', () => {
 
       await expect(service.editFraudReport('invalid-id', {}, 'user-123')).rejects.toThrow('Report not found');
     });
-
-    it('should log audit action for update', async () => {
-      await service.editFraudReport('1-InvestigationReport-v1', {}, 'user-123');
-
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          operation: 'UPDATE',
-          entityName: 'FraudReport',
-        }),
-      );
-    });
-
-    it('should log audit action for version creation', async () => {
-      const lockedReport = { ...mockFraudReport, locked: true };
-      couchdbService.getDocument.mockResolvedValue(lockedReport);
-
-      await service.editFraudReport('1-InvestigationReport-v1', {}, 'user-123');
-
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          operation: 'CREATE_VERSION',
-          entityName: 'FraudReport',
-        }),
-      );
-    });
   });
 
   describe('approveFraudReport', () => {
     beforeEach(() => {
       couchdbService.getDocument.mockResolvedValue(mockFraudReport);
       couchdbService.updateDocument.mockResolvedValue({ rev: 'rev-2' });
-      auditLogService.logAction.mockResolvedValue(undefined);
       notificationService.sendGroupNotification.mockResolvedValue(undefined);
     });
 
@@ -736,18 +601,6 @@ describe('ReportsService', () => {
       );
     });
 
-    it('should log audit action', async () => {
-      await service.approveFraudReport('1-InvestigationReport-v1', FraudReportOutcome.CONFIRMED_FRAUD, 'remarks', 'supervisor-123');
-
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          operation: 'APPROVE',
-          entityName: 'FraudReport',
-          userId: 'supervisor-123',
-        }),
-      );
-    });
-
     it('should set approved timestamp', async () => {
       const result = await service.approveFraudReport(
         '1-InvestigationReport-v1',
@@ -771,7 +624,6 @@ describe('ReportsService', () => {
         }),
       };
       couchdbService.getDatabase.mockReturnValue(mockDb);
-      auditLogService.logAction.mockResolvedValue(undefined);
     });
 
     it('should get all fraud reports for a case', async () => {
@@ -786,27 +638,6 @@ describe('ReportsService', () => {
       const result = await service.getFraudReports('1');
 
       expect(result[0].version).toBeGreaterThan(result[1].version);
-    });
-
-    it('should log audit action', async () => {
-      await service.getFraudReports('1');
-
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          operation: 'RETRIEVE',
-          entityName: 'FraudReport',
-        }),
-      );
-    });
-
-    it('should use SYSTEM as userId when called without second param', async () => {
-      await service.getFraudReports('1');
-
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'SYSTEM',
-        }),
-      );
     });
 
     it('should handle empty reports list', async () => {

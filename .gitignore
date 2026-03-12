@@ -142,3 +142,5 @@ vite.config.ts.timestamp-*
 
 /generated/prisma
 /backend/prisma/migrations
+
+.vscode

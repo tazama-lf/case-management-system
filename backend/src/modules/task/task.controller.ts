@@ -29,6 +29,7 @@ import {
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { Task } from '@prisma/client-cms';
+import { Audit } from '../audit/decorators/audit-log.decorator';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -115,6 +116,7 @@ export class TaskController {
     status: 403,
     description: 'Forbidden - User lacks ALERT_TRIAGE role',
   })
+  @Audit()
   async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: AuthenticatedRequest): Promise<Task> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
@@ -124,6 +126,7 @@ export class TaskController {
   @Patch(':taskId/reassign')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @HttpCode(HttpStatus.OK)
+  @Audit()
   @ApiOperation({
     summary: 'Reassign a task to another user',
     description:
@@ -203,6 +206,7 @@ export class TaskController {
 
   @Patch(':taskId/unassign')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Unassign a task',
@@ -302,6 +306,7 @@ export class TaskController {
 
   @Patch(':taskId/assign')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Assign a task to an investigator',
@@ -401,6 +406,7 @@ export class TaskController {
 
   @Patch(':taskId')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update task details',
@@ -637,6 +643,7 @@ export class TaskController {
   @Post(':taskId/complete')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @HttpCode(HttpStatus.OK)
+  @Audit()
   @ApiOperation({
     summary: 'Complete a task',
     description: 'Marks a task as completed.',

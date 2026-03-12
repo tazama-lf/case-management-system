@@ -1,5 +1,4 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { AuditLogService } from '../audit/auditLog.service';
 import { EventLogService } from '../event_log/eventLog.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { LogDataDTO } from './dto/LogData.dto';
@@ -9,7 +8,6 @@ import { CaseHistoryService } from '../case_history/caseHistory.service';
 @Injectable()
 export class LoggingOrchestrationService {
   constructor(
-    private readonly auditLogService: AuditLogService,
     private readonly eventLogService: EventLogService,
     private readonly loggerService: LoggerService,
     private readonly caseHistoryService: CaseHistoryService,
@@ -19,15 +17,6 @@ export class LoggingOrchestrationService {
   async logActions(logData: LogDataDTO): Promise<void> {
     try {
       const performedAt = new Date();
-      await this.auditLogService.logAction({
-        userId: logData.userId,
-        operation: logData.operation,
-        entityName: logData.entityName,
-        actionPerformed: logData.actionPerformed,
-        outcome: logData.outcome,
-        performedAt,
-      });
-
       await this.eventLogService.logEventAction({
         userId: logData.userId,
         operation: logData.operation,
@@ -46,7 +35,6 @@ export class LoggingOrchestrationService {
   async logActionsWithHistory(logData: LogDataDTO, caseId: number, tenantId: string, taskId?: number): Promise<void> {
     try {
       const performedAt = new Date();
-      await this.auditLogService.logAction(logData);
 
       if (taskId) {
         await Promise.all([
