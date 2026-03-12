@@ -304,7 +304,7 @@ OPENSEARCH_REFRESH=false
 
 ```bash
 # API Configuration
-VITE_API_BASE_URL=http://localhost:3000
+VITE_API_BASE_URL=http://localhost:3090
 VITE_APP_NAME=Tazama Case Management System
 VITE_APP_VERSION=0.0.1
 
