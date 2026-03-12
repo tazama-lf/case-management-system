@@ -2,12 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CaseReopeningService } from '../src/modules/case/services/case-reopening.service';
 import { CaseRepository } from '../src/modules/repository/case.repository';
 import { CommentRepository } from '../src/modules/repository/comment.repository';
-import { AuditLogService } from '../src/modules/audit/auditLog.service';
 import { NotificationService } from '../src/modules/notification/notification.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { TaskService } from '../src/modules/task/task.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CaseQueryService } from '../src/modules/case/services/case-query.service';
 import { FlowableService } from '../src/modules/flowable/flowable.service';
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
 import { BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
@@ -17,12 +14,9 @@ describe('CaseReopeningService', () => {
   let service: CaseReopeningService;
   let caseRepository: any;
   let commentRepository: any;
-  let auditLogService: any;
   let notificationService: any;
-  let prismaService: any;
   let taskService: any;
   let logger: any;
-  let caseQueryService: any;
   let flowableService: any;
   let loggingOrchestrationService: any;
 
@@ -81,24 +75,9 @@ describe('CaseReopeningService', () => {
       createComment: jest.fn(),
     };
 
-    const mockAuditLogService = {
-      createAuditLog: jest.fn(),
-    };
-
     const mockNotificationService = {
       sendNotification: jest.fn(),
       sendGroupNotification: jest.fn(),
-    };
-
-    const mockPrismaService = {
-      $transaction: jest.fn((callback) => callback(mockPrismaService)),
-      case: {
-        update: jest.fn(),
-        findFirst: jest.fn(),
-      },
-      task: {
-        update: jest.fn(),
-      },
     };
 
     const mockTaskService = {
@@ -111,10 +90,6 @@ describe('CaseReopeningService', () => {
       error: jest.fn(),
       warn: jest.fn(),
       debug: jest.fn(),
-    };
-
-    const mockCaseQueryService = {
-      retrieveCase: jest.fn(),
     };
 
     const mockFlowableService = {
@@ -133,12 +108,9 @@ describe('CaseReopeningService', () => {
         CaseReopeningService,
         { provide: CaseRepository, useValue: mockCaseRepository },
         { provide: CommentRepository, useValue: mockCommentRepository },
-        { provide: AuditLogService, useValue: mockAuditLogService },
         { provide: NotificationService, useValue: mockNotificationService },
-        { provide: PrismaService, useValue: mockPrismaService },
         { provide: TaskService, useValue: mockTaskService },
         { provide: LoggerService, useValue: mockLogger },
-        { provide: CaseQueryService, useValue: mockCaseQueryService },
         { provide: FlowableService, useValue: mockFlowableService },
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
       ],
@@ -147,12 +119,9 @@ describe('CaseReopeningService', () => {
     service = module.get<CaseReopeningService>(CaseReopeningService);
     caseRepository = module.get(CaseRepository);
     commentRepository = module.get(CommentRepository);
-    auditLogService = module.get(AuditLogService);
     notificationService = module.get(NotificationService);
-    prismaService = module.get(PrismaService);
     taskService = module.get(TaskService);
     logger = module.get(LoggerService);
-    caseQueryService = module.get(CaseQueryService);
     flowableService = module.get(FlowableService);
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
   });

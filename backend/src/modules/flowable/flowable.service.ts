@@ -92,13 +92,8 @@ export class FlowableService implements OnModuleInit {
     /* eslint-enable no-await-in-loop */
   }
 
-  private async deployBpmnProcess() {
-    const bpmnFilePath = path.join(
-      __dirname,
-      '..',
-      'bpmn',
-      'cms.bpmn20.xml'
-);
+  private async deployBpmnProcess(): Promise<unknown> {
+    const bpmnFilePath = path.join(__dirname, '..', 'bpmn', 'cms.bpmn20.xml');
 
     try {
       this.loggerService.log('Deploying BPMN process', FlowableService.name);

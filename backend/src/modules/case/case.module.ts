@@ -3,7 +3,6 @@ import { CaseService } from './case.service';
 import { CaseQueryService } from './services/case-query.service';
 import { CaseController } from './case.controller';
 import { PrismaModule } from '../../../prisma/prisma.module';
-import { AuditLogModule } from 'src/modules/audit/auditLog.module';
 import { LoggerModule } from '../../logger/logger.module';
 import { TaskModule } from 'src/modules/task/task.module';
 import { CommentModule } from '../comment/comment.module';
@@ -25,7 +24,6 @@ import { TaskValidationUtil } from '../shared/utils/task-validation.util';
 @Module({
   imports: [
     PrismaModule,
-    AuditLogModule,
     LoggerModule,
     LoggingOrchestrationModule,
     TaskModule,

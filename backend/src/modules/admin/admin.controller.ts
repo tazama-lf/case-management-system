@@ -5,6 +5,7 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagg
 import { RequireAdminRole } from 'src/decorators/auth.decorator';
 import { RegisterReferenceIdDto } from './dto/RegisterReferenceId.dto';
 import { ReferenceIdDetailsDto } from './dto/GetReferenceIdsQueryDto';
+import { Audit } from '../audit/decorators/audit-log.decorator';
 
 @Controller('admin')
 @UseGuards(TazamaAuthGuard)
@@ -14,6 +15,7 @@ export class AdminController {
 
   @Post('reference-id')
   @RequireAdminRole()
+  @Audit()
   @ApiBody({ description: 'EndToEndIdPathCreateInput', type: RegisterReferenceIdDto })
   async registerReferenceId(@Body() idData: RegisterReferenceIdDto): Promise<{
     txTp: string;

@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { AuditLogService } from '../audit/auditLog.service';
 import { CaseStatus, TaskStatus, CaseType, Priority } from '@prisma/client-cms';
 import { FraudReport, FraudReportOutcome } from './report.model';
 import { NotificationService } from '../notification/notification.service';
@@ -15,7 +14,6 @@ import { AgeingSummary, monthlyTrend, resolutionTrend, statusDetails } from './t
 export class ReportsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditLogService: AuditLogService,
     private readonly evidenceService: EvidenceService,
     private readonly couchdbService: CouchdbService,
     private readonly notificationService: NotificationService,
@@ -826,70 +824,6 @@ export class ReportsService {
     };
   }
 
-  async getAuditLogs(dateRange?: string): Promise<{
-    stats: {
-      totalLogs: number;
-      caseActions: number;
-      userSessions: number;
-      systemWarnings: number;
-    };
-    auditLogs: Array<{
-      audit_log_id: string | number;
-      user_id: string;
-      operation: string;
-      entity_name: string;
-      action_performed: string;
-      outcome: string;
-      performed_at: string;
-      type: 'Info' | 'Success' | 'Warning' | 'Error';
-    }>;
-  }> {
-    const { startDate, endDate } = this.getDateRange(dateRange);
-
-    const auditLogs = await this.auditLogService.getLogs(100, 0);
-
-    const filteredLogs = auditLogs.filter((log) => log.performed_at >= startDate && log.performed_at <= endDate);
-
-    const caseActions = filteredLogs.filter((log) => log.entity_name === 'Case' || log.action_performed.includes('Case')).length;
-
-    const userSessions = filteredLogs.filter(
-      (log) => log.action_performed.includes('login') || log.action_performed.includes('session'),
-    ).length;
-
-    const systemWarnings = filteredLogs.filter(
-      (log) => log.outcome && (log.outcome.includes('WARNING') || log.outcome.includes('ERROR')),
-    ).length;
-
-    const formattedLogs = filteredLogs.map((log) => ({
-      audit_log_id: log.audit_log_id ? log.audit_log_id : '',
-      user_id: log.user_id ? log.user_id : '',
-      operation: log.operation ? log.operation : '',
-      entity_name: log.entity_name ? log.entity_name : '',
-      action_performed: log.action_performed ? log.action_performed : '',
-      outcome: log.outcome ? log.outcome : '',
-      performed_at: log.performed_at.toLocaleString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
-      }),
-      type: this.getAuditLogType(log.outcome || ''),
-    }));
-
-    return {
-      stats: {
-        totalLogs: filteredLogs.length,
-        caseActions,
-        userSessions,
-        systemWarnings,
-      },
-      auditLogs: formattedLogs,
-    };
-  }
-
   async getEventLogs(dateRange?: string): Promise<{
     stats: {
       totalLogs: number;
@@ -1324,23 +1258,6 @@ export class ReportsService {
 
     await this.couchdbService.updateDocument(reportId, report);
 
-    await this.auditLogService.logAction({
-      userId: userId ?? '',
-      operation: 'CREATE',
-      entityName: 'FraudReport',
-      actionPerformed: `Fraud report generated (v${nextVersion})`,
-      outcome: 'SUCCESS',
-      performedAt: new Date(),
-    });
-
-    await this.auditLogService.logAction({
-      userId,
-      operation: 'APPROVE',
-      entityName: 'FraudReport',
-      actionPerformed: 'Fraud report approved',
-      outcome: 'SUCCESS',
-      performedAt: new Date(),
-    });
     // Send notification to Compliance Officer
     await this.notificationService.sendGroupNotification({
       candidateGroup: 'COMPLIANCE_OFFICER',
@@ -1372,14 +1289,6 @@ export class ReportsService {
         },
       };
       await this.couchdbService.insertDocument(newReport.reportId, newReport);
-      await this.auditLogService.logAction({
-        userId: userId ?? '',
-        operation: 'CREATE_VERSION',
-        entityName: 'FraudReport',
-        actionPerformed: `Created new report version ${newVersion} for case ${existing.caseId}`,
-        outcome: 'SUCCESS',
-        performedAt: new Date(),
-      });
       return newReport;
     } else {
       // Update unlocked report
@@ -1393,14 +1302,6 @@ export class ReportsService {
         },
       };
       await this.couchdbService.updateDocument(reportId, updated);
-      await this.auditLogService.logAction({
-        userId: userId ?? '',
-        operation: 'UPDATE',
-        entityName: 'FraudReport',
-        actionPerformed: 'Fraud report edited',
-        outcome: 'SUCCESS',
-        performedAt: new Date(),
-      });
       return updated;
     }
   }
@@ -1420,15 +1321,6 @@ export class ReportsService {
     report.supervisorRemarks = supervisor;
     report.category = 'report';
     await this.couchdbService.updateDocument(reportId, report);
-    // Audit trail: log report approval
-    await this.auditLogService.logAction({
-      userId: supervisorUserId,
-      operation: 'APPROVE',
-      entityName: 'FraudReport',
-      actionPerformed: 'Fraud report approved',
-      outcome: 'SUCCESS',
-      performedAt: new Date(),
-    });
     // Send notification to Compliance Officer
     await this.notificationService.sendGroupNotification({
       candidateGroup: 'COMPLIANCE_OFFICER',
@@ -1443,14 +1335,7 @@ export class ReportsService {
     // Fetch all reports for case from CouchDB
     const db = this.couchdbService.getDatabase();
     const result = await db.find({ selector: { caseId, category: 'report' } });
-    await this.auditLogService.logAction({
-      userId,
-      operation: 'RETRIEVE',
-      entityName: 'FraudReport',
-      actionPerformed: `Retrieved fraud reports for case ${caseId}`,
-      outcome: 'SUCCESS',
-      performedAt: new Date(),
-    });
+    // Accept userId as an optional second argument for audit logging
     // Sort reports by version descending (latest first)
     const reports = (result.docs as FraudReport[]).sort((a, b) => (b.version || 0) - (a.version || 0));
     return reports;
