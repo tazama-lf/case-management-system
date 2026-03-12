@@ -92,7 +92,7 @@ case-management-system/
 │   │   ├── decorators/             # Custom decorators
 │   │   ├── dtos/                   # Data transfer objects
 │   │   ├── guards/                 # Auth & access guards
-│   │   ├── interpectors/           # NestJS interceptors
+│   │   ├── interceptors/           # NestJS interceptors
 │   │   ├── logger/                 # Logging utilities
 │   │   ├── modules/                # Feature modules
 │   │   │   ├── admin/
@@ -312,7 +312,7 @@ VITE_APP_VERSION=0.0.1
 VITE_CRYPTO_KEY=your-crypto-key
 
 # Jupyter / Voilà
-VOILA_URL=http://localhost:8866
+VITE_VOILA_URL=http://localhost:8866
 ```
 
 ### Docker Deployment
