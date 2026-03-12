@@ -87,4 +87,4 @@ import { JupyterModule } from './modules/jupyter/jupyter.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}
