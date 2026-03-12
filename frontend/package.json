@@ -16,8 +16,7 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest --watch",
-    "prepare": "cd .. && npx husky .husky"
+    "test:watch": "vitest --watch"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -61,7 +60,6 @@
     "@types/pdfmake": "^0.2.12",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
-    "@types/react-router-dom": "^5.3.3",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
     "@vitejs/plugin-react": "^5.0.0",
