@@ -4,9 +4,9 @@ import useCaseDashboard from '../useCaseDashboard';
 import { caseService } from '@/features/cases/services/caseService';
 
 const authMocks = {
-  hasInvestigatorRole: vi.fn(),
-  hasSupervisorRole: vi.fn(),
-  hasCMSAdminRole: vi.fn(),
+  hasInvestigatorRole: vi.fn(() => false),
+  hasSupervisorRole: vi.fn(() => false),
+  hasCMSAdminRole: vi.fn(() => false),
 };
 
 const toastMock = { error: vi.fn() };
@@ -14,22 +14,6 @@ const routeMock = {
   params: {} as Record<string, string>,
   navigate: vi.fn(),
 };
-
-const transformBackendCaseToUI = vi.fn((backendCase: any) => ({
-  id: backendCase.case_id,
-  type: backendCase.case_type,
-  typeColor: 'bg-gray-50',
-  status: backendCase.status,
-  statusColor: 'bg-gray-100',
-  typologyId: backendCase.typology_id || 'N/A',
-  score: backendCase.alert?.confidence_per ?? 0,
-  createdOn: '01/01/2024',
-  pickedOn: '-',
-  action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
-  priority: backendCase.priority ?? 'LOW',
-  userRole: backendCase.user_role ?? 'owner',
-  totalTasks: backendCase.total_tasks ?? 0,
-}));
 
 vi.mock('@/features/cases/services/caseService', () => ({
   caseService: {
@@ -51,146 +35,442 @@ vi.mock('@/shared/utils/routeUtils', () => ({
 }));
 
 vi.mock('@/features/cases/hooks', () => ({
-  useCaseActions: (refresh: () => Promise<void>) => ({
-    refresh,
-  }),
+  useCaseActions: (refresh: () => Promise<void>) => ({ refresh }),
 }));
 
 vi.mock('@/features/cases/components/casesTable.utils', () => ({
-  transformBackendCaseToUI: (backendCase: any) =>
-    transformBackendCaseToUI(backendCase),
+  transformBackendCaseToUI: (c: any) => ({
+    id: c.case_id,
+    type: c.case_type,
+    status: c.status,
+    priority: c.priority ?? 'LOW',
+    action: c.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
+  }),
 }));
 
-type BackendCase = {
-  case_id: string;
-  case_type: string;
-  status: string;
-  priority?: string;
-  total_tasks?: number;
-  user_role?: string;
-  alert?: { alert_id?: string; confidence_per?: number } | null;
-  created_at?: string;
-  updated_at?: string;
-};
+vi.mock('@/shared/hooks/useDebounce', () => ({
+  default: (value: any) => value, // instant debounce for tests
+}));
 
-const createBackendCase = (
-  overrides: Partial<BackendCase> = {},
-): BackendCase => ({
-  case_id: 'CASE-001',
+const createBackendCase = (overrides: any = {}) => ({
+  case_id: 1,
   case_type: 'FRAUD',
   status: 'STATUS_20_IN_PROGRESS',
   priority: 'HIGH',
-  total_tasks: 3,
-  user_role: 'owner',
-  alert: { alert_id: 'ALERT-1', confidence_per: 80 },
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-02T00:00:00Z',
   ...overrides,
 });
+
+const defaultPagination = { total: 0, totalPages: 1, page: 1, limit: 20 };
 
 describe('useCaseDashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     routeMock.params = {};
-    toastMock.error.mockReset();
-
     authMocks.hasInvestigatorRole.mockReturnValue(false);
     authMocks.hasSupervisorRole.mockReturnValue(false);
     authMocks.hasCMSAdminRole.mockReturnValue(false);
 
-    (caseService.getUserAssignedCases as unknown as vi.Mock).mockResolvedValue({
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
       cases: [],
-    });
-    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      pagination: defaultPagination,
+    } as any);
+    vi.mocked(caseService.getUserAssignedCases).mockResolvedValue({
       cases: [],
-    });
+      pagination: defaultPagination,
+    } as any);
   });
 
-  it('fetches investigator-only cases and applies search filtering', async () => {
-    authMocks.hasInvestigatorRole.mockReturnValue(true);
-    const backendCases = [
-      createBackendCase({ case_id: 'CASE-100' }),
-      createBackendCase({ case_id: 'CASE-200', case_type: 'AML' }),
-    ];
+  // ─── Initial load ─────────────────────────────────────────────
 
-    (
-      caseService.getUserAssignedCases as unknown as vi.Mock
-    ).mockResolvedValueOnce({
-      cases: backendCases,
-    });
-
-    const { result } = renderHook(() => useCaseDashboard());
-
-    await waitFor(() =>
-      expect(result.current.dashboardState.loading).toBe(false),
-    );
-
-    expect(caseService.getUserAssignedCases).toHaveBeenCalledWith({
-      status: undefined,
-      priority: undefined,
-      includeTaskAssignments: true,
-      includeOwnedCases: true,
-      sortBy: 'updated_at',
-      sortOrder: 'desc',
-    });
-
-    expect(result.current.dashboardState.cases).toHaveLength(2);
-
-    act(() => {
-      result.current.filterActions.setSearch('200');
-    });
-
-    expect(result.current.dashboardState.cases).toHaveLength(1);
-    expect(result.current.dashboardState.cases[0].id).toBe('CASE-200');
-  });
-
-  it('opens the view modal when a route param matches a case id', async () => {
+  it('fetches cases on mount and returns dashboard state', async () => {
     authMocks.hasSupervisorRole.mockReturnValue(true);
-    routeMock.params = { caseId: 'CASE-777' };
-
-    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValueOnce({
-      cases: [createBackendCase({ case_id: 'CASE-777' })],
-    });
+    const cases = [createBackendCase({ case_id: 1 }), createBackendCase({ case_id: 2 })];
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases,
+      pagination: { total: 2, totalPages: 1, page: 1, limit: 20 },
+    } as any);
 
     const { result } = renderHook(() => useCaseDashboard());
 
-    await waitFor(() =>
-      expect(result.current.dashboardState.loading).toBe(false),
-    );
-
-    expect(caseService.getAllCases).toHaveBeenCalledWith({
-      status: undefined,
-      priority: undefined,
-      sortBy: 'updated_at',
-      sortOrder: 'desc',
-    });
-
-    expect(result.current.modalState.isViewOpen).toBe(true);
-    expect(result.current.modalState.selectedRow?.id).toBe('CASE-777');
-
-    act(() => {
-      const firstRow = result.current.dashboardState.cases[0];
-      result.current.dashboardActions.handleView(firstRow);
-    });
-
-    expect(routeMock.navigate).toHaveBeenCalledWith('/cases/CASE-777');
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+    expect(result.current.dashboardState.cases).toHaveLength(2);
+    expect(result.current.dashboardState.pagination.totalItems).toBe(2);
   });
 
-  it('surfaces an error state when the service call fails', async () => {
-    authMocks.hasInvestigatorRole.mockReturnValue(true);
-    (
-      caseService.getUserAssignedCases as unknown as vi.Mock
-    ).mockRejectedValueOnce(new Error('boom'));
+  it('returns correct permissions for supervisor', async () => {
+    authMocks.hasSupervisorRole.mockReturnValue(true);
 
     const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
 
-    await waitFor(() =>
-      expect(result.current.dashboardState.loading).toBe(false),
-    );
+    expect(result.current.dashboardState.permissions.canManageSupervisorActions).toBe(true);
+    expect(result.current.dashboardState.permissions.isInvestigatorOnly).toBe(false);
+  });
 
-    expect(result.current.dashboardState.errorState).toBe(
-      'Failed to load cases. Please try again.',
-    );
+  it('returns correct permissions for investigator only', async () => {
+    authMocks.hasInvestigatorRole.mockReturnValue(true);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    expect(result.current.dashboardState.permissions.isInvestigatorOnly).toBe(true);
+    expect(result.current.dashboardState.permissions.canManageSupervisorActions).toBe(false);
+  });
+
+  it('returns correct permissions for admin', async () => {
+    authMocks.hasCMSAdminRole.mockReturnValue(true);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    expect(result.current.dashboardState.permissions.canManageSupervisorActions).toBe(true);
+  });
+
+  // ─── Error state ──────────────────────────────────────────────
+
+  it('sets error state when fetch fails', async () => {
+    vi.mocked(caseService.getAllCases).mockRejectedValue(new Error('boom'));
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    expect(result.current.dashboardState.errorState).toBe('Failed to load cases. Please try again.');
     expect(result.current.dashboardState.cases).toHaveLength(0);
+  });
+
+  // ─── Route param opens view modal ─────────────────────────────
+
+  it('opens view modal when route param matches a case id', async () => {
+    routeMock.params = { caseId: '1' };
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase({ case_id: 1 })],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    await waitFor(() => {
+      expect(result.current.modalState.isViewOpen).toBe(true);
+      expect(result.current.modalState.selectedRow?.id).toBe(1);
+    });
+  });
+
+  it('navigates away when route param does not match any case', async () => {
+    routeMock.params = { caseId: '999' };
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase({ case_id: 1 })],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    await waitFor(() => expect(routeMock.navigate).toHaveBeenCalledWith('/cases'));
+  });
+
+  // ─── Dashboard actions ────────────────────────────────────────
+
+  it('handleView sets selectedRow and navigates', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase({ case_id: 1 })],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    const row = result.current.dashboardState.cases[0];
+    act(() => result.current.dashboardActions.handleView(row));
+    expect(result.current.modalState.isViewOpen).toBe(true);
+    expect(routeMock.navigate).toHaveBeenCalledWith('/cases/1');
+  });
+
+  it('handleComplete opens create modal in edit mode', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase({ case_id: 1 })],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleComplete(result.current.dashboardState.cases[0]));
+    expect(result.current.modalState.isCreateOpen).toBe(true);
+    expect(result.current.modalState.createModalMode).toBe('edit');
+    expect(result.current.modalState.editingCaseId).toBe(1);
+  });
+
+  it('handleCloseCase opens close modal', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase()],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleCloseCase(result.current.dashboardState.cases[0]));
+    expect(result.current.modalState.isCloseCaseOpen).toBe(true);
+  });
+
+  it('handleReopenCase opens reopen modal', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase()],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleReopenCase(result.current.dashboardState.cases[0]));
+    expect(result.current.modalState.isReopenOpen).toBe(true);
+  });
+
+  it('handleAbandonCase opens abandon modal', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase()],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleAbandonCase(result.current.dashboardState.cases[0]));
+    expect(result.current.modalState.isAbandonOpen).toBe(true);
+  });
+
+  it('handleSuspendCase opens suspend modal', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase()],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleSuspendCase(result.current.dashboardState.cases[0]));
+    expect(result.current.modalState.isSuspendOpen).toBe(true);
+  });
+
+  it('handleResumeCase opens resume modal', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase()],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleResumeCase(result.current.dashboardState.cases[0]));
+    expect(result.current.modalState.isResumeOpen).toBe(true);
+  });
+
+  it('handleRejectCase opens closure decision modal', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase()],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleRejectCase(result.current.dashboardState.cases[0]));
+    expect(result.current.modalState.isCaseClosureDecisionOpen).toBe(true);
+  });
+
+  it('handleApproveCase opens closure decision modal', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase()],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleApproveCase(result.current.dashboardState.cases[0]));
+    expect(result.current.modalState.isCaseClosureDecisionOpen).toBe(true);
+  });
+
+  it('handleApproveCaseCreation opens approve creation modal', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase()],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleApproveCaseCreation(result.current.dashboardState.cases[0]));
+    expect(result.current.modalState.isApproveCreationOpen).toBe(true);
+  });
+
+  it('handleRejectCaseCreation opens reject creation modal', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase()],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleRejectCaseCreation(result.current.dashboardState.cases[0]));
+    expect(result.current.modalState.isRejectCreationOpen).toBe(true);
+  });
+
+  it('handleApproveCaseReopen opens approve reopen modal', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase()],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleApproveCaseReopen(result.current.dashboardState.cases[0]));
+    expect(result.current.modalState.isApproveReopenOpen).toBe(true);
+  });
+
+  it('handleRejectCaseReopen opens reject reopen modal', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase()],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleRejectCaseReopen(result.current.dashboardState.cases[0]));
+    expect(result.current.modalState.isRejectReopenOpen).toBe(true);
+  });
+
+  it('handleCreateNew opens create modal in create mode', async () => {
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.dashboardActions.handleCreateNew());
+    expect(result.current.modalState.isCreateOpen).toBe(true);
+    expect(result.current.modalState.createModalMode).toBe('create');
+    expect(result.current.modalState.editingCaseId).toBeNull();
+  });
+
+  // ─── Filter & Pagination ─────────────────────────────────────
+
+  it('setPageSize resets to page 1', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [],
+      pagination: defaultPagination,
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.setPageSize(50));
+    expect(result.current.dashboardState.pagination.pageSize).toBe(50);
+    expect(result.current.dashboardState.pagination.currentPage).toBe(1);
+  });
+
+  it('refreshCases triggers a fetch', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [],
+      pagination: defaultPagination,
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    const callCount = vi.mocked(caseService.getAllCases).mock.calls.length;
+    await act(async () => { await result.current.refreshCases(); });
+    expect(vi.mocked(caseService.getAllCases).mock.calls.length).toBeGreaterThan(callCount);
+  });
+
+  // ─── Modal actions ────────────────────────────────────────────
+
+  it('exposes all modal setters', async () => {
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    expect(typeof result.current.modalActions.setIsCreateOpen).toBe('function');
+    expect(typeof result.current.modalActions.setIsViewOpen).toBe('function');
+    expect(typeof result.current.modalActions.setSelectedRow).toBe('function');
+    expect(typeof result.current.modalActions.setIsCloseCaseOpen).toBe('function');
+    expect(typeof result.current.modalActions.setIsReopenOpen).toBe('function');
+    expect(typeof result.current.modalActions.setIsAbandonOpen).toBe('function');
+    expect(typeof result.current.modalActions.setIsSuspendOpen).toBe('function');
+    expect(typeof result.current.modalActions.setIsResumeOpen).toBe('function');
+  });
+
+  // ─── setCurrentPage ───────────────────────────────────────────
+
+  it('setCurrentPage updates the current page', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [],
+      pagination: { ...defaultPagination, total: 100, totalPages: 5 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    act(() => result.current.setCurrentPage(3));
+    expect(result.current.dashboardState.pagination.currentPage).toBe(3);
+  });
+
+  // ─── Filter: draft type ───────────────────────────────────────
+
+  it('uses draft filter when caseTypeFilter is draft', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [],
+      pagination: defaultPagination,
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    await act(async () => {
+      result.current.filterActions.setCaseTypeFilter('draft');
+    });
+
+    await waitFor(() => {
+      const lastCall = vi.mocked(caseService.getAllCases).mock.calls.at(-1)?.[0] as any;
+      expect(lastCall?.status).toBe('STATUS_00_DRAFT');
+    });
+  });
+
+  // ─── Filter: closed type ──────────────────────────────────────
+
+  it('uses closed filter when caseTypeFilter is closed', async () => {
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [],
+      pagination: defaultPagination,
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    await act(async () => {
+      result.current.filterActions.setCaseTypeFilter('closed');
+    });
+
+    await waitFor(() => {
+      const lastCall = vi.mocked(caseService.getAllCases).mock.calls.at(-1)?.[0] as any;
+      expect(lastCall?.closedOnly).toBe(true);
+    });
+  });
+
+  // ─── Investigator-only permissions ─────────────────────────
+
+  it('investigator-only still uses getAllCases but sets isInvestigatorOnly', async () => {
+    authMocks.hasInvestigatorRole.mockReturnValue(true);
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [createBackendCase()],
+      pagination: { ...defaultPagination, total: 1 },
+    } as any);
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() => expect(result.current.dashboardState.loading).toBe(false));
+
+    expect(caseService.getAllCases).toHaveBeenCalled();
+    expect(result.current.dashboardState.cases).toHaveLength(1);
+    expect(result.current.dashboardState.permissions.isInvestigatorOnly).toBe(true);
   });
 });

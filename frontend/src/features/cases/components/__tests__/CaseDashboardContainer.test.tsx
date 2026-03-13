@@ -12,8 +12,28 @@ vi.mock('../../hooks/useCaseDashboard', () => ({
   useCaseDashboard: vi.fn(),
 }));
 
+vi.mock('@/features/auth/components/AuthContext', () => ({
+  useAuth: () => ({
+    hasComplianceOfficerRole: () => false,
+    hasInvestigatorRole: () => false,
+    hasSupervisorRole: () => true,
+  }),
+}));
+
+vi.mock('@/shared/providers/ToastProvider', () => ({
+  useToast: () => ({
+    success: vi.fn(),
+    error: vi.fn(),
+  }),
+}));
+
+// Mock CaseFilters since it uses useToast and useAuth internally
+vi.mock('@/features/cases/components/CaseFilters', () => ({
+  default: () => <div data-testid="case-filters">Case Filters</div>,
+}));
+
 const mockCaseRow = {
-  id: 'CASE-1',
+  id: 1,
   type: 'FRAUD',
   typeColor: 'bg-red-100',
   status: 'STATUS_20_IN_PROGRESS',
@@ -27,6 +47,7 @@ const mockCaseRow = {
   priority: 'HIGH',
   userRole: 'owner' as const,
   totalTasks: 3,
+  alertId: 0,
 };
 
 const buildMockReturn = () => ({
@@ -39,6 +60,8 @@ const buildMockReturn = () => ({
       sortBy: 'recent' as const,
       statusFilter: '',
       priorityFilter: '',
+      sarStrStatusFilter: '',
+      caseTypeFilter: 'all' as const,
     },
     pagination: {
       currentPage: 1,
@@ -53,6 +76,7 @@ const buildMockReturn = () => ({
   },
   modalState: {
     isCreateOpen: false,
+    isUpdateAlertOpen: false,
     isViewOpen: false,
     isCloseCaseOpen: false,
     isReopenOpen: false,
@@ -84,15 +108,19 @@ const buildMockReturn = () => ({
     handleRejectCaseCreation: vi.fn(),
     handleApproveCaseReopen: vi.fn(),
     handleRejectCaseReopen: vi.fn(),
+    handleRejectCase: vi.fn(),
   },
   filterActions: {
     setSearch: vi.fn(),
     setSortBy: vi.fn(),
     setStatusFilter: vi.fn(),
     setPriorityFilter: vi.fn(),
+    setSarStrStatusFilter: vi.fn(),
+    setCaseTypeFilter: vi.fn(),
   },
   modalActions: {
     setIsCreateOpen: vi.fn(),
+    setIsUpdateAlertOpen: vi.fn(),
     setIsViewOpen: vi.fn(),
     setIsCloseCaseOpen: vi.fn(),
     setIsReopenOpen: vi.fn(),
@@ -146,5 +174,15 @@ describe('CaseDashboardContainer component', () => {
     screen.getByRole('button', { name: /create manually/i }).click();
 
     expect(mockReturn.dashboardActions.handleCreateNew).toHaveBeenCalled();
+  });
+
+  it('renders the case modals manager', () => {
+    render(<CaseDashboardContainer />);
+    expect(screen.getByTestId('case-modals-manager')).toBeInTheDocument();
+  });
+
+  it('renders case filters', () => {
+    render(<CaseDashboardContainer />);
+    expect(screen.getByTestId('case-filters')).toBeInTheDocument();
   });
 });

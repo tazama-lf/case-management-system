@@ -2,105 +2,82 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
-import { EmptyState } from '../../empty/EmptyState';
+import EmptyState from '../EmptyState';
 
-describe('EmptyState', () => {
-  it('renders with default props', () => {
-    render(<EmptyState />);
-
-    expect(screen.getByText('No data available')).toBeInTheDocument();
-    expect(
-      screen.getByText('There is no data to display at the moment.'),
-    ).toBeInTheDocument();
+describe('EmptyState (ui)', () => {
+  it('renders title', () => {
+    render(<EmptyState title="No results" />);
+    expect(screen.getByText('No results')).toBeInTheDocument();
   });
 
-  it('renders custom title', () => {
-    render(<EmptyState title="Custom Title" />);
-
-    expect(screen.getByText('Custom Title')).toBeInTheDocument();
+  it('renders description when provided', () => {
+    render(<EmptyState title="T" description="Some desc" />);
+    expect(screen.getByText('Some desc')).toBeInTheDocument();
   });
 
-  it('renders custom message', () => {
-    render(<EmptyState message="Custom message" />);
-
-    expect(screen.getByText('Custom message')).toBeInTheDocument();
+  it('does not render description when omitted', () => {
+    const { container } = render(<EmptyState title="T" />);
+    expect(container.querySelectorAll('p')).toHaveLength(0);
   });
 
-  it('renders default icon when no icon is provided', () => {
-    const { container } = render(<EmptyState />);
-
-    const icon = container.querySelector('svg');
-    expect(icon).toBeInTheDocument();
+  it('renders default document icon when icon is omitted', () => {
+    const { container } = render(<EmptyState title="T" />);
+    const svg = container.querySelector('svg');
+    expect(svg).toBeInTheDocument();
   });
 
-  it('renders custom icon when provided', () => {
-    const CustomIcon = () => <div data-testid="custom-icon">Custom Icon</div>;
+  it('renders folder icon', () => {
+    const { container } = render(<EmptyState title="T" icon="folder" />);
+    const svg = container.querySelector('svg');
+    expect(svg).toBeInTheDocument();
+  });
 
-    render(<EmptyState icon={<CustomIcon />} />);
+  it('renders exclamation icon', () => {
+    const { container } = render(<EmptyState title="T" icon="exclamation" />);
+    const svg = container.querySelector('svg');
+    expect(svg).toBeInTheDocument();
+  });
 
+  it('renders custom React element icon', () => {
+    const Custom = () => <span data-testid="custom-icon">!</span>;
+    render(<EmptyState title="T" icon={<Custom />} />);
     expect(screen.getByTestId('custom-icon')).toBeInTheDocument();
   });
 
-  it('renders action button when actionLabel and onAction are provided', () => {
-    const onAction = vi.fn();
-    render(<EmptyState actionLabel="Add Item" onAction={onAction} />);
-
-    expect(
-      screen.getByRole('button', { name: 'Add Item' }),
-    ).toBeInTheDocument();
+  it('renders action button (primary variant)', () => {
+    const onClick = vi.fn();
+    render(
+      <EmptyState title="T" action={{ label: 'Add', onClick, variant: 'primary' }} />,
+    );
+    const btn = screen.getByRole('button', { name: 'Add' });
+    expect(btn).toBeInTheDocument();
+    expect(btn.className).toContain('bg-blue-600');
   });
 
-  it('does not render action button when actionLabel is not provided', () => {
-    const onAction = vi.fn();
-    render(<EmptyState onAction={onAction} />);
-
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  it('renders action button (secondary variant)', () => {
+    const onClick = vi.fn();
+    render(
+      <EmptyState title="T" action={{ label: 'Cancel', onClick, variant: 'secondary' }} />,
+    );
+    const btn = screen.getByRole('button', { name: 'Cancel' });
+    expect(btn.className).toContain('border-gray-300');
   });
 
-  it('does not render action button when onAction is not provided', () => {
-    render(<EmptyState actionLabel="Add Item" />);
-
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-  });
-
-  it('calls onAction when action button is clicked', async () => {
+  it('calls action.onClick when button is clicked', async () => {
     const user = userEvent.setup();
-    const onAction = vi.fn();
-    render(<EmptyState actionLabel="Add Item" onAction={onAction} />);
+    const onClick = vi.fn();
+    render(<EmptyState title="T" action={{ label: 'Go', onClick }} />);
+    await user.click(screen.getByRole('button', { name: 'Go' }));
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
 
-    const button = screen.getByRole('button', { name: 'Add Item' });
-    await user.click(button);
-
-    expect(onAction).toHaveBeenCalledTimes(1);
+  it('does not render action button when action is not provided', () => {
+    render(<EmptyState title="T" />);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('applies custom className', () => {
-    const { container } = render(<EmptyState className="custom-class" />);
-
-    const emptyState = container.firstChild;
-    expect(emptyState).toHaveClass('custom-class');
-  });
-
-  it('renders all props together', () => {
-    const onAction = vi.fn();
-    const CustomIcon = () => <div data-testid="custom-icon">Icon</div>;
-
-    render(
-      <EmptyState
-        title="No Items"
-        message="Create your first item"
-        icon={<CustomIcon />}
-        actionLabel="Create Item"
-        onAction={onAction}
-        className="my-class"
-      />,
-    );
-
-    expect(screen.getByText('No Items')).toBeInTheDocument();
-    expect(screen.getByText('Create your first item')).toBeInTheDocument();
-    expect(screen.getByTestId('custom-icon')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Create Item' }),
-    ).toBeInTheDocument();
+    const { container } = render(<EmptyState title="T" className="my-class" />);
+    expect(container.firstChild).toHaveClass('my-class');
   });
 });

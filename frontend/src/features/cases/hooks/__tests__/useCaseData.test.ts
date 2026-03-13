@@ -1,470 +1,743 @@
-import React from 'react';
-import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useCaseData, useCaseActions } from '../useCaseData';
-import { caseService } from '../../services/caseService';
-import { useAuth } from '../../../auth/components/AuthContext';
-import { useToast } from '../../../../shared/providers/ToastProvider';
-import { transformBackendCaseToUI } from '../../components/casesTable.utils';
+import { caseService } from '@/features/cases/services/caseService';
 
-vi.mock('../../services/caseService');
-vi.mock('../../../auth/components/AuthContext');
-vi.mock('../../../../shared/providers/ToastProvider');
-vi.mock('../../components/casesTable.utils', () => ({
-  transformBackendCaseToUI: vi.fn((case_) => ({
-    id: case_.case_id || case_.id,
-    status: case_.status,
-    ...case_,
-  })),
+/* ──────────── Mocks ──────────── */
+
+const authMocks = {
+  user: { userId: 'user-1' },
+  hasInvestigatorRole: vi.fn(() => false),
+  hasSupervisorRole: vi.fn(() => false),
+  hasAdminRole: vi.fn(() => false),
+};
+
+const toastMock = { success: vi.fn(), error: vi.fn() };
+
+vi.mock('@/features/cases/services/caseService', () => ({
+  caseService: {
+    getAllCases: vi.fn(),
+    getUserAssignedCases: vi.fn(),
+    createCase: vi.fn(),
+    updateCase: vi.fn(),
+    reopenCase: vi.fn(),
+    abandonCase: vi.fn(),
+    suspendCase: vi.fn(),
+    resumeCase: vi.fn(),
+    rejectCase: vi.fn(),
+    approveCaseClosure: vi.fn(),
+    approveCaseCreation: vi.fn(),
+    rejectCaseCreation: vi.fn(),
+    returnCaseForReview: vi.fn(),
+  },
 }));
+
+vi.mock('@/features/auth/components/AuthContext', () => ({
+  useAuth: () => authMocks,
+}));
+
+vi.mock('@/shared/providers/ToastProvider', () => ({
+  useToast: () => toastMock,
+}));
+
+vi.mock('@/features/cases/components/casesTable.utils', () => ({
+  transformBackendCaseToUI: (c: any) => ({
+    id: c.case_id,
+    status: c.status,
+    type: c.case_type ?? 'FRAUD',
+    priority: c.priority ?? 'LOW',
+    action: c.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
+  }),
+}));
+
+const makeCase = (overrides: any = {}) => ({
+  case_id: 1,
+  status: 'STATUS_20_IN_PROGRESS',
+  case_type: 'FRAUD',
+  priority: 'HIGH',
+  ...overrides,
+});
+
+const defaultPagination = { total: 0, totalPages: 1, page: 1, limit: 20 };
+
+/* ═══════════ useCaseData ═══════════ */
 
 describe('useCaseData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (useAuth as vi.Mock).mockReturnValue({
-      hasInvestigatorRole: () => false,
-      hasSupervisorRole: () => true,
-      hasAdminRole: () => false,
-    });
+    authMocks.hasInvestigatorRole.mockReturnValue(false);
+    authMocks.hasSupervisorRole.mockReturnValue(false);
+    authMocks.hasAdminRole.mockReturnValue(false);
+
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [],
+      pagination: defaultPagination,
+    } as any);
+    vi.mocked(caseService.getUserAssignedCases).mockResolvedValue({
+      cases: [],
+      pagination: defaultPagination,
+    } as any);
   });
 
-  it('fetches cases for supervisor/admin', async () => {
-    const mockResponse = {
-      cases: [
-        { case_id: 'CASE-1', status: 'IN_PROGRESS' },
-        { case_id: 'CASE-2', status: 'CLOSED' },
-      ],
-    };
-    (caseService.getAllCases as vi.Mock).mockResolvedValue(mockResponse);
+  it('fetches all cases for supervisor on mount', async () => {
+    authMocks.hasSupervisorRole.mockReturnValue(true);
+    vi.mocked(caseService.getAllCases).mockResolvedValue({
+      cases: [makeCase()],
+      pagination: defaultPagination,
+    } as any);
 
     const { result } = renderHook(() => useCaseData());
-
-    await act(async () => {
-      await result.current.fetchCases();
-    });
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
+    await act(async () => { await result.current.fetchCases(); });
 
     expect(caseService.getAllCases).toHaveBeenCalled();
-    expect(result.current.cases.length).toBeGreaterThan(0);
+    expect(result.current.cases).toHaveLength(1);
+    expect(result.current.loading).toBe(false);
   });
 
-  it('fetches cases for investigator only', async () => {
-    (useAuth as vi.Mock).mockReturnValue({
-      hasInvestigatorRole: () => true,
-      hasSupervisorRole: () => false,
-      hasAdminRole: () => false,
-    });
-
-    const mockResponse = {
-      cases: [{ case_id: 'CASE-1', status: 'IN_PROGRESS' }],
-    };
-    (caseService.getUserAssignedCases as vi.Mock).mockResolvedValue(
-      mockResponse,
-    );
+  it('fetches user-assigned cases for investigator only', async () => {
+    authMocks.hasInvestigatorRole.mockReturnValue(true);
+    vi.mocked(caseService.getUserAssignedCases).mockResolvedValue({
+      cases: [makeCase()],
+      pagination: defaultPagination,
+    } as any);
 
     const { result } = renderHook(() => useCaseData());
-
-    await act(async () => {
-      await result.current.fetchCases();
-    });
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
+    await act(async () => { await result.current.fetchCases(); });
 
     expect(caseService.getUserAssignedCases).toHaveBeenCalled();
+    expect(result.current.cases).toHaveLength(1);
   });
 
-  it('handles error when fetching cases fails', async () => {
-    const error = new Error('Failed to fetch');
-    (caseService.getAllCases as vi.Mock).mockRejectedValue(error);
+  it('passes filters and sort to fetchCases', async () => {
+    authMocks.hasSupervisorRole.mockReturnValue(true);
+    vi.mocked(caseService.getAllCases).mockResolvedValue({ cases: [], pagination: defaultPagination } as any);
 
     const { result } = renderHook(() => useCaseData());
-
-    await act(async () => {
-      await result.current.fetchCases();
-    });
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-      expect(result.current.errorState).toBeTruthy();
-    });
-  });
-
-  it('fetches cases with filters', async () => {
-    const mockResponse = {
-      cases: [{ case_id: 'CASE-1', status: 'IN_PROGRESS' }],
-    };
-    (caseService.getAllCases as vi.Mock).mockResolvedValue(mockResponse);
-
-    const { result } = renderHook(() => useCaseData());
-
-    await act(async () => {
-      await result.current.fetchCases(
-        'STATUS_20_IN_PROGRESS',
-        'HIGH',
-        'recent',
-      );
-    });
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
+    await act(async () => { await result.current.fetchCases('OPEN', 'HIGH', 'oldest'); });
 
     expect(caseService.getAllCases).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: 'STATUS_20_IN_PROGRESS',
-        priority: 'HIGH',
-        sortBy: 'updated_at',
-        sortOrder: 'desc',
-      }),
+      expect.objectContaining({ status: 'OPEN', priority: 'HIGH', sortOrder: 'asc' }),
     );
   });
 
-  it('refreshes cases', async () => {
-    const mockResponse = {
-      cases: [{ case_id: 'CASE-1', status: 'IN_PROGRESS' }],
-    };
-    (caseService.getAllCases as vi.Mock).mockResolvedValue(mockResponse);
+  it('sets errorState on fetch failure', async () => {
+    authMocks.hasSupervisorRole.mockReturnValue(true);
+    vi.mocked(caseService.getAllCases).mockRejectedValue(new Error('fail'));
 
     const { result } = renderHook(() => useCaseData());
+    await act(async () => { await result.current.fetchCases(); });
 
-    await act(async () => {
-      await result.current.refreshCases(
-        'STATUS_20_IN_PROGRESS',
-        'HIGH',
-        'recent',
-      );
-    });
-
-    expect(caseService.getAllCases).toHaveBeenCalled();
-    expect(result.current.cases.length).toBeGreaterThan(0);
+    expect(result.current.errorState).toBe('Failed to load cases. Please try again.');
+    expect(result.current.cases).toHaveLength(0);
   });
 
-  it('handles refresh errors gracefully', async () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-    (caseService.getAllCases as vi.Mock).mockRejectedValue(
-      new Error('Refresh failed'),
+  it('refreshCases uses getAllCases regardless of role', async () => {
+    authMocks.hasInvestigatorRole.mockReturnValue(true);
+    vi.mocked(caseService.getAllCases).mockResolvedValue({ cases: [makeCase()], pagination: defaultPagination } as any);
+
+    const { result } = renderHook(() => useCaseData());
+    await act(async () => { await result.current.refreshCases('', '', 'recent'); });
+
+    expect(caseService.getAllCases).toHaveBeenCalledWith(
+      expect.objectContaining({ sortOrder: 'desc' }),
     );
-
-    const { result } = renderHook(() => useCaseData());
-
-    await act(async () => {
-      await result.current.refreshCases();
-    });
-
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    consoleErrorSpy.mockRestore();
   });
 
-  it('allows setting cases directly', () => {
+  it('refreshCases swallows errors silently', async () => {
+    vi.mocked(caseService.getAllCases).mockRejectedValue(new Error('oops'));
+
     const { result } = renderHook(() => useCaseData());
+    await act(async () => { await result.current.refreshCases(); });
 
-    act(() => {
-      result.current.setCases([{ id: 'CASE-1', status: 'IN_PROGRESS' }] as any);
-    });
-
-    expect(result.current.cases).toHaveLength(1);
+    // Should not throw
+    expect(result.current.cases).toHaveLength(0);
   });
 });
 
+/* ═══════════ useCaseActions ═══════════ */
+
 describe('useCaseActions', () => {
-  const mockRefreshCases = vi.fn();
-  const mockSuccess = vi.fn();
-  const mockError = vi.fn();
-  const mockUser = { userId: 'user-1' };
+  const refreshMock = vi.fn().mockResolvedValue(undefined);
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useAuth as vi.Mock).mockReturnValue({
-      user: mockUser,
-    });
-    (useToast as vi.Mock).mockReturnValue({
-      success: mockSuccess,
-      error: mockError,
-    });
+    refreshMock.mockResolvedValue(undefined);
   });
 
-  it('creates a case successfully', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      status: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
+  // ─── handleCreate ─────────────────────────────────────────────
+
+  describe('handleCreate', () => {
+    const payload = {
+      alertId: 100,
+      priority: 'HIGH' as any,
+      priorityScore: 5,
+      alertType: 'FRAUD' as any,
+      assignee: 'user-1',
     };
-    (caseService.createCase as vi.Mock).mockResolvedValue(mockCase);
 
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
+    it('creates case and shows success toast', async () => {
+      vi.mocked(caseService.createCase).mockResolvedValue({ case_id: 1, status: 'DRAFT' } as any);
 
-    await act(async () => {
-      await result.current.handleCreate({
-        alertId: 'ALERT-1',
-        priority: 'HIGH',
-        priorityScore: 90,
-        alertType: 'FRAUD',
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleCreate(payload); });
+
+      expect(caseService.createCase).toHaveBeenCalled();
+      expect(toastMock.success).toHaveBeenCalledWith('Case Created', expect.stringContaining('Case 1'));
+      expect(refreshMock).toHaveBeenCalled();
+      expect(result.current.createCaseLoading).toBe(false);
+    });
+
+    it('creates case without alertId', async () => {
+      vi.mocked(caseService.createCase).mockResolvedValue({ case_id: 2, status: 'DRAFT' } as any);
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => {
+        await result.current.handleCreate({ ...payload, alertId: undefined });
       });
+
+      expect(toastMock.success).toHaveBeenCalled();
+      const msg = toastMock.success.mock.calls[0][1] as string;
+      expect(msg).not.toContain('Alert ID');
     });
 
-    expect(caseService.createCase).toHaveBeenCalledWith({
-      alertId: 'ALERT-1',
-      priorityScore: 90,
-      alertType: 'FRAUD',
+    it('handles Error on create', async () => {
+      vi.mocked(caseService.createCase).mockRejectedValue(new Error('create-err'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleCreate(payload); });
+
+      expect(result.current.createCaseError).toBe('create-err');
+      expect(toastMock.error).toHaveBeenCalledWith('Create Case Failed', 'create-err');
     });
-    expect(mockSuccess).toHaveBeenCalled();
-    expect(mockRefreshCases).toHaveBeenCalled();
-    expect(result.current.createCaseLoading).toBe(false);
+
+    it('handles non-Error on create', async () => {
+      vi.mocked(caseService.createCase).mockRejectedValue('string-err');
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleCreate(payload); });
+
+      expect(result.current.createCaseError).toBe('Failed to create case');
+    });
   });
 
-  it('handles case creation error', async () => {
-    const error = new Error('Creation failed');
-    (caseService.createCase as vi.Mock).mockRejectedValue(error);
+  // ─── handleUpdate ─────────────────────────────────────────────
 
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
+  describe('handleUpdate', () => {
+    const updatePayload = { priority: 'HIGH' as any, priorityScore: 5, alertType: 'FRAUD' as any, assignee: 'u1' };
 
-    await act(async () => {
-      await result.current.handleCreate({
-        priority: 'HIGH',
-        priorityScore: 90,
-        alertType: 'FRAUD',
-      });
+    it('updates case and shows success toast', async () => {
+      vi.mocked(caseService.updateCase).mockResolvedValue({ case_id: 1, status: 'READY' } as any);
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleUpdate(1, updatePayload); });
+
+      expect(caseService.updateCase).toHaveBeenCalledWith(1, expect.objectContaining({ priority: 'HIGH' }));
+      expect(toastMock.success).toHaveBeenCalledWith('Draft Case Completed', expect.any(String));
+      expect(refreshMock).toHaveBeenCalled();
     });
 
-    expect(mockError).toHaveBeenCalled();
-    expect(result.current.createCaseError).toBeTruthy();
-    expect(result.current.createCaseLoading).toBe(false);
-  });
+    it('falls back to user.userId when no assignee', async () => {
+      vi.mocked(caseService.updateCase).mockResolvedValue({ case_id: 1, status: 'READY' } as any);
 
-  it('updates a case successfully', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      status: 'STATUS_02_READY_FOR_ASSIGNMENT',
-    };
-    (caseService.updateCase as vi.Mock).mockResolvedValue(mockCase);
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleUpdate(1, { ...updatePayload, assignee: undefined }); });
 
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
-
-    await act(async () => {
-      await result.current.handleUpdate('CASE-123', {
-        priority: 'HIGH',
-        priorityScore: 90,
-        alertType: 'FRAUD',
-        assignee: 'user-1',
-      });
-    });
-
-    expect(caseService.updateCase).toHaveBeenCalledWith(
-      'CASE-123',
-      expect.objectContaining({
-        priority: 'HIGH',
-        caseType: 'FRAUD',
-      }),
-    );
-    expect(mockSuccess).toHaveBeenCalled();
-    expect(mockRefreshCases).toHaveBeenCalled();
-  });
-
-  it('reopens a case successfully', async () => {
-    (caseService.reopenCase as vi.Mock).mockResolvedValue({
-      case_id: 'CASE-123',
-      status: 'STATUS_30_PENDING_REOPENING',
-    });
-
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
-
-    await act(async () => {
-      await result.current.handleReopenSubmit('CASE-123', 'New evidence found');
-    });
-
-    expect(caseService.reopenCase).toHaveBeenCalledWith('CASE-123', {
-      reason: 'New evidence found',
-    });
-    expect(mockSuccess).toHaveBeenCalled();
-    expect(mockRefreshCases).toHaveBeenCalled();
-  });
-
-  it('handles reopen error with specific messages', async () => {
-    const error = new Error('not in a reopenable state');
-    (caseService.reopenCase as vi.Mock).mockRejectedValue(error);
-
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
-
-    await act(async () => {
-      await result.current.handleReopenSubmit('CASE-123', 'Reason');
-    });
-
-    expect(mockError).toHaveBeenCalledWith(
-      'Reopen Case Failed',
-      expect.stringContaining('Case cannot be reopened'),
-    );
-  });
-
-  it('abandons a case successfully', async () => {
-    (caseService.abandonCase as vi.Mock).mockResolvedValue({
-      case_id: 'CASE-123',
-      status: 'STATUS_99_ABANDONED',
-    });
-
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
-
-    await act(async () => {
-      await result.current.handleAbandonSubmit(
-        'CASE-123',
-        'No longer relevant',
+      expect(caseService.updateCase).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ caseOwnerUserId: 'user-1' }),
       );
     });
 
-    expect(caseService.abandonCase).toHaveBeenCalledWith('CASE-123', {
-      reason: 'No longer relevant',
+    it('handles Error on update', async () => {
+      vi.mocked(caseService.updateCase).mockRejectedValue(new Error('update-fail'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleUpdate(1, updatePayload); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Update Case Failed', 'update-fail');
     });
-    expect(mockSuccess).toHaveBeenCalled();
+
+    it('handles non-Error on update', async () => {
+      vi.mocked(caseService.updateCase).mockRejectedValue(42);
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleUpdate(1, updatePayload); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Update Case Failed', 'Failed to update case');
+    });
   });
 
-  it('suspends a case successfully', async () => {
-    (caseService.suspendCase as vi.Mock).mockResolvedValue({
-      case_id: 'CASE-123',
-      status: 'STATUS_21_SUSPENDED',
+  // ─── handleReopenSubmit ───────────────────────────────────────
+
+  describe('handleReopenSubmit', () => {
+    it('reopens case successfully', async () => {
+      vi.mocked(caseService.reopenCase).mockResolvedValue(undefined as any);
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleReopenSubmit(1, '  reopen reason  '); });
+
+      expect(caseService.reopenCase).toHaveBeenCalledWith(1, { reason: 'reopen reason' });
+      expect(toastMock.success).toHaveBeenCalled();
+      expect(refreshMock).toHaveBeenCalled();
     });
 
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
+    it('handles not in a reopenable state error', async () => {
+      vi.mocked(caseService.reopenCase).mockRejectedValue(new Error('not in a reopenable state'));
 
-    await act(async () => {
-      await result.current.handleSuspendSubmit('CASE-123', 'Awaiting info');
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleReopenSubmit(1, 'reason'); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Reopen Case Failed', expect.stringContaining('Case cannot be reopened'));
     });
 
-    expect(caseService.suspendCase).toHaveBeenCalled();
-    expect(mockSuccess).toHaveBeenCalled();
+    it('handles Unauthorized error', async () => {
+      vi.mocked(caseService.reopenCase).mockRejectedValue(new Error('Unauthorized'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleReopenSubmit(1, 'reason'); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Reopen Case Failed', expect.stringContaining('Access Denied'));
+    });
+
+    it('handles 403 error', async () => {
+      vi.mocked(caseService.reopenCase).mockRejectedValue(new Error('403'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleReopenSubmit(1, 'reason'); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Reopen Case Failed', expect.stringContaining('Access Denied'));
+    });
+
+    it('handles 404 error', async () => {
+      vi.mocked(caseService.reopenCase).mockRejectedValue(new Error('404'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleReopenSubmit(1, 'reason'); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Reopen Case Failed', expect.stringContaining('Case Not Found'));
+    });
+
+    it('handles generic error', async () => {
+      vi.mocked(caseService.reopenCase).mockRejectedValue('non-error');
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleReopenSubmit(1, 'reason'); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Reopen Case Failed', 'Failed to request case reopening. Please try again.');
+    });
   });
 
-  it('resumes a case successfully', async () => {
-    (caseService.resumeCase as vi.Mock).mockResolvedValue({
-      case_id: 'CASE-123',
-      status: 'STATUS_20_IN_PROGRESS',
+  // ─── handleAbandonSubmit ──────────────────────────────────────
+
+  describe('handleAbandonSubmit', () => {
+    it('abandons case successfully', async () => {
+      vi.mocked(caseService.abandonCase).mockResolvedValue({ status: 'ABANDONED' } as any);
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleAbandonSubmit(1, 'bye', [10]); });
+
+      expect(caseService.abandonCase).toHaveBeenCalledWith(1, { reason: 'bye' });
+      expect(toastMock.success).toHaveBeenCalled();
     });
 
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
+    it('handles draft status error', async () => {
+      vi.mocked(caseService.abandonCase).mockRejectedValue(new Error('Cannot abandon case other than draft status'));
 
-    await act(async () => {
-      await result.current.handleResumeSubmit('CASE-123', 'Info received');
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleAbandonSubmit(1, 'r', []); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Abandon Case Failed', expect.stringContaining('DRAFT'));
     });
 
-    expect(caseService.resumeCase).toHaveBeenCalled();
-    expect(mockSuccess).toHaveBeenCalled();
+    it('handles No complete new Case Task exists error', async () => {
+      vi.mocked(caseService.abandonCase).mockRejectedValue(new Error('No complete new Case Task exists'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleAbandonSubmit(1, 'r', []); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Abandon Case Failed', expect.stringContaining('Case cannot be abandoned'));
+    });
+
+    it('handles Unauthorized error', async () => {
+      vi.mocked(caseService.abandonCase).mockRejectedValue(new Error('Unauthorized'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleAbandonSubmit(1, 'r', []); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Abandon Case Failed', expect.stringContaining('Access Denied'));
+    });
+
+    it('handles 404 error', async () => {
+      vi.mocked(caseService.abandonCase).mockRejectedValue(new Error('404'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleAbandonSubmit(1, 'r', []); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Abandon Case Failed', expect.stringContaining('Case Not Found'));
+    });
   });
 
-  it('rejects a case closure', async () => {
-    const mockCase = { case_id: 'CASE-123', status: 'STATUS_03_RETURNED' };
-    (caseService.rejectCase as vi.Mock).mockResolvedValue(mockCase);
+  // ─── handleSuspendSubmit ──────────────────────────────────────
 
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
+  describe('handleSuspendSubmit', () => {
+    it('suspends case successfully', async () => {
+      vi.mocked(caseService.suspendCase).mockResolvedValue({ status: 'SUSPENDED' } as any);
 
-    await act(async () => {
-      await result.current.handleRejectSubmit('Insufficient evidence', {
-        id: 'CASE-123',
-      } as any);
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleSuspendSubmit(1, 'srsn', [10, 20]); });
+
+      expect(caseService.suspendCase).toHaveBeenCalledWith(1, { reason: 'srsn', taskIds: [10, 20] });
+      expect(toastMock.success).toHaveBeenCalled();
     });
 
-    expect(caseService.rejectCase).toHaveBeenCalled();
-    expect(mockSuccess).toHaveBeenCalled();
+    it('handles not in a suspendable state error', async () => {
+      vi.mocked(caseService.suspendCase).mockRejectedValue(new Error('not in a suspendable state'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleSuspendSubmit(1, 'r', []); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Suspend Case Failed', expect.stringContaining('Case cannot be suspended'));
+    });
+
+    it('handles 403 error', async () => {
+      vi.mocked(caseService.suspendCase).mockRejectedValue(new Error('403'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleSuspendSubmit(1, 'r', []); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Suspend Case Failed', expect.stringContaining('Access Denied'));
+    });
+
+    it('handles 404 error', async () => {
+      vi.mocked(caseService.suspendCase).mockRejectedValue(new Error('404'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleSuspendSubmit(1, 'r', []); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Suspend Case Failed', expect.stringContaining('Case Not Found'));
+    });
+
+    it('uses normalizedErrorString for unknown errors', async () => {
+      vi.mocked(caseService.suspendCase).mockRejectedValue(new Error('some "Investigate case" issue'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleSuspendSubmit(1, 'r', []); });
+
+      // The normalized string replaces "Investigate case" → "Investigate Case"
+      expect(toastMock.error).toHaveBeenCalledWith('Suspend Case Failed', expect.stringContaining('Investigate Case'));
+    });
+
+    it('uses empty-fallback message for non-Error', async () => {
+      vi.mocked(caseService.suspendCase).mockRejectedValue(42);
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleSuspendSubmit(1, 'r', []); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Suspend Case Failed', 'Failed to suspend case. Please try again.');
+    });
   });
 
-  it('approves case closure', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      status: 'STATUS_82_CLOSED_CONFIRMED',
-    };
-    (caseService.approveCaseClosure as vi.Mock).mockResolvedValue(mockCase);
+  // ─── handleResumeSubmit ───────────────────────────────────────
 
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
+  describe('handleResumeSubmit', () => {
+    it('resumes case successfully', async () => {
+      vi.mocked(caseService.resumeCase).mockResolvedValue({ status: 'IN_PROGRESS' } as any);
 
-    await act(async () => {
-      await result.current.handleApproveSubmit(
-        { finalOutcome: 'STATUS_82_CLOSED_CONFIRMED' },
-        { id: 'CASE-123' } as any,
-      );
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleResumeSubmit(1, ' reason '); });
+
+      expect(caseService.resumeCase).toHaveBeenCalledWith(1, { reason: 'reason' });
+      expect(toastMock.success).toHaveBeenCalled();
     });
 
-    expect(caseService.approveCaseClosure).toHaveBeenCalled();
-    expect(mockSuccess).toHaveBeenCalled();
+    it('handles not in a resumable state', async () => {
+      vi.mocked(caseService.resumeCase).mockRejectedValue(new Error('not in a resumable state'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleResumeSubmit(1, 'r'); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Resume Case Failed', expect.stringContaining('Case cannot be resumed'));
+    });
+
+    it('handles Unauthorized', async () => {
+      vi.mocked(caseService.resumeCase).mockRejectedValue(new Error('Unauthorized'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleResumeSubmit(1, 'r'); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Resume Case Failed', expect.stringContaining('Access Denied'));
+    });
+
+    it('handles 404', async () => {
+      vi.mocked(caseService.resumeCase).mockRejectedValue(new Error('404'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleResumeSubmit(1, 'r'); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Resume Case Failed', expect.stringContaining('Case Not Found'));
+    });
   });
 
-  it('approves case creation', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      status: 'STATUS_02_READY_FOR_ASSIGNMENT',
-    };
-    (caseService.approveCaseCreation as vi.Mock).mockResolvedValue(mockCase);
+  // ─── handleRejectSubmit ───────────────────────────────────────
 
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
+  describe('handleRejectSubmit', () => {
+    const row = { id: 1 } as any;
 
-    await act(async () => {
-      await result.current.handleApproveCreationSubmit('CASE-123');
+    it('rejects case closure successfully', async () => {
+      vi.mocked(caseService.rejectCase).mockResolvedValue({ status: 'REJECTED' } as any);
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleRejectSubmit(' reason ', row); });
+
+      expect(caseService.rejectCase).toHaveBeenCalledWith(1, { rejectionReason: 'reason' });
+      expect(toastMock.success).toHaveBeenCalled();
     });
 
-    expect(caseService.approveCaseCreation).toHaveBeenCalledWith('CASE-123');
-    expect(mockSuccess).toHaveBeenCalled();
+    it('returns early when no selectedRow', async () => {
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleRejectSubmit('r', null); });
+
+      expect(caseService.rejectCase).not.toHaveBeenCalled();
+    });
+
+    it('handles not in a rejectable state', async () => {
+      vi.mocked(caseService.rejectCase).mockRejectedValue(new Error('not in a rejectable state'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleRejectSubmit('r', row); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Reject Case Failed', expect.stringContaining('Case cannot be rejected'));
+    });
+
+    it('handles 403', async () => {
+      vi.mocked(caseService.rejectCase).mockRejectedValue(new Error('403'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleRejectSubmit('r', row); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Reject Case Failed', expect.stringContaining('Access Denied'));
+    });
+
+    it('handles 404', async () => {
+      vi.mocked(caseService.rejectCase).mockRejectedValue(new Error('404'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleRejectSubmit('r', row); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Reject Case Failed', expect.stringContaining('Case Not Found'));
+    });
+
+    it('handles Approval task validation failed', async () => {
+      vi.mocked(caseService.rejectCase).mockRejectedValue(new Error('Approval task validation failed'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleRejectSubmit('r', row); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Reject Case Failed', expect.stringContaining('Approval task validation failed'));
+    });
   });
 
-  it('rejects case creation', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      status: 'STATUS_99_ABANDONED',
-    };
-    (caseService.rejectCaseCreation as vi.Mock).mockResolvedValue(mockCase);
+  // ─── handleApproveSubmit ──────────────────────────────────────
 
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
+  describe('handleApproveSubmit', () => {
+    const row = { id: 1 } as any;
+    const data = { finalOutcome: 'STATUS_82_CLOSED_CONFIRMED' as any };
 
-    await act(async () => {
-      await result.current.handleRejectCreationSubmit('CASE-123', {
-        reason: 'Invalid data',
-      });
+    it('approves case closure successfully', async () => {
+      vi.mocked(caseService.approveCaseClosure).mockResolvedValue({ status: 'CLOSED' } as any);
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleApproveSubmit(data, row, 10); });
+
+      expect(caseService.approveCaseClosure).toHaveBeenCalledWith(1, data);
+      expect(toastMock.success).toHaveBeenCalledWith('Case Closure Approved', expect.any(String));
     });
 
-    expect(caseService.rejectCaseCreation).toHaveBeenCalled();
-    expect(mockSuccess).toHaveBeenCalled();
+    it('returns early when no selectedRow', async () => {
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleApproveSubmit(data, null, 10); });
+
+      expect(caseService.approveCaseClosure).not.toHaveBeenCalled();
+    });
+
+    it('handles not in pending approval status', async () => {
+      vi.mocked(caseService.approveCaseClosure).mockRejectedValue(new Error('not in pending approval status'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleApproveSubmit(data, row, 10); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Approve Case Failed', expect.stringContaining('Case cannot be approved'));
+    });
+
+    it('handles 403', async () => {
+      vi.mocked(caseService.approveCaseClosure).mockRejectedValue(new Error('403'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleApproveSubmit(data, row, 10); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Approve Case Failed', expect.stringContaining('Access Denied'));
+    });
+
+    it('handles 404', async () => {
+      vi.mocked(caseService.approveCaseClosure).mockRejectedValue(new Error('404'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleApproveSubmit(data, row, 10); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Approve Case Failed', expect.stringContaining('Case Not Found'));
+    });
+
+    it('handles Approval task validation failed', async () => {
+      vi.mocked(caseService.approveCaseClosure).mockRejectedValue(new Error('Approval task validation failed'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleApproveSubmit(data, row, 10); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Approve Case Failed', expect.stringContaining('Approval Task Validation Failed'));
+    });
   });
 
-  it('returns case for review', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      status: 'STATUS_03_RETURNED',
-    };
-    (caseService.returnCaseForReview as vi.Mock).mockResolvedValue(mockCase);
+  // ─── handleApproveCreationSubmit ──────────────────────────────
 
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
+  describe('handleApproveCreationSubmit', () => {
+    it('approves case creation successfully', async () => {
+      vi.mocked(caseService.approveCaseCreation).mockResolvedValue({ status: 'READY' } as any);
 
-    await act(async () => {
-      await result.current.handleReturnForReviewSubmit('CASE-123', {
-        reviewComments: 'Needs more work',
-      });
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleApproveCreationSubmit(1, 10); });
+
+      expect(caseService.approveCaseCreation).toHaveBeenCalledWith(1);
+      expect(toastMock.success).toHaveBeenCalledWith('Case Creation Approved', expect.any(String));
     });
 
-    expect(caseService.returnCaseForReview).toHaveBeenCalled();
-    expect(mockSuccess).toHaveBeenCalled();
+    it('handles state error', async () => {
+      vi.mocked(caseService.approveCaseCreation).mockRejectedValue(new Error('not in PENDING_CASE_CREATION_APPROVAL state'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleApproveCreationSubmit(1, 10); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Approve Case Creation Failed', expect.stringContaining('Case cannot be approved'));
+    });
+
+    it('handles Unauthorized', async () => {
+      vi.mocked(caseService.approveCaseCreation).mockRejectedValue(new Error('Unauthorized'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleApproveCreationSubmit(1, 10); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Approve Case Creation Failed', expect.stringContaining('Access Denied'));
+    });
+
+    it('handles 404', async () => {
+      vi.mocked(caseService.approveCaseCreation).mockRejectedValue(new Error('404'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleApproveCreationSubmit(1, 10); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Approve Case Creation Failed', expect.stringContaining('Case Not Found'));
+    });
   });
 
-  it('handles reject submit with null selectedRow', async () => {
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
+  // ─── handleRejectCreationSubmit ───────────────────────────────
 
-    await act(async () => {
-      await result.current.handleRejectSubmit('Reason', null);
+  describe('handleRejectCreationSubmit', () => {
+    const data = { reason: 'not ready' } as any;
+
+    it('rejects case creation successfully', async () => {
+      vi.mocked(caseService.rejectCaseCreation).mockResolvedValue({ status: 'DRAFT' } as any);
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleRejectCreationSubmit(1, data); });
+
+      expect(caseService.rejectCaseCreation).toHaveBeenCalledWith(1, data);
+      expect(toastMock.success).toHaveBeenCalledWith('Case Creation Rejected', expect.any(String));
     });
 
-    expect(caseService.rejectCase).not.toHaveBeenCalled();
+    it('handles state error', async () => {
+      vi.mocked(caseService.rejectCaseCreation).mockRejectedValue(new Error('not in PENDING_CASE_CREATION_APPROVAL state'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleRejectCreationSubmit(1, data); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Reject Case Creation Failed', expect.stringContaining('Case cannot be rejected'));
+    });
+
+    it('handles 403', async () => {
+      vi.mocked(caseService.rejectCaseCreation).mockRejectedValue(new Error('403'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleRejectCreationSubmit(1, data); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Reject Case Creation Failed', expect.stringContaining('Access Denied'));
+    });
+
+    it('handles 404', async () => {
+      vi.mocked(caseService.rejectCaseCreation).mockRejectedValue(new Error('404'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleRejectCreationSubmit(1, data); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Reject Case Creation Failed', expect.stringContaining('Case Not Found'));
+    });
   });
 
-  it('handles approve submit with null selectedRow', async () => {
-    const { result } = renderHook(() => useCaseActions(mockRefreshCases));
+  // ─── handleReturnForReviewSubmit ──────────────────────────────
 
-    await act(async () => {
-      await result.current.handleApproveSubmit(
-        { finalOutcome: 'STATUS_82_CLOSED_CONFIRMED' },
-        null,
-      );
+  describe('handleReturnForReviewSubmit', () => {
+    const data = { reviewComments: 'needs more' } as any;
+
+    it('returns case for review successfully', async () => {
+      vi.mocked(caseService.returnCaseForReview).mockResolvedValue({ status: 'IN_PROGRESS' } as any);
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleReturnForReviewSubmit(1, data); });
+
+      expect(caseService.returnCaseForReview).toHaveBeenCalledWith(1, data);
+      expect(toastMock.success).toHaveBeenCalledWith('Case Returned for Review', expect.any(String));
     });
 
-    expect(caseService.approveCaseClosure).not.toHaveBeenCalled();
+    it('handles not in pending approval status', async () => {
+      vi.mocked(caseService.returnCaseForReview).mockRejectedValue(new Error('not in pending approval status'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleReturnForReviewSubmit(1, data); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Return Case for Review Failed', expect.stringContaining('Case cannot be returned'));
+    });
+
+    it('handles Unauthorized', async () => {
+      vi.mocked(caseService.returnCaseForReview).mockRejectedValue(new Error('Unauthorized'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleReturnForReviewSubmit(1, data); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Return Case for Review Failed', expect.stringContaining('Access Denied'));
+    });
+
+    it('handles 404', async () => {
+      vi.mocked(caseService.returnCaseForReview).mockRejectedValue(new Error('404'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleReturnForReviewSubmit(1, data); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Return Case for Review Failed', expect.stringContaining('Case Not Found'));
+    });
+
+    it('handles Approval task validation failed', async () => {
+      vi.mocked(caseService.returnCaseForReview).mockRejectedValue(new Error('Approval task validation failed'));
+
+      const { result } = renderHook(() => useCaseActions(refreshMock));
+      await act(async () => { await result.current.handleReturnForReviewSubmit(1, data); });
+
+      expect(toastMock.error).toHaveBeenCalledWith('Return Case for Review Failed', expect.stringContaining('Approval Task Validation Failed'));
+    });
+  });
+
+  // ─── setCreateCaseError ───────────────────────────────────────
+
+  it('setCreateCaseError updates error state', async () => {
+    const { result } = renderHook(() => useCaseActions(refreshMock));
+    act(() => result.current.setCreateCaseError('custom error'));
+    expect(result.current.createCaseError).toBe('custom error');
   });
 });

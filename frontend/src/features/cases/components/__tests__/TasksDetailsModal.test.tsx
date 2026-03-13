@@ -16,7 +16,12 @@ vi.mock('../view/TaskDetailsTab', () => ({
 }));
 
 vi.mock('../view/TaskEvidenceTab', () => ({
-  default: () => <div>Task Evidence Tab</div>,
+  default: ({ onUploadComplete }: any) => (
+    <div>
+      Task Evidence Tab
+      <button onClick={onUploadComplete}>Upload Complete</button>
+    </div>
+  ),
 }));
 
 vi.mock('../view/LinkedItemsTab', () => ({
@@ -24,11 +29,21 @@ vi.mock('../view/LinkedItemsTab', () => ({
 }));
 
 vi.mock('../view/InvestigationNotesTab', () => ({
-  default: () => <div>Investigation Notes Tab</div>,
+  default: ({ onNotesUpdate }: any) => (
+    <div>
+      Investigation Notes Tab
+      <button onClick={onNotesUpdate}>Notes Updated</button>
+    </div>
+  ),
 }));
 
-vi.mock('../view/CustomerProfileTab', () => ({
-  default: () => <div>Customer Profile Tab</div>,
+vi.mock('../view/InvestigationsSummaryTab', () => ({
+  default: ({ onTaskUpdate }: any) => (
+    <div>
+      Investigation Summary Tab
+      <button onClick={onTaskUpdate}>Task Updated</button>
+    </div>
+  ),
 }));
 
 vi.mock('../view/CollaboratePanel', () => ({
@@ -41,12 +56,6 @@ import TasksDetailsModal from '../TasksDetailsModal';
 // We need to mock it at the path the component expects
 // Since there's no services folder in components, this might be a path alias
 // Let's mock both possible paths
-vi.mock('../services/taskService', () => ({
-  taskService: {
-    getTasksByCaseId: vi.fn(),
-  },
-}));
-
 vi.mock('../../services/taskService', () => ({
   taskService: {
     getTasksByCaseId: vi.fn(),
@@ -57,7 +66,8 @@ vi.mock('../../services/taskService', () => ({
 import { taskService } from '../../services/taskService';
 
 const mockCaseData: CaseRow = {
-  id: 'CASE-123',
+  id: 123,
+  alertId: 456,
   type: 'FRAUD',
   typeColor: 'bg-red-50',
   status: 'STATUS_20_IN_PROGRESS',
@@ -79,7 +89,7 @@ describe('TasksDetailsModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue([]);
+    vi.mocked(taskService.getTasksByCaseId).mockResolvedValue([]);
   });
 
   const renderModal = (
@@ -91,6 +101,7 @@ describe('TasksDetailsModal', () => {
         onClose={mockOnClose}
         row={mockCaseData}
         onRefreshCases={mockOnRefreshCases}
+        selectedTask={null}
         {...props}
       />,
     );
@@ -122,12 +133,12 @@ describe('TasksDetailsModal', () => {
         status: 'IN_PROGRESS',
       },
     ];
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
+    vi.mocked(taskService.getTasksByCaseId).mockResolvedValue(mockTasks);
 
     renderModal({});
 
     await waitFor(() => {
-      expect(taskService.getTasksByCaseId).toHaveBeenCalledWith('CASE-123');
+      expect(taskService.getTasksByCaseId).toHaveBeenCalledWith(123);
     });
   });
 
@@ -139,5 +150,66 @@ describe('TasksDetailsModal', () => {
     await user.click(closeButtons[0]); // Click the first close button
 
     expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  it('logs error when fetch fails', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(taskService.getTasksByCaseId).mockRejectedValue(
+      new Error('Fetch failed'),
+    );
+
+    renderModal({});
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalled();
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('switches tabs when tab button is clicked', async () => {
+    const user = userEvent.setup();
+    renderModal({});
+
+    await user.click(screen.getByRole('button', { name: 'Evidence' }));
+
+    // After clicking, the Evidence tab content is visible
+    expect(screen.getByText('Upload Complete')).toBeInTheDocument();
+  });
+
+  it('triggers onUploadComplete callback from TaskEvidenceTab', async () => {
+    const user = userEvent.setup();
+    renderModal({});
+
+    await user.click(screen.getByRole('button', { name: 'Evidence' }));
+    await user.click(screen.getByRole('button', { name: 'Upload Complete' }));
+    // Just verify no error was thrown - state update happens internally
+  });
+
+  it('triggers onNotesUpdate callback from InvestigationNotesTab', async () => {
+    const user = userEvent.setup();
+    renderModal({});
+
+    await user.click(
+      screen.getByRole('button', { name: 'Investigation Notes' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Notes Updated' }));
+    // Just verify no error was thrown - state update happens internally
+  });
+
+  it('triggers onTaskUpdate from InvestigationSummaryTab and calls prop', async () => {
+    const user = userEvent.setup();
+    const mockOnTaskUpdate = vi.fn();
+    vi.mocked(taskService.getTasksByCaseId).mockResolvedValue([]);
+
+    renderModal({ onTaskUpdate: mockOnTaskUpdate });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Investigation Summary' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Task Updated' }));
+
+    await waitFor(() => {
+      expect(mockOnTaskUpdate).toHaveBeenCalled();
+    });
   });
 });

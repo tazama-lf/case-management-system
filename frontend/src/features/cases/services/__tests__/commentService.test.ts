@@ -6,8 +6,126 @@ vi.mock('../../../../shared/services/apiClient');
 
 describe('CommentService', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
+
+  // ─── getCommentsByCaseId ────────────────────────────────────────
+
+  describe('getCommentsByCaseId', () => {
+    it('fetches task comments grouped by case ID', async () => {
+      const mockComments = [
+        { comment_id: 1, user_id: 'u1', note: 'Comment 1', case_id: 1, task_id: 10, created_at: '2024-01-01', updated_at: '2024-01-01' },
+      ];
+      (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue(mockComments);
+
+      const result = await commentService.getCommentsByCaseId(1);
+
+      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/comment/case/1/comment');
+      expect(result).toEqual(mockComments);
+    });
+
+    it('returns empty array when response is not an array', async () => {
+      (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+      const result = await commentService.getCommentsByCaseId(1);
+      expect(result).toEqual([]);
+    });
+
+    it('handles API error with response data', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const apiError = { response: { data: { message: 'API error' } } };
+      (apiClient.get as ReturnType<typeof vi.fn>).mockRejectedValue(apiError);
+
+      await expect(commentService.getCommentsByCaseId(1)).rejects.toThrow('API error');
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('handles Error instance', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      (apiClient.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network fail'));
+
+      await expect(commentService.getCommentsByCaseId(1)).rejects.toThrow(
+        'Failed to get tasks with comments by case ID: Network fail',
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('handles non-Error rejection', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      (apiClient.get as ReturnType<typeof vi.fn>).mockRejectedValue('string error');
+
+      await expect(commentService.getCommentsByCaseId(1)).rejects.toThrow(
+        'Failed to get tasks with comments by case ID',
+      );
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  // ─── getCommentsByTaskId ────────────────────────────────────────
+
+  describe('getCommentsByTaskId', () => {
+    it('fetches task comments grouped by task ID', async () => {
+      const mockComments = [
+        { comment_id: 1, user_id: 'u1', note: 'Task comment', case_id: 1, task_id: 10, created_at: '2024-01-01', updated_at: '2024-01-01' },
+      ];
+      (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue(mockComments);
+
+      const result = await commentService.getCommentsByTaskId(10);
+
+      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/comment/task/10/comment');
+      expect(result).toEqual(mockComments);
+    });
+
+    it('returns empty array when response is not an array', async () => {
+      (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({});
+
+      const result = await commentService.getCommentsByTaskId(10);
+      expect(result).toEqual([]);
+    });
+
+    it('handles API error with response data', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const apiError = { response: { data: { message: 'Not found' } } };
+      (apiClient.get as ReturnType<typeof vi.fn>).mockRejectedValue(apiError);
+
+      await expect(commentService.getCommentsByTaskId(10)).rejects.toThrow('Not found');
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('handles Error instance', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      (apiClient.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('fail'));
+
+      await expect(commentService.getCommentsByTaskId(10)).rejects.toThrow(
+        'Failed to get tasks with comments by task ID: fail',
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('handles non-Error rejection', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      (apiClient.get as ReturnType<typeof vi.fn>).mockRejectedValue(42);
+
+      await expect(commentService.getCommentsByTaskId(10)).rejects.toThrow(
+        'Failed to get tasks with comments by task ID',
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('handles API error without message', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const apiError = { response: { data: {} } };
+      (apiClient.get as ReturnType<typeof vi.fn>).mockRejectedValue(apiError);
+
+      await expect(commentService.getCommentsByTaskId(10)).rejects.toThrow(
+        'Failed to get tasks with comments by task ID',
+      );
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  // ─── addComment ─────────────────────────────────────────────────
 
   describe('addComment', () => {
     it('adds a comment successfully with caseId', async () => {

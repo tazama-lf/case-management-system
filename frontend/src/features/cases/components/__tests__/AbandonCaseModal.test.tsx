@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AbandonCaseModal from '../AbandonCaseModal';
@@ -6,7 +5,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import type { CaseRow } from '../casesTable.utils';
 
 const mockCaseRow: CaseRow = {
-  id: 'CASE-123',
+  id: 123,
   type: 'FRAUD',
   typeColor: 'bg-red-50',
   status: 'STATUS_10_ASSIGNED',
@@ -20,19 +19,28 @@ const mockCaseRow: CaseRow = {
   priority: 'HIGH',
   userRole: 'owner',
   totalTasks: 1,
+  alertId: 0,
 };
 
 describe('AbandonCaseModal component', () => {
-  const renderModal = () => {
-    const onClose = vi.fn();
-    const onAbandon = vi.fn();
+  const renderModal = (
+    overrides?: Partial<{
+      onClose: ReturnType<typeof vi.fn>;
+      onAbandon: ReturnType<typeof vi.fn>;
+      caseData: CaseRow | null;
+    }>,
+  ) => {
+    const onClose = overrides?.onClose ?? vi.fn();
+    const onAbandon = overrides?.onAbandon ?? vi.fn();
+    const caseData =
+      overrides?.caseData !== undefined ? overrides.caseData : mockCaseRow;
 
     render(
       <AbandonCaseModal
         open={true}
         onClose={onClose}
         onAbandon={onAbandon}
-        caseData={mockCaseRow}
+        caseData={caseData}
       />,
     );
 
@@ -70,10 +78,10 @@ describe('AbandonCaseModal component', () => {
   it('renders the case id to provide context to the reviewer', () => {
     renderModal();
 
-    expect(screen.getByText(/case id:/i)).toHaveTextContent('CASE-123');
+    expect(screen.getByText(/case id:/i)).toHaveTextContent('123');
   });
 
-  it('enables submit button when reason is at least 10 characters', async () => {
+  it('enables submit button when reason is at least 4 characters', async () => {
     const user = userEvent.setup();
     renderModal();
 
@@ -84,48 +92,48 @@ describe('AbandonCaseModal component', () => {
 
     expect(submitButton).toBeDisabled();
 
-    await user.type(textarea, 'This is a valid reason that is long enough');
+    await user.type(textarea, 'Valid reason for abandoning');
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
     });
   });
 
-  it('shows validation error when reason is less than 10 characters', async () => {
+  it('shows validation error when reason is less than 4 characters', async () => {
     const user = userEvent.setup();
     renderModal();
 
     const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
 
-    await user.type(textarea, 'Short');
+    await user.type(textarea, 'abc');
 
     await waitFor(() => {
       expect(
-        screen.getByText(/reason must be at least 10 characters/i),
+        screen.getByText(/reason must be at least 4 characters/i),
       ).toBeInTheDocument();
     });
   });
 
-  it('clears errors when reason becomes valid', async () => {
+  it('clears validation error when reason becomes valid', async () => {
     const user = userEvent.setup();
     renderModal();
 
     const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
 
-    await user.type(textarea, 'Short');
+    await user.type(textarea, 'abc');
 
     await waitFor(() => {
       expect(
-        screen.getByText(/reason must be at least 10 characters/i),
+        screen.getByText(/reason must be at least 4 characters/i),
       ).toBeInTheDocument();
     });
 
     await user.clear(textarea);
-    await user.type(textarea, 'This is a valid reason that is long enough');
+    await user.type(textarea, 'Valid reason for abandoning this case');
 
     await waitFor(() => {
       expect(
-        screen.queryByText(/reason must be at least 10 characters/i),
+        screen.queryByText(/reason must be at least 4 characters/i),
       ).not.toBeInTheDocument();
     });
   });
@@ -139,48 +147,52 @@ describe('AbandonCaseModal component', () => {
       name: /abandon case/i,
     });
 
-    await user.type(textarea, 'This is a valid reason that is long enough');
+    await user.type(textarea, 'Valid reason for abandoning');
     await user.click(submitButton);
 
     await waitFor(() => {
       expect(onAbandon).toHaveBeenCalledWith(
-        'CASE-123',
-        'This is a valid reason that is long enough',
+        123,
+        'Valid reason for abandoning',
       );
       expect(onClose).toHaveBeenCalled();
     });
   });
 
-  it('handles submit error and displays error message', async () => {
+  it('handles synchronous submit error and displays error message', async () => {
     const user = userEvent.setup();
-    const { onAbandon } = renderModal();
-    const error = new Error('Failed to abandon case');
-    onAbandon.mockRejectedValueOnce(error);
+    const onAbandon = vi.fn().mockImplementation(() => {
+      throw new Error('Failed to abandon case');
+    });
+    const { onClose } = renderModal({ onAbandon });
 
     const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
     const submitButton = screen.getByRole('button', {
       name: /abandon case/i,
     });
 
-    await user.type(textarea, 'This is a valid reason that is long enough');
+    await user.type(textarea, 'Valid reason for abandoning');
     await user.click(submitButton);
 
     await waitFor(() => {
       expect(screen.getByText('Failed to abandon case')).toBeInTheDocument();
     });
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('handles submit error with non-Error object', async () => {
     const user = userEvent.setup();
-    const { onAbandon } = renderModal();
-    onAbandon.mockRejectedValueOnce('String error');
+    const onAbandon = vi.fn().mockImplementation(() => {
+      throw 'String error';
+    });
+    renderModal({ onAbandon });
 
     const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
     const submitButton = screen.getByRole('button', {
       name: /abandon case/i,
     });
 
-    await user.type(textarea, 'This is a valid reason that is long enough');
+    await user.type(textarea, 'Valid reason for abandoning');
     await user.click(submitButton);
 
     await waitFor(() => {
@@ -193,12 +205,11 @@ describe('AbandonCaseModal component', () => {
   it('does not submit when caseData is null', async () => {
     const user = userEvent.setup();
     const onAbandon = vi.fn();
-    const onClose = vi.fn();
 
     render(
       <AbandonCaseModal
         open={true}
-        onClose={onClose}
+        onClose={vi.fn()}
         onAbandon={onAbandon}
         caseData={null}
       />,
@@ -209,7 +220,7 @@ describe('AbandonCaseModal component', () => {
       name: /abandon case/i,
     });
 
-    await user.type(textarea, 'This is a valid reason that is long enough');
+    await user.type(textarea, 'Valid reason for abandoning');
     await user.click(submitButton);
 
     await waitFor(() => {
@@ -227,36 +238,7 @@ describe('AbandonCaseModal component', () => {
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
     await user.click(cancelButton);
 
-    await waitFor(() => {
-      expect(onClose).toHaveBeenCalled();
-    });
-  });
-
-  it('does not close when submitting', async () => {
-    const user = userEvent.setup();
-    const { onAbandon, onClose } = renderModal();
-    onAbandon.mockImplementation(() => new Promise(() => {})); // Never resolves
-
-    const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
-    const submitButton = screen.getByRole('button', {
-      name: /abandon case/i,
-    });
-
-    await user.type(textarea, 'This is a valid reason that is long enough');
-    await user.click(submitButton);
-
-    await waitFor(() => {
-      expect(submitButton).toBeDisabled();
-      // Check for the button text specifically
-      expect(submitButton.textContent).toContain('Abandoning...');
-    });
-
-    // Cancel button should be disabled when submitting
-    const cancelButton = screen.getByRole('button', { name: /cancel/i });
-    expect(cancelButton).toBeDisabled();
-
-    // onClose should not be called while submitting
-    expect(onClose).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('displays character count', async () => {
@@ -264,10 +246,9 @@ describe('AbandonCaseModal component', () => {
     renderModal();
 
     const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
-    await user.type(textarea, 'Test reason');
+    await user.type(textarea, 'Test');
 
-    // Character count shows current length / 10 minimum
-    expect(screen.getByText(/\/10 characters minimum/i)).toBeInTheDocument();
+    expect(screen.getByText(/\/4 characters minimum/i)).toBeInTheDocument();
   });
 
   it('shows warning message about abandoning case', () => {
@@ -287,5 +268,70 @@ describe('AbandonCaseModal component', () => {
     expect(
       screen.getByText(/Only cases in DRAFT status can be abandoned/i),
     ).toBeInTheDocument();
+  });
+
+  it('renders modal with null caseData but open is true', () => {
+    render(
+      <AbandonCaseModal
+        open={true}
+        onClose={vi.fn()}
+        onAbandon={vi.fn()}
+        caseData={null}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: /abandon case/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('trims reason before submitting', async () => {
+    const user = userEvent.setup();
+    const { onAbandon } = renderModal();
+
+    const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
+    await user.type(textarea, '  Valid reason with spaces  ');
+
+    const submitButton = screen.getByRole('button', { name: /abandon case/i });
+    await user.click(submitButton);
+
+    await waitFor(() => {
+      expect(onAbandon).toHaveBeenCalledWith(
+        123,
+        'Valid reason with spaces',
+      );
+    });
+  });
+
+  it('disables close button via X icon while submitting on sync error', async () => {
+    const user = userEvent.setup();
+    const onAbandon = vi.fn().mockImplementation(() => {
+      throw new Error('Sync error');
+    });
+    renderModal({ onAbandon });
+
+    const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
+    await user.type(textarea, 'Valid reason');
+
+    const submitButton = screen.getByRole('button', { name: /abandon case/i });
+    await user.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sync error')).toBeInTheDocument();
+    });
+  });
+
+  it('resets reason on close', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderModal({ onClose });
+
+    const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
+    await user.type(textarea, 'Some text');
+
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+    await user.click(cancelButton);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

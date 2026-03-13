@@ -1,79 +1,124 @@
-import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook, waitFor } from '@testing-library/react';
 import { useAbandonCaseActions } from '../useAbandonCaseActions';
 import { caseService } from '../../services/caseService';
 import { useToast } from '../../../../shared/providers/ToastProvider';
 
-vi.mock('../../services/caseService');
-vi.mock('../../../../shared/providers/ToastProvider');
+vi.mock('../../services/caseService', () => ({
+  caseService: { abandonCase: vi.fn() },
+}));
+
+vi.mock('../../../../shared/providers/ToastProvider', () => ({
+  useToast: vi.fn(),
+}));
 
 describe('useAbandonCaseActions', () => {
   const mockSuccess = vi.fn();
   const mockError = vi.fn();
-  const mockRefreshCases = vi.fn();
+  const mockRefresh = vi.fn().mockResolvedValue(undefined);
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useToast as vi.Mock).mockReturnValue({
-      success: mockSuccess,
-      error: mockError,
-    });
+    vi.mocked(useToast).mockReturnValue({ success: mockSuccess, error: mockError } as any);
   });
 
-  it('abandons case successfully', async () => {
-    const mockAbandonedCase = {
-      id: 'CASE-123',
-      status: 'STATUS_90_ABANDONED',
-    };
-    (caseService.abandonCase as vi.Mock).mockResolvedValue(mockAbandonedCase);
+  it('abandons a case and calls success + refresh', async () => {
+    vi.mocked(caseService.abandonCase).mockResolvedValue({ status: 'ABANDONED' } as any);
 
-    const { result } = renderHook(() =>
-      useAbandonCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useAbandonCaseActions(mockRefresh));
+    await result.current.handleAbandonSubmit(123, 'No longer needed');
 
-    await result.current.handleAbandonSubmit('CASE-123', 'Test reason');
-
-    await waitFor(() => {
-      expect(caseService.abandonCase).toHaveBeenCalledWith('CASE-123', {
-        reason: 'Test reason',
-      });
-      expect(mockSuccess).toHaveBeenCalled();
-      expect(mockRefreshCases).toHaveBeenCalled();
-    });
+    expect(caseService.abandonCase).toHaveBeenCalledWith(123, { reason: 'No longer needed' });
+    expect(mockSuccess).toHaveBeenCalledWith('Case Abandoned', expect.stringContaining('123'));
+    expect(mockRefresh).toHaveBeenCalled();
   });
 
-  it('handles error when case cannot be abandoned', async () => {
-    const error = new Error('Cannot abandon case other than draft status');
-    (caseService.abandonCase as vi.Mock).mockRejectedValue(error);
+  it('trims reason string', async () => {
+    vi.mocked(caseService.abandonCase).mockResolvedValue({} as any);
 
-    const { result } = renderHook(() =>
-      useAbandonCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useAbandonCaseActions(mockRefresh));
+    await result.current.handleAbandonSubmit(1, '  spaced  ');
 
-    await expect(
-      result.current.handleAbandonSubmit('CASE-123', 'Test reason'),
-    ).rejects.toThrow();
-
-    await waitFor(() => {
-      expect(mockError).toHaveBeenCalled();
-      expect(mockRefreshCases).not.toHaveBeenCalled();
-    });
+    expect(caseService.abandonCase).toHaveBeenCalledWith(1, { reason: 'spaced' });
   });
 
-  it('handles unauthorized error', async () => {
-    const error = new Error('Unauthorized');
-    (caseService.abandonCase as vi.Mock).mockRejectedValue(error);
+  it('shows draft-status error', async () => {
+    vi.mocked(caseService.abandonCase).mockRejectedValue(new Error('Cannot abandon case other than draft status'));
 
-    const { result } = renderHook(() =>
-      useAbandonCaseActions(mockRefreshCases),
-    );
+    const { result } = renderHook(() => useAbandonCaseActions(mockRefresh));
+    await expect(result.current.handleAbandonSubmit(1, 'r')).rejects.toThrow();
 
-    await expect(
-      result.current.handleAbandonSubmit('CASE-123', 'Test reason'),
-    ).rejects.toThrow();
+    expect(mockError).toHaveBeenCalledWith('Abandon Case Failed', expect.stringContaining('Cannot abandon case'));
+  });
 
-    await waitFor(() => {
-      expect(mockError).toHaveBeenCalled();
-    });
+  it('shows pending-task error', async () => {
+    vi.mocked(caseService.abandonCase).mockRejectedValue(new Error('No complete new Case Task exists'));
+
+    const { result } = renderHook(() => useAbandonCaseActions(mockRefresh));
+    await expect(result.current.handleAbandonSubmit(1, 'r')).rejects.toThrow();
+
+    expect(mockError).toHaveBeenCalledWith('Abandon Case Failed', expect.stringContaining('pending task'));
+  });
+
+  it('shows unauthorized error', async () => {
+    vi.mocked(caseService.abandonCase).mockRejectedValue(new Error('Unauthorized'));
+
+    const { result } = renderHook(() => useAbandonCaseActions(mockRefresh));
+    await expect(result.current.handleAbandonSubmit(1, 'r')).rejects.toThrow();
+
+    expect(mockError).toHaveBeenCalledWith('Abandon Case Failed', expect.stringContaining('Access denied'));
+  });
+
+  it('shows 403 error', async () => {
+    vi.mocked(caseService.abandonCase).mockRejectedValue(new Error('403'));
+
+    const { result } = renderHook(() => useAbandonCaseActions(mockRefresh));
+    await expect(result.current.handleAbandonSubmit(1, 'r')).rejects.toThrow();
+
+    expect(mockError).toHaveBeenCalledWith('Abandon Case Failed', expect.stringContaining('Access denied'));
+  });
+
+  it('shows not-found error', async () => {
+    vi.mocked(caseService.abandonCase).mockRejectedValue(new Error('not found'));
+
+    const { result } = renderHook(() => useAbandonCaseActions(mockRefresh));
+    await expect(result.current.handleAbandonSubmit(1, 'r')).rejects.toThrow();
+
+    expect(mockError).toHaveBeenCalledWith('Abandon Case Failed', expect.stringContaining('not found'));
+  });
+
+  it('shows 404 error', async () => {
+    vi.mocked(caseService.abandonCase).mockRejectedValue(new Error('404'));
+
+    const { result } = renderHook(() => useAbandonCaseActions(mockRefresh));
+    await expect(result.current.handleAbandonSubmit(1, 'r')).rejects.toThrow();
+
+    expect(mockError).toHaveBeenCalledWith('Abandon Case Failed', expect.stringContaining('not found'));
+  });
+
+  it('shows raw backend error for unknown errors', async () => {
+    vi.mocked(caseService.abandonCase).mockRejectedValue(new Error('Something unexpected'));
+
+    const { result } = renderHook(() => useAbandonCaseActions(mockRefresh));
+    await expect(result.current.handleAbandonSubmit(1, 'r')).rejects.toThrow();
+
+    expect(mockError).toHaveBeenCalledWith('Abandon Case Failed', 'Something unexpected');
+  });
+
+  it('shows generic error for non-Error throws', async () => {
+    vi.mocked(caseService.abandonCase).mockRejectedValue('string error');
+
+    const { result } = renderHook(() => useAbandonCaseActions(mockRefresh));
+    await expect(result.current.handleAbandonSubmit(1, 'r')).rejects.toBe('string error');
+
+    expect(mockError).toHaveBeenCalledWith('Abandon Case Failed', 'Could not abandon case.');
+  });
+
+  it('re-throws the error', async () => {
+    const err = new Error('fail');
+    vi.mocked(caseService.abandonCase).mockRejectedValue(err);
+
+    const { result } = renderHook(() => useAbandonCaseActions(mockRefresh));
+    await expect(result.current.handleAbandonSubmit(1, 'r')).rejects.toBe(err);
   });
 });

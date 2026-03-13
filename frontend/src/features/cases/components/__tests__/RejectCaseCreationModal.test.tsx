@@ -1,28 +1,43 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import RejectCaseCreationModal from '../RejectCaseCreationModal';
+import { triageService } from '@/features/alerts';
 import type { CaseRow } from '../casesTable.utils';
 
+vi.mock('@/features/alerts', () => ({
+  triageService: {
+    getAlertById: vi.fn().mockResolvedValue({
+      alert_id: 'ALERT-123',
+      confidence_per: 85,
+      alert_type: 'FRAUD',
+      status: 'NALT',
+      source: 'Source A',
+      priority: 850,
+      created_at: '2023-01-01T00:00:00Z',
+      message: 'Suspicious transaction detected',
+      prediction_outcome: 'FRAUD',
+      txtp: 'p2p',
+      transaction: { amount: 1000, currency: 'USD' },
+    }),
+  },
+}));
+
 const mockCaseData: CaseRow = {
-  id: 'CASE-123',
+  id: 123,
   type: 'FRAUD',
   typeColor: 'bg-red-50',
   status: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
   statusColor: 'bg-yellow-50',
-  typologyId: 'TYP-001',
   score: 90,
   createdOn: '01/01/2023',
   pickedOn: '02/01/2023',
-  action: 'View',
   assignee: 'John Doe',
   priority: 'HIGH',
   userRole: 'owner',
   totalTasks: 1,
-  alertId: 'ALERT-123',
-  confidencePercent: 85,
-  alertMessage: 'Suspicious transaction detected',
+  alertId: 456,
 };
 
 describe('RejectCaseCreationModal', () => {
@@ -74,7 +89,7 @@ describe('RejectCaseCreationModal', () => {
     expect(
       screen.getByRole('heading', { name: /Reject Case Creation/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Case ID: CASE-123/i)).toBeInTheDocument();
+    expect(screen.getByText(/Case ID: 123/i)).toBeInTheDocument();
     // FRAUD appears multiple times, just check it exists
     expect(screen.getAllByText(/FRAUD/i).length).toBeGreaterThan(0);
   });
@@ -95,7 +110,7 @@ describe('RejectCaseCreationModal', () => {
     expect(screen.getByText('Created On')).toBeInTheDocument();
   });
 
-  it('displays alert information when alertId is present', () => {
+  it('displays alert information when alertId is present', async () => {
     render(
       <RejectCaseCreationModal
         open={true}
@@ -106,8 +121,11 @@ describe('RejectCaseCreationModal', () => {
     );
 
     expect(screen.getByText('Associated Alert')).toBeInTheDocument();
-    expect(screen.getByText('ALERT-123')).toBeInTheDocument();
-    expect(screen.getByText('85%')).toBeInTheDocument();
+    // Wait for async alert fetch to complete
+    await screen.findByText('85.00%');
+    expect(screen.getByText('85.00%')).toBeInTheDocument();
+    // Alert details should show (FRAUD appears multiple times)
+    expect(screen.getAllByText('FRAUD').length).toBeGreaterThan(0);
   });
 
   it('validates rejection reason minimum length', async () => {
@@ -128,13 +146,13 @@ describe('RejectCaseCreationModal', () => {
       name: /Reject Case Creation/i,
     });
 
-    // Try to submit with short reason
-    await user.type(textarea, 'short');
+    // Try to submit with too-short reason (< 4 chars)
+    await user.type(textarea, 'ab');
     await user.click(submitButton);
 
     expect(
       await screen.findByText(
-        /Rejection reason must be at least 10 characters/i,
+        /Rejection reason must be at least 4 characters/i,
       ),
     ).toBeInTheDocument();
     expect(mockOnSubmit).not.toHaveBeenCalled();
@@ -194,7 +212,7 @@ describe('RejectCaseCreationModal', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(mockOnSubmit).toHaveBeenCalledWith('CASE-123', {
+      expect(mockOnSubmit).toHaveBeenCalledWith(123, {
         reason: 'This is a valid rejection reason',
       });
     });
@@ -311,13 +329,13 @@ describe('RejectCaseCreationModal', () => {
       name: /Reject Case Creation/i,
     });
 
-    // Submit with invalid reason
-    await user.type(textarea, 'short');
+    // Submit with invalid reason (< 4 chars)
+    await user.type(textarea, 'ab');
     await user.click(submitButton);
 
     expect(
       await screen.findByText(
-        /Rejection reason must be at least 10 characters/i,
+        /Rejection reason must be at least 4 characters/i,
       ),
     ).toBeInTheDocument();
 
@@ -327,8 +345,155 @@ describe('RejectCaseCreationModal', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByText(/Rejection reason must be at least 10 characters/i),
+        screen.queryByText(/Rejection reason must be at least 4 characters/i),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows character count display', async () => {
+    const user = userEvent.setup();
+    render(
+      <RejectCaseCreationModal
+        open={true}
+        onClose={mockOnClose}
+        caseData={mockCaseData}
+        onSubmit={mockOnSubmit}
+      />,
+    );
+
+    const textarea = screen.getByPlaceholderText(
+      /Provide feedback on what needs to be corrected/i,
+    );
+    await user.type(textarea, 'Test');
+
+    expect(screen.getByText('4/4 characters minimum')).toBeInTheDocument();
+    expect(screen.getByText('4/500 characters')).toBeInTheDocument();
+  });
+
+  it('shows all alert detail fields when alert is loaded', async () => {
+    render(
+      <RejectCaseCreationModal
+        open={true}
+        onClose={mockOnClose}
+        caseData={mockCaseData}
+        onSubmit={mockOnSubmit}
+      />,
+    );
+
+    // Wait for alert to load
+    await screen.findByText('85.00%');
+
+    // Alert details fields
+    expect(screen.getByText('Source A')).toBeInTheDocument();
+    expect(screen.getByText('Suspicious transaction detected')).toBeInTheDocument();
+    expect(screen.getByText('Prediction Outcome')).toBeInTheDocument();
+  });
+
+  it('shows loading alert indicator when fetching alert', async () => {
+    // Make getAlertById slow
+    vi.mocked(triageService.getAlertById).mockImplementationOnce(
+      () => new Promise((resolve) => setTimeout(resolve, 500)),
+    );
+
+    render(
+      <RejectCaseCreationModal
+        open={true}
+        onClose={mockOnClose}
+        caseData={mockCaseData}
+        onSubmit={mockOnSubmit}
+      />,
+    );
+
+    expect(screen.getByText('Loading alert details...')).toBeInTheDocument();
+  });
+
+  it('shows "Unable to load alert details" when fetch fails', async () => {
+    vi.mocked(triageService.getAlertById).mockRejectedValueOnce(new Error('Network error'));
+
+    render(
+      <RejectCaseCreationModal
+        open={true}
+        onClose={mockOnClose}
+        caseData={mockCaseData}
+        onSubmit={mockOnSubmit}
+      />,
+    );
+
+    await screen.findByText('Unable to load alert details');
+  });
+
+  it('shows alert ID in the associated alert section', async () => {
+    render(
+      <RejectCaseCreationModal
+        open={true}
+        onClose={mockOnClose}
+        caseData={mockCaseData}
+        onSubmit={mockOnSubmit}
+      />,
+    );
+
+    // alertId section is shown
+    expect(screen.getByText('Associated Alert')).toBeInTheDocument();
+    // After loading, the Alert ID label appears
+    await screen.findByText('Alert ID');
+  });
+
+  it('shows transaction data when alertDetails has transaction object', async () => {
+    render(
+      <RejectCaseCreationModal
+        open={true}
+        onClose={mockOnClose}
+        caseData={mockCaseData}
+        onSubmit={mockOnSubmit}
+      />,
+    );
+
+    // Wait for alert fetch to complete
+    await screen.findByText('85.00%');
+
+    // Transaction data section renders
+    expect(screen.getByText('Transaction Data')).toBeInTheDocument();
+  });
+
+  it('shows transaction type field when txtp is present', async () => {
+    render(
+      <RejectCaseCreationModal
+        open={true}
+        onClose={mockOnClose}
+        caseData={mockCaseData}
+        onSubmit={mockOnSubmit}
+      />,
+    );
+
+    await screen.findByText('85.00%');
+    expect(screen.getByText('Transaction Type')).toBeInTheDocument();
+    expect(screen.getByText('p2p')).toBeInTheDocument();
+  });
+
+  it('triggers validation in handleSubmit when reason is too short (form submit)', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <RejectCaseCreationModal
+        open={true}
+        onClose={mockOnClose}
+        caseData={mockCaseData}
+        onSubmit={mockOnSubmit}
+      />,
+    );
+
+    // Type a reason that is too short (< 4 chars) to make isReasonValid false
+    const textarea = screen.getByPlaceholderText(
+      /Provide feedback on what needs to be corrected/i,
+    );
+    await user.type(textarea, 'ab');
+
+    // Submit form directly (bypasses disabled button)
+    const form = textarea.closest('form')!;
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(mockOnSubmit).not.toHaveBeenCalled();
     });
   });
 });

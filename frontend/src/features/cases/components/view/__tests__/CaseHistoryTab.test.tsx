@@ -1,244 +1,315 @@
-import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect,vi, beforeEach } from 'vitest';
 import CaseHistoryTab from '../CaseHistoryTab';
-import { caseService } from '../../../services/caseService';
-import { taskService } from '../../../services/taskService';
+import { caseHistoryService } from '../../../services/caseHistoryService';
+import { taskHistoryService } from '../../../services/taskHistoryService';
 import authService from '@/features/auth/services/authService';
-import type { CaseRow } from '../../casesTable.utils';
 
-vi.mock('../../../services/caseService');
-vi.mock('../../../services/taskService');
+vi.mock('../../../services/caseHistoryService');
+vi.mock('../../../services/taskHistoryService');
 vi.mock('@/features/auth/services/authService');
-
-const mockCaseRow: CaseRow = {
-  id: 'CASE-123',
-  type: 'FRAUD',
-  typeColor: 'bg-red-50',
-  status: 'STATUS_20_IN_PROGRESS',
-  statusColor: 'bg-blue-50',
-  typologyId: 'TYP-001',
-  score: 90,
-  createdOn: '01/01/2023',
-  pickedOn: '02/01/2023',
-  action: 'View',
-  assignee: 'John Doe',
-  priority: 'HIGH',
-  userRole: 'owner',
-  totalTasks: 1,
-};
+vi.mock('@/shared/utils/dateUtils', () => ({
+  formatDate: (date: string) => new Date(date).toLocaleDateString(),
+}));
 
 describe('CaseHistoryTab', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (authService.fetchAllInvestigators as vi.Mock).mockResolvedValue([
-      { id: 'user-1', firstName: 'John', lastName: 'Doe', username: 'jdoe' },
-    ]);
+    (authService.fetchAllInvestigators as vi.Mock).mockResolvedValue([]);
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([]);
+    (taskHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([]);
   });
 
   it('renders loading state initially', () => {
-    (caseService.getCaseDetails as vi.Mock).mockImplementation(
+    (caseHistoryService.getCaseHistory as vi.Mock).mockImplementation(
       () => new Promise(() => {}),
     );
-    render(<CaseHistoryTab caseId="CASE-123" />);
+    render(<CaseHistoryTab caseId={123} />);
     expect(document.querySelector('.animate-spin')).toBeInTheDocument();
   });
 
   it('displays case timeline after loading', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      case_type: 'FRAUD',
-      status: 'STATUS_20_IN_PROGRESS',
-      priority: 'HIGH',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      case_creator_user_id: 'user-1',
-      case_owner_user_id: 'user-1',
-    };
-    const mockTasks: any[] = [];
-    const mockHistory: any[] = [];
-
-    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue(mockHistory);
-
-    render(<CaseHistoryTab caseId="CASE-123" />);
-
+    render(<CaseHistoryTab caseId={123} />);
     await waitFor(() => {
       expect(screen.getByText('Case Timeline')).toBeInTheDocument();
     });
   });
 
-  it('fetches case details, tasks, and history on mount', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      case_type: 'FRAUD',
-      status: 'STATUS_20_IN_PROGRESS',
-      priority: 'HIGH',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      case_creator_user_id: 'user-1',
-      case_owner_user_id: 'user-1',
-    };
-    const mockTasks: any[] = [];
-    const mockHistory: any[] = [];
-
-    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue(mockHistory);
-
-    render(<CaseHistoryTab caseId="CASE-123" />);
-
+  it('fetches case and task history on mount', async () => {
+    render(<CaseHistoryTab caseId={123} />);
     await waitFor(() => {
-      expect(caseService.getCaseDetails).toHaveBeenCalledWith('CASE-123');
-      expect(taskService.getTasksByCaseId).toHaveBeenCalledWith('CASE-123');
-      expect(caseService.getCaseHistory).toHaveBeenCalledWith('CASE-123');
+      expect(caseHistoryService.getCaseHistory).toHaveBeenCalledWith(123);
+      expect(taskHistoryService.getCaseHistory).toHaveBeenCalledWith(123);
     });
   });
 
-  it('displays case creation event', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      case_type: 'FRAUD',
-      status: 'STATUS_20_IN_PROGRESS',
-      priority: 'HIGH',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      case_creator_user_id: 'user-1',
-      case_owner_user_id: 'user-1',
-    };
-    const mockTasks: any[] = [];
-    const mockHistory: any[] = [];
-
-    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue(mockHistory);
-
-    render(<CaseHistoryTab caseId="CASE-123" />);
-
+  it('displays empty state when no history events', async () => {
+    render(<CaseHistoryTab caseId={123} />);
     await waitFor(() => {
-      expect(
-        screen.getByText(/Case submitted for approval/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText('No history events available for this case')).toBeInTheDocument();
     });
   });
 
-  it('displays task events', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      case_type: 'FRAUD',
-      status: 'STATUS_20_IN_PROGRESS',
-      priority: 'HIGH',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      case_creator_user_id: 'user-1',
-      case_owner_user_id: 'user-1',
-    };
-    const mockTasks = [
+  // Case operation mappings
+  const caseOperations = [
+    { operation: 'createCase', expected: 'Case created' },
+    { operation: 'createManualCase', expected: 'Case created' },
+    { operation: 'saveCaseAsDraft', expected: 'Case saved as draft' },
+    { operation: 'completeCase', expected: 'Case completed' },
+    { operation: 'completeCaseCreation', expected: 'Case completed' },
+    { operation: 'updateCaseStatus', expected: 'Case status updated' },
+    { operation: 'updateCase', expected: 'Case updated' },
+    { operation: 'suspendCase', expected: 'Case suspended' },
+    { operation: 'resumeCase', expected: 'Case resumed' },
+    { operation: 'abandonCase', expected: 'Case abandoned' },
+    { operation: 'reopenCase', expected: 'Case reopened' },
+    { operation: 'approveCaseCreation', expected: 'Approve case creation' },
+    { operation: 'rejectCaseCreation', expected: 'Reject case creation' },
+    { operation: 'approveCaseClosure', expected: 'Case approved' },
+    { operation: 'rejectCaseClosure', expected: 'Case rejected' },
+    { operation: 'approveCaseReopening', expected: 'Approve case reopening' },
+    { operation: 'rejectCaseReopening', expected: 'Reject case reopening' },
+    { operation: 'returnCaseForReview', expected: 'Case returned for review' },
+    { operation: 'autoClosed', expected: 'Case auto-closed' },
+  ];
+
+  caseOperations.forEach(({ operation, expected }) => {
+    it(`maps case operation "${operation}" to "${expected}"`, async () => {
+      (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([
+        {
+          case_id: 123,
+          operation,
+          action_performed: 'Action performed',
+          performed_at: '2023-01-01T00:00:00Z',
+          user_id: 'user-1',
+          entity_name: 'User',
+        },
+      ]);
+      render(<CaseHistoryTab caseId={123} />);
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(expected, 'i'))).toBeInTheDocument();
+      });
+    });
+  });
+
+  it('maps closeCase with approval details correctly', async () => {
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([
       {
-        task_id: 'TASK-1',
-        name: 'Investigate Case',
-        description: 'Investigate',
-        status: 'STATUS_30_COMPLETED',
-        created_at: '2023-01-01T00:00:00Z',
-        updated_at: '2023-01-03T00:00:00Z',
-        assigned_user_id: 'user-1',
-        assignedUser: { username: 'jdoe' },
+        case_id: 123,
+        operation: 'closeCase',
+        action_performed: 'Case submitted for approval',
+        performed_at: '2023-01-01T00:00:00Z',
+        user_id: 'user-1',
+        entity_name: 'User',
       },
-    ];
-    const mockHistory: any[] = [];
-
-    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue(mockHistory);
-
-    render(<CaseHistoryTab caseId="CASE-123" />);
-
+    ]);
+    render(<CaseHistoryTab caseId={123} />);
     await waitFor(() => {
-      expect(screen.getByText(/Investigation completed/i)).toBeInTheDocument();
+      expect(screen.getByText(/Case closure submitted for approval/i)).toBeInTheDocument();
     });
   });
 
-  it('displays audit log events', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      case_type: 'FRAUD',
-      status: 'STATUS_20_IN_PROGRESS',
-      priority: 'HIGH',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      case_creator_user_id: 'user-1',
-      case_owner_user_id: 'user-1',
-    };
-    const mockTasks: any[] = [];
-    const mockHistory = [
+  it('maps closeCase without approval to "Case closed"', async () => {
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([
       {
-        id: '1',
-        operation: 'addComment',
-        action_performed: 'Comment added to case',
+        case_id: 123,
+        operation: 'closeCase',
+        action_performed: 'Case has been closed',
+        performed_at: '2023-01-01T00:00:00Z',
+        user_id: 'user-1',
+        entity_name: 'User',
+      },
+    ]);
+    render(<CaseHistoryTab caseId={123} />);
+    await waitFor(() => {
+      expect(screen.getByText(/Case closed/i)).toBeInTheDocument();
+    });
+  });
+
+  // Task operation mappings
+  const taskOperations = [
+    { operation: 'createTask', expected: 'Task created' },
+    { operation: 'createSarTask', expected: 'SAR/STR task created' },
+    { operation: 'updateTask', expected: 'Task updated' },
+    { operation: 'claimTask', expected: 'Task claimed' },
+    { operation: 'selfAssignTask', expected: 'Task self-assigned' },
+    { operation: 'reassignTask', expected: 'Task reassigned' },
+    { operation: 'unassignTask', expected: 'Task unassigned' },
+    { operation: 'assignTask', expected: 'Task assigned' },
+    { operation: 'completeTask', expected: 'Task completed' },
+    { operation: 'assignTaskToInvestigator', expected: 'Task assigned' },
+    { operation: 'investigationTaskTriggered', expected: 'Investigation task triggered' },
+    { operation: 'triageAlertUpdated', expected: 'Triage alert updated' },
+  ];
+
+  taskOperations.forEach(({ operation, expected }) => {
+    it(`maps task operation "${operation}" to "${expected}"`, async () => {
+      (taskHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([
+        {
+          task_id: 1,
+          operation,
+          action_performed: 'Action performed',
+          performed_at: '2023-01-01T00:00:00Z',
+          user_id: 'user-1',
+          entity_name: 'User',
+        },
+      ]);
+      render(<CaseHistoryTab caseId={123} />);
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(expected, 'i'))).toBeInTheDocument();
+      });
+    });
+  });
+
+  it('maps upload/evidence task operations', async () => {
+    (taskHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([
+      {
+        task_id: 1,
+        operation: 'uploadEvidence',
+        action_performed: 'File was uploaded',
+        performed_at: '2023-01-01T00:00:00Z',
+        user_id: 'user-1',
+        entity_name: 'User',
+      },
+    ]);
+    render(<CaseHistoryTab caseId={123} />);
+    await waitFor(() => {
+      expect(screen.getByText(/Evidence uploaded/i)).toBeInTheDocument();
+    });
+  });
+
+  it('handles System entity name for performedBy', async () => {
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([
+      {
+        case_id: 123,
+        operation: 'createCase',
+        action_performed: 'System created case',
+        performed_at: '2023-01-01T00:00:00Z',
+        user_id: 'system',
+        entity_name: 'System',
+      },
+    ]);
+    render(<CaseHistoryTab caseId={123} />);
+    await waitFor(() => {
+      expect(screen.getByText(/Case created/i)).toBeInTheDocument();
+    });
+  });
+
+  it('handles errors gracefully when history fetch fails', async () => {
+    (caseHistoryService.getCaseHistory as vi.Mock).mockRejectedValue(new Error('Failed'));
+    (taskHistoryService.getCaseHistory as vi.Mock).mockRejectedValue(new Error('Failed'));
+
+    render(<CaseHistoryTab caseId={123} />);
+    await waitFor(() => {
+      expect(screen.getByText('Case Timeline')).toBeInTheDocument();
+    });
+  });
+
+  it('handles fetchAllInvestigators failure gracefully', async () => {
+    (authService.fetchAllInvestigators as vi.Mock).mockRejectedValue(new Error('Failed'));
+    render(<CaseHistoryTab caseId={123} />);
+    await waitFor(() => {
+      expect(screen.getByText('Case Timeline')).toBeInTheDocument();
+    });
+  });
+
+  it('sorts history events chronologically and renders alternating layout', async () => {
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([
+      {
+        case_id: 123,
+        operation: 'createCase',
+        action_performed: 'Case was created',
+        performed_at: '2023-01-01T00:00:00Z',
+        user_id: 'user-1',
+        entity_name: 'User',
+      },
+      {
+        case_id: 123,
+        operation: 'updateCase',
+        action_performed: 'Case was updated',
         performed_at: '2023-01-02T00:00:00Z',
         user_id: 'user-1',
         entity_name: 'User',
-        outcome: 'success',
       },
-    ];
+    ]);
 
-    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue(mockHistory);
-
-    render(<CaseHistoryTab caseId="CASE-123" />);
-
+    render(<CaseHistoryTab caseId={123} />);
     await waitFor(() => {
-      // Check that audit log event is present (may appear multiple times due to case creation event)
-      const commentEvents = screen.getAllByText(/Comment added/i);
-      expect(commentEvents.length).toBeGreaterThan(0);
+      expect(screen.getByText(/Case created/i)).toBeInTheDocument();
+      expect(screen.getByText(/Case updated/i)).toBeInTheDocument();
     });
   });
 
-  it('displays case timeline even with minimal events', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      case_type: 'FRAUD',
-      status: 'STATUS_20_IN_PROGRESS',
-      priority: 'HIGH',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      case_creator_user_id: 'user-1',
-      case_owner_user_id: 'user-1',
-    };
-    const mockTasks: any[] = [];
-    const mockHistory: any[] = [];
-
-    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue(mockHistory);
-
-    render(<CaseHistoryTab caseId="CASE-123" />);
-
+  it('handles performed_at as Date object', async () => {
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([
+      {
+        case_id: 123,
+        operation: 'createCase',
+        action_performed: 'Created',
+        performed_at: new Date('2023-01-01T00:00:00Z'),
+        user_id: 'user-1',
+        entity_name: 'User',
+      },
+    ]);
+    render(<CaseHistoryTab caseId={123} />);
     await waitFor(() => {
-      // Component always creates at least a case creation event
-      expect(screen.getByText('Case Timeline')).toBeInTheDocument();
-      expect(
-        screen.getByText(/Case submitted for approval/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Case created/i)).toBeInTheDocument();
     });
   });
 
-  it('handles errors gracefully', async () => {
-    const error = new Error('Failed to fetch');
-    (caseService.getCaseDetails as vi.Mock).mockRejectedValue(error);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue([]);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue([]);
-
-    render(<CaseHistoryTab caseId="CASE-123" />);
-
-    await waitFor(
-      () => {
-        // Component should still render, even if some data fails to load
-        expect(screen.getByText('Case Timeline')).toBeInTheDocument();
+  it('uses default action text when action_performed is empty for task', async () => {
+    (taskHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([
+      {
+        task_id: 1,
+        operation: 'createTask',
+        action_performed: null,
+        performed_at: '2023-01-01T00:00:00Z',
+        user_id: 'user-1',
+        entity_name: 'User',
       },
-      { timeout: 3000 },
-    );
+    ]);
+    render(<CaseHistoryTab caseId={123} />);
+    await waitFor(() => {
+      expect(screen.getByText(/Task created/i)).toBeInTheDocument();
+      expect(screen.getByText('Action performed')).toBeInTheDocument();
+    });
+  });
+
+  it('keeps default action for unknown task operation', async () => {
+    (taskHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([
+      {
+        task_id: 1,
+        operation: 'someUnknownOperation',
+        action_performed: 'Did something',
+        performed_at: '2023-01-01T00:00:00Z',
+        user_id: 'user-1',
+        entity_name: 'User',
+      },
+    ]);
+    render(<CaseHistoryTab caseId={123} />);
+    await waitFor(() => {
+      // formatOperation converts camelCase to Title Case
+      expect(screen.getByText(/some unknown operation/i)).toBeInTheDocument();
+    });
+  });
+
+  it('formats action text with first char uppercase', async () => {
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([
+      {
+        case_id: 123,
+        operation: 'createCase',
+        action_performed: 'CASE WAS CREATED',
+        performed_at: '2023-01-01T00:00:00Z',
+        user_id: 'user-1',
+        entity_name: 'User',
+      },
+    ]);
+    render(<CaseHistoryTab caseId={123} />);
+    await waitFor(() => {
+      // formatActionText applied to action "Case created" → "Case created"
+      expect(screen.getByText('Case created')).toBeInTheDocument();
+      // Details text shown raw
+      expect(screen.getByText('CASE WAS CREATED')).toBeInTheDocument();
+    });
   });
 });
