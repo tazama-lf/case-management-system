@@ -2,6 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { GoldLakehouseService } from '../gold-lakehouse/gold-lakehouse.service';
 import { CounterpartyNetworkResponseDto, TransactionNetworkResponseDto } from '../gold-lakehouse/dto/network-analysis.dto';
 import { Alerts, Edge, Node } from '../gold-lakehouse/types/gold-lakehouse.types';
+import {
+  AccountNodeFullDataResponse,
+  CounterpartyNodeFullDataResponse,
+  EvaluatedTransactionsResponse,
+} from '../gold-lakehouse/types/gold-lakehouse-responses.types';
+import { Account } from '@tazama-lf/frms-coe-lib/lib/interfaces/event-flow/EntityConditionEdge';
 
 @Injectable()
 export class JupyterProxyService {
@@ -15,30 +21,7 @@ export class JupyterProxyService {
     counterpartyId: string,
     tenantId: string,
     granularity: 'day' | 'month' | 'year' = 'month',
-  ): Promise<{
-    network: {
-      rootNodeId: string;
-      nodes: Node[];
-      edges: Edge[];
-    };
-    counterpartyDetails: {
-      counterpartyId: string;
-      name: string;
-      type: string;
-      transactions: number;
-      totalValue: number;
-      velocity: string;
-      flags: {
-        alerted: boolean;
-        investigated: boolean;
-      };
-    };
-    meta: {
-      tenantId: string;
-      granularity: 'day' | 'month' | 'year';
-      generatedAt: string;
-    };
-  }> {
+  ): Promise<CounterpartyNodeFullDataResponse> {
     return await this.goldLakehouseService.getCounterpartyNodeFullData(counterpartyId, tenantId, granularity);
   }
 
@@ -96,30 +79,7 @@ export class JupyterProxyService {
     accountId: string,
     tenantId?: string,
     granularity: 'day' | 'month' | 'year' = 'month',
-  ): Promise<{
-    network: {
-      rootNodeId: string;
-      nodes: Node[];
-      edges: Edge[];
-    };
-    accountDetails: {
-      accountId: string;
-      accountHolder: string;
-      relationship: string;
-      transactions: number;
-      totalValue: number;
-      velocity: string;
-      flags: {
-        alerted: boolean;
-        investigated: boolean;
-      };
-    };
-    meta: {
-      tenantId: string;
-      granularity: 'day' | 'month' | 'year';
-      generatedAt: string;
-    };
-  }> {
+  ): Promise<AccountNodeFullDataResponse> {
     return await this.goldLakehouseService.getAccountNodeFullData(accountId, tenantId ?? 'DEFAULT', granularity);
   }
 
@@ -156,7 +116,11 @@ export class JupyterProxyService {
     return await this.goldLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive ?? false);
   }
 
-  async getConditionsEvaluatedTransactions(accountId: string, tenantId = 'DEFAULT', fromDate?: string) {
+  async getConditionsEvaluatedTransactions(
+    accountId: string,
+    tenantId = 'DEFAULT',
+    fromDate?: string,
+  ): Promise<EvaluatedTransactionsResponse> {
     return await this.goldLakehouseService.getEvaluatedTransactionsByAccount(accountId, tenantId, fromDate);
   }
 }

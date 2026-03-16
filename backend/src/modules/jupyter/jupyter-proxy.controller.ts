@@ -3,11 +3,12 @@ import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { JupyterProxyService } from './jupyter-proxy.service';
 import { CounterpartyNetworkResponseDto, TransactionNetworkResponseDto } from '../gold-lakehouse/dto/network-analysis.dto';
 import { Alerts, Edge, Node } from '../gold-lakehouse/types/gold-lakehouse.types';
+import { AccountNodeFullDataResponse, CounterpartyNodeFullDataResponse } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
 
 @Controller('api/v1/jupyter/proxy')
 @ApiTags('Jupyter Proxy')
 export class JupyterProxyController {
-  constructor(private readonly proxyService: JupyterProxyService) {}
+  constructor(private readonly proxyService: JupyterProxyService) { }
 
   private validateSecret(headers: Record<string, any>): void {
     const required = process.env.JUPYTER_SHARED_SECRET;
@@ -47,30 +48,7 @@ export class JupyterProxyController {
     @Query('granularity') granularity?: string,
     @Query('tenantId') tenantId?: string,
     @Headers() headers?: Record<string, any>,
-  ): Promise<{
-    network: {
-      rootNodeId: string;
-      nodes: Node[];
-      edges: Edge[];
-    };
-    counterpartyDetails: {
-      counterpartyId: string;
-      name: string;
-      type: string;
-      transactions: number;
-      totalValue: number;
-      velocity: string;
-      flags: {
-        alerted: boolean;
-        investigated: boolean;
-      };
-    };
-    meta: {
-      tenantId: string;
-      granularity: 'day' | 'month' | 'year';
-      generatedAt: string;
-    };
-  }> {
+  ): Promise<CounterpartyNodeFullDataResponse> {
     this.validateSecret(headers ?? {});
     if (!counterpartyId || counterpartyId.trim() === '') {
       throw new BadRequestException('counterpartyId is required');
@@ -222,30 +200,7 @@ export class JupyterProxyController {
     @Query('tenantId') tenantId?: string,
     @Query('granularity') granularity: 'day' | 'month' | 'year' = 'month',
     @Headers() headers?: Record<string, any>,
-  ): Promise<{
-    network: {
-      rootNodeId: string;
-      nodes: any[];
-      edges: any[];
-    };
-    accountDetails: {
-      accountId: string;
-      accountHolder: any;
-      relationship: string;
-      transactions: number;
-      totalValue: number;
-      velocity: string;
-      flags: {
-        alerted: boolean;
-        investigated: boolean;
-      };
-    };
-    meta: {
-      tenantId: string;
-      granularity: 'day' | 'month' | 'year';
-      generatedAt: string;
-    };
-  }> {
+  ): Promise<AccountNodeFullDataResponse> {
     this.validateSecret(headers ?? {});
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');

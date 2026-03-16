@@ -6,7 +6,6 @@ import { Alert, CaseCreationType, CaseStatus, Priority, Prisma } from '@prisma/c
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { ConfigService } from '@nestjs/config';
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
-import { TransactionDataRespository } from '../repository/transactionalData.respository';
 import { extractReferenceId } from '../repository/utils/extractReferenceId';
 import { JsonValue } from '../repository/utils/types/JsonValue';
 import { CaseCreationService } from '../case/services/case-creation.service';
@@ -22,11 +21,10 @@ export class AlertService {
     private readonly configService: ConfigService,
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationService,
-    private readonly transactionDataRespository: TransactionDataRespository,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly eventLogService: EventLogService,
     private readonly goldLakeHouseService: GoldLakehouseService,
-  ) { }
+  ) {}
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number): Promise<Alert | null> {
     this.loggerService.log('Start - Alert Creation', AlertService.name);
@@ -107,11 +105,8 @@ export class AlertService {
     }
   }
 
-  async getAlertTransactionalData(
-    alertId: number,
-  )
-  // : Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>>
-  {
+  async getAlertTransactionalData(alertId: number) {
+    // : Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>>
     this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
 
     const alert = await this.alertRepository.getAlertById(alertId);
@@ -130,11 +125,14 @@ export class AlertService {
     const transactionData = await this.goldLakeHouseService.getTransactionHistoryByEndToEndId(referenceId).catch((error) => {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.loggerService.error(`Error fetching Transaction History data for Alert ID ${alertId}: ${errorMessage}`, errorStack, AlertService.name);
+      this.loggerService.error(
+        `Error fetching Transaction History data for Alert ID ${alertId}: ${errorMessage}`,
+        errorStack,
+        AlertService.name,
+      );
     });
 
     this.loggerService.log(`Fetched transaction data for Alert ID ${alertId}: ${JSON.stringify(transactionData)}`, AlertService.name);
-
 
     return transactionData;
   }

@@ -17,7 +17,18 @@ import {
   CounterpartyNetworkSummaryDto,
   CounterpartyNetworkEdgeDto,
 } from './dto/network-analysis.dto';
-import { Alerts, Cumulative, Edge, Node, RecentTransaction, Timeline } from './types/gold-lakehouse.types';
+import { Cumulative, RecentTransaction, Timeline } from './types/gold-lakehouse.types';
+import {
+  AccountNodeFullDataResponse,
+  ConditionsByEntityResponse,
+  ConditionsContextByTransactionResponse,
+  CounterpartyNodeFullDataResponse,
+  EvaluatedTransactionsResponse,
+  FutureConditionsResponse,
+  TestAccountIdsResponse,
+  TransactionHistoryByEndToEndIdResponse,
+  TransactionPerspectivesResponse,
+} from './types/gold-lakehouse-responses.types';
 
 @Injectable()
 export class GoldLakehouseService {
@@ -76,7 +87,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async runSqlQuery(sql: string, limit = 1): Promise<any> {
+  async runSqlQuery(sql: string, limit = 1) {
     try {
       this.logger.log('Running raw SQL query on Gold Lakehouse');
       this.logger.debug(sql);
@@ -330,7 +341,84 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTransactionDetailData(transactionId: number, tenantId = 'DEFAULT') {
+  async getTransactionDetailData(
+    transactionId: number,
+    tenantId = 'DEFAULT',
+  ): Promise<{
+    transactionOverview: {
+      transactionId: string;
+      transactionType: string;
+      timestamp: string;
+    };
+    transactionFlow: {
+      debtor: {
+        name: string;
+        account: {
+          iban: string;
+          type: string;
+        };
+        bank: string;
+      };
+      amount: {
+        amount: number;
+        currency: string;
+      };
+      creditor: {
+        name: string;
+        account: {
+          iban: string;
+          type: string;
+        };
+        bankName: string;
+      };
+    };
+    debtorProfile: {
+      name: string;
+      account: {
+        iban: string;
+        type: string;
+      };
+      bank: string;
+      swiftCode: string;
+      address: string;
+      accountType: string;
+    };
+    creditorProfile: {
+      name: string;
+      account: {
+        iban: string;
+        type: string;
+      };
+      bank: string;
+      swiftCode: string;
+      address: string;
+      accountType: string;
+    };
+    amountAndCurrency: Array<
+      | {
+          originalAmount: number;
+          exchangeRate: number;
+          convertedAmount: number;
+        }
+      | {
+          senderCharges: never[];
+          intermediaryCharges: never[];
+          receiverCharges: never[];
+        }
+      | {
+          totalCharges: number;
+        }
+    >;
+    settlementDetails: {
+      settlementDate: string;
+      reference: string;
+      purpose: string;
+    };
+    links: Array<{
+      rel: string;
+      href: string;
+    }>;
+  }> {
     try {
       this.logger.log(`Fetching Transaction Detail UI data for transaction: ${transactionId}`);
 
@@ -574,7 +662,7 @@ export class GoldLakehouseService {
    */
   private async resolveToAccounts(id: string, tenantId: string): Promise<string[]> {
     // numeric transaction id?
-    if (/^\d + $ /.test(id)) {
+    if (/^\d+$/.test(id)) {
       const resp = await this.query({
         table_name: 'transaction_detail',
         filters: { transaction_id: parseInt(id, 10), tenant_id: tenantId },
@@ -643,7 +731,8 @@ export class GoldLakehouseService {
         tenantId,
       };
     } catch (error) {
-      this.logger.error(`Error fetching entity accounts for ${entityId}`, error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching entity accounts for ${entityId}`, errorStack);
       return {
         entityId,
         accountCount: 0,
@@ -756,7 +845,8 @@ export class GoldLakehouseService {
         };
       });
     } catch (error) {
-      this.logger.error('Error fetching conditions list', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching conditions list', errorStack);
       throw new HttpException('Failed to fetch conditions list', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -872,7 +962,8 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error('Error fetching active conditions', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching active conditions', errorStack);
       throw new HttpException('Failed to fetch active conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -983,12 +1074,13 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error('Error fetching expired conditions', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching expired conditions', errorStack);
       throw new HttpException('Failed to fetch expired conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getFutureConditions(identifier: string, tenantId = 'DEFAULT') {
+  async getFutureConditions(identifier: string, tenantId = 'DEFAULT'): Promise<FutureConditionsResponse> {
     try {
       const accounts = await this.resolveToAccounts(identifier, tenantId);
       if (accounts.length === 0) {
@@ -1051,7 +1143,8 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error('Error fetching future conditions', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching future conditions', errorStack);
       throw new HttpException('Failed to fetch future conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1127,7 +1220,8 @@ export class GoldLakehouseService {
         accountId: r.cond_account_id,
       }));
     } catch (error) {
-      this.logger.error('Error fetching evaluated transactions', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching evaluated transactions', errorStack);
       throw new HttpException('Failed to fetch evaluated transactions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1424,7 +1518,9 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error(`Error fetching Transaction History by entity_id: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching Transaction History by entity_id: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch Transaction History by entity_id', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1435,7 +1531,7 @@ export class GoldLakehouseService {
     startDate?: string,
     endDate?: string,
     granularity?: string,
-  ) {
+  ): Promise<TransactionHistoryByEndToEndIdResponse> {
     try {
       this.logger.log(`Fetching Transaction History for end_to_end_id: ${endToEndId}`);
 
@@ -1626,7 +1722,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTransactionPerspectivesByEndToEndId(endToEndId: string, tenantId = 'DEFAULT') {
+  async getTransactionPerspectivesByEndToEndId(endToEndId: string, tenantId = 'DEFAULT'): Promise<TransactionPerspectivesResponse> {
     try {
       this.logger.log(`Fetching Transaction Perspectives for end_to_end_id: ${endToEndId}`);
 
@@ -1722,7 +1818,9 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error(`Error fetching Transaction Perspectives by end_to_end_id: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching Transaction Perspectives by end_to_end_id: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch Transaction Perspectives', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1803,7 +1901,8 @@ export class GoldLakehouseService {
         totalValue: parseFloat(row.total_value) || 0,
       };
     } catch (error) {
-      this.logger.error('Error fetching alert history summary', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching alert history summary', errorStack);
       throw new HttpException('Failed to fetch alert history summary', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1879,7 +1978,8 @@ export class GoldLakehouseService {
         alertValueOverTime,
       };
     } catch (error) {
-      this.logger.error('Error fetching alert history timeline', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching alert history timeline', errorStack);
       throw new HttpException('Failed to fetch alert history timeline', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -1987,12 +2087,13 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error('Error fetching alert history alerts', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching alert history alerts', errorStack);
       throw new HttpException('Failed to fetch alert history alerts', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getTestAccountIds(tenantId = 'DEFAULT', minConnections = 1) {
+  async getTestAccountIds(tenantId = 'DEFAULT', minConnections = 1): Promise<TestAccountIdsResponse> {
     try {
       this.logger.log(`Fetching test account IDs from lakehouse (minConnections: ${minConnections})`);
 
@@ -2035,7 +2136,9 @@ export class GoldLakehouseService {
         })),
       };
     } catch (error) {
-      this.logger.error(`Error fetching test account IDs: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching test account IDs: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch test account IDs', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -2172,7 +2275,9 @@ export class GoldLakehouseService {
         queryTimestamp: new Date().toISOString(),
       };
     } catch (error) {
-      this.logger.error(`Error fetching transaction network data: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching transaction network data: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch transaction network data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -2214,7 +2319,11 @@ export class GoldLakehouseService {
     return startDate.toISOString();
   }
 
-  async getAccountNodeFullData(accountId: string, tenantId = 'DEFAULT', granularity: 'day' | 'month' | 'year' = 'month') {
+  async getAccountNodeFullData(
+    accountId: string,
+    tenantId = 'DEFAULT',
+    granularity: 'day' | 'month' | 'year' = 'month',
+  ): Promise<AccountNodeFullDataResponse> {
     try {
       const networkSql = `
       SELECT
@@ -2373,12 +2482,18 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error(`Error fetching full account node data: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching full account node data: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch account network and details', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getCounterpartyNodeFullData(counterpartyId: string, tenantId = 'DEFAULT', granularity: 'day' | 'month' | 'year' = 'month') {
+  async getCounterpartyNodeFullData(
+    counterpartyId: string,
+    tenantId = 'DEFAULT',
+    granularity: 'day' | 'month' | 'year' = 'month',
+  ): Promise<CounterpartyNodeFullDataResponse> {
     try {
       const networkSql = `
       SELECT
@@ -2515,7 +2630,9 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error(`Error in getCounterpartyNodeFullData: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error in getCounterpartyNodeFullData: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch counterparty network details', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -2594,7 +2711,9 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error(`Error running Benford analysis for account ${accountId}: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error running Benford analysis for account ${accountId}: ${errorMessage}`, errorStack);
 
       throw new HttpException('Failed to perform Benford analysis', HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -2789,7 +2908,9 @@ export class GoldLakehouseService {
         queryTimestamp: new Date().toISOString(),
       };
     } catch (error) {
-      this.logger.error(`Error fetching counterparty network data: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching counterparty network data: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch counterparty network data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -2814,7 +2935,8 @@ export class GoldLakehouseService {
         note: 'Now using primary conditions table with full data (132 rows)',
       };
     } catch (error) {
-      this.logger.error(`Error fetching conditions table: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error fetching conditions table: ${errorMessage}`);
       throw new HttpException('Failed to fetch conditions table data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -2834,14 +2956,16 @@ export class GoldLakehouseService {
         note: 'Query executed without tenant filter to check table structure',
       };
     } catch (error) {
-      this.logger.error(`Error fetching conditions_timeline table: ${error.message}`);
-      this.logger.error(`Error stack: ${error.stack}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching conditions_timeline table: ${errorMessage}`);
+      this.logger.error(`Error stack: ${errorStack}`);
       // Return empty result instead of throwing to see if table exists but is empty
       return {
         tableName: 'conditions_timeline',
         totalRows: 0,
         data: [],
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         note: 'Table may not exist or query failed',
       };
     }
@@ -2858,7 +2982,8 @@ export class GoldLakehouseService {
         data: response.data ?? [],
       };
     } catch (error) {
-      this.logger.error(`Error fetching account_holder table: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error fetching account_holder table: ${errorMessage}`);
       throw new HttpException('Failed to fetch account_holder table data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -2874,7 +2999,8 @@ export class GoldLakehouseService {
         data: response.data ?? [],
       };
     } catch (error) {
-      this.logger.error(`Error fetching transaction_detail table: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error fetching transaction_detail table: ${errorMessage}`);
       throw new HttpException('Failed to fetch transaction_detail table data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -3016,11 +3142,12 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error('Error fetching active conditions by account', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching active conditions by account', errorStack);
       throw new HttpException('Failed to fetch active conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-  async getFutureConditionsByAccount(accountId: string, tenantId = 'DEFAULT') {
+  async getFutureConditionsByAccount(accountId: string, tenantId = 'DEFAULT'): Promise<FutureConditionsResponse> {
     try {
       this.logger.log(`Fetching future conditions for account: ${accountId}`);
       const sql = `
@@ -3064,7 +3191,8 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error('Error fetching future conditions by account', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching future conditions by account', errorStack);
       throw new HttpException('Failed to fetch future conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -3146,12 +3274,17 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error('Error fetching conditions list by account', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching conditions list by account', errorStack);
       throw new HttpException('Failed to fetch conditions list', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getEvaluatedTransactionsByAccount(accountId: string, tenantId = 'DEFAULT', fromDate?: string) {
+  async getEvaluatedTransactionsByAccount(
+    accountId: string,
+    tenantId = 'DEFAULT',
+    fromDate?: string,
+  ): Promise<EvaluatedTransactionsResponse> {
     try {
       this.logger.log(`Fetching evaluated transactions for account: ${accountId}`);
       const dateFilter = fromDate ? `AND ct.cond_inception_ts >= '${fromDate}'` : '';
@@ -3232,7 +3365,8 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error('Error fetching evaluated transactions by account', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching evaluated transactions by account', errorStack);
       throw new HttpException('Failed to fetch evaluated transactions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -3395,7 +3529,8 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error('Error fetching condition details', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching condition details', errorStack);
       throw new HttpException('Failed to fetch condition details', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -3407,7 +3542,11 @@ export class GoldLakehouseService {
    * Returns transaction details with both parties, their accounts, and condition counts
    * Used for Conditions Timeline view
    */
-  async getConditionsContextByTransaction(transactionId: number, tenantId = 'DEFAULT', asOfDate?: string) {
+  async getConditionsContextByTransaction(
+    transactionId: number,
+    tenantId = 'DEFAULT',
+    asOfDate?: string,
+  ): Promise<ConditionsContextByTransactionResponse> {
     try {
       this.logger.log(`Fetching conditions context for transaction: ${transactionId}`);
 
@@ -3485,7 +3624,9 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error(`Error fetching conditions context by transaction: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching conditions context by transaction: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch conditions context', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -3613,7 +3754,8 @@ export class GoldLakehouseService {
 
       return accountsWithCounts;
     } catch (error) {
-      this.logger.error(`Error fetching entity accounts with condition counts: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error fetching entity accounts with condition counts: ${errorMessage}`);
       return [];
     }
   }
@@ -3622,7 +3764,12 @@ export class GoldLakehouseService {
    * Get conditions for all accounts under an entity
    * Used for Entity Level view in Conditions Timeline
    */
-  async getConditionsByEntity(entityId: string, tenantId = 'DEFAULT', asOfDate?: string, showInactive = false) {
+  async getConditionsByEntity(
+    entityId: string,
+    tenantId = 'DEFAULT',
+    asOfDate?: string,
+    showInactive = false,
+  ): Promise<ConditionsByEntityResponse> {
     try {
       this.logger.log(`Fetching conditions for entity: ${entityId}`);
 
@@ -3709,7 +3856,8 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error('Error fetching conditions by entity', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching conditions by entity', errorStack);
       throw new HttpException('Failed to fetch conditions by entity', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }

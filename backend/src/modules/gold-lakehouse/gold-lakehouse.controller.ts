@@ -5,6 +5,12 @@ import { GoldLakehouseService } from './gold-lakehouse.service';
 import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
 import { TransactionNetworkResponseDto, CounterpartyNetworkResponseDto } from './dto/network-analysis.dto';
 import { Alerts, Edge, Node } from './types/gold-lakehouse.types';
+import {
+  AccountNodeFullDataResponse,
+  CounterpartyNodeFullDataResponse,
+  TestAccountIdsResponse,
+  TransactionPerspectivesResponse,
+} from './types/gold-lakehouse-responses.types';
 
 @ApiTags('Gold Lakehouse')
 @Controller('api/v1/lakehouse')
@@ -819,7 +825,10 @@ export class GoldLakehouseController {
   })
   @ApiResponse({ status: 400, description: 'Invalid end-to-end ID format' })
   @ApiResponse({ status: 404, description: 'Transaction not found' })
-  async getTransactionPerspectives(@Param('endToEndId') endToEndId: string, @Query('tenantId') tenantId?: string): Promise<unknown> {
+  async getTransactionPerspectives(
+    @Param('endToEndId') endToEndId: string,
+    @Query('tenantId') tenantId?: string,
+  ): Promise<TransactionPerspectivesResponse> {
     // Validate end-to-end ID
     if (!endToEndId || endToEndId.trim() === '') {
       throw new BadRequestException('End-to-End ID is required');
@@ -1103,7 +1112,10 @@ export class GoldLakehouseController {
     example: 2,
   })
   @ApiResponse({ status: 200, description: 'List of test account IDs with network statistics' })
-  async getTestAccountIds(@Query('tenantId') tenantId?: string, @Query('minConnections') minConnections?: number): Promise<unknown> {
+  async getTestAccountIds(
+    @Query('tenantId') tenantId?: string,
+    @Query('minConnections') minConnections?: number,
+  ): Promise<TestAccountIdsResponse> {
     return await this.goldLakehouseService.getTestAccountIds(tenantId ?? 'DEFAULT', minConnections ?? 1);
   }
 
@@ -1184,30 +1196,7 @@ export class GoldLakehouseController {
     @Param('accountId') accountId: string,
     @Query('tenantId') tenantId?: string,
     @Query('granularity') granularity?: string,
-  ): Promise<{
-    network: {
-      rootNodeId: string;
-      nodes: Node[];
-      edges: Edge[];
-    };
-    accountDetails: {
-      accountId: string;
-      accountHolder: string;
-      relationship: string;
-      transactions: number;
-      totalValue: number;
-      velocity: string;
-      flags: {
-        alerted: boolean;
-        investigated: boolean;
-      };
-    };
-    meta: {
-      tenantId: string;
-      granularity: 'day' | 'month' | 'year';
-      generatedAt: string;
-    };
-  }> {
+  ): Promise<AccountNodeFullDataResponse> {
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
@@ -1256,30 +1245,7 @@ export class GoldLakehouseController {
     @Param('counterpartyId') counterpartyId: string,
     @Query('tenantId') tenantId?: string,
     @Query('granularity') granularity?: string,
-  ): Promise<{
-    network: {
-      rootNodeId: string;
-      nodes: Node[];
-      edges: Edge[];
-    };
-    counterpartyDetails: {
-      counterpartyId: string;
-      name: string;
-      type: string;
-      transactions: number;
-      totalValue: number;
-      velocity: string;
-      flags: {
-        alerted: boolean;
-        investigated: boolean;
-      };
-    };
-    meta: {
-      tenantId: string;
-      granularity: 'day' | 'month' | 'year';
-      generatedAt: string;
-    };
-  }> {
+  ): Promise<CounterpartyNodeFullDataResponse> {
     if (!counterpartyId || counterpartyId.trim() === '') {
       throw new BadRequestException('counterpartyId is required');
     }

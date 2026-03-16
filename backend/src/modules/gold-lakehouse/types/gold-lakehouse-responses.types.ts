@@ -1,0 +1,499 @@
+// // Transaction Detail Response
+// export interface TransactionDetailResponse {
+//     transactionOverview: {
+//         transactionId: string;
+//         transactionType: string;
+//         timestamp: string;
+//     };
+//     transactionFlow: {
+//         debtor: {
+//             name: string;
+//             account: {
+//                 iban: string;
+//                 type: string;
+//             };
+//             bank: string;
+//         };
+//         amount: {
+//             amount: number;
+//             currency: string;
+//         };
+//         creditor: {
+//             name: string;
+//             account: {
+//                 iban: string;
+//                 type: string;
+//             };
+//             bankName: string;
+//         };
+//     };
+//     debtorProfile: {
+//         name: string;
+//         account: {
+//             iban: string;
+//             type: string;
+//         };
+//         bank: string;
+//         swiftCode: string;
+//         address: string;
+//         accountType: string;
+//     };
+//     creditorProfile: {
+//         name: string;
+//         account: {
+//             iban: string;
+//             type: string;
+//         };
+//         bank: string;
+//         swiftCode: string;
+//         address: string;
+//         accountType: string;
+//     };
+//     amountAndCurrency: Array<
+//         | {
+//             originalAmount: number;
+//             exchangeRate: number;
+//             convertedAmount: number;
+//         }
+//         | {
+//             senderCharges: unknown[];
+//             intermediaryCharges: unknown[];
+//             receiverCharges: unknown[];
+//         }
+//         | {
+//             totalCharges: number;
+//         }
+//     >;
+//     settlementDetails: {
+//         settlementDate: string;
+//         reference: string;
+//         purpose: string;
+//     };
+//     links: Array<{
+//         rel: string;
+//         href: string;
+//     }>;
+// }
+
+// // Transaction Overview UI Response
+// export interface TransactionOverviewUIResponse {
+//     transactionOverview: {
+//         transactionId: string | null | number;
+//         timestamp: string | null | number;
+//         type: string | null | number;
+//         status: string;
+//     };
+//     transactionFlow: {
+//         amount: string | null | number;
+//         currency: string | null | number;
+//         debtor: {
+//             name: string | null | number;
+//             account: string | null | number;
+//             bank: string | null | number;
+//         };
+//         creditor: {
+//             name: string | null | number;
+//             account: string | null | number;
+//             bank: string | null | number;
+//         };
+//     };
+//     debtorProfile: {
+//         name: string | null | number;
+//         accountNumber: string | null | number;
+//         accountType: string;
+//         bank: string | null | number;
+//         swiftCode: string;
+//         address: string;
+//     };
+//     creditorProfile: {
+//         name: string | null | number;
+//         accountNumber: string | null | number;
+//         accountType: string;
+//         bank: string | null | number;
+//         swiftCode: string;
+//         address: string;
+//     };
+//     amountAndCurrency: {
+//         originalAmount: string | null | number;
+//         originalCurrency: string | null | number;
+//         exchangeRate: string | null | number;
+//         convertedAmount: string;
+//     };
+//     charges: {
+//         senderCharges: string;
+//         intermediaryCharges: string;
+//         receiverCharges: string;
+//         totalCharges: string | null | number;
+//         chargeCurrency: string | null | number;
+//     };
+//     settlementDetails: {
+//         transactionTimestamp: string | null | number;
+//         settlementDate: string | null | number;
+//         reference: string;
+//         purpose: string;
+//     };
+//     meta: {
+//         transactionId: number;
+//         tenantId: string;
+//     };
+// }
+
+// // Conditions Summary Response
+// export interface ConditionsSummaryResponse {
+//     activeConditions: number;
+//     blockedTransactions: number;
+//     overriddenTransactions: number;
+//     futureConditions: number;
+//     metadata: {
+//         queriedBy: string;
+//         accountCount: number;
+//         accounts?: string[];
+//     };
+// }
+
+// // Condition Item
+export interface ConditionItem {
+  conditionId: string;
+  conditionType: string;
+  accountId: string;
+  reason: string;
+  inceptionDate: string;
+  expiryDate: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// // Conditions List Response
+// export type ConditionsListResponse = ConditionItem[];
+
+// // Active Conditions Response
+// export interface ActiveConditionsResponse {
+//     conditions: Array<{
+//         conditionId: string;
+//         title: string;
+//         type: string;
+//         startDate: string;
+//         endDate: string | null;
+//         accountId: string;
+//         createdAt: string;
+//         transactions: Array<{
+//             transactionId: number;
+//             endToEndId: string;
+//             date: string;
+//             amount: number;
+//             currency: string;
+//             type: string;
+//             accountRole: string;
+//         }>;
+//     }>;
+//     metadata: {
+//         queriedBy: string;
+//         accountCount: number;
+//         accounts?: string[];
+//     };
+// }
+
+// Future Conditions Response
+export interface FutureConditionsResponse {
+  conditions: Array<{
+    conditionId: string;
+    title: string;
+    type: string;
+    startDate: string;
+    endDate: string;
+    accountId: string;
+    transactions: unknown[];
+  }>;
+  metadata: {
+    queriedBy: string;
+    accountCount: number;
+    accounts?: string[];
+    isEntityLevel?: boolean;
+  };
+}
+
+// Evaluated Transactions Response
+export interface EvaluatedTransactionsResponse {
+  transactions:
+    | {
+        transactionId: number;
+        date: string;
+        type: string;
+        amount: number;
+        currency: string;
+        outcome: string;
+        conditionId: string;
+        conditionType: string;
+        reason: string;
+
+        conditionPeriod: {
+          start: string;
+          end: string;
+        };
+        accountRole: string;
+        accountId: string;
+      }
+    | [];
+  metadata: {
+    accountId: string;
+    totalRecords?: number;
+    status: string;
+    joinMethod?: string;
+    message?: string;
+    queryTimestamp: string;
+  };
+}
+
+// Transaction History By End To End ID Response
+export interface TransactionHistoryByEndToEndIdResponse {
+  summary: {
+    totalVolume: number;
+    totalTransactions: number;
+    transactionCount: number;
+    alertsTriggered: number;
+    alertsPercentage: number;
+    investigated: number;
+    investigatedPercentage: number;
+    avgTransactionsPerDay: number;
+    durationDays: number;
+    perspectiveCount?: number;
+  };
+  timeline: Array<{
+    transactionId: number;
+    date: string;
+    amount: number;
+    currency: string;
+    type: string;
+    isAlerted: boolean;
+    isInvestigated: boolean;
+  }>;
+  cumulative: Array<{
+    date: string;
+    cumulativeAmount: number;
+    cumulativeCount: number;
+  }>;
+  volumeDistribution: unknown[];
+  recentTransactions: Array<{
+    transactionId: number;
+    date: string;
+    entityType: string;
+    entityRole: string;
+    amount: number;
+    currency: string;
+    counterparty: string;
+    status: string[];
+    actions: {
+      viewDetailsLink: string;
+    };
+  }>;
+  entityPerspectives: Array<{
+    entity_type: string;
+    entity_role: string;
+    entity_id: string;
+    entity_name: string;
+    transaction_id: number;
+    tx_amount: number;
+    tx_ccy: string;
+    event_ts: string;
+  }>;
+  meta: {
+    endToEndId: string;
+    tenantId: string;
+    queryType: string;
+    transactionId?: number;
+    perspectiveCount?: number;
+    debtorName?: string;
+    creditorName?: string;
+    debtorAccountId?: string;
+    creditorAccountId?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    queryTimestamp: string;
+    message?: string;
+  };
+}
+
+// Transaction Perspectives Response
+export interface TransactionPerspectivesResponse {
+  endToEndId: string;
+  tenantId: string;
+  perspectiveCount: number;
+  transactionDetails: {
+    transactionId: number;
+    endToEndId: string;
+    amount: number;
+    currency: string;
+    type: string;
+    date: string;
+    timestamp: string;
+    isAlerted: boolean;
+    isInvestigated: boolean;
+    debtorName: string;
+    creditorName: string;
+    debtorAccountId: string;
+    creditorAccountId: string;
+  } | null;
+  perspectives: Array<{
+    entity_type: string;
+    entity_role: string;
+    entity_id: string;
+    entity_name: string;
+    transaction_id: number;
+    tx_amount: number;
+    tx_ccy: string;
+    event_ts: string;
+  }>;
+  meta: {
+    queryTimestamp: string;
+    message: string;
+  };
+}
+
+// Test Account IDs Response
+export interface TestAccountIdsResponse {
+  message: string;
+  tenantId: string;
+  accounts: Array<{
+    accountId: string;
+    accountName: string;
+    connections: number;
+    totalTransactions: number;
+    testUrl: string;
+  }>;
+}
+
+// Network Node
+export interface NetworkNode {
+  id: string;
+  type: string;
+  label: string;
+  flags: {
+    alerted: boolean;
+    investigated: boolean;
+  };
+}
+
+// Network Edge
+export interface NetworkEdge {
+  id: string;
+  source: string;
+  target: string;
+  transactionCount: number;
+  totalValue: number;
+  currency?: string;
+}
+
+// Account Node Full Data Response
+export interface AccountNodeFullDataResponse {
+  network: {
+    rootNodeId: string;
+    nodes: NetworkNode[];
+    edges: NetworkEdge[];
+  };
+  accountDetails: {
+    accountId: string;
+    accountHolder: string;
+    relationship: string;
+    transactions: number;
+    totalValue: number;
+    velocity: 'HIGH' | 'MEDIUM' | 'LOW';
+    flags: {
+      alerted: boolean;
+      investigated: boolean;
+    };
+  };
+  meta: {
+    tenantId: string;
+    granularity: string;
+    generatedAt: string;
+  };
+}
+
+// Counterparty Node Full Data Response
+export interface CounterpartyNodeFullDataResponse {
+  network: {
+    rootNodeId: string;
+    nodes: NetworkNode[];
+    edges: NetworkEdge[];
+  };
+  counterpartyDetails: {
+    counterpartyId: string;
+    name: string;
+    type: string;
+    transactions: number;
+    totalValue: number;
+    velocity: 'HIGH' | 'MEDIUM' | 'LOW';
+    flags: {
+      alerted: boolean;
+      investigated: boolean;
+    };
+  };
+  meta: {
+    tenantId: string;
+    granularity: string;
+    generatedAt: string;
+  };
+}
+
+// Entity Accounts With Condition Counts
+export interface EntityAccountWithConditionCounts {
+  accountId: string;
+  accountNumber: string;
+  accountType: string;
+  isTransactionAccount: boolean;
+  activeConditionsCount: number;
+  expiredConditionsCount: number;
+  futureConditionsCount: number;
+}
+
+// Conditions Context By Transaction Response
+export interface ConditionsContextByTransactionResponse {
+  transaction: {
+    transactionId: number;
+    displayId: string;
+    endToEndId: string;
+    timestamp: string;
+    type: string;
+    amount: number;
+    currency: string;
+  };
+  debtor: {
+    entityId: string;
+    entityName: string;
+    primaryAccountId: string;
+    accounts: EntityAccountWithConditionCounts[];
+  };
+  creditor: {
+    entityId: string;
+    entityName: string;
+    primaryAccountId: string;
+    accounts: EntityAccountWithConditionCounts[];
+  };
+  metadata: {
+    asOfDate: string;
+    queryTimestamp: string;
+  };
+}
+
+// Conditions By Entity Response
+export interface ConditionsByEntityResponse {
+  entityId: string;
+  accounts: Array<{
+    accountId: string;
+    accountNumber: string;
+    accountType: string;
+    activeConditions: ConditionItem[];
+    expiredConditions: ConditionItem[];
+    futureConditions: ConditionItem[];
+  }>;
+  conditions: ConditionItem[];
+  metadata: {
+    entityId?: string;
+    accountCount?: number;
+    totalConditions?: number;
+    asOfDate?: string;
+    showInactive?: boolean;
+    message?: string;
+    queryTimestamp: string;
+  };
+}
