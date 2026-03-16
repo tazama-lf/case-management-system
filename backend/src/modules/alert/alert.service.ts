@@ -13,6 +13,7 @@ import { CaseCreationService } from '../case/services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { Outcome } from 'src/utils/types/outcome';
 import { EventLogService } from '../event_log/eventLog.service';
+import { GoldLakehouseService } from '../gold-lakehouse/gold-lakehouse.service';
 
 @Injectable()
 export class AlertService {
@@ -24,7 +25,8 @@ export class AlertService {
     private readonly transactionDataRespository: TransactionDataRespository,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly eventLogService: EventLogService,
-  ) {}
+    private readonly goldLakeHouseService: GoldLakehouseService,
+  ) { }
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number): Promise<Alert | null> {
     this.loggerService.log('Start - Alert Creation', AlertService.name);
@@ -107,7 +109,9 @@ export class AlertService {
 
   async getAlertTransactionalData(
     alertId: number,
-  ): Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>> {
+  )
+  // : Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>>
+  {
     this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
 
     const alert = await this.alertRepository.getAlertById(alertId);
@@ -120,8 +124,17 @@ export class AlertService {
     if (!referenceId) {
       throw new Error('ReferenceId not found in transaction data');
     }
-    const transactionData = await this.transactionDataRespository.getTransactionalData(referenceId);
-    if (!transactionData) throw new InternalServerErrorException(`transactionData not found for AlertId ${alertId}`);
+    // const transactionData = await this.transactionDataRespository.getTransactionalData(referenceId);
+    // if (!transactionData) throw new InternalServerErrorException(`transactionData not found for AlertId ${alertId}`);
+
+    const transactionData = await this.goldLakeHouseService.getTransactionHistoryByEndToEndId(referenceId).catch((error) => {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.loggerService.error(`Error fetching Transaction History data for Alert ID ${alertId}: ${errorMessage}`, errorStack, AlertService.name);
+    });
+
+    this.loggerService.log(`Fetched transaction data for Alert ID ${alertId}: ${JSON.stringify(transactionData)}`, AlertService.name);
+
 
     return transactionData;
   }

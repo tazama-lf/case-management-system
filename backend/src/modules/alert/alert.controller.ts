@@ -16,7 +16,7 @@ export class AlertController {
   constructor(
     private readonly alertStatisticsService: AlertStatisticsService,
     private readonly alertService: AlertService,
-  ) {}
+  ) { }
 
   @Get()
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
@@ -158,8 +158,9 @@ export class AlertController {
   })
   async getAlertTransactionalData(
     @Req() req: AuthenticatedRequest,
-    @Param('alertId') alertId: number,
-  ): Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>> {
+    @Param('alertId') alertId: number,)
+  //: Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>> 
+  {
     const userId = req.user.token.clientId;
     if (!userId) throw new BadRequestException('Missing clientId');
     return await this.alertService.getAlertTransactionalData(alertId);

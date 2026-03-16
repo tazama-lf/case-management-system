@@ -11,7 +11,7 @@ import { Alerts, Edge, Node } from './types/gold-lakehouse.types';
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class GoldLakehouseController {
-  constructor(private readonly goldLakehouseService: GoldLakehouseService) { }
+  constructor(private readonly goldLakehouseService: GoldLakehouseService) {}
 
   @Get('alert-navigator/:alertId')
   @RequireInvestigatorOrSupervisorRole()
@@ -116,18 +116,18 @@ export class GoldLakehouseController {
     };
     amountAndCurrency: Array<
       | {
-        originalAmount: number;
-        exchangeRate: number;
-        convertedAmount: number;
-      }
+          originalAmount: number;
+          exchangeRate: number;
+          convertedAmount: number;
+        }
       | {
-        senderCharges: never[];
-        intermediaryCharges: never[];
-        receiverCharges: never[];
-      }
+          senderCharges: never[];
+          intermediaryCharges: never[];
+          receiverCharges: never[];
+        }
       | {
-        totalCharges: number;
-      }
+          totalCharges: number;
+        }
     >;
     settlementDetails: {
       settlementDate: string;

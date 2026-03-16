@@ -1429,7 +1429,7 @@ export class GoldLakehouseService {
     }
   }
 
-  private async getTransactionHistoryByEndToEndId(
+  async getTransactionHistoryByEndToEndId(
     endToEndId: string,
     tenantId = 'DEFAULT',
     startDate?: string,
@@ -3542,8 +3542,8 @@ export class GoldLakehouseService {
       // Log for debugging
       this.logger.debug(
         `Found ${accountIds.length} unique accounts for entity ${entityId}: ` +
-        `${primaryAccountId ? '1 transaction account' : 'no transaction account'} + ` +
-        `${accountIds.length - (primaryAccountId ? 1 : 0)} from account_holder`,
+          `${primaryAccountId ? '1 transaction account' : 'no transaction account'} + ` +
+          `${accountIds.length - (primaryAccountId ? 1 : 0)} from account_holder`,
       );
 
       if (accountIds.length === 0) {

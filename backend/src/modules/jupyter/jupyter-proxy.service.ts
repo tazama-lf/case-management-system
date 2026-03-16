@@ -5,7 +5,7 @@ import { Alerts, Edge, Node } from '../gold-lakehouse/types/gold-lakehouse.types
 
 @Injectable()
 export class JupyterProxyService {
-  constructor(private readonly goldLakehouseService: GoldLakehouseService) { }
+  constructor(private readonly goldLakehouseService: GoldLakehouseService) {}
 
   async getCounterpartyNetworkData(accountId: string, tenantId: string, timeRange: string): Promise<CounterpartyNetworkResponseDto> {
     return await this.goldLakehouseService.getCounterpartyNetworkData(accountId, tenantId, timeRange);

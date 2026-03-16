@@ -6,7 +6,7 @@ import { CounterpartyNetworkResponseDto, TransactionNetworkResponseDto } from '.
 @Controller('api/v1/jupyter/proxy')
 @ApiTags('Jupyter Proxy')
 export class JupyterProxyController {
-  constructor(private readonly proxyService: JupyterProxyService) { }
+  constructor(private readonly proxyService: JupyterProxyService) {}
 
   private validateSecret(headers: Record<string, any>): void {
     const required = process.env.JUPYTER_SHARED_SECRET;
@@ -384,27 +384,27 @@ export class JupyterProxyController {
     @Headers() headers?: Record<string, any>,
   ): Promise<
     | {
-      transactions: never[];
-      metadata: {
-        accountId: string;
-        status: string;
-        message: string;
-        queryTimestamp: string;
-        totalRecords?: undefined;
-        joinMethod?: undefined;
-      };
-    }
+        transactions: never[];
+        metadata: {
+          accountId: string;
+          status: string;
+          message: string;
+          queryTimestamp: string;
+          totalRecords?: undefined;
+          joinMethod?: undefined;
+        };
+      }
     | {
-      transactions: any;
-      metadata: {
-        accountId: string;
-        totalRecords: any;
-        status: string;
-        joinMethod: string;
-        queryTimestamp: string;
-        message?: undefined;
-      };
-    }
+        transactions: any;
+        metadata: {
+          accountId: string;
+          totalRecords: any;
+          status: string;
+          joinMethod: string;
+          queryTimestamp: string;
+          message?: undefined;
+        };
+      }
   > {
     this.validateSecret(headers ?? {});
     if (!accountId || accountId.trim() === '') {
