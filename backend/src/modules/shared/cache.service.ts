@@ -17,7 +17,6 @@ export interface UserDetails {
 @Injectable()
 export class CacheService {
   private readonly logger = new Logger(CacheService.name);
-  private cacheInitialized = false;
   private readonly CACHE_ROLES = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'];
   private readonly CACHE_KEY_PREFIX = 'cms:users:';
   private readonly CACHE_TTL_HOURS = 720; // 720 hours == 30 days TTL
@@ -113,7 +112,6 @@ export class CacheService {
 
       if (Object.keys(cacheData).length > 0) {
         await this.redisService.mset(cacheData, this.CACHE_TTL_HOURS * 3600);
-        this.cacheInitialized = true;
         this.logger.log(`User cache initialized in Redis with ${totalUsers} total users`, CacheService.name);
       } else {
         this.logger.warn('No users fetched for caching', CacheService.name);
@@ -121,7 +119,6 @@ export class CacheService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Failed to initialize user cache (will fall back to API): ${errorMessage}`, CacheService.name);
-      this.cacheInitialized = false;
     }
   }
 

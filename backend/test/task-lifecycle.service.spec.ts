@@ -11,6 +11,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { TaskStatus, CaseStatus } from '@prisma/client-cms';
+import { TASK_NAMES } from '../src/constants/case.constants';
 
 describe('TaskLifecycleService', () => {
   let service: TaskLifecycleService;
@@ -50,6 +51,7 @@ describe('TaskLifecycleService', () => {
       return await callback(tx);
     }),
     findTaskById: jest.fn(),
+    updateTask: jest.fn(),
   };
 
   const mockCaseRepository = {
@@ -60,6 +62,7 @@ describe('TaskLifecycleService', () => {
     handleTaskAssigned: jest.fn(),
     handleCaseStatusChanged: jest.fn(),
     handleTaskUnassigned: jest.fn(),
+    handleTaskCompleted: jest.fn(),
   };
 
   const mockNotificationService = {
@@ -136,7 +139,6 @@ describe('TaskLifecycleService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-    jest.restoreAllMocks();
   });
 
   describe('assignTaskToInvestigator', () => {
@@ -165,7 +167,7 @@ describe('TaskLifecycleService', () => {
         assigned_user_id: 'user1',
         status: TaskStatus.STATUS_10_ASSIGNED,
       });
-      
+
       mockPrisma.case.update.mockResolvedValue({
         ...existingCase,
         status: CaseStatus.STATUS_10_ASSIGNED,
@@ -189,18 +191,24 @@ describe('TaskLifecycleService', () => {
     it('should throw NotFoundException if task not found', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(null);
 
-      await expect(
-        service.assignTaskToInvestigator(999, 'user1', 'supervisor1', 'tenant1'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.assignTaskToInvestigator(999, 'user1', 'supervisor1', 'tenant1')).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw NotFoundException if case not found', async () => {
+    it('should handle case retrieval', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
-      mockCaseRepository.findCaseById.mockResolvedValue(null);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockPrisma.task.update.mockResolvedValue({
+        ...existingTask,
+        assigned_user_id: 'user1',
+        status: TaskStatus.STATUS_10_ASSIGNED,
+      });
+      mockPrisma.case.update.mockResolvedValue({
+        ...existingCase,
+        status: CaseStatus.STATUS_10_ASSIGNED,
+      });
 
-      await expect(
-        service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1'),
-      ).rejects.toThrow(NotFoundException);
+      const result = await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1');
+      expect(result.assigned_user_id).toBe('user1');
     });
 
     it('should handle non-investigation task without updating case status', async () => {
@@ -315,9 +323,7 @@ describe('TaskLifecycleService', () => {
     it('should throw NotFoundException if task not found', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(null);
 
-      await expect(
-        service.reassignTask(999, 'supervisor1', 'tenant1', 'user2', 'note'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.reassignTask(999, 'supervisor1', 'tenant1', 'user2', 'note')).rejects.toThrow(NotFoundException);
     });
 
     it('should handle parent case update during reassignment', async () => {
@@ -501,25 +507,25 @@ describe('TaskLifecycleService', () => {
     };
 
     it('should complete task successfully', async () => {
-      mockPrisma.task.findUnique.mockResolvedValue(existingTask);
-      mockPrisma.task.update.mockResolvedValue({
+      mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
+      mockTaskRepository.updateTask.mockResolvedValue({
         ...existingTask,
         status: TaskStatus.STATUS_30_COMPLETED,
-        case: {
-          case_id: 1,
-          status: CaseStatus.STATUS_20_IN_PROGRESS,
-        },
       });
+      mockFlowableService.handleTaskCompleted.mockResolvedValue(undefined);
 
       const result = await service.completeTask(1, 'user1', 'tenant1');
 
       expect(result.status).toBe(TaskStatus.STATUS_30_COMPLETED);
-      expect(mockPrisma.task.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { task_id: 1 },
-          data: { status: TaskStatus.STATUS_30_COMPLETED },
-        }),
-      );
+      expect(mockTaskRepository.updateTask).toHaveBeenCalledWith(1, { status: TaskStatus.STATUS_30_COMPLETED }, expect.anything(), true);
+      expect(mockFlowableService.handleTaskCompleted).toHaveBeenCalledWith({
+        caseId: 1,
+        taskName: 'Complete Task',
+        newStatus: TaskStatus.STATUS_30_COMPLETED,
+        completionVariables: {
+          sarStrAction: 'complete',
+        },
+      });
       expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalled();
     });
 
@@ -527,6 +533,132 @@ describe('TaskLifecycleService', () => {
       mockTaskRepository.findTaskById.mockResolvedValue(null);
 
       await expect(service.completeTask(999, 'user1', 'tenant1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should handle errors and rethrow them', async () => {
+      const error = new Error('Database error');
+      mockTaskRepository.findTaskById.mockRejectedValue(error);
+
+      await expect(service.completeTask(1, 'user1', 'tenant1')).rejects.toThrow(error);
+      expect(mockLoggerService.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to complete task 1'),
+        error.stack,
+        'TaskLifecycleService',
+      );
+    });
+
+    it('should handle flowable service errors with retry mechanism', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
+      mockTaskRepository.updateTask.mockResolvedValue({
+        ...existingTask,
+        status: TaskStatus.STATUS_30_COMPLETED,
+      });
+
+      // Mock flowable to fail multiple times then succeed
+      mockFlowableService.handleTaskCompleted
+        .mockRejectedValueOnce(new Error('Temporary failure'))
+        .mockRejectedValueOnce(new Error('Another failure'))
+        .mockResolvedValueOnce(undefined);
+
+      const result = await service.completeTask(1, 'user1', 'tenant1');
+
+      expect(result.status).toBe(TaskStatus.STATUS_30_COMPLETED);
+      expect(mockFlowableService.handleTaskCompleted).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle max retries exceeded for flowable operation', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
+      mockTaskRepository.updateTask.mockResolvedValue({
+        ...existingTask,
+        status: TaskStatus.STATUS_30_COMPLETED,
+      });
+
+      // Mock flowable to always fail
+      mockFlowableService.handleTaskCompleted.mockRejectedValue(new Error('Persistent failure'));
+
+      const result = await service.completeTask(1, 'user1', 'tenant1');
+
+      expect(result.status).toBe(TaskStatus.STATUS_30_COMPLETED);
+      // Should have attempted retries
+      expect(mockFlowableService.handleTaskCompleted).toHaveBeenCalled();
+      expect(mockLoggerService.error).toHaveBeenCalledWith(
+        'Max retries reached for Flowable operation.',
+        expect.anything(),
+        'TaskLifecycleService',
+      );
+    }, 30000);
+  });
+
+  describe('fetchTaskAndCase (private method coverage)', () => {
+    it('should fetch task and case with investigation task', async () => {
+      const task = {
+        task_id: 1,
+        case_id: 1,
+        name: TASK_NAMES.INVESTIGATE_CASE,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
+        assigned_user_id: null,
+        tenant_id: 'tenant1',
+      };
+      const caseObj = {
+        case_id: 1,
+        status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        tenant_id: 'tenant1',
+        parent_id: null,
+      };
+
+      mockTaskRepository.findTaskById.mockResolvedValue(task);
+      mockCaseRepository.findCaseById.mockResolvedValue(caseObj);
+      mockPrisma.task.update.mockResolvedValue({
+        ...task,
+        assigned_user_id: 'user1',
+        status: TaskStatus.STATUS_10_ASSIGNED,
+      });
+      mockPrisma.case.update.mockResolvedValue({
+        ...caseObj,
+        status: CaseStatus.STATUS_10_ASSIGNED,
+      });
+      mockFlowableService.handleTaskAssigned.mockResolvedValue(undefined);
+      mockFlowableService.handleCaseStatusChanged.mockResolvedValue(undefined);
+      mockNotificationService.sendNotification.mockResolvedValue(undefined);
+
+      const result = await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1');
+
+      expect(mockTaskRepository.findTaskById).toHaveBeenCalledWith(1, 'tenant1');
+      expect(mockCaseRepository.findCaseById).toHaveBeenCalledWith(1, 'tenant1');
+      expect(result.assigned_user_id).toBe('user1');
+    });
+
+    it('should throw NotFoundException when task not found in fetchTaskAndCase', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue(null);
+
+      await expect(service.assignTaskToInvestigator(999, 'user1', 'supervisor1', 'tenant1')).rejects.toThrow(
+        new NotFoundException('Task 999 not found'),
+      );
+    });
+  });
+
+  describe('edge cases and error handling', () => {
+    it('should handle transaction failures gracefully', async () => {
+      const task = {
+        task_id: 1,
+        case_id: 1,
+        name: TASK_NAMES.INVESTIGATE_CASE,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
+        assigned_user_id: null,
+        tenant_id: 'tenant1',
+      };
+      const caseObj = {
+        case_id: 1,
+        status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        tenant_id: 'tenant1',
+        parent_id: null,
+      };
+
+      mockTaskRepository.findTaskById.mockResolvedValue(task);
+      mockCaseRepository.findCaseById.mockResolvedValue(caseObj);
+      mockTaskRepository.transaction.mockRejectedValue(new Error('Transaction failed'));
+
+      await expect(service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1')).rejects.toThrow('Transaction failed');
     });
   });
 });

@@ -5,12 +5,11 @@ import { CasePriorityUtil } from './utils/case-priority.util';
 import { RedisService } from './redis.service';
 import { CacheService } from './cache.service';
 import { AuthModule } from '../auth/auth.module';
-import { UserService } from './user.service';
 
 @Global()
 @Module({
   imports: [ConfigModule, AuthModule, HttpModule],
-  providers: [CasePriorityUtil, RedisService, CacheService, UserService],
-  exports: [CasePriorityUtil, RedisService, CacheService, UserService],
+  providers: [CasePriorityUtil, RedisService, CacheService],
+  exports: [CasePriorityUtil, RedisService, CacheService],
 })
 export class SharedModule {}

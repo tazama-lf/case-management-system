@@ -22,7 +22,6 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { NotificationPreferencesModule } from './modules/notification-preferences/notification-preferences.module';
 import { ReportsModule } from './modules/report/report.module';
 import { validate } from './config/env.validation';
-import { ConfigManagementModule } from './modules/config-management/config-management.module';
 import { UserModule } from './modules/user/user.module';
 import { FeatureExtractionModule } from './modules/feature-extraction/feature-extraction.module';
 import { RepositoryModule } from './modules/repository/repository.module';
@@ -53,7 +52,6 @@ import { JupyterModule } from './modules/jupyter/jupyter.module';
     FlowableModule,
     NatsModule,
     AuditLogModule,
-    ConfigManagementModule,
     AdminModule,
     AlertModule,
     TriageModule,

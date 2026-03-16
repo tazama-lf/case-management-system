@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CaseStatusChangedEvent, CaseAbandonedEvent, CaseSuspendedEvent } from '../../events/domain-events';
+import { CaseStatusChangedEvent, CaseAbandonedEvent } from '../../events/domain-events';
 import { FlowableProcessService } from '../services/flowable-process.service';
 
 @Injectable()
@@ -11,7 +10,6 @@ export class CaseEventListener {
     private readonly logger: LoggerService,
   ) {}
 
-  @OnEvent('case.status.changed')
   async handleCaseStatusChanged(event: CaseStatusChangedEvent): Promise<void> {
     this.logger.log(`Start - Update Case Status for case ${event.caseId} to status ${event.newStatus}`, CaseEventListener.name);
     const processInstance = await this.flowableProcessService.getProcessInstanceByBusinessKey(event.caseId);
@@ -25,7 +23,6 @@ export class CaseEventListener {
     this.logger.log(`Updated Case Status To ${event.newStatus} For Process ${processInstance.id}`, CaseEventListener.name);
   }
 
-  @OnEvent('case.abandoned')
   async handleCaseAbandoned(event: CaseAbandonedEvent): Promise<void> {
     this.logger.log(`[CaseEventListener] Processing case abandonment for case ${event.caseId}`, CaseEventListener.name);
 
@@ -40,10 +37,5 @@ export class CaseEventListener {
     } else {
       this.logger.warn(`[CaseEventListener] No Flowable process found for abandoned case ${event.caseId}`, CaseEventListener.name);
     }
-  }
-
-  @OnEvent('case.suspended')
-  async handleSuspendCase(event: CaseSuspendedEvent): Promise<void> {
-    // Empty handler for future use
   }
 }

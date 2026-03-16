@@ -7,7 +7,6 @@ import {
   ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuditLogService } from '../audit/auditLog.service';
 import * as crypto from 'node:crypto';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType, CreateEvidenceDto } from './dto';
 import { PrismaService } from 'prisma/prisma.service';
@@ -24,7 +23,6 @@ export class EvidenceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly couchdb: CouchdbService,
-    private readonly auditLog: AuditLogService,
     private readonly evidenceRepository: EvidenceRepository,
     private readonly taskRepository: TaskRepository,
     private readonly eventLogSerice: EventLogService,
@@ -213,6 +211,7 @@ export class EvidenceService {
       const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
       const hash = this.sha256(encrypted);
 
+      // eslint-disable-next-line no-await-in-loop -- CouchDB requires sequential attachment uploads with updated revision
       const attachmentResult = await this.couchdb.insertAttachment(evidenceId, currentRev, file.originalname, encrypted, file.mimetype);
 
       metadata.metadata.push({
@@ -246,14 +245,6 @@ export class EvidenceService {
       this.evidenceRepository.createEvidence(userId, createEvidenceDto);
     }
     await this.couchdb.updateDocument(evidenceId, metadata);
-
-    await this.auditLog.logAction({
-      userId,
-      operation: 'upload',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_UPLOADED',
-      outcome: 'SUCCESS',
-    });
 
     await this.eventLogSerice.logEventAction({
       userId,
@@ -292,18 +283,18 @@ export class EvidenceService {
       throw new NotFoundException(`Evidence ${evidenceId} not found`);
     }
 
-    this.logger.log(`Deleting attachment ${fileName} from evidence ${doc._id} and revision ${doc._rev}`);
-    const deleteResult = await this.couchdb.deleteEvidence(doc._id, decodeURIComponent(fileName), doc._rev);
-    this.logger.log(`Attachment deletion result: ${JSON.stringify(deleteResult)}`);
-    this.evidenceRepository.deleteEvidenceById(evidenceId, tenantId);
+    try {
+      this.logger.log(`Deleting attachment ${fileName} from evidence ${doc._id} and revision ${doc._rev}`);
+      const deleteResult = await this.couchdb.deleteEvidence(doc._id, decodeURIComponent(fileName), doc._rev);
+      this.logger.log(`Attachment deletion result: ${JSON.stringify(deleteResult)}`);
 
-    await this.auditLog.logAction({
-      userId,
-      operation: 'delete',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_DELETED',
-      outcome: 'SUCCESS',
-    });
+      await this.evidenceRepository.deleteEvidenceById(evidenceId, tenantId);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to delete evidence: ${errorMessage}`, errorStack);
+      throw error;
+    }
     return doc;
   }
 
@@ -325,19 +316,11 @@ export class EvidenceService {
     }
 
     const result = await this.couchdb.queryDocuments(query);
-    const evidenceDoc = result.data?.[0];
+    const [evidenceDoc] = result.data;
 
     if (!evidenceDoc) {
       throw new ForbiddenException('Access denied or evidence not found');
     }
-
-    await this.auditLog.logAction({
-      userId,
-      operation: 'view',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_VIEWED',
-      outcome: 'SUCCESS',
-    });
 
     return {
       id: evidenceDoc.evidenceId,
@@ -375,7 +358,7 @@ export class EvidenceService {
     }
     const result = await this.couchdb.queryDocuments(query);
 
-    const evidenceDoc = result.data?.[0];
+    const [evidenceDoc] = result.data;
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
     const attachments = evidenceDoc.metadata ?? [];
@@ -388,7 +371,7 @@ export class EvidenceService {
     const files: Array<{ file: Buffer; attachmentMeta: any }> = [];
 
     try {
-      for (const att of targets) {
+      const downloadPromises = targets.map(async (att) => {
         const encryptedRaw = await this.couchdb.getAttachment(evidenceId, att.fileName);
         const encryptedBuffer: Buffer = Buffer.isBuffer(encryptedRaw) ? encryptedRaw : Buffer.from(encryptedRaw);
 
@@ -402,7 +385,7 @@ export class EvidenceService {
 
         const file = this.decrypt(encryptedBuffer, att.encryption.key, att.encryption.iv, att.encryption.authTag);
 
-        files.push({
+        return {
           file,
           attachmentMeta: {
             fileName: att.fileName,
@@ -412,16 +395,10 @@ export class EvidenceService {
             encryption: att.encryption,
             filePath: att.filePath,
           },
-        });
-      }
-
-      await this.auditLog.logAction({
-        userId,
-        operation: 'download',
-        entityName: 'Evidence',
-        actionPerformed: 'EVIDENCE_DOWNLOADED',
-        outcome: 'SUCCESS',
+        };
       });
+
+      files.push(...(await Promise.all(downloadPromises)));
 
       return {
         files,
@@ -467,7 +444,7 @@ export class EvidenceService {
     else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
-    const evidenceDoc = result.data?.[0];
+    const [evidenceDoc] = result.data;
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
 
     const attachments = evidenceDoc.metadata ?? [];
@@ -478,24 +455,21 @@ export class EvidenceService {
     if (!targets.length) throw new NotFoundException('Requested attachment not found');
 
     const details: any[] = [];
-    let allVerified = true;
 
     try {
-      for (const att of targets) {
+      const verifyPromises = targets.map(async (att) => {
         const encryptedRaw = await this.couchdb.getAttachment(evidenceId, att.fileName);
         const encryptedBuffer: Buffer = Buffer.isBuffer(encryptedRaw) ? encryptedRaw : Buffer.from(encryptedRaw);
 
         const encryptedHash = this.sha256(encryptedBuffer);
         if (encryptedHash !== att.hash) {
-          details.push({
+          return {
             fileName: att.fileName,
             verified: false,
             reason: 'encrypted hash mismatch',
             expectedHash: att.hash,
             actualHash: encryptedHash,
-          });
-          allVerified = false;
-          continue;
+          };
         }
 
         // try {
@@ -505,32 +479,26 @@ export class EvidenceService {
         //   const errorMessage = decErr instanceof Error ? decErr.message : String(decErr);
         //   const errorStack = decErr instanceof Error ? decErr.stack : undefined;
         //   this.logger.error(`Decryption failed for ${evidenceId}:${att.fileName} - ${errorMessage}`, errorStack);
-        //   details.push({
+        //   return {
         //     fileName: att.fileName,
         //     verified: false,
         //     reason: 'decryption failed',
         //     error: errorMessage,
-        //   });
-        //   allVerified = false;
-        //   continue;
+        //   };
         // }
 
-        details.push({
+        return {
           fileName: att.fileName,
           verified: true,
           reason: 'ok',
           expectedEncryptedHash: att.hash,
           encryptedHash,
-        });
-      }
-
-      await this.auditLog.logAction({
-        userId,
-        operation: 'verify',
-        entityName: 'Evidence',
-        actionPerformed: allVerified ? 'EVIDENCE_VERIFIED' : 'EVIDENCE_VERIFICATION_FAILED',
-        outcome: allVerified ? 'SUCCESS' : 'FAILURE',
+        };
       });
+
+      const verificationResults = await Promise.all(verifyPromises);
+      details.push(...verificationResults);
+      const allVerified = verificationResults.every((result) => result.verified);
 
       return {
         evidenceId,
@@ -575,14 +543,6 @@ export class EvidenceService {
       archive: item.archive,
     }));
 
-    await this.auditLog.logAction({
-      userId,
-      operation: 'view',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_LIST_VIEWED',
-      outcome: 'SUCCESS',
-    });
-
     return { evidence, total: evidence.length, taskId };
   }
 
@@ -621,14 +581,6 @@ export class EvidenceService {
       archive: item.archive,
     }));
 
-    await this.auditLog.logAction({
-      userId,
-      operation: 'view',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_LIST_VIEWED',
-      outcome: 'SUCCESS',
-    });
-
     return { evidence, total: evidence.length };
   }
 
@@ -657,14 +609,6 @@ export class EvidenceService {
       attachments: item.metadata,
       archive: item.archive,
     }));
-
-    await this.auditLog.logAction({
-      userId,
-      operation: 'view',
-      entityName: 'Evidence',
-      actionPerformed: 'EVIDENCE_LIST_VIEWED',
-      outcome: 'SUCCESS',
-    });
 
     return { evidence, total: evidence.length, evidenceType };
   }

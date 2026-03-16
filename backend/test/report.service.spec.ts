@@ -1,9 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReportsService } from '../src/modules/report/report.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CaseService } from '../src/modules/case/case.service';
-import { TaskService } from '../src/modules/task/task.service';
-import { AuditLogService } from '../src/modules/audit/auditLog.service';
 import { EvidenceService } from '../src/modules/evidence/evidence.service';
 import { CouchdbService } from '../src/modules/couchdb/couchdb.service';
 import { NotificationService } from '../src/modules/notification/notification.service';
@@ -15,9 +12,6 @@ import { FraudReportOutcome } from '../src/modules/report/report.model';
 describe('ReportsService', () => {
   let service: ReportsService;
   let prismaService: any;
-  let caseService: any;
-  let taskService: any;
-  let auditLogService: any;
   let evidenceService: any;
   let couchdbService: any;
   let notificationService: any;
@@ -43,16 +37,6 @@ describe('ReportsService', () => {
     assigned_user_id: 'user-123',
   };
 
-  const mockAuditLog = {
-    audit_log_id: 1,
-    user_id: 'user-123',
-    operation: 'CREATE',
-    entity_name: 'Case',
-    action_performed: 'Case created',
-    outcome: 'SUCCESS',
-    performed_at: mockDate,
-  };
-
   const mockEventLog = {
     event_log_id: 1,
     user_id: 'user-123',
@@ -67,19 +51,21 @@ describe('ReportsService', () => {
     reportId: '1-InvestigationReport-v1',
     caseId: 1,
     reportType: 'INVESTIGATION_REPORT',
-    metadata: [{
-      fileName: 'report.pdf',
-      fileSize: 1024,
-      filePath: '/path/to/report.pdf',
-      mimeType: 'application/pdf',
-      hash: 'abc123',
-      encryption: { key: 'key', iv: 'iv', authTag: 'tag' },
-      caseType: 'AML',
-      investigator: 'user-123',
-      supervisor: 'supervisor-123',
-      description: 'Test report',
-      submittedAt: mockDate.toISOString(),
-    }],
+    metadata: [
+      {
+        fileName: 'report.pdf',
+        fileSize: 1024,
+        filePath: '/path/to/report.pdf',
+        mimeType: 'application/pdf',
+        hash: 'abc123',
+        encryption: { key: 'key', iv: 'iv', authTag: 'tag' },
+        caseType: 'AML',
+        investigator: 'user-123',
+        supervisor: 'supervisor-123',
+        description: 'Test report',
+        submittedAt: mockDate.toISOString(),
+      },
+    ],
     keyFindings: 'Test findings',
     evidenceSummary: [],
     decisions: FraudReportOutcome.UNDER_MONITORING,
@@ -107,19 +93,6 @@ describe('ReportsService', () => {
       },
     };
 
-    const mockCaseService = {
-      updateCase: jest.fn(),
-    };
-
-    const mockTaskService = {
-      getTasks: jest.fn(),
-    };
-
-    const mockAuditLogService = {
-      getLogs: jest.fn(),
-      logAction: jest.fn(),
-    };
-
     const mockEvidenceService = {
       getEvidenceByCaseId: jest.fn(),
     };
@@ -144,9 +117,6 @@ describe('ReportsService', () => {
       providers: [
         ReportsService,
         { provide: PrismaService, useValue: mockPrismaService },
-        { provide: CaseService, useValue: mockCaseService },
-        { provide: TaskService, useValue: mockTaskService },
-        { provide: AuditLogService, useValue: mockAuditLogService },
         { provide: EvidenceService, useValue: mockEvidenceService },
         { provide: CouchdbService, useValue: mockCouchdbService },
         { provide: NotificationService, useValue: mockNotificationService },
@@ -156,9 +126,6 @@ describe('ReportsService', () => {
 
     service = module.get<ReportsService>(ReportsService);
     prismaService = module.get(PrismaService);
-    caseService = module.get(CaseService);
-    taskService = module.get(TaskService);
-    auditLogService = module.get(AuditLogService);
     evidenceService = module.get(EvidenceService);
     couchdbService = module.get(CouchdbService);
     notificationService = module.get(NotificationService);
@@ -213,7 +180,7 @@ describe('ReportsService', () => {
           where: expect.objectContaining({
             case_type: 'AML',
           }),
-        })
+        }),
       );
     });
 
@@ -221,25 +188,22 @@ describe('ReportsService', () => {
       ['priority', { priority: 'HIGH' }, { priority: 'HIGH' }],
       ['investigator', { investigator: 'user-123' }, { case_owner_user_id: 'user-123' }],
       ['requestingUserId', { requestingUserId: 'user-123' }, {}],
-    ])(
-      'should filter by %s',
-      async (_filterName, filterParam, expectedWhereClause) => {
-        const result = await service.getCaseStatus('last30', {
-          tenantId: 'tenant-123',
-          ...filterParam,
-        });
+    ])('should filter by %s', async (_filterName, filterParam, expectedWhereClause) => {
+      const result = await service.getCaseStatus('last30', {
+        tenantId: 'tenant-123',
+        ...filterParam,
+      });
 
-        expect(result).toBeDefined();
-        expect(prismaService.case.groupBy).toHaveBeenCalled();
-        if (Object.keys(expectedWhereClause).length > 0) {
-          expect(prismaService.case.groupBy).toHaveBeenCalledWith(
-            expect.objectContaining({
-              where: expect.objectContaining(expectedWhereClause),
-            }),
-          );
-        }
-      },
-    );
+      expect(result).toBeDefined();
+      expect(prismaService.case.groupBy).toHaveBeenCalled();
+      if (Object.keys(expectedWhereClause).length > 0) {
+        expect(prismaService.case.groupBy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining(expectedWhereClause),
+          }),
+        );
+      }
+    });
 
     it('should calculate average resolution time correctly', async () => {
       prismaService.case.findMany.mockResolvedValue([
@@ -267,10 +231,7 @@ describe('ReportsService', () => {
   describe('getInvestigatorWorkload', () => {
     beforeEach(() => {
       // First call gets unique investigators
-      prismaService.case.findMany.mockResolvedValueOnce([
-        { case_owner_user_id: 'user-123' },
-        { case_owner_user_id: 'user-456' },
-      ]);
+      prismaService.case.findMany.mockResolvedValueOnce([{ case_owner_user_id: 'user-123' }, { case_owner_user_id: 'user-456' }]);
       // Subsequent calls for efficiency and performance data need timestamps
       prismaService.case.findMany.mockResolvedValue([
         {
@@ -305,10 +266,7 @@ describe('ReportsService', () => {
     it('should filter out null investigators', async () => {
       prismaService.case.findMany.mockReset();
       // First call gets investigators (including null)
-      prismaService.case.findMany.mockResolvedValueOnce([
-        { case_owner_user_id: 'user-123' },
-        { case_owner_user_id: null },
-      ]);
+      prismaService.case.findMany.mockResolvedValueOnce([{ case_owner_user_id: 'user-123' }, { case_owner_user_id: null }]);
       // Subsequent calls for efficiency and performance data
       prismaService.case.findMany.mockResolvedValue([
         {
@@ -348,75 +306,6 @@ describe('ReportsService', () => {
     });
   });
 
-  describe('getAuditLogs', () => {
-    beforeEach(() => {
-      auditLogService.getLogs.mockResolvedValue([mockAuditLog]);
-    });
-
-    it('should return audit logs report', async () => {
-      const result = await service.getAuditLogs('last30');
-
-      expect(result).toBeDefined();
-      expect(result.stats).toBeDefined();
-      expect(result.auditLogs).toBeDefined();
-      expect(Array.isArray(result.auditLogs)).toBe(true);
-    });
-
-    it('should filter logs by date range', async () => {
-      auditLogService.getLogs.mockResolvedValue([
-        { ...mockAuditLog, performed_at: new Date('2026-02-24') },
-        { ...mockAuditLog, performed_at: new Date('2025-01-01') },
-      ]);
-
-      const result = await service.getAuditLogs('today');
-
-      expect(result.auditLogs.length).toBeGreaterThan(0);
-    });
-
-    it('should count case actions', async () => {
-      auditLogService.getLogs.mockResolvedValue([
-        { ...mockAuditLog, entity_name: 'Case', action_performed: 'Case created' },
-        { ...mockAuditLog, entity_name: 'User', action_performed: 'User updated' },
-      ]);
-
-      const result = await service.getAuditLogs('last30');
-
-      expect(result.stats.caseActions).toBeDefined();
-      expect(typeof result.stats.caseActions).toBe('number');
-    });
-
-    it('should count user sessions', async () => {
-      auditLogService.getLogs.mockResolvedValue([
-        { ...mockAuditLog, action_performed: 'login' },
-        { ...mockAuditLog, action_performed: 'session started' },
-      ]);
-
-      const result = await service.getAuditLogs('last30');
-
-      expect(result.stats.userSessions).toBeDefined();
-    });
-
-    it('should count system warnings', async () => {
-      auditLogService.getLogs.mockResolvedValue([
-        { ...mockAuditLog, outcome: 'WARNING' },
-        { ...mockAuditLog, outcome: 'ERROR' },
-        { ...mockAuditLog, outcome: 'SUCCESS' },
-      ]);
-
-      const result = await service.getAuditLogs('last30');
-
-      expect(result.stats.systemWarnings).toBe(2);
-    });
-
-    it('should format audit logs correctly', async () => {
-      const result = await service.getAuditLogs('last30');
-
-      expect(result.auditLogs[0]).toHaveProperty('audit_log_id');
-      expect(result.auditLogs[0]).toHaveProperty('user_id');
-      expect(result.auditLogs[0]).toHaveProperty('type');
-    });
-  });
-
   describe('getEventLogs', () => {
     beforeEach(() => {
       eventLogService.getLogs.mockResolvedValue([mockEventLog]);
@@ -431,9 +320,7 @@ describe('ReportsService', () => {
     });
 
     it('should filter event logs by date range', async () => {
-      eventLogService.getLogs.mockResolvedValue([
-        { ...mockEventLog, performed_at: mockDate },
-      ]);
+      eventLogService.getLogs.mockResolvedValue([{ ...mockEventLog, performed_at: mockDate }]);
 
       const result = await service.getEventLogs('today');
 
@@ -555,7 +442,6 @@ describe('ReportsService', () => {
       couchdbService.insertAttachment.mockResolvedValue({ rev: 'rev-2', filePath: '/path' });
       couchdbService.updateDocument.mockResolvedValue({ rev: 'rev-3' });
       evidenceService.getEvidenceByCaseId.mockResolvedValue({ evidence: [] });
-      auditLogService.logAction.mockResolvedValue(undefined);
     });
 
     it('should generate fraud report successfully', async () => {
@@ -563,39 +449,34 @@ describe('ReportsService', () => {
 
       expect(result).toBeDefined();
       expect(result.reportId).toContain('InvestigationReport');
-      expect(auditLogService.logAction).toHaveBeenCalled();
     });
 
     it('should throw error for invalid file type', async () => {
       const invalidFile = { ...mockFile, mimetype: 'image/png' };
 
-      await expect(
-        service.generateFraudReport(invalidFile, mockDto, 'user-123', 'tenant-123', 'CMS_SUPERVISOR')
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.generateFraudReport(invalidFile, mockDto, 'user-123', 'tenant-123', 'CMS_SUPERVISOR')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw error if case not found', async () => {
       prismaService.case.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.generateFraudReport(mockFile, mockDto, 'user-123', 'tenant-123', 'CMS_SUPERVISOR')
-      ).rejects.toThrow('Case not found');
+      await expect(service.generateFraudReport(mockFile, mockDto, 'user-123', 'tenant-123', 'CMS_SUPERVISOR')).rejects.toThrow(
+        'Case not found',
+      );
     });
 
     it('should check investigation tasks for CMS_SUPERVISOR', async () => {
-      prismaService.task.findMany.mockResolvedValue([
-        { ...mockTask, name: 'Investigate fraud', status: TaskStatus.STATUS_20_IN_PROGRESS },
-      ]);
+      prismaService.task.findMany.mockResolvedValue([{ ...mockTask, name: 'Investigate fraud', status: TaskStatus.STATUS_20_IN_PROGRESS }]);
 
-      await expect(
-        service.generateFraudReport(mockFile, mockDto, 'user-123', 'tenant-123', 'CMS_SUPERVISOR')
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.generateFraudReport(mockFile, mockDto, 'user-123', 'tenant-123', 'CMS_SUPERVISOR')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should not check tasks for non-CMS_SUPERVISOR roles', async () => {
-      prismaService.task.findMany.mockResolvedValue([
-        { ...mockTask, name: 'Investigate fraud', status: TaskStatus.STATUS_20_IN_PROGRESS },
-      ]);
+      prismaService.task.findMany.mockResolvedValue([{ ...mockTask, name: 'Investigate fraud', status: TaskStatus.STATUS_20_IN_PROGRESS }]);
 
       const result = await service.generateFraudReport(mockFile, mockDto, 'user-123', 'tenant-123', 'CMS_INVESTIGATOR');
 
@@ -639,7 +520,6 @@ describe('ReportsService', () => {
       couchdbService.getDocument.mockResolvedValue(mockFraudReport);
       couchdbService.updateDocument.mockResolvedValue({ rev: 'rev-2' });
       couchdbService.insertDocument.mockResolvedValue({ rev: 'rev-1' });
-      auditLogService.logAction.mockResolvedValue(undefined);
     });
 
     it('should edit unlocked fraud report', async () => {
@@ -667,34 +547,7 @@ describe('ReportsService', () => {
     it('should throw error if report not found', async () => {
       couchdbService.getDocument.mockResolvedValue(null);
 
-      await expect(
-        service.editFraudReport('invalid-id', {}, 'user-123')
-      ).rejects.toThrow('Report not found');
-    });
-
-    it('should log audit action for update', async () => {
-      await service.editFraudReport('1-InvestigationReport-v1', {}, 'user-123');
-
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          operation: 'UPDATE',
-          entityName: 'FraudReport',
-        })
-      );
-    });
-
-    it('should log audit action for version creation', async () => {
-      const lockedReport = { ...mockFraudReport, locked: true };
-      couchdbService.getDocument.mockResolvedValue(lockedReport);
-
-      await service.editFraudReport('1-InvestigationReport-v1', {}, 'user-123');
-
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          operation: 'CREATE_VERSION',
-          entityName: 'FraudReport',
-        })
-      );
+      await expect(service.editFraudReport('invalid-id', {}, 'user-123')).rejects.toThrow('Report not found');
     });
   });
 
@@ -702,7 +555,6 @@ describe('ReportsService', () => {
     beforeEach(() => {
       couchdbService.getDocument.mockResolvedValue(mockFraudReport);
       couchdbService.updateDocument.mockResolvedValue({ rev: 'rev-2' });
-      auditLogService.logAction.mockResolvedValue(undefined);
       notificationService.sendGroupNotification.mockResolvedValue(undefined);
     });
 
@@ -711,7 +563,7 @@ describe('ReportsService', () => {
         '1-InvestigationReport-v1',
         FraudReportOutcome.CONFIRMED_FRAUD,
         'Good work',
-        'supervisor-123'
+        'supervisor-123',
       );
 
       expect(result).toBeDefined();
@@ -723,9 +575,9 @@ describe('ReportsService', () => {
     it('should throw error if report not found', async () => {
       couchdbService.getDocument.mockResolvedValue(null);
 
-      await expect(
-        service.approveFraudReport('invalid-id', FraudReportOutcome.CONFIRMED_FRAUD, 'remarks', 'user-123')
-      ).rejects.toThrow('Report not found');
+      await expect(service.approveFraudReport('invalid-id', FraudReportOutcome.CONFIRMED_FRAUD, 'remarks', 'user-123')).rejects.toThrow(
+        'Report not found',
+      );
     });
 
     it('should update supervisor remarks', async () => {
@@ -733,41 +585,19 @@ describe('ReportsService', () => {
         '1-InvestigationReport-v1',
         FraudReportOutcome.CONFIRMED_FRAUD,
         'Excellent work',
-        'supervisor-123'
+        'supervisor-123',
       );
 
       expect(result.supervisorRemarks).toBe('Excellent work');
     });
 
     it('should send notification to compliance officer', async () => {
-      await service.approveFraudReport(
-        '1-InvestigationReport-v1',
-        FraudReportOutcome.CONFIRMED_FRAUD,
-        'remarks',
-        'supervisor-123'
-      );
+      await service.approveFraudReport('1-InvestigationReport-v1', FraudReportOutcome.CONFIRMED_FRAUD, 'remarks', 'supervisor-123');
 
       expect(notificationService.sendGroupNotification).toHaveBeenCalledWith(
         expect.objectContaining({
           candidateGroup: 'COMPLIANCE_OFFICER',
-        })
-      );
-    });
-
-    it('should log audit action', async () => {
-      await service.approveFraudReport(
-        '1-InvestigationReport-v1',
-        FraudReportOutcome.CONFIRMED_FRAUD,
-        'remarks',
-        'supervisor-123'
-      );
-
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          operation: 'APPROVE',
-          entityName: 'FraudReport',
-          userId: 'supervisor-123',
-        })
+        }),
       );
     });
 
@@ -776,7 +606,7 @@ describe('ReportsService', () => {
         '1-InvestigationReport-v1',
         FraudReportOutcome.CONFIRMED_FRAUD,
         'remarks',
-        'supervisor-123'
+        'supervisor-123',
       );
 
       expect((result.metadata as any).approvedAt).toBeDefined();
@@ -794,7 +624,6 @@ describe('ReportsService', () => {
         }),
       };
       couchdbService.getDatabase.mockReturnValue(mockDb);
-      auditLogService.logAction.mockResolvedValue(undefined);
     });
 
     it('should get all fraud reports for a case', async () => {
@@ -810,29 +639,6 @@ describe('ReportsService', () => {
 
       expect(result[0].version).toBeGreaterThan(result[1].version);
     });
-
-    it('should log audit action', async () => {
-      await service.getFraudReports('1');
-
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          operation: 'RETRIEVE',
-          entityName: 'FraudReport',
-        })
-      );
-    });
-
-    it('should use SYSTEM as userId when called without second param', async () => {
-      await service.getFraudReports('1');
-
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'SYSTEM',
-        })
-      );
-    });
-
-
 
     it('should handle empty reports list', async () => {
       const mockDb = {
@@ -863,20 +669,10 @@ describe('ReportsService', () => {
       expect(color).toBeDefined();
     });
 
-    it('should return correct color for task status', () => {
-      const color = (service as any).getTaskStatusColor(TaskStatus.STATUS_20_IN_PROGRESS);
-      expect(color).toBeDefined();
-    });
-
     it('should format case status name correctly', () => {
       const formatted = (service as any).formatStatusName(CaseStatus.STATUS_20_IN_PROGRESS);
       expect(formatted).toBeDefined();
       expect(typeof formatted).toBe('string');
-    });
-
-    it('should format task status name correctly', () => {
-      const formatted = (service as any).formatTaskStatusName(TaskStatus.STATUS_20_IN_PROGRESS);
-      expect(formatted).toBeDefined();
     });
 
     it('should return Info for SUCCESS outcome', () => {

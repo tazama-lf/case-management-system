@@ -653,7 +653,6 @@ export class CaseService {
 
     // Validate required fields are provided
     const missingFields: string[] = [];
-    if (!updateData.priority && !existingCase.priority) missingFields.push('priority');
     if (!updateData.caseType && !existingCase.case_type) missingFields.push('caseType');
 
     if (missingFields.length > 0) {
@@ -702,10 +701,9 @@ export class CaseService {
           userId,
           tenantId,
         );
-        const isAutoCloseEligible =
-          targetStatus === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT || targetStatus === CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL
-            ? false
-            : true;
+        // targetStatus can only be STATUS_02_READY_FOR_ASSIGNMENT or STATUS_01_PENDING_CASE_CREATION_APPROVAL
+        // so isAutoCloseEligible is always false
+        const isAutoCloseEligible = false;
         await this.flowableService.handleTaskCompleted({
           caseId: completedTask.case_id,
           taskName: completedTask.name!,

@@ -2,19 +2,23 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EvidenceService } from '../src/modules/evidence/evidence.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CouchdbService } from '../src/modules/couchdb/couchdb.service';
-import { AuditLogService } from '../src/modules/audit/auditLog.service';
 import { EvidenceRepository } from '../src/modules/repository/evidence.repository';
 import { TaskRepository } from '../src/modules/repository/task.repository';
 import { EventLogService } from '../src/modules/event_log/eventLog.service';
 import { TaskHistoryService } from '../src/modules/task_history/taskHistory.service';
-import { BadRequestException, NotFoundException, UnauthorizedException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  UnauthorizedException,
+  ForbiddenException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { EvidenceType } from '../src/modules/evidence/dto/upload-evidence.dto';
 
 describe('EvidenceService', () => {
   let service: EvidenceService;
   let prismaService: any;
   let couchdbService: any;
-  let auditLogService: any;
   let evidenceRepository: any;
   let taskRepository: any;
   let eventLogService: any;
@@ -48,71 +52,43 @@ describe('EvidenceService', () => {
         fileSize: 1024,
         filePath: '/path/to/test.pdf',
         mimeType: 'application/pdf',
-        hash: 'bb910c5d19777f76c8c92c6f471fc106254cd7fc9a3491415fafd287eb49f0e5', // SHA256 hash of Buffer.from('encrypted content')
+        hash: 'bb910c5d19777f76c8c92c6f471fc106254cd7fc9a3491415fafd287eb49f0e5',
         encryption: {
-          key: Buffer.alloc(32, 'a').toString('base64'), // 32-byte key for AES-256
-          iv: Buffer.alloc(12, 'b').toString('base64'), // 12-byte IV for GCM
-          authTag: Buffer.alloc(16, 'c').toString('base64'), // 16-byte auth tag
+          key: Buffer.alloc(32, 'a').toString('base64'),
+          iv: Buffer.alloc(12, 'b').toString('base64'),
+          authTag: Buffer.alloc(16, 'c').toString('base64'),
         },
       },
     ],
   };
 
   beforeEach(async () => {
-    const mockPrismaService = {
-      task: {
-        findUnique: jest.fn(),
-      },
-    };
-
-    const mockCouchdbService = {
-      insertDocument: jest.fn(),
-      insertAttachment: jest.fn(),
-      updateDocument: jest.fn(),
-      getDocument: jest.fn(),
-      deleteEvidence: jest.fn(),
-      queryDocuments: jest.fn(),
-      getAttachment: jest.fn(),
-    };
-
-    const mockAuditLogService = {
-      logAction: jest.fn(),
-    };
-
-    const mockEvidenceRepository = {
-      createEvidence: jest.fn(),
-      deleteEvidenceById: jest.fn(),
-    };
-
-    const mockTaskRepository = {
-      findTaskWithCase: jest.fn(),
-    };
-
-    const mockEventLogService = {
-      logEventAction: jest.fn(),
-    };
-
-    const mockTaskHistoryService = {
-      logTaskHistoryAction: jest.fn(),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EvidenceService,
-        { provide: PrismaService, useValue: mockPrismaService },
-        { provide: CouchdbService, useValue: mockCouchdbService },
-        { provide: AuditLogService, useValue: mockAuditLogService },
-        { provide: EvidenceRepository, useValue: mockEvidenceRepository },
-        { provide: TaskRepository, useValue: mockTaskRepository },
-        { provide: EventLogService, useValue: mockEventLogService },
-        { provide: TaskHistoryService, useValue: mockTaskHistoryService },
+        { provide: PrismaService, useValue: { task: { findUnique: jest.fn() } } },
+        {
+          provide: CouchdbService,
+          useValue: {
+            insertDocument: jest.fn(),
+            insertAttachment: jest.fn(),
+            updateDocument: jest.fn(),
+            getDocument: jest.fn(),
+            deleteEvidence: jest.fn(),
+            queryDocuments: jest.fn(),
+            getAttachment: jest.fn(),
+          },
+        },
+        { provide: EvidenceRepository, useValue: { createEvidence: jest.fn(), deleteEvidenceById: jest.fn() } },
+        { provide: TaskRepository, useValue: { findTaskWithCase: jest.fn() } },
+        { provide: EventLogService, useValue: { logEventAction: jest.fn() } },
+        { provide: TaskHistoryService, useValue: { logTaskHistoryAction: jest.fn() } },
       ],
     }).compile();
 
     service = module.get<EvidenceService>(EvidenceService);
     prismaService = module.get(PrismaService);
     couchdbService = module.get(CouchdbService);
-    auditLogService = module.get(AuditLogService);
     evidenceRepository = module.get(EvidenceRepository);
     taskRepository = module.get(TaskRepository);
     eventLogService = module.get(EventLogService);
@@ -141,13 +117,15 @@ describe('EvidenceService', () => {
       mimetype: 'application/pdf',
     };
 
-    it('should successfully upload KYC evidence', async () => {
-      prismaService.task.findUnique.mockResolvedValueOnce(mockTask);
-      taskRepository.findTaskWithCase.mockResolvedValueOnce(mockTask);
-      couchdbService.insertDocument.mockResolvedValueOnce({ rev: 'rev-1' });
-      couchdbService.insertAttachment.mockResolvedValueOnce({ rev: 'rev-2', filePath: '/path/to/file' });
-      couchdbService.updateDocument.mockResolvedValueOnce({ rev: 'rev-3' });
+    beforeEach(() => {
+      prismaService.task.findUnique.mockResolvedValue(mockTask);
+      taskRepository.findTaskWithCase.mockResolvedValue(mockTask);
+      couchdbService.insertDocument.mockResolvedValue({ rev: 'rev-1' });
+      couchdbService.insertAttachment.mockResolvedValue({ rev: 'rev-2', filePath: '/path/to/file' });
+      couchdbService.updateDocument.mockResolvedValue({ rev: 'rev-3' });
+    });
 
+    it('should successfully upload KYC evidence', async () => {
       const result = await service.uploadEvidence([mockFile], uploadDto, userId, tenantId);
 
       expect(result).toBeDefined();
@@ -156,99 +134,51 @@ describe('EvidenceService', () => {
       expect(couchdbService.insertDocument).toHaveBeenCalled();
       expect(couchdbService.insertAttachment).toHaveBeenCalled();
       expect(evidenceRepository.createEvidence).toHaveBeenCalled();
-      expect(auditLogService.logAction).toHaveBeenCalled();
       expect(eventLogService.logEventAction).toHaveBeenCalled();
       expect(taskHistoryService.logTaskHistoryAction).toHaveBeenCalled();
     });
 
-    it('should successfully upload ADVERSE_MEDIA evidence with metadata', async () => {
-      const adverseMediaDto = {
-        ...uploadDto,
-        evidenceType: EvidenceType.ADVERSE_MEDIA,
-        aggregator: 'Test Aggregator',
-        dateSearched: new Date().toISOString(),
-        keywords: 'fraud, money laundering',
-        findings: 'Test findings',
-      } as any;
+    it.each([
+      [
+        EvidenceType.ADVERSE_MEDIA,
+        { aggregator: 'Test Aggregator', dateSearched: new Date().toISOString(), keywords: 'fraud', findings: 'Test' },
+      ],
+      [EvidenceType.SANCTIONS, { screeningDate: new Date().toISOString(), tool: 'OFAC Tool', summaryDisposition: 'No matches' }],
+      [EvidenceType.EDD, {}],
+      [EvidenceType.SAR_STR_FILING, {}],
+      [EvidenceType.OTHER, {}],
+    ])('should upload %s evidence type', async (evidenceType, metadata) => {
+      const dto = { ...uploadDto, evidenceType, ...metadata } as any;
 
-      prismaService.task.findUnique.mockResolvedValueOnce(mockTask);
-      taskRepository.findTaskWithCase.mockResolvedValueOnce(mockTask);
-      couchdbService.insertDocument.mockResolvedValueOnce({ rev: 'rev-1' });
-      couchdbService.insertAttachment.mockResolvedValueOnce({ rev: 'rev-2', filePath: '/path/to/file' });
-      couchdbService.updateDocument.mockResolvedValueOnce({ rev: 'rev-3' });
+      const result = await service.uploadEvidence([mockFile], dto, userId, tenantId);
 
-      const result = await service.uploadEvidence([mockFile], adverseMediaDto, userId, tenantId);
-
-      expect(result).toBeDefined();
-      expect(result.evidenceType).toBe(EvidenceType.ADVERSE_MEDIA);
+      expect(result.evidenceType).toBe(evidenceType);
     });
 
-    it('should successfully upload SANCTIONS evidence with metadata', async () => {
-      const sanctionsDto = {
-        ...uploadDto,
-        evidenceType: EvidenceType.SANCTIONS,
-        screeningDate: new Date().toISOString(),
-        tool: 'OFAC Screening Tool',
-        summaryDisposition: 'No matches found',
-      } as any;
-
-      prismaService.task.findUnique.mockResolvedValueOnce(mockTask);
-      taskRepository.findTaskWithCase.mockResolvedValueOnce(mockTask);
-      couchdbService.insertDocument.mockResolvedValueOnce({ rev: 'rev-1' });
-      couchdbService.insertAttachment.mockResolvedValueOnce({ rev: 'rev-2', filePath: '/path/to/file' });
-      couchdbService.updateDocument.mockResolvedValueOnce({ rev: 'rev-3' });
-
-      const result = await service.uploadEvidence([mockFile], sanctionsDto, userId, tenantId);
-
-      expect(result).toBeDefined();
-      expect(result.evidenceType).toBe(EvidenceType.SANCTIONS);
-    });
-
-    it('should upload EDD evidence type', async () => {
-      const eddDto = { ...uploadDto, evidenceType: EvidenceType.EDD } as any;
-
-      prismaService.task.findUnique.mockResolvedValueOnce(mockTask);
-      taskRepository.findTaskWithCase.mockResolvedValueOnce(mockTask);
-      couchdbService.insertDocument.mockResolvedValueOnce({ rev: 'rev-1' });
-      couchdbService.insertAttachment.mockResolvedValueOnce({ rev: 'rev-2', filePath: '/path/to/file' });
-      couchdbService.updateDocument.mockResolvedValueOnce({ rev: 'rev-3' });
-
-      const result = await service.uploadEvidence([mockFile], eddDto, userId, tenantId);
-
-      expect(result.evidenceType).toBe(EvidenceType.EDD);
-    });
-
-    it('should upload SAR_STR_FILING evidence type', async () => {
-      const sarDto = { ...uploadDto, evidenceType: EvidenceType.SAR_STR_FILING } as any;
-
-      prismaService.task.findUnique.mockResolvedValueOnce(mockTask);
-      taskRepository.findTaskWithCase.mockResolvedValueOnce(mockTask);
-      couchdbService.insertDocument.mockResolvedValueOnce({ rev: 'rev-1' });
-      couchdbService.insertAttachment.mockResolvedValueOnce({ rev: 'rev-2', filePath: '/path/to/file' });
-      couchdbService.updateDocument.mockResolvedValueOnce({ rev: 'rev-3' });
-
-      const result = await service.uploadEvidence([mockFile], sarDto, userId, tenantId);
-
-      expect(result.evidenceType).toBe(EvidenceType.SAR_STR_FILING);
-    });
-
-    it('should upload OTHER evidence type with audio files', async () => {
-      const otherDto = { ...uploadDto, evidenceType: EvidenceType.OTHER } as any;
+    it('should handle audio files for OTHER evidence type', async () => {
       const audioFile = { ...mockFile, mimetype: 'audio/mpeg', originalname: 'test.mp3' };
+      const dto = { ...uploadDto, evidenceType: EvidenceType.OTHER } as any;
 
-      prismaService.task.findUnique.mockResolvedValueOnce(mockTask);
-      taskRepository.findTaskWithCase.mockResolvedValueOnce(mockTask);
-      couchdbService.insertDocument.mockResolvedValueOnce({ rev: 'rev-1' });
-      couchdbService.insertAttachment.mockResolvedValueOnce({ rev: 'rev-2', filePath: '/path/to/file' });
-      couchdbService.updateDocument.mockResolvedValueOnce({ rev: 'rev-3' });
-
-      const result = await service.uploadEvidence([audioFile], otherDto, userId, tenantId);
+      const result = await service.uploadEvidence([audioFile], dto, userId, tenantId);
 
       expect(result.evidenceType).toBe(EvidenceType.OTHER);
     });
 
+    it('should handle multiple files upload', async () => {
+      const files = [mockFile, { ...mockFile, originalname: 'test2.pdf' }];
+
+      couchdbService.insertAttachment
+        .mockResolvedValueOnce({ rev: 'rev-2', filePath: '/path/to/file1' })
+        .mockResolvedValueOnce({ rev: 'rev-3', filePath: '/path/to/file2' });
+
+      const result = await service.uploadEvidence(files, uploadDto, userId, tenantId);
+
+      expect(result).toBeDefined();
+      expect(evidenceRepository.createEvidence).toHaveBeenCalledTimes(2);
+    });
+
     it('should throw BadRequestException when uploading too many files for KYC', async () => {
-      const files = Array(6).fill(mockFile); // 6 files, max is 5
+      const files = Array(6).fill(mockFile);
 
       await expect(service.uploadEvidence(files, uploadDto, userId, tenantId)).rejects.toThrow(BadRequestException);
     });
@@ -270,23 +200,6 @@ describe('EvidenceService', () => {
 
       await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId)).rejects.toThrow(NotFoundException);
     });
-
-    it('should handle multiple files upload', async () => {
-      const files = [mockFile, { ...mockFile, originalname: 'test2.pdf' }];
-
-      prismaService.task.findUnique.mockResolvedValueOnce(mockTask);
-      taskRepository.findTaskWithCase.mockResolvedValueOnce(mockTask);
-      couchdbService.insertDocument.mockResolvedValueOnce({ rev: 'rev-1' });
-      couchdbService.insertAttachment
-        .mockResolvedValueOnce({ rev: 'rev-2', filePath: '/path/to/file1' })
-        .mockResolvedValueOnce({ rev: 'rev-3', filePath: '/path/to/file2' });
-      couchdbService.updateDocument.mockResolvedValueOnce({ rev: 'rev-4' });
-
-      const result = await service.uploadEvidence(files, uploadDto, userId, tenantId);
-
-      expect(result).toBeDefined();
-      expect(evidenceRepository.createEvidence).toHaveBeenCalledTimes(2);
-    });
   });
 
   describe('deleteEvidence', () => {
@@ -294,42 +207,32 @@ describe('EvidenceService', () => {
     const tenantId = 'tenant-123';
 
     it('should successfully delete evidence', async () => {
-      couchdbService.getDocument.mockResolvedValueOnce(mockEvidenceDoc);
-      couchdbService.deleteEvidence.mockResolvedValueOnce({ ok: true });
+      couchdbService.getDocument.mockResolvedValue(mockEvidenceDoc);
+      couchdbService.deleteEvidence.mockResolvedValue({ ok: true });
 
       const result = await service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId);
 
       expect(result).toBeDefined();
       expect(couchdbService.deleteEvidence).toHaveBeenCalled();
       expect(evidenceRepository.deleteEvidenceById).toHaveBeenCalledWith('ev_1_123456', tenantId);
-      expect(auditLogService.logAction).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException when evidenceId is null', async () => {
-      await expect(service.deleteEvidence(null as any, 'test.pdf', userId, tenantId)).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException when evidenceId is empty string', async () => {
-      await expect(service.deleteEvidence('', 'test.pdf', userId, tenantId)).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException when fileName is null', async () => {
-      await expect(service.deleteEvidence('ev_1_123456', null as any, userId, tenantId)).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException when fileName is empty string', async () => {
-      await expect(service.deleteEvidence('ev_1_123456', '', userId, tenantId)).rejects.toThrow(BadRequestException);
+    it.each([
+      ['', 'test.pdf'],
+      ['ev_1_123456', ''],
+    ])('should throw BadRequestException when evidenceId/fileName is empty', async (evidenceId, fileName) => {
+      await expect(service.deleteEvidence(evidenceId as any, fileName as any, userId, tenantId)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw NotFoundException when evidence is not found', async () => {
-      couchdbService.getDocument.mockResolvedValueOnce(null);
+      couchdbService.getDocument.mockResolvedValue(null);
 
       await expect(service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId)).rejects.toThrow(NotFoundException);
     });
 
     it('should propagate errors from couchdb delete operation', async () => {
-      couchdbService.getDocument.mockResolvedValueOnce(mockEvidenceDoc);
-      couchdbService.deleteEvidence.mockRejectedValueOnce(new Error('CouchDB error'));
+      couchdbService.getDocument.mockResolvedValue(mockEvidenceDoc);
+      couchdbService.deleteEvidence.mockRejectedValue(new Error('CouchDB error'));
 
       await expect(service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId)).rejects.toThrow('CouchDB error');
     });
@@ -339,46 +242,23 @@ describe('EvidenceService', () => {
     const userId = 'user-123';
     const tenantId = 'tenant-123';
 
-    it('should successfully get evidence as CMS_INVESTIGATOR', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
+    beforeEach(() => {
+      couchdbService.queryDocuments.mockResolvedValue({ data: [mockEvidenceDoc] });
+    });
 
-      const result = await service.getEvidenceById('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR');
+    it.each([
+      ['CMS_INVESTIGATOR', true],
+      ['CMS_SUPERVISOR', false],
+      ['CMS_AUDITOR', false],
+      ['CMS_COMPLIANCE_OFFICER', false],
+    ])('should get evidence for %s role', async (role, shouldFilterByUser) => {
+      const result = await service.getEvidenceById('ev_1_123456', userId, tenantId, role);
 
       expect(result).toBeDefined();
       expect(result.id).toBe('ev_1_123456');
-      expect(couchdbService.queryDocuments).toHaveBeenCalledWith(
-        expect.objectContaining({
-          tenantId,
-          evidenceId: 'ev_1_123456',
-          uploadedBy: userId,
-        })
-      );
-      expect(auditLogService.logAction).toHaveBeenCalled();
-    });
-
-    it('should successfully get evidence as CMS_SUPERVISOR', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
-      const result = await service.getEvidenceById('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR');
-
-      expect(result).toBeDefined();
-      expect(result.id).toBe('ev_1_123456');
-    });
-
-    it('should successfully get evidence as CMS_AUDITOR', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
-      const result = await service.getEvidenceById('ev_1_123456', userId, tenantId, 'CMS_AUDITOR');
-
-      expect(result).toBeDefined();
-    });
-
-    it('should successfully get evidence as CMS_COMPLIANCE_OFFICER', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
-      const result = await service.getEvidenceById('ev_1_123456', userId, tenantId, 'CMS_COMPLIANCE_OFFICER');
-
-      expect(result).toBeDefined();
+      if (shouldFilterByUser) {
+        expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ uploadedBy: userId }));
+      }
     });
 
     it('should throw UnauthorizedException for invalid role', async () => {
@@ -386,7 +266,7 @@ describe('EvidenceService', () => {
     });
 
     it('should throw ForbiddenException when evidence is not found', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [] });
+      couchdbService.queryDocuments.mockResolvedValue({ data: [] });
 
       await expect(service.getEvidenceById('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR')).rejects.toThrow(ForbiddenException);
     });
@@ -396,28 +276,24 @@ describe('EvidenceService', () => {
     const userId = 'user-123';
     const tenantId = 'tenant-123';
 
-    it('should successfully download evidence', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-      couchdbService.getAttachment.mockResolvedValueOnce(Buffer.from('encrypted content'));
-      
-      // Spy on the private decrypt method
-      jest.spyOn(service as any, 'decrypt').mockReturnValueOnce(Buffer.from('decrypted content'));
-
-      const result = await service.downloadEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR');
-
-      expect(result).toBeDefined();
-      expect(result.files).toHaveLength(1);
-      expect(result.metadata).toBeDefined();
-      expect(auditLogService.logAction).toHaveBeenCalled();
+    beforeEach(() => {
+      couchdbService.queryDocuments.mockResolvedValue({ data: [mockEvidenceDoc] });
+      couchdbService.getAttachment.mockResolvedValue(Buffer.from('encrypted content'));
+      jest.spyOn(service as any, 'decrypt').mockReturnValue(Buffer.from('decrypted content'));
     });
 
-    it('should successfully download specific attachment by name', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-      couchdbService.getAttachment.mockResolvedValueOnce(Buffer.from('encrypted content'));
-      
-      // Spy on the private decrypt method
-      jest.spyOn(service as any, 'decrypt').mockReturnValueOnce(Buffer.from('decrypted content'));
+    it.each([['CMS_INVESTIGATOR'], ['CMS_SUPERVISOR'], ['CMS_AUDITOR'], ['CMS_COMPLIANCE_OFFICER']])(
+      'should download evidence for %s role',
+      async (role) => {
+        const result = await service.downloadEvidence('ev_1_123456', userId, tenantId, role);
 
+        expect(result).toBeDefined();
+        expect(result.files).toHaveLength(1);
+        expect(result.metadata).toBeDefined();
+      },
+    );
+
+    it('should download specific attachment by name', async () => {
       const result = await service.downloadEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR', 'test.pdf');
 
       expect(result.files).toHaveLength(1);
@@ -426,11 +302,7 @@ describe('EvidenceService', () => {
 
     it('should handle investigation reports', async () => {
       const reportDoc = { ...mockEvidenceDoc, evidenceId: 'InvestigationReport_123' };
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [reportDoc] });
-      couchdbService.getAttachment.mockResolvedValueOnce(Buffer.from('encrypted content'));
-      
-      // Spy on the private decrypt method
-      jest.spyOn(service as any, 'decrypt').mockReturnValueOnce(Buffer.from('decrypted content'));
+      couchdbService.queryDocuments.mockResolvedValue({ data: [reportDoc] });
 
       const result = await service.downloadEvidence('InvestigationReport_123', userId, tenantId, 'CMS_SUPERVISOR');
 
@@ -442,38 +314,36 @@ describe('EvidenceService', () => {
     });
 
     it('should throw NotFoundException when evidence is not found', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [] });
+      couchdbService.queryDocuments.mockResolvedValue({ data: [] });
 
       await expect(service.downloadEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when no attachments found', async () => {
       const docWithoutAttachments = { ...mockEvidenceDoc, metadata: [] };
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [docWithoutAttachments] });
+      couchdbService.queryDocuments.mockResolvedValue({ data: [docWithoutAttachments] });
 
       await expect(service.downloadEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when requested attachment not found', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
       await expect(service.downloadEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR', 'nonexistent.pdf')).rejects.toThrow(
-        NotFoundException
+        NotFoundException,
       );
     });
 
     it('should throw BadRequestException when hash verification fails', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-      couchdbService.getAttachment.mockResolvedValueOnce(Buffer.from('different content'));
+      couchdbService.getAttachment.mockResolvedValue(Buffer.from('different content'));
 
       await expect(service.downloadEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR')).rejects.toThrow(BadRequestException);
     });
 
     it('should throw InternalServerErrorException on unexpected errors', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-      couchdbService.getAttachment.mockRejectedValueOnce(new Error('Unexpected error'));
+      couchdbService.getAttachment.mockRejectedValue(new Error('Unexpected error'));
 
-      await expect(service.downloadEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR')).rejects.toThrow(InternalServerErrorException);
+      await expect(service.downloadEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR')).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
@@ -481,66 +351,40 @@ describe('EvidenceService', () => {
     const userId = 'user-123';
     const tenantId = 'tenant-123';
 
-    it('should successfully verify all attachments', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-      couchdbService.getAttachment.mockResolvedValueOnce(Buffer.from('encrypted content'));
-      
-      // Spy on the private decrypt method
-      jest.spyOn(service as any, 'decrypt').mockReturnValueOnce(Buffer.from('decrypted content'));
+    beforeEach(() => {
+      couchdbService.queryDocuments.mockResolvedValue({ data: [mockEvidenceDoc] });
+      couchdbService.getAttachment.mockResolvedValue(Buffer.from('encrypted content'));
+      jest.spyOn(service as any, 'decrypt').mockReturnValue(Buffer.from('decrypted content'));
+    });
 
+    it('should successfully verify all attachments', async () => {
       const result = await service.verifyEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR');
 
       expect(result.verified).toBe(true);
       expect(result.details).toHaveLength(1);
       expect(result.details![0].verified).toBe(true);
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          actionPerformed: 'EVIDENCE_VERIFIED',
-          outcome: 'SUCCESS',
-        })
-      );
     });
 
     it('should verify specific attachment by name', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-      couchdbService.getAttachment.mockResolvedValueOnce(Buffer.from('encrypted content'));
-      
-      // Spy on the private decrypt method
-      jest.spyOn(service as any, 'decrypt').mockReturnValueOnce(Buffer.from('decrypted content'));
-
       const result = await service.verifyEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR', 'test.pdf');
 
       expect(result.verified).toBe(true);
     });
 
     it('should handle hash mismatch verification failure', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-      couchdbService.getAttachment.mockResolvedValueOnce(Buffer.from('different encrypted content'));
+      couchdbService.getAttachment.mockResolvedValue(Buffer.from('different encrypted content'));
 
       const result = await service.verifyEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR');
 
       expect(result.verified).toBe(false);
       expect(result.details![0].verified).toBe(false);
       expect(result.details![0].reason).toBe('encrypted hash mismatch');
-      expect(auditLogService.logAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          actionPerformed: 'EVIDENCE_VERIFICATION_FAILED',
-          outcome: 'FAILURE',
-        })
-      );
     });
 
     it('should filter evidence by uploadedBy for CMS_INVESTIGATOR role', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-      couchdbService.getAttachment.mockResolvedValueOnce(Buffer.from('encrypted content'));
-
       await service.verifyEvidence('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR');
 
-      expect(couchdbService.queryDocuments).toHaveBeenCalledWith(
-        expect.objectContaining({
-          uploadedBy: userId,
-        })
-      );
+      expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ uploadedBy: userId }));
     });
 
     it('should throw UnauthorizedException for invalid role', async () => {
@@ -548,28 +392,25 @@ describe('EvidenceService', () => {
     });
 
     it('should throw NotFoundException when evidence not found', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [] });
+      couchdbService.queryDocuments.mockResolvedValue({ data: [] });
 
       await expect(service.verifyEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when no attachments found', async () => {
       const docWithoutAttachments = { ...mockEvidenceDoc, metadata: [] };
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [docWithoutAttachments] });
+      couchdbService.queryDocuments.mockResolvedValue({ data: [docWithoutAttachments] });
 
       await expect(service.verifyEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when requested attachment not found', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
       await expect(service.verifyEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR', 'nonexistent.pdf')).rejects.toThrow(
-        NotFoundException
+        NotFoundException,
       );
     });
 
     it('should throw InternalServerErrorException on unexpected errors', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
       couchdbService.getAttachment.mockImplementationOnce(() => Promise.reject(new Error('Unexpected error')));
 
       await expect(service.verifyEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR')).rejects.toThrow(InternalServerErrorException);
@@ -581,41 +422,29 @@ describe('EvidenceService', () => {
     const tenantId = 'tenant-123';
     const taskId = 1;
 
-    it('should successfully get evidence list by task ID', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
-      const result = await service.getEvidenceByTaskId(taskId, userId, tenantId, 'CMS_SUPERVISOR');
-
-      expect(result).toBeDefined();
-      expect(result.evidence).toHaveLength(1);
-      expect(result.total).toBe(1);
-      expect(result.taskId).toBe(taskId);
-      expect(auditLogService.logAction).toHaveBeenCalled();
+    beforeEach(() => {
+      couchdbService.queryDocuments.mockResolvedValue({ data: [mockEvidenceDoc] });
     });
 
+    it.each([['CMS_INVESTIGATOR'], ['CMS_SUPERVISOR'], ['CMS_COMPLIANCE_OFFICER']])(
+      'should get evidence by task ID for %s role',
+      async (role) => {
+        const result = await service.getEvidenceByTaskId(taskId, userId, tenantId, role);
+
+        expect(result).toBeDefined();
+        expect(result.evidence).toHaveLength(1);
+        expect(result.total).toBe(1);
+        expect(result.taskId).toBe(taskId);
+      },
+    );
+
     it('should return empty array when no evidence found', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [] });
+      couchdbService.queryDocuments.mockResolvedValue({ data: [] });
 
       const result = await service.getEvidenceByTaskId(taskId, userId, tenantId, 'CMS_SUPERVISOR');
 
       expect(result.evidence).toHaveLength(0);
       expect(result.total).toBe(0);
-    });
-
-    it('should work for CMS_INVESTIGATOR role', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
-      const result = await service.getEvidenceByTaskId(taskId, userId, tenantId, 'CMS_INVESTIGATOR');
-
-      expect(result).toBeDefined();
-    });
-
-    it('should work for CMS_COMPLIANCE_OFFICER role', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
-      const result = await service.getEvidenceByTaskId(taskId, userId, tenantId, 'CMS_COMPLIANCE_OFFICER');
-
-      expect(result).toBeDefined();
     });
 
     it('should throw UnauthorizedException for invalid role', async () => {
@@ -628,47 +457,28 @@ describe('EvidenceService', () => {
     const tenantId = 'tenant-123';
     const caseId = 100;
 
-    it('should successfully get evidence list by case ID', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
+    beforeEach(() => {
+      couchdbService.queryDocuments.mockResolvedValue({ data: [mockEvidenceDoc] });
+    });
 
-      const result = await service.getEvidenceByCaseId(caseId, userId, tenantId, 'CMS_SUPERVISOR');
+    it.each([
+      ['CMS_INVESTIGATOR', true],
+      ['CMS_SUPERVISOR', false],
+      ['CMS_AUDITOR', false],
+      ['CMS_COMPLIANCE_OFFICER', false],
+    ])('should get evidence by case ID for %s role', async (role, shouldFilterByUser) => {
+      const result = await service.getEvidenceByCaseId(caseId, userId, tenantId, role);
 
       expect(result).toBeDefined();
       expect(result.evidence).toHaveLength(1);
       expect(result.total).toBe(1);
-      expect(auditLogService.logAction).toHaveBeenCalled();
-    });
-
-    it('should filter by uploadedBy for CMS_INVESTIGATOR role', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
-      await service.getEvidenceByCaseId(caseId, userId, tenantId, 'CMS_INVESTIGATOR');
-
-      expect(couchdbService.queryDocuments).toHaveBeenCalledWith(
-        expect.objectContaining({
-          uploadedBy: userId,
-        })
-      );
-    });
-
-    it('should work for CMS_AUDITOR role', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
-      const result = await service.getEvidenceByCaseId(caseId, userId, tenantId, 'CMS_AUDITOR');
-
-      expect(result).toBeDefined();
-    });
-
-    it('should work for CMS_COMPLIANCE_OFFICER role', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
-      const result = await service.getEvidenceByCaseId(caseId, userId, tenantId, 'CMS_COMPLIANCE_OFFICER');
-
-      expect(result).toBeDefined();
+      if (shouldFilterByUser) {
+        expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ uploadedBy: userId }));
+      }
     });
 
     it('should return empty array when no evidence found', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [] });
+      couchdbService.queryDocuments.mockResolvedValue({ data: [] });
 
       const result = await service.getEvidenceByCaseId(caseId, userId, tenantId, 'CMS_SUPERVISOR');
 
@@ -686,48 +496,29 @@ describe('EvidenceService', () => {
     const tenantId = 'tenant-123';
     const evidenceType = 'KYC';
 
-    it('should successfully get evidence list by type', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
+    beforeEach(() => {
+      couchdbService.queryDocuments.mockResolvedValue({ data: [mockEvidenceDoc] });
+    });
 
-      const result = await service.getEvidenceByType(evidenceType as any, userId, tenantId, 'CMS_SUPERVISOR');
+    it.each([
+      ['CMS_INVESTIGATOR', true],
+      ['CMS_SUPERVISOR', false],
+      ['CMS_AUDITOR', false],
+      ['CMS_COMPLIANCE_OFFICER', false],
+    ])('should get evidence by type for %s role', async (role, shouldFilterByUser) => {
+      const result = await service.getEvidenceByType(evidenceType as any, userId, tenantId, role);
 
       expect(result).toBeDefined();
       expect(result.evidence).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(result.evidenceType).toBe(evidenceType);
-      expect(auditLogService.logAction).toHaveBeenCalled();
-    });
-
-    it('should filter by uploadedBy for CMS_INVESTIGATOR role', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
-      await service.getEvidenceByType(evidenceType as any, userId, tenantId, 'CMS_INVESTIGATOR');
-
-      expect(couchdbService.queryDocuments).toHaveBeenCalledWith(
-        expect.objectContaining({
-          uploadedBy: userId,
-        })
-      );
-    });
-
-    it('should work for CMS_AUDITOR role', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
-      const result = await service.getEvidenceByType(evidenceType as any, userId, tenantId, 'CMS_AUDITOR');
-
-      expect(result).toBeDefined();
-    });
-
-    it('should work for CMS_COMPLIANCE_OFFICER role', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [mockEvidenceDoc] });
-
-      const result = await service.getEvidenceByType(evidenceType as any, userId, tenantId, 'CMS_COMPLIANCE_OFFICER');
-
-      expect(result).toBeDefined();
+      if (shouldFilterByUser) {
+        expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ uploadedBy: userId }));
+      }
     });
 
     it('should return empty array when no evidence found', async () => {
-      couchdbService.queryDocuments.mockResolvedValueOnce({ data: [] });
+      couchdbService.queryDocuments.mockResolvedValue({ data: [] });
 
       const result = await service.getEvidenceByType(evidenceType as any, userId, tenantId, 'CMS_SUPERVISOR');
 

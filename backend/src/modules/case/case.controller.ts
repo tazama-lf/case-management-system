@@ -50,6 +50,7 @@ import { UserWorkloadResponseDto } from './dto/user-workload-response.dto';
 import { Alert, Case, CaseStatus, CaseType, Priority, Task, TaskStatus } from '@prisma/client-cms';
 import { JsonValue } from '@prisma/client-cms/runtime/library';
 import { CaseCreationService } from './services/case-creation.service';
+import { Audit } from '../audit/decorators/audit-log.decorator';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -63,6 +64,7 @@ export class CaseController {
 
   @Put(':caseId/abandon')
   @RequireInvestigatorOrSupervisorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Abandon a DRAFT case',
@@ -90,6 +92,7 @@ export class CaseController {
 
   @Put(':caseId/reopen')
   @RequireInvestigatorOrSupervisorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reopen an closed case',
@@ -117,6 +120,7 @@ export class CaseController {
 
   @Put(':caseId/suspend')
   @RequireInvestigatorOrSupervisorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Suspend an in-progress case',
@@ -144,6 +148,7 @@ export class CaseController {
 
   @Put(':caseId/resume')
   @RequireInvestigatorOrSupervisorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Resume an suspended case',
@@ -171,6 +176,7 @@ export class CaseController {
 
   @Put(':caseId/complete')
   @RequireInvestigatorOrSupervisorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Complete a DRAFT case',
@@ -196,6 +202,7 @@ export class CaseController {
   }
 
   @Post('manual')
+  @Audit()
   @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -221,6 +228,7 @@ export class CaseController {
 
   @Put(':caseId/close')
   @RequireInvestigatorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Close a case and submit for approval',
@@ -546,6 +554,7 @@ export class CaseController {
 
   @Put(':caseId')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @Audit()
   @ApiOperation({
     summary: 'Update case',
     description: 'Update case details such as status, priority, or assignment',
@@ -563,6 +572,7 @@ export class CaseController {
 
   @Post(':caseId/complete-case-creation')
   @RequireInvestigatorOrSupervisorRole()
+  @Audit()
   @ApiOperation({
     summary: 'Complete case creation',
     description: 'Complete the creation of a case by updating its details such as status, priority, or assignment',
@@ -584,6 +594,7 @@ export class CaseController {
 
   @Put(':caseId/approve')
   @RequireSupervisorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Approve case closure',
@@ -669,6 +680,7 @@ export class CaseController {
 
   @Put(':caseId/reject')
   @RequireSupervisorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reject case closure',
@@ -743,6 +755,7 @@ export class CaseController {
 
   @Put(':caseId/approve-creation')
   @RequireSupervisorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Approve case creation',
@@ -787,6 +800,7 @@ export class CaseController {
 
   @Put(':caseId/reject-creation')
   @RequireSupervisorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reject case creation',
@@ -836,6 +850,7 @@ export class CaseController {
 
   @Put(':caseId/approve-reopening')
   @RequireSupervisorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Approve case reopening',
@@ -908,6 +923,7 @@ export class CaseController {
 
   @Put(':caseId/reject-reopening')
   @RequireSupervisorRole()
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reject case reopening',
@@ -995,6 +1011,7 @@ export class CaseController {
 
   @Put(':caseId/return-for-review')
   @RequireSupervisorRole() // Only supervisors can return cases for review
+  @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Return case for additional review',
@@ -1037,6 +1054,7 @@ export class CaseController {
   }
 
   @Post('save-as-draft')
+  @Audit()
   @RequireInvestigatorOrSupervisorRole()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({

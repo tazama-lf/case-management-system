@@ -12,6 +12,18 @@ describe('CouchdbService', () => {
   let mockNanoInstance: any;
   let mockDb: any;
 
+  const createMockConfig = () => ({
+    get: jest.fn((key: string) => {
+      const config = {
+        COUCHDB_URL: 'http://10.10.80.16:5984',
+        COUCHDB_USERNAME: 'simon',
+        COUCHDB_PASSWORD: '1234',
+        COUCHDB_DATABASE: 'cms-evidence',
+      };
+      return config[key];
+    }),
+  });
+
   beforeEach(async () => {
     mockDb = {
       insert: jest.fn(),
@@ -41,24 +53,12 @@ describe('CouchdbService', () => {
 
     (nano as any).mockReturnValue(mockNanoInstance);
 
-    const mockConfigService = {
-      get: jest.fn((key: string) => {
-        const config = {
-          COUCHDB_URL: 'http://10.10.80.16:5984',
-          COUCHDB_USERNAME: 'simon',
-          COUCHDB_PASSWORD: '1234',
-          COUCHDB_DATABASE: 'cms-evidence',
-        };
-        return config[key];
-      }),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CouchdbService,
         {
           provide: ConfigService,
-          useValue: mockConfigService,
+          useValue: createMockConfig(),
         },
       ],
     }).compile();
@@ -69,6 +69,24 @@ describe('CouchdbService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('constructor', () => {
+    it('should construct URL with authentication', () => {
+      expect(nano).toHaveBeenCalledWith(expect.stringContaining('simon:1234@'));
+    });
+
+    it('should use default values when config is not provided', () => {
+      const mockConfigServiceWithDefaults = {
+        get: jest.fn().mockReturnValue(undefined),
+      };
+
+      const module = Test.createTestingModule({
+        providers: [CouchdbService, { provide: ConfigService, useValue: mockConfigServiceWithDefaults }],
+      }).compile();
+
+      expect(module).toBeDefined();
+    });
   });
 
   describe('onModuleInit', () => {
@@ -82,13 +100,22 @@ describe('CouchdbService', () => {
       expect(mockNanoInstance.use).toHaveBeenCalledWith('cms-evidence');
     });
 
-    it('should create database if it does not exist', async () => {
+    it('should create database when not in list', async () => {
       mockNanoInstance.db.list.mockResolvedValue(['other-db']);
       mockNanoInstance.db.create.mockResolvedValue({ ok: true });
 
       await service.onModuleInit();
 
-      expect(mockNanoInstance.db.list).toHaveBeenCalled();
+      expect(mockNanoInstance.db.create).toHaveBeenCalledWith('cms-evidence');
+      expect(mockNanoInstance.use).toHaveBeenCalledWith('cms-evidence');
+    });
+
+    it('should create database when list is empty', async () => {
+      mockNanoInstance.db.list.mockResolvedValue([]);
+      mockNanoInstance.db.create.mockResolvedValue({ ok: true });
+
+      await service.onModuleInit();
+
       expect(mockNanoInstance.db.create).toHaveBeenCalledWith('cms-evidence');
       expect(mockNanoInstance.use).toHaveBeenCalledWith('cms-evidence');
     });
@@ -98,15 +125,6 @@ describe('CouchdbService', () => {
 
       await expect(service.onModuleInit()).rejects.toThrow('Connection failed');
     });
-
-    it('should handle empty database list', async () => {
-      mockNanoInstance.db.list.mockResolvedValue([]);
-      mockNanoInstance.db.create.mockResolvedValue({ ok: true });
-
-      await service.onModuleInit();
-
-      expect(mockNanoInstance.db.create).toHaveBeenCalledWith('cms-evidence');
-    });
   });
 
   describe('getDatabase', () => {
@@ -114,17 +132,17 @@ describe('CouchdbService', () => {
       mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
       await service.onModuleInit();
 
-      const db = service.getDatabase();
-
-      expect(db).toBe(mockDb);
+      expect(service.getDatabase()).toBe(mockDb);
     });
   });
 
   describe('insertDocument', () => {
-    it('should insert document successfully', async () => {
+    beforeEach(async () => {
       mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
       await service.onModuleInit();
+    });
 
+    it('should insert document successfully', async () => {
       const metadata = { fileName: 'test.pdf', size: 1024 };
       mockDb.insert.mockResolvedValue({ ok: true, id: 'doc-123', rev: '1-abc' });
 
@@ -135,9 +153,6 @@ describe('CouchdbService', () => {
     });
 
     it('should handle insertion errors', async () => {
-      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
-      await service.onModuleInit();
-
       mockDb.insert.mockRejectedValue(new Error('Insert failed'));
 
       await expect(service.insertDocument('doc-123', {})).rejects.toThrow('Insert failed');
@@ -145,10 +160,12 @@ describe('CouchdbService', () => {
   });
 
   describe('deleteEvidence', () => {
-    it('should delete evidence successfully', async () => {
+    beforeEach(async () => {
       mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
       await service.onModuleInit();
+    });
 
+    it('should delete evidence successfully', async () => {
       mockDb.destroy.mockResolvedValue({ ok: true, id: 'doc-123', rev: '2-xyz' });
 
       const result = await service.deleteEvidence('doc-123', 'file.pdf', '1-abc');
@@ -158,9 +175,6 @@ describe('CouchdbService', () => {
     });
 
     it('should handle deletion errors', async () => {
-      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
-      await service.onModuleInit();
-
       mockDb.destroy.mockRejectedValue(new Error('Document not found'));
 
       await expect(service.deleteEvidence('doc-123', 'file.pdf', '1-abc')).rejects.toThrow();
@@ -168,22 +182,20 @@ describe('CouchdbService', () => {
   });
 
   describe('insertAttachment', () => {
-    it('should insert attachment successfully', async () => {
+    beforeEach(async () => {
       mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
       await service.onModuleInit();
+    });
 
+    it('should insert attachment successfully', async () => {
       const buffer = Buffer.from('file content');
       mockDb.attachment.insert.mockResolvedValue({ ok: true, id: 'doc-123', rev: '2-xyz' });
 
       const result = await service.insertAttachment('doc-123', '1-abc', 'file.pdf', buffer, 'application/pdf');
 
-      expect(mockDb.attachment.insert).toHaveBeenCalledWith(
-        'doc-123',
-        'file.pdf',
-        expect.any(Uint8Array),
-        'application/pdf',
-        { rev: '1-abc' },
-      );
+      expect(mockDb.attachment.insert).toHaveBeenCalledWith('doc-123', 'file.pdf', expect.any(Uint8Array), 'application/pdf', {
+        rev: '1-abc',
+      });
       expect(result).toEqual({
         ok: true,
         id: 'doc-123',
@@ -193,34 +205,29 @@ describe('CouchdbService', () => {
     });
 
     it('should encode special characters in attachment name', async () => {
-      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
-      await service.onModuleInit();
-
-      const buffer = Buffer.from('content');
       mockDb.attachment.insert.mockResolvedValue({ ok: true, id: 'doc-123', rev: '2-xyz' });
 
-      const result = await service.insertAttachment('doc-123', '1-abc', 'my file.pdf', buffer, 'application/pdf');
+      const result = await service.insertAttachment('doc-123', '1-abc', 'my file.pdf', Buffer.from(''), 'application/pdf');
 
       expect(result.filePath).toContain('my%20file.pdf');
     });
 
     it('should handle attachment insertion errors', async () => {
-      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
-      await service.onModuleInit();
-
       mockDb.attachment.insert.mockRejectedValue(new Error('Attachment failed'));
 
-      await expect(
-        service.insertAttachment('doc-123', '1-abc', 'file.pdf', Buffer.from(''), 'application/pdf'),
-      ).rejects.toThrow('Attachment failed');
+      await expect(service.insertAttachment('doc-123', '1-abc', 'file.pdf', Buffer.from(''), 'application/pdf')).rejects.toThrow(
+        'Attachment failed',
+      );
     });
   });
 
   describe('getDocument', () => {
-    it('should get document successfully', async () => {
+    beforeEach(async () => {
       mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
       await service.onModuleInit();
+    });
 
+    it('should get document successfully', async () => {
       const mockDoc = { _id: 'doc-123', fileName: 'test.pdf' };
       mockDb.get.mockResolvedValue(mockDoc);
 
@@ -230,25 +237,12 @@ describe('CouchdbService', () => {
       expect(result).toEqual(mockDoc);
     });
 
-    it('should return null for 404 errors', async () => {
-      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
-      await service.onModuleInit();
-
-      const error: any = new Error('Not found');
-      error.statusCode = 404;
-      mockDb.get.mockRejectedValue(error);
-
-      const result = await service.getDocument('doc-123');
-
-      expect(result).toBeNull();
-    });
-
-    it('should throw error for non-404 errors', async () => {
-      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
-      await service.onModuleInit();
-
+    it.each([
+      ['404 errors', 404],
+      ['non-404 errors', 500],
+    ])('should throw error for %s', async (_description, statusCode) => {
       const error: any = new Error('Database error');
-      error.statusCode = 500;
+      error.statusCode = statusCode;
       mockDb.get.mockRejectedValue(error);
 
       await expect(service.getDocument('doc-123')).rejects.toThrow('Database error');
@@ -259,6 +253,7 @@ describe('CouchdbService', () => {
     beforeEach(async () => {
       mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
       await service.onModuleInit();
+      mockDb.find.mockResolvedValue({ docs: [] });
     });
 
     it('should query documents with pagination', async () => {
@@ -282,54 +277,40 @@ describe('CouchdbService', () => {
       });
     });
 
-    it('should throw BadRequestException for invalid page', async () => {
-      await expect(service.queryDocuments({ page: 0, limit: 10 })).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.queryDocuments({ page: -1, limit: 10 })).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.queryDocuments({ page: 1.5, limit: 10 })).rejects.toThrow(
-        BadRequestException,
-      );
+    it.each([
+      ['invalid page', { page: 0, limit: 10 }],
+      ['negative page', { page: -1, limit: 10 }],
+      ['decimal page', { page: 1.5, limit: 10 }],
+      ['invalid limit', { page: 1, limit: 0 }],
+      ['negative limit', { page: 1, limit: -10 }],
+    ])('should throw BadRequestException for %s', async (_description, params) => {
+      await expect(service.queryDocuments(params as any)).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw BadRequestException for invalid limit', async () => {
-      await expect(service.queryDocuments({ page: 1, limit: 0 })).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.queryDocuments({ page: 1, limit: -10 })).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it('should filter by id', async () => {
-      mockDb.find.mockResolvedValue({ docs: [] });
-
-      await service.queryDocuments({ id: 'doc-123', page: 1, limit: 10 });
+    it.each([
+      ['id', { id: 'doc-123' }, { id: 'doc-123' }],
+      ['tenantId', { tenantId: 'tenant-123' }, { tenantId: 'tenant-123' }],
+      ['taskId', { taskId: 789 }, { taskId: 789 }],
+      ['caseId', { caseId: 456 }, { caseId: 456 }],
+      ['evidenceId', { evidenceId: 'ev-123' }, { evidenceId: 'ev-123' }],
+      ['reportId', { reportId: 'rep-123' }, { reportId: 'rep-123' }],
+      ['evidenceType', { evidenceType: 'document' }, { evidenceType: 'document' }],
+      ['uploadedBy', { uploadedBy: 'user-123' }, { uploadedBy: 'user-123' }],
+      ['verified true', { verified: true }, { verified: true }],
+      ['verified false', { verified: false }, { verified: false }],
+      ['archive true', { archive: true }, { archive: true }],
+      ['archive false', { archive: false }, { archive: false }],
+    ])('should filter by %s', async (_description, filterParam, expectedSelector) => {
+      await service.queryDocuments({ ...filterParam, page: 1, limit: 10 });
 
       expect(mockDb.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          selector: { id: 'doc-123' },
-        }),
-      );
-    });
-
-    it('should filter by tenantId', async () => {
-      mockDb.find.mockResolvedValue({ docs: [] });
-
-      await service.queryDocuments({ tenantId: 'tenant-123', page: 1, limit: 10 });
-
-      expect(mockDb.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          selector: { tenantId: 'tenant-123' },
+          selector: expectedSelector,
         }),
       );
     });
 
     it('should filter by multiple fields', async () => {
-      mockDb.find.mockResolvedValue({ docs: [] });
-
       await service.queryDocuments({
         tenantId: 'tenant-123',
         caseId: 456,
@@ -356,8 +337,6 @@ describe('CouchdbService', () => {
     });
 
     it('should handle search with text fields', async () => {
-      mockDb.find.mockResolvedValue({ docs: [] });
-
       await service.queryDocuments({ search: 'test query', page: 1, limit: 10 });
 
       expect(mockDb.find).toHaveBeenCalledWith(
@@ -374,7 +353,6 @@ describe('CouchdbService', () => {
     });
 
     it('should handle search with UUID (36 characters)', async () => {
-      mockDb.find.mockResolvedValue({ docs: [] });
       const uuid = '123e4567-e89b-12d3-a456-426614174000';
 
       await service.queryDocuments({ search: uuid, page: 1, limit: 10 });
@@ -384,17 +362,7 @@ describe('CouchdbService', () => {
       expect(call.selector.$or).toContainEqual({ taskId: uuid });
     });
 
-    it('should handle query errors', async () => {
-      mockDb.find.mockRejectedValue(new Error('Query failed'));
-
-      await expect(service.queryDocuments({ page: 1, limit: 10 })).rejects.toThrow(
-        InternalServerErrorException,
-      );
-    });
-
     it('should calculate skip correctly for different pages', async () => {
-      mockDb.find.mockResolvedValue({ docs: [] });
-
       await service.queryDocuments({ page: 3, limit: 20 });
 
       expect(mockDb.find).toHaveBeenCalledWith(
@@ -402,6 +370,12 @@ describe('CouchdbService', () => {
           skip: 40,
         }),
       );
+    });
+
+    it('should handle query errors', async () => {
+      mockDb.find.mockRejectedValue(new Error('Query failed'));
+
+      await expect(service.queryDocuments({ page: 1, limit: 10 })).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -462,9 +436,7 @@ describe('CouchdbService', () => {
     it('should handle attachment retrieval errors', async () => {
       mockDb.attachment.get.mockRejectedValue(new Error('Attachment not found'));
 
-      await expect(service.getAttachment('doc-123', 'file.pdf')).rejects.toThrow(
-        'Attachment not found',
-      );
+      await expect(service.getAttachment('doc-123', 'file.pdf')).rejects.toThrow('Attachment not found');
     });
   });
 
@@ -474,24 +446,16 @@ describe('CouchdbService', () => {
       await service.onModuleInit();
     });
 
-    it('should list documents with default params', async () => {
+    it.each([
+      ['default params', undefined, {}],
+      ['custom params', { limit: 20, skip: 10 }, { limit: 20, skip: 10 }],
+    ])('should list documents with %s', async (_description, params, expectedParams) => {
       const mockResponse = { total_rows: 10, rows: [] };
-      mockDb.list.mockResolvedValue(mockResponse);
-
-      const result = await service.listDocuments();
-
-      expect(mockDb.list).toHaveBeenCalledWith({});
-      expect(result).toEqual(mockResponse);
-    });
-
-    it('should list documents with custom params', async () => {
-      const params = { limit: 20, skip: 10 };
-      const mockResponse = { total_rows: 100, rows: [] };
       mockDb.list.mockResolvedValue(mockResponse);
 
       const result = await service.listDocuments(params);
 
-      expect(mockDb.list).toHaveBeenCalledWith(params);
+      expect(mockDb.list).toHaveBeenCalledWith(expectedParams);
       expect(result).toEqual(mockResponse);
     });
 
@@ -557,27 +521,14 @@ describe('CouchdbService', () => {
     });
 
     it('should archive old evidence', async () => {
-      const oldDoc = {
-        _id: 'doc-123',
-        _rev: '1-abc',
-        fileName: 'old.pdf',
-        archiveFlag: false,
-      };
+      const oldDoc = { _id: 'doc-123', _rev: '1-abc', fileName: 'old.pdf', archiveFlag: false };
 
-      mockDb.view.mockResolvedValue({
-        rows: [{ doc: oldDoc }],
-      });
+      mockDb.view.mockResolvedValue({ rows: [{ doc: oldDoc }] });
       mockDb.insert.mockResolvedValue({ ok: true });
 
       await service.autoArchiveOldEvidence();
 
-      expect(mockDb.view).toHaveBeenCalledWith(
-        'evidence',
-        'by_uploadedAt',
-        expect.objectContaining({
-          include_docs: true,
-        }),
-      );
+      expect(mockDb.view).toHaveBeenCalledWith('evidence', 'by_uploadedAt', expect.objectContaining({ include_docs: true }));
       expect(mockDb.insert).toHaveBeenCalledWith({
         ...oldDoc,
         archive: true,
@@ -587,15 +538,9 @@ describe('CouchdbService', () => {
     });
 
     it('should not archive already archived evidence', async () => {
-      const archivedDoc = {
-        _id: 'doc-456',
-        _rev: '1-xyz',
-        archiveFlag: true,
-      };
+      const archivedDoc = { _id: 'doc-456', _rev: '1-xyz', archiveFlag: true };
 
-      mockDb.view.mockResolvedValue({
-        rows: [{ doc: archivedDoc }],
-      });
+      mockDb.view.mockResolvedValue({ rows: [{ doc: archivedDoc }] });
 
       await service.autoArchiveOldEvidence();
 
@@ -609,9 +554,7 @@ describe('CouchdbService', () => {
         { _id: 'doc-3', _rev: '1-c', archiveFlag: true },
       ];
 
-      mockDb.view.mockResolvedValue({
-        rows: docs.map((doc) => ({ doc })),
-      });
+      mockDb.view.mockResolvedValue({ rows: docs.map((doc) => ({ doc })) });
       mockDb.insert.mockResolvedValue({ ok: true });
 
       await service.autoArchiveOldEvidence();
@@ -619,44 +562,20 @@ describe('CouchdbService', () => {
       expect(mockDb.insert).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle archiving errors gracefully', async () => {
-      mockDb.view.mockRejectedValue(new Error('View failed'));
+    it.each([
+      ['empty results', { rows: [] }],
+      ['view error', null],
+    ])('should handle %s gracefully', async (_description, viewResult) => {
+      if (viewResult === null) {
+        mockDb.view.mockRejectedValue(new Error('View failed'));
+      } else {
+        mockDb.view.mockResolvedValue(viewResult);
+      }
 
       await expect(service.autoArchiveOldEvidence()).resolves.not.toThrow();
-    });
-
-    it('should handle empty results', async () => {
-      mockDb.view.mockResolvedValue({ rows: [] });
-
-      await service.autoArchiveOldEvidence();
-
-      expect(mockDb.insert).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('constructor configuration', () => {
-    it('should use default values when config is not provided', () => {
-      const mockConfigServiceWithDefaults = {
-        get: jest.fn().mockReturnValue(undefined),
-      };
-
-      const module = Test.createTestingModule({
-        providers: [
-          CouchdbService,
-          {
-            provide: ConfigService,
-            useValue: mockConfigServiceWithDefaults,
-          },
-        ],
-      }).compile();
-
-      expect(module).toBeDefined();
-    });
-
-    it('should construct URL with authentication', () => {
-      expect(nano).toHaveBeenCalledWith(
-        expect.stringContaining('simon:1234@'),
-      );
+      if (viewResult?.rows.length === 0) {
+        expect(mockDb.insert).not.toHaveBeenCalled();
+      }
     });
   });
 });

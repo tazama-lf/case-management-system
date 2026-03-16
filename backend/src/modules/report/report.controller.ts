@@ -27,6 +27,7 @@ import { UploadReportDto } from './dto/upload-report.dto';
 // import { Multer } from 'multer';
 import { Express } from 'express';
 import { FraudReport, FraudReportOutcome } from './report.model';
+import { Audit } from '../audit/decorators/audit-log.decorator';
 
 @ApiTags('Reports')
 @ApiBearerAuth('jwt')
@@ -39,6 +40,7 @@ export class ReportsController {
 
   @Post('fraud/generate')
   @RequireSupervisorRole()
+  @Audit()
   @ApiOperation({ summary: 'Generate fraud investigation report', description: 'Create a new fraud investigation report for a case.' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -102,6 +104,7 @@ export class ReportsController {
 
   @Put('fraud/edit/:reportId')
   @RequireInvestigatorOrSupervisorRole()
+  @Audit()
   @ApiOperation({ summary: 'Edit fraud investigation report', description: 'Edit an existing fraud investigation report.' })
   @ApiResponse({ status: 200, description: 'Fraud report updated successfully.' })
   @ApiBody({
@@ -163,6 +166,7 @@ export class ReportsController {
       },
     },
   })
+  @Audit()
   async approveFraudReport(
     @Body() body: { reportId: string; outcome: FraudReportOutcome; supervisor: string; supervisorUserId: string },
   ): Promise<FraudReport> {
@@ -377,7 +381,7 @@ export class ReportsController {
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async getAuditLogs(@Query('dateRange') dateRange?: string): Promise<unknown> {
-    return await this.reportsService.getAuditLogs(dateRange);
+    return await this.reportsService.getEventLogs(dateRange);
   }
 
   @Get('event-logs')

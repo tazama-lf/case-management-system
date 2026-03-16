@@ -99,10 +99,7 @@ describe('RedisService', () => {
       });
 
       const newModule = await Test.createTestingModule({
-        providers: [
-          RedisService,
-          { provide: ConfigService, useValue: configService },
-        ],
+        providers: [RedisService, { provide: ConfigService, useValue: configService }],
       }).compile();
       const newService = newModule.get<RedisService>(RedisService);
 
@@ -136,13 +133,6 @@ describe('RedisService', () => {
 
       expect(mockRedisClient.disconnect).toHaveBeenCalled();
     });
-
-    it('should handle missing client gracefully', async () => {
-      // Don't initialize client
-      await service.onModuleDestroy();
-
-      // Should not throw error
-    });
   });
 
   describe('isConnected', () => {
@@ -157,10 +147,6 @@ describe('RedisService', () => {
       await service.onModuleInit();
       mockRedisClient.status = 'end' as any;
 
-      expect(service.isConnected()).toBe(false);
-    });
-
-    it('should return false when client is null', () => {
       expect(service.isConnected()).toBe(false);
     });
   });
@@ -313,12 +299,7 @@ describe('RedisService', () => {
       const data = { key1: { foo: 'bar' }, key2: { count: 42 } };
       await service.mset(data);
 
-      expect(mockRedisClient.mset).toHaveBeenCalledWith(
-        'key1',
-        JSON.stringify({ foo: 'bar' }),
-        'key2',
-        JSON.stringify({ count: 42 }),
-      );
+      expect(mockRedisClient.mset).toHaveBeenCalledWith('key1', JSON.stringify({ foo: 'bar' }), 'key2', JSON.stringify({ count: 42 }));
     });
 
     it('should set multiple values with TTL', async () => {

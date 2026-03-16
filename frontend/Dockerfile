@@ -20,9 +20,10 @@ RUN npm i
 COPY . .
 
 # Set environment variables directly in Dockerfile
-ENV VITE_API_BASE_URL=http://localhost:3000
+ENV VITE_API_BASE_URL=http://localhost:3090
 ENV VITE_APP_NAME="Tazama Case Management System"
 ENV VITE_APP_VERSION=0.0.1
+ENV VITE_CRYPTO_KEY=rCRrt08XYmYZrUoKffOQWXa327AJyBxv
 
 # Expose port
 EXPOSE 5173

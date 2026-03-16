@@ -15,7 +15,7 @@ export const FlowableApiEndpoints = {
 
   // Runtime endpoints - Tasks
   TASKS: '/service/runtime/tasks',
-  TASK: (id: number) => `/service/runtime/tasks/${id}`,
+  TASK: (id: string) => `/service/runtime/tasks/${id}`,
   TASK_VARIABLES: (id: number) => `/service/runtime/tasks/${id}/variables`,
   TASK_VARIABLE: (id: number, name: string) => `/service/runtime/tasks/${id}/variables/${name}`,
   TASK_IDENTITY_LINKS: (id: number) => `/service/runtime/tasks/${id}/identitylinks`,
