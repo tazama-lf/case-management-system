@@ -29,6 +29,10 @@ import {
   TransactionHistoryByEndToEndIdResponse,
   TransactionPerspectivesResponse,
 } from './types/gold-lakehouse-responses.types';
+import { AccountConditionsSummary, ConditionsListByAccountResponse } from './types/IAccountConditions.types';
+import { AlertHistoryTimelineResponse } from './types/IAlertHistoryTimeline.types';
+import { ConditionsTableDataResponse } from './types/IConditionsTableData.types';
+import { AlertHistoryAlertsResponse } from './types/IAlertHistory.types';
 
 @Injectable()
 export class GoldLakehouseService {
@@ -87,7 +91,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async runSqlQuery(sql: string, limit = 1) {
+  async runSqlQuery(sql: string, limit = 1): Promise<any> {
     try {
       this.logger.log('Running raw SQL query on Gold Lakehouse');
       this.logger.debug(sql);
@@ -268,7 +272,7 @@ export class GoldLakehouseService {
       }
 
       const combined = this.stripHudiMetadata(combinedRaw);
-      const typologiesRaw = typologiesResponse.data || [];
+      const typologiesRaw = typologiesResponse.data;
       const rulesRaw = rulesResponse?.data ?? [];
 
       // Alert Metadata
@@ -449,12 +453,11 @@ export class GoldLakehouseService {
         ],
       });
 
-      const rowRaw = response.data?.[0];
-      if (!rowRaw) {
+      if (response.data.length === 0) {
         throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
       }
 
-      const row = this.stripHudiMetadata(rowRaw);
+      const row = this.stripHudiMetadata(response.data[0]);
 
       // Transform to frontend-expected format
       return {
@@ -543,7 +546,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTransactionOverviewUIData(transactionId: number, tenantId = 'DEFAULT') {
+  async getTransactionOverviewUIData(transactionId: number, tenantId = 'DEFAULT'): Promise<unknown> {
     try {
       this.logger.log(`Fetching Transaction Overview UI data for transaction: ${transactionId}`);
 
@@ -662,25 +665,25 @@ export class GoldLakehouseService {
    */
   private async resolveToAccounts(id: string, tenantId: string): Promise<string[]> {
     // numeric transaction id?
-    if (/^\d+$/.test(id)) {
+    if (/^\d+$/v.test(id)) {
       const resp = await this.query({
         table_name: 'transaction_detail',
         filters: { transaction_id: parseInt(id, 10), tenant_id: tenantId },
         columns: ['debtor_account_id', 'creditor_account_id'],
       });
-      const row = resp.data?.[0] || {};
+      const [row = {}] = resp.data;
       return [row.debtor_account_id, row.creditor_account_id].filter(Boolean) as string[];
     }
 
     // uuid end-to-end id?
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-/iv;
     if (uuidRegex.test(id)) {
       const resp = await this.query({
         table_name: 'transaction_detail',
         filters: { end_to_end_id: id, tenant_id: tenantId },
         columns: ['debtor_account_id', 'creditor_account_id'],
       });
-      const row = resp.data?.[0] || {};
+      const [row = {}] = resp.data;
       return [row.debtor_account_id, row.creditor_account_id].filter(Boolean) as string[];
     }
 
@@ -690,7 +693,7 @@ export class GoldLakehouseService {
       filters: { source: id, tenant_id: tenantId },
       columns: ['destination'],
     });
-    const accts = (resp.data?.map((r) => r.destination).filter(Boolean) || []) as string[];
+    const accts = resp.data.map((r) => r.destination).filter(Boolean) as string[];
 
     // If entity lookup returned accounts, use those (entity-level query)
     if (accts.length > 0) {
@@ -721,7 +724,7 @@ export class GoldLakehouseService {
         columns: ['destination', 'account_id'],
       });
 
-      const accounts = resp.data?.map((r) => r.destination ?? r.account_id).filter(Boolean) || [];
+      const accounts = resp.data.map((r) => r.destination ?? r.account_id).filter(Boolean);
       const uniqueAccounts = Array.from(new Set(accounts));
 
       return {
@@ -742,7 +745,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getConditionsSummary(identifier: string, tenantId?: string, fromDate?: string) {
+  async getConditionsSummary(identifier: string, tenantId?: string, fromDate?: string): Promise<unknown> {
     try {
       const accounts = await this.resolveToAccounts(identifier, tenantId ?? 'DEFAULT');
       if (accounts.length === 0) {
@@ -781,8 +784,8 @@ export class GoldLakehouseService {
       const row = response.data?.[0] ?? {};
 
       // Determine if this was an entity-level query (not transaction_id or account_id)
-      const isNumeric = /^\d+$/.test(identifier);
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(identifier);
+      const isNumeric = /^\d+$/v.test(identifier);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/iv.test(identifier);
       const isEntityLevel = !isNumeric && !isUuid && accounts.length > 1;
 
       return {
@@ -804,7 +807,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getConditionsList(identifier: string, tenantId?: string) {
+  async getConditionsList(identifier: string, tenantId?: string): Promise<unknown[]> {
     try {
       const accounts = await this.resolveToAccounts(identifier, tenantId ?? 'DEFAULT');
       if (accounts.length === 0) {
@@ -824,7 +827,7 @@ export class GoldLakehouseService {
         filters,
       });
 
-      const rows = response.data || [];
+      const rows = response.data;
 
       return rows.map((r) => {
         const row = this.stripHudiMetadata(r);
@@ -851,7 +854,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getActiveConditions(identifier: string, tenantId = 'DEFAULT', fromDate?: string) {
+  async getActiveConditions(identifier: string, tenantId = 'DEFAULT', fromDate?: string): Promise<unknown> {
     try {
       const accounts = await this.resolveToAccounts(identifier, tenantId);
       if (accounts.length === 0) {
@@ -945,8 +948,8 @@ export class GoldLakehouseService {
       const conditions = Array.from(conditionsMap.values());
 
       // Determine if this was an entity-level query
-      const isNumeric = /^\d+$/.test(identifier);
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(identifier);
+      const isNumeric = /^\d+$/v.test(identifier);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/iv.test(identifier);
       const isEntityLevel = !isNumeric && !isUuid && accounts.length > 1;
 
       this.logger.log(`Found ${conditions.length} active conditions with ${rows.filter((r) => r.transaction_id).length} transaction links`);
@@ -968,7 +971,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getExpiredConditions(identifier: string, tenantId = 'DEFAULT') {
+  async getExpiredConditions(identifier: string, tenantId = 'DEFAULT'): Promise<unknown> {
     try {
       const accounts = await this.resolveToAccounts(identifier, tenantId);
       if (accounts.length === 0) {
@@ -1057,8 +1060,8 @@ export class GoldLakehouseService {
       const conditions = Array.from(conditionsMap.values());
 
       // Determine if this was an entity-level query
-      const isNumeric = /^\d+$/.test(identifier);
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(identifier);
+      const isNumeric = /^\d+$/v.test(identifier);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/iv.test(identifier);
       const isEntityLevel = !isNumeric && !isUuid && accounts.length > 1;
 
       this.logger.log(`Found ${conditions.length} expired conditions with ${rows.length} total transaction links`);
@@ -1119,8 +1122,8 @@ export class GoldLakehouseService {
       const rows = response.data ?? [];
 
       // Determine if this was an entity-level query
-      const isNumeric = /^\d+$/.test(identifier);
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(identifier);
+      const isNumeric = /^\d+$/v.test(identifier);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/iv.test(identifier);
       const isEntityLevel = !isNumeric && !isUuid && accounts.length > 1;
 
       this.logger.log(`Found ${rows.length} future conditions`);
@@ -1149,7 +1152,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getEvaluatedTransactions(identifier: string, tenantId = 'DEFAULT', fromDate?: string) {
+  async getEvaluatedTransactions(identifier: string, tenantId = 'DEFAULT', fromDate?: string): Promise<unknown[]> {
     try {
       const accounts = await this.resolveToAccounts(identifier, tenantId);
       if (accounts.length === 0) {
@@ -1228,10 +1231,7 @@ export class GoldLakehouseService {
 
   private stripHudiMetadata(record: Record<string, any>): Record<string, any> {
     const hudiFields = ['_hoodie_commit_time', '_hoodie_commit_seqno', '_hoodie_record_key', '_hoodie_partition_path', '_hoodie_file_name'];
-
-    const cleaned = { ...record };
-    hudiFields.forEach((field) => delete cleaned[field]);
-    return cleaned;
+    return Object.fromEntries(Object.entries(record).filter(([key]) => !hudiFields.includes(key)));
   }
 
   async getTransactionHistoryData(
@@ -1422,7 +1422,7 @@ export class GoldLakehouseService {
 
       // Calculate aggregates from bucket data
       const bucketTotalVolume = aggregates.reduce((sum, a) => sum + (parseFloat(a.bucket_tx_amount) || 0), 0);
-      const bucketTotalTransactions = aggregates.reduce((sum, a) => sum + (parseInt(a.bucket_tx_count) || 0), 0);
+      const bucketTotalTransactions = aggregates.reduce((sum, a) => sum + (parseInt(a.bucket_tx_count, 10) || 0), 0);
 
       // Calculate percentages and averages
       const alertsPercentage = totalTransactions > 0 ? (alertsTriggered / totalTransactions) * 100 : 0;
@@ -1445,7 +1445,7 @@ export class GoldLakehouseService {
         .map((e) => ({
           date: e.event_date,
           cumulativeAmount: parseFloat(e.cum_tx_amount) || 0,
-          cumulativeCount: parseInt(e.cum_tx_count) || 0,
+          cumulativeCount: parseInt(e.cum_tx_count, 10) || 0,
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -1453,7 +1453,7 @@ export class GoldLakehouseService {
       const volumeDistribution = aggregates.map((a) => ({
         bucketStart: a.bucket_start,
         granularity: a.bucket_granularity,
-        transactionCount: parseInt(a.bucket_tx_count) || 0,
+        transactionCount: parseInt(a.bucket_tx_count, 10) || 0,
         totalVolume: parseFloat(a.bucket_tx_amount) || 0,
       }));
 
@@ -1907,7 +1907,12 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertHistoryTimeline(endToEndId?: string, tenantId?: string, dateRange?: string, granularity = 'day') {
+  async getAlertHistoryTimeline(
+    endToEndId?: string,
+    tenantId?: string,
+    dateRange?: string,
+    granularity = 'day',
+  ): Promise<AlertHistoryTimelineResponse> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
@@ -1984,7 +1989,13 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAlertHistoryAlerts(endToEndId?: string, tenantId?: string, dateRange?: string, page = 1, limit = 20) {
+  async getAlertHistoryAlerts(
+    endToEndId?: string,
+    tenantId?: string,
+    dateRange?: string,
+    page = 1,
+    limit = 20,
+  ): Promise<AlertHistoryAlertsResponse> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
       const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
@@ -2290,33 +2301,6 @@ export class GoldLakehouseService {
     if (txPerDay > 0.5) return 'HIGH';
     if (txPerDay >= 0.2) return 'MEDIUM';
     return 'LOW';
-  }
-
-  private calculateStartDate(timeRange: string): string {
-    const now = new Date();
-    let startDate: Date;
-
-    switch (timeRange) {
-      case '7d':
-        startDate = new Date(now.setDate(now.getDate() - 7));
-        break;
-      case '30d':
-        startDate = new Date(now.setDate(now.getDate() - 30));
-        break;
-      case '90d':
-        startDate = new Date(now.setDate(now.getDate() - 90));
-        break;
-      case '1y':
-        startDate = new Date(now.setFullYear(now.getFullYear() - 1));
-        break;
-      case 'all':
-        startDate = new Date('2000-01-01');
-        break;
-      default:
-        startDate = new Date(now.setDate(now.getDate() - 30));
-    }
-
-    return startDate.toISOString();
   }
 
   async getAccountNodeFullData(
@@ -2684,12 +2668,12 @@ export class GoldLakehouseService {
       let total = 0;
 
       for (const value of amounts) {
-        const s = value.toString().replace('.', '').replace(/^0+/, '');
+        const s = value.toString().replace('.', '').replace(/^0+/v, '');
         if (!s) continue;
 
         const digit = parseInt(s[0], 10);
         if (digit >= 1 && digit <= 9) {
-          counts[digit]++;
+          counts[digit] += 1;
           total += 1;
         }
       }
@@ -2860,7 +2844,7 @@ export class GoldLakehouseService {
       const networkEdges: CounterpartyNetworkEdgeDto[] = [];
 
       edges.forEach((edge, index) => {
-        const edgeKey = [edge.from_counterparty_id, edge.to_counterparty_id].sort().join('->');
+        const edgeKey = [edge.from_counterparty_id, edge.to_counterparty_id].sort((a, b) => a.localeCompare(b)).join('->');
         if (!seenEdges.has(edgeKey)) {
           seenEdges.add(edgeKey);
           networkEdges.push({
@@ -2923,7 +2907,7 @@ export class GoldLakehouseService {
 
   // ---------------- DEBUG METHODS FOR DATA ANALYSIS ----------------
 
-  async getAllConditionsTableData(tenantId: string) {
+  async getAllConditionsTableData(tenantId: string): Promise<ConditionsTableDataResponse> {
     try {
       this.logger.log('Fetching all conditions table data');
       const sql = `SELECT * FROM conditions WHERE tenant_id = '${tenantId}' LIMIT 500`;
@@ -2941,7 +2925,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAllConditionsTimelineData(tenantId: string) {
+  async getAllConditionsTimelineData(tenantId: string): Promise<unknown> {
     try {
       this.logger.log('Fetching all conditions_timeline table data');
       // Try without WHERE clause first in case tenant_id column doesn't exist or table is empty
@@ -2971,7 +2955,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getAllAccountHolderData(tenantId: string) {
+  async getAllAccountHolderData(tenantId: string): Promise<unknown> {
     try {
       this.logger.log('Fetching all account_holder table data');
       const sql = `SELECT * FROM account_holder WHERE tenant_id = '${tenantId}' LIMIT 200`;
@@ -2988,7 +2972,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getTransactionDetailSampleData(tenantId: string) {
+  async getTransactionDetailSampleData(tenantId: string): Promise<unknown> {
     try {
       this.logger.log('Fetching sample transaction_detail table data');
       const sql = `SELECT * FROM transaction_detail WHERE tenant_id = '${tenantId}' LIMIT 100`;
@@ -3008,7 +2992,12 @@ export class GoldLakehouseService {
   // ---------------- SPECIFIC ID TYPE METHODS (NO RESOLUTION) ----------------
 
   // Account ID based methods (direct from conditions_timeline)
-  async getConditionsSummaryByAccount(accountId: string, tenantId = 'DEFAULT', fromDate?: string, asOfDate?: string) {
+  async getConditionsSummaryByAccount(
+    accountId: string,
+    tenantId = 'DEFAULT',
+    fromDate?: string,
+    asOfDate?: string,
+  ): Promise<AccountConditionsSummary> {
     try {
       this.logger.log(`Fetching conditions summary for account: ${accountId}`);
       // const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
@@ -3086,7 +3075,8 @@ export class GoldLakehouseService {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Error fetching conditions summary by account: ${message}`, error?.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error fetching conditions summary by account: ${message}`, errorStack);
 
       if (error instanceof HttpException) {
         throw error;
@@ -3096,7 +3086,7 @@ export class GoldLakehouseService {
     }
   }
 
-  async getActiveConditionsByAccount(accountId: string, tenantId = 'DEFAULT', fromDate?: string) {
+  async getActiveConditionsByAccount(accountId: string, tenantId = 'DEFAULT', fromDate?: string): Promise<unknown> {
     try {
       this.logger.log(`Fetching active conditions for account: ${accountId}`);
       // const dateFilter = fromDate ? `AND bucket_start >= '${fromDate}'` : '';
@@ -3197,7 +3187,12 @@ export class GoldLakehouseService {
     }
   }
 
-  async getConditionsListByAccount(id: string, tenantId = 'DEFAULT', asOfDate?: string, showInactive = false) {
+  async getConditionsListByAccount(
+    id: string,
+    tenantId = 'DEFAULT',
+    asOfDate?: string,
+    showInactive = false,
+  ): Promise<ConditionsListByAccountResponse> {
     try {
       this.logger.log(`Fetching all conditions for ID: ${id}`);
 
@@ -3372,7 +3367,7 @@ export class GoldLakehouseService {
   }
 
   // Transaction ID based methods
-  async getConditionsSummaryByTransaction(transactionId: number, tenantId = 'DEFAULT') {
+  async getConditionsSummaryByTransaction(transactionId: number, tenantId = 'DEFAULT'): Promise<unknown> {
     try {
       this.logger.log(`Fetching conditions summary for transaction: ${transactionId}`);
 
@@ -3415,12 +3410,13 @@ export class GoldLakehouseService {
         expiredConditions: summary.expired_conditions ?? 0,
       };
     } catch (error) {
-      this.logger.error('Error fetching conditions summary by transaction', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching conditions summary by transaction', errorStack);
       throw new HttpException('Failed to fetch conditions summary', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getExpiredConditionsByTransaction(transactionId: number, tenantId = 'DEFAULT') {
+  async getExpiredConditionsByTransaction(transactionId: number, tenantId = 'DEFAULT'): Promise<unknown> {
     try {
       this.logger.log(`Fetching expired conditions for transaction: ${transactionId}`);
 
@@ -3484,12 +3480,13 @@ export class GoldLakehouseService {
         },
       };
     } catch (error) {
-      this.logger.error('Error fetching expired conditions by transaction', error.stack);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error fetching expired conditions by transaction', errorStack);
       throw new HttpException('Failed to fetch expired conditions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getConditionDetails(conditionId: string, tenantId = 'DEFAULT') {
+  async getConditionDetails(conditionId: string, tenantId = 'DEFAULT'): Promise<unknown> {
     try {
       this.logger.log(`Fetching condition details for: ${conditionId}`);
       const sql = `
@@ -3583,7 +3580,7 @@ export class GoldLakehouseService {
       const filterDate = asOfDate ?? tx.tx_event_ts;
 
       // Format transaction display ID
-      const displayId = `TXN-${tx.tx_event_date?.replace(/-/g, '')}${transactionId}`;
+      const displayId = `TXN-${tx.tx_event_date?.replace(/-/gv, '')}${transactionId}`;
 
       // 2. Get debtor entity accounts and condition counts
       const debtorAccounts = await this.getEntityAccountsWithConditionCounts(tx.debtor_id, tx.debtor_account_id, tenantId, filterDate);
@@ -3724,20 +3721,6 @@ export class GoldLakehouseService {
           const counts = countsResponse.data?.[0] ?? {};
 
           // Get account details from transaction_detail (for account type/number)
-          const accountDetailsSql = `
-          SELECT DISTINCT
-            CASE 
-              WHEN debtor_account_id = '${accountId}' THEN debtor_account_id
-              WHEN creditor_account_id = '${accountId}' THEN creditor_account_id
-              ELSE '${accountId}'
-            END as full_account_id
-          FROM transaction_detail
-          WHERE (debtor_account_id = '${accountId}' OR creditor_account_id = '${accountId}')
-            AND tenant_id = '${tenantId}'
-          LIMIT 1
-          `;
-
-          // const detailsResponse = await this.runSqlQuery(accountDetailsSql, 1);
           const accountNumber = accountId.slice(-12); // Last 12 chars for display
 
           return {

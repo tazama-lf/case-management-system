@@ -2,13 +2,13 @@ import { Controller, Get, Param, Query, BadRequestException, Headers } from '@ne
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { JupyterProxyService } from './jupyter-proxy.service';
 import { CounterpartyNetworkResponseDto, TransactionNetworkResponseDto } from '../gold-lakehouse/dto/network-analysis.dto';
-import { Alerts, Edge, Node } from '../gold-lakehouse/types/gold-lakehouse.types';
 import { AccountNodeFullDataResponse, CounterpartyNodeFullDataResponse } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
+import { AlertHistoryAlertsResponse } from '../gold-lakehouse/types/IAlertHistory.types';
 
 @Controller('api/v1/jupyter/proxy')
 @ApiTags('Jupyter Proxy')
 export class JupyterProxyController {
-  constructor(private readonly proxyService: JupyterProxyService) { }
+  constructor(private readonly proxyService: JupyterProxyService) {}
 
   private validateSecret(headers: Record<string, any>): void {
     const required = process.env.JUPYTER_SHARED_SECRET;
@@ -124,15 +124,7 @@ export class JupyterProxyController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Headers() headers?: Record<string, any>,
-  ): Promise<{
-    alerts: Alerts[];
-    pagination: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
-  }> {
+  ): Promise<AlertHistoryAlertsResponse> {
     this.validateSecret(headers ?? {});
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');

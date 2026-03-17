@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { GoldLakehouseService } from '../gold-lakehouse/gold-lakehouse.service';
 import { CounterpartyNetworkResponseDto, TransactionNetworkResponseDto } from '../gold-lakehouse/dto/network-analysis.dto';
-import { Alerts, Edge, Node } from '../gold-lakehouse/types/gold-lakehouse.types';
 import {
   AccountNodeFullDataResponse,
+  ConditionsContextByTransactionResponse,
   CounterpartyNodeFullDataResponse,
   EvaluatedTransactionsResponse,
 } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
-import { Account } from '@tazama-lf/frms-coe-lib/lib/interfaces/event-flow/EntityConditionEdge';
+import { AccountConditionsSummary, ConditionsListByAccountResponse } from '../gold-lakehouse/types/IAccountConditions.types';
+import { AlertHistoryAlertsResponse } from '../gold-lakehouse/types/IAlertHistory.types';
 
 @Injectable()
 export class JupyterProxyService {
@@ -59,15 +60,7 @@ export class JupyterProxyService {
     dateRange?: string,
     page = 1,
     limit = 20,
-  ): Promise<{
-    alerts: Alerts[];
-    pagination: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
-  }> {
+  ): Promise<AlertHistoryAlertsResponse> {
     return await this.goldLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page, limit);
   }
 
@@ -104,15 +97,24 @@ export class JupyterProxyService {
 
   // ================ CONDITIONS PROXY METHODS ================
 
-  async getConditionsContextByTransaction(transactionId: number, tenantId = 'DEFAULT', asOfDate?: string) {
+  async getConditionsContextByTransaction(
+    transactionId: number,
+    tenantId = 'DEFAULT',
+    asOfDate?: string,
+  ): Promise<ConditionsContextByTransactionResponse> {
     return await this.goldLakehouseService.getConditionsContextByTransaction(transactionId, tenantId, asOfDate);
   }
 
-  async getConditionsSummary(accountId: string, tenantId = 'DEFAULT', asOfDate?: string) {
+  async getConditionsSummary(accountId: string, tenantId = 'DEFAULT', asOfDate?: string): Promise<AccountConditionsSummary> {
     return await this.goldLakehouseService.getConditionsSummaryByAccount(accountId, tenantId, undefined, asOfDate);
   }
 
-  async getConditionsDetails(accountId: string, tenantId = 'DEFAULT', asOfDate?: string, showInactive?: boolean) {
+  async getConditionsDetails(
+    accountId: string,
+    tenantId = 'DEFAULT',
+    asOfDate?: string,
+    showInactive?: boolean,
+  ): Promise<ConditionsListByAccountResponse> {
     return await this.goldLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive ?? false);
   }
 

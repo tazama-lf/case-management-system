@@ -13,6 +13,7 @@ import { LoggingOrchestrationService } from '../logging-orchestration/logging-or
 import { Outcome } from 'src/utils/types/outcome';
 import { EventLogService } from '../event_log/eventLog.service';
 import { GoldLakehouseService } from '../gold-lakehouse/gold-lakehouse.service';
+import { TransactionHistoryByEndToEndIdResponse } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
 
 @Injectable()
 export class AlertService {
@@ -105,7 +106,7 @@ export class AlertService {
     }
   }
 
-  async getAlertTransactionalData(alertId: number) {
+  async getAlertTransactionalData(alertId: number): Promise<TransactionHistoryByEndToEndIdResponse> {
     // : Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>>
     this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
 
@@ -122,7 +123,7 @@ export class AlertService {
     // const transactionData = await this.transactionDataRespository.getTransactionalData(referenceId);
     // if (!transactionData) throw new InternalServerErrorException(`transactionData not found for AlertId ${alertId}`);
 
-    const transactionData = await this.goldLakeHouseService.getTransactionHistoryByEndToEndId(referenceId).catch((error) => {
+    const transactionData = await this.goldLakeHouseService.getTransactionHistoryByEndToEndId(referenceId).catch((error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.loggerService.error(
@@ -131,9 +132,10 @@ export class AlertService {
         AlertService.name,
       );
     });
-
+    if (!transactionData) {
+      throw new InternalServerErrorException(`Transaction history data not found for AlertId ${alertId}`);
+    }
     this.loggerService.log(`Fetched transaction data for Alert ID ${alertId}: ${JSON.stringify(transactionData)}`, AlertService.name);
-
     return transactionData;
   }
 

@@ -9,6 +9,7 @@ import { AlertService } from './alert.service';
 import { AlertDetailsResponseDTO } from './dto/AlertDetailsResponse.dto';
 import { AlertActionHistoryDTO } from './dto/AlertActionHistory.dto';
 import { Priority, Prisma } from '@prisma/client-cms';
+import { TransactionHistoryByEndToEndIdResponse } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
 
 @Controller('api/v1/alert')
 @UseGuards(TazamaAuthGuard)
@@ -156,7 +157,10 @@ export class AlertController {
     description: 'alert Id',
     example: '1',
   })
-  async getAlertTransactionalData(@Req() req: AuthenticatedRequest, @Param('alertId') alertId: number) {
+  async getAlertTransactionalData(
+    @Req() req: AuthenticatedRequest,
+    @Param('alertId') alertId: number,
+  ): Promise<TransactionHistoryByEndToEndIdResponse> {
     //: Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>>
     const userId = req.user.token.clientId;
     if (!userId) throw new BadRequestException('Missing clientId');

@@ -4,6 +4,7 @@ import { JupyterProxyService } from './jupyter-proxy.service';
 import { CounterpartyNetworkResponseDto, TransactionNetworkResponseDto } from '../gold-lakehouse/dto/network-analysis.dto';
 import {
   AccountNodeFullDataResponse,
+  ConditionsContextByTransactionResponse,
   CounterpartyNodeFullDataResponse,
   EvaluatedTransactionsResponse,
 } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
@@ -62,7 +63,7 @@ export class JupyterProxyController {
     return await this.proxyService.getCounterpartyNodeFullData(
       counterpartyId,
       tenantId ?? 'DEFAULT',
-      (granularity as 'day' | 'month' | 'year') || 'month',
+      granularity as 'day' | 'month' | 'year',
     );
   }
 
@@ -208,9 +209,6 @@ export class JupyterProxyController {
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
-    if (granularity && !['day', 'month', 'year'].includes(granularity)) {
-      throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
-    }
     return await this.proxyService.getAccountNetworkData(accountId, tenantId, granularity);
   }
 
@@ -254,7 +252,7 @@ export class JupyterProxyController {
     @Query('tenantId') tenantId?: string,
     @Query('asOfDate') asOfDate?: string,
     @Headers() headers?: Record<string, any>,
-  ) {
+  ): Promise<ConditionsContextByTransactionResponse> {
     this.validateSecret(headers ?? {});
     const txId = parseInt(transactionId, 10);
     if (isNaN(txId)) {
