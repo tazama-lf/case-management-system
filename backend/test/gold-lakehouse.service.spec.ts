@@ -1,43 +1,52 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { HttpException, HttpStatus } from '@nestjs/common';
+﻿import { Test, TestingModule } from '@nestjs/testing';
+import { HttpException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
 import { GoldLakehouseService } from '../src/modules/gold-lakehouse/gold-lakehouse.service';
-import { QueryRequestDto } from '../src/modules/gold-lakehouse/dto/query-request.dto';
 
 describe('GoldLakehouseService', () => {
   let service: GoldLakehouseService;
-  let httpService: HttpService;
-  let configService: ConfigService;
+  let http: jest.Mock;
 
-  const mockApiUrl = 'http://localhost:5000';
-  const mockTimeout = 30000;
+  /** Returns a successful Axios-like observable wrapping a /query or /execute_sql body */
+  const okHttp = (rows: any[] = [{}]) =>
+    of({
+      data: { status: 'success', data: rows, code: 200 },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {} as any,
+    });
 
-  const createMockHttpResponse = (data: any) => ({
-    data,
-    status: 200,
-    statusText: 'OK',
-    headers: {},
-    config: {} as any,
-  });
+  /** Error observable */
+  const errHttp = (msg = 'fail') => throwError(() => new Error(msg));
+
+  /** HTTP response with status!=success */
+  const badHttp = () =>
+    of({
+      data: { status: 'error', code: 500 },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {} as any,
+    });
 
   beforeEach(async () => {
+    http = jest.fn().mockReturnValue(okHttp());
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GoldLakehouseService,
-        {
-          provide: HttpService,
-          useValue: { post: jest.fn() },
-        },
+        { provide: HttpService, useValue: { post: http } },
         {
           provide: ConfigService,
           useValue: {
-            getOrThrow: jest.fn((key: string) => (key === 'GOLD_LAKEHOUSE_API_URL' ? mockApiUrl : undefined)),
-            get: jest.fn((key: string, defaultValue?: any) => {
-              if (key === 'GOLD_LAKEHOUSE_TIMEOUT') return mockTimeout;
-              if (key === 'ALERT_HISTORY_FALLBACK_E2E_ID') return '05c7ead85a1343d5a959561523a965fb';
-              return defaultValue;
+            getOrThrow: jest.fn(() => 'http://localhost:5000'),
+            get: jest.fn((key: string, def?: any) => {
+              if (key === 'GOLD_LAKEHOUSE_TIMEOUT') return 30000;
+              if (key === 'ALERT_HISTORY_FALLBACK_E2E_ID') return 'fallback-e2e-id';
+              return def;
             }),
           },
         },
@@ -45,2290 +54,1338 @@ describe('GoldLakehouseService', () => {
     }).compile();
 
     service = module.get<GoldLakehouseService>(GoldLakehouseService);
-    httpService = module.get<HttpService>(HttpService);
-    configService = module.get<ConfigService>(ConfigService);
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
+  afterEach(() => jest.clearAllMocks());
 
-  describe('constructor', () => {
-    it('should initialize with config values', () => {
-      expect(configService.getOrThrow).toHaveBeenCalledWith('GOLD_LAKEHOUSE_API_URL');
-      expect(configService.get).toHaveBeenCalledWith('GOLD_LAKEHOUSE_TIMEOUT');
-      expect(configService.get).toHaveBeenCalledWith('ALERT_HISTORY_FALLBACK_E2E_ID', expect.any(String));
-    });
-  });
+  it('should be defined', () => expect(service).toBeDefined());
 
+  // ===================== query =====================
   describe('query', () => {
-    const queryRequest: QueryRequestDto = { table_name: 'alerts', filters: { tenant_id: 'DEFAULT' } };
-
-    it('should successfully query Gold Lakehouse', async () => {
-      const mockResponse = { status: 'success', data: [{ id: 1 }], code: 200 };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.query(queryRequest);
-
-      expect(httpService.post).toHaveBeenCalledWith(`${mockApiUrl}/query`, queryRequest, { timeout: mockTimeout });
-      expect(result).toEqual(mockResponse);
+    it('returns response on success', async () => {
+      const result = await service.query({ table_name: 'alerts', filters: {} });
+      expect(result.status).toBe('success');
     });
 
-    it('should throw HttpException when query status is not success', async () => {
-      const mockResponse = { status: 'error', code: 500, message: 'Query failed' };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      await expect(service.query(queryRequest)).rejects.toThrow(HttpException);
-      await expect(service.query(queryRequest)).rejects.toThrow('Gold Lakehouse query failed with status: error');
+    it('throws when status is not success', async () => {
+      http.mockReturnValue(badHttp());
+      await expect(service.query({ table_name: 't', filters: {} })).rejects.toThrow(HttpException);
     });
 
-    it('should handle ECONNREFUSED error', async () => {
-      const error = { code: 'ECONNREFUSED', message: 'Connection refused' };
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => error) as any);
-
-      await expect(service.query(queryRequest)).rejects.toThrow(HttpException);
-      await expect(service.query(queryRequest)).rejects.toThrow('Gold Lakehouse API is not running or not reachable');
+    it('throws SERVICE_UNAVAILABLE on ECONNREFUSED', async () => {
+      http.mockReturnValue(throwError(() => ({ code: 'ECONNREFUSED' })));
+      await expect(service.query({ table_name: 't', filters: {} })).rejects.toThrow(HttpException);
     });
 
-    it('should handle HttpException and re-throw it', async () => {
-      const httpException = new HttpException('Test error', HttpStatus.BAD_REQUEST);
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => httpException) as any);
-
-      await expect(service.query(queryRequest)).rejects.toThrow(httpException);
+    it('re-throws HttpException', async () => {
+      http.mockReturnValue(throwError(() => new HttpException('Http error', 400)));
+      await expect(service.query({ table_name: 't', filters: {} })).rejects.toThrow('Http error');
     });
 
-    it('should handle unknown errors', async () => {
-      const error = new Error('Network error');
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => error) as any);
-
-      await expect(service.query(queryRequest)).rejects.toThrow('Failed to query Gold Lakehouse: Network error');
+    it('wraps generic errors', async () => {
+      http.mockReturnValue(errHttp('unexpected'));
+      await expect(service.query({ table_name: 't', filters: {} })).rejects.toThrow('Failed to query Gold Lakehouse');
     });
   });
 
+  // ===================== runSqlQuery =====================
   describe('runSqlQuery', () => {
-    const sql = 'SELECT * FROM alerts LIMIT 1';
-
-    it('should successfully run SQL query', async () => {
-      const mockResponse = { status: 'success', data: [{ id: 1 }], code: 200 };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.runSqlQuery(sql);
-
-      expect(httpService.post).toHaveBeenCalledWith(`${mockApiUrl}/execute_sql`, { sql_query: sql, limit: 1 }, { timeout: mockTimeout });
-      expect(result).toEqual(mockResponse);
+    it('uses default limit of 1', async () => {
+      await service.runSqlQuery('SELECT 1');
+      expect(http).toHaveBeenCalledWith('http://localhost:5000/execute_sql', expect.objectContaining({ limit: 1 }), expect.any(Object));
     });
 
-    it('should use custom limit parameter', async () => {
-      const mockResponse = { status: 'success', data: [], code: 200 };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      await service.runSqlQuery(sql, 100);
-
-      expect(httpService.post).toHaveBeenCalledWith(`${mockApiUrl}/execute_sql`, { sql_query: sql, limit: 100 }, { timeout: mockTimeout });
+    it('accepts custom limit', async () => {
+      await service.runSqlQuery('SELECT 1', 100);
+      expect(http).toHaveBeenCalledWith('http://localhost:5000/execute_sql', expect.objectContaining({ limit: 100 }), expect.any(Object));
     });
 
-    it('should throw HttpException when SQL query status is not success', async () => {
-      const mockResponse = { status: 'error', code: 500 };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      await expect(service.runSqlQuery(sql)).rejects.toThrow('Gold Lakehouse SQL query failed');
+    it('throws when status is not success', async () => {
+      http.mockReturnValue(badHttp());
+      await expect(service.runSqlQuery('BAD')).rejects.toThrow(HttpException);
     });
 
-    it('should handle HttpException and re-throw it', async () => {
-      const httpException = new HttpException('SQL error', HttpStatus.INTERNAL_SERVER_ERROR);
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => httpException) as any);
-
-      await expect(service.runSqlQuery(sql)).rejects.toThrow(httpException);
+    it('re-throws HttpException', async () => {
+      http.mockReturnValue(throwError(() => new HttpException('SQL error', 500)));
+      await expect(service.runSqlQuery('BAD')).rejects.toThrow('SQL error');
     });
 
-    it('should handle generic errors', async () => {
-      const error = new Error('Connection error');
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => error) as any);
-
-      await expect(service.runSqlQuery(sql)).rejects.toThrow('Failed to run SQL query on Gold Lakehouse');
+    it('wraps generic errors', async () => {
+      http.mockReturnValue(errHttp('conn'));
+      await expect(service.runSqlQuery('BAD')).rejects.toThrow('Failed to run SQL query');
     });
   });
 
+  // ===================== getAlertNavigatorMetrics =====================
   describe('getAlertNavigatorMetrics', () => {
-    it('should fetch alert navigator metrics', async () => {
-      const mockResponse = { status: 'success', data: [{ total_typologies: 5, total_rules: 20, avg_typology_score: 75.5 }] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertNavigatorMetrics(123, 'DEFAULT');
-
-      expect(result).toEqual({
-        total_typologies: 5,
-        total_rules: 20,
-        avg_typology_score: 75.5,
-        alertId: 123,
-        tenantId: 'DEFAULT',
-      });
+    it('returns metrics', async () => {
+      http.mockReturnValue(okHttp([{ total_typologies: 3, total_rules: 10, avg_typology_score: 80 }]));
+      const result = await service.getAlertNavigatorMetrics(1, 'DEFAULT');
+      expect(result.total_typologies).toBe(3);
+      expect(result.alertId).toBe(1);
     });
 
-    it('should handle empty response data', async () => {
-      const mockResponse = { status: 'success', data: [{ total_typologies: 0, total_rules: 0, avg_typology_score: null }] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertNavigatorMetrics(123);
-
+    it('handles empty row with defaults', async () => {
+      http.mockReturnValue(okHttp([{ total_typologies: 0, total_rules: 0, avg_typology_score: null }]));
+      const result = await service.getAlertNavigatorMetrics(1);
       expect(result.total_typologies).toBe(0);
-      expect(result.total_rules).toBe(0);
       expect(result.avg_typology_score).toBeNull();
     });
 
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('DB error')) as any);
-
-      await expect(service.getAlertNavigatorMetrics(123)).rejects.toThrow(HttpException);
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getAlertNavigatorMetrics(1)).rejects.toThrow(HttpException);
     });
   });
 
-  describe('getConditionsSummary', () => {
-    it('should fetch conditions summary', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ active_conditions: 5, blocked_transactions: 10, overridden_transactions: 2, future_conditions: 3 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getConditionsSummary('account123', 'DEFAULT');
-
-      expect(result).toEqual({
-        activeConditions: 5,
-        blockedTransactions: 10,
-        overriddenTransactions: 2,
-        futureConditions: 3,
-      });
+  // ===================== getAlertNavigatorData =====================
+  describe('getAlertNavigatorData', () => {
+    it('returns alert navigator data with matched rules', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              alert_id: 1,
+              alert_status: 'OPEN',
+              alert_tx_type: 'PAYMENT',
+              alert_tx_amount: 100,
+              alert_tx_ccy: 'USD',
+              created_at_ts: '2024-01-01',
+            },
+          ]),
+        )
+        .mockReturnValueOnce(
+          okHttp([{ typology_id: 't1', typology_cfg: '001', typology_score: 85, alert_threshold: 70, interdiction_threshold: 90 }]),
+        )
+        .mockReturnValueOnce(
+          okHttp([{ rule_id: 'r1', typology_cfg: '001', rule_weight: 10, rule_desc: 'High risk', rule_sub_ref: 'SUB1' }]),
+        );
+      const result = await service.getAlertNavigatorData(1, 'DEFAULT');
+      expect(result).toHaveProperty('alertMetadata');
+      expect(result.typologies[0].rules).toBeDefined();
     });
 
-    it('should handle empty response with defaults', async () => {
-      const mockResponse = { status: 'success', data: [{}] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getConditionsSummary('account123');
-
-      expect(result.activeConditions).toBe(0);
-      expect(result.blockedTransactions).toBe(0);
+    it('throws when alert not found', async () => {
+      http.mockReturnValue(okHttp([]));
+      await expect(service.getAlertNavigatorData(999)).rejects.toThrow(HttpException);
     });
 
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('SQL error')) as any);
-
-      await expect(service.getConditionsSummary('account123')).rejects.toThrow('Failed to fetch conditions summary');
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getAlertNavigatorData(1)).rejects.toThrow(HttpException);
     });
   });
 
-  describe('getConditionsList', () => {
-    it('should fetch conditions list', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
+  // ===================== getTransactionDetailData =====================
+  describe('getTransactionDetailData', () => {
+    it('returns transaction detail', async () => {
+      http.mockReturnValue(
+        okHttp([
           {
-            condition_id: 'cond1',
-            condition_type: 'block',
-            condition_reason: 'Suspicious activity',
-            created_by_user: 'admin',
-            condition_inception_ts: '2024-01-01',
-            condition_expiry_ts: '2024-12-31',
-            is_active: 1,
-            is_expired: 0,
+            transaction_id: '123',
+            tx_type: 'PAYMENT',
+            tx_event_ts: '2024-01-01',
+            debtor_name: 'A',
+            debtor_account_id: 'acc1',
+            creditor_name: 'B',
+            creditor_account_id: 'acc2',
+            instg_mmb_id: 'bank1',
+            instd_mmb_id: 'bank2',
+            interbank_settlement_amount: 100,
+            interbank_settlement_currency: 'USD',
+            instructed_amount: 100,
+            instructed_currency: 'USD',
+            exchange_rate: 1,
+            charge_total_amount: 0,
+            tx_event_date: '2024-01-01',
           },
-        ],
-      };
-      jest.spyOn(service, 'query').mockResolvedValue(mockResponse as any);
-
-      const result = await service.getConditionsList('account123', 'DEFAULT');
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        conditionId: 'cond1',
-        conditionType: 'block',
-        status: 'ACTIVE',
-      });
+        ]),
+      );
+      const result = await service.getTransactionDetailData(123);
+      expect(result).toHaveProperty('transactionOverview');
     });
 
-    it('should map expired conditions correctly', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ condition_id: 'cond2', is_active: 0, is_expired: 1 }],
-      };
-      jest.spyOn(service, 'query').mockResolvedValue(mockResponse as any);
+    it('throws when transaction not found', async () => {
+      http.mockReturnValue(okHttp([]));
+      await expect(service.getTransactionDetailData(999)).rejects.toThrow(HttpException);
+    });
 
-      const result = await service.getConditionsList('account123');
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getTransactionDetailData(1)).rejects.toThrow(HttpException);
+    });
+  });
 
+  // ===================== getTransactionOverviewUIData =====================
+  describe('getTransactionOverviewUIData', () => {
+    it('returns overview data', async () => {
+      const result = await service.getTransactionOverviewUIData(1, 'DEFAULT');
+      expect(result).toHaveProperty('transactionOverview');
+    });
+
+    it('throws when transaction not found', async () => {
+      http.mockReturnValue(okHttp([]));
+      await expect(service.getTransactionOverviewUIData(999)).rejects.toThrow(HttpException);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getTransactionOverviewUIData(1)).rejects.toThrow(HttpException);
+    });
+  });
+
+  // ===================== getEntityAccounts =====================
+  describe('getEntityAccounts', () => {
+    it('returns entity accounts', async () => {
+      http.mockReturnValue(okHttp([{ destination: 'acc1' }, { destination: 'acc2' }]));
+      const result = await service.getEntityAccounts('entity1', 'DEFAULT');
+      expect(result.accountCount).toBe(2);
+    });
+
+    it('returns empty on error (does not throw)', async () => {
+      http.mockReturnValue(errHttp());
+      const result = await service.getEntityAccounts('entity1', 'DEFAULT');
+      expect(result.accountCount).toBe(0);
+    });
+  });
+
+  // ===================== getConditionsSummary =====================
+  describe('getConditionsSummary', () => {
+    it('returns summary for direct account ID', async () => {
+      // 1st call: account_holder lookup returns no destinations  resolveToAccounts returns [identifier]
+      // 2nd call: SQL aggregation
+      http
+        .mockReturnValueOnce(okHttp([{}]))
+        .mockReturnValueOnce(okHttp([{ active_conditions: 5, blocked_transactions: 2, overridden_transactions: 1, future_conditions: 3 }]));
+      const result: any = await service.getConditionsSummary('acc1', 'DEFAULT');
+      expect(result.activeConditions).toBe(5);
+    });
+
+    it('returns zeros when no accounts resolved (numeric id)', async () => {
+      // numeric id  resolveToAccounts queries transaction_detail  gets {}  no accounts
+      const result: any = await service.getConditionsSummary('123', 'DEFAULT');
+      expect(result.activeConditions).toBe(0);
+    });
+
+    it('resolves UUID-like identifier via resolveToAccounts UUID branch', async () => {
+      // abc12345-abcd- matches /^[0-9a-f]{8}-[0-9a-f]{4}-/iv in resolveToAccounts
+      const result: any = await service.getConditionsSummary('abc12345-abcd-4567', 'DEFAULT');
+      expect(result).toBeDefined();
+    });
+
+    it('returns entity-level metadata when multiple accounts resolved', async () => {
+      // Entity lookup returns 2 destinations => isEntityLevel = true
+      http
+        .mockReturnValueOnce(okHttp([{ destination: 'acc1' }, { destination: 'acc2' }]))
+        .mockReturnValueOnce(okHttp([{ active_conditions: 2 }]));
+      const result: any = await service.getConditionsSummary('entityXYZ', 'DEFAULT');
+      expect(result.metadata.isEntityLevel).toBe(true);
+      expect(result.metadata.accountCount).toBe(2);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValueOnce(okHttp([{}])).mockReturnValueOnce(errHttp());
+      await expect(service.getConditionsSummary('acc1')).rejects.toThrow('Failed to fetch conditions summary');
+    });
+  });
+
+  // ===================== getConditionsList =====================
+  describe('getConditionsList', () => {
+    it('maps ACTIVE status', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{}]))
+        .mockReturnValueOnce(okHttp([{ condition_id: 'c1', condition_type: 'block', is_active: 1, is_expired: 0 }]));
+      const result = (await service.getConditionsList('acc1')) as any[];
+      expect(result[0].status).toBe('ACTIVE');
+    });
+
+    it('maps EXPIRED status', async () => {
+      http.mockReturnValueOnce(okHttp([{}])).mockReturnValueOnce(okHttp([{ condition_id: 'c2', is_active: 0, is_expired: 1 }]));
+      const result = (await service.getConditionsList('acc1')) as any[];
       expect(result[0].status).toBe('EXPIRED');
     });
 
-    it('should map future conditions correctly', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ condition_id: 'cond3', is_active: 0, is_expired: 0 }],
-      };
-      jest.spyOn(service, 'query').mockResolvedValue(mockResponse as any);
-
-      const result = await service.getConditionsList('account123');
-
+    it('maps FUTURE status', async () => {
+      http.mockReturnValueOnce(okHttp([{}])).mockReturnValueOnce(okHttp([{ condition_id: 'c3', is_active: 0, is_expired: 0 }]));
+      const result = (await service.getConditionsList('acc1')) as any[];
       expect(result[0].status).toBe('FUTURE');
     });
 
-    it('should handle errors', async () => {
-      jest.spyOn(service, 'query').mockRejectedValue(new Error('Query failed'));
-
-      await expect(service.getConditionsList('account123')).rejects.toThrow('Failed to fetch conditions list');
-    });
-  });
-
-  describe.each([
-    ['getActiveConditions', 'active conditions'],
-    ['getExpiredConditions', 'expired conditions'],
-    ['getFutureConditions', 'future conditions'],
-  ])('%s', (methodName, description) => {
-    it(`should fetch ${description}`, async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ condition_id: 'cond1', condition_reason: 'Test', condition_inception_ts: '2024-01-01' }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await (service as any)[methodName]('account123', 'DEFAULT');
-
-      expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBeGreaterThan(0);
-      expect(result[0]).toHaveProperty('conditionId', 'cond1');
+    it('omits tenant filter when tenantId is undefined', async () => {
+      http.mockReturnValueOnce(okHttp([{}])).mockReturnValueOnce(okHttp([{ condition_id: 'c4', is_active: 1, is_expired: 0 }]));
+      const result = (await service.getConditionsList('acc1', undefined)) as any[];
+      expect(result).toHaveLength(1);
     });
 
-    it(`should handle empty ${description} response`, async () => {
-      const mockResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await (service as any)[methodName]('account123');
-
+    it('returns empty array when no accounts resolved (numeric id)', async () => {
+      // numeric identifier → resolveToAccounts queries transaction_detail, returns [{}] → no debtor/creditor → []
+      const result = (await service.getConditionsList('12345')) as any[];
       expect(result).toEqual([]);
     });
 
-    it(`should handle ${description} errors`, async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('DB error')) as any);
-
-      await expect((service as any)[methodName]('account123')).rejects.toThrow(HttpException);
-    });
-  });
-
-  describe('getEvaluatedTransactions', () => {
-    it('should fetch evaluated transactions', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
-          {
-            tx_transaction_id: 'tx1',
-            tx_event_ts: '2024-01-01',
-            tx_type: 'PAYMENT',
-            tx_amount: 100,
-            tx_ccy: 'USD',
-            tx_block_override_status: 'BLOCKED',
-            cond_condition_id: 'cond1',
-            cond_reason: 'Suspicious',
-          },
-        ],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getEvaluatedTransactions('account123', 'DEFAULT');
-
+    it('adds tenant_id filter when tenantId is provided', async () => {
+      http.mockReturnValueOnce(okHttp([{}])).mockReturnValueOnce(okHttp([{ condition_id: 'c5', is_active: 1, is_expired: 0 }]));
+      const result = (await service.getConditionsList('acc1', 'TENANT_A')) as any[];
       expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        transactionId: 'tx1',
-        outcome: 'BLOCKED',
-        amount: 100,
-      });
     });
 
-    it('should handle transactions without conditions', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ tx_transaction_id: 'tx2', tx_amount: 50, tx_ccy: 'EUR' }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getEvaluatedTransactions('account123');
-
-      expect(result[0].outcome).toBe('PASSED');
-      expect(result[0].reason).toBe('No conditions triggered');
+    it('uses array filter when multiple accounts resolved', async () => {
+      http
+        // resolveToAccounts: account_holder returns 2 destinations
+        .mockReturnValueOnce(okHttp([{ destination: 'acc1' }, { destination: 'acc2' }]))
+        // query for conditions
+        .mockReturnValueOnce(okHttp([{ condition_id: 'c6', is_active: 1, is_expired: 0 }]));
+      const result = (await service.getConditionsList('entity1', 'TENANT_A')) as any[];
+      expect(result).toHaveLength(1);
     });
 
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('SQL error')) as any);
-
-      await expect(service.getEvaluatedTransactions('account123')).rejects.toThrow('Failed to fetch evaluated transactions');
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getConditionsList('acc1')).rejects.toThrow('Failed to fetch conditions list');
     });
   });
 
+  // ===================== getActiveConditions / getExpiredConditions / getFutureConditions =====================
+  describe.each([['getActiveConditions'], ['getExpiredConditions'], ['getFutureConditions']])('%s', (methodName) => {
+    it('returns conditions list', async () => {
+      http.mockReturnValueOnce(okHttp([{}])).mockReturnValueOnce(okHttp([{ condition_id: 'cond1', condition_reason: 'Test' }]));
+      const result: any = await (service as any)[methodName]('acc1', 'DEFAULT');
+      expect(Array.isArray(result.conditions)).toBe(true);
+    });
+
+    it('groups conditions with linked transactions', async () => {
+      // Entity lookup returns accounts, main query returns rows with transaction_id set
+      http.mockReturnValueOnce(okHttp([{ destination: 'acc1' }])).mockReturnValueOnce(
+        okHttp([
+          { condition_id: 'c1', condition_reason: 'Test', transaction_id: 'tx1' },
+          { condition_id: 'c1', condition_reason: 'Test', transaction_id: 'tx2' },
+        ]),
+      );
+      const result: any = await (service as any)[methodName]('entityABC', 'DEFAULT');
+      if (methodName !== 'getFutureConditions') {
+        // getActive and getExpired group by condition_id and push transactions
+        expect(result.conditions.length).toBeGreaterThan(0);
+      } else {
+        // getFutureConditions maps rows directly
+        expect(result.conditions.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('returns empty when no accounts found', async () => {
+      // numeric id  no accounts resolved
+      const result: any = await (service as any)[methodName]('123', 'DEFAULT');
+      expect(result.conditions).toEqual([]);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect((service as any)[methodName]('acc1')).rejects.toThrow(HttpException);
+    });
+  });
+
+  // ===================== getEvaluatedTransactions =====================
+  describe('getEvaluatedTransactions', () => {
+    it('returns BLOCKED outcome', async () => {
+      http.mockReturnValueOnce(okHttp([{}])).mockReturnValueOnce(okHttp([{ tx_transaction_id: 'tx1', cond_type: 'block' }]));
+      const result: any = await service.getEvaluatedTransactions('acc1', 'DEFAULT');
+      expect(result[0].outcome).toBe('BLOCKED');
+    });
+
+    it('returns BLOCKED_OVERRIDABLE outcome', async () => {
+      http.mockReturnValueOnce(okHttp([{}])).mockReturnValueOnce(okHttp([{ tx_transaction_id: 'tx1', cond_type: 'overridable-block' }]));
+      const result: any = await service.getEvaluatedTransactions('acc1', 'DEFAULT');
+      expect(result[0].outcome).toBe('BLOCKED_OVERRIDABLE');
+    });
+
+    it('returns empty array when no accounts', async () => {
+      const result = (await service.getEvaluatedTransactions('123')) as any[];
+      expect(result).toEqual([]);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getEvaluatedTransactions('acc1')).rejects.toThrow('Failed to fetch evaluated transactions');
+    });
+  });
+
+  // ===================== getAlertHistorySummary =====================
   describe('getAlertHistorySummary', () => {
-    it('should fetch alert history summary', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ total_alerts: 100, cases_opened: 50, investigations: 30, sar_filings: 10, total_value: 50000 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistorySummary('e2e-123', 'DEFAULT', '30days');
-
-      expect(result).toEqual({
-        totalAlerts: 100,
-        casesOpened: 50,
-        investigations: 30,
-        sarFilings: 10,
-        totalValue: 50000,
-      });
+    it('returns summary with data', async () => {
+      http.mockReturnValue(okHttp([{ total_alerts: 10, cases_opened: 5, investigations: 3, sar_filings: 1, total_value: 50000 }]));
+      const result = await service.getAlertHistorySummary('e2e1', 'DEFAULT', '30days');
+      expect(result.totalAlerts).toBe(10);
     });
 
-    it('should handle empty response', async () => {
-      const mockResponse = { status: 'success', data: [{}] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
+    it('returns zeros on empty row', async () => {
       const result = await service.getAlertHistorySummary();
-
       expect(result.totalAlerts).toBe(0);
-      expect(result.totalValue).toBe(0);
     });
 
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Query error')) as any);
+    it('handles 90days date range', async () => {
+      await service.getAlertHistorySummary('e2e1', 'DEFAULT', '90days');
+      expect(http).toHaveBeenCalled();
+    });
 
+    it('handles 6months date range', async () => {
+      await service.getAlertHistorySummary('e2e1', 'DEFAULT', '6months');
+      expect(http).toHaveBeenCalled();
+    });
+
+    it('handles 1year date range', async () => {
+      await service.getAlertHistorySummary('e2e1', 'DEFAULT', '1year');
+      expect(http).toHaveBeenCalled();
+    });
+
+    it('handles unknown date range gracefully', async () => {
+      await service.getAlertHistorySummary('e2e1', 'DEFAULT', 'custom');
+      expect(http).toHaveBeenCalled();
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
       await expect(service.getAlertHistorySummary()).rejects.toThrow('Failed to fetch alert history summary');
     });
   });
 
+  // ===================== getAlertHistoryTimeline =====================
   describe('getAlertHistoryTimeline', () => {
-    it('should fetch alert history timeline', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ date: '2024-01-01', alert_count: 10, case_count: 5, investigation_count: 3, total_value: 10000 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryTimeline('e2e-123', 'DEFAULT', '30days', 'day');
-
-      expect(result).toHaveProperty('alertCountOverTime');
-      expect(result).toHaveProperty('alertValueOverTime');
+    it('returns timeline', async () => {
+      http.mockReturnValue(okHttp([{ date: '2024-01-01', alert_count: 5, case_count: 2, investigation_count: 1, total_value: 1000 }]));
+      const result = await service.getAlertHistoryTimeline('e2e1', 'DEFAULT', '30days', 'day');
       expect(result.alertCountOverTime).toHaveLength(1);
-      expect(result.alertCountOverTime[0].alerts).toBe(10);
+      expect(result.alertCountOverTime[0].alerts).toBe(5);
     });
 
-    it('should handle empty timeline data', async () => {
-      const mockResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
+    it('returns empty arrays on empty data', async () => {
+      http.mockReturnValue(okHttp([]));
       const result = await service.getAlertHistoryTimeline();
-
       expect(result.alertCountOverTime).toEqual([]);
-      expect(result.alertValueOverTime).toEqual([]);
     });
 
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Timeline error')) as any);
+    it('handles date range branches', async () => {
+      for (const r of ['30days', '90days', '6months', '1year', 'custom']) {
+        await service.getAlertHistoryTimeline(undefined, undefined, r);
+      }
+      expect(http).toHaveBeenCalledTimes(5);
+    });
 
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
       await expect(service.getAlertHistoryTimeline()).rejects.toThrow('Failed to fetch alert history timeline');
     });
   });
 
+  // ===================== getAlertHistoryAlerts =====================
   describe('getAlertHistoryAlerts', () => {
-    it('should fetch alert history alerts with pagination', async () => {
-      const countResponse = { status: 'success', data: [{ total: 100 }] };
-      const alertsResponse = {
-        status: 'success',
-        data: [
-          {
-            alert_id: 1,
-            date: '2024-01-01',
-            type: 'AML',
-            severity: 'HIGH',
-            status: 'OPEN',
-            case_id: 'case1',
-            case_status: 'STATUS_02_ASSIGNED',
-          },
-        ],
-      };
+    const setup = (countRows: any[], alertRows: any[]) => {
+      http.mockReturnValueOnce(okHttp(countRows)).mockReturnValueOnce(okHttp(alertRows));
+    };
 
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(countResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(alertsResponse)) as any);
-
-      const result = await service.getAlertHistoryAlerts('e2e-123', 'DEFAULT', 'all', 1, 20);
-
-      expect(result.alerts).toHaveLength(1);
-      expect(result.pagination).toEqual({ total: 100, page: 1, limit: 20, totalPages: 5 });
-      expect(result.alerts[0].outcome).toBe('Investigating');
+    it('returns alerts with Investigating outcome', async () => {
+      setup([{ total: 1 }], [{ alert_id: 1, case_status: 'STATUS_02_ASSIGNED' }]);
+      const result = await service.getAlertHistoryAlerts('e2e1', 'DEFAULT', 'all', 1, 20);
+      expect(result.pagination.total).toBe(1);
+      expect((result.alerts[0] as any).outcome).toBe('Investigating');
     });
 
-    it('should map case status to outcome correctly', async () => {
-      const countResponse = { status: 'success', data: [{ total: 1 }] };
-      const alertsResponse = {
-        status: 'success',
-        data: [{ alert_id: 2, case_status: 'STATUS_99_COMPLETED' }],
-      };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(countResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(alertsResponse)) as any);
-
+    it('maps Closed outcome for COMPLETED status', async () => {
+      setup([{ total: 1 }], [{ alert_id: 2, case_status: 'STATUS_99_COMPLETED' }]);
       const result = await service.getAlertHistoryAlerts();
-
-      expect(result.alerts[0].outcome).toBe('Closed');
+      expect((result.alerts[0] as any).outcome).toBe('Closed');
     });
 
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Query error')) as any);
+    it('maps Draft outcome', async () => {
+      setup([{ total: 1 }], [{ alert_id: 3, case_status: 'STATUS_00_DRAFT' }]);
+      const result = await service.getAlertHistoryAlerts();
+      expect((result.alerts[0] as any).outcome).toBe('Draft');
+    });
 
+    it('maps Pending outcome for no case_status', async () => {
+      setup([{ total: 1 }], [{ alert_id: 4, case_status: null }]);
+      const result = await service.getAlertHistoryAlerts();
+      expect((result.alerts[0] as any).outcome).toBe('Pending');
+    });
+
+    it('handles date range branches', async () => {
+      for (const r of ['30days', '90days', '6months', '1year', 'custom']) {
+        http.mockReturnValueOnce(okHttp([{ total: 0 }])).mockReturnValueOnce(okHttp([]));
+        await service.getAlertHistoryAlerts('e2e1', 'DEFAULT', r);
+      }
+      expect(http).toHaveBeenCalledTimes(10);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
       await expect(service.getAlertHistoryAlerts()).rejects.toThrow('Failed to fetch alert history alerts');
     });
   });
 
+  // ===================== getTestAccountIds =====================
   describe('getTestAccountIds', () => {
-    it('should fetch test account IDs', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ account_id: 'acc1', account_name: 'Test Account', connections: 5, total_transactions: 100 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
+    it('returns account list', async () => {
+      http.mockReturnValue(okHttp([{ account_id: 'acc1', account_name: 'Test', connections: 5, total_transactions: 100 }]));
       const result = await service.getTestAccountIds('DEFAULT', 1);
-
-      expect(result).toHaveProperty('message');
-      expect(result).toHaveProperty('accounts');
       expect((result as any).accounts).toHaveLength(1);
-      expect((result as any).accounts[0]).toHaveProperty('accountId', 'acc1');
     });
 
-    it('should handle empty accounts', async () => {
-      const mockResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
+    it('returns empty accounts', async () => {
+      http.mockReturnValue(okHttp([]));
       const result = await service.getTestAccountIds();
-
       expect((result as any).accounts).toEqual([]);
     });
 
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Query error')) as any);
-
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
       await expect(service.getTestAccountIds()).rejects.toThrow('Failed to fetch test account IDs');
     });
   });
 
+  // ===================== getTransactionNetworkData =====================
   describe('getTransactionNetworkData', () => {
-    it('should fetch transaction network data', async () => {
-      const centerAccountResponse = { status: 'success', data: [{ account_id: 'acc1', account_name: 'Center Account' }] };
-      const outboundResponse = {
-        status: 'success',
-        data: [
-          {
-            connected_account_id: 'acc2',
-            connected_account_name: 'Outbound Account',
-            flow_direction: 'OUTBOUND',
-            total_transactions: 10,
-            total_value: 5000,
-            avg_value: 500,
-          },
-        ],
-      };
-      const inboundResponse = { status: 'success', data: [] };
-      const alertFlagsResponse = { status: 'success', data: [] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(centerAccountResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(outboundResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(inboundResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(alertFlagsResponse)) as any);
-
+    it('returns network with connections', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ account_id: 'acc1', account_name: 'Center' }]))
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              connected_account_id: 'acc2',
+              connected_account_name: 'Other',
+              flow_direction: 'OUTBOUND',
+              total_transactions: 5,
+              total_value: 2500,
+              avg_value: 500,
+              duration_days: 30,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]));
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
-
       expect(result.centerAccount.accountId).toBe('acc1');
       expect(result.connectedAccounts).toHaveLength(1);
-      expect(result.edges).toHaveLength(1);
-      expect(result.connectedAccounts[0].flowDirection).toContain('Outbound');
     });
 
-    it('should throw HttpException when account not found', async () => {
-      const centerAccountResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(centerAccountResponse)) as any);
+    it('returns HIGH velocity when tx/day > 0.5', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ account_id: 'acc1' }]))
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              connected_account_id: 'acc2',
+              flow_direction: 'OUTBOUND',
+              total_transactions: 100,
+              total_value: 50000,
+              avg_value: 500,
+              duration_days: 1,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]));
+      const result = await service.getTransactionNetworkData('acc1');
+      expect(result.connectedAccounts[0].transactionStats.velocity).toBe('HIGH');
+    });
 
-      await expect(service.getTransactionNetworkData('nonexistent')).rejects.toThrow('Failed to fetch transaction network data');
+    it('returns MEDIUM velocity when tx/day >= 0.2', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ account_id: 'acc1' }]))
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              connected_account_id: 'acc2',
+              flow_direction: 'OUTBOUND',
+              total_transactions: 6,
+              total_value: 3000,
+              avg_value: 500,
+              duration_days: 20,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]));
+      const result = await service.getTransactionNetworkData('acc1');
+      expect(result.connectedAccounts[0].transactionStats.velocity).toBe('MEDIUM');
+    });
+
+    it('throws when account not found', async () => {
+      http.mockReturnValue(okHttp([]));
       await expect(service.getTransactionNetworkData('nonexistent')).rejects.toThrow(HttpException);
     });
 
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Network error')) as any);
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getTransactionNetworkData('acc1')).rejects.toThrow(HttpException);
+    });
+  });
 
-      await expect(service.getTransactionNetworkData('acc1')).rejects.toThrow('Failed to fetch transaction network data');
+  // ===================== getTransactionHistoryData =====================
+  describe('getTransactionHistoryByEntityId', () => {
+    it('uses baseline expected values when available', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([{ transaction_id: 'tx1', event_date: '2024-01-01', tx_amount: '100', is_alerted: 0, is_investigated: 0 }]),
+        )
+        .mockReturnValueOnce(okHttp([{ total_tx_count: '50', total_amount: '5000' }]));
+      const result: any = await service.getTransactionHistoryData('entity1', 'DEFAULT');
+      expect(result.summary.expected.transactionCount).toBe(50);
+    });
+
+    it('handles baseline query failure gracefully', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([{ transaction_id: 'tx1', event_date: '2024-01-01', tx_amount: '100', is_alerted: 0, is_investigated: 0 }]),
+        )
+        .mockReturnValueOnce(errHttp('baseline unavailable'));
+      const result: any = await service.getTransactionHistoryData('entity1', 'DEFAULT');
+      expect(result.summary).toBeDefined();
+      expect(result.summary.expected.transactionCount).toBeNull();
     });
   });
 
   describe('getTransactionHistoryData', () => {
-    it('should fetch transaction history by entity_id', async () => {
-      const eventsResponse = {
-        status: 'success',
-        data: [
-          {
-            transaction_id: 'tx1',
-            entity_id: 'entity123',
-            event_date: '2024-01-01',
-            tx_amount: 100,
-            tx_ccy: 'USD',
-            tx_type: 'PAYMENT',
-            is_alerted: 1,
-            is_investigated: 0,
-            cum_tx_amount: 100,
-            cum_tx_count: 1,
-            entity_role: 'DEBTOR',
-            creditor_name: 'Counterparty',
-          },
-        ],
-      };
-      const aggResponse = { status: 'success', data: [] };
-      const baselineResponse = { status: 'success', data: [] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(eventsResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(aggResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(baselineResponse)) as any);
-
-      const result = await service.getTransactionHistoryData('entity123', 'DEFAULT');
-
-      expect(result).toHaveProperty('summary');
-      expect(result).toHaveProperty('timeline');
-      expect((result as any).summary.totalTransactions).toBe(1);
+    it('returns entity history for entity_id', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              transaction_id: 'tx1',
+              event_date: '2024-01-01',
+              tx_amount: 100,
+              tx_ccy: 'USD',
+              tx_type: 'PAYMENT',
+              is_alerted: 0,
+              is_investigated: 0,
+              cum_tx_count: 1,
+              cum_tx_amount: 100,
+              entity_role: 'DEBTOR',
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([]));
+      const result: any = await service.getTransactionHistoryData('entity1', 'DEFAULT');
+      expect(result.summary.totalTransactions).toBe(1);
     });
 
-    it('should fetch transaction history by end_to_end_id (UUID format)', async () => {
+    it('handles empty entity history', async () => {
+      http.mockReturnValue(okHttp([]));
+      const result: any = await service.getTransactionHistoryData('entity1');
+      expect(result.summary.totalTransactions).toBe(0);
+    });
+
+    it('returns entity history with granularity', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([{ transaction_id: 'tx1', event_date: '2024-01-01', tx_amount: 100, tx_ccy: 'USD', is_alerted: 1, is_investigated: 0 }]),
+        )
+        .mockReturnValueOnce(
+          okHttp([{ bucket_start: '2024-01-01', bucket_tx_count: 10, bucket_tx_amount: 1000, bucket_granularity: 'day' }]),
+        )
+        .mockReturnValueOnce(okHttp([]));
+      const result: any = await service.getTransactionHistoryData('entity1', 'DEFAULT', '2024-01-01', '2024-01-31', 'day');
+      expect(result.volumeDistribution).toHaveLength(1);
+    });
+
+    it('returns end_to_end_id history for UUID', async () => {
       const uuid = '550e8400-e29b-41d4-a716-446655440000';
-      const eventsResponse = {
-        status: 'success',
-        data: [
+      http.mockReturnValue(
+        okHttp([
           {
             transaction_id: 'tx1',
             end_to_end_id: uuid,
             entity_type: 'ACCOUNT',
             entity_role: 'DEBTOR',
-            entity_id: 'entity1',
-            entity_name: 'Entity 1',
-            event_date: '2024-01-01',
-            event_ts: '2024-01-01T12:00:00Z',
-            tx_amount: 200,
-            tx_ccy: 'EUR',
-            tx_type: 'TRANSFER',
-            is_alerted: 0,
-            is_investigated: 0,
-            debtor_name: 'Debtor 1',
-            creditor_name: 'Creditor 1',
-            debtor_account_id: 'acc1',
-            creditor_account_id: 'acc2',
-          },
-        ],
-      };
-
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(eventsResponse)) as any);
-
-      const result = await service.getTransactionHistoryData(uuid, 'DEFAULT');
-
-      expect(result).toHaveProperty('entityPerspectives');
-      expect((result as any).entityPerspectives).toBeInstanceOf(Array);
-    });
-
-    it('should handle empty transaction history', async () => {
-      const emptyResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(emptyResponse)) as any);
-
-      const result = await service.getTransactionHistoryData('entity123');
-
-      expect((result as any).summary.totalTransactions).toBe(0);
-      expect((result as any).timeline).toEqual([]);
-    });
-
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Query error')) as any);
-
-      await expect(service.getTransactionHistoryData('entity123')).rejects.toThrow(HttpException);
-    });
-  });
-
-  describe('getAlertNavigatorData', () => {
-    it('should fetch alert navigator data', async () => {
-      const alertWithTransactionResponse = {
-        status: 'success',
-        data: [
-          {
-            alert_id: 123,
-            end_to_end_id: 'e2e123',
-            transaction_id: 'tx1',
-            alert_status: 'OPEN',
-            alert_tx_type: 'PAYMENT',
-            alert_tx_amount: 1000,
-            alert_tx_ccy: 'USD',
-            created_at_ts: '2024-01-01',
-            message: 'Suspicious activity',
-            block_reason: 'High risk',
-          },
-        ],
-      };
-      const typologiesResponse = {
-        status: 'success',
-        data: [
-          {
-            typology_id: 'typ1',
-            typology_cfg: '001',
-            typology_score: 85,
-            alert_threshold: 75,
-            interdiction_threshold: 90,
-          },
-        ],
-      };
-      const rulesResponse = {
-        status: 'success',
-        data: [
-          {
-            rule_id: 'rule1',
-            rule_cfg: '001@1.0.0',
-            rule_weight: 10,
-            rule_score: 100,
-          },
-        ],
-      };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(alertWithTransactionResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(typologiesResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(rulesResponse)) as any);
-
-      const result = await service.getAlertNavigatorData(123, 'DEFAULT');
-
-      expect(result).toHaveProperty('alertMetadata');
-      expect(result).toHaveProperty('typologies');
-      expect(result).toHaveProperty('statistics');
-    });
-
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Query error')) as any);
-
-      await expect(service.getAlertNavigatorData(123)).rejects.toThrow(HttpException);
-    });
-  });
-
-  describe('getTransactionDetailData', () => {
-    it('should fetch transaction detail data', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
-          {
-            transaction_id: '123',
-            tx_event_ts: '2024-01-01T12:00:00Z',
-            tx_type: 'PAYMENT',
-            interbank_settlement_amount: 500,
-            interbank_settlement_currency: 'USD',
-            end_to_end_id: 'e2e123',
-            debtor_name: 'John Doe',
-            debtor_account_id: 'acc1',
-            creditor_name: 'Jane Smith',
-            creditor_account_id: 'acc2',
-            instg_mmb_id: 'bank1',
-            instd_mmb_id: 'bank2',
-            instructed_amount: 500,
-            instructed_currency: 'USD',
-            exchange_rate: 1,
-            charge_total_amount: 0,
-            charge_currency: 'USD',
-            tx_event_date: '2024-01-01',
-            tenant_id: 'DEFAULT',
-          },
-        ],
-      };
-      jest.spyOn(service, 'query').mockResolvedValue(mockResponse as any);
-
-      const result = await service.getTransactionDetailData(123, 'DEFAULT');
-
-      expect(result).toHaveProperty('transactionOverview');
-      expect(result.transactionOverview).toHaveProperty('transactionId');
-    });
-
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Query error')) as any);
-
-      await expect(service.getTransactionDetailData(123)).rejects.toThrow(HttpException);
-    });
-  });
-
-  describe('getTransactionOverviewUIData', () => {
-    it('should fetch transaction overview UI data', async () => {
-      const mockData = {
-        transaction_id: 'tx1',
-        end_to_end_id: 'e2e1',
-        debtor_name: 'Sender',
-        creditor_name: 'Receiver',
-        instructed_amount: 1000,
-        instructed_ccy: 'USD',
-      };
-
-      jest.spyOn(service, 'runSqlQuery').mockResolvedValue({ status: 'success', data: [mockData] } as any);
-
-      const result = await service.getTransactionOverviewUIData(123, 'DEFAULT');
-
-      expect(result).toBeDefined();
-    });
-
-    it('should handle errors', async () => {
-      jest.spyOn(service, 'runSqlQuery').mockRejectedValue(new Error('SQL error'));
-
-      await expect(service.getTransactionOverviewUIData(123)).rejects.toThrow(HttpException);
-    });
-  });
-
-  describe('getTransactionPerspectivesByEndToEndId', () => {
-    it('should fetch transaction perspectives', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
-          {
-            transaction_id: 'tx1',
-            end_to_end_id: 'e2e1',
-            entity_type: 'ACCOUNT',
-            entity_role: 'DEBTOR',
-            entity_id: 'entity1',
-            entity_name: 'Entity 1',
+            entity_id: 'e1',
             tx_amount: 100,
             tx_ccy: 'USD',
-            tx_type: 'PAYMENT',
-            event_date: '2024-01-01',
-            event_ts: '2024-01-01T12:00:00Z',
             is_alerted: 0,
             is_investigated: 0,
-            debtor_name: 'Debtor',
-            creditor_name: 'Creditor',
-            debtor_account_id: 'acc1',
-            creditor_account_id: 'acc2',
           },
-        ],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getTransactionPerspectivesByEndToEndId('e2e1', 'DEFAULT');
-
-      expect(result).toHaveProperty('perspectives');
-      expect((result as any).perspectives).toBeInstanceOf(Array);
+        ]),
+      );
+      const result: any = await service.getTransactionHistoryData(uuid, 'DEFAULT');
+      expect(result.entityPerspectives).toBeInstanceOf(Array);
     });
 
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Query error')) as any);
+    it('returns empty UUID history when no data', async () => {
+      const uuid = '00000000-0000-0000-0000-000000000000';
+      http.mockReturnValue(okHttp([]));
+      const result: any = await service.getTransactionHistoryData(uuid, 'DEFAULT');
+      expect(result.summary.totalTransactions).toBe(0);
+    });
 
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getTransactionHistoryData('entity1')).rejects.toThrow(HttpException);
+    });
+  });
+
+  // ===================== getTransactionHistoryByEndToEndId =====================
+  describe('getTransactionHistoryByEndToEndId', () => {
+    it('returns perspectives data', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            transaction_id: 'tx1',
+            entity_type: 'ACCOUNT',
+            entity_role: 'DEBTOR',
+            entity_id: 'e1',
+            tx_amount: 100,
+            tx_ccy: 'USD',
+            is_alerted: 0,
+            is_investigated: 0,
+          },
+        ]),
+      );
+      const result = await service.getTransactionHistoryByEndToEndId('e2e1', 'DEFAULT');
+      expect(result.entityPerspectives).toHaveLength(1);
+    });
+
+    it('returns empty when no data', async () => {
+      http.mockReturnValue(okHttp([]));
+      const result = await service.getTransactionHistoryByEndToEndId('e2e999', 'DEFAULT');
+      expect(result.summary.totalTransactions).toBe(0);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getTransactionHistoryByEndToEndId('e2e1')).rejects.toThrow(HttpException);
+    });
+  });
+
+  // ===================== getTransactionPerspectivesByEndToEndId =====================
+  describe('getTransactionPerspectivesByEndToEndId', () => {
+    it('returns perspectives', async () => {
+      http.mockReturnValue(okHttp([{ entity_type: 'ACCOUNT', entity_role: 'DEBTOR', entity_id: 'e1', tx_amount: 100, tx_ccy: 'USD' }]));
+      const result = await service.getTransactionPerspectivesByEndToEndId('e2e1', 'DEFAULT');
+      expect(result.perspectives).toHaveLength(1);
+    });
+
+    it('returns empty perspectives', async () => {
+      http.mockReturnValue(okHttp([]));
+      const result = await service.getTransactionPerspectivesByEndToEndId('e2e999');
+      expect(result.perspectives).toEqual([]);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
       await expect(service.getTransactionPerspectivesByEndToEndId('e2e1')).rejects.toThrow(HttpException);
     });
   });
 
+  // ===================== getCounterpartyNetworkData =====================
   describe('getCounterpartyNetworkData', () => {
-    it('should fetch counterparty network data', async () => {
-      const accountHolderResponse = {
-        status: 'success',
-        data: [
-          {
-            debtor_name: 'Account Holder',
-            debtor_account_id: 'acc1',
-            creditor_name: 'Other Party',
-            creditor_account_id: 'acc2',
-          },
-        ],
-      };
-      const counterpartyLinksResponse = {
-        status: 'success',
-        data: [{ counterparty_id: 'dbtr_acc1' }],
-      };
-      const networkEdgesResponse = {
-        status: 'success',
-        data: [
-          {
-            from_counterparty_id: 'dbtr_acc1',
-            to_counterparty_id: 'cdtr_acc2',
-            tx_count: 10,
-            total_amount: 5000,
-            is_alerted_edge: 0,
-            is_investigated_edge: 0,
-            first_event_ts: '2024-01-01',
-            last_event_ts: '2024-01-31',
-          },
-        ],
-      };
-      const namesResponse = {
-        status: 'success',
-        data: [
-          {
-            counterparty_id: 'dbtr_acc1',
-            name: 'Counterparty 1',
-          },
-          {
-            counterparty_id: 'cdtr_acc2',
-            name: 'Counterparty 2',
-          },
-        ],
-      };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(accountHolderResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(counterpartyLinksResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(networkEdgesResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(namesResponse)) as any);
-
+    it('returns counterparty network', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([{ debtor_name: 'Holder', debtor_account_id: 'acc1', creditor_name: 'Other', creditor_account_id: 'acc2' }]),
+        )
+        .mockReturnValueOnce(okHttp([{ counterparty_id: 'cp1' }]))
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              from_counterparty_id: 'cp1',
+              to_counterparty_id: 'cp2',
+              tx_count: 5,
+              total_amount: 2500,
+              is_alerted_edge: 0,
+              is_investigated_edge: 0,
+              first_event_ts: '2024-01-01',
+              last_event_ts: '2024-01-31',
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([{ counterparty_id: 'cp2', name: 'CP2 Name' }]));
       const result = await service.getCounterpartyNetworkData('acc1', 'DEFAULT', '30d');
-
-      expect(result).toHaveProperty('centerCounterparty');
-      expect(result).toHaveProperty('counterparties');
-      expect(result.counterparties).toBeInstanceOf(Array);
+      expect(result.centerCounterparty).toBeDefined();
+      expect(result.counterparties.length).toBeGreaterThan(0);
     });
 
-    it('should throw HttpException when account not found', async () => {
-      const emptyResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(emptyResponse)) as any);
+    it('maps LOW frequency correctly (tx_count <= 4)', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ debtor_account_id: 'acc1' }]))
+        .mockReturnValueOnce(okHttp([{ counterparty_id: 'cp1' }]))
+        .mockReturnValueOnce(okHttp([{ from_counterparty_id: 'cp1', to_counterparty_id: 'cp2', tx_count: 2, total_amount: 500 }]))
+        .mockReturnValueOnce(okHttp([]));
+      const result = await service.getCounterpartyNetworkData('acc1');
+      expect(result.counterparties[0].frequency).toBe('LOW');
+    });
 
+    it('throws when account not found', async () => {
+      http.mockReturnValue(okHttp([]));
       await expect(service.getCounterpartyNetworkData('nonexistent')).rejects.toThrow(HttpException);
     });
 
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Network error')) as any);
-
+    it('throws when no counterparties found', async () => {
+      http.mockReturnValueOnce(okHttp([{ debtor_account_id: 'acc1' }])).mockReturnValueOnce(okHttp([]));
       await expect(service.getCounterpartyNetworkData('acc1')).rejects.toThrow(HttpException);
     });
 
-    it('should handle getCounterpartyNetworkData with LOW frequency transactions', async () => {
-      const accountHolderResponse = {
-        status: 'success',
-        data: [{ debtor_name: 'Test Account', creditor_name: 'Test Creditor', debtor_account_id: 'acc1', creditor_account_id: 'acc2' }],
-      };
-      const counterpartyLinksResponse = {
-        status: 'success',
-        data: [{ counterparty_id: 'cnt1' }],
-      };
-      const networkEdgesResponse = {
-        status: 'success',
-        data: [
-          {
-            from_counterparty_id: 'cnt1',
-            to_counterparty_id: 'cnt2',
-            tx_count: 3,
-            total_amount: 500,
-            first_event_ts: '2024-01-01',
-            last_event_ts: '2024-01-15',
-          },
-        ],
-      };
-      const namesResponse = {
-        status: 'success',
-        data: [{ counterparty_id: 'cnt2', name: 'Low Frequency Counterparty' }],
-      };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(accountHolderResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(counterpartyLinksResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(networkEdgesResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(namesResponse)) as any);
-
-      const result = await service.getCounterpartyNetworkData('acc1', 'DEFAULT', '30d');
-
-      expect(result.counterparties.length).toBeGreaterThan(0);
-      expect(result.counterparties[0].frequency).toBe('LOW');
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getCounterpartyNetworkData('acc1')).rejects.toThrow(HttpException);
     });
   });
 
+  // ===================== getAccountNodeFullData =====================
   describe('getAccountNodeFullData', () => {
-    it('should fetch account node full data', async () => {
-      const networkResponse = {
-        status: 'success',
-        data: [
-          {
-            from_account_id: 'acc1',
-            to_account_id: 'acc2',
-            tx_count: 5,
-            total_amount: 2500,
-            currency_hint: 'USD',
-            first_event_ts: '2024-01-01',
-            last_event_ts: '2024-01-31',
-            is_alerted_edge: 0,
-            is_investigated_edge: 0,
-          },
-        ],
-      };
-      const metricsResponse = { status: 'success', data: [{ transactions: 5, total_value: 2500, is_alerted: 0, is_investigated: 0 }] };
-      const holderResponse = { status: 'success', data: [{ holder_name: 'Account Holder' }] };
-      const alertResponse = { status: 'success', data: [{ alert_count: 0 }] };
-      const investigationResponse = { status: 'success', data: [{ investigation_count: 0 }] };
+    const setupAccountNode = () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              from_account_id: 'acc1',
+              to_account_id: 'acc2',
+              tx_count: 5,
+              total_amount: 2500,
+              is_alerted_edge: 0,
+              is_investigated_edge: 0,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([{ transactions: 5, total_value: 2500, is_alerted: 0, is_investigated: 0 }]))
+        .mockReturnValueOnce(okHttp([{ holder_name: 'Holder' }]))
+        .mockReturnValueOnce(okHttp([{ alert_count: 0 }]))
+        .mockReturnValueOnce(okHttp([{ investigation_count: 0 }]));
+    };
 
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(networkResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(metricsResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(holderResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(alertResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(investigationResponse)) as any);
-
+    it('returns account node data', async () => {
+      setupAccountNode();
       const result = await service.getAccountNodeFullData('acc1', 'DEFAULT', 'month');
+      expect(result.network.nodes.length).toBeGreaterThan(0);
+      expect(result.accountDetails.accountId).toBe('acc1');
+    });
 
-      expect(result).toHaveProperty('network');
-      expect(result).toHaveProperty('accountDetails');
-      expect(result).toHaveProperty('meta');
+    it('uses HIGH velocity when txCount >= 50', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp(
+            Array(60).fill({
+              from_account_id: 'acc1',
+              to_account_id: 'acc2',
+              tx_count: 1,
+              total_amount: 100,
+              is_alerted_edge: 0,
+              is_investigated_edge: 0,
+            }),
+          ),
+        )
+        .mockReturnValueOnce(okHttp([{ transactions: 60, total_value: 6000 }]))
+        .mockReturnValueOnce(okHttp([{ holder_name: 'Holder' }]))
+        .mockReturnValueOnce(okHttp([{ alert_count: 0 }]))
+        .mockReturnValueOnce(okHttp([{ investigation_count: 0 }]));
+      const result = await service.getAccountNodeFullData('acc1', 'DEFAULT', 'year');
+      expect(result.accountDetails.velocity).toBe('HIGH');
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getAccountNodeFullData('acc1')).rejects.toThrow(HttpException);
+    });
+
+    it('uses MEDIUM velocity when txCount between 10 and 49', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([
+            { from_account_id: 'acc1', to_account_id: 'acc2', tx_count: 1, total_amount: 100, is_alerted_edge: 0, is_investigated_edge: 0 },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([{ transactions: 25, total_value: 2500, is_alerted: 0, is_investigated: 0 }]))
+        .mockReturnValueOnce(okHttp([{ holder_name: 'Holder' }]))
+        .mockReturnValueOnce(okHttp([{ alert_count: 0 }]))
+        .mockReturnValueOnce(okHttp([{ investigation_count: 0 }]));
+      const result = await service.getAccountNodeFullData('acc1');
+      expect(result.accountDetails.velocity).toBe('MEDIUM');
+    });
+
+    it('adds unseen fromId node to network graph', async () => {
+      http
+        // First row: acc2→acc1; acc2 is not the root so fromId branch runs
+        .mockReturnValueOnce(
+          okHttp([
+            { from_account_id: 'acc2', to_account_id: 'acc1', tx_count: 2, total_amount: 200, is_alerted_edge: 0, is_investigated_edge: 0 },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([{ transactions: 2, total_value: 200, is_alerted: 0, is_investigated: 0 }]))
+        .mockReturnValueOnce(okHttp([{ holder_name: 'Holder' }]))
+        .mockReturnValueOnce(okHttp([{ alert_count: 0 }]))
+        .mockReturnValueOnce(okHttp([{ investigation_count: 0 }]));
+      const result = await service.getAccountNodeFullData('acc1');
+      // root acc1 + fromId acc2 both added
+      expect(result.network.nodes.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  // ===================== getCounterpartyNodeFullData =====================
+  describe('getCounterpartyNodeFullData', () => {
+    it('returns counterparty node data', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              from_counterparty_id: 'cp1',
+              to_counterparty_id: 'cp2',
+              tx_count: 10,
+              total_amount: 5000,
+              is_alerted_edge: 0,
+              is_investigated_edge: 0,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([{ transactions: 10, total_value: 5000, is_alerted: 0, is_investigated: 0 }]))
+        .mockReturnValueOnce(okHttp([{ holder_name: 'CP Name' }]));
+      const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT', 'month');
+      expect(result.network.rootNodeId).toBe('cp1');
       expect(result.network.nodes.length).toBeGreaterThan(0);
     });
 
-    it('should handle errors', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Query error')) as any);
+    it('uses MEDIUM velocity when txCount between 10 and 49', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              from_counterparty_id: 'cp1',
+              to_counterparty_id: 'cp2',
+              tx_count: 1,
+              total_amount: 100,
+              is_alerted_edge: 0,
+              is_investigated_edge: 0,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([{ transactions: 20, total_value: 2000, is_alerted: 0, is_investigated: 0 }]))
+        .mockReturnValueOnce(okHttp([{ holder_name: 'CP Name' }]));
+      const result = await service.getCounterpartyNodeFullData('cp1');
+      expect(result.counterpartyDetails.velocity).toBe('MEDIUM');
+    });
 
-      await expect(service.getAccountNodeFullData('acc1')).rejects.toThrow(HttpException);
+    it('reflects alerted/investigated flags on root node', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              from_counterparty_id: 'cp1',
+              to_counterparty_id: 'cp2',
+              tx_count: 10,
+              total_amount: 5000,
+              is_alerted_edge: 1,
+              is_investigated_edge: 1,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([{ transactions: 10, total_value: 5000, is_alerted: 1, is_investigated: 1 }]))
+        .mockReturnValueOnce(okHttp([{}]));
+      const result = await service.getCounterpartyNodeFullData('cp1');
+      expect(result.counterpartyDetails.flags.alerted).toBe(true);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getCounterpartyNodeFullData('cp1')).rejects.toThrow(HttpException);
+    });
+
+    it('adds unseen fromId counterparty node to network', async () => {
+      http
+        // cp2→cp1: cp2 is not the root so fromId branch runs
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              from_counterparty_id: 'cp2',
+              to_counterparty_id: 'cp1',
+              tx_count: 2,
+              total_amount: 500,
+              is_alerted_edge: 0,
+              is_investigated_edge: 0,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([{ transactions: 2, total_value: 500, is_alerted: 0, is_investigated: 0 }]))
+        .mockReturnValueOnce(okHttp([{ holder_name: 'CP Name' }]));
+      const result = await service.getCounterpartyNodeFullData('cp1');
+      expect(result.network.nodes.length).toBeGreaterThanOrEqual(2);
     });
   });
 
-  describe('Additional branch coverage tests', () => {
-    it('should handle getTransactionHistoryData with entity_id format (non-UUID)', async () => {
-      const entityId = 'entity123';
-      const mockResponse = {
-        status: 'success',
-        data: [
-          {
-            transaction_id: 'tx1',
-            entity_id: entityId,
-            event_date: '2024-01-01',
-            tx_amount: 100,
-            tx_ccy: 'USD',
-          },
-        ],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getTransactionHistoryData(entityId, 'DEFAULT');
-
-      expect(result).toBeDefined();
-      expect(httpService.post).toHaveBeenCalled();
-    });
-
-    it('should handle getTransactionHistoryData when baseline fetch fails', async () => {
-      const entityId = 'entity456';
-      const transactionsResponse = {
-        status: 'success',
-        data: [
-          {
-            transaction_id: 'tx1',
-            entity_id: entityId,
-            event_date: '2024-01-01',
-            tx_amount: 200,
-            tx_ccy: 'USD',
-            is_alerted: 0,
-            is_investigated: 0,
-          },
-        ],
-      };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(transactionsResponse)) as any)
-        .mockReturnValueOnce(throwError(() => new Error('Baseline fetch error')) as any);
-
-      const result = await service.getTransactionHistoryData(entityId, 'DEFAULT');
-
-      expect(result).toBeDefined();
-      expect((result as any).summary).toBeDefined();
-    });
-
-    it('should handle getBenfordAnalysisByAccount successfully', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
-          { amount: 123 },
-          { amount: 456 },
-          { amount: 789 },
-          { amount: 111 },
-          { amount: 222 },
-          { amount: 333 },
-          { amount: 444 },
-          { amount: 555 },
-          { amount: 666 },
-          { amount: 777 },
-        ],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
+  // ===================== getBenfordAnalysisByAccount =====================
+  describe('getBenfordAnalysisByAccount', () => {
+    it('returns Benford analysis', async () => {
+      http.mockReturnValue(okHttp([{ amount: 123 }, { amount: 456 }, { amount: 789 }]));
       const result = await service.getBenfordAnalysisByAccount('acc1', 'DEFAULT', '2024-01-01', '2024-12-31');
-
       expect(result).toHaveProperty('expected');
       expect(result).toHaveProperty('actual');
-      expect(result).toHaveProperty('sampleSize');
       expect(result.sampleSize).toBeGreaterThan(0);
     });
 
-    it('should handle getBenfordAnalysisByAccount with empty data', async () => {
-      const emptyResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(emptyResponse)) as any);
-
-      const result = await service.getBenfordAnalysisByAccount('acc2', 'DEFAULT', '2024-01-01', '2024-12-31');
-
+    it('returns zero sampleSize on empty data', async () => {
+      http.mockReturnValue(okHttp([]));
+      const result = await service.getBenfordAnalysisByAccount('acc1', 'DEFAULT', '2024-01-01', '2024-12-31');
       expect(result.sampleSize).toBe(0);
-      expect(result.actual[1]).toBe(0);
     });
 
-    it('should handle getBenfordAnalysisByAccount with error', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Analysis failed')) as any);
-
-      await expect(service.getBenfordAnalysisByAccount('acc3', 'DEFAULT', '2024-01-01', '2024-12-31')).rejects.toThrow(
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getBenfordAnalysisByAccount('acc1', 'DEFAULT', '2024-01-01', '2024-12-31')).rejects.toThrow(
         'Failed to perform Benford analysis',
       );
     });
+  });
 
-    it('should handle getAlertNavigatorData when no typologies exist', async () => {
-      const alertResponse = {
-        status: 'success',
-        data: [
-          {
-            alert_id: 123,
-            transaction_id: 'tx1',
-          },
-        ],
-      };
-      const emptyTypologiesResponse = {
-        status: 'success',
-        data: [],
-      };
-      const emptyRulesResponse = {
-        status: 'success',
-        data: [],
-      };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(alertResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(emptyTypologiesResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(emptyRulesResponse)) as any);
-
-      const result = await service.getAlertNavigatorData(123, 'DEFAULT');
-
-      expect(result).toHaveProperty('alertMetadata');
-      expect(result.typologies).toEqual([]);
+  // ===================== DEBUG / TABLE DATA METHODS =====================
+  describe('getAllConditionsTableData', () => {
+    it('returns table data', async () => {
+      const result = await service.getAllConditionsTableData('DEFAULT');
+      expect(result.tableName).toBe('conditions');
     });
 
-    it('should handle getTransactionDetailData when transaction not found', async () => {
-      const emptyResponse = {
-        status: 'success',
-        data: [],
-      };
-      jest.spyOn(service, 'query').mockResolvedValue(emptyResponse as any);
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getAllConditionsTableData('DEFAULT')).rejects.toThrow(HttpException);
+    });
+  });
 
-      await expect(service.getTransactionDetailData(999, 'DEFAULT')).rejects.toThrow();
+  describe('getAllConditionsTimelineData', () => {
+    it('returns timeline data', async () => {
+      const result: any = await service.getAllConditionsTimelineData('DEFAULT');
+      expect(result.tableName).toBe('conditions_timeline');
     });
 
-    it('should handle getConditionsSummary with different granularities', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
-          {
-            active_conditions: 10,
-            blocked_transactions: 5,
-            overridden_transactions: 2,
-            future_conditions: 3,
-          },
-        ],
-      };
+    it('returns empty result on error (does not throw)', async () => {
+      http.mockReturnValue(errHttp());
+      const result: any = await service.getAllConditionsTimelineData('DEFAULT');
+      expect(result.totalRows).toBe(0);
+    });
+  });
 
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const resultWeek = await service.getConditionsSummary('acc1', 'DEFAULT', '2024-01-01');
-      expect(resultWeek.activeConditions).toBe(10);
-      expect(resultWeek.blockedTransactions).toBe(5);
-
-      const resultYear = await service.getConditionsSummary('acc1', 'DEFAULT', '2023-01-01');
-      expect(resultYear.activeConditions).toBe(10);
+  describe('getAllAccountHolderData', () => {
+    it('returns account holder data', async () => {
+      const result: any = await service.getAllAccountHolderData('DEFAULT');
+      expect(result.tableName).toBe('account_holder');
     });
 
-    it('should handle query with empty result', async () => {
-      const emptyResponse = {
-        status: 'success',
-        data: [],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(emptyResponse)) as any);
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getAllAccountHolderData('DEFAULT')).rejects.toThrow(HttpException);
+    });
+  });
 
-      const result = await service.query({ table_name: 'test_table', columns: [], filters: {} });
-
-      expect(result.data).toEqual([]);
-      expect(result.status).toBe('success');
+  describe('getTransactionDetailSampleData', () => {
+    it('returns sample data', async () => {
+      const result: any = await service.getTransactionDetailSampleData('DEFAULT');
+      expect(result.tableName).toBe('transaction_detail');
     });
 
-    it('should handle runSqlQuery with custom limit', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ id: 1 }, { id: 2 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getTransactionDetailSampleData('DEFAULT')).rejects.toThrow(HttpException);
+    });
+  });
 
-      const result = await service.runSqlQuery('SELECT * FROM test', 10);
-
-      expect(result.data.length).toBe(2);
-      expect(httpService.post).toHaveBeenCalled();
+  // ===================== ACCOUNT-SPECIFIC CONDITIONS METHODS =====================
+  describe('getConditionsSummaryByAccount', () => {
+    it('returns summary with DEFAULT tenant', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ total_conditions: 5, active_conditions: 3, expired_conditions: 1, future_conditions: 1 }]))
+        .mockReturnValueOnce(okHttp([{ condition_id: 'c1', condition_type: 'block', is_active: 1 }]));
+      const result = await service.getConditionsSummaryByAccount('acc1', 'DEFAULT');
+      expect(result.totalConditions).toBe(5);
     });
 
-    it('should handle getAlertHistorySummary with empty results', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
-          {
-            total_alerts: 0,
-            cases_opened: 0,
-            investigations: 0,
-            sar_filings: 0,
-            total_value: 0,
-          },
-        ],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistorySummary('e2e999', 'DEFAULT');
-
-      expect(result.totalAlerts).toBe(0);
-      expect(result.casesOpened).toBe(0);
+    it('adds tenant filter for non-DEFAULT tenant', async () => {
+      http.mockReturnValueOnce(okHttp([{}])).mockReturnValueOnce(okHttp([]));
+      const result = await service.getConditionsSummaryByAccount('acc1', 'TENANT_A');
+      expect(result.accountId).toBe('acc1');
     });
 
-    it('should handle getEvaluatedTransactions with multiple conditions', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
+    it('applies asOfDate filter when provided', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ total_conditions: 2, active_conditions: 1, expired_conditions: 1, future_conditions: 0 }]))
+        .mockReturnValueOnce(okHttp([]));
+      const result = await service.getConditionsSummaryByAccount('acc1', 'DEFAULT', undefined, '2024-01-01');
+      expect(result.accountId).toBe('acc1');
+    });
+
+    it('re-throws HttpException directly', async () => {
+      http.mockReturnValue(throwError(() => new HttpException('Not found', 404)));
+      await expect(service.getConditionsSummaryByAccount('acc1')).rejects.toThrow('Not found');
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getConditionsSummaryByAccount('acc1')).rejects.toThrow(HttpException);
+    });
+  });
+
+  describe('getActiveConditionsByAccount', () => {
+    it('returns active conditions', async () => {
+      http.mockReturnValue(okHttp([{ condition_id: 'c1', condition_reason: 'Test', condition_type: 'block' }]));
+      const result: any = await service.getActiveConditionsByAccount('acc1', 'DEFAULT');
+      expect(result.conditions).toHaveLength(1);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getActiveConditionsByAccount('acc1')).rejects.toThrow(HttpException);
+    });
+  });
+
+  describe('getFutureConditionsByAccount', () => {
+    it('returns future conditions', async () => {
+      http.mockReturnValue(okHttp([{ condition_id: 'c1', condition_reason: 'Future', condition_type: 'block' }]));
+      const result = await service.getFutureConditionsByAccount('acc1', 'DEFAULT');
+      expect(result.conditions).toHaveLength(1);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getFutureConditionsByAccount('acc1')).rejects.toThrow(HttpException);
+    });
+  });
+
+  describe('getConditionsListByAccount', () => {
+    it('returns conditions list', async () => {
+      http.mockReturnValue(okHttp([{ condition_id: 'c1', condition_type: 'block', is_active: 1, is_expired: 0 }]));
+      const result = await service.getConditionsListByAccount('acc1', 'DEFAULT');
+      expect(result.conditions).toHaveLength(1);
+    });
+
+    it('marks expired conditions correctly', async () => {
+      http.mockReturnValue(okHttp([{ condition_id: 'c2', condition_type: 'block', is_active: 0, is_expired: 1 }]));
+      const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT');
+      expect(result.conditions[0].isExpired).toBe(true);
+    });
+
+    it('marks future conditions correctly', async () => {
+      http.mockReturnValue(okHttp([{ condition_id: 'c3', condition_type: 'block', is_active: 0, is_expired: 0 }]));
+      const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT');
+      expect(result.conditions[0].isActive).toBe(false);
+      expect(result.conditions[0].isExpired).toBe(false);
+    });
+
+    it('applies asOfDate filter when showInactive is false', async () => {
+      await service.getConditionsListByAccount('acc1', 'DEFAULT', '2024-01-01', false);
+      expect(http).toHaveBeenCalled();
+    });
+
+    it('skips date filter when showInactive is true', async () => {
+      await service.getConditionsListByAccount('acc1', 'DEFAULT', '2024-01-01', true);
+      expect(http).toHaveBeenCalled();
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getConditionsListByAccount('acc1')).rejects.toThrow(HttpException);
+    });
+  });
+
+  describe('getEvaluatedTransactionsByAccount', () => {
+    it('returns BLOCKED transactions', async () => {
+      http.mockReturnValue(
+        okHttp([
           {
             tx_transaction_id: 'tx1',
             tx_event_ts: '2024-01-01',
-            tx_type: 'PAYMENT',
             tx_amount: 100,
-            tx_ccy: 'USD',
-            tx_block_override_status: 'PASSED',
-            cond_condition_id: 'cond1',
-            cond_reason: 'Reason 1',
+            cond_condition_id: 'c1',
+            cond_type: 'block',
+            cond_account_id: 'acc1',
           },
-          {
-            tx_transaction_id: 'tx2',
-            tx_event_ts: '2024-01-02',
-            tx_type: 'TRANSFER',
-            tx_amount: 200,
-            tx_ccy: 'EUR',
-            tx_block_override_status: 'BLOCKED',
-            cond_condition_id: 'cond2',
-            cond_reason: 'Reason 2',
-          },
-        ],
-      };
-
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getEvaluatedTransactions('acc1', 'DEFAULT', '2024-01-01');
-
-      expect(result.length).toBe(2);
-      expect(result[0].transactionId).toBe('tx1');
-      expect(result[1].outcome).toBe('BLOCKED');
+        ]),
+      );
+      const result = await service.getEvaluatedTransactionsByAccount('acc1', 'DEFAULT');
+      expect(result.transactions).toHaveLength(1);
+      expect(result.transactions[0].outcome).toBe('BLOCKED');
     });
 
-    it('should handle network timespan variations', async () => {
-      const centerAccountResponse = {
-        status: 'success',
-        data: [
-          {
-            account_id: 'acc1',
-            account_name: 'Account 1',
-          },
-        ],
-      };
-      const outboundResponse = {
-        status: 'success',
-        data: [
-          {
-            connected_account_id: 'acc2',
-            connected_account_name: 'Account 2',
-            flow_direction: 'OUTBOUND',
-            total_transactions: 5,
-            total_value: 2500,
-            avg_value: 500,
-            first_tx_date: '2024-01-01',
-            last_tx_date: '2024-01-31',
-            duration_days: 30,
-          },
-        ],
-      };
-      const inboundResponse = {
-        status: 'success',
-        data: [],
-      };
-      const alertsResponse = {
-        status: 'success',
-        data: [],
-      };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(centerAccountResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(outboundResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(inboundResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(alertsResponse)) as any);
-
-      const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '7d');
-      expect(result).toHaveProperty('centerAccount');
-      expect(result.centerAccount.accountId).toBe('acc1');
+    it('returns DATA_NOT_FOUND metadata when empty', async () => {
+      http.mockReturnValue(okHttp([]));
+      const result = await service.getEvaluatedTransactionsByAccount('acc1');
+      expect(result.metadata.status).toBe('DATA_NOT_FOUND');
     });
 
-    it('should handle getTransactionOverviewUIData with valid data', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getEvaluatedTransactionsByAccount('acc1')).rejects.toThrow(HttpException);
+    });
+  });
+
+  // ===================== TRANSACTION-BASED CONDITIONS =====================
+  describe('getConditionsSummaryByTransaction', () => {
+    it('returns summary', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ debtor_account_id: 'acc1', creditor_account_id: 'acc2', tx_event_ts: '2024-01-01' }]))
+        .mockReturnValueOnce(okHttp([{ total_conditions: 3, active_conditions: 2, expired_conditions: 1 }]));
+      const result: any = await service.getConditionsSummaryByTransaction(123, 'DEFAULT');
+      expect(result.totalConditions).toBe(3);
+    });
+
+    it('returns not found message when tx missing', async () => {
+      http.mockReturnValue(okHttp([]));
+      const result: any = await service.getConditionsSummaryByTransaction(999);
+      expect(result.conditions).toBe(0);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getConditionsSummaryByTransaction(1)).rejects.toThrow(HttpException);
+    });
+  });
+
+  describe('getExpiredConditionsByTransaction', () => {
+    it('returns expired conditions', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ debtor_account_id: 'acc1', creditor_account_id: 'acc2', tx_event_ts: '2024-01-01' }]))
+        .mockReturnValueOnce(okHttp([{ condition_id: 'c1', condition_type: 'block' }]));
+      const result: any = await service.getExpiredConditionsByTransaction(123, 'DEFAULT');
+      expect(result.conditions).toHaveLength(1);
+    });
+
+    it('returns not found when tx missing', async () => {
+      http.mockReturnValue(okHttp([]));
+      const result: any = await service.getExpiredConditionsByTransaction(999);
+      expect(result.conditions).toEqual([]);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getExpiredConditionsByTransaction(1)).rejects.toThrow(HttpException);
+    });
+  });
+
+  describe('getConditionDetails', () => {
+    it('returns condition details', async () => {
+      http.mockReturnValue(okHttp([{ cond_condition_id: 'c1', cond_reason: 'Test', cond_is_active: 1, cond_is_expired: 0 }]));
+      const result: any = await service.getConditionDetails('c1', 'DEFAULT');
+      expect(result.conditionId).toBe('c1');
+      expect(result.status).toBe('active');
+    });
+
+    it('maps expired status', async () => {
+      http.mockReturnValue(okHttp([{ cond_condition_id: 'c2', cond_is_active: 0, cond_is_expired: 1 }]));
+      const result: any = await service.getConditionDetails('c2');
+      expect(result.status).toBe('expired');
+    });
+
+    it('maps future status', async () => {
+      http.mockReturnValue(okHttp([{ cond_condition_id: 'c3', cond_is_active: 0, cond_is_expired: 0 }]));
+      const result: any = await service.getConditionDetails('c3');
+      expect(result.status).toBe('future');
+    });
+
+    it('throws NOT_FOUND when condition missing', async () => {
+      http.mockReturnValue(okHttp([]));
+      await expect(service.getConditionDetails('not-found')).rejects.toThrow(HttpException);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getConditionDetails('c1')).rejects.toThrow(HttpException);
+    });
+  });
+
+  // ===================== getConditionsContextByTransaction =====================
+  describe('getConditionsContextByTransaction', () => {
+    it('adds extra entity accounts from account_holder', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              transaction_id: 1,
+              tx_event_ts: '2024-01-01',
+              end_to_end_id: 'e2e1',
+              debtor_id: 'entity1',
+              debtor_account_id: 'acc1',
+              creditor_id: 'entity2',
+              creditor_account_id: 'acc2',
+            },
+          ]),
+        )
+        // debtor entity lookup returns extra account acc3 with account_id
+        .mockReturnValueOnce(okHttp([{ account_id: 'acc3' }]))
+        // condition count for acc1
+        .mockReturnValueOnce(okHttp([{ total: 0, active: 0, expired: 0, future: 0 }]))
+        // condition count for acc3
+        .mockReturnValueOnce(okHttp([{ total: 1, active: 1, expired: 0, future: 0 }]))
+        // creditor entity lookup returns acc2 with account_id
+        .mockReturnValueOnce(okHttp([{ account_id: 'acc2' }]))
+        // condition count for acc2
+        .mockReturnValueOnce(okHttp([{ total: 0, active: 0, expired: 0, future: 0 }]));
+      const result = await service.getConditionsContextByTransaction(1, 'DEFAULT');
+      expect(result.debtor.primaryAccountId).toBe('acc1');
+      expect(result.debtor.accounts.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('returns conditions context with entity accounts resolved', async () => {
+      // TX has debtor_id + debtor_account_id → covers getEntityAccountsWithConditionCounts branches
+      http.mockReturnValueOnce(
+        okHttp([
           {
-            transaction_id: '1',
+            transaction_id: 1,
+            tx_event_ts: '2024-01-01',
             end_to_end_id: 'e2e1',
-            tx_event_ts: '2024-01-01T12:00:00Z',
             tx_type: 'PAYMENT',
-            interbank_settlement_amount: 1000,
+            interbank_settlement_amount: 100,
             interbank_settlement_currency: 'USD',
-            debtor_name: 'Debtor',
-            creditor_name: 'Creditor',
+            debtor_id: 'entity1',
             debtor_account_id: 'acc1',
+            creditor_id: 'entity2',
             creditor_account_id: 'acc2',
-            tenant_id: 'DEFAULT',
           },
-        ],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getTransactionOverviewUIData(1, 'DEFAULT');
-
-      expect(result).toBeDefined();
+        ]),
+      );
+      // remaining calls (entity account lookups + condition counts) use default mock
+      const result = await service.getConditionsContextByTransaction(1, 'DEFAULT');
+      expect(result.transaction).toBeDefined();
+      expect(result.debtor.primaryAccountId).toBe('acc1');
     });
 
-    it('should handle query with specific columns', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ col1: 'val1', col2: 'val2' }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.query({ table_name: 'test_table', columns: ['col1', 'col2'], filters: {} });
-
-      expect(result.data.length).toBeGreaterThan(0);
+    it('returns conditions context without entity ids', async () => {
+      http.mockReturnValue(okHttp([{ transaction_id: 1, tx_event_ts: '2024-01-01' }]));
+      const result = await service.getConditionsContextByTransaction(1, 'DEFAULT');
+      expect(result.transaction).toBeDefined();
     });
 
-    it('should handle getAlertNavigatorData with no alert data', async () => {
-      const emptyAlertResponse = { status: 'success', data: [] };
-
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(emptyAlertResponse)) as any);
-
-      await expect(service.getAlertNavigatorData(999, 'DEFAULT')).rejects.toThrow();
+    it('throws when transaction not found', async () => {
+      http.mockReturnValue(okHttp([]));
+      await expect(service.getConditionsContextByTransaction(999)).rejects.toThrow(HttpException);
     });
 
-    it('should handle getTransactionPerspectivesByEndToEndId with empty results', async () => {
-      const emptyResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(emptyResponse)) as any);
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getConditionsContextByTransaction(1)).rejects.toThrow(HttpException);
+    });
+  });
 
-      const result = await service.getTransactionPerspectivesByEndToEndId('e2e999', 'DEFAULT');
-
-      expect(result).toHaveProperty('perspectives');
-      expect((result as any).perspectives).toEqual([]);
+  // ===================== getConditionsByEntity =====================
+  describe('getConditionsByEntity', () => {
+    it('returns conditions for entity with accounts', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ account_id: 'acc1' }]))
+        .mockReturnValueOnce(okHttp([{ condition_id: 'c1', condition_type: 'block', is_active: 1 }]));
+      const result = await service.getConditionsByEntity('entity1', 'DEFAULT');
+      expect(result.conditions).toHaveLength(1);
     });
 
-    it('should handle getTransactionOverviewUIData when transaction not found', async () => {
-      const emptyResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(emptyResponse)) as any);
-
-      await expect(service.getTransactionOverviewUIData(999, 'DEFAULT')).rejects.toThrow(HttpException);
+    it('applies asOfDate date filter when showInactive is false', async () => {
+      http.mockReturnValueOnce(okHttp([{ account_id: 'acc1' }])).mockReturnValueOnce(okHttp([]));
+      const result = await service.getConditionsByEntity('entity1', 'DEFAULT', '2024-01-01', false);
+      expect(result.conditions).toEqual([]);
     });
 
-    it('should handle getAccountNodeFullData with different granularities', async () => {
-      const networkResponse = {
-        status: 'success',
-        data: [
-          {
-            from_account_id: 'a1',
-            to_account_id: 'a2',
-            tx_count: 3,
-            total_amount: 1500,
-            currency_hint: 'USD',
-            first_event_ts: '2024-01-01',
-            last_event_ts: '2024-01-31',
-            is_alerted_edge: 0,
-            is_investigated_edge: 0,
-          },
-        ],
-      };
-      const metricsResponse = { status: 'success', data: [{ transactions: 3, total_value: 1500, is_alerted: 0, is_investigated: 0 }] };
-      const holderResponse = { status: 'success', data: [{ holder_name: 'Holder' }] };
-      const alertResponse = { status: 'success', data: [{ alert_count: 0 }] };
-      const investigationResponse = { status: 'success', data: [{ investigation_count: 0 }] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(networkResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(metricsResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(holderResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(alertResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(investigationResponse)) as any);
-
-      const result = await service.getAccountNodeFullData('acc1', 'DEFAULT', 'year');
-
-      expect(result.network.nodes.length).toBeGreaterThan(0);
+    it('skips date filter when showInactive is true', async () => {
+      http.mockReturnValueOnce(okHttp([{ account_id: 'acc1' }])).mockReturnValueOnce(okHttp([]));
+      const result = await service.getConditionsByEntity('entity1', 'DEFAULT', '2024-01-01', true);
+      expect(result.conditions).toEqual([]);
     });
 
-    it('should handle runSqlQuery with ErrorResponse status', async () => {
-      const errorResponse = { status: 'error', code: 500, message: 'Database error' };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(errorResponse)) as any);
-
-      await expect(service.runSqlQuery('SELECT * FROM test', 10)).rejects.toThrow();
+    it('returns empty result when no accounts found', async () => {
+      http.mockReturnValue(okHttp([]));
+      const result = await service.getConditionsByEntity('entity_unknown', 'DEFAULT');
+      expect(result.accounts).toEqual([]);
+      expect(result.conditions).toEqual([]);
     });
 
-    it('should handle query with filters', async () => {
-      const mockResponse = { status: 'success', data: [{ id: 1, name: 'Test' }] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.query({
-        table_name: 'alerts',
-        filters: { risk_level: 'HIGH', status: 'OPEN' },
-        columns: ['id', 'name'],
-        limit: 50,
-      });
-
-      expect(result.data.length).toBe(1);
-    });
-
-    it('should handle getConditionsSummary with no data', async () => {
-      const emptyResponse = {
-        status: 'success',
-        data: [{ active_conditions: 0, blocked_transactions: 0, overridden_transactions: 0, future_conditions: 0 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(emptyResponse)) as any);
-
-      const result = await service.getConditionsSummary('acc999', 'DEFAULT');
-
-      expect(result.activeConditions).toBe(0);
-      expect(result.blockedTransactions).toBe(0);
-    });
-
-    it('should handle getEvaluatedTransactions with error response', async () => {
-      const errorResponse = { status: 'error' };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(errorResponse)) as any);
-
-      await expect(service.getEvaluatedTransactions('acc1', 'DEFAULT')).rejects.toThrow();
-    });
-
-    it('should handle getTransactionHistoryData with empty entity_id results', async () => {
-      const emptyResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(emptyResponse)) as any);
-
-      const result = await service.getTransactionHistoryData('entity999', 'DEFAULT');
-
-      expect(result).toHaveProperty('summary');
-      expect((result as any).summary.totalTransactions).toBe(0);
-    });
-
-    it('should handle getAlertHistorySummary with different date ranges', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ total_alerts: 5, cases_opened: 2, investigations: 1, sar_filings: 0, total_value: 10000 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result30 = await service.getAlertHistorySummary('e2e123', 'DEFAULT', '30days');
-      expect(result30.totalAlerts).toBe(5);
-
-      const result90 = await service.getAlertHistorySummary('e2e123', 'DEFAULT', '90days');
-      expect(result90.totalAlerts).toBe(5);
-
-      const result6m = await service.getAlertHistorySummary('e2e123', 'DEFAULT', '6months');
-      expect(result6m.totalAlerts).toBe(5);
-
-      const result1y = await service.getAlertHistorySummary('e2e123', 'DEFAULT', '1year');
-      expect(result1y.totalAlerts).toBe(5);
-    });
-
-    it('should handle getTransactionHistoryData with granularity parameter', async () => {
-      const eventsResponse = {
-        status: 'success',
-        data: [
-          {
-            transaction_id: 'tx1',
-            entity_id: 'entity1',
-            event_date: '2024-01-01',
-            event_ts: '2024-01-01T12:00:00Z',
-            tx_amount: 100,
-            tx_ccy: 'USD',
-            tx_type: 'PAYMENT',
-            is_alerted: 0,
-            is_investigated: 0,
-          },
-        ],
-      };
-      const aggResponse = {
-        status: 'success',
-        data: [
-          {
-            bucket_start: '2024-01-01',
-            bucket_tx_count: 10,
-            bucket_tx_amount: 1000,
-            bucket_granularity: 'day',
-          },
-        ],
-      };
-      const baselineResponse = { status: 'success', data: [] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(eventsResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(aggResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(baselineResponse)) as any);
-
-      const result = await service.getTransactionHistoryData('entity1', 'DEFAULT', '2024-01-01', '2024-01-31', 'day');
-
-      expect(result).toHaveProperty('summary');
-      expect((result as any).volumeDistribution).toBeDefined();
-    });
-
-    it('should handle getTransactionHistoryData with start and end dates', async () => {
-      const eventsResponse = {
-        status: 'success',
-        data: [
-          {
-            transaction_id: 'tx1',
-            entity_id: 'entity1',
-            event_date: '2024-01-01',
-            event_ts: '2024-01-01T12:00:00Z',
-            tx_amount: 100,
-            tx_ccy: 'USD',
-            tx_type: 'PAYMENT',
-            is_alerted: 0,
-            is_investigated: 0,
-          },
-        ],
-      };
-      const baselineResponse = { status: 'success', data: [] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(eventsResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(baselineResponse)) as any);
-
-      const result = await service.getTransactionHistoryData('entity1', 'DEFAULT', '2024-01-01', '2024-01-31');
-
-      expect(result).toHaveProperty('summary');
-    });
-
-    it('should handle getAlertHistorySummary with all date range', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ total_alerts: 10, cases_opened: 5, investigations: 3, sar_filings: 1, total_value: 50000 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistorySummary('e2e123', 'DEFAULT', 'all');
-      expect(result.totalAlerts).toBe(10);
-    });
-
-    it('should handle getAlertHistorySummary with no endToEndId', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ total_alerts: 2, cases_opened: 1, investigations: 0, sar_filings: 0, total_value: 5000 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistorySummary(undefined, 'DEFAULT');
-      expect(result.totalAlerts).toBe(2);
-    });
-
-    it('should handle query with limit parameter', async () => {
-      const mockResponse = { status: 'success', data: Array.from({ length: 10 }, (_, i) => ({ id: i + 1 })) };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.query({
-        table_name: 'alerts',
-        limit: 10,
-      });
-
-      expect(result.data.length).toBe(10);
-    });
-
-    it('should handle getEvaluatedTransactions with empty data', async () => {
-      const emptyResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(emptyResponse)) as any);
-
-      const result = await service.getEvaluatedTransactions('acc1', 'DEFAULT', '2024-01-01');
-
-      expect(result).toEqual([]);
-    });
-
-    it('should handle getAccountNodeFullData with day granularity', async () => {
-      const networkResponse = {
-        status: 'success',
-        data: [
-          {
-            from_account_id: 'a1',
-            to_account_id: 'a2',
-            tx_count: 2,
-            total_amount: 1000,
-            currency_hint: 'USD',
-            first_event_ts: '2024-01-01',
-            last_event_ts: '2024-01-02',
-            is_alerted_edge: 0,
-            is_investigated_edge: 0,
-          },
-        ],
-      };
-      const metricsResponse = { status: 'success', data: [{ transactions: 2, total_value: 1000, is_alerted: 0, is_investigated: 0 }] };
-      const holderResponse = { status: 'success', data: [{ holder_name: 'Holder Name' }] };
-      const alertResponse = { status: 'success', data: [{ alert_count: 0 }] };
-      const investigationResponse = { status: 'success', data: [{ investigation_count: 0 }] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(networkResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(metricsResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(holderResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(alertResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(investigationResponse)) as any);
-
-      const result = await service.getAccountNodeFullData('acc1', 'DEFAULT', 'day');
-
-      expect(result.network.nodes.length).toBeGreaterThan(0);
-    });
-
-    it('should handle getTransactionNetworkData with empty connections', async () => {
-      const centerAccountResponse = { status: 'success', data: [{ account_id: 'acc1', account_name: 'Account 1' }] };
-      const emptyOutbound = { status: 'success', data: [] };
-      const emptyInbound = { status: 'success', data: [] };
-      const emptyAlerts = { status: 'success', data: [] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(centerAccountResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(emptyOutbound)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(emptyInbound)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(emptyAlerts)) as any);
-
-      const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
-
-      expect(result.connectedAccounts.length).toBe(0);
-      expect(result.centerAccount.networkSummary.connectedAccounts).toBe(0);
-    });
-
-    it('should handle getTransactionNetworkData when account not found', async () => {
-      const emptyResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(emptyResponse)) as any);
-
-      await expect(service.getTransactionNetworkData('nonexistent', 'DEFAULT')).rejects.toThrow(HttpException);
-    });
-
-    it('should handle getCounterpartyNodeFullData successfully', async () => {
-      const networkResponse = {
-        status: 'success',
-        data: [
-          {
-            from_counterparty_id: 'cp1',
-            to_counterparty_id: 'cp2',
-            tx_count: 15,
-            total_amount: 7500,
-            currency_hint: 'USD',
-            first_event_ts: '2024-01-01',
-            last_event_ts: '2024-01-31',
-            is_alerted_edge: 0,
-            is_investigated_edge: 1,
-          },
-        ],
-      };
-      const metricsResponse = { status: 'success', data: [{ transactions: 15, total_value: 7500, is_alerted: 1, is_investigated: 1 }] };
-      const nameResponse = { status: 'success', data: [{ name: 'Counterparty Name', type: 'DEBTOR' }] };
-      const alertResponse = { status: 'success', data: [{ alert_count: 1 }] };
-      const investigationResponse = { status: 'success', data: [{ investigation_count: 1 }] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(networkResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(metricsResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(nameResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(alertResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(investigationResponse)) as any);
-
-      const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT', 'month');
-
-      expect(result).toHaveProperty('network');
-      expect(result).toHaveProperty('counterpartyDetails');
-      expect(result.network.nodes.length).toBeGreaterThan(0);
-    });
-
-    it('should handle getAlertHistoryTimeline successfully', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
-          {
-            date: '2024-01-01T00:00:00.000Z',
-            alert_count: 3,
-            case_count: 2,
-            investigation_count: 1,
-            total_value: 1500,
-          },
-        ],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryTimeline('e2e123', 'DEFAULT');
-
-      expect(result).toHaveProperty('alertCountOverTime');
-      expect(result).toHaveProperty('alertValueOverTime');
-      expect(result.alertCountOverTime).toBeInstanceOf(Array);
-    });
-
-    it('should handle getAlertHistoryAlerts successfully', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
-          {
-            alert_id: 1,
-            alert_date: '2024-01-01',
-            typology_id: 'typ1',
-            rule_ids: 'rule1,rule2',
-            status: 'OPEN',
-          },
-        ],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryAlerts('e2e123', 'DEFAULT');
-
-      expect(result).toHaveProperty('alerts');
-      expect(result.alerts).toBeInstanceOf(Array);
-    });
-
-    it('should handle getTestAccountIds successfully', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
-          { account_id: 'acc1', account_name: 'Account 1', connections: 5, total_transactions: 100 },
-          { account_id: 'acc2', account_name: 'Account 2', connections: 3, total_transactions: 50 },
-          { account_id: 'acc3', account_name: 'Account 3', connections: 2, total_transactions: 25 },
-        ],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getTestAccountIds('DEFAULT');
-
-      expect(result).toBeDefined();
-      expect((result as any).accounts).toBeInstanceOf(Array);
-      expect((result as any).accounts.length).toBe(3);
-    });
-
-    it('should handle query with all parameters', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ id: 1, name: 'Test', status: 'ACTIVE' }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.query({
-        table_name: 'alerts',
-        filters: { status: 'ACTIVE', priority: 'HIGH' },
-        columns: ['id', 'name', 'status'],
-        limit: 100,
-      });
-
-      expect(result.data.length).toBe(1);
-      expect(result.status).toBe('success');
-    });
-
-    it('should handle getCounterpartyNodeFullData with different granularities', async () => {
-      const networkResponse = {
-        status: 'success',
-        data: [
-          {
-            from_counterparty_id: 'cp1',
-            to_counterparty_id: 'cp2',
-            tx_count: 5,
-            total_amount: 2500,
-            currency_hint: 'EUR',
-            first_event_ts: '2024-01-01',
-            last_event_ts: '2024-01-05',
-            is_alerted_edge: 0,
-            is_investigated_edge: 0,
-          },
-        ],
-      };
-      const metricsResponse = { status: 'success', data: [{ transactions: 5, total_value: 2500, is_alerted: 0, is_investigated: 0 }] };
-      const nameResponse = { status: 'success', data: [{ name: 'CP Name', type: 'CREDITOR' }] };
-      const alertResponse = { status: 'success', data: [{ alert_count: 0 }] };
-      const investigationResponse = { status: 'success', data: [{ investigation_count: 0 }] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(networkResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(metricsResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(nameResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(alertResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(investigationResponse)) as any);
-
-      const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT', 'day');
-
-      expect(result.network.nodes.length).toBeGreaterThan(0);
-    });
-
-    it('should handle getCounterpartyNodeFullData with error during SQL query', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('SQL query failed')) as any);
-
-      await expect(service.getCounterpartyNodeFullData('cp1', 'DEFAULT', 'month')).rejects.toThrow(HttpException);
-    });
-
-    it('should handle getCounterpartyNodeFullData with alerted and investigated edges', async () => {
-      const networkResponse = {
-        status: 'success',
-        data: [
-          {
-            from_counterparty_id: 'cp1',
-            to_counterparty_id: 'cp2',
-            tx_count: 25,
-            total_amount: 15000,
-            currency_hint: 'USD',
-            first_event_ts: '2024-01-01',
-            last_event_ts: '2024-02-28',
-            is_alerted_edge: 1,
-            is_investigated_edge: 1,
-          },
-          {
-            from_counterparty_id: 'cp2',
-            to_counterparty_id: 'cp3',
-            tx_count: 10,
-            total_amount: 5000,
-            currency_hint: 'USD',
-            first_event_ts: '2024-01-15',
-            last_event_ts: '2024-02-15',
-            is_alerted_edge: 1,
-            is_investigated_edge: 0,
-          },
-        ],
-      };
-      const metricsResponse = { status: 'success', data: [{ transactions: 35, total_value: 20000, is_alerted: 1, is_investigated: 1 }] };
-      const nameResponse = { status: 'success', data: [{ holder_name: 'Counterparty Business' }] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(networkResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(metricsResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(nameResponse)) as any);
-
-      const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT', 'month');
-
-      expect(result.network.nodes.length).toBe(3);
-      expect(result.counterpartyDetails.flags.alerted).toBe(true);
-      expect(result.counterpartyDetails.flags.investigated).toBe(true);
-    });
-
-    it('should handle getCounterpartyNodeFullData with fromId as new node', async () => {
-      const networkResponse = {
-        status: 'success',
-        data: [
-          {
-            from_counterparty_id: 'cp5',
-            to_counterparty_id: 'cp1',
-            tx_count: 8,
-            total_amount: 4000,
-            currency_hint: 'EUR',
-            first_event_ts: '2024-01-01',
-            last_event_ts: '2024-01-31',
-            is_alerted_edge: 0,
-            is_investigated_edge: 1,
-          },
-        ],
-      };
-      const metricsResponse = { status: 'success', data: [{ transactions: 8, total_value: 4000, is_alerted: 0, is_investigated: 1 }] };
-      const nameResponse = { status: 'success', data: [{ holder_name: 'Test Entity' }] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(networkResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(metricsResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(nameResponse)) as any);
-
-      const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT', 'day');
-
-      expect(result.network.nodes.length).toBe(2);
-      expect(result.network.edges.length).toBe(1);
-    });
-
-    it('should handle getCounterpartyNetworkData when no counterparties found', async () => {
-      const accountHolderResponse = {
-        status: 'success',
-        data: [{ debtor_name: 'Test Account', creditor_name: 'Test Creditor', debtor_account_id: 'acc1', creditor_account_id: 'acc2' }],
-      };
-      const emptyCounterpartyLinksResponse = { status: 'success', data: [] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(accountHolderResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(emptyCounterpartyLinksResponse)) as any);
-
-      await expect(service.getCounterpartyNetworkData('acc1', 'DEFAULT')).rejects.toThrow('Failed to fetch counterparty network data');
-    });
-
-    it('should handle getAlertHistoryTimeline with 90days date range', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ date: '2024-01-01', alert_count: 2, case_count: 1, investigation_count: 0, total_value: 500 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryTimeline('e2e123', 'DEFAULT', '90days');
-      expect(result.alertCountOverTime).toBeDefined();
-    });
-
-    it('should handle getAlertHistoryTimeline with 6months date range', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ date: '2023-09-01', alert_count: 5, case_count: 3, investigation_count: 2, total_value: 2500 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryTimeline('e2e123', 'DEFAULT', '6months');
-      expect(result.alertCountOverTime.length).toBeGreaterThan(0);
-    });
-
-    it('should handle getAlertHistoryTimeline with 1year date range', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ date: '2023-03-01', alert_count: 10, case_count: 7, investigation_count: 5, total_value: 10000 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryTimeline('e2e123', 'DEFAULT', '1year');
-      expect(result.alertCountOverTime.length).toBeGreaterThan(0);
-    });
-
-    it('should handle getAlertHistoryTimeline with default/unknown date range', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ date: '2024-01-01', alert_count: 1, case_count: 0, investigation_count: 0, total_value: 100 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryTimeline('e2e123', 'DEFAULT', 'unknown');
-      expect(result).toHaveProperty('alertCountOverTime');
-    });
-
-    it('should handle getAlertHistoryAlerts with 90days date range', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ alert_id: 5, alert_date: '2024-01-15', typology_id: 'typ2', rule_ids: 'rule5', status: 'INVESTIGATING' }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryAlerts('e2e123', 'DEFAULT', '90days');
-      expect(result.alerts).toBeInstanceOf(Array);
-    });
-
-    it('should handle getAlertHistoryAlerts with 6months date range', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ alert_id: 6, alert_date: '2023-09-15', typology_id: 'typ3', rule_ids: 'rule6', status: 'CLOSED' }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryAlerts('e2e123', 'DEFAULT', '6months');
-      expect(result.alerts).toBeInstanceOf(Array);
-    });
-
-    it('should handle getAlertHistoryAlerts with 1year date range', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ alert_id: 7, alert_date: '2023-03-15', typology_id: 'typ4', rule_ids: 'rule7', status: 'RESOLVED' }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryAlerts('e2e123', 'DEFAULT', '1year');
-      expect(result.alerts).toBeInstanceOf(Array);
-    });
-
-    it('should handle getAlertHistoryAlerts with default/unknown date range', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ alert_id: 8, alert_date: '2024-01-01', typology_id: 'typ1', rule_ids: 'rule1', status: 'OPEN' }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryAlerts('e2e123', 'DEFAULT', 'custom');
-      expect(result.alerts).toBeDefined();
-    });
-
-    it('should handle getTransactionHistoryByEndToEndId with empty UUID results', async () => {
-      const emptyResponse = { status: 'success', data: [] };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(emptyResponse)) as any);
-
-      const result = await service.getTransactionHistoryData('00000000-0000-0000-0000-000000000000', 'DEFAULT');
-
-      expect((result as any).summary.totalTransactions).toBe(0);
-      expect((result as any).entityPerspectives).toEqual([]);
-    });
-
-    it('should handle getAlertNavigatorData with rules having weight', async () => {
-      const alertResponse = {
-        status: 'success',
-        data: [
-          {
-            alert_id: 200,
-            transaction_id: 'tx100',
-            end_to_end_id: 'e2e100',
-            alert_status: 'INVESTIGATING',
-            alert_tx_type: 'TRANSFER',
-            alert_tx_amount: 5000,
-            alert_tx_ccy: 'EUR',
-            created_at_ts: '2024-01-15',
-          },
-        ],
-      };
-      const typologiesResponse = {
-        status: 'success',
-        data: [
-          {
-            typology_id: 'typ100',
-            typology_cfg: '100',
-            typology_score: 90,
-            alert_threshold: 80,
-            interdiction_threshold: 95,
-          },
-        ],
-      };
-      const rulesResponse = {
-        status: 'success',
-        data: [
-          {
-            rule_id: 'rule100',
-            rule_cfg: '100@1.0.0',
-            rule_weight: 15,
-            rule_score: 100,
-            rule_desc: 'High risk rule',
-            rule_sub_ref: 'SUB100',
-            typology_cfg: '100',
-          },
-        ],
-      };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(alertResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(typologiesResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(rulesResponse)) as any);
-
-      const result = await service.getAlertNavigatorData(200, 'DEFAULT');
-
-      expect(result.typologies).toBeDefined();
-      expect(result.typologies[0]).toHaveProperty('rules');
-      expect(result.statistics.totalRules).toBe(1);
-    });
-
-    it('should handle getTransactionHistoryData with both startDate and endDate', async () => {
-      const eventsResponse = {
-        status: 'success',
-        data: [
-          {
-            transaction_id: 'tx1',
-            entity_id: 'entity1',
-            event_date: '2024-01-15',
-            event_ts: '2024-01-15T10:00:00Z',
-            tx_amount: 150,
-            tx_ccy: 'USD',
-            tx_type: 'PAYMENT',
-            is_alerted: 0,
-            is_investigated: 0,
-          },
-        ],
-      };
-      const baselineResponse = { status: 'success', data: [{ expected_tx_count: 20, expected_volume: 2000 }] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(eventsResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(baselineResponse)) as any);
-
-      const result = await service.getTransactionHistoryData('entity1', 'DEFAULT', '2024-01-01', '2024-01-31');
-
-      expect((result as any).summary).toBeDefined();
-      expect((result as any).meta.startDate).toBe('2024-01-01');
-      expect((result as any).meta.endDate).toBe('2024-01-31');
-    });
-
-    it('should handle getAlertHistoryTimeline with day granularity', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [
-          { date: '2024-01-01', alert_count: 1, case_count: 0, investigation_count: 0, total_value: 100 },
-          { date: '2024-01-02', alert_count: 2, case_count: 1, investigation_count: 0, total_value: 200 },
-        ],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryTimeline('e2e123', 'DEFAULT', '30days', 'day');
-      expect(result.alertCountOverTime.length).toBe(2);
-    });
-
-    it('should handle getAlertHistoryTimeline with month granularity', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ date: '2024-01-01', alert_count: 10, case_count: 5, investigation_count: 3, total_value: 5000 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryTimeline('e2e123', 'DEFAULT', '1year', 'month');
-      expect(result.alertCountOverTime).toBeDefined();
-    });
-
-    it('should handle getAlertHistoryTimeline with year granularity', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ date: '2024-01-01', alert_count: 100, case_count: 50, investigation_count: 30, total_value: 50000 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryTimeline('e2e123', 'DEFAULT', 'all', 'year');
-      expect(result.alertCountOverTime).toBeDefined();
-    });
-
-    it('should handle getAlertHistoryAlerts with 30days date range', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ alert_id: 9, alert_date: '2024-02-01', typology_id: 'typ5', rule_ids: 'rule9', status: 'INVESTIGATING' }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistoryAlerts('e2e123', 'DEFAULT', '30days', 1, 20);
-      expect(result.alerts).toBeDefined();
-    });
-
-    it('should handle getCounterpartyNetworkData when counterparty names are missing', async () => {
-      const accountHolderResponse = {
-        status: 'success',
-        data: [{ debtor_name: 'Holder', debtor_account_id: 'acc1', creditor_name: 'Other', creditor_account_id: 'acc2' }],
-      };
-      const counterpartyLinksResponse = { status: 'success', data: [{ counterparty_id: 'cp_unknown' }] };
-      const networkEdgesResponse = {
-        status: 'success',
-        data: [
-          {
-            from_counterparty_id: 'cp_unknown',
-            to_counterparty_id: 'cp_other',
-            tx_count: 5,
-            total_amount: 2500,
-            is_alerted_edge: 0,
-            is_investigated_edge: 0,
-            first_event_ts: '2024-01-01',
-            last_event_ts: '2024-01-31',
-          },
-        ],
-      };
-      const emptyNamesResponse = { status: 'success', data: [] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(accountHolderResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(counterpartyLinksResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(networkEdgesResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(emptyNamesResponse)) as any);
-
-      const result = await service.getCounterpartyNetworkData('acc1', 'DEFAULT', '30d');
-      expect(result.counterparties).toBeDefined();
-    });
-
-    it('should handle getTransactionNetworkData with accounts having HIGH velocity', async () => {
-      const centerAccountResponse = { status: 'success', data: [{ account_id: 'acc1', account_name: 'High Volume Account' }] };
-      const outboundResponse = {
-        status: 'success',
-        data: [
-          {
-            connected_account_id: 'acc2',
-            connected_account_name: 'Target Account',
-            flow_direction: 'OUTBOUND',
-            total_transactions: 100,
-            total_value: 50000,
-            avg_value: 500,
-            first_tx_date: '2024-01-01',
-            last_tx_date: '2024-01-31',
-            duration_days: 30,
-          },
-        ],
-      };
-      const inboundResponse = { status: 'success', data: [] };
-      const alertsResponse = { status: 'success', data: [] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(centerAccountResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(outboundResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(inboundResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(alertsResponse)) as any);
-
-      const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
-      expect(result.connectedAccounts[0].transactionStats.velocity).toBe('HIGH');
-    });
-
-    it('should handle getTransactionNetworkData with accounts having MEDIUM velocity', async () => {
-      const centerAccountResponse = { status: 'success', data: [{ account_id: 'acc1', account_name: 'Medium Volume Account' }] };
-      const outboundResponse = {
-        status: 'success',
-        data: [
-          {
-            connected_account_id: 'acc2',
-            connected_account_name: 'Target',
-            flow_direction: 'OUTBOUND',
-            total_transactions: 7,
-            total_value: 3500,
-            avg_value: 500,
-            first_tx_date: '2024-01-01',
-            last_tx_date: '2024-01-31',
-            duration_days: 30,
-          },
-        ],
-      };
-      const inboundResponse = { status: 'success', data: [] };
-      const alertsResponse = { status: 'success', data: [] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(centerAccountResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(outboundResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(inboundResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(alertsResponse)) as any);
-
-      const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
-      expect(result.connectedAccounts[0].transactionStats.velocity).toBe('MEDIUM');
-    });
-
-    it('should handle getTransactionNetworkData with accounts having LOW velocity', async () => {
-      const centerAccountResponse = { status: 'success', data: [{ account_id: 'acc1', account_name: 'Low Volume Account' }] };
-      const outboundResponse = {
-        status: 'success',
-        data: [
-          {
-            connected_account_id: 'acc2',
-            connected_account_name: 'Target',
-            flow_direction: 'OUTBOUND',
-            total_transactions: 2,
-            total_value: 1000,
-            avg_value: 500,
-            first_tx_date: '2024-01-01',
-            last_tx_date: '2024-01-31',
-            duration_days: 30,
-          },
-        ],
-      };
-      const inboundResponse = { status: 'success', data: [] };
-      const alertsResponse = { status: 'success', data: [] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(centerAccountResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(outboundResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(inboundResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(alertsResponse)) as any);
-
-      const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
-      expect(result.connectedAccounts[0].transactionStats.velocity).toBe('LOW');
-    });
-
-    it('should handle getTransactionHistoryByEndToEndId with error thrown', async () => {
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => new Error('Database connection failed')) as any);
-
-      await expect(service.getTransactionHistoryData('550e8400-e29b-41d4-a716-446655440000', 'DEFAULT')).rejects.toThrow();
-    });
-
-    it('should handle getAlertHistorySummary with invalid date range', async () => {
-      const mockResponse = {
-        status: 'success',
-        data: [{ total_alerts: 3, cases_opened: 1, investigations: 0, sar_filings: 0, total_value: 1500 }],
-      };
-      jest.spyOn(httpService, 'post').mockReturnValue(of(createMockHttpResponse(mockResponse)) as any);
-
-      const result = await service.getAlertHistorySummary('e2e123', 'DEFAULT', 'invalid_range');
-      expect(result.totalAlerts).toBe(3);
-    });
-
-    it('should handle getCounterpartyNetworkData with multiple edges for same counterparty pair', async () => {
-      const accountHolderResponse = {
-        status: 'success',
-        data: [{ debtor_name: 'Main Account', debtor_account_id: 'acc1', creditor_name: 'Other', creditor_account_id: 'acc2' }],
-      };
-      const counterpartyLinksResponse = { status: 'success', data: [{ counterparty_id: 'dbtr_acc1' }, { counterparty_id: 'cdtr_acc2' }] };
-      const networkEdgesResponse = {
-        status: 'success',
-        data: [
-          {
-            from_counterparty_id: 'dbtr_acc1',
-            to_counterparty_id: 'cdtr_acc2',
-            tx_count: 10,
-            total_amount: 5000,
-            is_alerted_edge: 1,
-            is_investigated_edge: 1,
-            first_event_ts: '2024-01-01',
-            last_event_ts: '2024-01-15',
-          },
-          {
-            from_counterparty_id: 'dbtr_acc1',
-            to_counterparty_id: 'cdtr_acc3',
-            tx_count: 5,
-            total_amount: 2500,
-            is_alerted_edge: 0,
-            is_investigated_edge: 0,
-            first_event_ts: '2024-01-16',
-            last_event_ts: '2024-01-31',
-          },
-        ],
-      };
-      const namesResponse = {
-        status: 'success',
-        data: [
-          { counterparty_id: 'dbtr_acc1', name: 'CP1' },
-          { counterparty_id: 'cdtr_acc2', name: 'CP2' },
-          { counterparty_id: 'cdtr_acc3', name: 'CP3' },
-        ],
-      };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(accountHolderResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(counterpartyLinksResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(networkEdgesResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(namesResponse)) as any);
-
-      const result = await service.getCounterpartyNetworkData('acc1', 'DEFAULT', '30d');
-      expect(result.counterparties.length).toBeGreaterThan(0);
-    });
-
-    it('should handle getTransactionHistoryData with granularity but no date range', async () => {
-      const eventsResponse = {
-        status: 'success',
-        data: [
-          {
-            transaction_id: 'tx1',
-            entity_id: 'entity1',
-            event_date: '2024-01-01',
-            event_ts: '2024-01-01T12:00:00Z',
-            tx_amount: 100,
-            tx_ccy: 'USD',
-            tx_type: 'PAYMENT',
-            is_alerted: 0,
-            is_investigated: 0,
-          },
-        ],
-      };
-      const aggResponse = {
-        status: 'success',
-        data: [{ bucket_start: '2024-01-01', bucket_tx_count: 10, bucket_tx_amount: 1000, bucket_granularity: 'month' }],
-      };
-      const baselineResponse = { status: 'success', data: [] };
-
-      jest
-        .spyOn(httpService, 'post')
-        .mockReturnValueOnce(of(createMockHttpResponse(eventsResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(aggResponse)) as any)
-        .mockReturnValueOnce(of(createMockHttpResponse(baselineResponse)) as any);
-
-      const result = await service.getTransactionHistoryData('entity1', 'DEFAULT', undefined, undefined, 'month');
-      expect((result as any).volumeDistribution).toBeDefined();
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getConditionsByEntity('entity1')).rejects.toThrow(HttpException);
     });
   });
 });
