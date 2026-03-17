@@ -1,17 +1,28 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CommentRepository } from '../repository/comment.repository';
+import { CaseRepository } from '../repository/case.repository';
 import { Comment } from '@prisma/client-cms';
+import { RbacService, EndpointKey } from '../../utils/rbac/rbacHelper';
+import type { AuthenticatedUser } from '../../utils/types/auth.types';
 
 @Injectable()
 export class CommentService {
+  private readonly rbacService = new RbacService();
+
   constructor(
     private readonly logger: LoggerService,
     private readonly commentRepository: CommentRepository,
+    private readonly caseRepository: CaseRepository,
   ) {}
 
-  async addComment(createCommentDto: CreateCommentDto, userId: string): Promise<Comment> {
+  async addComment(
+    createCommentDto: CreateCommentDto,
+    userId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
+  ): Promise<Comment> {
     this.logger.log(`Adding comment : ${userId}`, CommentService.name);
 
     if (!createCommentDto.caseId && !createCommentDto.taskId) {
@@ -20,6 +31,14 @@ export class CommentService {
 
     if (!createCommentDto.tenantId) {
       throw new BadRequestException('tenantId is required');
+    }
+
+    if (user && endpointKey && createCommentDto.caseId) {
+      const existingCase = await this.caseRepository.findCaseById(createCommentDto.caseId, createCommentDto.tenantId);
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
     }
 
     try {

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, ForbiddenException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
@@ -20,9 +20,13 @@ import { CaseCreationService } from './services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { JsonValue } from '@prisma/client-cms/runtime/library';
 import { setTimeout as delay } from 'node:timers/promises';
+import { RbacService, EndpointKey } from '../../utils/rbac/rbacHelper';
+import type { AuthenticatedUser } from '../../utils/types/auth.types';
 
 @Injectable()
 export class CaseService {
+  private readonly rbacService = new RbacService();
+
   constructor(
     private readonly logger: LoggerService,
     private readonly prismaService: PrismaService,
@@ -48,9 +52,26 @@ export class CaseService {
     tenantId: string,
     authDetails: any,
     role: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{ success: boolean; case: Case; task: Task[] }> {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (existingCase === null) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: CaseStatus.STATUS_21_SUSPENDED,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     if (!role.toLowerCase().includes('supervisor')) {
       if (existingCase.case_owner_user_id !== userId) {
         throw new BadRequestException('Only Case owner can suspend a case');
@@ -165,11 +186,28 @@ export class CaseService {
     userId: string,
     tenantId: string,
     authDetails: any,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{ success: boolean; case: Case; task: Task[] }> {
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for resumption is required');
 
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     if (existingCase.case_owner_user_id !== userId) throw new BadRequestException('Only Case owner can resume a case');
 
     if (existingCase.status !== CaseStatus.STATUS_21_SUSPENDED) throw new BadRequestException('Only suspended cases can be resumed');
@@ -284,10 +322,27 @@ export class CaseService {
     reason: string,
     userId: string,
     tenantId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{ success: boolean; case: Case; task: Task }> {
     if (!reason || reason.trim() === '') throw new BadRequestException('Reason for abandonment is required');
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case doesn't exist for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: CaseStatus.STATUS_99_ABANDONED,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) throw new BadRequestException('Cannot abandon case other than draft status');
 
     const allTasks = await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId);
@@ -352,6 +407,8 @@ export class CaseService {
     userId: string,
     tenantId: string,
     role: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{
     success: boolean;
     message: string;
@@ -364,6 +421,23 @@ export class CaseService {
     };
     approvalTask?: Task;
   }> {
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     return await this.caseReopeningService.reopenCase(caseId, reason, userId, tenantId, role);
   }
 
@@ -371,6 +445,8 @@ export class CaseService {
     caseId: number,
     supervisorId: string,
     tenantId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{
     success: boolean;
     message: string;
@@ -392,6 +468,23 @@ export class CaseService {
       candidateGroup: string;
     };
   }> {
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     return await this.caseReopeningService.approveCaseReopening(caseId, supervisorId, tenantId);
   }
 
@@ -400,6 +493,8 @@ export class CaseService {
     rejectionReason: string,
     supervisorId: string,
     tenantId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{
     success: boolean;
     message: string;
@@ -414,6 +509,24 @@ export class CaseService {
     };
     rejection_reason: string;
   }> {
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const targetStatus = existingCase.final_outcome ?? CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE;
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     return await this.caseReopeningService.rejectCaseReopening(caseId, rejectionReason, supervisorId, tenantId);
   }
 
@@ -423,7 +536,26 @@ export class CaseService {
     userId: string,
     tenantId: string,
     role: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{ message: string; closed_case: { case_id: number; status: string; updated_at: Date }; supervisor_closure?: boolean }> {
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     return await this.caseClosureApprovalService.closeCase(caseId, dto, userId, tenantId, role);
   }
 
@@ -433,11 +565,30 @@ export class CaseService {
     comments: string,
     supervisorId: string,
     tenantId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{
     message: string;
     case: { case_id: number; status: string; updated_at: Date };
     completed_task: { task_id: number; status: string };
   }> {
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: finalOutcome,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     return await this.caseClosureApprovalService.approveCaseClosure(caseId, finalOutcome, comments, supervisorId, tenantId);
   }
 
@@ -446,12 +597,31 @@ export class CaseService {
     comments: string,
     supervisorId: string,
     tenantId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{
     message: string;
     case: { case_id: number; status: string; updated_at: Date };
     completed_approval_task: { task_id: number; status: string };
     investigation_task: { task_id: number; name: string | null; assigned_to: string; status: string };
   }> {
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     return await this.caseClosureApprovalService.rejectCaseClosure(caseId, comments, supervisorId, tenantId);
   }
 
@@ -460,10 +630,29 @@ export class CaseService {
     comments: string,
     supervisorId: string,
     tenantId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{
     message: string;
     case: { case_id: number; status: string; updated_at: Date };
   }> {
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: CaseStatus.STATUS_03_RETURNED,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     return await this.caseClosureApprovalService.returnCaseForReview(caseId, comments, supervisorId, tenantId);
   }
 
@@ -471,7 +660,26 @@ export class CaseService {
     caseId: number,
     supervisorId: string,
     tenantId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{ success: boolean; case: Case; message: string }> {
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     return await this.caseCreationApprovalService.approveCaseCreation(caseId, supervisorId, tenantId);
   }
 
@@ -480,12 +688,31 @@ export class CaseService {
     supervisorId: string,
     tenantId: string,
     reason: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{
     success: boolean;
     case: Case;
     completedTask: Task;
     newTask: Task;
   }> {
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: CaseStatus.STATUS_03_RETURNED,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     return await this.caseCreationApprovalService.rejectCaseCreation(caseId, supervisorId, tenantId, reason);
   }
 
@@ -493,7 +720,26 @@ export class CaseService {
     caseId: number,
     userId: string,
     tenantId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{ success: boolean; case: Case; completedTask: Task; newTask: Task }> {
+    const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+    if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
+
     return await this.caseCreationApprovalService.completeCase(caseId, userId, tenantId);
   }
 
@@ -633,7 +879,23 @@ export class CaseService {
     return await this.caseQueryService.getUserWorkloadStats(userId, isComplianceOfficer);
   }
 
-  async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string): Promise<Case> {
+  async updateCase(
+    caseId: number,
+    updateData: Partial<UpdateCaseDto>,
+    userId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
+    tenantId?: string,
+  ): Promise<Case> {
+    if (user && endpointKey && tenantId) {
+      const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
+      if (existingCase) {
+        const rbacRole = this.rbacService.getRoleFromUser(user);
+        if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+        const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+        if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      }
+    }
     return await this.caseQueryService.updateCase(caseId, updateData, userId);
   }
 
@@ -643,9 +905,25 @@ export class CaseService {
     userId: string,
     tenantId: string,
     role: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<{ success: boolean; case: Case; completedTask: Task; message: string; requiresApproval: boolean }> {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
 
     if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) {
       throw new BadRequestException('Only cases in DRAFT status can be completed');

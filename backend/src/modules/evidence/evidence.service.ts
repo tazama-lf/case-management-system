@@ -15,10 +15,13 @@ import { EvidenceRepository } from '../repository/evidence.repository';
 import { TaskRepository } from '../repository/task.repository';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { TaskHistoryService } from '../task_history/taskHistory.service';
+import { RbacService, EndpointKey } from 'src/utils/rbac/rbacHelper';
+import type { AuthenticatedUser } from 'src/utils/types/auth.types';
 
 @Injectable()
 export class EvidenceService {
   private readonly logger = new Logger(EvidenceService.name);
+  private readonly rbacService = new RbacService();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -61,7 +64,14 @@ export class EvidenceService {
     return Buffer.concat([decipher.update(enc), decipher.final()]);
   }
 
-  async uploadEvidence(files: any[], dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
+  async uploadEvidence(
+    files: any[],
+    dto: UploadEvidenceDto,
+    userId: string,
+    tenantId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
+  ): Promise<EvidenceResponseDto> {
     const allowedMimeTypes: Record<string, string[]> = {
       KYC: [
         'application/pdf',
@@ -173,6 +183,13 @@ export class EvidenceService {
     const taskWithCase = await this.taskRepository.findTaskWithCase(dto.taskId, tenantId);
     this.logger.log(`Uploading evidence for task ${dto.taskId} taskWithCase ${JSON.stringify(taskWithCase)}`);
 
+    if (user && endpointKey && taskWithCase?.case) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: taskWithCase.case.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    }
+
     const evidenceId = `ev_${dto.taskId}_${Date.now()}`;
 
     const metadata: any = {
@@ -267,7 +284,14 @@ export class EvidenceService {
     return metadata;
   }
 
-  async deleteEvidence(evidenceId: string, fileName: string, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
+  async deleteEvidence(
+    evidenceId: string,
+    fileName: string,
+    userId: string,
+    tenantId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
+  ): Promise<EvidenceResponseDto> {
     if (evidenceId.trim() === '' || fileName.trim() === '') {
       this.logger.log(`Evidence Id  ${evidenceId} or fileName  ${fileName} is not found`);
       this.logger.error(`Evidence Id or fileName is not found: ${evidenceId} , ${fileName}`);
@@ -277,6 +301,16 @@ export class EvidenceService {
 
     const doc = await this.couchdb.getDocument(evidenceId);
     this.logger.log(`Fetched document for evidence ${evidenceId}: ${JSON.stringify(doc)}`);
+
+    if (user && endpointKey && doc?.caseId) {
+      const caseRecord = await this.prisma.case.findUnique({ where: { case_id: doc.caseId } });
+      if (caseRecord) {
+        const rbacRole = this.rbacService.getRoleFromUser(user);
+        if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+        const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: caseRecord.status });
+        if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      }
+    }
 
     if (!doc) {
       this.logger.error(`Evidence ${evidenceId} not found`);

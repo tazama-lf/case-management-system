@@ -6,6 +6,7 @@ import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { RequireInvestigatorOrSupervisorRoleOrComplianceRole } from 'src/decorators/auth.decorator';
 import { Comment } from '@prisma/client-cms';
 import { Audit } from '../audit/decorators/audit-log.decorator';
+import { EndpointKey } from '../../utils/rbac/rbacHelper';
 
 @Controller('api/v1/comment')
 @UseGuards(TazamaAuthGuard)
@@ -19,7 +20,7 @@ export class CommentController {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
-    return await this.commentService.addComment(createCommentDto, userId);
+    return await this.commentService.addComment(createCommentDto, userId, req.user, 'POST /api/v1/comment' as EndpointKey);
   }
 
   @Get(':commentId')

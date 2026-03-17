@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { Case, CaseStatus, TaskStatus, Task } from '@prisma/client-cms';
@@ -10,9 +10,13 @@ import { TASK_NAMES } from 'src/constants/case.constants';
 import { TaskRepository } from 'src/modules/repository/task.repository';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { setTimeout } from 'node:timers/promises';
+import { RbacService, EndpointKey } from 'src/utils/rbac/rbacHelper';
+import type { AuthenticatedUser } from 'src/utils/types/auth.types';
 
 @Injectable()
 export class TaskLifecycleService {
+  private readonly rbacService = new RbacService();
+
   constructor(
     private readonly taskRepository: TaskRepository,
     private readonly caseRepository: CaseRepository,
@@ -23,8 +27,23 @@ export class TaskLifecycleService {
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 
-  async assignTaskToInvestigator(taskId: number, assignedUserId: string, userId: string, tenantId: string, note?: string): Promise<Task> {
+  async assignTaskToInvestigator(
+    taskId: number,
+    assignedUserId: string,
+    userId: string,
+    tenantId: string,
+    note?: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
+  ): Promise<Task> {
     const { existingTask, existingCase, isInvestigationTask } = await this.fetchTaskAndCase(taskId, tenantId);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    }
 
     const result = await this.taskRepository.transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -110,8 +129,23 @@ export class TaskLifecycleService {
     return result.updatedTask;
   }
 
-  async reassignTask(taskId: number, actorUserId: string, tenantId: string, assignedUserId: string, note: string): Promise<Task> {
+  async reassignTask(
+    taskId: number,
+    actorUserId: string,
+    tenantId: string,
+    assignedUserId: string,
+    note: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
+  ): Promise<Task> {
     const { existingTask, existingCase, isInvestigationTask } = await this.fetchTaskAndCase(taskId, tenantId);
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    }
 
     const result = await this.taskRepository.transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -198,6 +232,8 @@ export class TaskLifecycleService {
     actorUserId: string,
     tenantId: string,
     reason: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
   ): Promise<Task & { unassignmentReason: string }> {
     if (!reason || reason.trim() === '') {
       throw new BadRequestException('Reason for unassigning task is required');
@@ -205,6 +241,14 @@ export class TaskLifecycleService {
     const existingTask = await this.taskRepository.findTaskById(taskId, tenantId);
     if (!existingTask) {
       throw new NotFoundException(`Task ${taskId} not found`);
+    }
+
+    if (user && endpointKey) {
+      const existingCase = await this.caseRepository.findCaseById(existingTask.case_id, tenantId);
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
     }
     if (existingTask.status === TaskStatus.STATUS_30_COMPLETED) {
       throw new BadRequestException(`Cannot unassign a completed task (${taskId})`);
@@ -306,12 +350,26 @@ export class TaskLifecycleService {
     };
   }
 
-  async completeTask(taskId: number, actorUserId: string, tenantId: string): Promise<Task> {
+  async completeTask(
+    taskId: number,
+    actorUserId: string,
+    tenantId: string,
+    user?: AuthenticatedUser,
+    endpointKey?: EndpointKey,
+  ): Promise<Task> {
     try {
       const txResult = await this.taskRepository.transaction(async (tx) => {
         const existingTask = await this.taskRepository.findTaskById(taskId, tenantId);
         if (!existingTask) {
           throw new NotFoundException(`Task ${taskId} not found`);
+        }
+
+        if (user && endpointKey) {
+          const existingCase = await this.caseRepository.findCaseById(existingTask.case_id, tenantId);
+          const rbacRole = this.rbacService.getRoleFromUser(user);
+          if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+          const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+          if (!t2.allowed) throw new ForbiddenException(t2.reason);
         }
         const updatedTask = await this.taskRepository.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, tx, true);
         await this.loggingOrchestrationService.logActionsWithHistory(

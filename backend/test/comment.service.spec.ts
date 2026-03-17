@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CommentService } from '../src/modules/comment/comment.service';
 import { CommentRepository } from '../src/modules/repository/comment.repository';
+import { CaseRepository } from '../src/modules/repository/case.repository';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateCommentDto } from '../src/modules/comment/dto/create-comment.dto';
@@ -60,6 +61,10 @@ describe('CommentService', () => {
         {
           provide: LoggerService,
           useValue: mockLoggerService,
+        },
+        {
+          provide: CaseRepository,
+          useValue: { findCaseById: jest.fn() },
         },
       ],
     }).compile();

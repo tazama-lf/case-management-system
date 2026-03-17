@@ -10,8 +10,17 @@ export interface CMSToken extends TazamaToken {
 }
 
 export interface AuthenticatedUser {
-  token: CMSToken;
-  validatedClaims: ClaimValidationResult;
+  token: TazamaToken;
+  validated: ClaimValidationResult;
+  validClaims: string[];
+  tenantId: string;
+  userId: string;
+  actorName?: string;
+  actorRole: string;
+  actorEmail?: string;
+  sourceIP?: string;
+  allowedStatuses?: string[];
+  tenantName: string;
 }
 
 export interface AuthenticatedRequest extends Request {

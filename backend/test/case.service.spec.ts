@@ -185,6 +185,9 @@ describe('CaseService', () => {
     caseCreationService = module.get(CaseCreationService);
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
     logger = module.get(LoggerService);
+
+    // Default: retrieveCase returns a valid case so delegation tests don't hit BadRequestException
+    caseQueryService.retrieveCase.mockResolvedValue(mockCase as any);
   });
 
   afterEach(() => {

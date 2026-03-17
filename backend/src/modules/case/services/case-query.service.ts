@@ -82,8 +82,9 @@ export class CaseQueryService {
         const ownedCasesCondition: any = { case_owner_user_id: userId };
         if (status) ownedCasesCondition.status = status;
         if (priority) ownedCasesCondition.priority = priority;
-        // Compliance officers only see STATUS_82_CLOSED_CONFIRMED cases
-        if (isComplianceOfficer) ownedCasesCondition.status = 'STATUS_82_CLOSED_CONFIRMED';
+        if (isComplianceOfficer) {
+          ownedCasesCondition.status = 'STATUS_82_CLOSED_CONFIRMED';
+        }
         whereConditions.push(ownedCasesCondition);
       }
 
@@ -91,8 +92,9 @@ export class CaseQueryService {
         const taskAssignmentCondition: any = { tasks: { some: { assigned_user_id: userId } } };
         if (status) taskAssignmentCondition.status = status;
         if (priority) taskAssignmentCondition.priority = priority;
-        // Compliance officers only see STATUS_82_CLOSED_CONFIRMED cases
-        if (isComplianceOfficer) taskAssignmentCondition.status = 'STATUS_82_CLOSED_CONFIRMED';
+        if (isComplianceOfficer) {
+          taskAssignmentCondition.status = 'STATUS_82_CLOSED_CONFIRMED';
+        }
         whereConditions.push(taskAssignmentCondition);
       }
 
@@ -481,7 +483,6 @@ export class CaseQueryService {
         };
       }
 
-      // Handle compliance officer filtering - only show STATUS_82_CLOSED_CONFIRMED cases
       if (isComplianceOfficer) {
         baseFilters.status = 'STATUS_82_CLOSED_CONFIRMED';
         const andConditions: any[] = [baseFilters];
@@ -770,9 +771,10 @@ export class CaseQueryService {
   async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean): Promise<Case | null> {
     const retrievedCase = await this.caseRepository.findCaseById(caseId, tenantId);
 
-    // Compliance officers can only access STATUS_82_CLOSED_CONFIRMED cases
-    if (isComplianceOfficer && retrievedCase.status !== 'STATUS_82_CLOSED_CONFIRMED') {
-      throw new ForbiddenException('Compliance officers can only access confirmed closed cases');
+    if (isComplianceOfficer) {
+      if (retrievedCase.status !== 'STATUS_82_CLOSED_CONFIRMED') {
+        throw new ForbiddenException('Compliance officers can only access confirmed closed cases');
+      }
     }
 
     return retrievedCase;
