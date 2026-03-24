@@ -14,6 +14,8 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { EvidenceType } from '../src/modules/evidence/dto/upload-evidence.dto';
+import { RbacService, EndpointKey } from '../src/utils/rbac/rbacHelper';
+import { AuthenticatedUser } from '../src/utils/types/auth.types';
 
 describe('EvidenceService', () => {
   let service: EvidenceService;
@@ -30,6 +32,11 @@ describe('EvidenceService', () => {
     name: 'Test Task',
     status: 'STATUS_01_UNASSIGNED',
     tenant_id: 'tenant-123',
+    case: {
+      case_id: 100,
+      status: 'STATUS_20_IN_PROGRESS',
+      tenant_id: 'tenant-123',
+    },
   };
 
   const mockEvidenceDoc = {
@@ -62,11 +69,31 @@ describe('EvidenceService', () => {
     ],
   };
 
+  const mockRbacService = {
+    getRoleFromUser: jest.fn().mockReturnValue('CMS_INVESTIGATOR'),
+    checkTier2: jest.fn().mockReturnValue({ allowed: true }),
+    checkTier3: jest.fn().mockReturnValue({ allowed: true }),
+  };
+
+  const mockUser: AuthenticatedUser = {
+    token: {} as any,
+    validated: {} as any,
+    validClaims: [],
+    tenantId: 'tenant-123',
+    userId: 'user-123',
+    actorRole: 'CMS_INVESTIGATOR',
+    actorName: 'Test User',
+    actorEmail: 'test@example.com',
+    tenantName: 'Test Tenant',
+  };
+
+  const testEndpointKey: EndpointKey = 'POST /api/v1/evidence/upload' as EndpointKey;
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EvidenceService,
-        { provide: PrismaService, useValue: { task: { findUnique: jest.fn() } } },
+        { provide: PrismaService, useValue: { task: { findUnique: jest.fn() }, case: { findUnique: jest.fn() } } },
         {
           provide: CouchdbService,
           useValue: {
@@ -83,6 +110,7 @@ describe('EvidenceService', () => {
         { provide: TaskRepository, useValue: { findTaskWithCase: jest.fn() } },
         { provide: EventLogService, useValue: { logEventAction: jest.fn() } },
         { provide: TaskHistoryService, useValue: { logTaskHistoryAction: jest.fn() } },
+        { provide: RbacService, useValue: mockRbacService },
       ],
     }).compile();
 
@@ -119,6 +147,7 @@ describe('EvidenceService', () => {
 
     beforeEach(() => {
       prismaService.task.findUnique.mockResolvedValue(mockTask);
+      prismaService.case.findUnique.mockResolvedValue(mockTask.case);
       taskRepository.findTaskWithCase.mockResolvedValue(mockTask);
       couchdbService.insertDocument.mockResolvedValue({ rev: 'rev-1' });
       couchdbService.insertAttachment.mockResolvedValue({ rev: 'rev-2', filePath: '/path/to/file' });
@@ -126,7 +155,7 @@ describe('EvidenceService', () => {
     });
 
     it('should successfully upload KYC evidence', async () => {
-      const result = await service.uploadEvidence([mockFile], uploadDto, userId, tenantId);
+      const result = await service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, testEndpointKey);
 
       expect(result).toBeDefined();
       expect(result.evidenceType).toBe(EvidenceType.KYC);
@@ -150,7 +179,7 @@ describe('EvidenceService', () => {
     ])('should upload %s evidence type', async (evidenceType, metadata) => {
       const dto = { ...uploadDto, evidenceType, ...metadata } as any;
 
-      const result = await service.uploadEvidence([mockFile], dto, userId, tenantId);
+      const result = await service.uploadEvidence([mockFile], dto, userId, tenantId, mockUser, testEndpointKey);
 
       expect(result.evidenceType).toBe(evidenceType);
     });
@@ -159,7 +188,7 @@ describe('EvidenceService', () => {
       const audioFile = { ...mockFile, mimetype: 'audio/mpeg', originalname: 'test.mp3' };
       const dto = { ...uploadDto, evidenceType: EvidenceType.OTHER } as any;
 
-      const result = await service.uploadEvidence([audioFile], dto, userId, tenantId);
+      const result = await service.uploadEvidence([audioFile], dto, userId, tenantId, mockUser, testEndpointKey);
 
       expect(result.evidenceType).toBe(EvidenceType.OTHER);
     });
@@ -171,7 +200,7 @@ describe('EvidenceService', () => {
         .mockResolvedValueOnce({ rev: 'rev-2', filePath: '/path/to/file1' })
         .mockResolvedValueOnce({ rev: 'rev-3', filePath: '/path/to/file2' });
 
-      const result = await service.uploadEvidence(files, uploadDto, userId, tenantId);
+      const result = await service.uploadEvidence(files, uploadDto, userId, tenantId, mockUser, testEndpointKey);
 
       expect(result).toBeDefined();
       expect(evidenceRepository.createEvidence).toHaveBeenCalledTimes(2);
@@ -180,25 +209,25 @@ describe('EvidenceService', () => {
     it('should throw BadRequestException when uploading too many files for KYC', async () => {
       const files = Array(6).fill(mockFile);
 
-      await expect(service.uploadEvidence(files, uploadDto, userId, tenantId)).rejects.toThrow(BadRequestException);
+      await expect(service.uploadEvidence(files, uploadDto, userId, tenantId, mockUser, testEndpointKey)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException for invalid MIME type', async () => {
       const invalidFile = { ...mockFile, mimetype: 'video/mp4' };
 
-      await expect(service.uploadEvidence([invalidFile], uploadDto, userId, tenantId)).rejects.toThrow(BadRequestException);
+      await expect(service.uploadEvidence([invalidFile], uploadDto, userId, tenantId, mockUser, testEndpointKey)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException for file size exceeding 50MB', async () => {
       const largeFile = { ...mockFile, size: 51 * 1024 * 1024 };
 
-      await expect(service.uploadEvidence([largeFile], uploadDto, userId, tenantId)).rejects.toThrow(BadRequestException);
+      await expect(service.uploadEvidence([largeFile], uploadDto, userId, tenantId, mockUser, testEndpointKey)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw NotFoundException when task is not found', async () => {
       prismaService.task.findUnique.mockResolvedValueOnce(null);
 
-      await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId)).rejects.toThrow(NotFoundException);
+      await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, testEndpointKey)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -206,11 +235,15 @@ describe('EvidenceService', () => {
     const userId = 'user-123';
     const tenantId = 'tenant-123';
 
+    beforeEach(() => {
+      prismaService.case.findUnique.mockResolvedValue(mockTask.case);
+    });
+
     it('should successfully delete evidence', async () => {
       couchdbService.getDocument.mockResolvedValue(mockEvidenceDoc);
       couchdbService.deleteEvidence.mockResolvedValue({ ok: true });
 
-      const result = await service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId);
+      const result = await service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, testEndpointKey);
 
       expect(result).toBeDefined();
       expect(couchdbService.deleteEvidence).toHaveBeenCalled();
@@ -221,20 +254,20 @@ describe('EvidenceService', () => {
       ['', 'test.pdf'],
       ['ev_1_123456', ''],
     ])('should throw BadRequestException when evidenceId/fileName is empty', async (evidenceId, fileName) => {
-      await expect(service.deleteEvidence(evidenceId as any, fileName as any, userId, tenantId)).rejects.toThrow(BadRequestException);
+      await expect(service.deleteEvidence(evidenceId as any, fileName as any, userId, tenantId, mockUser, testEndpointKey)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw NotFoundException when evidence is not found', async () => {
       couchdbService.getDocument.mockResolvedValue(null);
 
-      await expect(service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId)).rejects.toThrow(NotFoundException);
+      await expect(service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, testEndpointKey)).rejects.toThrow(NotFoundException);
     });
 
     it('should propagate errors from couchdb delete operation', async () => {
       couchdbService.getDocument.mockResolvedValue(mockEvidenceDoc);
       couchdbService.deleteEvidence.mockRejectedValue(new Error('CouchDB error'));
 
-      await expect(service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId)).rejects.toThrow('CouchDB error');
+      await expect(service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, testEndpointKey)).rejects.toThrow('CouchDB error');
     });
   });
 

@@ -20,7 +20,7 @@ export class CommentController {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
-    return await this.commentService.addComment(createCommentDto, userId, req.user, 'POST /api/v1/comment' as EndpointKey);
+    return await this.commentService.addCommentFromController(createCommentDto, userId, req.user, 'POST /api/v1/comment' as EndpointKey);
   }
 
   @Get(':commentId')

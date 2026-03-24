@@ -406,9 +406,9 @@ export class TaskController {
       assignTaskDto.assignedUserId,
       userId,
       tenantId,
-      assignTaskDto.note,
       req.user as unknown as AuthenticatedUser,
       'PATCH /api/v1/task/:taskId/assign' as EndpointKey,
+      assignTaskDto.note,
     );
 
     return {

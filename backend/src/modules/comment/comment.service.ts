@@ -17,11 +17,11 @@ export class CommentService {
     private readonly caseRepository: CaseRepository,
   ) {}
 
-  async addComment(
+  async addCommentFromController(
     createCommentDto: CreateCommentDto,
     userId: string,
-    user?: AuthenticatedUser,
-    endpointKey?: EndpointKey,
+    user: AuthenticatedUser,
+    endpointKey: EndpointKey,
   ): Promise<Comment> {
     this.logger.log(`Adding comment : ${userId}`, CommentService.name);
 
@@ -33,12 +33,30 @@ export class CommentService {
       throw new BadRequestException('tenantId is required');
     }
 
-    if (user && endpointKey && createCommentDto.caseId) {
-      const existingCase = await this.caseRepository.findCaseById(createCommentDto.caseId, createCommentDto.tenantId);
-      const rbacRole = this.rbacService.getRoleFromUser(user);
-      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
-      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
-      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    const existingCase = await this.caseRepository.findCaseById(createCommentDto.caseId, createCommentDto.tenantId);
+    const rbacRole = this.rbacService.getRoleFromUser(user);
+    const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+    if (!t2.allowed) throw new ForbiddenException(t2.reason);
+
+    try {
+      const comment = await this.commentRepository.createComment(userId, createCommentDto);
+
+      return comment;
+    } catch (error) {
+      this.logger.error('Error adding comment', error, CommentService.name);
+      throw error;
+    }
+  }
+
+  async addComment(createCommentDto: CreateCommentDto, userId: string): Promise<Comment> {
+    this.logger.log(`Adding comment : ${userId}`, CommentService.name);
+
+    if (!createCommentDto.caseId && !createCommentDto.taskId) {
+      throw new BadRequestException('Either caseId or taskId must be provided');
+    }
+
+    if (!createCommentDto.tenantId) {
+      throw new BadRequestException('tenantId is required');
     }
 
     try {

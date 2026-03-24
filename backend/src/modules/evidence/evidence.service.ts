@@ -69,8 +69,8 @@ export class EvidenceService {
     dto: UploadEvidenceDto,
     userId: string,
     tenantId: string,
-    user?: AuthenticatedUser,
-    endpointKey?: EndpointKey,
+    user: AuthenticatedUser,
+    endpointKey: EndpointKey,
   ): Promise<EvidenceResponseDto> {
     const allowedMimeTypes: Record<string, string[]> = {
       KYC: [
@@ -183,15 +183,12 @@ export class EvidenceService {
     const taskWithCase = await this.taskRepository.findTaskWithCase(dto.taskId, tenantId);
     this.logger.log(`Uploading evidence for task ${dto.taskId} taskWithCase ${JSON.stringify(taskWithCase)}`);
 
-    if (user && endpointKey) {
-      if (!taskWithCase?.case) {
-        throw new ForbiddenException('Cannot verify case status: task has no associated case');
-      }
-      const rbacRole = this.rbacService.getRoleFromUser(user);
-      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
-      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: taskWithCase.case.status });
-      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    if (!taskWithCase?.case) {
+      throw new ForbiddenException('Cannot verify case status: task has no associated case');
     }
+    const rbacRole = this.rbacService.getRoleFromUser(user);
+    const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: taskWithCase.case.status });
+    if (!t2.allowed) throw new ForbiddenException(t2.reason);
 
     const evidenceId = `ev_${dto.taskId}_${Date.now()}`;
 
@@ -292,8 +289,8 @@ export class EvidenceService {
     fileName: string,
     userId: string,
     tenantId: string,
-    user?: AuthenticatedUser,
-    endpointKey?: EndpointKey,
+    user: AuthenticatedUser,
+    endpointKey: EndpointKey,
   ): Promise<EvidenceResponseDto> {
     if (evidenceId.trim() === '' || fileName.trim() === '') {
       this.logger.log(`Evidence Id  ${evidenceId} or fileName  ${fileName} is not found`);
@@ -310,16 +307,13 @@ export class EvidenceService {
       throw new NotFoundException(`Evidence ${evidenceId} not found`);
     }
 
-    if (user && endpointKey) {
-      const caseRecord = await this.prisma.case.findUnique({ where: { case_id: doc.caseId } });
-      if (!caseRecord) {
-        throw new ForbiddenException('Cannot verify case status: associated case not found');
-      }
-      const rbacRole = this.rbacService.getRoleFromUser(user);
-      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
-      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: caseRecord.status });
-      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    const caseRecord = await this.prisma.case.findUnique({ where: { case_id: doc.caseId } });
+    if (!caseRecord) {
+      throw new ForbiddenException('Cannot verify case status: associated case not found');
     }
+    const rbacRoleDelete = this.rbacService.getRoleFromUser(user);
+    const t2Delete = this.rbacService.checkTier2({ role: rbacRoleDelete, endpointKey, currentStatus: caseRecord.status });
+    if (!t2Delete.allowed) throw new ForbiddenException(t2Delete.reason);
 
     try {
       this.logger.log(`Deleting attachment ${fileName} from evidence ${doc._id} and revision ${doc._rev}`);

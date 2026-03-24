@@ -32,18 +32,15 @@ export class TaskLifecycleService {
     assignedUserId: string,
     userId: string,
     tenantId: string,
+    user: AuthenticatedUser,
+    endpointKey: EndpointKey,
     note?: string,
-    user?: AuthenticatedUser,
-    endpointKey?: EndpointKey,
   ): Promise<Task> {
     const { existingTask, existingCase, isInvestigationTask } = await this.fetchTaskAndCase(taskId, tenantId);
 
-    if (user && endpointKey) {
-      const rbacRole = this.rbacService.getRoleFromUser(user);
-      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
-      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
-      if (!t2.allowed) throw new ForbiddenException(t2.reason);
-    }
+    const rbacRole = this.rbacService.getRoleFromUser(user);
+    const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+    if (!t2.allowed) throw new ForbiddenException(t2.reason);
 
     const result = await this.taskRepository.transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -135,17 +132,14 @@ export class TaskLifecycleService {
     tenantId: string,
     assignedUserId: string,
     note: string,
-    user?: AuthenticatedUser,
-    endpointKey?: EndpointKey,
+    user: AuthenticatedUser,
+    endpointKey: EndpointKey,
   ): Promise<Task> {
     const { existingTask, existingCase, isInvestigationTask } = await this.fetchTaskAndCase(taskId, tenantId);
 
-    if (user && endpointKey) {
-      const rbacRole = this.rbacService.getRoleFromUser(user);
-      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
-      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
-      if (!t2.allowed) throw new ForbiddenException(t2.reason);
-    }
+    const rbacRole = this.rbacService.getRoleFromUser(user);
+    const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+    if (!t2.allowed) throw new ForbiddenException(t2.reason);
 
     const result = await this.taskRepository.transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -232,8 +226,8 @@ export class TaskLifecycleService {
     actorUserId: string,
     tenantId: string,
     reason: string,
-    user?: AuthenticatedUser,
-    endpointKey?: EndpointKey,
+    user: AuthenticatedUser,
+    endpointKey: EndpointKey,
   ): Promise<Task & { unassignmentReason: string }> {
     if (!reason || reason.trim() === '') {
       throw new BadRequestException('Reason for unassigning task is required');
@@ -243,13 +237,10 @@ export class TaskLifecycleService {
       throw new NotFoundException(`Task ${taskId} not found`);
     }
 
-    if (user && endpointKey) {
-      const existingCase = await this.caseRepository.findCaseById(existingTask.case_id, tenantId);
-      const rbacRole = this.rbacService.getRoleFromUser(user);
-      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
-      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
-      if (!t2.allowed) throw new ForbiddenException(t2.reason);
-    }
+    const existingCase = await this.caseRepository.findCaseById(existingTask.case_id, tenantId);
+    const rbacRoleUnassign = this.rbacService.getRoleFromUser(user);
+    const t2Unassign = this.rbacService.checkTier2({ role: rbacRoleUnassign, endpointKey, currentStatus: existingCase.status });
+    if (!t2Unassign.allowed) throw new ForbiddenException(t2Unassign.reason);
     if (existingTask.status === TaskStatus.STATUS_30_COMPLETED) {
       throw new BadRequestException(`Cannot unassign a completed task (${taskId})`);
     }
@@ -354,8 +345,8 @@ export class TaskLifecycleService {
     taskId: number,
     actorUserId: string,
     tenantId: string,
-    user?: AuthenticatedUser,
-    endpointKey?: EndpointKey,
+    user: AuthenticatedUser,
+    endpointKey: EndpointKey,
   ): Promise<Task> {
     try {
       const txResult = await this.taskRepository.transaction(async (tx) => {
@@ -364,17 +355,14 @@ export class TaskLifecycleService {
           throw new NotFoundException(`Task ${taskId} not found`);
         }
 
-        if (user && endpointKey) {
-          const existingCase = await this.caseRepository.findCaseById(existingTask.case_id, tenantId);
-          const rbacRole = this.rbacService.getRoleFromUser(user);
-          if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
-          const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
-          if (!t2.allowed) throw new ForbiddenException(t2.reason);
-          if (rbacRole === 'CMS_COMPLIANCE_OFFICER') {
-            const sarStrNames = ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'];
-            if (!existingTask.name || !sarStrNames.includes(existingTask.name)) {
-              throw new ForbiddenException('Compliance officers may only complete the SAR/STR task');
-            }
+        const existingCase = await this.caseRepository.findCaseById(existingTask.case_id, tenantId);
+        const rbacRole = this.rbacService.getRoleFromUser(user);
+        const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+        if (!t2.allowed) throw new ForbiddenException(t2.reason);
+        if (rbacRole === 'CMS_COMPLIANCE_OFFICER') {
+          const sarStrNames = ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'];
+          if (!existingTask.name || !sarStrNames.includes(existingTask.name)) {
+            throw new ForbiddenException('Compliance officers may only complete the SAR/STR task');
           }
         }
         const updatedTask = await this.taskRepository.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, tx, true);

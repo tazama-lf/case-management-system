@@ -56,11 +56,14 @@ export class RbacService {
 
   /**
    * Returns the user's CMS role from actorRole (set by TazamaAuthGuard).
-   * Returns undefined if the value is not a recognised matrix role.
+   * Throws an error if the value is not a recognised matrix role.
    */
-  getRoleFromUser(user: AuthenticatedUser): Role | undefined {
+  getRoleFromUser(user: AuthenticatedUser): Role {
     const role = user.actorRole;
-    return this.isRole(role) ? role : undefined;
+    if (!this.isRole(role)) {
+      throw new Error('Invalid role');
+    }
+    return role;
   }
 
   checkTier2({ role, endpointKey, currentStatus }: Omit<CheckContext, 'targetStatus'>): CheckResult {

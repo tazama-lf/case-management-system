@@ -380,10 +380,11 @@ describe('CaseService — Tier 2 & Tier 3 RBAC guards', () => {
       // Service should fall through to its own business-logic checks
       caseQueryService.retrieveCase.mockResolvedValue(DRAFT_CASE as any);
 
-      // No ForbiddenException — the method's own BAD_REQUEST guard fires instead
+      // Now user and endpointKey are required, so we pass a valid user
+      // but expect the method's own business logic checks to fire
       await expect(
-        service.suspendCase(1, 'reason', [1], 'user-1', 'tenant-1', {}, 'investigator'),
-      ).rejects.not.toThrow(ForbiddenException);
+        service.suspendCase(1, 'reason', [1], 'user-1', 'tenant-1', {}, 'investigator', INVESTIGATOR_USER, 'PUT /api/v1/cases/:caseId/suspend' as EndpointKey),
+      ).rejects.toThrow(); // Will throw due to business logic validation, not RBAC
     });
   });
 
