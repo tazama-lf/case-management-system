@@ -911,20 +911,6 @@ export class CaseService {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
 
-    if (user && endpointKey) {
-      const rbacRole = this.rbacService.getRoleFromUser(user);
-      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
-      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
-      if (!t2.allowed) throw new ForbiddenException(t2.reason);
-      const t3 = this.rbacService.checkTier3({
-        role: rbacRole,
-        endpointKey,
-        currentStatus: existingCase.status,
-        targetStatus: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-      });
-      if (!t3.allowed) throw new ForbiddenException(t3.reason);
-    }
-
     if (existingCase.status !== CaseStatus.STATUS_00_DRAFT) {
       throw new BadRequestException('Only cases in DRAFT status can be completed');
     }
@@ -945,6 +931,20 @@ export class CaseService {
 
     // Determine the target status based on role
     const targetStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
+
+    if (user && endpointKey) {
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
 
     this.logger.log(
       `[CompleteCaseCreation] Completing draft case ${caseId} by ${role}. Will ${needsApproval ? 'require approval' : 'be auto-approved'}`,

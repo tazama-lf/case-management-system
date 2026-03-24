@@ -370,6 +370,12 @@ export class TaskLifecycleService {
           if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
           const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
           if (!t2.allowed) throw new ForbiddenException(t2.reason);
+          if (rbacRole === 'CMS_COMPLIANCE_OFFICER') {
+            const sarStrNames = ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'];
+            if (!existingTask.name || !sarStrNames.includes(existingTask.name)) {
+              throw new ForbiddenException('Compliance officers may only complete the SAR/STR task');
+            }
+          }
         }
         const updatedTask = await this.taskRepository.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED }, tx, true);
         await this.loggingOrchestrationService.logActionsWithHistory(

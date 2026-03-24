@@ -1,11 +1,11 @@
-import * as permissionMatrixImport from './permissionMatrix.json';
+import permissionMatrixImport from './permissionMatrix.json';
 import type { AuthenticatedUser } from '../types/auth.types';
 
-const permissionMatrix = permissionMatrixImport as any;
+const permissionMatrix = permissionMatrixImport;
 
 export type Matrix = typeof permissionMatrix;
-export type EndpointKey = keyof Matrix['endpoints'] & string;
-export type Role = keyof Matrix['_meta']['roles'] & string;
+export type EndpointKey = keyof Matrix['endpoints'];
+export type Role = keyof Matrix['_meta']['roles'];
 
 export interface CheckContext {
   role: Role;

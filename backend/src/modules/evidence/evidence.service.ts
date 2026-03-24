@@ -183,7 +183,10 @@ export class EvidenceService {
     const taskWithCase = await this.taskRepository.findTaskWithCase(dto.taskId, tenantId);
     this.logger.log(`Uploading evidence for task ${dto.taskId} taskWithCase ${JSON.stringify(taskWithCase)}`);
 
-    if (user && endpointKey && taskWithCase?.case) {
+    if (user && endpointKey) {
+      if (!taskWithCase?.case) {
+        throw new ForbiddenException('Cannot verify case status: task has no associated case');
+      }
       const rbacRole = this.rbacService.getRoleFromUser(user);
       if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
       const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: taskWithCase.case.status });
@@ -302,19 +305,20 @@ export class EvidenceService {
     const doc = await this.couchdb.getDocument(evidenceId);
     this.logger.log(`Fetched document for evidence ${evidenceId}: ${JSON.stringify(doc)}`);
 
-    if (user && endpointKey && doc?.caseId) {
-      const caseRecord = await this.prisma.case.findUnique({ where: { case_id: doc.caseId } });
-      if (caseRecord) {
-        const rbacRole = this.rbacService.getRoleFromUser(user);
-        if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
-        const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: caseRecord.status });
-        if (!t2.allowed) throw new ForbiddenException(t2.reason);
-      }
-    }
-
     if (!doc) {
       this.logger.error(`Evidence ${evidenceId} not found`);
       throw new NotFoundException(`Evidence ${evidenceId} not found`);
+    }
+
+    if (user && endpointKey) {
+      const caseRecord = await this.prisma.case.findUnique({ where: { case_id: doc.caseId } });
+      if (!caseRecord) {
+        throw new ForbiddenException('Cannot verify case status: associated case not found');
+      }
+      const rbacRole = this.rbacService.getRoleFromUser(user);
+      if (!rbacRole) throw new ForbiddenException('Unrecognised CMS role');
+      const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: caseRecord.status });
+      if (!t2.allowed) throw new ForbiddenException(t2.reason);
     }
 
     try {
