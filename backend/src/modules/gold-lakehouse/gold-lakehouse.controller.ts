@@ -1,7 +1,12 @@
 import { Controller, Get, Param, Query, UseGuards, BadRequestException, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
-import { GoldLakehouseService } from './gold-lakehouse.service';
+import { AlertsLakehouseService } from './alerts-lakehouse.service';
+import { TransactionLakehouseService } from './transaction-lakehouse.service';
+import { ConditionLakehouseService } from './condition-lakehouse.service';
+import { BenfordsLawLakehouseService } from './benfordsLaw-lakehouse.service';
+import { AccountLakehouseService } from './account-lakehouse.service';
+import { EntityLakehouseService } from './entity-lakehouse.service';
 import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
 import { TransactionNetworkResponseDto, CounterpartyNetworkResponseDto } from './dto/network-analysis.dto';
 import {
@@ -22,7 +27,14 @@ import { ConditionsTableDataResponse } from './types/IConditionsTableData.types'
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class GoldLakehouseController {
-  constructor(private readonly goldLakehouseService: GoldLakehouseService) {}
+  constructor(
+    private readonly alertsLakehouseService: AlertsLakehouseService,
+    private readonly transactionLakehouseService: TransactionLakehouseService,
+    private readonly conditionLakehouseService: ConditionLakehouseService,
+    private readonly benfordsLawLakehouseService: BenfordsLawLakehouseService,
+    private readonly accountLakehouseService: AccountLakehouseService,
+    private readonly entityLakehouseService: EntityLakehouseService,
+  ) {}
 
   @Get('alert-navigator/:alertId')
   @RequireInvestigatorOrSupervisorRole()
@@ -65,7 +77,7 @@ export class GoldLakehouseController {
     if (isNaN(alertId)) {
       throw new BadRequestException('Invalid alertId: must be a number');
     }
-    return await this.goldLakehouseService.getAlertNavigatorData(alertId, tenantId ?? 'DEFAULT');
+    return await this.alertsLakehouseService.getAlertNavigatorData(alertId, tenantId ?? 'DEFAULT');
   }
 
   @Get('transaction-detail/:transactionId')
@@ -154,7 +166,7 @@ export class GoldLakehouseController {
     if (isNaN(transactionIdNum)) {
       throw new BadRequestException('Invalid transactionId: must be a number');
     }
-    return await this.goldLakehouseService.getTransactionDetailData(transactionIdNum, tenantId ?? 'DEFAULT');
+    return await this.transactionLakehouseService.getTransactionDetailData(transactionIdNum, tenantId ?? 'DEFAULT');
   }
 
   @Get('alert-navigator-metrics/:alertId')
@@ -174,7 +186,7 @@ export class GoldLakehouseController {
     if (isNaN(alertId)) {
       throw new BadRequestException('Invalid alertId: must be a number');
     }
-    return await this.goldLakehouseService.getAlertNavigatorMetrics(alertId, tenantId ?? 'DEFAULT');
+    return await this.alertsLakehouseService.getAlertNavigatorMetrics(alertId, tenantId ?? 'DEFAULT');
   }
 
   // ================ CONDITIONS ENDPOINTS ================
@@ -261,7 +273,7 @@ export class GoldLakehouseController {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
-    return await this.goldLakehouseService.getConditionsSummaryByAccount(accountId, tenantId ?? 'DEFAULT', undefined, asOfDate);
+    return await this.conditionLakehouseService.getConditionsSummaryByAccount(accountId, tenantId ?? 'DEFAULT', undefined, asOfDate);
   }
 
   @Get('conditions/details')
@@ -353,7 +365,7 @@ export class GoldLakehouseController {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
-    return await this.goldLakehouseService.getConditionsListByAccount(accountId, tenantId ?? 'DEFAULT', asOfDate, showInactive);
+    return await this.conditionLakehouseService.getConditionsListByAccount(accountId, tenantId ?? 'DEFAULT', asOfDate, showInactive);
   }
 
   // ================ NEW ENDPOINTS FOR CONDITIONS VIEW ================
@@ -477,7 +489,7 @@ export class GoldLakehouseController {
     if (isNaN(txId)) {
       throw new BadRequestException('Invalid transactionId: must be a number');
     }
-    return await this.goldLakehouseService.getConditionsContextByTransaction(txId, tenantId ?? 'DEFAULT', asOfDate);
+    return await this.conditionLakehouseService.getConditionsContextByTransaction(txId, tenantId ?? 'DEFAULT', asOfDate);
   }
 
   @Get('conditions/by-entity/:entityId')
@@ -571,7 +583,7 @@ export class GoldLakehouseController {
     @Query('showInactive') showInactive?: boolean,
     @Query('tenantId') tenantId?: string,
   ): Promise<ConditionsByEntityResponse> {
-    return await this.goldLakehouseService.getConditionsByEntity(entityId, tenantId ?? 'DEFAULT', asOfDate, showInactive);
+    return await this.conditionLakehouseService.getConditionsByEntity(entityId, tenantId ?? 'DEFAULT', asOfDate, showInactive);
   }
 
   @Get('transaction-history/:endToEndId')
@@ -710,7 +722,13 @@ export class GoldLakehouseController {
       }
     }
 
-    return await this.goldLakehouseService.getTransactionHistoryData(endToEndId, tenantId ?? 'DEFAULT', startDate, endDate, granularity);
+    return await this.transactionLakehouseService.getTransactionHistoryData(
+      endToEndId,
+      tenantId ?? 'DEFAULT',
+      startDate,
+      endDate,
+      granularity,
+    );
   }
 
   @Get('transaction-perspectives/:endToEndId')
@@ -823,7 +841,7 @@ export class GoldLakehouseController {
       throw new BadRequestException('Invalid end-to-end ID format. Must be a valid UUID.');
     }
 
-    return await this.goldLakehouseService.getTransactionPerspectivesByEndToEndId(endToEndId, tenantId ?? 'DEFAULT');
+    return await this.transactionLakehouseService.getTransactionPerspectivesByEndToEndId(endToEndId, tenantId ?? 'DEFAULT');
   }
 
   @Get('alert-history/summary')
@@ -883,7 +901,7 @@ export class GoldLakehouseController {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
-    return await this.goldLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all');
+    return await this.alertsLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all');
   }
 
   @Get('alert-history/timeline')
@@ -971,7 +989,7 @@ export class GoldLakehouseController {
         throw new BadRequestException(`Invalid granularity. Must be one of: ${validGranularities.join(', ')}`);
       }
     }
-    return await this.goldLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity);
+    return await this.alertsLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity);
   }
 
   @Get('alert-history/alerts')
@@ -1057,7 +1075,7 @@ export class GoldLakehouseController {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
-    return await this.goldLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page ?? 1, limit ?? 20);
+    return await this.alertsLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page ?? 1, limit ?? 20);
   }
 
   // ---------------- TRANSACTION VIEW ----------------
@@ -1085,7 +1103,7 @@ export class GoldLakehouseController {
     @Query('tenantId') tenantId?: string,
     @Query('minConnections') minConnections?: number,
   ): Promise<TestAccountIdsResponse> {
-    return await this.goldLakehouseService.getTestAccountIds(tenantId ?? 'DEFAULT', minConnections ?? 1);
+    return await this.transactionLakehouseService.getTestAccountIds(tenantId ?? 'DEFAULT', minConnections ?? 1);
   }
 
   // ---------------- TRANSACTION NETWORK ANALYSIS ----------------
@@ -1127,7 +1145,7 @@ export class GoldLakehouseController {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    return await this.goldLakehouseService.getTransactionNetworkData(accountId, tenantId ?? 'DEFAULT', timeRange ?? '30d');
+    return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId ?? 'DEFAULT', timeRange ?? '30d');
   }
 
   @Get('network-analysis/account/:accountId')
@@ -1174,7 +1192,7 @@ export class GoldLakehouseController {
       throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
 
-    return await this.goldLakehouseService.getAccountNodeFullData(
+    return await this.accountLakehouseService.getAccountNodeFullData(
       accountId,
       tenantId ?? 'DEFAULT',
       (granularity as 'day' | 'month' | 'year' | undefined) ?? 'month',
@@ -1223,7 +1241,7 @@ export class GoldLakehouseController {
       throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
 
-    return await this.goldLakehouseService.getCounterpartyNodeFullData(
+    return await this.accountLakehouseService.getCounterpartyNodeFullData(
       counterpartyId,
       tenantId ?? 'DEFAULT',
       (granularity as 'day' | 'month' | 'year' | undefined) ?? 'month',
@@ -1298,7 +1316,7 @@ export class GoldLakehouseController {
       throw new BadRequestException('from date cannot be after to date');
     }
 
-    return await this.goldLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, fromDate, toDate);
+    return await this.benfordsLawLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, fromDate, toDate);
   }
 
   // ---------------- COUNTERPARTY VIEW ----------------
@@ -1347,7 +1365,7 @@ export class GoldLakehouseController {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    return await this.goldLakehouseService.getCounterpartyNetworkData(accountId, tenantId ?? 'DEFAULT', timeRange ?? '30d');
+    return await this.transactionLakehouseService.getCounterpartyNetworkData(accountId, tenantId ?? 'DEFAULT', timeRange ?? '30d');
   }
 
   // ---------------- DEBUG ENDPOINTS FOR DATA ANALYSIS ----------------
@@ -1357,7 +1375,7 @@ export class GoldLakehouseController {
   @ApiOperation({ summary: 'DEBUG: Get all conditions table data' })
   @ApiQuery({ name: 'tenantId', required: false, type: String, example: 'DEFAULT' })
   async getAllConditions(@Query('tenantId') tenantId?: string): Promise<ConditionsTableDataResponse> {
-    return await this.goldLakehouseService.getAllConditionsTableData(tenantId ?? 'DEFAULT');
+    return await this.conditionLakehouseService.getAllConditionsTableData(tenantId ?? 'DEFAULT');
   }
 
   @Get('debug/conditions-timeline-table')
@@ -1365,7 +1383,7 @@ export class GoldLakehouseController {
   @ApiOperation({ summary: 'DEBUG: Get all conditions_timeline table data' })
   @ApiQuery({ name: 'tenantId', required: false, type: String, example: 'DEFAULT' })
   async getAllConditionsTimeline(@Query('tenantId') tenantId?: string): Promise<unknown> {
-    return await this.goldLakehouseService.getAllConditionsTimelineData(tenantId ?? 'DEFAULT');
+    return await this.conditionLakehouseService.getAllConditionsTimelineData(tenantId ?? 'DEFAULT');
   }
 
   @Get('debug/account-holder-table')
@@ -1373,7 +1391,7 @@ export class GoldLakehouseController {
   @ApiOperation({ summary: 'DEBUG: Get all account_holder table data (limited to 200 rows)' })
   @ApiQuery({ name: 'tenantId', required: false, type: String, example: 'DEFAULT' })
   async getAllAccountHolder(@Query('tenantId') tenantId?: string): Promise<unknown> {
-    return await this.goldLakehouseService.getAllAccountHolderData(tenantId ?? 'DEFAULT');
+    return await this.entityLakehouseService.getAllAccountHolderData(tenantId ?? 'DEFAULT');
   }
 
   @Get('debug/transaction-detail-table')
@@ -1381,6 +1399,6 @@ export class GoldLakehouseController {
   @ApiOperation({ summary: 'DEBUG: Get sample transaction_detail table data (limited to 100 rows)' })
   @ApiQuery({ name: 'tenantId', required: false, type: String, example: 'DEFAULT' })
   async getTransactionDetailSample(@Query('tenantId') tenantId?: string): Promise<unknown> {
-    return await this.goldLakehouseService.getTransactionDetailSampleData(tenantId ?? 'DEFAULT');
+    return await this.transactionLakehouseService.getTransactionDetailSampleData(tenantId ?? 'DEFAULT');
   }
 }
