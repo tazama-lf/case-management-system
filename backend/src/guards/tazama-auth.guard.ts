@@ -125,6 +125,11 @@ export class TazamaAuthGuard implements CanActivate {
     return { requiredClaims, anyClaims };
   }
 
+  /**
+   * Note: required claims take precedence over any claims.
+   * If both are specified, only required claims are evaluated.
+   * Use either @RequireClaims OR @RequireAnyClaims, not both.
+   */
   private evaluateClaimResult(
     required: string[],
     any: string[],
@@ -174,15 +179,26 @@ export class TazamaAuthGuard implements CanActivate {
 
   private extractInnerToken(outerToken: string): Record<string, unknown> {
     try {
-      const outerDecoded = jwt.decode(outerToken) as Record<string, unknown>;
+      const outerDecoded = jwt.decode(outerToken) as Record<string, unknown> | null;
+
+      if (!outerDecoded) {
+        this.logger.warn('Failed to decode outer token');
+        throw new UnauthorizedException('Invalid token format');
+      }
+
       this.logger.debug(`Outer token has ${Object.keys(outerDecoded).length} claims`);
 
       if (!outerDecoded.tokenString) {
         this.logger.warn('No tokenString field in outer token, returning outer token itself');
-        return outerDecoded; // Return outer token if there's no inner token
+        return outerDecoded; // Return outer token if there's no innerF token
       }
 
-      const innerDecoded = jwt.decode(outerDecoded.tokenString as string) as Record<string, unknown>;
+      const innerDecoded = jwt.decode(outerDecoded.tokenString as string) as Record<string, unknown> | null;
+
+      if (!innerDecoded) {
+        this.logger.warn('Failed to decode inner token');
+        throw new UnauthorizedException('Invalid inner token format');
+      }
 
       return innerDecoded;
     } catch (error) {

@@ -48,7 +48,7 @@ export class RbacService {
   private readonly roles = permissionMatrix._meta.roles;
 
   isRole(value: string): value is Role {
-    return value in this.roles;
+    return Object.hasOwn(this.roles, value);
   }
 
   private getEndpointConfig(endpointKey: EndpointKey): EndpointConfig | undefined {
@@ -60,7 +60,7 @@ export class RbacService {
    * Throws ForbiddenException if the value is not a recognised matrix role.
    */
   getRoleFromUser(user: AuthenticatedUser): Role {
-    const role = user.actorRole;
+    const role = user.actorRole.toLowerCase() as Role;
     if (!this.isRole(role)) {
       throw new ForbiddenException('Invalid role');
     }
