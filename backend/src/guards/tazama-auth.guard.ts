@@ -22,10 +22,6 @@ export class TazamaAuthGuard implements CanActivate {
 
     const { requiredClaims, anyClaims } = this.getClaimsFromDecorators(context);
 
-    // Decode outer token first to get the full claims array for validation.
-    // We always validate all token claims so that the result is fully populated
-    // (used by /me and other endpoints that read validatedClaims). Endpoint-specific
-    // required/any claims are checked separately in evaluateClaimResult.
     const decoded = this.extractTokenPayload(token);
     const allTokenClaims = Array.isArray(decoded.claims) ? decoded.claims : [];
     const claimsToValidate = [...new Set([...allTokenClaims, ...requiredClaims, ...anyClaims])];
