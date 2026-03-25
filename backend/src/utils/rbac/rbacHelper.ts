@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import * as permissionMatrixImport from './permissionMatrix.json';
 import type { AuthenticatedUser } from '../types/auth.types';
 
@@ -56,12 +57,12 @@ export class RbacService {
 
   /**
    * Returns the user's CMS role from actorRole (set by TazamaAuthGuard).
-   * Throws an error if the value is not a recognised matrix role.
+   * Throws ForbiddenException if the value is not a recognised matrix role.
    */
   getRoleFromUser(user: AuthenticatedUser): Role {
     const role = user.actorRole;
     if (!this.isRole(role)) {
-      throw new Error('Invalid role');
+      throw new ForbiddenException('Invalid role');
     }
     return role;
   }

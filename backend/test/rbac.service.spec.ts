@@ -33,9 +33,9 @@ describe('RbacService', () => {
       expect(rbac.getRoleFromUser(makeUser('CMS_ADMIN'))).toBe('CMS_ADMIN');
     });
 
-    it('returns undefined for an unrecognised role', () => {
-      expect(rbac.getRoleFromUser(makeUser('UNKNOWN_ROLE'))).toBeUndefined();
-      expect(rbac.getRoleFromUser(makeUser(''))).toBeUndefined();
+    it('throw error for an unrecognised role', () => {
+      expect(() => rbac.getRoleFromUser(makeUser('UNKNOWN_ROLE'))).toThrow();
+      expect(() => rbac.getRoleFromUser(makeUser(''))).toThrow();
     });
   });
 
