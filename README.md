@@ -312,7 +312,7 @@ VITE_APP_VERSION=0.0.1
 VITE_CRYPTO_KEY=your-crypto-key
 
 # Jupyter / Voilà
-VITE_VOILA_URL=http://localhost:8866
+VITE_VOILA_BASE_URL=http://localhost:8866
 ```
 
 ### Docker Deployment
