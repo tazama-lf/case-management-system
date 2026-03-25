@@ -60,7 +60,7 @@ export class RbacService {
    * Throws ForbiddenException if the value is not a recognised matrix role.
    */
   getRoleFromUser(user: AuthenticatedUser): Role {
-    const role = user.actorRole.toLowerCase() as Role;
+    const role = user.actorRole as Role;
     if (!this.isRole(role)) {
       throw new ForbiddenException('Invalid role');
     }
