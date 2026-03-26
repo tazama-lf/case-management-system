@@ -7,6 +7,7 @@ import { EventLogService } from '../src/modules/event_log/eventLog.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from '../src/modules/gold-lakehouse/gold-lakehouse.service';
+import { TransactionLakehouseService } from '../src/modules/gold-lakehouse/transaction-lakehouse.service';
 import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CaseCreationType, CaseStatus, Priority } from '@prisma/client-cms';
 import { Outcome } from '../src/utils/types/outcome';
@@ -20,6 +21,7 @@ describe('AlertService', () => {
   let loggerService: jest.Mocked<LoggerService>;
   let configService: jest.Mocked<ConfigService>;
   let goldLakehouseService: jest.Mocked<GoldLakehouseService>;
+  let transactionLakehouseService: jest.Mocked<TransactionLakehouseService>;
 
   const mockAlert: any = {
     alert_id: 1,
@@ -92,6 +94,10 @@ describe('AlertService', () => {
         },
         {
           provide: GoldLakehouseService,
+          useValue: {},
+        },
+        {
+          provide: TransactionLakehouseService,
           useValue: { getTransactionHistoryByEndToEndId: jest.fn() },
         },
       ],
@@ -105,6 +111,7 @@ describe('AlertService', () => {
     loggerService = module.get(LoggerService);
     configService = module.get(ConfigService);
     goldLakehouseService = module.get(GoldLakehouseService);
+    transactionLakehouseService = module.get(TransactionLakehouseService);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -304,13 +311,13 @@ describe('AlertService', () => {
     it('returns transaction history for valid alert', async () => {
       alertRepository.getAlertById.mockResolvedValue(mockAlert);
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
-      goldLakehouseService.getTransactionHistoryByEndToEndId.mockResolvedValue(mockTxHistory);
+      transactionLakehouseService.getTransactionHistoryByEndToEndId.mockResolvedValue(mockTxHistory);
 
       const result = await service.getAlertTransactionalData(1);
 
       expect(result).toEqual(mockTxHistory);
       expect(alertRepository.getReferenceId).toHaveBeenCalledWith('pacs.002.001.12');
-      expect(goldLakehouseService.getTransactionHistoryByEndToEndId).toHaveBeenCalledWith('tx-123');
+      expect(transactionLakehouseService.getTransactionHistoryByEndToEndId).toHaveBeenCalledWith('tx-123');
     });
 
     it('throws when alert not found', async () => {
@@ -327,28 +334,28 @@ describe('AlertService', () => {
       await expect(service.getAlertTransactionalData(1)).rejects.toThrow('ReferenceId not found in transaction data');
     });
 
-    it('throws when goldLakehouseService throws Error', async () => {
+    it('throws when transactionLakehouseService throws Error', async () => {
       alertRepository.getAlertById.mockResolvedValue(mockAlert);
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
-      goldLakehouseService.getTransactionHistoryByEndToEndId.mockRejectedValue(new Error('Lakehouse down'));
+      transactionLakehouseService.getTransactionHistoryByEndToEndId.mockRejectedValue(new Error('Lakehouse down'));
 
       await expect(service.getAlertTransactionalData(1)).rejects.toThrow(InternalServerErrorException);
       expect(loggerService.error).toHaveBeenCalled();
     });
 
-    it('throws when goldLakehouseService throws non-Error', async () => {
+    it('throws when transactionLakehouseService throws non-Error', async () => {
       alertRepository.getAlertById.mockResolvedValue(mockAlert);
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
-      goldLakehouseService.getTransactionHistoryByEndToEndId.mockRejectedValue('string failure');
+      transactionLakehouseService.getTransactionHistoryByEndToEndId.mockRejectedValue('string failure');
 
       await expect(service.getAlertTransactionalData(1)).rejects.toThrow(InternalServerErrorException);
       expect(loggerService.error).toHaveBeenCalled();
     });
 
-    it('throws when goldLakehouseService returns null', async () => {
+    it('throws when transactionLakehouseService returns null', async () => {
       alertRepository.getAlertById.mockResolvedValue(mockAlert);
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
-      goldLakehouseService.getTransactionHistoryByEndToEndId.mockResolvedValue(null as any);
+      transactionLakehouseService.getTransactionHistoryByEndToEndId.mockResolvedValue(null as any);
 
       await expect(service.getAlertTransactionalData(1)).rejects.toThrow(InternalServerErrorException);
     });

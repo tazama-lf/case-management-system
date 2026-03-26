@@ -328,6 +328,14 @@ describe('ReportsService', () => {
     });
 
     it('should format event logs correctly', async () => {
+      // Use a date that's definitely within the last 30 days
+      const recentDate = new Date();
+      recentDate.setDate(recentDate.getDate() - 5); // 5 days ago
+      
+      eventLogService.getLogs.mockResolvedValue([
+        { ...mockEventLog, performed_at: recentDate },
+      ]);
+
       const result = await service.getEventLogs('last30');
 
       expect(result.eventLogs[0]).toHaveProperty('event_log_id');
