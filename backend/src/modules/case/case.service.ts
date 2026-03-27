@@ -697,7 +697,9 @@ export class CaseService {
       role: rbacRole,
       endpointKey,
       currentStatus: existingCase.status,
-      targetStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+      targetStatus: rbacRole.toLowerCase().includes('supervisor')
+        ? CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT
+        : CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
     });
     if (!t3.allowed) throw new ForbiddenException(t3.reason);
 

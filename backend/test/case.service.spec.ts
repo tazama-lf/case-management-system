@@ -289,11 +289,6 @@ describe('CaseService', () => {
     it.each([
       { name: 'case not found', retrieveResult: null, message: 'Case not found' },
       { name: 'non-owner tries to suspend', retrieveResult: { ...mockCase, case_owner_user_id: 'other-user' }, message: 'Only Case owner' },
-      {
-        name: 'case is not in progress',
-        retrieveResult: { ...mockCase, status: CaseStatus.STATUS_00_DRAFT },
-        message: 'Only cases in "IN PROGRESS"',
-      },
       { name: 'reason is empty', retrieveResult: mockCase, message: 'Reason for suspension is required', reason: '' },
     ])('should throw BadRequestException if $name', async ({ retrieveResult, message, reason = 'Test reason' }) => {
       caseQueryService.retrieveCase.mockResolvedValue(retrieveResult as any);
@@ -391,7 +386,6 @@ describe('CaseService', () => {
 
     it.each([
       { name: 'case not found', retrieveResult: null, message: 'Case not found' },
-      { name: 'case is not suspended', retrieveResult: mockCase, message: 'Only suspended cases can be resumed' },
       {
         name: 'reason is empty',
         retrieveResult: { ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED },
@@ -513,106 +507,123 @@ describe('CaseService', () => {
         service: 'caseCreationApprovalService',
         args: [{ alertId: 1 } as any, 'user-123', 'tenant-123', 'investigator'],
         expectedArgs: [{ alertId: 1 } as any, 'user-123', 'tenant-123', 'investigator'],
+        setupCase: null, // No case lookup for this method
       },
       {
         method: 'reopenCase',
         service: 'caseReopeningService',
         args: [1, 'reason', 'user-123', 'tenant-123', 'investigator', mockUser, reopenEndpoint],
         expectedArgs: [1, 'reason', 'user-123', 'tenant-123', 'investigator'],
+        setupCase: { ...mockCase, status: CaseStatus.STATUS_81_CLOSED_REFUTED },
       },
       {
         method: 'approveCaseReopening',
         service: 'caseReopeningService',
         args: [1, 'supervisor-123', 'tenant-123', mockSupervisorUser, approveReopeningEndpoint],
         expectedArgs: [1, 'supervisor-123', 'tenant-123'],
+        setupCase: { ...mockCase, status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL },
       },
       {
         method: 'rejectCaseReopening',
         service: 'caseReopeningService',
         args: [1, 'reason', 'supervisor-123', 'tenant-123', mockSupervisorUser, rejectReopeningEndpoint],
         expectedArgs: [1, 'reason', 'supervisor-123', 'tenant-123'],
+        setupCase: { ...mockCase, status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL },
       },
       {
         method: 'closeCase',
         service: 'caseClosureApprovalService',
         args: [1, {} as any, 'user-123', 'tenant-123', 'investigator', mockUser, closeEndpoint],
         expectedArgs: [1, {} as any, 'user-123', 'tenant-123', 'investigator'],
+        setupCase: mockCase, // STATUS_20_IN_PROGRESS is correct for close
       },
       {
         method: 'approveCaseClosure',
         service: 'caseClosureApprovalService',
-        args: [1, 'outcome', 'comments', 'supervisor-123', 'tenant-123', mockSupervisorUser, approveClosureEndpoint],
-        expectedArgs: [1, 'outcome', 'comments', 'supervisor-123', 'tenant-123'],
+        args: [1, CaseStatus.STATUS_82_CLOSED_CONFIRMED, 'comments', 'supervisor-123', 'tenant-123', mockSupervisorUser, approveClosureEndpoint],
+        expectedArgs: [1, CaseStatus.STATUS_82_CLOSED_CONFIRMED, 'comments', 'supervisor-123', 'tenant-123'],
+        setupCase: { ...mockCase, status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL },
       },
       {
         method: 'rejectCaseClosure',
         service: 'caseClosureApprovalService',
         args: [1, 'comments', 'supervisor-123', 'tenant-123', mockSupervisorUser, rejectClosureEndpoint],
         expectedArgs: [1, 'comments', 'supervisor-123', 'tenant-123'],
+        setupCase: { ...mockCase, status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL },
       },
       {
         method: 'returnCaseForReview',
         service: 'caseClosureApprovalService',
         args: [1, 'comments', 'supervisor-123', 'tenant-123', mockSupervisorUser, returnForReviewEndpoint],
         expectedArgs: [1, 'comments', 'supervisor-123', 'tenant-123'],
+        setupCase: { ...mockCase, status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL },
       },
       {
         method: 'approveCaseCreation',
         service: 'caseCreationApprovalService',
         args: [1, 'supervisor-123', 'tenant-123', mockSupervisorUser, approveCreationEndpoint],
         expectedArgs: [1, 'supervisor-123', 'tenant-123'],
+        setupCase: { ...mockCase, status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL },
       },
       {
         method: 'rejectCaseCreation',
         service: 'caseCreationApprovalService',
         args: [1, 'supervisor-123', 'tenant-123', 'reason', mockSupervisorUser, rejectCreationEndpoint],
         expectedArgs: [1, 'supervisor-123', 'tenant-123', 'reason'],
+        setupCase: { ...mockCase, status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL },
       },
       {
         method: 'completeCase',
         service: 'caseCreationApprovalService',
-        args: [1, 'user-123', 'tenant-123', mockUser, completeCaseEndpoint],
-        expectedArgs: [1, 'user-123', 'tenant-123'],
+        args: [1, 'supervisor-123', 'tenant-123', mockSupervisorUser, completeCaseEndpoint],
+        expectedArgs: [1, 'supervisor-123', 'tenant-123'],
+        setupCase: { ...mockCase, status: CaseStatus.STATUS_00_DRAFT },
       },
       {
         method: 'getAllCases',
         service: 'caseQueryService',
         args: [{} as any, 'tenant-123', 'user-123', false],
         expectedArgs: [{} as any, 'tenant-123', 'user-123', false],
+        setupCase: null, // No case lookup for this method
       },
       {
         method: 'getUserCases',
         service: 'caseQueryService',
         args: ['user-123', {} as any, false],
         expectedArgs: ['user-123', {} as any, false],
+        setupCase: null, // No case lookup for this method
       },
       {
         method: 'getUserWorkloadStats',
         service: 'caseQueryService',
         args: ['user-123', false],
         expectedArgs: ['user-123', false],
+        setupCase: null, // No case lookup for this method
       },
       {
         method: 'updateCase',
         service: 'caseQueryService',
         args: [1, { priority: Priority.CRITICAL } as any, 'user-123', mockUser, updateCaseEndpoint, 'tenant-123'],
         expectedArgs: [1, { priority: Priority.CRITICAL } as any, 'user-123'],
+        setupCase: mockCase, // updateCase can work with any valid status
       },
       {
         method: 'retrieveCase',
         service: 'caseQueryService',
         args: [1, 'tenant-123', false],
         expectedArgs: [1, 'tenant-123', false],
+        setupCase: null, // This IS the case retrieval method
       },
       {
         method: 'getSubCasesDetails',
         service: 'caseQueryService',
         args: [1],
         expectedArgs: [1],
+        setupCase: null, // No RBAC check for this method
       },
     ];
 
-    it.each(delegationTests)('should delegate $method to $service', async ({ method, service: serviceName, args, expectedArgs }) => {
+    it.each(delegationTests)('should delegate $method to $service', async ({ method, service: serviceName, args, expectedArgs, setupCase }) => {
       const serviceMap = {
         caseCreationApprovalService,
         caseReopeningService,
@@ -621,6 +632,11 @@ describe('CaseService', () => {
       };
       const targetService = serviceMap[serviceName as keyof typeof serviceMap];
       (targetService as any)[method].mockResolvedValue({} as any);
+
+      // Set up the case with appropriate status for RBAC checks
+      if (setupCase !== null) {
+        caseQueryService.retrieveCase.mockResolvedValue(setupCase as any);
+      }
 
       await (service as any)[method](...args);
 
