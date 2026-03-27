@@ -250,7 +250,7 @@ describe('CaseService', () => {
       caseQueryService.updateCase.mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED } as any);
 
-      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', {}, 'investigator', mockUser, testEndpointKey);
+      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, testEndpointKey);
 
       expect(caseQueryService.retrieveCase).toHaveBeenCalledWith(1, 'tenant-123');
       expect(caseQueryService.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_21_SUSPENDED }, 'user-123');
@@ -266,7 +266,7 @@ describe('CaseService', () => {
       caseQueryService.updateCase.mockResolvedValue({ ...differentOwnerCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED } as any);
 
-      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', {}, 'supervisor', mockSupervisorUser, testEndpointKey);
+      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockSupervisorUser, testEndpointKey);
 
       expect(caseQueryService.updateCase).toHaveBeenCalled();
     });
@@ -283,14 +283,14 @@ describe('CaseService', () => {
     ])('should throw BadRequestException if $name', async ({ retrieveResult, message, reason = 'Test reason' }) => {
       caseQueryService.retrieveCase.mockResolvedValue(retrieveResult as any);
 
-      await expect(service.suspendCase(1, reason, [1], 'user-123', 'tenant-123', {}, 'investigator', mockUser, testEndpointKey)).rejects.toThrow(message);
+      await expect(service.suspendCase(1, reason, [1], 'user-123', 'tenant-123', mockUser, testEndpointKey)).rejects.toThrow(message);
     });
 
     it('should throw BadRequestException if no matching tasks found', async () => {
       caseQueryService.retrieveCase.mockResolvedValue(mockCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([]);
 
-      await expect(service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', {}, 'investigator', mockUser, testEndpointKey)).rejects.toThrow(
+      await expect(service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, testEndpointKey)).rejects.toThrow(
         'No "Investigate Case" task found for this case',
       );
     });
@@ -303,7 +303,7 @@ describe('CaseService', () => {
       caseQueryService.updateCase.mockResolvedValue({ ...subCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED } as any);
 
-      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', {}, 'investigator', mockUser, testEndpointKey);
+      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, testEndpointKey);
 
       expect(prismaService.$transaction).toHaveBeenCalled();
     });
@@ -318,7 +318,7 @@ describe('CaseService', () => {
       cacheService.getUserFromCache.mockResolvedValue({ username: 'testuser', fullName: 'Test User' } as any);
       notificationService.sendNotification.mockResolvedValue({} as any);
 
-      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', {}, 'investigator', mockUser, testEndpointKey);
+      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, testEndpointKey);
 
       expect(cacheService.getUserFromCache).toHaveBeenCalledWith('user-123');
       expect(notificationService.sendNotification).toHaveBeenCalledWith(
@@ -339,7 +339,7 @@ describe('CaseService', () => {
       cacheService.getUserFromCache.mockResolvedValue({ username: 'testuser', fullName: 'Test User' } as any);
       notificationService.sendNotification.mockRejectedValue(new Error('Notification service error'));
 
-      const result = await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', {}, 'investigator', mockUser, testEndpointKey);
+      const result = await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, testEndpointKey);
 
       expect(result.success).toBe(true);
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Failed to send suspension notification'));

@@ -10,6 +10,7 @@ import { Outcome } from '../../../utils/types/outcome';
 import { UpdateCaseDto } from '../dto';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 import { JsonValue } from '@prisma/client-cms/runtime/library';
+import { TASK_NAMES } from 'src/constants/case.constants';
 
 @Injectable()
 export class CaseQueryService {
@@ -353,7 +354,7 @@ export class CaseQueryService {
             NOT: {
               tasks: {
                 some: {
-                  name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] },
+                  name: { in: [TASK_NAMES.SAR_STR_FILING] },
                 },
               },
             },
@@ -439,7 +440,7 @@ export class CaseQueryService {
               orConditions.push({
                 tasks: {
                   some: {
-                    name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] },
+                    name: { in: [TASK_NAMES.SAR_STR_FILING] },
                     status: { in: matchingTaskStatuses },
                   },
                 },
@@ -465,7 +466,7 @@ export class CaseQueryService {
         sarStrFilterCondition = {
           tasks: {
             some: {
-              name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] },
+              name: { in: [TASK_NAMES.SAR_STR_FILING] },
               status: sarStrStatus,
             },
           },
@@ -476,7 +477,7 @@ export class CaseQueryService {
           NOT: {
             tasks: {
               some: {
-                name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] },
+                name: { in: [TASK_NAMES.SAR_STR_FILING] },
               },
             },
           },

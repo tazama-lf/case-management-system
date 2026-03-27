@@ -158,15 +158,13 @@ export class CaseController {
     @Body() body: RequestSuspendCaseDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; task: Task[] }> {
-    const { userId, tenantId, userInfo, role } = extractUserData(req);
+    const { userId, tenantId } = extractUserData(req);
     return await this.caseService.suspendCase(
       caseId,
       body.reason,
       body.taskIds,
       userId,
       tenantId,
-      userInfo,
-      role,
       req.user,
       'PUT /api/v1/cases/:caseId/suspend' as EndpointKey,
     );

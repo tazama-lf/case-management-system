@@ -67,15 +67,16 @@
               "STATUS_21_SUSPENDED",
               "STATUS_22_PENDING_FINAL_APPROVAL",
               "STATUS_31_PENDING_CASE_REOPENING_APPROVAL",
-              "STATUS_01_PENDING_CASE_CREATION_APPROVAL"
-            ]
-          },
-          "CMS_COMPLIANCE_OFFICER": {
-            "allowedCurrentStatuses": [
+              "STATUS_01_PENDING_CASE_CREATION_APPROVAL",
               "STATUS_81_CLOSED_REFUTED",
               "STATUS_82_CLOSED_CONFIRMED",
               "STATUS_83_CLOSED_INCONCLUSIVE",
               "STATUS_84_COMPLETED"
+            ]
+          },
+          "CMS_COMPLIANCE_OFFICER": {
+            "allowedCurrentStatuses": [
+              "STATUS_82_CLOSED_CONFIRMED"
             ]
           }
         }
@@ -320,15 +321,20 @@
           "CMS_INVESTIGATOR": {
             "allowedCurrentStatuses": [
               "STATUS_81_CLOSED_REFUTED",
+              "STATUS_81_CLOSED_REFUTED",
               "STATUS_82_CLOSED_CONFIRMED",
-              "STATUS_83_CLOSED_INCONCLUSIVE"
+              "STATUS_83_CLOSED_INCONCLUSIVE",
+              "STATUS_71_AUTOCLOSED_CONFIRMED",
+              "STATUS_72_AUTOCLOSED_REFUTED"
             ]
           },
           "CMS_SUPERVISOR": {
             "allowedCurrentStatuses": [
               "STATUS_81_CLOSED_REFUTED",
               "STATUS_82_CLOSED_CONFIRMED",
-              "STATUS_83_CLOSED_INCONCLUSIVE"
+              "STATUS_83_CLOSED_INCONCLUSIVE",
+              "STATUS_71_AUTOCLOSED_CONFIRMED",
+              "STATUS_72_AUTOCLOSED_REFUTED"
             ]
           }
         }
@@ -463,20 +469,12 @@
         "rolePermissions": {
           "CMS_INVESTIGATOR": {
             "allowedCurrentStatuses": [
-              "STATUS_00_DRAFT",
-              "STATUS_01_PENDING_CASE_CREATION_APPROVAL",
-              "STATUS_02_READY_FOR_ASSIGNMENT",
-              "STATUS_10_ASSIGNED",
-              "STATUS_20_IN_PROGRESS"
+              "STATUS_00_DRAFT"
             ]
           },
           "CMS_SUPERVISOR": {
             "allowedCurrentStatuses": [
-              "STATUS_00_DRAFT",
-              "STATUS_01_PENDING_CASE_CREATION_APPROVAL",
-              "STATUS_02_READY_FOR_ASSIGNMENT",
-              "STATUS_10_ASSIGNED",
-              "STATUS_20_IN_PROGRESS"
+              "STATUS_00_DRAFT"
             ]
           }
         }
@@ -487,34 +485,10 @@
           "CMS_INVESTIGATOR": {
             "STATUS_00_DRAFT": [
               "STATUS_99_ABANDONED"
-            ],
-            "STATUS_01_PENDING_CASE_CREATION_APPROVAL": [
-              "STATUS_99_ABANDONED"
-            ],
-            "STATUS_02_READY_FOR_ASSIGNMENT": [
-              "STATUS_99_ABANDONED"
-            ],
-            "STATUS_10_ASSIGNED": [
-              "STATUS_99_ABANDONED"
-            ],
-            "STATUS_20_IN_PROGRESS": [
-              "STATUS_99_ABANDONED"
             ]
           },
           "CMS_SUPERVISOR": {
             "STATUS_00_DRAFT": [
-              "STATUS_99_ABANDONED"
-            ],
-            "STATUS_01_PENDING_CASE_CREATION_APPROVAL": [
-              "STATUS_99_ABANDONED"
-            ],
-            "STATUS_02_READY_FOR_ASSIGNMENT": [
-              "STATUS_99_ABANDONED"
-            ],
-            "STATUS_10_ASSIGNED": [
-              "STATUS_99_ABANDONED"
-            ],
-            "STATUS_20_IN_PROGRESS": [
               "STATUS_99_ABANDONED"
             ]
           }
@@ -542,14 +516,11 @@
               "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
             ]
           },
-           "CMS_COMPLIANCE_OFFICER": {
+          "CMS_COMPLIANCE_OFFICER": {
             "allowedCurrentStatuses": [
-              "STATUS_81_CLOSED_REFUTED",
-              "STATUS_82_CLOSED_CONFIRMED",
-              "STATUS_83_CLOSED_INCONCLUSIVE",
-              "STATUS_84_COMPLETED"
+              "STATUS_82_CLOSED_CONFIRMED"
             ]
-           }
+          }
         }
       }
     },
@@ -566,7 +537,7 @@
           },
           "CMS_SUPERVISOR": {
             "allowedCurrentStatuses": [
-               "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_02_READY_FOR_ASSIGNMENT",
               "STATUS_10_ASSIGNED",
               "STATUS_20_IN_PROGRESS",
               "STATUS_01_PENDING_CASE_CREATION_APPROVAL",
@@ -576,12 +547,9 @@
           },
           "CMS_COMPLIANCE_OFFICER": {
             "allowedCurrentStatuses": [
-              "STATUS_81_CLOSED_REFUTED",
-              "STATUS_82_CLOSED_CONFIRMED",
-              "STATUS_83_CLOSED_INCONCLUSIVE",
-              "STATUS_84_COMPLETED"
+              "STATUS_82_CLOSED_CONFIRMED"
             ]
-           }
+          }
         }
       }
     },
@@ -598,7 +566,7 @@
           },
           "CMS_SUPERVISOR": {
             "allowedCurrentStatuses": [
-               "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_02_READY_FOR_ASSIGNMENT",
               "STATUS_10_ASSIGNED",
               "STATUS_20_IN_PROGRESS",
               "STATUS_01_PENDING_CASE_CREATION_APPROVAL",
@@ -608,12 +576,9 @@
           },
           "CMS_COMPLIANCE_OFFICER": {
             "allowedCurrentStatuses": [
-              "STATUS_81_CLOSED_REFUTED",
-              "STATUS_82_CLOSED_CONFIRMED",
-              "STATUS_83_CLOSED_INCONCLUSIVE",
-              "STATUS_84_COMPLETED"
+              "STATUS_82_CLOSED_CONFIRMED"
             ]
-           }
+          }
         }
       }
     },
@@ -676,10 +641,7 @@
           },
           "CMS_COMPLIANCE_OFFICER": {
             "allowedCurrentStatuses": [
-              "STATUS_81_CLOSED_REFUTED",
-              "STATUS_82_CLOSED_CONFIRMED",
-              "STATUS_83_CLOSED_INCONCLUSIVE",
-              "STATUS_84_COMPLETED"
+              "STATUS_82_CLOSED_CONFIRMED"
             ]
           }
         }
@@ -691,24 +653,19 @@
         "rolePermissions": {
           "CMS_INVESTIGATOR": {
             "allowedCurrentStatuses": [
-              "STATUS_10_ASSIGNED",
               "STATUS_20_IN_PROGRESS"
             ]
           },
           "CMS_SUPERVISOR": {
             "allowedCurrentStatuses": [
-              "STATUS_10_ASSIGNED",
               "STATUS_20_IN_PROGRESS"
             ]
           },
           "CMS_COMPLIANCE_OFFICER": {
             "allowedCurrentStatuses": [
-              "STATUS_81_CLOSED_REFUTED",
-              "STATUS_82_CLOSED_CONFIRMED",
-              "STATUS_83_CLOSED_INCONCLUSIVE",
-              "STATUS_84_COMPLETED"
+              "STATUS_82_CLOSED_CONFIRMED"
             ]
-           }
+          }
         }
       }
     },
@@ -746,10 +703,7 @@
           },
           "CMS_COMPLIANCE_OFFICER": {
             "allowedCurrentStatuses": [
-              "STATUS_81_CLOSED_REFUTED",
-              "STATUS_82_CLOSED_CONFIRMED",
-              "STATUS_83_CLOSED_INCONCLUSIVE",
-              "STATUS_84_COMPLETED"
+              "STATUS_82_CLOSED_CONFIRMED"
             ]
           }
         }

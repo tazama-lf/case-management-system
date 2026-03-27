@@ -50,8 +50,6 @@ export class CaseService {
     tasksIds: number[],
     userId: string,
     tenantId: string,
-    authDetails: any,
-    role: string,
     user: AuthenticatedUser,
     endpointKey: EndpointKey,
   ): Promise<{ success: boolean; case: Case; task: Task[] }> {
@@ -69,7 +67,7 @@ export class CaseService {
     });
     if (!t3.allowed) throw new ForbiddenException(t3.reason);
 
-    if (!role.toLowerCase().includes('supervisor')) {
+    if (!rbacRole.toLowerCase().includes('supervisor')) {
       if (existingCase.case_owner_user_id !== userId) {
         throw new BadRequestException('Only Case owner can suspend a case');
       }

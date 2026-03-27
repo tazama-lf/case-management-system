@@ -6,6 +6,7 @@ import { CaseRepository } from '../repository/case.repository';
 import { Comment } from '@prisma/client-cms';
 import { RbacService, EndpointKey } from '../../utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from '../../utils/types/auth.types';
+import { TaskRepository } from '../repository/task.repository';
 
 @Injectable()
 export class CommentService {
@@ -15,6 +16,7 @@ export class CommentService {
     private readonly logger: LoggerService,
     private readonly commentRepository: CommentRepository,
     private readonly caseRepository: CaseRepository,
+    private readonly taskRepository: TaskRepository,
   ) {}
 
   async addCommentFromController(
@@ -29,11 +31,22 @@ export class CommentService {
       throw new BadRequestException('Either caseId or taskId must be provided');
     }
 
-    if (!createCommentDto.tenantId) {
-      throw new BadRequestException('tenantId is required');
+    // Use user.tenantId for all tenant-scoped lookups (not the DTO)
+    const { tenantId } = user;
+
+    let caseId: number;
+    if (createCommentDto.caseId) {
+      caseId = createCommentDto.caseId;
+    } else {
+      // Resolve case via task (createCommentDto.taskId must be present due to guard above)
+      const task = await this.taskRepository.findTaskById(createCommentDto.taskId!, tenantId);
+      if (!task) {
+        throw new NotFoundException('Task not found');
+      }
+      caseId = task.case_id;
     }
 
-    const existingCase = await this.caseRepository.findCaseById(createCommentDto.caseId, createCommentDto.tenantId);
+    const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
     const rbacRole = this.rbacService.getRoleFromUser(user);
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
     if (!t2.allowed) throw new ForbiddenException(t2.reason);

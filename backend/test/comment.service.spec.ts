@@ -5,6 +5,7 @@ import { CaseRepository } from '../src/modules/repository/case.repository';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateCommentDto } from '../src/modules/comment/dto/create-comment.dto';
+import { TaskRepository } from 'src/modules/repository/task.repository';
 
 describe('CommentService', () => {
   let service: CommentService;
@@ -65,6 +66,10 @@ describe('CommentService', () => {
         {
           provide: CaseRepository,
           useValue: { findCaseById: jest.fn() },
+        },
+        {
+          provide: TaskRepository,
+          useValue: { findTaskById: jest.fn() },
         },
       ],
     }).compile();

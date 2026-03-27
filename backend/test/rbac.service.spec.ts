@@ -216,10 +216,7 @@ describe('RbacService', () => {
       expect(result.allowed).toBe(true);
       expect(result.allowedStatuses).toEqual(
         expect.arrayContaining([
-          'STATUS_81_CLOSED_REFUTED',
-          'STATUS_82_CLOSED_CONFIRMED',
-          'STATUS_83_CLOSED_INCONCLUSIVE',
-          'STATUS_84_COMPLETED',
+          'STATUS_82_CLOSED_CONFIRMED'
         ]),
       );
     });
@@ -344,7 +341,7 @@ describe('CaseService — Tier 2 & Tier 3 RBAC guards', () => {
 
       await expect(
         service.suspendCase(
-          1, 'reason', [1], 'user-1', 'tenant-1', {}, 'investigator',
+          1, 'reason', [1], 'user-1', 'tenant-1',
           INVESTIGATOR_USER,
           'PUT /api/v1/cases/:caseId/suspend' as EndpointKey,
         ),
@@ -357,7 +354,7 @@ describe('CaseService — Tier 2 & Tier 3 RBAC guards', () => {
 
       await expect(
         service.suspendCase(
-          1, 'reason', [1], 'user-1', 'tenant-1', {}, 'investigator',
+          1, 'reason', [1], 'user-1', 'tenant-1',
           COMPLIANCE_USER,
           'PUT /api/v1/cases/:caseId/suspend' as EndpointKey,
         ),
@@ -369,7 +366,7 @@ describe('CaseService — Tier 2 & Tier 3 RBAC guards', () => {
 
       await expect(
         service.suspendCase(
-          1, 'reason', [1], 'user-1', 'tenant-1', {}, 'investigator',
+          1, 'reason', [1], 'user-1', 'tenant-1',
           makeUser('UNKNOWN_ROLE'),
           'PUT /api/v1/cases/:caseId/suspend' as EndpointKey,
         ),
@@ -383,7 +380,7 @@ describe('CaseService — Tier 2 & Tier 3 RBAC guards', () => {
       // Now user and endpointKey are required, so we pass a valid user
       // but expect the method's own business logic checks to fire
       await expect(
-        service.suspendCase(1, 'reason', [1], 'user-1', 'tenant-1', {}, 'investigator', INVESTIGATOR_USER, 'PUT /api/v1/cases/:caseId/suspend' as EndpointKey),
+        service.suspendCase(1, 'reason', [1], 'user-1', 'tenant-1', INVESTIGATOR_USER, 'PUT /api/v1/cases/:caseId/suspend' as EndpointKey),
       ).rejects.toThrow(); // Will throw due to business logic validation, not RBAC
     });
   });
@@ -408,7 +405,7 @@ describe('CaseService — Tier 2 & Tier 3 RBAC guards', () => {
       // but suspendCase targets STATUS_21_SUSPENDED (not in resume's allowed transitions).
       await expect(
         service.suspendCase(
-          1, 'reason', [1], 'user-1', 'tenant-1', {}, 'investigator',
+          1, 'reason', [1], 'user-1', 'tenant-1',
           INVESTIGATOR_USER,
           'PUT /api/v1/cases/:caseId/resume' as EndpointKey, // wrong endpoint key deliberately
         ),

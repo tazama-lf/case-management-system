@@ -360,8 +360,7 @@ export class TaskLifecycleService {
         const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
         if (!t2.allowed) throw new ForbiddenException(t2.reason);
         if (rbacRole === 'CMS_COMPLIANCE_OFFICER') {
-          const sarStrNames = ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'];
-          if (!existingTask.name || !sarStrNames.includes(existingTask.name)) {
+          if (!existingTask.name || existingTask.name !== TASK_NAMES.SAR_STR_FILING) {
             throw new ForbiddenException('Compliance officers may only complete the SAR/STR task');
           }
         }

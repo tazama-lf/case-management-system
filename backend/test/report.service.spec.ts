@@ -17,7 +17,7 @@ describe('ReportsService', () => {
   let notificationService: any;
   let eventLogService: any;
 
-  const mockDate = new Date('2026-02-23T12:00:00.000Z');
+  const mockDate = new Date('2026-03-20T12:00:00.000Z');
   const mockCase = {
     case_id: 1,
     case_type: CaseType.AML,
@@ -25,7 +25,7 @@ describe('ReportsService', () => {
     case_owner_user_id: 'user-123',
     status: CaseStatus.STATUS_20_IN_PROGRESS,
     created_at: new Date('2026-02-20T12:00:00.000Z'),
-    updated_at: new Date('2026-02-23T12:00:00.000Z'),
+    updated_at: new Date('2026-03-20T12:00:00.000Z'),
     alert: { tenant_id: 'tenant-123' },
   };
 
