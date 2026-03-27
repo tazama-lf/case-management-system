@@ -110,7 +110,6 @@ describe('EvidenceService', () => {
         { provide: TaskRepository, useValue: { findTaskWithCase: jest.fn() } },
         { provide: EventLogService, useValue: { logEventAction: jest.fn() } },
         { provide: TaskHistoryService, useValue: { logTaskHistoryAction: jest.fn() } },
-        { provide: RbacService, useValue: mockRbacService },
       ],
     }).compile();
 
@@ -282,7 +281,6 @@ describe('EvidenceService', () => {
     it.each([
       ['CMS_INVESTIGATOR', true],
       ['CMS_SUPERVISOR', false],
-      ['CMS_AUDITOR', false],
       ['CMS_COMPLIANCE_OFFICER', false],
     ])('should get evidence for %s role', async (role, shouldFilterByUser) => {
       const result = await service.getEvidenceById('ev_1_123456', userId, tenantId, role);
@@ -315,7 +313,7 @@ describe('EvidenceService', () => {
       jest.spyOn(service as any, 'decrypt').mockReturnValue(Buffer.from('decrypted content'));
     });
 
-    it.each([['CMS_INVESTIGATOR'], ['CMS_SUPERVISOR'], ['CMS_AUDITOR'], ['CMS_COMPLIANCE_OFFICER']])(
+    it.each([['CMS_INVESTIGATOR'], ['CMS_SUPERVISOR'], ['CMS_COMPLIANCE_OFFICER']])(
       'should download evidence for %s role',
       async (role) => {
         const result = await service.downloadEvidence('ev_1_123456', userId, tenantId, role);
@@ -497,7 +495,6 @@ describe('EvidenceService', () => {
     it.each([
       ['CMS_INVESTIGATOR', true],
       ['CMS_SUPERVISOR', false],
-      ['CMS_AUDITOR', false],
       ['CMS_COMPLIANCE_OFFICER', false],
     ])('should get evidence by case ID for %s role', async (role, shouldFilterByUser) => {
       const result = await service.getEvidenceByCaseId(caseId, userId, tenantId, role);
@@ -536,7 +533,6 @@ describe('EvidenceService', () => {
     it.each([
       ['CMS_INVESTIGATOR', true],
       ['CMS_SUPERVISOR', false],
-      ['CMS_AUDITOR', false],
       ['CMS_COMPLIANCE_OFFICER', false],
     ])('should get evidence by type for %s role', async (role, shouldFilterByUser) => {
       const result = await service.getEvidenceByType(evidenceType as any, userId, tenantId, role);

@@ -341,7 +341,7 @@ export class EvidenceService {
 
     if (userRole === 'CMS_INVESTIGATOR') {
       query.uploadedBy = userId;
-    } else if (userRole === 'CMS_AUDITOR' || userRole === 'CMS_SUPERVISOR' || userRole === 'CMS_COMPLIANCE_OFFICER') {
+    } else if (userRole === 'CMS_SUPERVISOR' || userRole === 'CMS_COMPLIANCE_OFFICER') {
       //doNothing
     } else {
       throw new UnauthorizedException('Invalid role');
@@ -385,7 +385,7 @@ export class EvidenceService {
       query = { tenantId, reportId: evidenceId, page: 1, limit: 1 };
     }
     // if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) {
+    else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) {
       throw new UnauthorizedException('Invalid role');
     }
     const result = await this.couchdb.queryDocuments(query);
@@ -473,7 +473,7 @@ export class EvidenceService {
 
     const query: any = { tenantId, evidenceId, archive: false, page: 1, limit: 1 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
+    else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
     const [evidenceDoc] = result.data;
@@ -584,7 +584,7 @@ export class EvidenceService {
     const query: any = { caseId, page: 1, limit: 100 };
 
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
+    else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
       throw new UnauthorizedException('Invalid role');
     }
     this.logger.log(`role=${role}`);
@@ -619,7 +619,7 @@ export class EvidenceService {
   async getEvidenceByType(evidenceType: EvidenceType, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
     const query: any = { tenantId, evidenceType, archive: false, page: 1, limit: 100 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
+    else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
     const docs = result.data;

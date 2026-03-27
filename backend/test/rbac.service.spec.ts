@@ -375,7 +375,7 @@ describe('CaseService — Tier 2 & Tier 3 RBAC guards', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('does NOT apply RBAC check when user/endpointKey are omitted (backward compat)', async () => {
+    it('rejects via business logic validation even with valid RBAC user (backward compat)', async () => {
       // Service should fall through to its own business-logic checks
       caseQueryService.retrieveCase.mockResolvedValue(DRAFT_CASE as any);
 

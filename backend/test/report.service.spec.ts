@@ -130,10 +130,14 @@ describe('ReportsService', () => {
     couchdbService = module.get(CouchdbService);
     notificationService = module.get(NotificationService);
     eventLogService = module.get(EventLogService);
+
+    jest.useFakeTimers();
+    jest.setSystemTime(mockDate);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.useRealTimers();
   });
 
   describe('getCaseStatus', () => {
@@ -337,6 +341,8 @@ describe('ReportsService', () => {
 
   describe('getCaseAgeing', () => {
     beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(mockDate);
       prismaService.case.findMany.mockResolvedValue([
         {
           case_id: 1,

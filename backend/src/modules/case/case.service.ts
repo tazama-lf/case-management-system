@@ -853,6 +853,15 @@ export class CaseService {
     const rbacRole = this.rbacService.getRoleFromUser(user);
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    if (updateData.status && updateData.status !== existingCase.status) {
+      const t3 = this.rbacService.checkTier3({
+        role: rbacRole,
+        endpointKey,
+        currentStatus: existingCase.status,
+        targetStatus: updateData.status,
+      });
+      if (!t3.allowed) throw new ForbiddenException(t3.reason);
+    }
     return await this.caseQueryService.updateCase(caseId, updateData, userId);
   }
 

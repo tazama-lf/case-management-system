@@ -247,7 +247,8 @@
         "transitions": {
           "CMS_SUPERVISOR": {
             "STATUS_31_PENDING_CASE_REOPENING_APPROVAL": [
-              "STATUS_02_READY_FOR_ASSIGNMENT"
+              "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_10_ASSIGNED"
             ]
           }
         }
