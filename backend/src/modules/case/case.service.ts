@@ -673,7 +673,7 @@ export class CaseService {
       role: rbacRole,
       endpointKey,
       currentStatus: existingCase.status,
-      targetStatus: CaseStatus.STATUS_03_RETURNED,
+      targetStatus: CaseStatus.STATUS_00_DRAFT,
     });
     if (!t3.allowed) throw new ForbiddenException(t3.reason);
 

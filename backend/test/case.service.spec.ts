@@ -89,7 +89,22 @@ describe('CaseService', () => {
     tenantName: 'Test Tenant',
   };
 
-  const testEndpointKey: EndpointKey = 'PATCH /api/v1/cases/:caseId' as EndpointKey;
+  // Production endpoint keys from case.controller.ts
+  const suspendEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/suspend' as EndpointKey;
+  const resumeEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/resume' as EndpointKey;
+  const abandonEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/abandon' as EndpointKey;
+  const reopenEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/reopen' as EndpointKey;
+  const closeEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/close' as EndpointKey;
+  const approveClosureEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/approve' as EndpointKey;
+  const rejectClosureEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/reject' as EndpointKey;
+  const returnForReviewEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/return-for-review' as EndpointKey;
+  const approveCreationEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/approve-creation' as EndpointKey;
+  const rejectCreationEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/reject-creation' as EndpointKey;
+  const approveReopeningEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/approve-reopening' as EndpointKey;
+  const rejectReopeningEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/reject-reopening' as EndpointKey;
+  const completeCaseEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId/complete' as EndpointKey;
+  const updateCaseEndpoint: EndpointKey = 'PUT /api/v1/cases/:caseId' as EndpointKey;
+  const completeCaseCreationEndpoint: EndpointKey = 'POST /api/v1/cases/:caseId/complete-case-creation' as EndpointKey;
 
   beforeEach(async () => {
     const mockPrismaService = {
@@ -250,7 +265,7 @@ describe('CaseService', () => {
       caseQueryService.updateCase.mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED } as any);
 
-      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, testEndpointKey);
+      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, suspendEndpoint);
 
       expect(caseQueryService.retrieveCase).toHaveBeenCalledWith(1, 'tenant-123');
       expect(caseQueryService.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_21_SUSPENDED }, 'user-123');
@@ -266,7 +281,7 @@ describe('CaseService', () => {
       caseQueryService.updateCase.mockResolvedValue({ ...differentOwnerCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED } as any);
 
-      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockSupervisorUser, testEndpointKey);
+      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockSupervisorUser, suspendEndpoint);
 
       expect(caseQueryService.updateCase).toHaveBeenCalled();
     });
@@ -283,14 +298,14 @@ describe('CaseService', () => {
     ])('should throw BadRequestException if $name', async ({ retrieveResult, message, reason = 'Test reason' }) => {
       caseQueryService.retrieveCase.mockResolvedValue(retrieveResult as any);
 
-      await expect(service.suspendCase(1, reason, [1], 'user-123', 'tenant-123', mockUser, testEndpointKey)).rejects.toThrow(message);
+      await expect(service.suspendCase(1, reason, [1], 'user-123', 'tenant-123', mockUser, suspendEndpoint)).rejects.toThrow(message);
     });
 
     it('should throw BadRequestException if no matching tasks found', async () => {
       caseQueryService.retrieveCase.mockResolvedValue(mockCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([]);
 
-      await expect(service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, testEndpointKey)).rejects.toThrow(
+      await expect(service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, suspendEndpoint)).rejects.toThrow(
         'No "Investigate Case" task found for this case',
       );
     });
@@ -303,7 +318,7 @@ describe('CaseService', () => {
       caseQueryService.updateCase.mockResolvedValue({ ...subCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED } as any);
 
-      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, testEndpointKey);
+      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, suspendEndpoint);
 
       expect(prismaService.$transaction).toHaveBeenCalled();
     });
@@ -318,7 +333,7 @@ describe('CaseService', () => {
       cacheService.getUserFromCache.mockResolvedValue({ username: 'testuser', fullName: 'Test User' } as any);
       notificationService.sendNotification.mockResolvedValue({} as any);
 
-      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, testEndpointKey);
+      await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, suspendEndpoint);
 
       expect(cacheService.getUserFromCache).toHaveBeenCalledWith('user-123');
       expect(notificationService.sendNotification).toHaveBeenCalledWith(
@@ -339,7 +354,7 @@ describe('CaseService', () => {
       cacheService.getUserFromCache.mockResolvedValue({ username: 'testuser', fullName: 'Test User' } as any);
       notificationService.sendNotification.mockRejectedValue(new Error('Notification service error'));
 
-      const result = await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, testEndpointKey);
+      const result = await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, suspendEndpoint);
 
       expect(result.success).toBe(true);
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Failed to send suspension notification'));
@@ -368,7 +383,7 @@ describe('CaseService', () => {
       caseQueryService.updateCase.mockResolvedValue({ ...suspendedCase, status: CaseStatus.STATUS_20_IN_PROGRESS } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_10_ASSIGNED } as any);
 
-      await service.resumeCase(1, 'Resume reason', 'user-123', 'tenant-123', {}, mockUser, testEndpointKey);
+      await service.resumeCase(1, 'Resume reason', 'user-123', 'tenant-123', {}, mockUser, resumeEndpoint);
 
       expect(caseQueryService.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_20_IN_PROGRESS }, 'user-123');
       expect(taskService.updateTask).toHaveBeenCalled();
@@ -386,7 +401,7 @@ describe('CaseService', () => {
     ])('should throw BadRequestException if $name', async ({ retrieveResult, message, reason = 'Resume reason' }) => {
       caseQueryService.retrieveCase.mockResolvedValue(retrieveResult as any);
 
-      await expect(service.resumeCase(1, reason, 'user-123', 'tenant-123', {}, mockUser, testEndpointKey)).rejects.toThrow(message);
+      await expect(service.resumeCase(1, reason, 'user-123', 'tenant-123', {}, mockUser, resumeEndpoint)).rejects.toThrow(message);
     });
 
     it('should resume parent case if at least one subcase is resumed', async () => {
@@ -400,7 +415,7 @@ describe('CaseService', () => {
       caseQueryService.updateCase.mockResolvedValue({ ...subCase, status: CaseStatus.STATUS_20_IN_PROGRESS } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_10_ASSIGNED } as any);
 
-      await service.resumeCase(1, 'Resume reason', 'user-123', 'tenant-123', {}, mockUser, testEndpointKey);
+      await service.resumeCase(1, 'Resume reason', 'user-123', 'tenant-123', {}, mockUser, resumeEndpoint);
 
       expect(prismaService.$transaction).toHaveBeenCalled();
     });
@@ -416,7 +431,7 @@ describe('CaseService', () => {
       cacheService.getUserFromCache.mockResolvedValue({ username: 'testuser', email: 'test@example.com' } as any);
       notificationService.sendNotification.mockResolvedValue({} as any);
 
-      await service.resumeCase(1, 'Resume reason', 'user-123', 'tenant-123', {}, mockUser, testEndpointKey);
+      await service.resumeCase(1, 'Resume reason', 'user-123', 'tenant-123', {}, mockUser, resumeEndpoint);
 
       expect(cacheService.getUserFromCache).toHaveBeenCalledWith('user-123');
       expect(notificationService.sendNotification).toHaveBeenCalledWith(
@@ -438,7 +453,7 @@ describe('CaseService', () => {
       cacheService.getUserFromCache.mockResolvedValue({ username: 'testuser', email: 'test@example.com' } as any);
       notificationService.sendNotification.mockRejectedValue(new Error('Notification service error'));
 
-      const result = await service.resumeCase(1, 'Resume reason', 'user-123', 'tenant-123', {}, mockUser, testEndpointKey);
+      const result = await service.resumeCase(1, 'Resume reason', 'user-123', 'tenant-123', {}, mockUser, resumeEndpoint);
 
       expect(result.success).toBe(true);
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Failed to send resumption notification'));
@@ -464,7 +479,7 @@ describe('CaseService', () => {
       caseQueryService.updateCase.mockResolvedValue({ ...draftCase, status: CaseStatus.STATUS_99_ABANDONED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
 
-      await service.abandonCase(1, 'Abandon reason', 'user-123', 'tenant-123', mockUser, testEndpointKey);
+      await service.abandonCase(1, 'Abandon reason', 'user-123', 'tenant-123', mockUser, abandonEndpoint);
 
       expect(caseQueryService.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_99_ABANDONED }, 'user-123');
       expect(commentService.addComment).toHaveBeenCalled();
@@ -487,7 +502,7 @@ describe('CaseService', () => {
         ] as any);
       }
 
-      await expect(service.abandonCase(1, reason, 'user-123', 'tenant-123', mockUser, testEndpointKey)).rejects.toThrow(message);
+      await expect(service.abandonCase(1, reason, 'user-123', 'tenant-123', mockUser, abandonEndpoint)).rejects.toThrow(message);
     });
   });
 
@@ -502,61 +517,61 @@ describe('CaseService', () => {
       {
         method: 'reopenCase',
         service: 'caseReopeningService',
-        args: [1, 'reason', 'user-123', 'tenant-123', 'investigator', mockUser, testEndpointKey],
+        args: [1, 'reason', 'user-123', 'tenant-123', 'investigator', mockUser, reopenEndpoint],
         expectedArgs: [1, 'reason', 'user-123', 'tenant-123', 'investigator'],
       },
       {
         method: 'approveCaseReopening',
         service: 'caseReopeningService',
-        args: [1, 'supervisor-123', 'tenant-123', mockSupervisorUser, testEndpointKey],
+        args: [1, 'supervisor-123', 'tenant-123', mockSupervisorUser, approveReopeningEndpoint],
         expectedArgs: [1, 'supervisor-123', 'tenant-123'],
       },
       {
         method: 'rejectCaseReopening',
         service: 'caseReopeningService',
-        args: [1, 'reason', 'supervisor-123', 'tenant-123', mockSupervisorUser, testEndpointKey],
+        args: [1, 'reason', 'supervisor-123', 'tenant-123', mockSupervisorUser, rejectReopeningEndpoint],
         expectedArgs: [1, 'reason', 'supervisor-123', 'tenant-123'],
       },
       {
         method: 'closeCase',
         service: 'caseClosureApprovalService',
-        args: [1, {} as any, 'user-123', 'tenant-123', 'investigator', mockUser, testEndpointKey],
+        args: [1, {} as any, 'user-123', 'tenant-123', 'investigator', mockUser, closeEndpoint],
         expectedArgs: [1, {} as any, 'user-123', 'tenant-123', 'investigator'],
       },
       {
         method: 'approveCaseClosure',
         service: 'caseClosureApprovalService',
-        args: [1, 'outcome', 'comments', 'supervisor-123', 'tenant-123', mockSupervisorUser, testEndpointKey],
+        args: [1, 'outcome', 'comments', 'supervisor-123', 'tenant-123', mockSupervisorUser, approveClosureEndpoint],
         expectedArgs: [1, 'outcome', 'comments', 'supervisor-123', 'tenant-123'],
       },
       {
         method: 'rejectCaseClosure',
         service: 'caseClosureApprovalService',
-        args: [1, 'comments', 'supervisor-123', 'tenant-123', mockSupervisorUser, testEndpointKey],
+        args: [1, 'comments', 'supervisor-123', 'tenant-123', mockSupervisorUser, rejectClosureEndpoint],
         expectedArgs: [1, 'comments', 'supervisor-123', 'tenant-123'],
       },
       {
         method: 'returnCaseForReview',
         service: 'caseClosureApprovalService',
-        args: [1, 'comments', 'supervisor-123', 'tenant-123', mockSupervisorUser, testEndpointKey],
+        args: [1, 'comments', 'supervisor-123', 'tenant-123', mockSupervisorUser, returnForReviewEndpoint],
         expectedArgs: [1, 'comments', 'supervisor-123', 'tenant-123'],
       },
       {
         method: 'approveCaseCreation',
         service: 'caseCreationApprovalService',
-        args: [1, 'supervisor-123', 'tenant-123', mockSupervisorUser, testEndpointKey],
+        args: [1, 'supervisor-123', 'tenant-123', mockSupervisorUser, approveCreationEndpoint],
         expectedArgs: [1, 'supervisor-123', 'tenant-123'],
       },
       {
         method: 'rejectCaseCreation',
         service: 'caseCreationApprovalService',
-        args: [1, 'supervisor-123', 'tenant-123', 'reason', mockSupervisorUser, testEndpointKey],
+        args: [1, 'supervisor-123', 'tenant-123', 'reason', mockSupervisorUser, rejectCreationEndpoint],
         expectedArgs: [1, 'supervisor-123', 'tenant-123', 'reason'],
       },
       {
         method: 'completeCase',
         service: 'caseCreationApprovalService',
-        args: [1, 'user-123', 'tenant-123', mockUser, testEndpointKey],
+        args: [1, 'user-123', 'tenant-123', mockUser, completeCaseEndpoint],
         expectedArgs: [1, 'user-123', 'tenant-123'],
       },
       {
@@ -580,7 +595,7 @@ describe('CaseService', () => {
       {
         method: 'updateCase',
         service: 'caseQueryService',
-        args: [1, { priority: Priority.CRITICAL } as any, 'user-123', mockUser, testEndpointKey, 'tenant-123'],
+        args: [1, { priority: Priority.CRITICAL } as any, 'user-123', mockUser, updateCaseEndpoint, 'tenant-123'],
         expectedArgs: [1, { priority: Priority.CRITICAL } as any, 'user-123'],
       },
       {
@@ -650,7 +665,7 @@ describe('CaseService', () => {
       taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Approve Case Creation' } as any);
       alertRepository.getAlertByCaseId.mockResolvedValue(0 as any);
 
-      const result = await service.completeCaseCreation(1, updateData, 'user-123', 'tenant-123', 'investigator', mockUser, testEndpointKey);
+      const result = await service.completeCaseCreation(1, updateData, 'user-123', 'tenant-123', 'investigator', mockUser, completeCaseCreationEndpoint);
 
       expect(result.requiresApproval).toBe(true);
       expect(result.message).toContain('pending supervisor approval');
@@ -673,7 +688,7 @@ describe('CaseService', () => {
       taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Investigate Case' } as any);
       alertRepository.getAlertByCaseId.mockResolvedValue(undefined as any);
 
-      const result = await service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'SUPERVISOR', mockSupervisorUser, testEndpointKey);
+      const result = await service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'SUPERVISOR', mockSupervisorUser, completeCaseCreationEndpoint);
 
       expect(result.requiresApproval).toBe(false);
       expect(result.message).toContain('ready for investigation');
@@ -693,7 +708,7 @@ describe('CaseService', () => {
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
       alertRepository.getAlertByCaseId.mockResolvedValue(undefined as any);
 
-      await service.completeCaseCreation(1, fraudAmlData as any, 'user-123', 'tenant-123', 'SUPERVISOR', mockSupervisorUser, testEndpointKey);
+      await service.completeCaseCreation(1, fraudAmlData as any, 'user-123', 'tenant-123', 'SUPERVISOR', mockSupervisorUser, completeCaseCreationEndpoint);
 
       expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(2);
       expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
@@ -729,7 +744,7 @@ describe('CaseService', () => {
       caseQueryService.retrieveCase.mockResolvedValue(retrieveResult as any);
 
       await expect(
-        service.completeCaseCreation(1, testUpdateData || (updateData as any), 'user-123', 'tenant-123', 'investigator', mockUser, testEndpointKey),
+        service.completeCaseCreation(1, testUpdateData || (updateData as any), 'user-123', 'tenant-123', 'investigator', mockUser, completeCaseCreationEndpoint),
       ).rejects.toThrow(message);
     });
 
@@ -744,7 +759,7 @@ describe('CaseService', () => {
       caseQueryService.retrieveCase.mockResolvedValue(mockDraftCase as any);
       taskService.getTasksByCaseId.mockResolvedValue(tasks as any);
 
-      await expect(service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator', mockUser, testEndpointKey)).rejects.toThrow(
+      await expect(service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator', mockUser, completeCaseCreationEndpoint)).rejects.toThrow(
         expectedError,
       );
     });
@@ -762,7 +777,7 @@ describe('CaseService', () => {
       alertRepository.getAlertByCaseId.mockResolvedValue(100);
       alertRepository.updateAlert.mockResolvedValue({} as any);
 
-      await service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator', mockUser, testEndpointKey);
+      await service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator', mockUser, completeCaseCreationEndpoint);
 
       expect(alertRepository.updateAlert).toHaveBeenCalledWith(
         100,
@@ -785,7 +800,7 @@ describe('CaseService', () => {
       });
       prismaService.$transaction.mockImplementation(mockTransaction);
 
-      await expect(service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator', mockUser, testEndpointKey)).rejects.toThrow(
+      await expect(service.completeCaseCreation(1, updateData as any, 'user-123', 'tenant-123', 'investigator', mockUser, completeCaseCreationEndpoint)).rejects.toThrow(
         InternalServerErrorException,
       );
     });
