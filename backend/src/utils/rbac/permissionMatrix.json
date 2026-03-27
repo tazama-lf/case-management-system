@@ -321,7 +321,6 @@
           "CMS_INVESTIGATOR": {
             "allowedCurrentStatuses": [
               "STATUS_81_CLOSED_REFUTED",
-              "STATUS_81_CLOSED_REFUTED",
               "STATUS_82_CLOSED_CONFIRMED",
               "STATUS_83_CLOSED_INCONCLUSIVE",
               "STATUS_71_AUTOCLOSED_CONFIRMED",
@@ -351,6 +350,12 @@
             ],
             "STATUS_83_CLOSED_INCONCLUSIVE": [
               "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
+            ],
+            "STATUS_71_AUTOCLOSED_CONFIRMED": [
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
+            ],
+            "STATUS_72_AUTOCLOSED_REFUTED": [
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
             ]
           },
           "CMS_SUPERVISOR": {
@@ -361,6 +366,12 @@
               "STATUS_02_READY_FOR_ASSIGNMENT"
             ],
             "STATUS_83_CLOSED_INCONCLUSIVE": [
+              "STATUS_02_READY_FOR_ASSIGNMENT"
+            ],
+            "STATUS_71_AUTOCLOSED_CONFIRMED": [
+              "STATUS_02_READY_FOR_ASSIGNMENT"
+            ],
+            "STATUS_72_AUTOCLOSED_REFUTED": [
               "STATUS_02_READY_FOR_ASSIGNMENT"
             ]
           }

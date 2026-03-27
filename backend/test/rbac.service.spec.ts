@@ -87,11 +87,12 @@ describe('RbacService', () => {
       expect(result.reason).toContain('CMS_COMPLIANCE_OFFICER');
     });
 
-    it('allows when endpoint has no tier2 config at all', () => {
+    it('allows when endpoint has no tier2 config at all (not in matrix)', () => {
       // Use an endpoint key not in the matrix — treat as permissive (no restriction)
+      const endpointNotInMatrix = 'GET /api/v1/nonexistent-endpoint' as EndpointKey;
       const result = rbac.checkTier2({
         role: 'CMS_INVESTIGATOR',
-        endpointKey: 'POST /api/v1/cases/manual' as EndpointKey,
+        endpointKey: endpointNotInMatrix,
         currentStatus: 'STATUS_20_IN_PROGRESS',
       });
       expect(result.allowed).toBe(true);
@@ -149,11 +150,12 @@ describe('RbacService', () => {
       expect(result.allowed).toBe(false);
     });
 
-    it('allows when the endpoint has no tier3 config (no transitions block)', () => {
-      // POST /api/v1/cases/manual has no tier3 block
+    it('allows when the endpoint has no tier3 config (not in matrix)', () => {
+      // Use an endpoint key not in the matrix — treat as permissive (no restriction)
+      const endpointNotInMatrix = 'GET /api/v1/nonexistent-endpoint' as EndpointKey;
       const result = rbac.checkTier3({
         role: 'CMS_INVESTIGATOR',
-        endpointKey: 'POST /api/v1/cases/manual' as EndpointKey,
+        endpointKey: endpointNotInMatrix,
         currentStatus: 'STATUS_00_DRAFT',
         targetStatus: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
       });

@@ -308,7 +308,7 @@ export class EvidenceService {
     }
 
     const caseRecord = await this.prisma.case.findUnique({ where: { case_id: doc.caseId } });
-    if (!caseRecord) {
+    if (caseRecord?.tenant_id !== tenantId || doc.tenantId !== tenantId) {
       throw new ForbiddenException('Cannot verify case status: associated case not found');
     }
     const rbacRoleDelete = this.rbacService.getRoleFromUser(user);
