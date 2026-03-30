@@ -258,7 +258,7 @@ export class CaseController {
   }
 
   @Put(':caseId/close')
-  @RequireSupervisorRole()
+  @RequireInvestigatorOrSupervisorRole()
   @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
