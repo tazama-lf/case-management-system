@@ -610,7 +610,7 @@
           },
           "CMS_COMPLIANCE_OFFICER": {
             "allowedCurrentStatuses": [
-              "STATUS_20_IN_PROGRESS"
+              "STATUS_82_CLOSED_CONFIRMED"
             ],
             "note": "Compliance officer may complete only the SAR/STR task"
           }
