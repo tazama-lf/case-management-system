@@ -525,11 +525,12 @@ export class CaseService {
     const rbacRole = this.rbacService.getRoleFromUser(user);
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
+
     const t3 = this.rbacService.checkTier3({
       role: rbacRole,
       endpointKey,
       currentStatus: existingCase.status,
-      targetStatus: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+      targetStatus: rbacRole.toLowerCase().includes('supervisor') ? dto.recommendedOutcome : CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
     });
     if (!t3.allowed) throw new ForbiddenException(t3.reason);
 

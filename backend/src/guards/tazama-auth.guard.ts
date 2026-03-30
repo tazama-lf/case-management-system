@@ -52,7 +52,7 @@ export class TazamaAuthGuard implements CanActivate {
 
     const innerDecoded = this.extractInnerToken(token);
 
-    const actorEmail = innerDecoded.preferred_username as string | undefined;
+    const actorEmail = innerDecoded.email as string | undefined;
 
     const actorName = innerDecoded.name as string | undefined;
     const tenantName = this.extractTenantName(innerDecoded.tenant_details as string[]);
@@ -60,7 +60,7 @@ export class TazamaAuthGuard implements CanActivate {
     const realmAccess = innerDecoded.realm_access as { roles?: string[] } | undefined;
     const realmRoles = realmAccess?.roles;
 
-    const supportedRoles = new Set(['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_ADMIN']);
+    const supportedRoles = new Set(['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER']);
     const actorRole = realmRoles?.find((role: string) => supportedRoles.has(role));
     if (!actorRole) {
       throw new UnauthorizedException('No supported CMS role found in token');
