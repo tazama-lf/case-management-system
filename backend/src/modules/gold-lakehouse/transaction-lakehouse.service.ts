@@ -113,7 +113,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       const response = await this.query({
         table_name: 'transaction_detail',
         filters: {
-          transaction_id: transactionId,
+          end_to_end_id: transactionId,
           tenant_id: tenantId,
         },
         columns: [
