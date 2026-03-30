@@ -80,12 +80,12 @@ export class GoldLakehouseController {
     return await this.alertsLakehouseService.getAlertNavigatorData(alertId, tenantId ?? 'DEFAULT');
   }
 
-  @Get('transaction-detail/:transactionId')
+  @Get('transaction-detail/:endToEndId')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({ summary: 'Get Transaction Detail data for visualization' })
   @ApiResponse({ status: 200 })
   async getTransactionDetailData(
-    @Param('transactionId') transactionId: string,
+    @Param('endToEndId') endToEndId: string,
     @Query('tenantId') tenantId?: string,
   ): Promise<{
     transactionOverview: {
@@ -162,11 +162,7 @@ export class GoldLakehouseController {
       href: string;
     }>;
   }> {
-    const transactionIdNum = parseInt(transactionId, 10);
-    if (isNaN(transactionIdNum)) {
-      throw new BadRequestException('Invalid transactionId: must be a number');
-    }
-    return await this.transactionLakehouseService.getTransactionDetailData(transactionIdNum, tenantId ?? 'DEFAULT');
+    return await this.transactionLakehouseService.getTransactionDetailData(endToEndId, tenantId ?? 'DEFAULT');
   }
 
   @Get('alert-navigator-metrics/:alertId')

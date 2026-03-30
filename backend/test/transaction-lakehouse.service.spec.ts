@@ -73,18 +73,18 @@ describe('TransactionLakehouseService', () => {
           },
         ]),
       );
-      const result = await service.getTransactionDetailData(123);
+      const result = await service.getTransactionDetailData('123');
       expect(result).toHaveProperty('transactionOverview');
     });
 
     it('throws when transaction not found', async () => {
       http.mockReturnValue(okHttp([]));
-      await expect(service.getTransactionDetailData(999)).rejects.toThrow(HttpException);
+      await expect(service.getTransactionDetailData('999')).rejects.toThrow(HttpException);
     });
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getTransactionDetailData(1)).rejects.toThrow(HttpException);
+      await expect(service.getTransactionDetailData('1')).rejects.toThrow(HttpException);
     });
   });
 

@@ -32,12 +32,12 @@ export class TransactionLakehouseService extends GoldLakehouseService {
 
   async getTransactionDetailData(transactionId: number, tenantId = 'DEFAULT'): Promise<TransactionDetailDataResponse> {
     try {
-      this.logger.log(`Fetching Transaction Detail UI data for transaction: ${transactionId}`);
+      this.logger.log(`Fetching Transaction Detail UI data for transaction: ${endToEndId}`);
 
       const response = await this.query({
         table_name: 'transaction_detail',
         filters: {
-          end_to_end_id: transactionId,
+          end_to_end_id: endToEndId,
           tenant_id: tenantId,
         },
         columns: [
@@ -141,7 +141,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         links: [
           {
             rel: 'self',
-            href: `/api/v1/lakehouse/transaction-detail/${transactionId}?tenantId=${tenantId}`,
+            href: `/api/v1/lakehouse/transaction-detail/${endToEndId}?tenantId=${tenantId}`,
           },
         ],
       };
