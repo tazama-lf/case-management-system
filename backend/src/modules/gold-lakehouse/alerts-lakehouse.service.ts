@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from './gold-lakehouse.service';
 import { AlertHistoryTimelineResponse } from './types/IAlertHistoryTimeline.types';
 import { AlertHistoryAlertsResponse } from './types/IAlertHistory.types';
+import { AlertNavigatorMetricsResponse, AlertNavigatorDataResponse } from './types/alert-navigator.types';
 
 @Injectable()
 export class AlertsLakehouseService extends GoldLakehouseService {
@@ -12,16 +13,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     super(httpService, configService);
   }
 
-  async getAlertNavigatorMetrics(
-    alertId: number,
-    tenantId = 'DEFAULT',
-  ): Promise<{
-    total_typologies: number;
-    total_rules: number;
-    avg_typology_score: number | null;
-    alertId: number;
-    tenantId: string;
-  }> {
+  async getAlertNavigatorMetrics(alertId: number, tenantId = 'DEFAULT'): Promise<AlertNavigatorMetricsResponse> {
     try {
       this.logger.log(`Fetching Alert Navigator metrics for alert: ${alertId}`);
 
@@ -60,40 +52,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async getAlertNavigatorData(
-    alertId: number,
-    tenantId = 'DEFAULT',
-  ): Promise<{
-    alertMetadata: {
-      alertId: number;
-      transactionId: string;
-      timestamp: string;
-      transactionType: string;
-      amount: number;
-      currency: string;
-      status: string;
-      reason: string;
-      blockReason: string;
-    };
-    typologies: Array<{
-      typologyId: string;
-      typologyCfg: string;
-      typologyScore: number;
-      alertThreshold: number;
-      interdictionThreshold: number;
-      ruleCount: number;
-      rules: string;
-    }>;
-    statistics: {
-      totalTypologies: number;
-      totalRules: number;
-      avgScore: number;
-    };
-    meta: {
-      alertId: number;
-      tenantId: string;
-    };
-  }> {
+  async getAlertNavigatorData(alertId: number, tenantId = 'DEFAULT'): Promise<AlertNavigatorDataResponse> {
     try {
       this.logger.log(`Fetching Alert Navigator data for alert: ${alertId}`);
 

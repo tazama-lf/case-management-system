@@ -2,6 +2,7 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from './gold-lakehouse.service';
+import { BenfordAnalysisResponse } from './types/benfords-law.types';
 
 @Injectable()
 export class BenfordsLawLakehouseService extends GoldLakehouseService {
@@ -15,17 +16,7 @@ export class BenfordsLawLakehouseService extends GoldLakehouseService {
     tenantId: string,
     fromDate: string,
     toDate: string,
-  ): Promise<{
-    expected: Record<number, number>;
-    actual: Record<number, number>;
-    sampleSize: number;
-    meta: {
-      accountId: string;
-      tenantId: string;
-      fromDate: string;
-      toDate: string;
-    };
-  }> {
+  ): Promise<BenfordAnalysisResponse> {
     try {
       this.logger.log(`Running Benford analysis for account ${accountId}, tenant ${tenantId}, range ${fromDate} → ${toDate}`);
 

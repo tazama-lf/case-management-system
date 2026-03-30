@@ -21,6 +21,7 @@ import {
   TransactionHistoryByEndToEndIdResponse,
   TransactionPerspectivesResponse,
 } from './types/gold-lakehouse-responses.types';
+import { TransactionDetailDataResponse, TransactionOverviewUIDataResponse } from './types/transaction-detail.types';
 
 @Injectable()
 export class TransactionLakehouseService extends GoldLakehouseService {
@@ -29,84 +30,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     super(httpService, configService);
   }
 
-  async getTransactionDetailData(
-    transactionId: number,
-    tenantId = 'DEFAULT',
-  ): Promise<{
-    transactionOverview: {
-      transactionId: string;
-      transactionType: string;
-      timestamp: string;
-    };
-    transactionFlow: {
-      debtor: {
-        name: string;
-        account: {
-          iban: string;
-          type: string;
-        };
-        bank: string;
-      };
-      amount: {
-        amount: number;
-        currency: string;
-      };
-      creditor: {
-        name: string;
-        account: {
-          iban: string;
-          type: string;
-        };
-        bankName: string;
-      };
-    };
-    debtorProfile: {
-      name: string;
-      account: {
-        iban: string;
-        type: string;
-      };
-      bank: string;
-      swiftCode: string;
-      address: string;
-      accountType: string;
-    };
-    creditorProfile: {
-      name: string;
-      account: {
-        iban: string;
-        type: string;
-      };
-      bank: string;
-      swiftCode: string;
-      address: string;
-      accountType: string;
-    };
-    amountAndCurrency: Array<
-      | {
-          originalAmount: number;
-          exchangeRate: number;
-          convertedAmount: number;
-        }
-      | {
-          senderCharges: never[];
-          intermediaryCharges: never[];
-          receiverCharges: never[];
-        }
-      | {
-          totalCharges: number;
-        }
-    >;
-    settlementDetails: {
-      settlementDate: string;
-      reference: string;
-      purpose: string;
-    };
-    links: Array<{
-      rel: string;
-      href: string;
-    }>;
-  }> {
+  async getTransactionDetailData(transactionId: number, tenantId = 'DEFAULT'): Promise<TransactionDetailDataResponse> {
     try {
       this.logger.log(`Fetching Transaction Detail UI data for transaction: ${transactionId}`);
 
@@ -230,7 +154,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async getTransactionOverviewUIData(transactionId: number, tenantId = 'DEFAULT'): Promise<any> {
+  async getTransactionOverviewUIData(transactionId: number, tenantId = 'DEFAULT'): Promise<TransactionOverviewUIDataResponse> {
     try {
       this.logger.log(`Fetching Transaction Overview UI data for ID: ${transactionId}`);
 
