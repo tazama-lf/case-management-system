@@ -24,8 +24,13 @@ export interface DetectedAnomaly {
 export interface ProfileMetrics {
   totalVolume: number;
   totalValue: number;
-  avgTicketSize: number;
   crossBorderCount: number;
+  entityId: string;
+  entityName: string;
+  entityRole: 'Creditor' | 'Debitor';
+  transactionCurrency: string;
+  transactionType: string;
+  entityType?: string;
 }
 
 export interface SummaryTable {
@@ -51,7 +56,7 @@ export interface GenerateProfileResponse extends TransactionProfile { }
 export interface GetProfileResponse extends TransactionProfile { }
 
 export class ProfileService {
-  private readonly baseUrl = '/api/v1/dwh/profile';
+  private readonly baseUrl = '/api/v1/lakehouse/';
 
   async generateProfile(
     request: GenerateProfileRequest,
@@ -66,7 +71,7 @@ export class ProfileService {
         } catch { }
       }
       const response = await apiClient.post<GenerateProfileResponse>(
-        `${this.baseUrl}/generate`,
+        `${this.baseUrl}/profile/generate`,
         { ...request, tenantId },
       );
       return response;
@@ -75,16 +80,16 @@ export class ProfileService {
     }
   }
 
-  async getProfile(caseId: number): Promise<GetProfileResponse> {
-    try {
-      const response = await apiClient.get<GetProfileResponse>(
-        `${this.baseUrl}/${caseId}`,
-      );
-      return response;
-    } catch (error: any) {
-      throw this.handleError(error, 'get transaction profile');
-    }
-  }
+  // async getProfile(caseId: number): Promise<GetProfileResponse> {
+  //   try {
+  //     const response = await apiClient.get<GetProfileResponse>(
+  //       `${this.baseUrl}/${caseId}`,
+  //     );
+  //     return response;
+  //   } catch (error: any) {
+  //     throw this.handleError(error, 'get transaction profile');
+  //   }
+  // }
 
   private handleError(error: any, operation: string): Error {
     if (error.response?.data) {

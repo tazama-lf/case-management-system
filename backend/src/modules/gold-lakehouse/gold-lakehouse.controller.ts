@@ -1,5 +1,5 @@
-import { Controller, Get, Param, Query, UseGuards, BadRequestException, ParseIntPipe } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Param, Query, UseGuards, BadRequestException, ParseIntPipe, Post, Body, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { AlertsLakehouseService } from './alerts-lakehouse.service';
 import { TransactionLakehouseService } from './transaction-lakehouse.service';
@@ -21,6 +21,10 @@ import { AccountConditionsSummary, ConditionsListByAccountResponse } from './typ
 import { AlertHistoryTimelineResponse } from './types/IAlertHistoryTimeline.types';
 import { AlertHistoryAlertsResponse } from './types/IAlertHistory.types';
 import { ConditionsTableDataResponse } from './types/IConditionsTableData.types';
+import { Audit } from '../audit/decorators/audit-log.decorator';
+import { GenerateProfileDto } from '../tazama-dwh/dto/generate-profile.dto';
+import { ProfileResponseDto } from '../tazama-dwh/dto/profile-response.dto';
+import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 
 @ApiTags('Gold Lakehouse')
 @Controller('api/v1/lakehouse')
@@ -34,7 +38,7 @@ export class GoldLakehouseController {
     private readonly benfordsLawLakehouseService: BenfordsLawLakehouseService,
     private readonly accountLakehouseService: AccountLakehouseService,
     private readonly entityLakehouseService: EntityLakehouseService,
-  ) {}
+  ) { }
 
   @Get('alert-navigator/:alertId')
   @RequireInvestigatorOrSupervisorRole()
@@ -139,18 +143,18 @@ export class GoldLakehouseController {
     };
     amountAndCurrency: Array<
       | {
-          originalAmount: number;
-          exchangeRate: number;
-          convertedAmount: number;
-        }
+        originalAmount: number;
+        exchangeRate: number;
+        convertedAmount: number;
+      }
       | {
-          senderCharges: never[];
-          intermediaryCharges: never[];
-          receiverCharges: never[];
-        }
+        senderCharges: never[];
+        intermediaryCharges: never[];
+        receiverCharges: never[];
+      }
       | {
-          totalCharges: number;
-        }
+        totalCharges: number;
+      }
     >;
     settlementDetails: {
       settlementDate: string;
@@ -1397,4 +1401,35 @@ export class GoldLakehouseController {
   async getTransactionDetailSample(@Query('tenantId') tenantId?: string): Promise<unknown> {
     return await this.transactionLakehouseService.getTransactionDetailSampleData(tenantId ?? 'DEFAULT');
   }
+
+
+  // @Post('profile/generate')
+  // @RequireInvestigatorOrSupervisorRole()
+  // @Audit()
+  // @ApiOperation({ summary: 'Generate transaction profile for a case (DWH data)' })
+  // @ApiBody({
+  //   type: GenerateProfileDto,
+  //   examples: {
+  //     default: {
+  //       summary: 'Typical profile generation',
+  //       value: {
+  //         caseId: '123e4567-e89b-12d3-a456-426614174000',
+  //         filters: {
+  //           dateFrom: '2025-09-01',
+  //           dateTo: '2025-11-30',
+  //           channel: 'Online',
+  //           type: 'Transfer',
+  //           geography: 'Cross-border',
+  //           tenantId: 'T001',
+  //         },
+  //         notes: 'Profile generated for peer comparison and anomaly detection.',
+  //       },
+  //     },
+  //   },
+  // })
+  // @ApiResponse({ status: 201, description: 'Profile generated', type: ProfileResponseDto })
+  // async generateProfile(@Body() dto: GenerateProfileDto, @Req() req: AuthenticatedRequest): Promise<ProfileResponseDto> {
+  //   const userId = req.user.token.clientId;
+  //   return await this.transactionLakehouseService.generateProfile(dto, userId);
+  // }
 }

@@ -119,24 +119,24 @@ const GenerateTransactionProfileModal: React.FC<
 
   React.useEffect(() => {
     if (open && caseId && !initialProfile) {
-      setLoading(true);
+      // setLoading(true);
       setError(null);
       setStep('initial');
       setProfileData(null);
-      profileService
-        .getProfile(caseId)
-        .then((data) => {
-          setProfileData(data);
-          setNotes(data.notes ?? '');
-          setStep('generated');
-        })
-        .catch(() => {
-          setProfileData(null);
-          setStep('initial');
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+      // profileService
+      //   .getProfile(caseId)
+      //   .then((data) => {
+      //     setProfileData(data);
+      //     setNotes(data.notes ?? '');
+      //     setStep('generated');
+      //   })
+      //   .catch(() => {
+      //     setProfileData(null);
+      //     setStep('initial');
+      //   })
+      //   .finally(() => {
+      //     setLoading(false);
+      //   });
     }
   }, [open, caseId, initialProfile]);
 
@@ -293,8 +293,8 @@ const GenerateTransactionProfileModal: React.FC<
                 and identify anomalies or patterns suggesting layering or
                 structuring activities.
               </p>
-              <div className="w-full max-w-xs mx-auto text-left space-y-3 mb-8">
-                <div className="flex items-center gap-2">
+              <div className="w-full max-w-xs mx-auto space-y-3 mb-8 text-center">
+                <div className="flex items-center gap-2 justify-center">
                   <svg
                     className="h-4 w-4 text-blue-600 flex-shrink-0"
                     fill="none"
@@ -312,7 +312,7 @@ const GenerateTransactionProfileModal: React.FC<
                     Transaction Trends
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 justify-center">
                   <svg
                     className="h-4 w-4 text-blue-600 flex-shrink-0"
                     fill="none"
@@ -330,7 +330,7 @@ const GenerateTransactionProfileModal: React.FC<
                     Anomaly Detection
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 justify-center">
                   <svg
                     className="h-4 w-4 text-blue-600 flex-shrink-0"
                     fill="none"
@@ -346,7 +346,7 @@ const GenerateTransactionProfileModal: React.FC<
                   </svg>
                   <span className="text-sm text-gray-900">Peer Comparison</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 justify-center">
                   <svg
                     className="h-4 w-4 text-blue-600 flex-shrink-0"
                     fill="none"
@@ -573,7 +573,7 @@ const GenerateTransactionProfileModal: React.FC<
             </button>
 
           )}
-          {isViewMode && (
+          {/* {isViewMode && (
             <button
               type="button"
               onClick={handleSaveProfile}
@@ -582,7 +582,7 @@ const GenerateTransactionProfileModal: React.FC<
             >
               {saving ? 'Saving...' : 'Save Profile to Case'}
             </button>
-          )}
+          )} */}
         </div>
       </div>
     </div>
