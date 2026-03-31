@@ -3,10 +3,6 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../../features/auth/components/AuthContext';
 import LoadingSpinner from '../ui/LoadingSpinner';
 
-/**
- * Redirects authenticated users to their default landing page based on their role.
- * CMS_ADMIN users go to admin dashboard, compliance officers go to cases, others go to main dashboard.
- */
 const RoleBasedRedirect: React.FC = () => {
   const { loading, user, hasCMSAdminRole, hasComplianceOfficerRole } =
     useAuth();

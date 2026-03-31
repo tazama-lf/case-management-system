@@ -2,6 +2,7 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from './gold-lakehouse.service';
+import { EntityAccountsResponse } from './types/entity.types';
 
 @Injectable()
 export class EntityLakehouseService extends GoldLakehouseService {
@@ -10,15 +11,7 @@ export class EntityLakehouseService extends GoldLakehouseService {
     super(httpService, configService);
   }
 
-  async getEntityAccounts(
-    entityId: string,
-    tenantId: string,
-  ): Promise<{
-    entityId: string;
-    accountCount: number;
-    accounts: unknown[];
-    tenantId: string;
-  }> {
+  async getEntityAccounts(entityId: string, tenantId: string): Promise<EntityAccountsResponse> {
     try {
       const resp = await this.query({
         table_name: 'account_holder',

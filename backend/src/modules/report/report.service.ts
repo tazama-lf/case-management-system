@@ -429,40 +429,6 @@ export class ReportsService {
 
     const results = await Promise.all(monthPromises);
     resolutionTrend.push(...results);
-    // for (let i = 5; i >= 0; i -= 1) {
-    //   const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    //   const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
-
-    //   const monthClosedCases = await this.prisma.case.findMany({
-    //     where: {
-    //       updated_at: {
-    //         gte: monthStart,
-    //         lte: monthEnd,
-    //       },
-    //       status: {
-    //         in: closedStatuses,
-    //       },
-    //     },
-    //     select: {
-    //       created_at: true,
-    //       updated_at: true,
-    //     },
-    //   });
-
-    //   const avgResolutionTimeMonth =
-    //     monthClosedCases.length > 0
-    //       ? monthClosedCases.reduce((sum, case_) => {
-    //         const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-    //         return sum + resolutionTime;
-    //       }, 0) / monthClosedCases.length
-    //       : 0;
-
-    //   resolutionTrend.push({
-    //     month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
-    //     avgResolutionTime: Math.round(avgResolutionTimeMonth),
-    //     casesResolved: monthClosedCases.length,
-    //   });
-    // }
 
     return {
       stats: {
