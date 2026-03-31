@@ -30,7 +30,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     super(httpService, configService);
   }
 
-  async getTransactionDetailData(transactionId: number, tenantId = 'DEFAULT'): Promise<TransactionDetailDataResponse> {
+  async getTransactionDetailData(endToEndId: string, tenantId = 'DEFAULT'): Promise<TransactionDetailDataResponse> {
     try {
       this.logger.log(`Fetching Transaction Detail UI data for transaction: ${endToEndId}`);
 
