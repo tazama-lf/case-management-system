@@ -59,8 +59,13 @@ export class ProfileService {
   private readonly baseUrl = '/api/v1/lakehouse/';
 
   async generateProfile(
-    request: GenerateProfileRequest,
+    request: GenerateProfileRequest, alertId?: number
   ): Promise<GenerateProfileResponse> {
+
+    if (!alertId) {
+      return Promise.reject(new Error('Alert ID is required to generate profile'));
+    }
+
     try {
       const user = localStorage.getItem('user');
       let { tenantId } = request;
@@ -71,7 +76,7 @@ export class ProfileService {
         } catch { }
       }
       const response = await apiClient.post<GenerateProfileResponse>(
-        `${this.baseUrl}/profile/generate`,
+        `${this.baseUrl}/profile/generate/${alertId}`,
         { ...request, tenantId },
       );
       return response;

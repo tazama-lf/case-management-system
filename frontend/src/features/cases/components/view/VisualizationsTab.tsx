@@ -149,7 +149,7 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
 
         {activeSubTab === 'profile-overview' && (
           <ProfileOverviewTab
-            caseId={caseId}
+            alertId={alertId}
             transactionId={transactionId}
           />
         )}

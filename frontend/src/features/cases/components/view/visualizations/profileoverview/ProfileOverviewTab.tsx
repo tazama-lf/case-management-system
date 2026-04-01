@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import {
   BarChart,
@@ -18,7 +18,7 @@ import {
 } from '../../../../services/profileService';
 
 interface ProfileOverviewTabProps {
-  caseId?: number;
+  alertId?: number;
   transactionId?: string;
 }
 
@@ -93,44 +93,80 @@ const anomaliesData = [
 
 const ProfileOverviewTab: React.FC<
   ProfileOverviewTabProps
-> = ({ caseId, transactionId }) => {
-  const [loading, setLoading] = React.useState(false);
+> = ({ alertId, transactionId }) => {
+  const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] =
-    React.useState<TransactionProfile | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  const [activeTab, setActiveTab] = React.useState<'creditor' | 'debitor'>('creditor');
+    useState<TransactionProfile | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'creditor' | 'debitor'>('creditor');
 
 
-
-  React.useEffect(() => {
-    if (caseId && transactionId) {
-      // setLoading(true);
-      setError(null);
-      setProfileData(null);
-      // profileService
-      //   .getProfile(caseId)
-      //   .then((data) => {
-      //     setProfileData(data);
-      //     setNotes(data.notes ?? '');
-      //     setStep('generated');
-      //   })
-      //   .catch(() => {
-      //     setProfileData(null);
-      //     setStep('initial');
-      //   })
-      //   .finally(() => {
-      //     setLoading(false);
-      //   });
+  useEffect(() => {
+    if (!alertId) {
+      setError('Alert ID is required to generate profile');
+      setLoading(false);
+      return;
     }
-  }, [caseId, transactionId]);
 
-  if (!caseId || !transactionId) return null;
+    setError(null);
+
+    const fetchData = async () => {
+
+
+
+      try {
+
+        setLoading(true);
+        setError(null);
+        setProfileData(null);
+        setError(null);
+        const user = localStorage.getItem('user');
+        let tenantId = '';
+        if (user) {
+          try {
+            const userData = JSON.parse(user);
+            tenantId = userData.tenantId || '';
+          } catch { }
+        }
+
+        if (!tenantId) {
+          setError('Tenant ID is required to generate profile');
+          return;
+        }
+
+        const request: GenerateProfileRequest = {
+          tenantId,
+        };
+
+        const response = await profileService.generateProfile(request);
+        setProfileData(response);
+
+        // if (onSaveProfile) {
+        //   onSaveProfile({
+        //     generatedAt: new Date().toLocaleString(),
+        //     totalVolume: `$${response.metrics?.totalValue?.toLocaleString() ?? '0'}`,
+        //     anomalies: response.detectedAnomalies?.length ?? 0,
+        //     riskLevel: determineRiskLevel(response.detectedAnomalies ?? []),
+        //     notes: response.notes,
+        //   });
+        // }
+      } catch (err: any) {
+        setError(err.message ?? 'Failed to generate profile');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [alertId]);
+
+  if (!alertId || !transactionId) return null;
 
 
 
   const handleGenerateProfile = async () => {
-    if (!caseId) {
-      setError('Case ID is required to generate profile');
+    if (!alertId) {
+      setError('Alert ID is required to generate profile');
       return;
     }
     setError(null);

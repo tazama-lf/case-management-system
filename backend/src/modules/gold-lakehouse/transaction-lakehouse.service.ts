@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from './gold-lakehouse.service';
@@ -25,11 +25,19 @@ import { TransactionDetailDataResponse, TransactionOverviewUIDataResponse } from
 import { GenerateProfileDto } from '../tazama-dwh/dto/generate-profile.dto';
 import { DetectedAnomalyDto, ProfileResponseDto } from '../tazama-dwh/dto/profile-response.dto';
 import { Prisma } from '@prisma/client-dwh';
+import { AlertRepository } from '../repository/alert.repository';
+import { JsonValue } from '../repository/utils/types/JsonValue';
+import { extractReferenceId } from '../repository/utils/extractReferenceId';
 
 @Injectable()
 export class TransactionLakehouseService extends GoldLakehouseService {
   // eslint-disable-next-line @typescript-eslint/no-useless-constructor -- Required for NestJS dependency injection in subclasses
-  constructor(httpService: HttpService, configService: ConfigService) {
+  constructor(
+    httpService: HttpService,
+    configService: ConfigService,
+    private readonly alertRepository: AlertRepository,
+    private readonly transactionLakehouseService: TransactionLakehouseService,
+  ) {
     super(httpService, configService);
   }
 
@@ -1303,77 +1311,108 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     amount: tx.amt?.toNumber() ?? 0,
   });
 
-  // async generateProfile(dto: GenerateProfileDto, userId: string): Promise<ProfileResponseDto> {
-  //   const now = new Date();
-  //   const dateTo = now.toISOString().slice(0, 10);
-  //   const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  //   const filter: any = {
-  //     cre_dt_tm: { gte: dateFrom, lte: dateTo },
-  //   };
+  async generateProfile(alertId: number, dto: GenerateProfileDto, userId: string): Promise<ProfileResponseDto> {
 
-  //   if (dto.filters?.creditorId) {
-  //     filter.destination = dto.filters.creditorId;
-  //   }
-  //   if (dto.filters?.debtorId) {
-  //     filter.source = dto.filters.debtorId;
-  //   }
+    this.logger.log(`Alert ID:  ${alertId}`, GoldLakehouseService.name);
 
-  //   if (dto.filters?.type) filter.tx_tp = dto.filters.type;
-  //   if (dto.filters?.account) filter.OR = [{ source: dto.filters.account }, { destination: dto.filters.account }];
-  //   if (dto.filters?.role) filter.role = dto.filters.role;
+    const alert = await this.alertRepository.getAlertById(alertId);
+    if (!alert) {
+      throw new InternalServerErrorException(`Unable to fetch details for AlertId ${alertId}`);
+    }
 
-  //   const transactions = await this.prismaDwh.transaction.findMany({
-  //     where: filter,
-  //   });
-  //   const transactionTable = transactions.map(this.formatTransactionForTable);
+    const referenceIdData = await this.alertRepository.getReferenceId(alert.txtp);
+    const referenceId = extractReferenceId(alert.transaction as unknown as JsonValue, 10, 0, referenceIdData.referenceIdName);
+    if (!referenceId) {
+      throw new Error('ReferenceId not found in transaction data');
+    }
 
-  //   const peerTransactions = await this.prismaDwh.transaction.findMany({
-  //     where: {
-  //       cre_dt_tm: { gte: dateFrom, lte: dateTo },
-  //     },
-  //   });
-  //   const getGeography = (tx: any): string => tx.geography ?? tx.transaction?.geography ?? tx.transaction?.TxTp ?? '';
-  //   const peerBaseline = {
-  //     avgVolume: peerTransactions.length,
-  //     avgValue: peerTransactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() ?? 0), 0) / (peerTransactions.length || 1),
-  //     avgCrossBorder: peerTransactions.filter((tx) => getGeography(tx) === 'Cross-border').length,
-  //   };
-  //   const metrics = {
-  //     totalVolume: transactions.length,
-  //     totalValue: transactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() ?? 0), 0),
-  //     avgTicketSize: transactions.length ? transactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() ?? 0), 0) / transactions.length : 0,
-  //     crossBorderCount: transactions.filter((tx) => getGeography(tx) === 'Cross-border').length,
-  //   };
-  //   const outliers = transactions.filter(
-  //     (tx) =>
-  //       (tx.amt?.toNumber() ?? 0) > peerBaseline.avgValue ||
-  //       (getGeography(tx) === 'Cross-border' && (tx.amt?.toNumber() ?? 0) > peerBaseline.avgCrossBorder),
-  //   );
-  //   const summaryTable = {
-  //     totalVolume: metrics.totalVolume,
-  //     totalValue: metrics.totalValue,
-  //     avgTicketSize: metrics.avgTicketSize,
-  //     deviationPercent: outliers.length ? ((outliers.length / metrics.totalVolume) * 100).toFixed(2) : '0.00',
-  //   };
-  //   const visualization = 'trend-chart-placeholder';
-  //   const detectedAnomalies = outliers.map((tx) => ({
-  //     date: tx.cre_dt_tm ?? '',
-  //     type: tx.tx_tp,
-  //     amount: tx.amt?.toNumber() ?? 0,
-  //     description: (tx.amt?.toNumber() ?? 0) > peerBaseline.avgValue ? 'Large transaction flagged' : 'Cross-border anomaly',
-  //     risk: (tx.amt?.toNumber() ?? 0) > 5000 ? 'High' : (tx.amt?.toNumber() ?? 0) > 2000 ? 'Medium' : 'Low',
-  //   }));
-  //   return {
-  //     tenantId: dto.tenantId,
-  //     filters: dto.filters,
-  //     metrics,
-  //     outliers,
-  //     summaryTable,
-  //     notes: dto.notes,
-  //     visualization,
-  //     detectedAnomalies: detectedAnomalies as DetectedAnomalyDto[],
-  //     transactionTable,
-  //   };
-  // }
+    const transactionData = await this.transactionLakehouseService
+      .getTransactionHistoryByEndToEndId(referenceId)
+      .catch((error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        this.logger.error(
+          `Error fetching Transaction History data for Alert ID ${alertId}: ${errorMessage}`,
+          errorStack,
+          GoldLakehouseService.name,
+        );
+      });
+    if (!transactionData) {
+      throw new InternalServerErrorException(`Transaction history data not found for AlertId ${alertId}`);
+    }
+    this.logger.log(`Fetched transaction data for Alert ID ${alertId}: ${JSON.stringify(transactionData)}`, GoldLakehouseService.name);
+
+
+    const now = new Date();
+    const dateTo = now.toISOString().slice(0, 10);
+    const dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const filter: any = {
+      cre_dt_tm: { gte: dateFrom, lte: dateTo },
+    };
+
+    if (dto.filters?.creditorId) {
+      filter.destination = dto.filters.creditorId;
+    }
+    if (dto.filters?.debtorId) {
+      filter.source = dto.filters.debtorId;
+    }
+
+    if (dto.filters?.type) filter.tx_tp = dto.filters.type;
+    if (dto.filters?.account) filter.OR = [{ source: dto.filters.account }, { destination: dto.filters.account }];
+    if (dto.filters?.role) filter.role = dto.filters.role;
+
+    // const transactions = await this.prismaDwh.transaction.findMany({
+    //   where: filter,
+    // });
+    // const transactionTable = transactions.map(this.formatTransactionForTable);
+
+    // const peerTransactions = await this.prismaDwh.transaction.findMany({
+    //   where: {
+    //     cre_dt_tm: { gte: dateFrom, lte: dateTo },
+    //   },
+    // });
+    const getGeography = (tx: any): string => tx.geography ?? tx.transaction?.geography ?? tx.transaction?.TxTp ?? '';
+    const peerBaseline = {
+      // avgVolume: peerTransactions.length,
+      // avgValue: peerTransactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() ?? 0), 0) / (peerTransactions.length || 1),
+      // avgCrossBorder: peerTransactions.filter((tx) => getGeography(tx) === 'Cross-border').length,
+    };
+    const metrics = {
+      // totalVolume: transactions.length,
+      // totalValue: transactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() ?? 0), 0),
+      // avgTicketSize: transactions.length ? transactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() ?? 0), 0) / transactions.length : 0,
+      // crossBorderCount: transactions.filter((tx) => getGeography(tx) === 'Cross-border').length,
+    };
+    // const outliers = transactions.filter(
+    //   (tx) =>
+    //     (tx.amt?.toNumber() ?? 0) > peerBaseline.avgValue ||
+    //     (getGeography(tx) === 'Cross-border' && (tx.amt?.toNumber() ?? 0) > peerBaseline.avgCrossBorder),
+    // );
+    const summaryTable = {
+      // totalVolume: metrics.totalVolume,
+      // totalValue: metrics.totalValue,
+      // avgTicketSize: metrics.avgTicketSize,
+      // deviationPercent: outliers.length ? ((outliers.length / metrics.totalVolume) * 100).toFixed(2) : '0.00',
+    };
+    const visualization = 'trend-chart-placeholder';
+    // const detectedAnomalies = outliers.map((tx) => ({
+    //   date: tx.cre_dt_tm ?? '',
+    //   type: tx.tx_tp,
+    //   amount: tx.amt?.toNumber() ?? 0,
+    //   description: (tx.amt?.toNumber() ?? 0) > peerBaseline.avgValue ? 'Large transaction flagged' : 'Cross-border anomaly',
+    //   risk: (tx.amt?.toNumber() ?? 0) > 5000 ? 'High' : (tx.amt?.toNumber() ?? 0) > 2000 ? 'Medium' : 'Low',
+    // }));
+    return {
+      tenantId: dto.tenantId,
+      filters: dto.filters,
+      metrics,
+      // outliers,
+      summaryTable,
+      notes: dto.notes,
+      visualization,
+      // detectedAnomalies: detectedAnomalies as DetectedAnomalyDto[],
+      // transactionTable,
+    };
+  }
 
 }
