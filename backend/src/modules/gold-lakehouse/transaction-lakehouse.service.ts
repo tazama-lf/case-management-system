@@ -148,6 +148,11 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         ],
       };
     } catch (error: unknown) {
+      // Re-throw HttpExceptions as-is to preserve specific error messages
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Error fetching Transaction Detail data: ${errorMessage}`, errorStack);
