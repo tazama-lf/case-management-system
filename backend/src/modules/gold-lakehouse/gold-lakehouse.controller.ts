@@ -22,8 +22,8 @@ import { AlertHistoryTimelineResponse } from './types/IAlertHistoryTimeline.type
 import { AlertHistoryAlertsResponse } from './types/IAlertHistory.types';
 import { ConditionsTableDataResponse } from './types/IConditionsTableData.types';
 import { Audit } from '../audit/decorators/audit-log.decorator';
-import { GenerateProfileDto } from '../tazama-dwh/dto/generate-profile.dto';
-import { ProfileResponseDto } from '../tazama-dwh/dto/profile-response.dto';
+import { GenerateProfileDto } from './dto/generate-profile.dto';
+import { GenerateProfileResponseDto } from './dto/profile-response.dto';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 
 @ApiTags('Gold Lakehouse')
@@ -38,7 +38,7 @@ export class GoldLakehouseController {
     private readonly benfordsLawLakehouseService: BenfordsLawLakehouseService,
     private readonly accountLakehouseService: AccountLakehouseService,
     private readonly entityLakehouseService: EntityLakehouseService,
-  ) { }
+  ) {}
 
   @Get('alert-navigator/:alertId')
   @RequireInvestigatorOrSupervisorRole()
@@ -143,18 +143,18 @@ export class GoldLakehouseController {
     };
     amountAndCurrency: Array<
       | {
-        originalAmount: number;
-        exchangeRate: number;
-        convertedAmount: number;
-      }
+          originalAmount: number;
+          exchangeRate: number;
+          convertedAmount: number;
+        }
       | {
-        senderCharges: never[];
-        intermediaryCharges: never[];
-        receiverCharges: never[];
-      }
+          senderCharges: never[];
+          intermediaryCharges: never[];
+          receiverCharges: never[];
+        }
       | {
-        totalCharges: number;
-      }
+          totalCharges: number;
+        }
     >;
     settlementDetails: {
       settlementDate: string;
@@ -1402,7 +1402,6 @@ export class GoldLakehouseController {
     return await this.transactionLakehouseService.getTransactionDetailSampleData(tenantId ?? 'DEFAULT');
   }
 
-
   @Post('profile/generate/:alertId')
   @RequireInvestigatorOrSupervisorRole()
   @Audit()
@@ -1427,8 +1426,12 @@ export class GoldLakehouseController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Profile generated', type: ProfileResponseDto })
-  async generateProfile(@Param('alertId') alertId: number, @Body() dto: GenerateProfileDto, @Req() req: AuthenticatedRequest): Promise<ProfileResponseDto> {
+  @ApiResponse({ status: 201, description: 'Profile generated', type: GenerateProfileResponseDto })
+  async generateProfile(
+    @Param('alertId') alertId: number,
+    @Body() dto: GenerateProfileDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<GenerateProfileResponseDto> {
     const userId = req.user.token.clientId;
     return await this.transactionLakehouseService.generateProfile(alertId, dto, userId);
   }

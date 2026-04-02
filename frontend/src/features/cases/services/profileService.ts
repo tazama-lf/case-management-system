@@ -50,16 +50,46 @@ export interface TransactionProfile {
   visualization?: string;
   detectedAnomalies?: DetectedAnomaly[];
 }
+export interface TransactionRecordDto {
+  transaction_id: number;
+  event_date: string; // ISO date
+  tx_amount: number;
+  tx_ccy: string;
+  tx_type: string;
+  is_alerted: number;
+  is_investigated: number;
+  cum_tx_count: number;
+  cum_tx_amount: number;
+  entity_role: string;
+  entity_id: string;
+  entity_type: string;
 
-export interface GenerateProfileResponse extends TransactionProfile { }
+  // optional depending on query
+  debtor_name?: string;
+  creditor_name?: string;
+}
+
+export interface SqlResponseDto {
+  status: string;
+  code: number;
+  query: string;
+  row_count: number;
+  data: TransactionRecordDto[];
+}
+
+export interface GenerateProfileResponse {
+  tenantId: string;
+  transactionCreditorResp: SqlResponseDto;
+  transactionDebtorResp: SqlResponseDto;
+
+}
 
 export interface GetProfileResponse extends TransactionProfile { }
 
 export class ProfileService {
-  private readonly baseUrl = '/api/v1/lakehouse/';
+  private readonly baseUrl = '/api/v1/lakehouse';
 
-  async generateProfile(
-    request: GenerateProfileRequest, alertId?: number
+  async generateProfile(alertId: number
   ): Promise<GenerateProfileResponse> {
 
     if (!alertId) {
@@ -68,13 +98,21 @@ export class ProfileService {
 
     try {
       const user = localStorage.getItem('user');
-      let { tenantId } = request;
+      let tenantId = '';
       if (user) {
         try {
           const userData = JSON.parse(user);
-          tenantId = userData.tenantId || request.tenantId;
+          tenantId = userData.tenantId || '';
         } catch { }
       }
+
+      if (!tenantId) {
+        throw new Error('Tenant ID is required to generate profile');
+      }
+
+      const request: GenerateProfileRequest = {
+        tenantId,
+      };
       const response = await apiClient.post<GenerateProfileResponse>(
         `${this.baseUrl}/profile/generate/${alertId}`,
         { ...request, tenantId },

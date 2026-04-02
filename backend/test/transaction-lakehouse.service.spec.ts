@@ -1,13 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { HttpException } from '@nestjs/common';
+import { HttpException, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
 import { TransactionLakehouseService } from '../src/modules/gold-lakehouse/transaction-lakehouse.service';
+import { AlertRepository } from '../src/modules/repository/alert.repository';
 
 describe('TransactionLakehouseService', () => {
   let service: TransactionLakehouseService;
   let http: jest.Mock;
+  let alertRepository: jest.Mocked<AlertRepository>;
 
   const okHttp = (rows: any[] = [{}]) =>
     of({
@@ -22,6 +24,11 @@ describe('TransactionLakehouseService', () => {
 
   beforeEach(async () => {
     http = jest.fn().mockReturnValue(okHttp());
+
+    const mockAlertRepository = {
+      getAlertById: jest.fn(),
+      getReferenceId: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -38,10 +45,12 @@ describe('TransactionLakehouseService', () => {
             }),
           },
         },
+        { provide: AlertRepository, useValue: mockAlertRepository },
       ],
     }).compile();
 
     service = module.get<TransactionLakehouseService>(TransactionLakehouseService);
+    alertRepository = module.get(AlertRepository);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -423,6 +432,157 @@ describe('TransactionLakehouseService', () => {
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
       await expect(service.getTransactionDetailSampleData('DEFAULT')).rejects.toThrow(HttpException);
+    });
+  });
+
+  // ===================== generateProfile =====================
+  describe('generateProfile', () => {
+    const mockAlert = {
+      alert_id: 1,
+      txtp: 'pacs.008.001.10',
+      transaction: {
+        TxTp: 'pacs.008.001.10',
+        CdtrAcct: { Id: { IBAN: 'GB29NWBK60161331926819' } },
+        DbtrAcct: { Id: { IBAN: 'GB82WEST12345698765432' } },
+        EndToEndId: 'TMICFBPK2801321903297120',
+      },
+    };
+
+    const mockReferenceIdData = {
+      referenceIdName: 'EndToEndId',
+    };
+
+    const mockDto = {
+      tenantId: 'DEFAULT',
+    };
+
+    it('successfully generates profile with creditor and debtor data', async () => {
+      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
+      alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
+
+      const mockCreditorResponse = {
+        data: [
+          {
+            transaction_id: 'tx1',
+            event_date: '2024-01-01',
+            tx_amount: 100,
+            tx_ccy: 'USD',
+            tx_type: 'PAYMENT',
+            is_alerted: 0,
+            is_investigated: 0,
+            cum_tx_count: 1,
+            cum_tx_amount: 100,
+            entity_role: 'CREDITOR',
+            creditor_name: 'Test Creditor',
+            entity_id: 'cred1',
+            entity_type: 'ACCOUNT',
+          },
+        ],
+      };
+
+      const mockDebtorResponse = {
+        data: [
+          {
+            transaction_id: 'tx2',
+            event_date: '2024-01-02',
+            tx_amount: 200,
+            tx_ccy: 'USD',
+            tx_type: 'PAYMENT',
+            is_alerted: 0,
+            is_investigated: 0,
+            cum_tx_count: 2,
+            cum_tx_amount: 300,
+            entity_role: 'DEBTOR',
+            debtor_name: 'Test Debtor',
+            entity_id: 'debt1',
+            entity_type: 'ACCOUNT',
+            creditor_name: 'Test Creditor',
+          },
+        ],
+      };
+
+      http
+        .mockReturnValueOnce(okHttp(mockCreditorResponse.data))
+        .mockReturnValueOnce(okHttp(mockDebtorResponse.data));
+
+      const result = await service.generateProfile(1, mockDto, 'user123');
+
+      expect(result).toHaveProperty('tenantId', 'DEFAULT');
+      expect(result).toHaveProperty('transactionCreditorResp');
+      expect(result).toHaveProperty('transactionDebtorResp');
+      expect(alertRepository.getAlertById).toHaveBeenCalledWith(1);
+      expect(alertRepository.getReferenceId).toHaveBeenCalledWith('pacs.008.001.10');
+    });
+
+    it('throws InternalServerErrorException when alert not found', async () => {
+      alertRepository.getAlertById.mockResolvedValue(null);
+
+      await expect(service.generateProfile(999, mockDto, 'user123')).rejects.toThrow(
+        InternalServerErrorException,
+      );
+
+      expect(alertRepository.getAlertById).toHaveBeenCalledWith(999);
+    });
+
+    it('throws InternalServerErrorException when reference ID extraction fails', async () => {
+      const alertWithoutReferenceId = {
+        ...mockAlert,
+        transaction: {},
+      };
+
+      alertRepository.getAlertById.mockResolvedValue(alertWithoutReferenceId as any);
+      alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
+
+      await expect(service.generateProfile(1, mockDto, 'user123')).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('throws InternalServerErrorException when SQL query fails', async () => {
+      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
+      alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
+
+      http.mockReturnValue(errHttp('Database connection failed'));
+
+      await expect(service.generateProfile(1, mockDto, 'user123')).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('handles empty creditor and debtor responses', async () => {
+      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
+      alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
+
+      http
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]));
+
+      const result = await service.generateProfile(1, mockDto, 'user123');
+
+      expect(result).toHaveProperty('tenantId', 'DEFAULT');
+      expect(result.transactionCreditorResp.data).toEqual([]);
+      expect(result.transactionDebtorResp.data).toEqual([]);
+    });
+
+    it('processes multiple transactions in creditor response', async () => {
+      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
+      alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
+
+      const mockMultipleCreditorResponse = {
+        data: [
+          { transaction_id: 'tx1', event_date: '2024-01-01', tx_amount: 100, entity_role: 'CREDITOR' },
+          { transaction_id: 'tx2', event_date: '2024-01-02', tx_amount: 200, entity_role: 'CREDITOR' },
+          { transaction_id: 'tx3', event_date: '2024-01-03', tx_amount: 300, entity_role: 'CREDITOR' },
+        ],
+      };
+
+      http
+        .mockReturnValueOnce(okHttp(mockMultipleCreditorResponse.data))
+        .mockReturnValueOnce(okHttp([]));
+
+      const result = await service.generateProfile(1, mockDto, 'user123');
+
+      expect(result.transactionCreditorResp.data).toHaveLength(3);
     });
   });
 });
