@@ -92,26 +92,6 @@ export class GoldLakehouseController {
     return await this.transactionLakehouseService.getTransactionDetailData(endToEndId, tenantId ?? 'DEFAULT');
   }
 
-  @Get('alert-navigator-metrics/:alertId')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get Alert Navigator Metrics data for visualization' })
-  @ApiResponse({ status: 200 })
-  async getAlertNavigatorMetrics(
-    @Param('alertId') alertId: number,
-    @Query('tenantId') tenantId?: string,
-  ): Promise<{
-    total_typologies: number;
-    total_rules: number;
-    avg_typology_score: number | null;
-    alertId: number;
-    tenantId: string;
-  }> {
-    if (isNaN(alertId)) {
-      throw new BadRequestException('Invalid alertId: must be a number');
-    }
-    return await this.alertsLakehouseService.getAlertNavigatorMetrics(alertId, tenantId ?? 'DEFAULT');
-  }
-
   // ================ CONDITIONS ENDPOINTS ================
   // Essential endpoints based on available data:
   // 1. Summary - condition counts by account

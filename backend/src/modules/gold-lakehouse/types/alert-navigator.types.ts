@@ -1,11 +1,3 @@
-export interface AlertNavigatorMetricsResponse {
-  total_typologies: number;
-  total_rules: number;
-  avg_typology_score: number | null;
-  alertId: number;
-  tenantId: string;
-}
-
 export interface AlertNavigatorDataResponse {
   alertMetadata: {
     alertId: number;
