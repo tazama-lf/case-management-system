@@ -27,7 +27,6 @@ import { FeatureExtractionModule } from './modules/feature-extraction/feature-ex
 import { RepositoryModule } from './modules/repository/repository.module';
 import { AlertModule } from './modules/alert/alert.module';
 import { CouchdbModule } from './modules/couchdb/couchdb.module';
-import { TazamaDwhModule } from './modules/tazama-dwh/tazama-dwh.module';
 import { EvidenceModule } from './modules/evidence/evidence.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { FilterModule } from './modules/filter/filter.module';
@@ -70,7 +69,6 @@ import { JupyterModule } from './modules/jupyter/jupyter.module';
     EvidenceModule,
     GoldLakehouseModule,
     JupyterModule,
-    TazamaDwhModule,
     FilterModule,
     CaseHistoryModule,
     TaskHistoryModule,

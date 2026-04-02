@@ -1,5 +1,4 @@
-import React, { useState, useEffect, act } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -13,8 +12,6 @@ import {
 } from 'recharts';
 import {
   profileService,
-  type TransactionProfile,
-  type GenerateProfileRequest,
 } from '../../../../services/profileService';
 
 interface ProfileOverviewTabProps {
@@ -99,7 +96,10 @@ const ProfileOverviewTab: React.FC<
     useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'creditor' | 'debtor'>('creditor');
-
+  const [sortConfig, setSortConfig] = useState<{
+    key: 'event_date' | 'tx_amount' | 'tx_type' | 'tx_ccy';
+    direction: 'asc' | 'desc';
+  } | null>(null);
 
   useEffect(() => {
     if (!alertId) {
@@ -157,6 +157,54 @@ const ProfileOverviewTab: React.FC<
       ? profileData?.transactionCreditorResp?.data || []
       : profileData?.transactionDebtorResp?.data || [];
 
+  const sortedTransactions = React.useMemo(() => {
+    if (!selectedList) return [];
+
+    let sortable = [...selectedList];
+
+    if (sortConfig !== null) {
+      sortable.sort((a: any, b: any) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+
+        // Handle date
+        if (sortConfig.key === 'event_date') {
+          return sortConfig.direction === 'asc'
+            ? new Date(aValue).getTime() - new Date(bValue).getTime()
+            : new Date(bValue).getTime() - new Date(aValue).getTime();
+        }
+
+        // Handle numbers
+        if (sortConfig.key === 'tx_amount') {
+          return sortConfig.direction === 'asc'
+            ? Number(aValue) - Number(bValue)
+            : Number(bValue) - Number(aValue);
+        }
+
+        // Handle strings
+        return sortConfig.direction === 'asc'
+          ? String(aValue).localeCompare(String(bValue))
+          : String(bValue).localeCompare(String(aValue));
+      });
+    }
+
+    return sortable;
+  }, [selectedList, sortConfig]);
+
+  const handleSort = (key: 'event_date' | 'tx_amount' | 'tx_type' | 'tx_ccy') => {
+    let direction: 'asc' | 'desc' = 'asc';
+
+    if (
+      sortConfig &&
+      sortConfig.key === key &&
+      sortConfig.direction === 'asc'
+    ) {
+      direction = 'desc';
+    }
+
+    setSortConfig({ key, direction });
+  };
+
   const totalAmount = selectedList.reduce((sum: number, tx: any) => {
     return sum + (Number(tx.tx_amount) || 0);
   }, 0);
@@ -193,6 +241,11 @@ const ProfileOverviewTab: React.FC<
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [selectedList]);
+
+  const getSortIcon = (key: string) => {
+    if (!sortConfig || sortConfig.key !== key) return '⬍';
+    return sortConfig.direction === 'asc' ? '↑' : '↓';
+  };
 
   // const handleGenerateProfile = async () => {
   //   if (!alertId) {
@@ -343,7 +396,7 @@ const ProfileOverviewTab: React.FC<
               : 'text-gray-600 hover:text-gray-800'
               }`}
           >
-            Debitor
+            Debtor
           </button>
         </div>
       </div>
@@ -353,106 +406,91 @@ const ProfileOverviewTab: React.FC<
       </h3>
 
       <div className="overflow-y-auto flex-1 px-6 py-5">
-        {error && (
-          <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
-            <p className="text-sm text-red-800">{error}</p>
-          </div>
-        )}
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-sm text-gray-600">
-                Loading profile data...
+        <div className="space-y-6">
+          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-4 text-sm font-semibold text-gray-900">
+              Entity Information
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-gray-500">Entity ID</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {selectedData?.entity_id ?? 'N/A'}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500">Entity Name</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {activeTab === 'creditor'
+                    ? selectedData?.creditor_name
+                    : selectedData?.debtor_name}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500">Entity Role</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {selectedData?.entity_role ?? 'N/A'}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500">Entity Type</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {selectedData?.entity_type ?? 'N/A'}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <h3 className="text-xs font-medium text-gray-500">
+                Total Value
+              </h3>
+              <p className="mt-2 text-2xl font-bold text-gray-900">
+                {totalAmount.toLocaleString()}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">Transaction sum</p>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <h3 className="text-xs font-medium text-gray-500">
+                Total Transactions
+              </h3>
+              <p className="mt-2 text-2xl font-bold text-gray-900">
+                {totalTransactions?.toLocaleString() ?? 'N/A'}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Transaction count
               </p>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-              <h3 className="mb-4 text-sm font-semibold text-gray-900">
-                Entity Information
+
+            {/* Transaction Currency Card */}
+            {/* <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <h3 className="text-xs font-medium text-gray-500">
+                Transaction Currency
               </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-xs text-gray-500">Entity ID</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {selectedData?.entity_id ?? 'N/A'}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-gray-500">Entity Name</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {activeTab === 'creditor'
-                      ? selectedData?.creditor_name
-                      : selectedData?.debtor_name}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-gray-500">Entity Role</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {selectedData?.entity_role ?? 'N/A'}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-gray-500">Entity Type</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {selectedData?.entity_type ?? 'N/A'}
-                  </p>
-                </div>
-              </div>
+              <p className="mt-2 text-2xl font-bold text-gray-900">
+                {selectedData?.tx_ccy ?? 'N/A'}
+              </p>
             </div>
-            <div className="grid grid-cols-4 gap-3">
 
-              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <h3 className="text-xs font-medium text-gray-500">
-                  Total Value
-                </h3>
-                <p className="mt-2 text-2xl font-bold text-gray-900">
-                  {totalAmount.toLocaleString()}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">Transaction sum</p>
-              </div>
+            { /* Transaction Type Card */}
+            {/* <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <h3 className="text-xs font-medium text-gray-500">
+                Transaction Type
+              </h3>
+              <p className="mt-2 text-2xl font-bold text-gray-900">
+                {selectedData?.tx_type ?? 'N/A'}
+              </p>
+            </div> */}
 
-              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <h3 className="text-xs font-medium text-gray-500">
-                  Total Transactions
-                </h3>
-                <p className="mt-2 text-2xl font-bold text-gray-900">
-                  {totalTransactions?.toLocaleString() ?? 'N/A'}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Transaction count
-                </p>
-              </div>
-
-              {/* Transaction Currency Card */}
-              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <h3 className="text-xs font-medium text-gray-500">
-                  Transaction Currency
-                </h3>
-                <p className="mt-2 text-2xl font-bold text-gray-900">
-                  {selectedData?.tx_ccy ?? 'N/A'}
-                </p>
-              </div>
-
-              { /* Transaction Type Card */}
-              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <h3 className="text-xs font-medium text-gray-500">
-                  Transaction Type
-                </h3>
-                <p className="mt-2 text-2xl font-bold text-gray-900">
-                  {selectedData?.tx_type ?? 'N/A'}
-                </p>
-              </div>
-
-              {/* Anomalies Detected Card */}
-              {/* <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            {/* Anomalies Detected Card */}
+            {/* <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                 <h3 className="text-xs font-medium text-gray-500">
                   Anomalies Detected
                 </h3>
@@ -464,56 +502,120 @@ const ProfileOverviewTab: React.FC<
                   {determineRiskLevel(displayData.detectedAnomalies ?? [])}
                 </p>
               </div> */}
-            </div>
+          </div>
 
-            {/* Transaction Volume Trend Chart */}
-            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-              <h3 className="mb-4 text-sm font-semibold text-gray-900">Transaction Volume Trend (90 Days)</h3>
-              {volumeTrendData.length === 0 ? (
-                <p className="text-gray-500 text-sm">No data available</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={volumeTrendData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={(date) =>
-                        new Date(date).toLocaleDateString()
-                      }
-                    />
-                    <YAxis />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="volume" stroke="#3b82f6" fill="#93c5fd" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
+          {/* Transaction Volume Trend Chart */}
+          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-4 text-sm font-semibold text-gray-900">Transaction Volume Trend (90 Days)</h3>
+            {volumeTrendData.length === 0 ? (
+              <p className="text-gray-500 text-sm">No data available</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={volumeTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(date) =>
+                      new Date(date).toLocaleDateString()
+                    }
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="volume" stroke="#3b82f6" fill="#93c5fd" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
 
-            {/* Daily Transaction Count Chart */}
-            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-              <h3 className="mb-4 text-sm font-semibold text-gray-900">Daily Transaction Count</h3>
-              {transactionCountData.length === 0 ? (
-                <p className="text-gray-500 text-sm">No data available</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={transactionCountData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={(date) =>
-                        new Date(date).toLocaleDateString()
-                      }
-                    />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#3b82f6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
+          {/* Daily Transaction Count Chart */}
+          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-4 text-sm font-semibold text-gray-900">Daily Transaction Count</h3>
+            {transactionCountData.length === 0 ? (
+              <p className="text-gray-500 text-sm">No data available</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={transactionCountData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(date) =>
+                      new Date(date).toLocaleDateString()
+                    }
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#3b82f6" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
 
-            {/* Detected Anomalies Table */}
-            {/* <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-4 text-sm font-semibold text-gray-900">
+              Transactions
+            </h3>
+
+            {sortedTransactions.length === 0 ? (
+              <p className="text-gray-500 text-sm">No transactions available</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th
+                        onClick={() => handleSort('event_date')}
+                        className="cursor-pointer px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                      >
+                        Date {getSortIcon('event_date')}
+                      </th>
+                      <th
+                        onClick={() => handleSort('tx_amount')}
+                        className="cursor-pointer px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                      >
+                        Transaction Amount {getSortIcon('tx_amount')}
+
+                      </th>
+                      <th
+                        onClick={() => handleSort('tx_ccy')}
+                        className="cursor-pointer px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                      >
+                        Transaction Currency {getSortIcon('tx_ccy')}
+                      </th>
+                      <th
+                        onClick={() => handleSort('tx_type')}
+                        className="cursor-pointer px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                      >
+                        Transaction Type {getSortIcon('tx_type')}
+                      </th>
+
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {sortedTransactions.map((tx: any, index: number) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {new Date(tx.event_date).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          {Number(tx.tx_amount).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {tx.tx_ccy}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {tx.tx_type}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Detected Anomalies Table */}
+          {/* <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <h3 className="mb-4 text-sm font-semibold text-gray-900">Detected Anomalies &amp; Flagged Patterns</h3>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -563,8 +665,7 @@ const ProfileOverviewTab: React.FC<
                 </table>
               </div>
             </div> */}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
