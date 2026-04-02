@@ -112,38 +112,90 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
         <h4 className="text-sm font-semibold text-gray-900 mb-4">
           Transaction Overview
         </h4>
-        <div className="grid grid-cols-4 gap-6">
-          <div>
-            <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-              Transaction ID
+        
+        {/* PACS.008 - Payment Instruction */}
+        <div className="mb-6">
+          <div className="text-xs font-semibold text-gray-900 uppercase mb-3 flex items-center gap-2">
+            <span className="underline">PACS.008 - Payment Instruction</span>
+            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">Primary</span>
+          </div>
+          <div className="grid grid-cols-4 gap-30">
+            <div>
+              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
+                Message ID
+              </div>
+              <div className="text-sm font-medium text-gray-900">
+                {data.transactionOverview?.pacs8?.transactionId}
+              </div>
             </div>
-            <div className="text-sm font-medium text-gray-900">
-              {data.transactionOverview.transactionId}
+            <div>
+              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
+                Timestamp
+              </div>
+              <div className="text-sm font-medium text-gray-900">
+               {data.transactionOverview?.pacs8?.timestamp &&
+              new Date(data.transactionOverview.pacs8.timestamp).toLocaleString()}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
+                Type
+              </div>
+              <div className="text-sm font-medium text-gray-900">
+                {data.transactionOverview?.pacs8?.transactionType}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
+                Status
+              </div>
+              <span className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-green-200">
+                Completed
+              </span>
             </div>
           </div>
-          <div>
-            <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-              Timestamp
-            </div>
-            <div className="text-sm font-medium text-gray-900">
-              {new Date(data.transactionOverview.timestamp).toLocaleString()}
-            </div>
+        </div>
+
+        {/* PACS.002 - Acknowledgment */}
+        <div className="pt-4 border-t border-gray-100">
+          <div className="text-xs font-semibold text-gray-900 uppercase mb-3 flex items-center gap-2">
+            <span className="underline">PACS.002 - Payment Status Report</span>
+            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">Acknowledgment</span>
           </div>
-          <div>
-            <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-              Type
+          <div className="grid grid-cols-4 gap-30">
+            <div>
+              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
+                Message ID
+              </div>
+              <div className="text-sm font-medium text-gray-900">
+                {data.transactionOverview?.pacs2?.transactionId}
+              </div>
             </div>
-            <div className="text-sm font-medium text-gray-900">
-              {data.transactionOverview.transactionType}
+            <div>
+              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
+                Timestamp
+              </div>
+              <div className="text-sm font-medium text-gray-900">
+               {data.transactionOverview?.pacs2?.timestamp &&
+               new Date(data.transactionOverview.pacs2.timestamp).toLocaleString()}
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-              Status
+            <div>
+              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
+                Type
+              </div>
+              <div className="text-sm font-medium text-gray-900">
+                {data.transactionOverview?.pacs2?.transactionType}
+              </div>
             </div>
-            <span className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-green-200">
-              Completed
-            </span>
+            <div>
+              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
+                Status
+              </div>
+              <span className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-green-200">
+                Acknowledged
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -264,12 +316,6 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               </div>
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-                Account Type
-              </div>
-              <div className="text-sm text-gray-900">
-                {data.debtorProfile.accountType}
-              </div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">
@@ -280,20 +326,6 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               </div>
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-                Swift Code
-              </div>
-              <div className="text-sm text-gray-900 font-mono">
-                {data.debtorProfile.swiftCode}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-                Address
-              </div>
-              <div className="text-sm text-gray-900">
-                {data.debtorProfile.address}
-              </div>
             </div>
           </div>
         </div>
@@ -324,12 +356,6 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               </div>
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-                Account Type
-              </div>
-              <div className="text-sm text-gray-900">
-                {data.creditorProfile.accountType}
-              </div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">
@@ -337,22 +363,6 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               </div>
               <div className="text-sm text-gray-900">
                 {data.creditorProfile.bank}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-                Swift Code
-              </div>
-              <div className="text-sm text-gray-900 font-mono">
-                {data.creditorProfile.swiftCode}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-                Address
-              </div>
-              <div className="text-sm text-gray-900">
-                {data.creditorProfile.address}
               </div>
             </div>
           </div>
@@ -416,47 +426,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
                     )}
                   </>
                 )}
-                {(amountItem.senderCharges ||
-                  amountItem.intermediaryCharges ||
-                  amountItem.receiverCharges) && (
-                    <>
-                      <div className="border-t border-gray-200 my-2"></div>
-                      {amountItem.senderCharges &&
-                        amountItem.senderCharges.length > 0 && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
-                              Sender Charges:
-                            </span>
-                            <span className="text-sm font-medium text-gray-900">
-                              ${amountItem.senderCharges[0].amount}
-                            </span>
-                          </div>
-                        )}
-                      {amountItem.intermediaryCharges &&
-                        amountItem.intermediaryCharges.length > 0 && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
-                              Intermediary Charges:
-                            </span>
-                            <span className="text-sm font-medium text-gray-900">
-                              ${amountItem.intermediaryCharges[0].amount}
-                            </span>
-                          </div>
-                        )}
-                      {amountItem.receiverCharges &&
-                        amountItem.receiverCharges.length > 0 && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
-                              Receiver Charges:
-                            </span>
-                            <span className="text-sm font-medium text-gray-900">
-                              ${amountItem.receiverCharges[0].amount}
-                            </span>
-                          </div>
-                        )}
-                    </>
-                  )}
-                {amountItem.totalCharges && (
+                {amountItem.totalCharges !== undefined && amountItem.totalCharges !== null && (
                   <>
                     <div className="border-t border-gray-200 my-2"></div>
                     <div className="flex justify-between">
@@ -500,7 +470,8 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
                 Transaction Timestamp
               </div>
               <div className="text-sm text-gray-900">
-                {new Date(data.transactionOverview.timestamp).toLocaleString()}
+               {data.transactionOverview?.pacs8?.timestamp &&
+              new Date(data.transactionOverview.pacs8.timestamp).toLocaleString()}
               </div>
             </div>
             {data.settlementDetails.settlementDate && (

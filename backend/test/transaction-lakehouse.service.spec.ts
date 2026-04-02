@@ -54,9 +54,10 @@ describe('TransactionLakehouseService', () => {
       http.mockReturnValue(
         okHttp([
           {
-            transaction_id: '123',
-            tx_type: 'PAYMENT',
-            tx_event_ts: '2024-01-01',
+            transaction_id: 500008,
+            tx_msg_id: '33c406b80b044dd1991900b120ff7730',
+            tx_type: 'pacs.008.001.10',
+            tx_event_ts: '2024-01-01T10:00:00',
             debtor_name: 'A',
             debtor_account_id: 'acc1',
             creditor_name: 'B',
@@ -69,17 +70,78 @@ describe('TransactionLakehouseService', () => {
             instructed_currency: 'USD',
             exchange_rate: 1,
             charge_total_amount: 0,
+            charge_currency: 'USD',
+            tx_event_date: '2024-01-01',
+          },
+          {
+            transaction_id: 39,
+            tx_msg_id: '09a77250f74a477d9fc4cba204fef5a9',
+            tx_type: 'pacs.002.001.12',
+            tx_event_ts: '2024-01-01T10:00:05',
+            debtor_name: null,
+            debtor_account_id: null,
+            creditor_name: null,
+            creditor_account_id: null,
+            instg_mmb_id: 'bank1',
+            instd_mmb_id: 'bank2',
+            interbank_settlement_amount: null,
+            interbank_settlement_currency: null,
+            instructed_amount: null,
+            instructed_currency: null,
+            exchange_rate: null,
+            charge_total_amount: 0,
+            charge_currency: 'USD',
             tx_event_date: '2024-01-01',
           },
         ]),
       );
       const result = await service.getTransactionDetailData('123');
       expect(result).toHaveProperty('transactionOverview');
+      expect(result.transactionOverview).toHaveProperty('pacs8');
+      expect(result.transactionOverview).toHaveProperty('pacs2');
+      expect(result.transactionOverview.pacs8.transactionId).toBe('33c406b80b044dd1991900b120ff7730');
+      expect(result.transactionOverview.pacs2.transactionId).toBe('09a77250f74a477d9fc4cba204fef5a9');
     });
 
     it('throws when transaction not found', async () => {
       http.mockReturnValue(okHttp([]));
       await expect(service.getTransactionDetailData('999')).rejects.toThrow(HttpException);
+    });
+
+    it('throws when pacs.008 not found', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            transaction_id: 39,
+            tx_msg_id: '09a77250f74a477d9fc4cba204fef5a9',
+            tx_type: 'pacs.002.001.12',
+            tx_event_ts: '2024-01-01T10:00:05',
+          },
+        ]),
+      );
+      await expect(service.getTransactionDetailData('999')).rejects.toThrow('pacs.008 transaction not found');
+    });
+
+    it('throws when pacs.002 not found', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            transaction_id: 500008,
+            tx_msg_id: '33c406b80b044dd1991900b120ff7730',
+            tx_type: 'pacs.008.001.10',
+            tx_event_ts: '2024-01-01T10:00:00',
+            debtor_name: 'A',
+            debtor_account_id: 'acc1',
+            creditor_name: 'B',
+            creditor_account_id: 'acc2',
+            instg_mmb_id: 'bank1',
+            instd_mmb_id: 'bank2',
+            interbank_settlement_amount: 100,
+            interbank_settlement_currency: 'USD',
+          },
+        ]),
+      );
+      await expect(service.getTransactionDetailData('999')).rejects.toThrow('pacs.002 transaction not found');
     });
 
     it('throws on error', async () => {
