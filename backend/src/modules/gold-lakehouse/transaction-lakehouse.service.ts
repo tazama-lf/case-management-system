@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from './gold-lakehouse.service';
@@ -22,11 +22,19 @@ import {
   TransactionPerspectivesResponse,
 } from './types/gold-lakehouse-responses.types';
 import { TransactionDetailDataResponse, TransactionOverviewUIDataResponse } from './types/transaction-detail.types';
+import { GenerateProfileResponseDto } from './dto/profile-response.dto';
+import { AlertRepository } from '../repository/alert.repository';
+import { JsonValue } from '../repository/utils/types/JsonValue';
+import { extractReferenceId } from '../repository/utils/extractReferenceId';
+import { GenerateProfileDto } from './dto/generate-profile.dto';
 
 @Injectable()
 export class TransactionLakehouseService extends GoldLakehouseService {
-  // eslint-disable-next-line @typescript-eslint/no-useless-constructor -- Required for NestJS dependency injection in subclasses
-  constructor(httpService: HttpService, configService: ConfigService) {
+  constructor(
+    httpService: HttpService,
+    configService: ConfigService,
+    private readonly alertRepository: AlertRepository,
+  ) {
     super(httpService, configService);
   }
 
@@ -1278,6 +1286,43 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Error fetching transaction_detail table: ${errorMessage}`);
       throw new HttpException('Failed to fetch transaction_detail table data', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async generateProfile(alertId: number, dto: GenerateProfileDto, userId: string): Promise<GenerateProfileResponseDto> {
+    this.logger.log(`Alert ID:  ${alertId}`, GoldLakehouseService.name);
+
+    try {
+      const alert = await this.alertRepository.getAlertById(alertId);
+      if (!alert) {
+        throw new InternalServerErrorException(`Unable to fetch details for AlertId ${alertId}`);
+      }
+
+      const referenceIdData = await this.alertRepository.getReferenceId(alert.txtp);
+      const referenceId = extractReferenceId(alert.transaction as unknown as JsonValue, 10, 0, referenceIdData.referenceIdName);
+      if (!referenceId) {
+        throw new Error('ReferenceId not found in transaction data');
+      }
+
+      const transactionCreditorSql = `
+      SELECT th.transaction_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td.creditor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.creditor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' LEFT JOIN transaction_detail td ON td.transaction_id = th.transaction_id AND td.tenant_id = th.tenant_id WHERE td_src.end_to_end_id = '${referenceId}' AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC;`;
+
+      const transactionCreditorResp = await this.runSqlQuery(transactionCreditorSql, 1000);
+
+      const transactionDebtorSql = `
+      SELECT th.transaction_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td.debtor_name, th.entity_id, th.entity_type, td.creditor_name FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.debtor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' LEFT JOIN transaction_detail td ON td.transaction_id = th.transaction_id AND td.tenant_id = th.tenant_id WHERE td_src.end_to_end_id = '${referenceId}' AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC;`;
+
+      const transactionDebtorResp = await this.runSqlQuery(transactionDebtorSql, 1000);
+      return {
+        tenantId: dto.tenantId,
+        transactionCreditorResp,
+        transactionDebtorResp,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error generating profile for Alert ID ${alertId}: ${errorMessage}`, errorStack, GoldLakehouseService.name);
+      throw new InternalServerErrorException(`Failed to generate profile for Alert ID ${alertId}`);
     }
   }
 }

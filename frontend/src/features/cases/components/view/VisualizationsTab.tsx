@@ -1,10 +1,20 @@
 import React from 'react';
+import {
+  ClockIcon,
+  DocumentTextIcon,
+  ChartBarIcon,
+  ShareIcon,
+  ExclamationTriangleIcon,
+} from '@heroicons/react/24/outline';
+
 import AlertNavigatorTab from './visualizations/alertnavigator/AlertNavigatorTab';
 import TransactionDetailsTab from './visualizations/transactiondetails/TransactionDetailsTab';
 import TransactionHistoryTab from './visualizations/transactionhistory/TransactionHistoryTab';
 import NetworkAnalysisTab from './visualizations/network-analysis/NetworkAnalysisTab';
 import AlertHistoryTab from './visualizations/alerthistory/AlertHistoryTab';
 import ConditionsTab from './visualizations/conditions/ConditionsTab';
+import ProfileOverviewTab from './visualizations/profileoverview/ProfileOverviewTab';
+
 
 type VisualizationSubTab =
   | 'alert-navigator'
@@ -12,7 +22,8 @@ type VisualizationSubTab =
   | 'transaction-history'
   | 'network-analysis'
   | 'alert-history'
-  | 'conditions';
+  | 'conditions'
+  | 'profile-overview';
 
 interface VisualizationsTabProps {
   alertId?: number;
@@ -25,56 +36,122 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
   caseId,
   transactionId,
 }) => {
-  const [activeSubTab, setActiveSubTab] = React.useState<VisualizationSubTab>('alert-navigator');
+  const [activeSubTab, setActiveSubTab] =
+    React.useState<VisualizationSubTab>('alert-navigator');
 
-  const subTabs: Array<{ key: VisualizationSubTab; label: string }> = [
-    { key: 'alert-navigator', label: 'Alert Navigator' },
-    { key: 'transaction-details', label: 'Transaction Details' },
-    { key: 'transaction-history', label: 'Transaction History' },
-    { key: 'network-analysis', label: 'Network Analysis' },
-    { key: 'alert-history', label: 'Alert History' },
-    { key: 'conditions', label: 'Conditions' },
+  const subTabs = [
+    {
+      key: 'alert-navigator',
+      label: 'Alert Navigator',
+      icon: ExclamationTriangleIcon,
+    },
+    {
+      key: 'transaction-details',
+      label: 'Transaction Details',
+      icon: DocumentTextIcon,
+    },
+    {
+      key: 'transaction-history',
+      label: 'Transaction History',
+      icon: ClockIcon,
+    },
+    {
+      key: 'network-analysis',
+      label: 'Network Analysis',
+      icon: ShareIcon,
+    },
+    {
+      key: 'alert-history',
+      label: 'Alert History',
+      icon: ChartBarIcon,
+    },
+    {
+      key: 'conditions',
+      label: 'Conditions',
+      icon: ChartBarIcon,
+    },
+    {
+      key: 'profile-overview',
+      label: 'Profile Overview',
+      icon: DocumentTextIcon,
+    },
   ];
 
   return (
     <div className="space-y-4">
-      {/* Sub-tabs */}
-      <div className="border-b border-gray-200">
-        <div className="flex flex-wrap gap-2">
-          {subTabs.map((subTab) => (
+      {/* 🔹 Sub-tabs container */}
+      <div className="p-2 rounded-xl flex flex-wrap gap-3 justify-center">
+        {subTabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeSubTab === tab.key;
+
+          return (
             <button
-              key={subTab.key}
-              onClick={() => setActiveSubTab(subTab.key)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeSubTab === subTab.key
-                ? 'border-indigo-600 text-indigo-700'
-                : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
+              key={tab.key}
+              onClick={() => setActiveSubTab(tab.key as VisualizationSubTab)}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all
+                ${isActive
+                  ? 'bg-white shadow text-indigo-600'
+                  : 'text-gray-600 hover:bg-gray-200'
                 }`}
             >
-              {subTab.label}
+              <Icon className="w-4 h-4" />
+              {tab.label}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      {/* Sub-tab content */}
+      {/* Content */}
       <div className="mt-4">
         {activeSubTab === 'alert-navigator' && (
-          <AlertNavigatorTab alertId={alertId} caseId={caseId} transactionId={transactionId} />
+          <AlertNavigatorTab
+            alertId={alertId}
+            caseId={caseId}
+            transactionId={transactionId}
+          />
         )}
+
         {activeSubTab === 'transaction-details' && (
-          <TransactionDetailsTab caseId={caseId} transactionId={transactionId} />
+          <TransactionDetailsTab
+            caseId={caseId}
+            transactionId={transactionId}
+          />
         )}
+
         {activeSubTab === 'transaction-history' && (
-          <TransactionHistoryTab caseId={caseId} transactionId={transactionId} />
+          <TransactionHistoryTab
+            caseId={caseId}
+            transactionId={transactionId}
+          />
         )}
+
         {activeSubTab === 'network-analysis' && (
-          <NetworkAnalysisTab caseId={caseId} transactionId={transactionId} />
+          <NetworkAnalysisTab
+            caseId={caseId}
+            transactionId={transactionId}
+          />
         )}
+
         {activeSubTab === 'alert-history' && (
-          <AlertHistoryTab caseId={caseId} transactionId={transactionId} />
+          <AlertHistoryTab
+            caseId={caseId}
+            transactionId={transactionId}
+          />
         )}
+
         {activeSubTab === 'conditions' && (
-          <ConditionsTab caseId={caseId} transactionId={transactionId} />
+          <ConditionsTab
+            caseId={caseId}
+            transactionId={transactionId}
+          />
+        )}
+
+        {activeSubTab === 'profile-overview' && (
+          <ProfileOverviewTab
+            alertId={alertId}
+            transactionId={transactionId}
+          />
         )}
       </div>
     </div>
