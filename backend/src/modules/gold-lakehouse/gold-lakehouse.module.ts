@@ -9,6 +9,7 @@ import { ConditionLakehouseService } from './condition-lakehouse.service';
 import { BenfordsLawLakehouseService } from './benfordsLaw-lakehouse.service';
 import { AccountLakehouseService } from './account-lakehouse.service';
 import { EntityLakehouseService } from './entity-lakehouse.service';
+import { RepositoryModule } from '../repository/repository.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { EntityLakehouseService } from './entity-lakehouse.service';
       maxRedirects: 5,
     }),
     ConfigModule,
+    RepositoryModule,
   ],
   controllers: [GoldLakehouseController],
   providers: [
