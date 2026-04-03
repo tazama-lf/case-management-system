@@ -1,15 +1,21 @@
 export interface TransactionDetailsDto {
   transactionOverview: {
-    transactionId: string;
-    transactionType: string;
-    timestamp: string;
+    pacs8: {
+      transactionId: string;
+      transactionType: string;
+      timestamp: string;
+    };
+    pacs2: {
+      transactionId: string;
+      transactionType: string;
+      timestamp: string;
+    };
   };
   transactionFlow: {
     debtor: {
       name: string;
       account: {
         iban: string;
-        type: string;
       };
       bank: string;
     };
@@ -21,7 +27,6 @@ export interface TransactionDetailsDto {
       name: string;
       account: {
         iban: string;
-        type: string;
       };
       bankName: string;
     };
@@ -30,49 +35,20 @@ export interface TransactionDetailsDto {
     name: string;
     account: {
       iban: string;
-      type: string;
     };
     bank: string;
-    swiftCode: string;
-    address: string;
-    accountType: string;
   };
   creditorProfile: {
     name: string;
     account: {
       iban: string;
-      type: string;
     };
     bank: string;
-    swiftCode: string;
-    address: string;
-    accountType: string;
   };
   amountAndCurrency: Array<{
     originalAmount?: number;
     exchangeRate?: number;
     convertedAmount?: number;
-    senderCharges?: Array<{
-      amount: number;
-      currency: string;
-      agent: {
-        memberId: string;
-      };
-    }>;
-    intermediaryCharges?: Array<{
-      amount: number;
-      currency: string;
-      agent: {
-        memberId: string;
-      };
-    }>;
-    receiverCharges?: Array<{
-      amount: number;
-      currency: string;
-      agent: {
-        memberId: string;
-      };
-    }>;
     totalCharges?: number;
   }>;
   settlementDetails: {

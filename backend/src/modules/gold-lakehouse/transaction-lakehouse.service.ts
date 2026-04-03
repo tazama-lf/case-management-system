@@ -50,6 +50,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         },
         columns: [
           'transaction_id',
+          'tx_msg_id',
           'tx_event_ts',
           'tx_type',
           'interbank_settlement_amount',
@@ -73,77 +74,78 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
       }
 
-      const row = this.stripHudiMetadata(response.data[0]);
+      // Destructure pacs8 and pacs2 from response data
+      const pacs8 = response.data.find((record) => record.tx_type === 'pacs.008.001.10');
+      const pacs2 = response.data.find((record) => record.tx_type === 'pacs.002.001.12');
+
+      if (!pacs8) {
+        throw new HttpException('pacs.008 transaction not found', HttpStatus.NOT_FOUND);
+      }
+      if (!pacs2) {
+        throw new HttpException('pacs.002 transaction not found', HttpStatus.NOT_FOUND);
+      }
 
       // Transform to frontend-expected format
       return {
         transactionOverview: {
-          transactionId: String(row.transaction_id),
-          transactionType: String(row.tx_type),
-          timestamp: String(row.tx_event_ts),
+          pacs8: {
+            transactionId: String(pacs8.tx_msg_id),
+            transactionType: String(pacs8.tx_type),
+            timestamp: String(pacs8.tx_event_ts),
+          },
+          pacs2: {
+            transactionId: String(pacs2.tx_msg_id),
+            transactionType: String(pacs2.tx_type),
+            timestamp: String(pacs2.tx_event_ts),
+          },
         },
         transactionFlow: {
           debtor: {
-            name: String(row.debtor_name),
+            name: String(pacs8.debtor_name),
             account: {
-              iban: String(row.debtor_account_id),
-              type: 'CHECKING',
+              iban: String(pacs8.debtor_account_id),
             },
-            bank: String(row.instd_mmb_id),
+            bank: String(pacs8.instd_mmb_id),
           },
           amount: {
-            amount: Number(row.interbank_settlement_amount),
-            currency: String(row.interbank_settlement_currency) || 'USD',
+            amount: Number(pacs8.interbank_settlement_amount),
+            currency: String(pacs8.interbank_settlement_currency) || 'USD',
           },
           creditor: {
-            name: String(row.creditor_name),
+            name: String(pacs8.creditor_name),
             account: {
-              iban: String(row.creditor_account_id),
-              type: 'CHECKING',
+              iban: String(pacs8.creditor_account_id),
             },
-            bankName: String(row.instg_mmb_id),
+            bankName: String(pacs8.instg_mmb_id),
           },
         },
         debtorProfile: {
-          name: String(row.debtor_name),
+          name: String(pacs8.debtor_name),
           account: {
-            iban: String(row.debtor_account_id),
-            type: 'CHECKING',
+            iban: String(pacs8.debtor_account_id),
           },
-          bank: String(row.instd_mmb_id),
-          swiftCode: '',
-          address: '',
-          accountType: 'CHECKING',
+          bank: String(pacs8.instd_mmb_id),
         },
         creditorProfile: {
-          name: String(row.creditor_name),
+          name: String(pacs8.creditor_name),
           account: {
-            iban: String(row.creditor_account_id),
-            type: 'CHECKING',
+            iban: String(pacs8.creditor_account_id),
           },
-          bank: String(row.instg_mmb_id),
-          swiftCode: '',
-          address: '',
-          accountType: 'CHECKING',
+          bank: String(pacs8.instg_mmb_id),
         },
         amountAndCurrency: [
           {
-            originalAmount: Number(row.instructed_amount) || 0,
-            exchangeRate: Number(row.exchange_rate) || 1,
-            convertedAmount: Number(row.interbank_settlement_amount) || 0,
+            originalAmount: Number(pacs8.instructed_amount) || 0,
+            exchangeRate: Number(pacs8.exchange_rate) || 1,
+            convertedAmount: Number(pacs8.interbank_settlement_amount) || 0,
           },
           {
-            senderCharges: [],
-            intermediaryCharges: [],
-            receiverCharges: [],
-          },
-          {
-            totalCharges: Number(row.charge_total_amount),
+            totalCharges: Number(pacs8.charge_total_amount),
           },
         ],
         settlementDetails: {
-          settlementDate: String(row.tx_event_date),
-          reference: String(row.transaction_id),
+          settlementDate: String(pacs8.tx_event_date),
+          reference: String(pacs8.transaction_id),
           purpose: '',
         },
         links: [
@@ -154,6 +156,11 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         ],
       };
     } catch (error: unknown) {
+      // Re-throw HttpExceptions as-is to preserve specific error messages
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Error fetching Transaction Detail data: ${errorMessage}`, errorStack);

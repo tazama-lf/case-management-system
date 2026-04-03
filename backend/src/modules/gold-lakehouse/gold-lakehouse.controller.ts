@@ -17,6 +17,7 @@ import {
   TestAccountIdsResponse,
   TransactionPerspectivesResponse,
 } from './types/gold-lakehouse-responses.types';
+import { TransactionDetailDataResponse } from './types/transaction-detail.types';
 import { AccountConditionsSummary, ConditionsListByAccountResponse } from './types/IAccountConditions.types';
 import { AlertHistoryTimelineResponse } from './types/IAlertHistoryTimeline.types';
 import { AlertHistoryAlertsResponse } from './types/IAlertHistory.types';
@@ -91,81 +92,7 @@ export class GoldLakehouseController {
   async getTransactionDetailData(
     @Param('endToEndId') endToEndId: string,
     @Query('tenantId') tenantId?: string,
-  ): Promise<{
-    transactionOverview: {
-      transactionId: string;
-      transactionType: string;
-      timestamp: string;
-    };
-    transactionFlow: {
-      debtor: {
-        name: string;
-        account: {
-          iban: string;
-          type: string;
-        };
-        bank: string;
-      };
-      amount: {
-        amount: number;
-        currency: string;
-      };
-      creditor: {
-        name: string;
-        account: {
-          iban: string;
-          type: string;
-        };
-        bankName: string;
-      };
-    };
-    debtorProfile: {
-      name: string;
-      account: {
-        iban: string;
-        type: string;
-      };
-      bank: string;
-      swiftCode: string;
-      address: string;
-      accountType: string;
-    };
-    creditorProfile: {
-      name: string;
-      account: {
-        iban: string;
-        type: string;
-      };
-      bank: string;
-      swiftCode: string;
-      address: string;
-      accountType: string;
-    };
-    amountAndCurrency: Array<
-      | {
-          originalAmount: number;
-          exchangeRate: number;
-          convertedAmount: number;
-        }
-      | {
-          senderCharges: never[];
-          intermediaryCharges: never[];
-          receiverCharges: never[];
-        }
-      | {
-          totalCharges: number;
-        }
-    >;
-    settlementDetails: {
-      settlementDate: string;
-      reference: string;
-      purpose: string;
-    };
-    links: Array<{
-      rel: string;
-      href: string;
-    }>;
-  }> {
+  ): Promise<TransactionDetailDataResponse> {
     return await this.transactionLakehouseService.getTransactionDetailData(endToEndId, tenantId ?? 'DEFAULT');
   }
 
