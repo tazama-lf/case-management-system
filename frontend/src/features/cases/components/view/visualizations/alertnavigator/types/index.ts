@@ -1,57 +1,39 @@
-export interface AmountDto {
-  value: number;
-  currency: string;
-}
-
 export interface RuleDetailDto {
-  id: string;
-  weight: number;
-  description?: string;
+  ruleId: string;
+  ruleWeight: number;
+  subRef?: string;
 }
 
 export interface TypologyDto {
-  id: string;
-  score: number;
-  threshold: number;
-  rules: RuleDetailDto[];
-}
-
-export interface RuleDto {
-  id: string;
-  weight: number;
-}
-
-export interface BlockStatusDto {
-  status: string;
-  reason: string;
-}
-
-export interface LinkDto {
-  rel: string;
-  href: string;
-}
-
-export interface RelatedLinksDto {
-  transactionDetail: string;
-  transactionHistory: string;
-  conditionsView: string;
-  alertHistory: string;
-  jupyterLab: string;
+  typologyId: string;
+  typologyCfg: string;
+  typologyScore: number;
+  alertThreshold: number;
+  interdictionThreshold: number;
+  ruleCount: number;
+  rules: RuleDetailDto[]; // Parsed from JSON string
 }
 
 export interface AlertNavigatorDto {
-  alertMetadata: any;
-  alertId: string;
-  transactionId: string;
-  timestamp: string;
-  transactionType: string;
-  amount: AmountDto;
-  status: string;
-  reason: string;
-  blockReason: string;
+  alertMetadata: {
+    alertId: number;
+    transactionId: string;
+    timestamp: string;
+    transactionType: string;
+    amount: number;
+    currency: string;
+    status: string;
+    reason: string;
+    blockReason: string;
+    evaluationId: string;
+  };
   typologies: TypologyDto[];
-  rules: RuleDto[];
-  blockStatus?: BlockStatusDto | null;
-  relatedLinks: RelatedLinksDto;
-  links: LinkDto[];
+  statistics: {
+    totalTypologies: number;
+    totalRules: number;
+  };
+  meta: {
+    alertId: number;
+    tenantId: string;
+  };
 }
