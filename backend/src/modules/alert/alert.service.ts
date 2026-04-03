@@ -12,8 +12,8 @@ import { CaseCreationService } from '../case/services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { Outcome } from 'src/utils/types/outcome';
 import { EventLogService } from '../event_log/eventLog.service';
-import { TransactionLakehouseService } from '../gold-lakehouse/transaction-lakehouse.service';
-import { TransactionHistoryByEndToEndIdResponse } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
+import { GoldLakehouseService } from '../gold-lakehouse/gold-lakehouse.service';
+import { transactionDataResponseDTO } from './dto/transactionHistory.dto';
 
 @Injectable()
 export class AlertService {
@@ -24,7 +24,7 @@ export class AlertService {
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly eventLogService: EventLogService,
-    private readonly transactionLakehouseService: TransactionLakehouseService,
+    private readonly goldLakehouseService: GoldLakehouseService,
   ) {}
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number): Promise<Alert | null> {
@@ -106,8 +106,7 @@ export class AlertService {
     }
   }
 
-  async getAlertTransactionalData(alertId: number): Promise<TransactionHistoryByEndToEndIdResponse> {
-    // : Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>>
+  async getAlertTransactionalData(alertId: number): Promise<{ transactionData: transactionDataResponseDTO[] }> {
     this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
 
     const alert = await this.alertRepository.getAlertById(alertId);
@@ -120,25 +119,17 @@ export class AlertService {
     if (!referenceId) {
       throw new Error('ReferenceId not found in transaction data');
     }
-    // const transactionData = await this.transactionDataRespository.getTransactionalData(referenceId);
-    // if (!transactionData) throw new InternalServerErrorException(`transactionData not found for AlertId ${alertId}`);
 
-    const transactionData = await this.transactionLakehouseService
-      .getTransactionHistoryByEndToEndId(referenceId)
-      .catch((error: unknown) => {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const errorStack = error instanceof Error ? error.stack : undefined;
-        this.loggerService.error(
-          `Error fetching Transaction History data for Alert ID ${alertId}: ${errorMessage}`,
-          errorStack,
-          AlertService.name,
-        );
-      });
-    if (!transactionData) {
+    const transactiondataSql = `
+      SELECT * from transaction_detail where end_to_end_id = 'bdd9059b58e14839b076bbc6a4e0b94b';`;
+
+    const transactionData = await this.goldLakehouseService.runSqlQuery(transactiondataSql, 1000);
+
+    if (!transactionData.data) {
       throw new InternalServerErrorException(`Transaction history data not found for AlertId ${alertId}`);
     }
     this.loggerService.log(`Fetched transaction data for Alert ID ${alertId}: ${JSON.stringify(transactionData)}`, AlertService.name);
-    return transactionData;
+    return { transactionData };
   }
 
   async getAlertDetails(
