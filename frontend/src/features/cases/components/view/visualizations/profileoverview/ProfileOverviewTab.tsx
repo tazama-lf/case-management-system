@@ -69,8 +69,6 @@ const ProfileOverviewTab: React.FC<
     fetchData();
   }, [alertId]);
 
-  if (!alertId || !transactionId) return null;
-
   const selectedData = React.useMemo(() => {
     if (!profileData) return null;
 
@@ -190,10 +188,10 @@ const ProfileOverviewTab: React.FC<
     );
   }
 
-  if (!alertId) {
+  if (!alertId || !transactionId) {
     return (
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-        <p className="text-sm text-gray-600">Select an alert to view navigator details</p>
+        <p className="text-sm text-gray-600">Unable to display profile data</p>
       </div>
     );
   }
@@ -245,7 +243,7 @@ const ProfileOverviewTab: React.FC<
       </div>
 
       <h3 className="text-sm font-semibold text-gray-900">
-        {activeTab === 'creditor' ? 'Creditor Profile' : 'Debitor Profile'}
+        {activeTab === 'creditor' ? 'Creditor Profile' : 'Debtor Profile'}
       </h3>
 
       <div className="overflow-y-auto flex-1 px-6 py-5">
