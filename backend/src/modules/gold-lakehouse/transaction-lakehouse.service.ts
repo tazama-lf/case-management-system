@@ -1304,7 +1304,6 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         throw new Error('ReferenceId not found in transaction data');
       }
 
-      // remove harcoded reference Id
       const transactionCreditorSql = `
       SELECT th.transaction_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td.creditor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.creditor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' LEFT JOIN transaction_detail td ON td.transaction_id = th.transaction_id AND td.tenant_id = th.tenant_id WHERE td_src.end_to_end_id = '${referenceId}' AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC;`;
 
@@ -1314,30 +1313,6 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       SELECT th.transaction_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td.debtor_name, th.entity_id, th.entity_type, td.creditor_name FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.debtor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' LEFT JOIN transaction_detail td ON td.transaction_id = th.transaction_id AND td.tenant_id = th.tenant_id WHERE td_src.end_to_end_id = '${referenceId}' AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC;`;
 
       const transactionDebtorResp = await this.runSqlQuery(transactionDebtorSql, 1000);
-      // const peerTransactions = await this.prismaDwh.transaction.findMany({
-      //   where: {
-      //     cre_dt_tm: { gte: dateFrom, lte: dateTo },
-      //   },
-      // });
-      // const getGeography = (tx: any): string => tx.geography ?? tx.transaction?.geography ?? tx.transaction?.TxTp ?? '';
-      // const peerBaseline = {
-      //   avgVolume: peerTransactions.length,
-      //   avgValue: peerTransactions.reduce((sum, tx) => sum + (tx.amt?.toNumber() ?? 0), 0) / (peerTransactions.length || 1),
-      //   avgCrossBorder: peerTransactions.filter((tx) => getGeography(tx) === 'Cross-border').length,
-      // };
-      // const outliers = transactions.filter(
-      //   (tx) =>
-      //     (tx.amt?.toNumber() ?? 0) > peerBaseline.avgValue ||
-      //     (getGeography(tx) === 'Cross-border' && (tx.amt?.toNumber() ?? 0) > peerBaseline.avgCrossBorder),
-      // );
-      // const visualization = 'trend-chart-placeholder';
-      // const detectedAnomalies = outliers.map((tx) => ({
-      //   date: tx.cre_dt_tm ?? '',
-      //   type: tx.tx_tp,
-      //   amount: tx.amt?.toNumber() ?? 0,
-      //   description: (tx.amt?.toNumber() ?? 0) > peerBaseline.avgValue ? 'Large transaction flagged' : 'Cross-border anomaly',
-      //   risk: (tx.amt?.toNumber() ?? 0) > 5000 ? 'High' : (tx.amt?.toNumber() ?? 0) > 2000 ? 'Medium' : 'Low',
-      // }));
       return {
         tenantId: dto.tenantId,
         transactionCreditorResp,

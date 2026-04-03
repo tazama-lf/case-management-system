@@ -1339,16 +1339,7 @@ export class GoldLakehouseController {
       default: {
         summary: 'Typical profile generation',
         value: {
-          caseId: '123e4567-e89b-12d3-a456-426614174000',
-          filters: {
-            dateFrom: '2025-09-01',
-            dateTo: '2025-11-30',
-            channel: 'Online',
-            type: 'Transfer',
-            geography: 'Cross-border',
-            tenantId: 'T001',
-          },
-          notes: 'Profile generated for peer comparison and anomaly detection.',
+          tenantId: 'DEFAULT',
         },
       },
     },
