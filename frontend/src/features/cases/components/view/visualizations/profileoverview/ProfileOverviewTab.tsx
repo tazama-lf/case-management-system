@@ -209,6 +209,7 @@ const ProfileOverviewTab: React.FC<
     return sum + (Number(tx.tx_amount) || 0);
   }, 0);
 
+  //Volume Trend Data for last 90 days
   const volumeTrendData = React.useMemo(() => {
     const grouped: Record<string, number> = {};
 
@@ -226,6 +227,7 @@ const ProfileOverviewTab: React.FC<
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [selectedList]);
 
+  //Daily Count Graph
   const transactionCountData = React.useMemo(() => {
     const grouped: Record<string, number> = {};
 
