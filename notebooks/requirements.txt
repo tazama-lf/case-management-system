@@ -3,4 +3,5 @@ plotly
 pandas
 requests
 papermill
-networkx
+jupyter
+ipykernel
