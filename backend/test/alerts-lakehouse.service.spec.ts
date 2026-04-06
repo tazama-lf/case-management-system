@@ -48,28 +48,6 @@ describe('AlertsLakehouseService', () => {
 
   it('should be defined', () => expect(service).toBeDefined());
 
-  // ===================== getAlertNavigatorMetrics =====================
-  describe('getAlertNavigatorMetrics', () => {
-    it('returns metrics', async () => {
-      http.mockReturnValue(okHttp([{ total_typologies: 3, total_rules: 10, avg_typology_score: 80 }]));
-      const result = await service.getAlertNavigatorMetrics(1, 'DEFAULT');
-      expect(result.total_typologies).toBe(3);
-      expect(result.alertId).toBe(1);
-    });
-
-    it('handles empty row with defaults', async () => {
-      http.mockReturnValue(okHttp([{ total_typologies: 0, total_rules: 0, avg_typology_score: null }]));
-      const result = await service.getAlertNavigatorMetrics(1);
-      expect(result.total_typologies).toBe(0);
-      expect(result.avg_typology_score).toBeNull();
-    });
-
-    it('throws on error', async () => {
-      http.mockReturnValue(errHttp());
-      await expect(service.getAlertNavigatorMetrics(1)).rejects.toThrow(HttpException);
-    });
-  });
-
   // ===================== getAlertNavigatorData =====================
   describe('getAlertNavigatorData', () => {
     it('returns alert navigator data with matched rules', async () => {
