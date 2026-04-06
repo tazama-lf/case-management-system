@@ -2,7 +2,6 @@ import { Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, Http
 import { CaseService } from './case.service';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import {
-  RequireInvestigatorRole,
   RequireInvestigatorOrSupervisorRole,
   RequireInvestigatorOrSupervisorRoleOrComplianceRole,
   RequireSupervisorRole,
@@ -227,7 +226,7 @@ export class CaseController {
   }
 
   @Put(':caseId/close')
-  @RequireInvestigatorRole()
+  @RequireInvestigatorOrSupervisorRole()
   @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
