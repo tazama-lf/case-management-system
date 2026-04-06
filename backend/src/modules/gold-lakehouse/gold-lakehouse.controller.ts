@@ -17,6 +17,7 @@ import {
   TestAccountIdsResponse,
   TransactionPerspectivesResponse,
 } from './types/gold-lakehouse-responses.types';
+import { AlertNavigatorDataResponse } from './types/alert-navigator.types';
 import { TransactionDetailDataResponse } from './types/transaction-detail.types';
 import { AccountConditionsSummary, ConditionsListByAccountResponse } from './types/IAccountConditions.types';
 import { AlertHistoryTimelineResponse } from './types/IAlertHistoryTimeline.types';
@@ -48,37 +49,7 @@ export class GoldLakehouseController {
   async getAlertNavigatorData(
     @Param('alertId') alertId: number,
     @Query('tenantId') tenantId?: string,
-  ): Promise<{
-    alertMetadata: {
-      alertId: number;
-      transactionId: string;
-      timestamp: string;
-      transactionType: string;
-      amount: number;
-      currency: string;
-      status: string;
-      reason: string;
-      blockReason: string;
-    };
-    typologies: Array<{
-      typologyId: string;
-      typologyCfg: string;
-      typologyScore: number;
-      alertThreshold: number;
-      interdictionThreshold: number;
-      ruleCount: number;
-      rules: string;
-    }>;
-    statistics: {
-      totalTypologies: number;
-      totalRules: number;
-      avgScore: number;
-    };
-    meta: {
-      alertId: number;
-      tenantId: string;
-    };
-  }> {
+  ): Promise<AlertNavigatorDataResponse> {
     if (isNaN(alertId)) {
       throw new BadRequestException('Invalid alertId: must be a number');
     }

@@ -9,6 +9,7 @@ export interface AlertNavigatorDataResponse {
     status: string;
     reason: string;
     blockReason: string;
+    evaluationId: string;
   };
   typologies: Array<{
     typologyId: string;
@@ -22,7 +23,6 @@ export interface AlertNavigatorDataResponse {
   statistics: {
     totalTypologies: number;
     totalRules: number;
-    avgScore: number;
   };
   meta: {
     alertId: number;

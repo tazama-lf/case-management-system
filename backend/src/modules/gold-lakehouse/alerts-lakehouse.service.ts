@@ -17,127 +17,177 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     try {
       this.logger.log(`Fetching Alert Navigator data for alert: ${alertId}`);
 
-      // Fetch alert with transaction data using SQL JOIN
-      const alertWithTransactionResponse = await this.runSqlQuery(
-        `
+      // Single optimized SQL query using CTE for rules aggregation
+      const sql = `
+        WITH rules_agg AS (
+            SELECT
+                anr.alert_id,
+                anr.tenant_id,
+                anr.typology_id,
+                anr.typology_cfg,
+                COLLECT_LIST(
+                    NAMED_STRUCT(
+                        'rule_id',                   anr.rule_id,
+                        'rule_cfg',                  anr.rule_cfg,
+                        'rule_weight',               anr.rule_weight,
+                        'rule_independent_variable', anr.rule_independent_variable,
+                        'rule_sub_ref',              anr.rule_sub_ref,
+                        'rule_processing_time_ms',   anr.rule_processing_time_ms,
+                        'rule_tenant_id',            anr.rule_tenant_id
+                    )
+                ) AS rules
+            FROM alert_navigator_rules anr
+            WHERE anr.alert_id  = 394
+              AND anr.tenant_id = 'DEFAULT'
+              AND anr.rule_weight > 0
+            GROUP BY
+                anr.alert_id,
+                anr.tenant_id,
+                anr.typology_id,
+                anr.typology_cfg
+        )
+
         SELECT
-          h.*,
-          a.alert_id as alert_alert_id,
-          a.alert_status,
-          a.tx_type as alert_tx_type,
-          a.tx_amount as alert_tx_amount,
-          a.tx_ccy as alert_tx_ccy,
-          a.created_at_ts,
-          t.transaction_id as tx_transaction_id,
-          t.end_to_end_id,
-          t.tx_msg_id,
-          t.tx_amount,
-          t.tx_ccy,
-          t.event_ts,
-          t.tx_status,
-          t.tx_type,
-          t.instg_mmb_id,
-          t.instd_mmb_id
-        FROM alert_navigator_header h
-        LEFT JOIN alerts a ON h.alert_id = a.alert_id AND h.tenant_id = a.tenant_id
-        LEFT JOIN transactions t ON (
-          (a.tx_msg_id IS NOT NULL AND t.tx_msg_id = a.tx_msg_id) OR
-          (h.end_to_end_id IS NOT NULL AND t.end_to_end_id = h.end_to_end_id) OR
-          (h.transaction_id IS NOT NULL AND t.transaction_id = h.transaction_id)
-        ) AND t.tenant_id = h.tenant_id
-        WHERE h.alert_id = ${alertId}
-          AND h.tenant_id = '${tenantId}'
-        LIMIT 1
-        `,
-        1,
-      );
+            anh.alert_id,
+            anh.tenant_id,
+            anh.case_id,
+            anh.tx_msg_id,
+            anh.tx_type,
+            anh.alert_timestamp,
+            anh.alert_reason,
+            anh.alert_type,
+            anh.prediction_outcome,
+            anh.priority,
+            anh.priority_score,
+            anh.evaluation_id,
+            anh.alert_status,
+            anh.transaction_status,
+            anh.transaction_amount,
+            anh.transaction_currency,
+            anh.transaction_id,
+            anh.end_to_end_id,
+            anh.block_or_override_status,
+            anh.alert_date,
+            COLLECT_LIST(
+                NAMED_STRUCT(
+                    'typology_id',               ant.typology_id,
+                    'typology_cfg',              ant.typology_cfg,
+                    'typology_score',            ant.typology_score,
+                    'typology_review',           ant.typology_review,
+                    'typology_processing_time_ms', ant.typology_processing_time_ms,
+                    'typology_tenant_id',        ant.typology_tenant_id,
+                    'flow_processor',            ant.flow_processor,
+                    'alert_threshold',           ant.alert_threshold,
+                    'interdiction_threshold',    ant.interdiction_threshold,
+                    'rule_count_in_typology',    ant.rule_count_in_typology,
+                    'rules',                     ra.rules
+                )
+            ) AS typologies
 
-      const [typologiesResponse] = await Promise.all([
-        this.query({
-          table_name: 'alert_navigator_typologies',
-          filters: { alert_id: alertId, tenant_id: tenantId },
-        }),
-      ]);
+        FROM alert_navigator_header anh
 
-      // Fetch rules with rule_weight > 0 using SQL
-      const rulesResponse = await this.runSqlQuery(
-        `
-        SELECT r.*, rules.rule_desc
-        FROM alert_navigator_rules r
-        LEFT JOIN rules ON r.rule_id = rules.rule_id
-        WHERE r.alert_id = ${alertId}
-          AND r.tenant_id = '${tenantId}'
-          AND r.rule_weight > 0
-        `,
-        1000,
-      );
+        LEFT JOIN alert_navigator_typologies ant
+            ON  ant.alert_id  = anh.alert_id
+            AND ant.tenant_id = anh.tenant_id
 
-      const combinedRaw = alertWithTransactionResponse?.data?.[0];
+        LEFT JOIN rules_agg ra
+            ON  ra.alert_id     = ant.alert_id
+            AND ra.tenant_id    = ant.tenant_id
+            AND ra.typology_id  = ant.typology_id
+            AND ra.typology_cfg = ant.typology_cfg
 
-      if (!combinedRaw) {
+        WHERE
+            anh.alert_id  = 394
+            AND anh.tenant_id = 'DEFAULT'
+
+        GROUP BY
+            anh.alert_id,
+            anh.tenant_id,
+            anh.case_id,
+            anh.tx_msg_id,
+            anh.tx_type,
+            anh.alert_timestamp,
+            anh.alert_reason,
+            anh.alert_type,
+            anh.prediction_outcome,
+            anh.priority,
+            anh.priority_score,
+            anh.evaluation_id,
+            anh.alert_status,
+            anh.transaction_status,
+            anh.transaction_amount,
+            anh.transaction_currency,
+            anh.transaction_id,
+            anh.end_to_end_id,
+            anh.block_or_override_status,
+            anh.alert_date
+      `;
+
+      const response = await this.runSqlQuery(sql, 1);
+      const rawData = response?.data?.[0];
+
+      if (!rawData) {
         throw new HttpException('Alert not found', HttpStatus.NOT_FOUND);
       }
 
-      const combined = this.stripHudiMetadata(combinedRaw);
-      const typologiesRaw = typologiesResponse.data;
-      const rulesRaw = rulesResponse?.data ?? [];
+      const data = this.stripHudiMetadata(rawData);
 
-      // Alert Metadata
+      // Map alert metadata from alert_navigator_header fields
       const alertMetadata = {
-        alertId: Number(combined.alert_id),
-        transactionId: String(combined.tx_transaction_id) || String(combined.end_to_end_id) || String(combined.transaction_id),
-        timestamp: String(combined.created_at_ts) || String(combined.ingested_at_ts),
-        transactionType: String(combined.alert_tx_type) || String(combined.tx_type),
-        amount: Number(combined.alert_tx_amount) || Number(combined.tx_amount),
-        currency: String(combined.alert_tx_ccy) || String(combined.tx_ccy),
-        status: String(combined.alert_status),
-        reason: String(combined.alert_reason),
-        blockReason: String(combined.block_or_override_status),
+        alertId: Number(data.alert_id),
+        transactionId: String(data.transaction_id ?? ''),
+        timestamp: String(data.alert_timestamp ?? ''),
+        transactionType: String(data.tx_type ?? ''),
+        amount: Number(data.transaction_amount ?? 0),
+        currency: String(data.transaction_currency ?? ''),
+        status: String(data.alert_status ?? ''),
+        reason: String(data.alert_reason ?? ''),
+        blockReason: String(data.block_or_override_status ?? ''),
+        evaluationId: String(data.evaluation_id ?? ''),
       };
 
-      // Typologies
-      const typologies = typologiesRaw.map((t) => {
-        const typology = this.stripHudiMetadata(t);
+      // Parse and map typologies from the nested COLLECT_LIST structure
+      const typologiesData = data.typologies ?? [];
+      const typologies = typologiesData
+        .filter((t: any) => t.typology_id !== null)
+        .map((t: any) => {
+          const rulesData = t.rules ?? [];
+          const rulesString = JSON.stringify(
+            rulesData.map((r: any) => ({
+              ruleId: r.rule_id,
+              ruleWeight: r.rule_weight,
+              subRef: r.rule_sub_ref,
+            })),
+          );
 
-        // Find rules that belong to this typology
-        const typologyRules = rulesRaw
-          .filter((r) => {
-            const rule = this.stripHudiMetadata(r);
-            return rule.typology_cfg === typology.typology_cfg;
-          })
-          .map((r) => {
-            const rule = this.stripHudiMetadata(r);
-            return {
-              ruleId: rule.rule_id,
-              ruleDesc: rule.rule_desc,
-              ruleWeight: rule.rule_weight,
-              subRef: rule.rule_sub_ref,
-            };
-          });
+          return {
+            typologyId: String(t.typology_id ?? ''),
+            typologyCfg: String(t.typology_cfg ?? ''),
+            typologyScore: Number(t.typology_score ?? 0),
+            alertThreshold: Number(t.alert_threshold ?? 0),
+            interdictionThreshold: Number(t.interdiction_threshold ?? 0),
+            ruleCount: Number(t.rule_count_in_typology ?? 0),
+            rules: rulesString,
+          };
+        });
 
-        return {
-          typologyId: String(typology.typology_id),
-          typologyCfg: String(typology.typology_cfg),
-          typologyScore: Number(typology.typology_score),
-          alertThreshold: Number(typology.alert_threshold),
-          interdictionThreshold: Number(typology.interdiction_threshold),
-          ruleCount: Number(typology.rule_count_in_typology),
-          rules: String(typologyRules),
-        };
-      });
-
-      // Calculate summary statistics
+      // Calculate statistics manually
       const totalTypologies = typologies.length;
-      const totalRules = rulesRaw.length;
-      const avgScore = totalTypologies > 0 ? typologies.reduce((sum, t) => sum + t.typologyScore, 0) / totalTypologies : 0;
+      const totalRules = typologies.reduce((sum, t) => {
+        try {
+          const rulesArray = JSON.parse(t.rules);
+          return sum + (Array.isArray(rulesArray) ? rulesArray.length : 0);
+        } catch {
+          return sum;
+        }
+      }, 0);
 
       return {
         alertMetadata,
         typologies,
         statistics: {
           totalTypologies,
-          totalRules: Number(totalRules),
-          avgScore: Math.round(avgScore * 100) / 100,
+          totalRules,
         },
         meta: {
           alertId,
@@ -145,6 +195,11 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         },
       };
     } catch (error: unknown) {
+      // Re-throw HttpExceptions as is (e.g., NOT_FOUND)
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Error fetching Alert Navigator data: ${errorMessage}`, errorStack);
