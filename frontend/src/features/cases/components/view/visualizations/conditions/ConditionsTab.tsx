@@ -2,7 +2,7 @@ import React from "react";
 import JupyterVisualization from "../shared/JupyterVisualization";
 
 interface ConditionsTabProps {
-  caseId?: string;
+  caseId?: number;
   transactionId?: string;
 }
 

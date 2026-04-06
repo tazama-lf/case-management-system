@@ -4,52 +4,13 @@ import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from './gold-lakehouse.service';
 import { AlertHistoryTimelineResponse } from './types/IAlertHistoryTimeline.types';
 import { AlertHistoryAlertsResponse } from './types/IAlertHistory.types';
-import { AlertNavigatorMetricsResponse, AlertNavigatorDataResponse } from './types/alert-navigator.types';
+import { AlertNavigatorDataResponse } from './types/alert-navigator.types';
 
 @Injectable()
 export class AlertsLakehouseService extends GoldLakehouseService {
   // eslint-disable-next-line @typescript-eslint/no-useless-constructor -- Required for NestJS dependency injection in subclasses
   constructor(httpService: HttpService, configService: ConfigService) {
     super(httpService, configService);
-  }
-
-  async getAlertNavigatorMetrics(alertId: number, tenantId = 'DEFAULT'): Promise<AlertNavigatorMetricsResponse> {
-    try {
-      this.logger.log(`Fetching Alert Navigator metrics for alert: ${alertId}`);
-
-      const sql = `
-      SELECT
-        COUNT(DISTINCT t.typology_id) AS total_typologies,
-        COUNT(DISTINCT r.rule_id)     AS total_rules,
-        AVG(t.typology_score)         AS avg_typology_score
-      FROM alert_navigator_header h
-      LEFT JOIN alert_navigator_typologies t
-        ON t.alert_id = h.alert_id
-      AND t.tenant_id = h.tenant_id
-      LEFT JOIN alert_navigator_rules r
-        ON r.alert_id = h.alert_id
-      AND r.tenant_id = h.tenant_id
-      AND r.rule_weight > 0
-      WHERE h.alert_id = ${alertId}
-        AND h.tenant_id = '${tenantId}'
-      `;
-
-      const response = await this.runSqlQuery(sql, 1);
-      const row = response?.data?.[0];
-
-      return {
-        total_typologies: Number(row?.total_typologies ?? 0),
-        total_rules: Number(row?.total_rules ?? 0),
-        avg_typology_score: row?.avg_typology_score === null ? null : Number(row.avg_typology_score),
-        alertId,
-        tenantId,
-      };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching Alert Navigator metrics: ${errorMessage}`, errorStack);
-      throw new HttpException('Failed to fetch Alert Navigator metrics', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
   }
 
   async getAlertNavigatorData(alertId: number, tenantId = 'DEFAULT'): Promise<AlertNavigatorDataResponse> {
