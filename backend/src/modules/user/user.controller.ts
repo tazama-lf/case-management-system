@@ -25,7 +25,7 @@ export class UserController {
     const users: UserGroupDetails[] = await this.userService.getUsersByRole(
       req.headers.authorization!.replace('Bearer ', ''),
       role,
-      user.token.tenantName,
+      user.tenantName,
     );
     return users;
   }
