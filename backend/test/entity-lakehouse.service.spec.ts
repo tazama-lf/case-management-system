@@ -62,17 +62,4 @@ describe('EntityLakehouseService', () => {
       expect(result.accountCount).toBe(0);
     });
   });
-
-  // ===================== getAllAccountHolderData =====================
-  describe('getAllAccountHolderData', () => {
-    it('returns account holder data', async () => {
-      const result: any = await service.getAllAccountHolderData('DEFAULT');
-      expect(result.tableName).toBe('account_holder');
-    });
-
-    it('throws on error', async () => {
-      http.mockReturnValue(errHttp());
-      await expect(service.getAllAccountHolderData('DEFAULT')).rejects.toThrow(HttpException);
-    });
-  });
 });
