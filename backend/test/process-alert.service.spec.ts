@@ -124,7 +124,7 @@ describe('ProcessAlertService', () => {
       it('should return early when report status is NALT', async () => {
         const naltDto = {
           ...mockIngestAlertDto,
-          report: { ...mockIngestAlertDto.report, status: 'NALT' },
+          report: { ...mockIngestAlertDto.report, status: 'NALT' as const },
         };
 
         alertService.handleAlertOrNALT.mockResolvedValue(mockAlert);
