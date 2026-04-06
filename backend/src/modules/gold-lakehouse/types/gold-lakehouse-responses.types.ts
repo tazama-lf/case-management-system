@@ -129,55 +129,6 @@ export interface TransactionHistoryByEndToEndIdResponse {
   };
 }
 
-// Transaction Perspectives Response
-export interface TransactionPerspectivesResponse {
-  endToEndId: string;
-  tenantId: string;
-  perspectiveCount: number;
-  transactionDetails: {
-    transactionId: number;
-    endToEndId: string;
-    amount: number;
-    currency: string;
-    type: string;
-    date: string;
-    timestamp: string;
-    isAlerted: boolean;
-    isInvestigated: boolean;
-    debtorName: string;
-    creditorName: string;
-    debtorAccountId: string;
-    creditorAccountId: string;
-  } | null;
-  perspectives: Array<{
-    entity_type: string;
-    entity_role: string;
-    entity_id: string;
-    entity_name: string;
-    transaction_id: number;
-    tx_amount: number;
-    tx_ccy: string;
-    event_ts: string;
-  }>;
-  meta: {
-    queryTimestamp: string;
-    message: string;
-  };
-}
-
-// Test Account IDs Response
-export interface TestAccountIdsResponse {
-  message: string;
-  tenantId: string;
-  accounts: Array<{
-    accountId: string;
-    accountName: string;
-    connections: number;
-    totalTransactions: number;
-    testUrl: string;
-  }>;
-}
-
 // Network Node
 export interface NetworkNode {
   id: string;

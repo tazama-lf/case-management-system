@@ -159,44 +159,6 @@ describe('TransactionLakehouseService', () => {
     });
   });
 
-  // ===================== getTransactionOverviewUIData =====================
-  describe('getTransactionOverviewUIData', () => {
-    it('returns overview data', async () => {
-      const result = await service.getTransactionOverviewUIData(1, 'DEFAULT');
-      expect(result).toHaveProperty('transactionOverview');
-    });
-
-    it('throws when transaction not found', async () => {
-      http.mockReturnValue(okHttp([]));
-      await expect(service.getTransactionOverviewUIData(999)).rejects.toThrow(HttpException);
-    });
-
-    it('throws on error', async () => {
-      http.mockReturnValue(errHttp());
-      await expect(service.getTransactionOverviewUIData(1)).rejects.toThrow(HttpException);
-    });
-  });
-
-  // ===================== getTestAccountIds =====================
-  describe('getTestAccountIds', () => {
-    it('returns account list', async () => {
-      http.mockReturnValue(okHttp([{ account_id: 'acc1', account_name: 'Test', connections: 5, total_transactions: 100 }]));
-      const result = await service.getTestAccountIds('DEFAULT', 1);
-      expect((result as any).accounts).toHaveLength(1);
-    });
-
-    it('returns empty accounts', async () => {
-      http.mockReturnValue(okHttp([]));
-      const result = await service.getTestAccountIds();
-      expect((result as any).accounts).toEqual([]);
-    });
-
-    it('throws on error', async () => {
-      http.mockReturnValue(errHttp());
-      await expect(service.getTestAccountIds()).rejects.toThrow('Failed to fetch test account IDs');
-    });
-  });
-
   // ===================== getTransactionNetworkData =====================
   describe('getTransactionNetworkData', () => {
     it('returns network with connections', async () => {
@@ -410,26 +372,6 @@ describe('TransactionLakehouseService', () => {
     });
   });
 
-  // ===================== getTransactionPerspectivesByEndToEndId =====================
-  describe('getTransactionPerspectivesByEndToEndId', () => {
-    it('returns perspectives', async () => {
-      http.mockReturnValue(okHttp([{ entity_type: 'ACCOUNT', entity_role: 'DEBTOR', entity_id: 'e1', tx_amount: 100, tx_ccy: 'USD' }]));
-      const result = await service.getTransactionPerspectivesByEndToEndId('e2e1', 'DEFAULT');
-      expect(result.perspectives).toHaveLength(1);
-    });
-
-    it('returns empty perspectives', async () => {
-      http.mockReturnValue(okHttp([]));
-      const result = await service.getTransactionPerspectivesByEndToEndId('e2e999');
-      expect(result.perspectives).toEqual([]);
-    });
-
-    it('throws on error', async () => {
-      http.mockReturnValue(errHttp());
-      await expect(service.getTransactionPerspectivesByEndToEndId('e2e1')).rejects.toThrow(HttpException);
-    });
-  });
-
   // ===================== getCounterpartyNetworkData =====================
   describe('getCounterpartyNetworkData', () => {
     it('returns counterparty network', async () => {
@@ -481,19 +423,6 @@ describe('TransactionLakehouseService', () => {
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
       await expect(service.getCounterpartyNetworkData('acc1')).rejects.toThrow(HttpException);
-    });
-  });
-
-  // ===================== getTransactionDetailSampleData =====================
-  describe('getTransactionDetailSampleData', () => {
-    it('returns sample data', async () => {
-      const result: any = await service.getTransactionDetailSampleData('DEFAULT');
-      expect(result.tableName).toBe('transaction_detail');
-    });
-
-    it('throws on error', async () => {
-      http.mockReturnValue(errHttp());
-      await expect(service.getTransactionDetailSampleData('DEFAULT')).rejects.toThrow(HttpException);
     });
   });
 

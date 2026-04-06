@@ -65,34 +65,3 @@ export interface TransactionDetailDataResponse {
     href: string;
   }>;
 }
-
-export interface TransactionOverviewUIDataResponse {
-  transactionOverview: {
-    transactionId: string;
-    timestamp: string;
-    type: string;
-    status: string;
-  };
-  transactionFlow: {
-    amount: number;
-    currency: string;
-    debtor: {
-      name: string;
-      account: string;
-      bank: string;
-    };
-    creditor: {
-      name: string;
-      account: string;
-      bank: string;
-    };
-  };
-  debtorProfile?: any;
-  creditorProfile?: any;
-  amountAndCurrency?: any;
-  settlementDetails?: any;
-  links?: any;
-  charges?: any;
-  meta?: any;
-  transactionMetadata?: any;
-}

@@ -6,7 +6,6 @@ import { TransactionLakehouseService } from './transaction-lakehouse.service';
 import { ConditionLakehouseService } from './condition-lakehouse.service';
 import { BenfordsLawLakehouseService } from './benfordsLaw-lakehouse.service';
 import { AccountLakehouseService } from './account-lakehouse.service';
-import { EntityLakehouseService } from './entity-lakehouse.service';
 import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
 import { TransactionNetworkResponseDto, CounterpartyNetworkResponseDto } from './dto/network-analysis.dto';
 import {
@@ -14,15 +13,12 @@ import {
   ConditionsByEntityResponse,
   ConditionsContextByTransactionResponse,
   CounterpartyNodeFullDataResponse,
-  TestAccountIdsResponse,
-  TransactionPerspectivesResponse,
 } from './types/gold-lakehouse-responses.types';
 import { AlertNavigatorDataResponse } from './types/alert-navigator.types';
 import { TransactionDetailDataResponse } from './types/transaction-detail.types';
 import { AccountConditionsSummary, ConditionsListByAccountResponse } from './types/IAccountConditions.types';
 import { AlertHistoryTimelineResponse } from './types/IAlertHistoryTimeline.types';
 import { AlertHistoryAlertsResponse } from './types/IAlertHistory.types';
-import { ConditionsTableDataResponse } from './types/IConditionsTableData.types';
 import { Audit } from '../audit/decorators/audit-log.decorator';
 import { GenerateProfileDto } from './dto/generate-profile.dto';
 import { GenerateProfileResponseDto } from './dto/profile-response.dto';
@@ -39,7 +35,6 @@ export class GoldLakehouseController {
     private readonly conditionLakehouseService: ConditionLakehouseService,
     private readonly benfordsLawLakehouseService: BenfordsLawLakehouseService,
     private readonly accountLakehouseService: AccountLakehouseService,
-    private readonly entityLakehouseService: EntityLakehouseService,
   ) {}
 
   @Get('alert-navigator/:alertId')
@@ -609,119 +604,6 @@ export class GoldLakehouseController {
     );
   }
 
-  @Get('transaction-perspectives/:endToEndId')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
-    summary: 'Get Transaction Perspectives by End-to-End ID',
-    description:
-      'Returns all entity perspectives (Debtor Account, Creditor Account, Debtor Counterparty, Creditor Counterparty) for a single transaction. Shows how the transaction appears from each entity viewpoint. Query by end_to_end_id (transaction UUID) to get complete transaction context.',
-  })
-  @ApiParam({
-    name: 'endToEndId',
-    description: 'Transaction End-to-End ID (UUID) - REQUIRED',
-    required: true,
-    type: String,
-    example: 'ee4f3638-c42d-4a7e-abec-4c3aff068570',
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
-    required: false,
-    type: String,
-    example: 'DEFAULT',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Transaction perspectives data showing all entity views of the transaction',
-    schema: {
-      example: {
-        endToEndId: 'ee4f3638-c42d-4a7e-abec-4c3aff068570',
-        tenantId: 'DEFAULT',
-        perspectiveCount: 4,
-        transactionDetails: {
-          transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
-          endToEndId: 'ee4f3638-c42d-4a7e-abec-4c3aff068570',
-          amount: 1500.0,
-          currency: 'USD',
-          type: 'pacs.008.001.10',
-          date: '2026-01-20',
-          timestamp: '2026-01-20T10:30:00Z',
-          isAlerted: true,
-          isInvestigated: false,
-          debtorName: 'John Smith',
-          creditorName: 'Jane Doe',
-          debtorAccountId: 'dbtrAcct_abc123',
-          creditorAccountId: 'cdtrAcct_def456',
-        },
-        perspectives: [
-          {
-            entityType: 'ACCOUNT',
-            entityRole: 'DEBTOR',
-            entityId: 'dbtrAcct_abc123',
-            entityName: 'John Smith Account',
-            transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
-            amount: 1500.0,
-            currency: 'USD',
-            timestamp: '2026-01-20T10:30:00Z',
-          },
-          {
-            entityType: 'ACCOUNT',
-            entityRole: 'CREDITOR',
-            entityId: 'cdtrAcct_def456',
-            entityName: 'Jane Doe Account',
-            transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
-            amount: 1500.0,
-            currency: 'USD',
-            timestamp: '2026-01-20T10:30:00Z',
-          },
-          {
-            entityType: 'COUNTERPARTY',
-            entityRole: 'DEBTOR',
-            entityId: 'dbtr_xyz789',
-            entityName: 'John Smith',
-            transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
-            amount: 1500.0,
-            currency: 'USD',
-            timestamp: '2026-01-20T10:30:00Z',
-          },
-          {
-            entityType: 'COUNTERPARTY',
-            entityRole: 'CREDITOR',
-            entityId: 'cdtr_uvw321',
-            entityName: 'Jane Doe',
-            transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
-            amount: 1500.0,
-            currency: 'USD',
-            timestamp: '2026-01-20T10:30:00Z',
-          },
-        ],
-        meta: {
-          queryTimestamp: '2026-02-10T12:00:00.000Z',
-          message: 'Retrieved 4 entity perspective(s) for transaction',
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 400, description: 'Invalid end-to-end ID format' })
-  @ApiResponse({ status: 404, description: 'Transaction not found' })
-  async getTransactionPerspectives(
-    @Param('endToEndId') endToEndId: string,
-    @Query('tenantId') tenantId?: string,
-  ): Promise<TransactionPerspectivesResponse> {
-    // Validate end-to-end ID
-    if (!endToEndId || endToEndId.trim() === '') {
-      throw new BadRequestException('End-to-End ID is required');
-    }
-
-    // Basic UUID format validation (optional but recommended)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iv;
-    if (!uuidRegex.test(endToEndId)) {
-      throw new BadRequestException('Invalid end-to-end ID format. Must be a valid UUID.');
-    }
-
-    return await this.transactionLakehouseService.getTransactionPerspectivesByEndToEndId(endToEndId, tenantId ?? 'DEFAULT');
-  }
-
   @Get('alert-history/summary')
   // Access restricted: require investigator or supervisor role
   @RequireInvestigatorOrSupervisorRole()
@@ -954,34 +836,6 @@ export class GoldLakehouseController {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
     return await this.alertsLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page ?? 1, limit ?? 20);
-  }
-
-  // ---------------- TRANSACTION VIEW ----------------
-
-  @Get('network-analysis/test-accounts')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
-    summary: 'Get Test Account IDs',
-    description: 'Fetches account IDs with network activity for testing network analysis endpoints',
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID',
-    required: false,
-    example: 'DEFAULT',
-  })
-  @ApiQuery({
-    name: 'minConnections',
-    description: 'Minimum number of unique connections required (default: 1)',
-    required: false,
-    example: 2,
-  })
-  @ApiResponse({ status: 200, description: 'List of test account IDs with network statistics' })
-  async getTestAccountIds(
-    @Query('tenantId') tenantId?: string,
-    @Query('minConnections') minConnections?: number,
-  ): Promise<TestAccountIdsResponse> {
-    return await this.transactionLakehouseService.getTestAccountIds(tenantId ?? 'DEFAULT', minConnections ?? 1);
   }
 
   // ---------------- TRANSACTION NETWORK ANALYSIS ----------------
@@ -1244,40 +1098,6 @@ export class GoldLakehouseController {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
     return await this.transactionLakehouseService.getCounterpartyNetworkData(accountId, tenantId ?? 'DEFAULT', timeRange ?? '30d');
-  }
-
-  // ---------------- DEBUG ENDPOINTS FOR DATA ANALYSIS ----------------
-
-  @Get('debug/conditions-table')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'DEBUG: Get all conditions table data' })
-  @ApiQuery({ name: 'tenantId', required: false, type: String, example: 'DEFAULT' })
-  async getAllConditions(@Query('tenantId') tenantId?: string): Promise<ConditionsTableDataResponse> {
-    return await this.conditionLakehouseService.getAllConditionsTableData(tenantId ?? 'DEFAULT');
-  }
-
-  @Get('debug/conditions-timeline-table')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'DEBUG: Get all conditions_timeline table data' })
-  @ApiQuery({ name: 'tenantId', required: false, type: String, example: 'DEFAULT' })
-  async getAllConditionsTimeline(@Query('tenantId') tenantId?: string): Promise<unknown> {
-    return await this.conditionLakehouseService.getAllConditionsTimelineData(tenantId ?? 'DEFAULT');
-  }
-
-  @Get('debug/account-holder-table')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'DEBUG: Get all account_holder table data (limited to 200 rows)' })
-  @ApiQuery({ name: 'tenantId', required: false, type: String, example: 'DEFAULT' })
-  async getAllAccountHolder(@Query('tenantId') tenantId?: string): Promise<unknown> {
-    return await this.entityLakehouseService.getAllAccountHolderData(tenantId ?? 'DEFAULT');
-  }
-
-  @Get('debug/transaction-detail-table')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'DEBUG: Get sample transaction_detail table data (limited to 100 rows)' })
-  @ApiQuery({ name: 'tenantId', required: false, type: String, example: 'DEFAULT' })
-  async getTransactionDetailSample(@Query('tenantId') tenantId?: string): Promise<unknown> {
-    return await this.transactionLakehouseService.getTransactionDetailSampleData(tenantId ?? 'DEFAULT');
   }
 
   @Post('profile/generate/:alertId')
