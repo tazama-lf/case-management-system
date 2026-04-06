@@ -37,8 +37,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
                     )
                 ) AS rules
             FROM alert_navigator_rules anr
-            WHERE anr.alert_id  = 394
-              AND anr.tenant_id = 'DEFAULT'
+            WHERE anr.alert_id  = ${alertId}
+              AND anr.tenant_id = ${tenantId}
               AND anr.rule_weight > 0
             GROUP BY
                 anr.alert_id,
@@ -97,8 +97,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             AND ra.typology_cfg = ant.typology_cfg
 
         WHERE
-            anh.alert_id  = 394
-            AND anh.tenant_id = 'DEFAULT'
+            anh.alert_id  = ${alertId}
+            AND anh.tenant_id = ${tenantId}
 
         GROUP BY
             anh.alert_id,
