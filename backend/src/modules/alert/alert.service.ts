@@ -121,7 +121,7 @@ export class AlertService {
     }
 
     const transactiondataSql = `
-      SELECT * from transaction_detail where end_to_end_id = 'bdd9059b58e14839b076bbc6a4e0b94b';`;
+      SELECT * from transaction_detail where end_to_end_id = '${referenceId}';`;
 
     const transactionData = await this.goldLakehouseService.runSqlQuery(transactiondataSql, 1000);
 

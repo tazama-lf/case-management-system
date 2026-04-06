@@ -94,11 +94,11 @@ describe('AlertService', () => {
         },
         {
           provide: GoldLakehouseService,
-          useValue: {},
+          useValue: { runSqlQuery: jest.fn() },
         },
         {
           provide: TransactionLakehouseService,
-          useValue: { getTransactionHistoryByEndToEndId: jest.fn() },
+          useValue: {},
         },
       ],
     }).compile();
@@ -306,18 +306,42 @@ describe('AlertService', () => {
       createdAt: new Date(),
     };
 
-    const mockTxHistory = { transactions: [{ id: 'tx-123' }] } as any;
+    const mockTransactionData = {
+      status: 'success',
+      code: 200,
+      table: 'transaction_detail',
+      row_count: 2,
+      data: [
+        {
+          pk: 'pk-1',
+          transaction_id: 500356,
+          end_to_end_id: 'tx-123',
+          tenant_id: 'DEFAULT',
+          tx_type: 'pacs.002.001.12',
+        },
+        {
+          pk: 'pk-2',
+          transaction_id: 500356,
+          end_to_end_id: 'tx-123',
+          tenant_id: 'DEFAULT',
+          tx_type: 'pacs.008.001.10',
+        },
+      ],
+    };
 
-    it('returns transaction history for valid alert', async () => {
+    it('returns transaction data for valid alert', async () => {
       alertRepository.getAlertById.mockResolvedValue(mockAlert);
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
-      transactionLakehouseService.getTransactionHistoryByEndToEndId.mockResolvedValue(mockTxHistory);
+      goldLakehouseService.runSqlQuery.mockResolvedValue(mockTransactionData as any);
 
       const result = await service.getAlertTransactionalData(1);
 
-      expect(result).toEqual(mockTxHistory);
+      expect(result).toEqual({ transactionData: mockTransactionData });
       expect(alertRepository.getReferenceId).toHaveBeenCalledWith('pacs.002.001.12');
-      expect(transactionLakehouseService.getTransactionHistoryByEndToEndId).toHaveBeenCalledWith('tx-123');
+      expect(goldLakehouseService.runSqlQuery).toHaveBeenCalledWith(
+        expect.stringContaining("SELECT * from transaction_detail where end_to_end_id = 'tx-123'"),
+        1000,
+      );
     });
 
     it('throws when alert not found', async () => {
@@ -334,28 +358,18 @@ describe('AlertService', () => {
       await expect(service.getAlertTransactionalData(1)).rejects.toThrow('ReferenceId not found in transaction data');
     });
 
-    it('throws when transactionLakehouseService throws Error', async () => {
+    it('throws when goldLakehouseService returns data without data property', async () => {
       alertRepository.getAlertById.mockResolvedValue(mockAlert);
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
-      transactionLakehouseService.getTransactionHistoryByEndToEndId.mockRejectedValue(new Error('Lakehouse down'));
+      goldLakehouseService.runSqlQuery.mockResolvedValue({ status: 'success', code: 200 } as any);
 
       await expect(service.getAlertTransactionalData(1)).rejects.toThrow(InternalServerErrorException);
-      expect(loggerService.error).toHaveBeenCalled();
     });
 
-    it('throws when transactionLakehouseService throws non-Error', async () => {
+    it('throws when goldLakehouseService returns null data', async () => {
       alertRepository.getAlertById.mockResolvedValue(mockAlert);
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
-      transactionLakehouseService.getTransactionHistoryByEndToEndId.mockRejectedValue('string failure');
-
-      await expect(service.getAlertTransactionalData(1)).rejects.toThrow(InternalServerErrorException);
-      expect(loggerService.error).toHaveBeenCalled();
-    });
-
-    it('throws when transactionLakehouseService returns null', async () => {
-      alertRepository.getAlertById.mockResolvedValue(mockAlert);
-      alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
-      transactionLakehouseService.getTransactionHistoryByEndToEndId.mockResolvedValue(null as any);
+      goldLakehouseService.runSqlQuery.mockResolvedValue({ data: null } as any);
 
       await expect(service.getAlertTransactionalData(1)).rejects.toThrow(InternalServerErrorException);
     });
