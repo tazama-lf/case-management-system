@@ -5,16 +5,22 @@ import VoilaFrame from "../network-analysis/VoilaFrame";
 interface ConditionsTabProps {
   caseId?: number;
   transactionId?: string;
+  tenantId: string;
 }
 
 const ConditionsTab: React.FC<ConditionsTabProps> = ({
   caseId: _caseId,
   transactionId: _transactionId,
+  tenantId: _tenantId,
 }) =>
 (
   <VoilaFrame
     notebookPath="conditions-timeline.ipynb"
     title="Conditions Timeline"
+    queryParams={{
+      transactionId: _transactionId || '',
+      tenantId: _tenantId || '',
+    }}
   />
 );
 //   {
