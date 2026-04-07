@@ -10,7 +10,6 @@ WORKDIR /home/app
 
 COPY ./src ./src
 COPY ./prisma ./prisma
-COPY ./prismaDWH ./prismaDWH
 COPY ./package*.json ./
 COPY ./tsconfig.json ./
 COPY .npmrc ./
@@ -20,7 +19,6 @@ ARG GH_TOKEN
 RUN npm ci --ignore-scripts
 
 RUN npx prisma generate
-RUN npx prisma generate --schema=prismaDWH/schema.dwh.prisma
 
 RUN npm run build
 
