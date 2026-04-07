@@ -5,6 +5,8 @@ import { GoldLakehouseService } from './gold-lakehouse.service';
 import { AlertHistoryTimelineResponse } from './types/IAlertHistoryTimeline.types';
 import { AlertHistoryAlertsResponse } from './types/IAlertHistory.types';
 import { AlertNavigatorDataResponse } from './types/alert-navigator.types';
+import type { RawRuleRow } from './types/raw-rule-row.types';
+import type { RawTypologyRow } from './types/raw-typologies-row.types';
 
 @Injectable()
 export class AlertsLakehouseService extends GoldLakehouseService {
@@ -131,7 +133,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
 
       const data = this.stripHudiMetadata(rawData);
 
-      // Map alert metadata from alert_navigator_header fields
       const alertMetadata = {
         alertId: Number(data.alert_id),
         transactionId: String(data.transaction_id ?? ''),
@@ -145,14 +146,13 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         evaluationId: String(data.evaluation_id ?? ''),
       };
 
-      // Parse and map typologies from the nested COLLECT_LIST structure
-      const typologiesData = data.typologies ?? [];
+      const typologiesData = this.safeParseArray<RawTypologyRow>(data.typologies);
       const typologies = typologiesData
-        .filter((t: any) => t.typology_id !== null)
-        .map((t: any) => {
-          const rulesData = t.rules ?? [];
+        .filter((t) => t.typology_id !== null)
+        .map((t) => {
+          const rulesData = this.safeParseArray<RawRuleRow>(t.rules);
           const rulesString = JSON.stringify(
-            rulesData.map((r: any) => ({
+            rulesData.map((r) => ({
               ruleId: r.rule_id,
               ruleWeight: r.rule_weight,
               subRef: r.rule_sub_ref,
@@ -160,12 +160,12 @@ export class AlertsLakehouseService extends GoldLakehouseService {
           );
 
           return {
-            typologyId: String(t.typology_id ?? ''),
-            typologyCfg: String(t.typology_cfg ?? ''),
-            typologyScore: Number(t.typology_score ?? 0),
-            alertThreshold: Number(t.alert_threshold ?? 0),
-            interdictionThreshold: Number(t.interdiction_threshold ?? 0),
-            ruleCount: Number(t.rule_count_in_typology ?? 0),
+            typologyId: t.typology_id ?? '',
+            typologyCfg: t.typology_cfg ?? '',
+            typologyScore: t.typology_score ?? 0,
+            alertThreshold: t.alert_threshold ?? 0,
+            interdictionThreshold: t.interdiction_threshold ?? 0,
+            ruleCount: t.rule_count_in_typology ?? 0,
             rules: rulesString,
           };
         });
@@ -194,7 +194,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         },
       };
     } catch (error: unknown) {
-      // Re-throw HttpExceptions as is (e.g., NOT_FOUND)
       if (error instanceof HttpException) {
         throw error;
       }
@@ -478,5 +477,27 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       this.logger.error('Error fetching alert history alerts', errorStack);
       throw new HttpException('Failed to fetch alert history alerts', HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  /**
+   * Coerces a lakehouse COLLECT_LIST result to a plain array.
+   *
+   * Server-side Spark/Hudi API instances sometimes serialize COLLECT_LIST
+   * results as a JSON string instead of an already-parsed array.  This helper
+   * transparently handles both representations so the calling code never has
+   * to distinguish between them.
+   */
+  private safeParseArray<T>(value: unknown): T[] {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string' && value.trim().startsWith('[')) {
+      try {
+        const parsed: unknown = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        this.logger.warn(`safeParseArray: failed to parse string as JSON array. Preview: ${value.slice(0, 100)}`);
+        return [];
+      }
+    }
+    return [];
   }
 }

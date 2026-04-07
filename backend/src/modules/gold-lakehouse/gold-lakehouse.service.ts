@@ -91,7 +91,7 @@ export class GoldLakehouseService {
         throw error;
       }
 
-      throw new HttpException('Failed to run SQL query on Gold Lakehouse', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(`Failed to run SQL query on Gold Lakehouse: ${errorMessage}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
