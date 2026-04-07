@@ -38,6 +38,19 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
 }) => {
   const [activeSubTab, setActiveSubTab] =
     React.useState<VisualizationSubTab>('alert-navigator');
+  const [tenantId, setTenantId] = React.useState<string>('');
+
+  React.useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      try {
+        const userData = JSON.parse(user);
+        setTenantId(userData.tenantId || '');
+      } catch {
+        setTenantId('');
+      }
+    }
+  }, []);
 
   const subTabs = [
     {
@@ -144,6 +157,7 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
           <ConditionsTab
             caseId={caseId}
             transactionId={transactionId}
+            tenantId={tenantId}
           />
         )}
 
