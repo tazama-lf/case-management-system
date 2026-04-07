@@ -175,13 +175,13 @@ describe('JupyterProxyService', () => {
 
   describe('getConditionsContextByTransaction', () => {
     it('delegates with explicit tenantId', async () => {
-      await service.getConditionsContextByTransaction(1, 'TENANT_A', '2024-01-01');
-      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith(1, 'TENANT_A', '2024-01-01');
+      await service.getConditionsContextByTransaction('TMICFBPK2801321903297120', 'TENANT_A', '2024-01-01');
+      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith('TMICFBPK2801321903297120', 'TENANT_A', '2024-01-01');
     });
 
     it('defaults tenantId to "DEFAULT" when omitted', async () => {
-      await service.getConditionsContextByTransaction(1);
-      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith(1, 'DEFAULT', undefined);
+      await service.getConditionsContextByTransaction('TMICFBPK2801321903297120');
+      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith('TMICFBPK2801321903297120', 'DEFAULT', undefined);
     });
   });
 
