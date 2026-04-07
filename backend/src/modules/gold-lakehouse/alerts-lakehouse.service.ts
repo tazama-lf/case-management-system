@@ -17,7 +17,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     try {
       this.logger.log(`Fetching Alert Navigator data for alert: ${alertId}`);
 
-      // Single optimized SQL query using CTE for rules aggregation
       const sql = `
         WITH rules_agg AS (
             SELECT
@@ -38,7 +37,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
                 ) AS rules
             FROM alert_navigator_rules anr
             WHERE anr.alert_id  = ${alertId}
-              AND anr.tenant_id = ${tenantId}
+              AND anr.tenant_id = '${tenantId}'
               AND anr.rule_weight > 0
             GROUP BY
                 anr.alert_id,
@@ -98,7 +97,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
 
         WHERE
             anh.alert_id  = ${alertId}
-            AND anh.tenant_id = ${tenantId}
+            AND anh.tenant_id = '${tenantId}'
 
         GROUP BY
             anh.alert_id,
