@@ -114,7 +114,7 @@ export class JupyterProxyService {
   // ================ CONDITIONS PROXY METHODS ================
 
   async getConditionsContextByTransaction(
-    transactionId: number,
+    transactionId: string,
     tenantId = 'DEFAULT',
     asOfDate?: string,
   ): Promise<ConditionsContextByTransactionResponse> {

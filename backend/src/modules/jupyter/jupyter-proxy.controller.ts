@@ -2,7 +2,12 @@ import { Controller, Get, Param, Query, BadRequestException, Headers } from '@ne
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { JupyterProxyService } from './jupyter-proxy.service';
 import { CounterpartyNetworkResponseDto, TransactionNetworkResponseDto } from '../gold-lakehouse/dto/network-analysis.dto';
-import { AccountNodeFullDataResponse, CounterpartyNodeFullDataResponse } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
+import {
+  AccountNodeFullDataResponse,
+  ConditionsContextByTransactionResponse,
+  CounterpartyNodeFullDataResponse,
+  EvaluatedTransactionsResponse,
+} from '../gold-lakehouse/types/gold-lakehouse-responses.types';
 import { AlertHistoryAlertsResponse } from '../gold-lakehouse/types/IAlertHistory.types';
 
 @Controller('api/v1/jupyter/proxy')
@@ -166,6 +171,35 @@ export class JupyterProxyController {
     return await this.proxyService.getTransactionHistoryData(entityId, tenantId, startDate, endDate, granularity);
   }
 
+  @Get('lake/analytics/benford/account/:accountId')
+  @ApiOperation({ summary: 'Proxy: Benford analysis by account' })
+  @ApiQuery({ name: 'tenantId', required: true })
+  @ApiQuery({ name: 'from', required: true })
+  @ApiQuery({ name: 'to', required: true })
+  async benfordByAccount(
+    @Param('accountId') accountId: string,
+    @Query('tenantId') tenantId: string,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Headers() headers?: Record<string, any>,
+  ): Promise<{
+    expected: Record<number, number>;
+    actual: Record<number, number>;
+    sampleSize: number;
+    meta: {
+      accountId: string;
+      tenantId: string;
+      fromDate: string;
+      toDate: string;
+    };
+  }> {
+    this.validateSecret(headers ?? {});
+    if (!tenantId || !from || !to) {
+      throw new BadRequestException('tenantId, from and to are required');
+    }
+    return await this.proxyService.getBenfordByAccount(accountId, tenantId, from, to);
+  }
+
   @Get('network-analysis/transaction/:accountId')
   @ApiOperation({ summary: 'Proxy: Get Transaction Network Analysis' })
   @ApiQuery({ name: 'timeRange', required: false })
@@ -203,32 +237,100 @@ export class JupyterProxyController {
     return await this.proxyService.getAccountNetworkData(accountId, tenantId, granularity);
   }
 
-  @Get('lake/analytics/benford/account/:accountId')
-  @ApiOperation({ summary: 'Proxy: Benford analysis by account' })
-  @ApiQuery({ name: 'tenantId', required: true })
-  @ApiQuery({ name: 'from', required: true })
-  @ApiQuery({ name: 'to', required: true })
-  async benfordByAccount(
-    @Param('accountId') accountId: string,
-    @Query('tenantId') tenantId: string,
-    @Query('from') from: string,
-    @Query('to') to: string,
+  @Get('conditions/by-transaction/:transactionId')
+  @ApiOperation({ summary: 'Proxy: Get transaction context with conditions for both parties' })
+  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'asOfDate', required: false })
+  async getConditionsContextByTransaction(
+    @Param('transactionId') transactionId: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('asOfDate') asOfDate?: string,
+    @Headers() headers?: Record<string, any>,
+  ): Promise<ConditionsContextByTransactionResponse> {
+    if (!transactionId || transactionId.trim() === '') {
+      throw new BadRequestException('transactionId is required');
+    }
+    this.validateSecret(headers ?? {});
+    return await this.proxyService.getConditionsContextByTransaction(transactionId, tenantId ?? 'DEFAULT', asOfDate);
+  }
+
+  @Get('conditions/summary')
+  @ApiOperation({ summary: 'Proxy: Get conditions summary with counts by Account ID' })
+  @ApiQuery({ name: 'accountId', required: true })
+  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'asOfDate', required: false })
+  async getConditionsSummary(
+    @Query('accountId') accountId: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('asOfDate') asOfDate?: string,
     @Headers() headers?: Record<string, any>,
   ): Promise<{
-    expected: Record<number, number>;
-    actual: Record<number, number>;
-    sampleSize: number;
-    meta: {
-      accountId: string;
-      tenantId: string;
-      fromDate: string;
-      toDate: string;
+    accountId: string;
+    accountScheme: any;
+    fspId: any;
+    totalConditions: any;
+    activeConditions: any;
+    expiredConditions: any;
+    futureConditions: any;
+    conditions: any;
+    metadata: {
+      asOfDate: string;
+      queryTimestamp: string;
     };
   }> {
     this.validateSecret(headers ?? {});
-    if (!tenantId || !from || !to) {
-      throw new BadRequestException('tenantId, from and to are required');
+    if (!accountId || accountId.trim() === '') {
+      throw new BadRequestException('accountId is required');
     }
-    return await this.proxyService.getBenfordByAccount(accountId, tenantId, from, to);
+    return await this.proxyService.getConditionsSummary(accountId, tenantId ?? 'DEFAULT', asOfDate);
+  }
+
+  @Get('conditions/details')
+  @ApiOperation({ summary: 'Proxy: Get complete condition records with full details by Account ID' })
+  @ApiQuery({ name: 'accountId', required: true })
+  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'asOfDate', required: false })
+  @ApiQuery({ name: 'showInactive', required: false })
+  async getConditionsDetails(
+    @Query('accountId') accountId: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('asOfDate') asOfDate?: string,
+    @Query('showInactive') showInactive?: boolean,
+    @Headers() headers?: Record<string, any>,
+  ): Promise<{
+    accountId: string;
+    totalConditions: any;
+    conditions: any;
+    metadata: {
+      activeCount: any;
+      expiredCount: any;
+      futureCount: any;
+      asOfDate: string;
+      showInactive: boolean;
+      queryTimestamp: string;
+    };
+  }> {
+    this.validateSecret(headers ?? {});
+    if (!accountId || accountId.trim() === '') {
+      throw new BadRequestException('accountId is required');
+    }
+    return await this.proxyService.getConditionsDetails(accountId, tenantId ?? 'DEFAULT', asOfDate, showInactive);
+  }
+
+  @Get('conditions/evaluated-transactions/:accountId')
+  @ApiOperation({ summary: 'Proxy: Get evaluated transactions for a condition/account' })
+  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'fromDate', required: false })
+  async getConditionsEvaluatedTransactions(
+    @Param('accountId') accountId: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('fromDate') fromDate?: string,
+    @Headers() headers?: Record<string, any>,
+  ): Promise<EvaluatedTransactionsResponse> {
+    this.validateSecret(headers ?? {});
+    if (!accountId || accountId.trim() === '') {
+      throw new BadRequestException('accountId is required');
+    }
+    return await this.proxyService.getConditionsEvaluatedTransactions(accountId, tenantId ?? 'DEFAULT', fromDate);
   }
 }

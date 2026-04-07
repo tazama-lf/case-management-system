@@ -362,7 +362,7 @@ export class GoldLakehouseController {
     if (isNaN(txId)) {
       throw new BadRequestException('Invalid transactionId: must be a number');
     }
-    return await this.conditionLakehouseService.getConditionsContextByTransaction(txId, tenantId ?? 'DEFAULT', asOfDate);
+    return await this.conditionLakehouseService.getConditionsContextByTransaction(transactionId, tenantId ?? 'DEFAULT', asOfDate);
   }
 
   @Get('conditions/by-entity/:entityId')

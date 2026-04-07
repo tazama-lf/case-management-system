@@ -287,33 +287,12 @@ export class ConditionLakehouseService extends GoldLakehouseService {
   // Transaction ID based methods
 
   async getConditionsContextByTransaction(
-    transactionId: number,
+    transactionId: string,
     tenantId = 'DEFAULT',
     asOfDate?: string,
   ): Promise<ConditionsContextByTransactionResponse> {
     try {
-      this.logger.log(`Fetching conditions context for transaction: ${transactionId}`);
-
-      const txSql = `
-      SELECT 
-        transaction_id,
-        end_to_end_id,
-        tx_event_ts,
-        tx_event_date,
-        tx_type,
-        interbank_settlement_amount,
-        interbank_settlement_currency,
-        debtor_id,
-        debtor_name,
-        debtor_account_id,
-        creditor_id,
-        creditor_name,
-        creditor_account_id
-      FROM transaction_detail 
-      WHERE transaction_id = ${transactionId} 
-        AND tenant_id = '${tenantId}'
-      LIMIT 1
-      `;
+      const txSql = `SELECT transaction_id, end_to_end_id, tx_event_ts, tx_event_date, tx_type, interbank_settlement_amount, interbank_settlement_currency, debtor_id, debtor_name, debtor_account_id, creditor_id, creditor_name, creditor_account_id FROM transaction_detail WHERE end_to_end_id = '${transactionId}' AND tenant_id = '${tenantId}' LIMIT 1;`;
 
       const txResponse = await this.runSqlQuery(txSql, 1);
       const tx = txResponse.data?.[0];
