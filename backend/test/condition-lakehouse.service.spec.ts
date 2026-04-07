@@ -174,7 +174,7 @@ describe('ConditionLakehouseService', () => {
         .mockReturnValueOnce(okHttp([{ total: 1, active: 1, expired: 0, future: 0 }]))
         .mockReturnValueOnce(okHttp([{ account_id: 'acc2' }]))
         .mockReturnValueOnce(okHttp([{ total: 0, active: 0, expired: 0, future: 0 }]));
-      const result = await service.getConditionsContextByTransaction(1, 'DEFAULT');
+      const result = await service.getConditionsContextByTransaction('TMICFBPK2801321903297120', 'DEFAULT');
       expect(result.debtor.primaryAccountId).toBe('acc1');
       expect(result.debtor.accounts.length).toBeGreaterThanOrEqual(1);
     });
@@ -183,7 +183,7 @@ describe('ConditionLakehouseService', () => {
       http.mockReturnValueOnce(
         okHttp([
           {
-            transaction_id: 1,
+            transaction_id: 'TMICFBPK2801321903297120',
             tx_event_ts: '2024-01-01',
             end_to_end_id: 'e2e1',
             tx_type: 'PAYMENT',
@@ -196,25 +196,25 @@ describe('ConditionLakehouseService', () => {
           },
         ]),
       );
-      const result = await service.getConditionsContextByTransaction(1, 'DEFAULT');
+      const result = await service.getConditionsContextByTransaction('TMICFBPK2801321903297120', 'DEFAULT');
       expect(result.transaction).toBeDefined();
       expect(result.debtor.primaryAccountId).toBe('acc1');
     });
 
     it('returns conditions context without entity ids', async () => {
       http.mockReturnValue(okHttp([{ transaction_id: 1, tx_event_ts: '2024-01-01' }]));
-      const result = await service.getConditionsContextByTransaction(1, 'DEFAULT');
+      const result = await service.getConditionsContextByTransaction('TMICFBPK2801321903297120', 'DEFAULT');
       expect(result.transaction).toBeDefined();
     });
 
     it('throws when transaction not found', async () => {
       http.mockReturnValue(okHttp([]));
-      await expect(service.getConditionsContextByTransaction(999)).rejects.toThrow(HttpException);
+      await expect(service.getConditionsContextByTransaction('TMICFBPK2801321903297120', 'DEFAULT')).rejects.toThrow(HttpException);
     });
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getConditionsContextByTransaction(1)).rejects.toThrow(HttpException);
+      await expect(service.getConditionsContextByTransaction('TMICFBPK2801321903297120', 'DEFAULT')).rejects.toThrow(HttpException);
     });
   });
 
