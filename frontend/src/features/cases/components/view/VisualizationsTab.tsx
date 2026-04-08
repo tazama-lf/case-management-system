@@ -15,7 +15,6 @@ import AlertHistoryTab from './visualizations/alerthistory/AlertHistoryTab';
 import ConditionsTab from './visualizations/conditions/ConditionsTab';
 import ProfileOverviewTab from './visualizations/profileoverview/ProfileOverviewTab';
 
-
 type VisualizationSubTab =
   | 'alert-navigator'
   | 'transaction-details'
@@ -103,9 +102,10 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
               key={tab.key}
               onClick={() => setActiveSubTab(tab.key as VisualizationSubTab)}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all
-                ${isActive
-                  ? 'bg-white shadow text-indigo-600'
-                  : 'text-gray-600 hover:bg-gray-200'
+                ${
+                  isActive
+                    ? 'bg-white shadow text-indigo-600'
+                    : 'text-gray-600 hover:bg-gray-200'
                 }`}
             >
               <Icon className="w-4 h-4" />
@@ -139,18 +139,24 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
           />
         )}
 
-        {activeSubTab === 'network-analysis' && (
-          <NetworkAnalysisTab
-            caseId={caseId}
-            transactionId={transactionId}
-          />
-        )}
+        {activeSubTab === 'network-analysis' &&
+          (alertId && tenantId ? (
+            <NetworkAnalysisTab
+              caseId={caseId}
+              transactionId={transactionId}
+              alertId={alertId}
+              tenantId={tenantId}
+            />
+          ) : (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <p className="text-sm text-gray-600">
+                Select an alert to view network analysis
+              </p>
+            </div>
+          ))}
 
         {activeSubTab === 'alert-history' && (
-          <AlertHistoryTab
-            caseId={caseId}
-            transactionId={transactionId}
-          />
+          <AlertHistoryTab caseId={caseId} transactionId={transactionId} />
         )}
 
         {activeSubTab === 'conditions' && (
@@ -162,10 +168,7 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
         )}
 
         {activeSubTab === 'profile-overview' && (
-          <ProfileOverviewTab
-            alertId={alertId}
-            transactionId={transactionId}
-          />
+          <ProfileOverviewTab alertId={alertId} transactionId={transactionId} />
         )}
       </div>
     </div>

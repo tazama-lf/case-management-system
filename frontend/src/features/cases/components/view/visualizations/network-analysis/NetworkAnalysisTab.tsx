@@ -6,9 +6,9 @@ import {
   ArrowsRightLeftIcon,
   BuildingOfficeIcon,
   UsersIcon,
-  AdjustmentsHorizontalIcon,
   ChevronDownIcon,
 } from '@heroicons/react/24/outline';
+import { useEntityMetadata } from '@/features/cases/hooks/useEntityMetadata';
 
 type NetworkSubTab = 'transaction' | 'account' | 'counterparty';
 type TimeRange = '7d' | '30d' | '90d' | '1y' | 'all';
@@ -16,38 +16,47 @@ type TimeRange = '7d' | '30d' | '90d' | '1y' | 'all';
 interface NetworkAnalysisTabProps {
   caseId?: number;
   transactionId?: string;
+  alertId: number;
+  tenantId: string;
 }
 
 const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
   caseId,
   transactionId,
+  alertId,
+  tenantId,
 }) => {
   const [activeSubTab, setActiveSubTab] =
     React.useState<NetworkSubTab>('transaction');
   const [timeRange, setTimeRange] = React.useState<TimeRange>('30d');
   const [showTimeDropdown, setShowTimeDropdown] = React.useState(false);
+  const [activeEntityRole, setActiveEntityRole] = React.useState<
+    'creditor' | 'debtor'
+  >('creditor');
+
+  const { entityMetadata } = useEntityMetadata(alertId, tenantId);
 
   const subTabs: Array<{
     key: NetworkSubTab;
     label: string;
     icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   }> = [
-      {
-        key: 'transaction',
-        label: 'Transaction Network',
-        icon: ArrowsRightLeftIcon,
-      },
-      {
-        key: 'account',
-        label: 'Account Network',
-        icon: BuildingOfficeIcon,
-      },
-      {
-        key: 'counterparty',
-        label: 'Counterparty Network',
-        icon: UsersIcon,
-      },
-    ];
+    {
+      key: 'transaction',
+      label: 'Transaction Network',
+      icon: ArrowsRightLeftIcon,
+    },
+    {
+      key: 'account',
+      label: 'Account Network',
+      icon: BuildingOfficeIcon,
+    },
+    {
+      key: 'counterparty',
+      label: 'Counterparty Network',
+      icon: UsersIcon,
+    },
+  ];
 
   const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
     { value: '7d', label: 'Last 7 Days' },
@@ -60,6 +69,24 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
   const selectedTimeLabel =
     timeRangeOptions.find((opt) => opt.value === timeRange)?.label ||
     'Last 30 Days';
+
+  if (!alertId) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <p className="text-sm text-gray-600">
+          Select an alert to view navigator details
+        </p>
+      </div>
+    );
+  }
+
+  if (!entityMetadata) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <p className="text-sm text-gray-600">Loading entity metadata...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -74,6 +101,31 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
             counterparties
           </p>
         </div>
+
+        <div className="flex bg-gray-100 p-1 rounded-md">
+          <button
+            onClick={() => setActiveEntityRole('creditor')}
+            className={`px-4 py-1.5 text-sm rounded-md transition ${
+              activeEntityRole === 'creditor'
+                ? 'bg-white shadow text-blue-600 font-medium'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            Creditor
+          </button>
+
+          <button
+            onClick={() => setActiveEntityRole('debtor')}
+            className={`px-4 py-1.5 text-sm rounded-md transition ${
+              activeEntityRole === 'debtor'
+                ? 'bg-white shadow text-blue-600 font-medium'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            Debtor
+          </button>
+        </div>
+
         {/* Time Range Dropdown */}
         <div className="relative">
           <button
@@ -93,10 +145,11 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
                     setTimeRange(option.value);
                     setShowTimeDropdown(false);
                   }}
-                  className={`block w-full px-4 py-2 text-left text-sm ${timeRange === option.value
+                  className={`block w-full px-4 py-2 text-left text-sm ${
+                    timeRange === option.value
                       ? 'bg-indigo-50 text-indigo-700'
                       : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                  }`}
                 >
                   {option.label}
                 </button>
@@ -115,10 +168,11 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
             <button
               key={subTab.key}
               onClick={() => setActiveSubTab(subTab.key)}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${isActive
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                isActive
                   ? 'bg-indigo-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+              }`}
             >
               <Icon className="h-4 w-4" />
               {subTab.label}
@@ -134,6 +188,11 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
             caseId={caseId}
             transactionId={transactionId}
             timeRange={timeRange}
+            entityAccountId={
+              activeEntityRole === 'creditor'
+                ? entityMetadata?.creditorAccountId
+                : entityMetadata?.debtorAccountId
+            }
           />
         )}
         {activeSubTab === 'account' && (
