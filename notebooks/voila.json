@@ -1,10 +1,10 @@
 {
   "Voila": {
-    "ip": "127.0.0.1",
+    "ip": "0.0.0.0",
     "port": 8866,
     "tornado_settings": {
       "headers": {
-        "Content-Security-Policy": "frame-ancestors 'self' http://localhost:5175 http://localhost:3090"
+        "Content-Security-Policy": "frame-ancestors 'self' http://localhost:5175 http://10.10.80.16:5175"
       }
     }
   }

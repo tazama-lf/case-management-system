@@ -18,9 +18,10 @@ RUN pip install --no-cache-dir -r /app/notebooks/requirements.txt
 EXPOSE 8866
 
 # backend url (default)
-ENV CASE_MGMT_BACKEND_URL=http://localhost:3090
+ENV CASE_MGMT_BACKEND_URL=http://10.10.80.16:3090
+ENV VOILA_PORT=8866
 
 WORKDIR /app/notebooks
 
 # run voila
-CMD ["voila", "--ip=0.0.0.0", "--port=8866", "--no-browser"]
+CMD ["voila", "--config=/app/notebooks/voila.json", "--Voila.ip=0.0.0.0", "--Voila.port=8866", "--no-browser"]
