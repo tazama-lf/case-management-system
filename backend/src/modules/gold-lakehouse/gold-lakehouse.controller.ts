@@ -23,6 +23,7 @@ import { Audit } from '../audit/decorators/audit-log.decorator';
 import { GenerateProfileDto } from './dto/generate-profile.dto';
 import { GenerateProfileResponseDto } from './dto/profile-response.dto';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
+import { EntityMetadataResponse } from './interfaces/entity-metadata.interfaces';
 
 @ApiTags('Gold Lakehouse')
 @Controller('api/v1/lakehouse')
@@ -36,6 +37,20 @@ export class GoldLakehouseController {
     private readonly benfordsLawLakehouseService: BenfordsLawLakehouseService,
     private readonly accountLakehouseService: AccountLakehouseService,
   ) {}
+
+  @Get('entity-metadata/:alertId')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({ summary: 'Get Entity Metadata for a given Alert ID' })
+  async getEntityMetadataByAlertId(
+    @Param('alertId') alertId: number,
+    @Query('tenantId') tenantId: string,
+  ): Promise<EntityMetadataResponse> {
+    if (isNaN(alertId)) {
+      throw new BadRequestException('Invalid alertId: must be a number');
+    }
+    const entityMetadata = await this.accountLakehouseService.getEntityMetadataByAlertId(alertId, tenantId);
+    return entityMetadata;
+  }
 
   @Get('alert-navigator/:alertId')
   @RequireInvestigatorOrSupervisorRole()
@@ -63,11 +78,6 @@ export class GoldLakehouseController {
   }
 
   // ================ CONDITIONS ENDPOINTS ================
-  // Essential endpoints based on available data:
-  // 1. Summary - condition counts by account
-  // 2. Details - all condition records by account
-  // 3. Expired - expired condition details by account
-  // 4. Entity accounts - support entity workflows
 
   @Get('conditions/summary')
   @RequireInvestigatorOrSupervisorRole()

@@ -1,13 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { HttpException } from '@nestjs/common';
+import { HttpException, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
 import { AccountLakehouseService } from '../src/modules/gold-lakehouse/account-lakehouse.service';
+import { AlertRepository } from '../src/modules/repository/alert.repository';
 
 describe('AccountLakehouseService', () => {
   let service: AccountLakehouseService;
   let http: jest.Mock;
+  let alertRepo: { getAlertById: jest.Mock; getReferenceId: jest.Mock };
 
   const okHttp = (rows: any[] = [{}]) =>
     of({
@@ -22,6 +24,10 @@ describe('AccountLakehouseService', () => {
 
   beforeEach(async () => {
     http = jest.fn().mockReturnValue(okHttp());
+    alertRepo = {
+      getAlertById: jest.fn(),
+      getReferenceId: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -38,6 +44,7 @@ describe('AccountLakehouseService', () => {
             }),
           },
         },
+        { provide: AlertRepository, useValue: alertRepo },
       ],
     }).compile();
 
@@ -221,6 +228,70 @@ describe('AccountLakehouseService', () => {
         .mockReturnValueOnce(okHttp([{ holder_name: 'CP Name' }]));
       const result = await service.getCounterpartyNodeFullData('cp1');
       expect(result.network.nodes.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  // ===================== getEntityMetadataByAlertId =====================
+  describe('getEntityMetadataByAlertId', () => {
+    const mockAlert = {
+      id: 1,
+      txtp: 'pacs.008.001.10',
+      transaction: { EndToEndId: 'e2e-ref-123' },
+    };
+
+    const mockEntityRow = {
+      debtor_id: 'dbtr-001',
+      debtor_account_id: 'dbtrAcct-001',
+      debtor_name: 'John Debtor',
+      creditor_id: 'cdtr-001',
+      creditor_account_id: 'cdtrAcct-001',
+      creditor_name: 'Jane Creditor',
+    };
+
+    it('returns entity metadata for a valid alertId', async () => {
+      alertRepo.getAlertById.mockResolvedValue(mockAlert);
+      alertRepo.getReferenceId.mockResolvedValue({ referenceIdName: 'EndToEndId' });
+      http.mockReturnValueOnce(okHttp([mockEntityRow]));
+
+      const result = await service.getEntityMetadataByAlertId(1, 'DEFAULT');
+
+      expect(result.debtorId).toBe('dbtr-001');
+      expect(result.debtorAccountId).toBe('dbtrAcct-001');
+      expect(result.debtorName).toBe('John Debtor');
+      expect(result.creditorId).toBe('cdtr-001');
+      expect(result.creditorAccountId).toBe('cdtrAcct-001');
+      expect(result.creditorName).toBe('Jane Creditor');
+    });
+
+    it('throws InternalServerErrorException when alert is not found', async () => {
+      alertRepo.getAlertById.mockResolvedValue(null);
+
+      await expect(service.getEntityMetadataByAlertId(99, 'DEFAULT')).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('throws when referenceId cannot be extracted from transaction data', async () => {
+      alertRepo.getAlertById.mockResolvedValue({ ...mockAlert, transaction: {} });
+      alertRepo.getReferenceId.mockResolvedValue({ referenceIdName: 'EndToEndId' });
+
+      await expect(service.getEntityMetadataByAlertId(1, 'DEFAULT')).rejects.toThrow('ReferenceId not found in transaction data');
+    });
+
+    it('throws when the SQL query fails', async () => {
+      alertRepo.getAlertById.mockResolvedValue(mockAlert);
+      alertRepo.getReferenceId.mockResolvedValue({ referenceIdName: 'EndToEndId' });
+      http.mockReturnValue(errHttp('DB error'));
+
+      await expect(service.getEntityMetadataByAlertId(1, 'DEFAULT')).rejects.toThrow('DB error');
+    });
+
+    it('calls getReferenceId with the correct txtp from the alert', async () => {
+      alertRepo.getAlertById.mockResolvedValue(mockAlert);
+      alertRepo.getReferenceId.mockResolvedValue({ referenceIdName: 'EndToEndId' });
+      http.mockReturnValueOnce(okHttp([mockEntityRow]));
+
+      await service.getEntityMetadataByAlertId(1, 'DEFAULT');
+
+      expect(alertRepo.getReferenceId).toHaveBeenCalledWith('pacs.008.001.10');
     });
   });
 });

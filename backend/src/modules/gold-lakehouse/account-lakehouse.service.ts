@@ -1,14 +1,55 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from './gold-lakehouse.service';
 import { AccountNodeFullDataResponse, CounterpartyNodeFullDataResponse } from './types/gold-lakehouse-responses.types';
+import { AlertRepository } from '../repository/alert.repository';
+import { extractReferenceId } from '../repository/utils/extractReferenceId';
+import { JsonValue } from '../repository/utils/types/JsonValue';
+import { EntityMetadataResponse } from './interfaces/entity-metadata.interfaces';
 
 @Injectable()
 export class AccountLakehouseService extends GoldLakehouseService {
-  // eslint-disable-next-line @typescript-eslint/no-useless-constructor -- Required for NestJS dependency injection in subclasses
-  constructor(httpService: HttpService, configService: ConfigService) {
+  constructor(
+    httpService: HttpService,
+    configService: ConfigService,
+    private readonly alertRepository: AlertRepository,
+  ) {
     super(httpService, configService);
+  }
+
+  async getEntityMetadataByAlertId(alertId: number, tenantId: string): Promise<EntityMetadataResponse> {
+    try {
+      const alert = await this.alertRepository.getAlertById(alertId);
+      if (!alert) {
+        throw new InternalServerErrorException(`Unable to fetch details for AlertId ${alertId}`);
+      }
+
+      const referenceIdData = await this.alertRepository.getReferenceId(alert.txtp);
+      const referenceId = extractReferenceId(alert.transaction as unknown as JsonValue, 10, 0, referenceIdData.referenceIdName);
+      if (!referenceId) {
+        throw new Error('ReferenceId not found in transaction data');
+      }
+
+      const entitySQL = `SELECT DISTINCT td.debtor_Id, td.debtor_account_id, td.debtor_name, td.creditor_id, td.creditor_account_id, td.creditor_name FROM transaction_detail td WHERE td.end_to_end_id = '${referenceId}' AND tx_type = 'pacs.008.001.10'`;
+      const entityMetadataResp = await this.runSqlQuery(entitySQL, 1);
+      const entityMetadataRow = entityMetadataResp.data?.[0];
+      const entityMetadata = {
+        debtorId: entityMetadataRow?.debtor_id,
+        debtorAccountId: entityMetadataRow?.debtor_account_id,
+        debtorName: entityMetadataRow?.debtor_name,
+        creditorId: entityMetadataRow?.creditor_id,
+        creditorAccountId: entityMetadataRow?.creditor_account_id,
+        creditorName: entityMetadataRow?.creditor_name,
+      };
+
+      return entityMetadata;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error in getEntityMetadataByAlertId: ${errorMessage}`, errorStack);
+      throw error;
+    }
   }
 
   async getAccountNodeFullData(
