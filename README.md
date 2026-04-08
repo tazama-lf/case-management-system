@@ -2,6 +2,9 @@
 
 Tazama Case and Investigation Management System is a comprehensive solution for managing cases and investigations efficiently. This project aims to streamline workflows, improve collaboration, and provide robust tools for tracking, reporting, and analyzing case data.
 
+## User Manual and Video Demonstration
+- Please refer to the user manual here: https://github.com/tazama-lf/docs/blob/dev/Guides/User%20Manuals%20for%20Downloading/Case%20Management%20System.docx
+
 ## Architecture
 
 This is a monorepo containing:
