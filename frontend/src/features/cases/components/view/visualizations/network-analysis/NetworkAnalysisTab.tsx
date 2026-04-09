@@ -34,7 +34,7 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
     'creditor' | 'debtor'
   >('creditor');
 
-  const { entityMetadata } = useEntityMetadata(alertId, tenantId);
+  const { entityMetadata, isLoading } = useEntityMetadata(alertId, tenantId);
 
   const subTabs: Array<{
     key: NetworkSubTab;
@@ -80,10 +80,11 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
     );
   }
 
-  if (!entityMetadata) {
+  if (isLoading || !entityMetadata) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-        <p className="text-sm text-gray-600">Loading entity metadata...</p>
+      <div className="flex items-center justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
+        <span className="ml-3 text-gray-600">Loading...</span>
       </div>
     );
   }

@@ -1,9 +1,5 @@
 import React from 'react';
 import VoilaFrame from './VoilaFrame';
-import type { EntityMetadataResponse } from '@/features/cases/services/types/entityMetadata.interface';
-
-const FALLBACK_ACCOUNT_ID = 'dbtrAcct_24a03dafa2c14f6da6bfc195d57c6d21';
-
 interface TransactionNetworkTabProps {
   caseId?: number;
   transactionId?: string;
