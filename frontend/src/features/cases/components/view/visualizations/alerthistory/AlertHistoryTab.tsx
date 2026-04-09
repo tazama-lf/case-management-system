@@ -13,12 +13,6 @@ const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const tenantId = user?.tenantId || 'DEFAULT';
 
-  console.log("AlertHistoryTab Props:", { 
-    caseId: _caseId, 
-    transactionId, 
-    tenantId 
-  });
-
   // Build query parameters for Voila
   const queryParams = React.useMemo(() => {
     const params: Record<string, string> = {

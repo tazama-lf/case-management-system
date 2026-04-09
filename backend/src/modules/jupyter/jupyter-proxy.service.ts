@@ -85,11 +85,11 @@ export class JupyterProxyService {
   }
 
   async getAccountNetworkData(
-    accountId: string,
+    entityId: string,
     tenantId?: string,
     granularity: 'day' | 'month' | 'year' = 'month',
   ): Promise<AccountNodeFullDataResponse> {
-    return await this.accountLakehouseService.getAccountNodeFullData(accountId, tenantId ?? 'DEFAULT', granularity);
+    return await this.accountLakehouseService.getAccountNodeFullData(entityId, tenantId ?? 'DEFAULT', granularity);
   }
 
   async getBenfordByAccount(

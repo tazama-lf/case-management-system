@@ -890,19 +890,18 @@ export class GoldLakehouseController {
     return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId ?? 'DEFAULT', timeRange ?? '30d');
   }
 
-  @Get('network-analysis/account/:accountId')
+  @Get('network-analysis/entity-network/:entityId')
   // Access restricted: require investigator or supervisor role
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({
-    summary: 'Get Account Network graph + selected account details',
-    description:
-      'Returns account network visualization (nodes + edges) along with full details for the selected account node (metrics, alerts, investigation status).',
+    summary: 'Get Entity Network graph + entity details',
+    description: 'Returns entity network visualization (nodes + edges) for all accounts associated with an entity ID.',
   })
   @ApiParam({
-    name: 'accountId',
-    description: 'Root Account ID for network visualization',
+    name: 'entityId',
+    description: 'Entity ID to fetch network data for',
     required: true,
-    example: 'dbtrAcct_e8b116f1ebd14de7b653d7d3c520ffdd',
+    example: 'entity123',
   })
   @ApiQuery({
     name: 'tenantId',
@@ -919,15 +918,15 @@ export class GoldLakehouseController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Account network graph and selected account detail panel data',
+    description: 'Entity network graph and associated accounts data',
   })
-  async getAccountNetworkWithDetails(
-    @Param('accountId') accountId: string,
+  async getEntityNetworkWithDetails(
+    @Param('entityId') entityId: string,
     @Query('tenantId') tenantId?: string,
     @Query('granularity') granularity?: string,
   ): Promise<AccountNodeFullDataResponse> {
-    if (!accountId || accountId.trim() === '') {
-      throw new BadRequestException('accountId is required');
+    if (!entityId || entityId.trim() === '') {
+      throw new BadRequestException('entityId is required');
     }
 
     if (granularity && !['day', 'month', 'year'].includes(granularity)) {
@@ -935,7 +934,7 @@ export class GoldLakehouseController {
     }
 
     return await this.accountLakehouseService.getAccountNodeFullData(
-      accountId,
+      entityId,
       tenantId ?? 'DEFAULT',
       (granularity as 'day' | 'month' | 'year' | undefined) ?? 'month',
     );

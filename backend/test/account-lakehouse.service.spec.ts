@@ -57,88 +57,120 @@ describe('AccountLakehouseService', () => {
 
   // ===================== getAccountNodeFullData =====================
   describe('getAccountNodeFullData', () => {
-    const setupAccountNode = () => {
-      http
-        .mockReturnValueOnce(
-          okHttp([
-            {
-              from_account_id: 'acc1',
-              to_account_id: 'acc2',
-              tx_count: 5,
-              total_amount: 2500,
-              is_alerted_edge: 0,
-              is_investigated_edge: 0,
-            },
-          ]),
-        )
-        .mockReturnValueOnce(okHttp([{ transactions: 5, total_value: 2500, is_alerted: 0, is_investigated: 0 }]))
-        .mockReturnValueOnce(okHttp([{ holder_name: 'Holder' }]))
-        .mockReturnValueOnce(okHttp([{ alert_count: 0 }]))
-        .mockReturnValueOnce(okHttp([{ investigation_count: 0 }]));
+    const setupAccountNode = (txCount = 5, totalAmount = 2500) => {
+      // Mock account_holder query (entity to accounts mapping)
+      http.mockReturnValueOnce(
+        okHttp([
+          {
+            source: 'entity1TAZAMA_EID',
+            destination: 'acc1MSISDNfsp001',
+            tenant_id: 'DEFAULT',
+          },
+        ]),
+      );
+      // Mock network edges query for acc1
+      http.mockReturnValueOnce(
+        okHttp([
+          {
+            from_account_id: 'acc1',
+            to_account_id: 'acc2',
+            tx_count: txCount,
+            total_amount: totalAmount,
+            is_alerted_edge: 0,
+            is_investigated_edge: 0,
+          },
+        ]),
+      );
     };
 
     it('returns account node data', async () => {
       setupAccountNode();
-      const result = await service.getAccountNodeFullData('acc1', 'DEFAULT', 'month');
+      const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'month');
       expect(result.network.nodes.length).toBeGreaterThan(0);
-      expect(result.accountDetails.accountId).toBe('acc1');
+      expect(result.accountDetails.accountId).toBe('entity1');
     });
 
     it('uses HIGH velocity when txCount >= 50', async () => {
-      http
-        .mockReturnValueOnce(
-          okHttp(
-            Array(60).fill({
-              from_account_id: 'acc1',
-              to_account_id: 'acc2',
-              tx_count: 1,
-              total_amount: 100,
-              is_alerted_edge: 0,
-              is_investigated_edge: 0,
-            }),
-          ),
-        )
-        .mockReturnValueOnce(okHttp([{ transactions: 60, total_value: 6000 }]))
-        .mockReturnValueOnce(okHttp([{ holder_name: 'Holder' }]))
-        .mockReturnValueOnce(okHttp([{ alert_count: 0 }]))
-        .mockReturnValueOnce(okHttp([{ investigation_count: 0 }]));
-      const result = await service.getAccountNodeFullData('acc1', 'DEFAULT', 'year');
+      // Mock account_holder query
+      http.mockReturnValueOnce(
+        okHttp([
+          {
+            source: 'entity1TAZAMA_EID',
+            destination: 'acc1MSISDNfsp001',
+            tenant_id: 'DEFAULT',
+          },
+        ]),
+      );
+      // Mock network edges query with 60 edges (total txCount = 60)
+      http.mockReturnValueOnce(
+        okHttp(
+          Array(60).fill({
+            from_account_id: 'acc1',
+            to_account_id: 'acc2',
+            tx_count: 1,
+            total_amount: 100,
+            is_alerted_edge: 0,
+            is_investigated_edge: 0,
+          }),
+        ),
+      );
+      const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'year');
       expect(result.accountDetails.velocity).toBe('HIGH');
     });
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getAccountNodeFullData('acc1')).rejects.toThrow(HttpException);
+      await expect(service.getAccountNodeFullData('entity1')).rejects.toThrow(HttpException);
     });
 
     it('uses MEDIUM velocity when txCount between 10 and 49', async () => {
-      http
-        .mockReturnValueOnce(
-          okHttp([
-            { from_account_id: 'acc1', to_account_id: 'acc2', tx_count: 1, total_amount: 100, is_alerted_edge: 0, is_investigated_edge: 0 },
-          ]),
-        )
-        .mockReturnValueOnce(okHttp([{ transactions: 25, total_value: 2500, is_alerted: 0, is_investigated: 0 }]))
-        .mockReturnValueOnce(okHttp([{ holder_name: 'Holder' }]))
-        .mockReturnValueOnce(okHttp([{ alert_count: 0 }]))
-        .mockReturnValueOnce(okHttp([{ investigation_count: 0 }]));
-      const result = await service.getAccountNodeFullData('acc1');
+      // Mock account_holder query
+      http.mockReturnValueOnce(
+        okHttp([
+          {
+            source: 'entity1TAZAMA_EID',
+            destination: 'acc1MSISDNfsp001',
+            tenant_id: 'DEFAULT',
+          },
+        ]),
+      );
+      // Mock network edges query with 25 edges (total txCount = 25)
+      http.mockReturnValueOnce(
+        okHttp(
+          Array(25).fill({
+            from_account_id: 'acc1',
+            to_account_id: 'acc2',
+            tx_count: 1,
+            total_amount: 100,
+            is_alerted_edge: 0,
+            is_investigated_edge: 0,
+          }),
+        ),
+      );
+      const result = await service.getAccountNodeFullData('entity1');
       expect(result.accountDetails.velocity).toBe('MEDIUM');
     });
 
     it('adds unseen fromId node to network graph', async () => {
-      http
-        .mockReturnValueOnce(
-          okHttp([
-            { from_account_id: 'acc2', to_account_id: 'acc1', tx_count: 2, total_amount: 200, is_alerted_edge: 0, is_investigated_edge: 0 },
-          ]),
-        )
-        .mockReturnValueOnce(okHttp([{ transactions: 2, total_value: 200, is_alerted: 0, is_investigated: 0 }]))
-        .mockReturnValueOnce(okHttp([{ holder_name: 'Holder' }]))
-        .mockReturnValueOnce(okHttp([{ alert_count: 0 }]))
-        .mockReturnValueOnce(okHttp([{ investigation_count: 0 }]));
-      const result = await service.getAccountNodeFullData('acc1');
-      expect(result.network.nodes.length).toBeGreaterThanOrEqual(2);
+      // Mock account_holder query
+      http.mockReturnValueOnce(
+        okHttp([
+          {
+            source: 'entity1TAZAMA_EID',
+            destination: 'acc1MSISDNfsp001',
+            tenant_id: 'DEFAULT',
+          },
+        ]),
+      );
+      // Mock network edges query with edge from acc2 to acc1
+      http.mockReturnValueOnce(
+        okHttp([
+          { from_account_id: 'acc2', to_account_id: 'acc1', tx_count: 2, total_amount: 200, is_alerted_edge: 0, is_investigated_edge: 0 },
+        ]),
+      );
+      const result = await service.getAccountNodeFullData('entity1');
+      // Should have entity node + acc1 + acc2 = 3 nodes minimum
+      expect(result.network.nodes.length).toBeGreaterThanOrEqual(3);
     });
   });
 
@@ -240,7 +272,7 @@ describe('AccountLakehouseService', () => {
     };
 
     const mockEntityRow = {
-      debtor_id: 'dbtr-001',
+      debtor_Id: 'dbtr-001',
       debtor_account_id: 'dbtrAcct-001',
       debtor_name: 'John Debtor',
       creditor_id: 'cdtr-001',
