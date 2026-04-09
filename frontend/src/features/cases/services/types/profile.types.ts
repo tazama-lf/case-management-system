@@ -2,7 +2,7 @@ export interface GenerateProfileRequest {
     tenantId: string;
 }
 export interface TransactionRecordDto {
-    transaction_id: number;
+    tx_msg_id: number;
     event_date: string; // ISO date
     tx_amount: number;
     tx_ccy: string;
