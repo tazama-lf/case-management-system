@@ -572,6 +572,7 @@ export class CaseService {
       case_id: number;
       status: CaseStatus;
       priority: Priority;
+      parent_id: number | null;
       case_type: CaseType | null;
       created_at: Date;
       updated_at: Date;
