@@ -218,24 +218,24 @@ export class JupyterProxyController {
     return await this.proxyService.getTransactionNetworkData(accountId, tenantId, timeRange);
   }
 
-  @Get('network-analysis/account/:accountId')
-  @ApiOperation({ summary: 'Proxy: Get Account Network Analysis' })
+  @Get('network-analysis/entity/:entityId')
+  @ApiOperation({ summary: 'Proxy: Get Entity Network Analysis' })
   @ApiQuery({ name: 'tenantId', required: false })
   @ApiQuery({ name: 'granularity', required: false })
-  async getAccountNetwork(
-    @Param('accountId') accountId: string,
+  async getEntityNetwork(
+    @Param('entityId') entityId: string,
     @Query('tenantId') tenantId?: string,
     @Query('granularity') granularity: 'day' | 'month' | 'year' = 'month',
     @Headers() headers?: Record<string, any>,
   ): Promise<AccountNodeFullDataResponse> {
     this.validateSecret(headers ?? {});
-    if (!accountId || accountId.trim() === '') {
-      throw new BadRequestException('accountId is required');
+    if (!entityId || entityId.trim() === '') {
+      throw new BadRequestException('entityId is required');
     }
     if (!['day', 'month', 'year'].includes(granularity)) {
       throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
-    return await this.proxyService.getAccountNetworkData(accountId, tenantId, granularity);
+    return await this.proxyService.getAccountNetworkData(entityId, tenantId, granularity);
   }
 
   @Get('conditions/by-transaction/:transactionId')

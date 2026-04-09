@@ -52,83 +52,81 @@ export class AccountLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async getAccountNodeFullData(
-    accountId: string,
-    tenantId = 'DEFAULT',
-    granularity: 'day' | 'month' | 'year' = 'month',
-  ): Promise<AccountNodeFullDataResponse> {
-    try {
-      const networkSql = `
-      SELECT
-        from_account_id,
-        to_account_id,
-        tx_count,
-        total_amount,
-        currency_hint,
-        first_event_ts,
-        last_event_ts,
-        is_alerted_edge,
-        is_investigated_edge
-      FROM tx_network_accounts_edges
-      WHERE tenant_id = '${tenantId}'
-        AND bucket_granularity = '${granularity}'
-        AND (
-          from_account_id = '${accountId}'
-          OR to_account_id = '${accountId}'
-        )
-    `;
+  /**
+   * Cleans an account ID by removing metadata suffix (MSISDN...).
+   * Examples:
+   *   '1234567890MSISDNfsp001' -> '1234567890'
+   *   'cdtrAcct_8f37705af293453c992da08718fd8e9eMSISDNfsp002' -> 'cdtrAcct_8f37705af293453c992da08718fd8e9e'
+   */
+  private cleanAccountId(rawAccountId: string): string {
+    if (!rawAccountId) {
+      return rawAccountId;
+    }
 
-      const networkResp = await this.runSqlQuery(networkSql, 1000);
-      const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
+    // Remove everything starting with 'MSISDN' suffix
+    const msisdnIndex = rawAccountId.indexOf('MSISDN');
+    if (msisdnIndex !== -1) {
+      return rawAccountId.substring(0, msisdnIndex);
+    }
 
-      const nodesMap = new Map<string, any>();
-      const edges: any[] = [];
+    return rawAccountId;
+  }
 
-      nodesMap.set(accountId, {
-        id: accountId,
-        type: 'ACCOUNT',
-        label: accountId,
-        flags: { alerted: false, investigated: false },
-      });
+  /**
+   * Builds empty graph response for entity with no accounts
+   */
+  private buildEmptyEntityGraph(entityId: string, tenantId: string, granularity: string): AccountNodeFullDataResponse {
+    return {
+      network: {
+        rootNodeId: entityId,
+        nodes: [
+          {
+            id: entityId,
+            type: 'ENTITY',
+            label: entityId,
+            flags: { alerted: false, investigated: false },
+          },
+        ],
+        edges: [],
+      },
+      accountDetails: {
+        accountId: entityId,
+        accountHolder: 'Unknown',
+        relationship: 'Entity',
+        transactions: 0,
+        totalValue: 0,
+        velocity: 'LOW',
+        flags: {
+          alerted: false,
+          investigated: false,
+        },
+      },
+      meta: {
+        tenantId,
+        granularity,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  }
 
-      for (const r of networkRows) {
-        const fromId = r.from_account_id;
-        const toId = r.to_account_id;
+  /**
+   * Process network rows and build nodes/edges
+   */
+  private processNetworkRows(networkRows: any[], nodesMap: Map<string, any>, edges: any[], entityId: string): void {
+    for (const r of networkRows) {
+      const fromId = r.from_account_id;
+      const toId = r.to_account_id;
 
-        if (!nodesMap.has(fromId)) {
-          nodesMap.set(fromId, {
-            id: fromId,
-            type: 'ACCOUNT',
-            label: fromId,
-            flags: {
-              alerted: r.is_alerted_edge === 1,
-              investigated: r.is_investigated_edge === 1,
-            },
-          });
-        }
-
-        if (!nodesMap.has(toId)) {
-          nodesMap.set(toId, {
-            id: toId,
-            type: 'ACCOUNT',
-            label: toId,
-            flags: {
-              alerted: r.is_alerted_edge === 1,
-              investigated: r.is_investigated_edge === 1,
-            },
-          });
-        }
-
-        const root = nodesMap.get(accountId);
-        root.flags.alerted ??= r.is_alerted_edge === 1;
-        root.flags.investigated ??= r.is_investigated_edge === 1;
-
-        edges.push({
-          source: fromId,
-          target: toId,
-          txCount: Number(r.tx_count ?? 0),
-          totalAmount: Number(r.total_amount ?? 0),
-          currency: r.currency_hint,
+      // Add or update fromId node
+      if (nodesMap.has(fromId)) {
+        const node = nodesMap.get(fromId);
+        node.flags.alerted ??= r.is_alerted_edge === 1;
+        node.flags.investigated ??= r.is_investigated_edge === 1;
+      } else {
+        nodesMap.set(fromId, {
+          id: fromId,
+          type: 'ACCOUNT',
+          label: fromId,
           flags: {
             alerted: r.is_alerted_edge === 1,
             investigated: r.is_investigated_edge === 1,
@@ -136,78 +134,144 @@ export class AccountLakehouseService extends GoldLakehouseService {
         });
       }
 
-      const metricsSql = `
-      SELECT
-        SUM(tx_count) AS transactions,
-        SUM(total_amount) AS total_value,
-        MAX(is_alerted_edge) AS is_alerted,
-        MAX(is_investigated_edge) AS is_investigated
-      FROM tx_network_accounts_edges
-      WHERE tenant_id = '${tenantId}'
-        AND (
-          from_account_id = '${accountId}'
-          OR to_account_id = '${accountId}'
-        )
-    `;
+      // Add or update toId node
+      if (nodesMap.has(toId)) {
+        const node = nodesMap.get(toId);
+        node.flags.alerted ??= r.is_alerted_edge === 1;
+        node.flags.investigated ??= r.is_investigated_edge === 1;
+      } else {
+        nodesMap.set(toId, {
+          id: toId,
+          type: 'ACCOUNT',
+          label: toId,
+          flags: {
+            alerted: r.is_alerted_edge === 1,
+            investigated: r.is_investigated_edge === 1,
+          },
+        });
+      }
 
-      const metricsResp = await this.runSqlQuery(metricsSql, 1);
-      const metrics = this.stripHudiMetadata(metricsResp.data?.[0] ?? {});
+      // Propagate alert flags to root entity node
+      const root = nodesMap.get(entityId);
+      if (root) {
+        root.flags.alerted ??= r.is_alerted_edge === 1;
+        root.flags.investigated ??= r.is_investigated_edge === 1;
+      }
 
-      const holderSql = `
-      SELECT debtor_name AS holder_name
-      FROM transaction_detail
-      WHERE tenant_id = '${tenantId}'
-        AND debtor_account_id = '${accountId}'
-      LIMIT 1
-    `;
+      edges.push({
+        source: fromId,
+        target: toId,
+        txCount: Number(r.tx_count ?? 0),
+        totalAmount: Number(r.total_amount ?? 0),
+        currency: r.currency_hint,
+        flags: {
+          alerted: r.is_alerted_edge === 1,
+          investigated: r.is_investigated_edge === 1,
+        },
+      });
+    }
+  }
 
-      const holderResp = await this.runSqlQuery(holderSql, 1);
-      const holderRow = holderResp.data?.[0];
+  async getAccountNodeFullData(
+    entityId: string,
+    tenantId = 'DEFAULT',
+    granularity: 'day' | 'month' | 'year' = 'month',
+  ): Promise<AccountNodeFullDataResponse> {
+    try {
+      // Step 1: Append TAZAMA_EID suffix to entityId
+      const enhancedEntityId = `${entityId}TAZAMA_EID`;
 
-      const alertSql = `
-      SELECT COUNT(*) AS alert_count
-      FROM alerts a
-      JOIN transaction_detail td
-        ON a.tx_original_e2e_id = td.end_to_end_id
-      WHERE td.debtor_account_id = '${accountId}'
-         OR td.creditor_account_id = '${accountId}'
-    `;
+      // Step 2: Query account_holder table to fetch associated accounts
+      const accountHolderSql = `
+        SELECT *
+        FROM account_holder ah
+        WHERE ah.source = '${enhancedEntityId}'
+          AND ah.tenant_id = '${tenantId}'
+      `;
 
-      const investigationSql = `
-      SELECT COUNT(*) AS investigation_count
-      FROM cases c
-      JOIN alerts a ON a.case_id = c.case_id
-      JOIN transaction_detail td
-        ON a.tx_original_e2e_id = td.end_to_end_id
-      WHERE c.status NOT IN ('STATUS_00_DRAFT','STATUS_99_COMPLETED')
-        AND (
-          td.debtor_account_id = '${accountId}'
-          OR td.creditor_account_id = '${accountId}'
-        )
-    `;
+      const accountHolderResp = await this.runSqlQuery(accountHolderSql, 100);
+      const accountHolderRows = accountHolderResp.data ?? [];
 
-      const [alertResp, investigationResp] = await Promise.all([this.runSqlQuery(alertSql, 1), this.runSqlQuery(investigationSql, 1)]);
+      // Step 3: Extract and clean account IDs
+      const cleanedAccountIds = accountHolderRows
+        .map((row) => row.destination)
+        .filter((accountId) => accountId)
+        .map((accountId) => this.cleanAccountId(accountId));
 
-      const txCount = Number(metrics.transactions ?? 0);
+      if (cleanedAccountIds.length === 0) {
+        this.logger.warn(`No accounts found for entity ${entityId} (enhanced: ${enhancedEntityId})`);
+        return this.buildEmptyEntityGraph(entityId, tenantId, granularity);
+      }
 
-      const velocity: 'HIGH' | 'MEDIUM' | 'LOW' = txCount >= 50 ? 'HIGH' : txCount >= 10 ? 'MEDIUM' : 'LOW';
+      // Step 4: Fetch transactions for each account (parallel queries)
+      const nodesMap = new Map<string, any>();
+      const edges: any[] = [];
+
+      // Add entity as root node
+      nodesMap.set(entityId, {
+        id: entityId,
+        type: 'ENTITY',
+        label: entityId,
+        flags: { alerted: false, investigated: false },
+      });
+
+      // Fetch all network data in parallel
+      const networkQueries = cleanedAccountIds.map(async (accountId) => {
+        const networkSql = `
+          SELECT
+            from_account_id,
+            to_account_id,
+            tx_count,
+            total_amount,
+            currency_hint,
+            first_event_ts,
+            last_event_ts,
+            is_alerted_edge,
+            is_investigated_edge
+          FROM tx_network_accounts_edges
+          WHERE tenant_id = '${tenantId}'
+            AND bucket_granularity = '${granularity}'
+            AND (
+              from_account_id = '${accountId}'
+              OR to_account_id = '${accountId}'
+            )
+        `;
+        return await this.runSqlQuery(networkSql, 1000);
+      });
+
+      const networkResponses = await Promise.all(networkQueries);
+
+      // Process all network responses
+      for (const networkResp of networkResponses) {
+        const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
+        this.processNetworkRows(networkRows, nodesMap, edges, entityId);
+      }
+
+      // Step 5: Calculate aggregate metrics
+      const totalTransactions = edges.reduce((sum, edge) => sum + edge.txCount, 0);
+      const totalValue = edges.reduce((sum, edge) => sum + edge.totalAmount, 0);
+
+      const velocity: 'HIGH' | 'MEDIUM' | 'LOW' = totalTransactions >= 50 ? 'HIGH' : totalTransactions >= 10 ? 'MEDIUM' : 'LOW';
+
+      // Check if any node is alerted or investigated
+      const rootNode = nodesMap.get(entityId);
 
       return {
         network: {
-          rootNodeId: accountId,
+          rootNodeId: entityId,
           nodes: Array.from(nodesMap.values()),
           edges,
         },
         accountDetails: {
-          accountId,
-          accountHolder: holderRow?.holder_name ?? 'Unknown',
-          relationship: 'Primary Owner',
-          transactions: txCount,
-          totalValue: Number(metrics.total_value ?? 0),
+          accountId: entityId,
+          accountHolder: 'Entity',
+          relationship: 'Primary Entity',
+          transactions: totalTransactions,
+          totalValue,
           velocity,
           flags: {
-            alerted: metrics.is_alerted === 1 || Number(alertResp.data?.[0]?.alert_count ?? 0) > 0,
-            investigated: metrics.is_investigated === 1 || Number(investigationResp.data?.[0]?.investigation_count ?? 0) > 0,
+            alerted: rootNode?.flags.alerted ?? false,
+            investigated: rootNode?.flags.investigated ?? false,
           },
         },
         meta: {
@@ -219,8 +283,8 @@ export class AccountLakehouseService extends GoldLakehouseService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching full account node data: ${errorMessage}`, errorStack);
-      throw new HttpException('Failed to fetch account network and details', HttpStatus.INTERNAL_SERVER_ERROR);
+      this.logger.error(`Error fetching entity network data: ${errorMessage}`, errorStack);
+      throw new HttpException('Failed to fetch entity network and details', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
