@@ -13,6 +13,7 @@ import {
 } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
 import { AccountConditionsSummary, ConditionsListByAccountResponse } from '../gold-lakehouse/types/IAccountConditions.types';
 import { AlertHistoryAlertsResponse } from '../gold-lakehouse/types/IAlertHistory.types';
+import { TransactionHistoryResponse } from '../gold-lakehouse/types/transaction-history-response.types';
 
 @Injectable()
 export class JupyterProxyService {
@@ -51,14 +52,14 @@ export class JupyterProxyService {
   }
 
   async getTransactionHistoryData(
-    entityId: string,
+    accountId: string,
     tenantId?: string,
     startDate?: string,
     endDate?: string,
     granularity?: string,
-  ): Promise<unknown> {
-    return await this.transactionLakehouseService.getTransactionHistoryData(
-      entityId,
+  ): Promise<TransactionHistoryResponse> {
+    return await this.transactionLakehouseService.getTransactionHistoryByAccountId(
+      accountId,
       tenantId ?? 'DEFAULT',
       startDate,
       endDate,

@@ -35,7 +35,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
       const entityMetadataResp = await this.runSqlQuery(entitySQL, 1);
       const entityMetadataRow = entityMetadataResp.data?.[0];
       const entityMetadata = {
-        debtorId: entityMetadataRow?.debtor_id,
+        debtorId: entityMetadataRow?.debtor_Id,
         debtorAccountId: entityMetadataRow?.debtor_account_id,
         debtorName: entityMetadataRow?.debtor_name,
         creditorId: entityMetadataRow?.creditor_id,

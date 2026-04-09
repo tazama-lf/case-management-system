@@ -237,32 +237,8 @@ describe('TransactionLakehouseService', () => {
     });
   });
 
-  // ===================== getTransactionHistoryByEntityId =====================
-  describe('getTransactionHistoryByEntityId', () => {
-    it('uses baseline expected values when available', async () => {
-      http
-        .mockReturnValueOnce(
-          okHttp([{ transaction_id: 'tx1', event_date: '2024-01-01', tx_amount: '100', is_alerted: 0, is_investigated: 0 }]),
-        )
-        .mockReturnValueOnce(okHttp([{ total_tx_count: '50', total_amount: '5000' }]));
-      const result: any = await service.getTransactionHistoryData('entity1', 'DEFAULT');
-      expect(result.summary.expected.transactionCount).toBe(50);
-    });
-
-    it('handles baseline query failure gracefully', async () => {
-      http
-        .mockReturnValueOnce(
-          okHttp([{ transaction_id: 'tx1', event_date: '2024-01-01', tx_amount: '100', is_alerted: 0, is_investigated: 0 }]),
-        )
-        .mockReturnValueOnce(errHttp('baseline unavailable'));
-      const result: any = await service.getTransactionHistoryData('entity1', 'DEFAULT');
-      expect(result.summary).toBeDefined();
-      expect(result.summary.expected.transactionCount).toBeNull();
-    });
-  });
-
-  // ===================== getTransactionHistoryData =====================
-  describe('getTransactionHistoryData', () => {
+  // ===================== getTransactionHistoryByAccountId =====================
+  describe('getTransactionHistoryByAccountId', () => {
     it('returns entity history for entity_id', async () => {
       http
         .mockReturnValueOnce(
@@ -282,13 +258,13 @@ describe('TransactionLakehouseService', () => {
           ]),
         )
         .mockReturnValueOnce(okHttp([]));
-      const result: any = await service.getTransactionHistoryData('entity1', 'DEFAULT');
+      const result: any = await service.getTransactionHistoryByAccountId('entity1', 'DEFAULT');
       expect(result.summary.totalTransactions).toBe(1);
     });
 
     it('handles empty entity history', async () => {
       http.mockReturnValue(okHttp([]));
-      const result: any = await service.getTransactionHistoryData('entity1');
+      const result: any = await service.getTransactionHistoryByAccountId('entity1');
       expect(result.summary.totalTransactions).toBe(0);
     });
 
@@ -301,74 +277,34 @@ describe('TransactionLakehouseService', () => {
           okHttp([{ bucket_start: '2024-01-01', bucket_tx_count: 10, bucket_tx_amount: 1000, bucket_granularity: 'day' }]),
         )
         .mockReturnValueOnce(okHttp([]));
-      const result: any = await service.getTransactionHistoryData('entity1', 'DEFAULT', '2024-01-01', '2024-01-31', 'day');
+      const result: any = await service.getTransactionHistoryByAccountId('entity1', 'DEFAULT', '2024-01-01', '2024-01-31', 'day');
       expect(result.volumeDistribution).toHaveLength(1);
     });
 
-    it('returns end_to_end_id history for UUID', async () => {
-      const uuid = '550e8400-e29b-41d4-a716-446655440000';
-      http.mockReturnValue(
-        okHttp([
-          {
-            transaction_id: 'tx1',
-            end_to_end_id: uuid,
-            entity_type: 'ACCOUNT',
-            entity_role: 'DEBTOR',
-            entity_id: 'e1',
-            tx_amount: 100,
-            tx_ccy: 'USD',
-            is_alerted: 0,
-            is_investigated: 0,
-          },
-        ]),
-      );
-      const result: any = await service.getTransactionHistoryData(uuid, 'DEFAULT');
-      expect(result.entityPerspectives).toBeInstanceOf(Array);
+    it('uses baseline expected values when available', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([{ transaction_id: 'tx1', event_date: '2024-01-01', tx_amount: '100', is_alerted: 0, is_investigated: 0 }]),
+        )
+        .mockReturnValueOnce(okHttp([{ total_tx_count: '50', total_amount: '5000' }]));
+      const result: any = await service.getTransactionHistoryByAccountId('entity1', 'DEFAULT');
+      expect(result.summary.expected.transactionCount).toBe(50);
     });
 
-    it('returns empty UUID history when no data', async () => {
-      const uuid = '00000000-0000-0000-0000-000000000000';
-      http.mockReturnValue(okHttp([]));
-      const result: any = await service.getTransactionHistoryData(uuid, 'DEFAULT');
-      expect(result.summary.totalTransactions).toBe(0);
+    it('handles baseline query failure gracefully', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([{ transaction_id: 'tx1', event_date: '2024-01-01', tx_amount: '100', is_alerted: 0, is_investigated: 0 }]),
+        )
+        .mockReturnValueOnce(errHttp('baseline unavailable'));
+      const result: any = await service.getTransactionHistoryByAccountId('entity1', 'DEFAULT');
+      expect(result.summary).toBeDefined();
+      expect(result.summary.expected.transactionCount).toBeNull();
     });
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getTransactionHistoryData('entity1')).rejects.toThrow(HttpException);
-    });
-  });
-
-  // ===================== getTransactionHistoryByEndToEndId =====================
-  describe('getTransactionHistoryByEndToEndId', () => {
-    it('returns perspectives data', async () => {
-      http.mockReturnValue(
-        okHttp([
-          {
-            transaction_id: 'tx1',
-            entity_type: 'ACCOUNT',
-            entity_role: 'DEBTOR',
-            entity_id: 'e1',
-            tx_amount: 100,
-            tx_ccy: 'USD',
-            is_alerted: 0,
-            is_investigated: 0,
-          },
-        ]),
-      );
-      const result = await service.getTransactionHistoryByEndToEndId('e2e1', 'DEFAULT');
-      expect(result.entityPerspectives).toHaveLength(1);
-    });
-
-    it('returns empty when no data', async () => {
-      http.mockReturnValue(okHttp([]));
-      const result = await service.getTransactionHistoryByEndToEndId('e2e999', 'DEFAULT');
-      expect(result.summary.totalTransactions).toBe(0);
-    });
-
-    it('throws on error', async () => {
-      http.mockReturnValue(errHttp());
-      await expect(service.getTransactionHistoryByEndToEndId('e2e1')).rejects.toThrow(HttpException);
+      await expect(service.getTransactionHistoryByAccountId('entity1')).rejects.toThrow(HttpException);
     });
   });
 
@@ -492,9 +428,7 @@ describe('TransactionLakehouseService', () => {
         ],
       };
 
-      http
-        .mockReturnValueOnce(okHttp(mockCreditorResponse.data))
-        .mockReturnValueOnce(okHttp(mockDebtorResponse.data));
+      http.mockReturnValueOnce(okHttp(mockCreditorResponse.data)).mockReturnValueOnce(okHttp(mockDebtorResponse.data));
 
       const result = await service.generateProfile(1, mockDto, 'user123');
 
@@ -508,9 +442,7 @@ describe('TransactionLakehouseService', () => {
     it('throws InternalServerErrorException when alert not found', async () => {
       alertRepository.getAlertById.mockResolvedValue(null);
 
-      await expect(service.generateProfile(999, mockDto, 'user123')).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(service.generateProfile(999, mockDto, 'user123')).rejects.toThrow(InternalServerErrorException);
 
       expect(alertRepository.getAlertById).toHaveBeenCalledWith(999);
     });
@@ -524,9 +456,7 @@ describe('TransactionLakehouseService', () => {
       alertRepository.getAlertById.mockResolvedValue(alertWithoutReferenceId as any);
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
 
-      await expect(service.generateProfile(1, mockDto, 'user123')).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(service.generateProfile(1, mockDto, 'user123')).rejects.toThrow(InternalServerErrorException);
     });
 
     it('throws InternalServerErrorException when SQL query fails', async () => {
@@ -535,18 +465,14 @@ describe('TransactionLakehouseService', () => {
 
       http.mockReturnValue(errHttp('Database connection failed'));
 
-      await expect(service.generateProfile(1, mockDto, 'user123')).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(service.generateProfile(1, mockDto, 'user123')).rejects.toThrow(InternalServerErrorException);
     });
 
     it('handles empty creditor and debtor responses', async () => {
       alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
 
-      http
-        .mockReturnValueOnce(okHttp([]))
-        .mockReturnValueOnce(okHttp([]));
+      http.mockReturnValueOnce(okHttp([])).mockReturnValueOnce(okHttp([]));
 
       const result = await service.generateProfile(1, mockDto, 'user123');
 
@@ -567,9 +493,7 @@ describe('TransactionLakehouseService', () => {
         ],
       };
 
-      http
-        .mockReturnValueOnce(okHttp(mockMultipleCreditorResponse.data))
-        .mockReturnValueOnce(okHttp([]));
+      http.mockReturnValueOnce(okHttp(mockMultipleCreditorResponse.data)).mockReturnValueOnce(okHttp([]));
 
       const result = await service.generateProfile(1, mockDto, 'user123');
 

@@ -240,7 +240,7 @@ describe('AccountLakehouseService', () => {
     };
 
     const mockEntityRow = {
-      debtor_id: 'dbtr-001',
+      debtor_Id: 'dbtr-001',
       debtor_account_id: 'dbtrAcct-001',
       debtor_name: 'John Debtor',
       creditor_id: 'cdtr-001',
