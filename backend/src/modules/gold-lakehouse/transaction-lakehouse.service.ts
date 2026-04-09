@@ -15,14 +15,13 @@ import {
   CounterpartyNetworkSummaryDto,
   CounterpartyNetworkEdgeDto,
 } from './dto/network-analysis.dto';
-import { Cumulative, RecentTransaction, Timeline } from './types/gold-lakehouse.types';
-import { TransactionHistoryByEndToEndIdResponse } from './types/gold-lakehouse-responses.types';
 import { TransactionDetailDataResponse } from './types/transaction-detail.types';
 import { GenerateProfileResponseDto } from './dto/profile-response.dto';
 import { AlertRepository } from '../repository/alert.repository';
 import { JsonValue } from '../repository/utils/types/JsonValue';
 import { extractReferenceId } from '../repository/utils/extractReferenceId';
 import { GenerateProfileDto } from './dto/generate-profile.dto';
+import type { TransactionHistoryResponse } from './types/transaction-history-response.types';
 
 @Injectable()
 export class TransactionLakehouseService extends GoldLakehouseService {
@@ -165,88 +164,15 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async getTransactionHistoryData(
-    id: string,
+  async getTransactionHistoryByAccountId(
+    accountId: string,
     tenantId = 'DEFAULT',
     startDate?: string,
     endDate?: string,
     granularity?: string,
-  ): Promise<unknown> {
+  ): Promise<TransactionHistoryResponse> {
     try {
-      // Smart detection: Check if ID is a UUID (end_to_end_id) or entity_id
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iv;
-      const isEndToEndId = uuidRegex.test(id);
-
-      if (isEndToEndId) {
-        // Query by end_to_end_id - returns all 4 entity perspectives for single transaction
-        this.logger.log(`Fetching Transaction History by end_to_end_id: ${id}`);
-        return await this.getTransactionHistoryByEndToEndId(id, tenantId, startDate, endDate, granularity);
-      } else {
-        // Query by entity_id - returns transaction history for entity
-        this.logger.log(`Fetching Transaction History by entity_id: ${id}`);
-        return await this.getTransactionHistoryByEntityId(id, tenantId, startDate, endDate, granularity);
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching Transaction History data: ${errorMessage}`, errorStack);
-      throw new HttpException('Failed to fetch Transaction History data', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  private async getTransactionHistoryByEntityId(
-    entityId: string,
-    tenantId = 'DEFAULT',
-    startDate?: string,
-    endDate?: string,
-    granularity?: string,
-  ): Promise<{
-    summary: {
-      totalVolume: number;
-      totalTransactions: number;
-      transactionCount: number;
-      alertsTriggered: number;
-      alertsPercentage: number;
-      investigated: number;
-      investigatedPercentage: number;
-      avgTransactionsPerDay: number;
-      durationDays: number;
-      bucketTotalVolume: number;
-      bucketTotalTransactions: number;
-      expected: {
-        transactionCount: number | null;
-        volume: number | null;
-      };
-      actual: {
-        transactionCount: number;
-        volume: number;
-      };
-    };
-    timeline: Timeline[];
-    cumulative: Cumulative;
-    volumeDistribution: Array<{
-      bucketStart: string;
-      granularity: string;
-      transactionCount: number;
-      totalVolume: number;
-    }>;
-    recentTransactions: RecentTransaction[];
-    meta: {
-      entityId: string;
-      tenantId: string;
-      granularity: string | null;
-      startDate: string | null;
-      endDate: string | null;
-      eventRowCount: number;
-      aggRowCount: number;
-      queryTimestamp: string;
-    };
-  }> {
-    try {
-      this.logger.log(`Fetching Transaction History for entity: ${entityId}`);
-
-      // Build date filter if provided
-      const dateFilter = startDate && endDate ? `AND th.event_date BETWEEN '${startDate}' AND '${endDate}'` : '';
+      this.logger.log(`Start - getTransactionHistoryByAccountId: ${accountId}`);
 
       // Query 1: Fetch EVENT rows with transaction details
       const eventsResponse = await this.runSqlQuery(
@@ -269,9 +195,8 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           ON th.transaction_id = td.transaction_id 
           AND th.tenant_id = td.tenant_id
         WHERE th.row_type = 'EVENT'
-          AND th.entity_id = '${entityId}'
+          AND th.entity_id = '${accountId}'
           AND th.tenant_id = '${tenantId}'
-          ${dateFilter}
         ORDER BY th.event_date DESC
         `,
         1000,
@@ -280,8 +205,6 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       // Query 2: Fetch AGG rows for volume distribution (if granularity provided)
       let aggregates: any[] = [];
       if (granularity) {
-        const aggDateFilter = startDate && endDate ? `AND bucket_start BETWEEN '${startDate}' AND '${endDate}'` : '';
-
         const aggResponse = await this.runSqlQuery(
           `
           SELECT 
@@ -291,10 +214,9 @@ export class TransactionLakehouseService extends GoldLakehouseService {
             bucket_granularity
           FROM transaction_history
           WHERE row_type = 'AGG'
-            AND entity_id = '${entityId}'
+            AND entity_id = '${accountId}'
             AND bucket_granularity = '${granularity}'
             AND tenant_id = '${tenantId}'
-            ${aggDateFilter}
           ORDER BY bucket_start ASC
           `,
           1000,
@@ -305,7 +227,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       const events = (eventsResponse?.data ?? []).map((e) => this.stripHudiMetadata(e));
 
       if (events.length === 0) {
-        this.logger.warn(`No transaction history found for entity: ${entityId}`);
+        this.logger.warn(`No transaction history found for account: ${accountId}`);
       }
 
       // Query 3: Fetch baseline data from counterparty_account_links for expected metrics
@@ -318,7 +240,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
             SUM(tx_count) as total_tx_count,
             SUM(total_amount) as total_amount
           FROM counterparty_account_links
-          WHERE account_id = '${entityId}'
+          WHERE account_id = '${accountId}'
             AND tenant_id = '${tenantId}'
           `,
           100,
@@ -330,7 +252,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           expectedVolume = parseFloat(baselineData.total_amount) || null;
         }
       } catch (error) {
-        this.logger.warn(`Could not fetch baseline data for entity: ${entityId}`);
+        this.logger.warn(`Could not fetch baseline data for account: ${accountId}`);
       }
 
       // Calculate summary statistics
@@ -371,7 +293,6 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         isInvestigated: e.is_investigated === 1,
       }));
 
-      // Transform cumulative data (sorted by date ascending)
       const cumulative = events
         .map((e) => ({
           date: e.event_date,
@@ -380,7 +301,6 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-      // Transform volume distribution
       const volumeDistribution = aggregates.map((a) => ({
         bucketStart: a.bucket_start,
         granularity: a.bucket_granularity,
@@ -388,9 +308,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         totalVolume: parseFloat(a.bucket_tx_amount) || 0,
       }));
 
-      // Transform recent transactions table (top 20)
       const recentTransactions = events.slice(0, 20).map((e) => {
-        // Determine counterparty based on entity role
         const counterparty = e.entity_role === 'DEBTOR' ? (e.creditor_name ?? 'Unknown Creditor') : (e.debtor_name ?? 'Unknown Debtor');
 
         const status: string[] = [];
@@ -438,7 +356,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         volumeDistribution,
         recentTransactions,
         meta: {
-          entityId,
+          accountId,
           tenantId,
           granularity: granularity ?? null,
           startDate: startDate ?? null,
@@ -453,203 +371,6 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Error fetching Transaction History by entity_id: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch Transaction History by entity_id', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  async getTransactionHistoryByEndToEndId(
-    endToEndId: string,
-    tenantId = 'DEFAULT',
-    startDate?: string,
-    endDate?: string,
-    granularity?: string,
-  ): Promise<TransactionHistoryByEndToEndIdResponse> {
-    try {
-      this.logger.log(`Fetching Transaction History for end_to_end_id: ${endToEndId}`);
-
-      // Build date filter if provided (though typically not used with end_to_end_id queries)
-      const dateFilter = startDate && endDate ? `AND th.event_date BETWEEN '${startDate}' AND '${endDate}'` : '';
-
-      // Query transaction_history for all entity perspectives with row_type='EVENT'
-      const eventsResponse = await this.runSqlQuery(
-        `
-        SELECT 
-          th.transaction_id,
-          th.end_to_end_id,
-          th.entity_type,
-          th.entity_role,
-          th.entity_id,
-          th.entity_name,
-          th.event_date,
-          th.event_ts,
-          th.tx_amount,
-          th.tx_ccy,
-          th.tx_type,
-          th.is_alerted,
-          th.is_investigated,
-          td.debtor_name,
-          td.creditor_name,
-          td.debtor_account_id,
-          td.creditor_account_id
-        FROM transaction_history th
-        LEFT JOIN transaction_detail td 
-          ON th.transaction_id = td.transaction_id 
-          AND th.tenant_id = td.tenant_id
-        WHERE th.row_type = 'EVENT'
-          AND th.end_to_end_id = '${endToEndId}'
-          AND th.tenant_id = '${tenantId}'
-          ${dateFilter}
-        ORDER BY th.entity_type, th.entity_role
-        `,
-        10,
-      );
-
-      const events = (eventsResponse?.data ?? []).map((e) => this.stripHudiMetadata(e));
-
-      if (events.length === 0) {
-        this.logger.warn(`No transaction found for end_to_end_id: ${endToEndId}`);
-        return {
-          summary: {
-            totalVolume: 0,
-            totalTransactions: 0,
-            transactionCount: 0,
-            alertsTriggered: 0,
-            alertsPercentage: 0,
-            investigated: 0,
-            investigatedPercentage: 0,
-            avgTransactionsPerDay: 0,
-            durationDays: 0,
-          },
-          timeline: [],
-          cumulative: [],
-          volumeDistribution: [],
-          recentTransactions: [],
-          entityPerspectives: [],
-          meta: {
-            endToEndId,
-            tenantId,
-            queryType: 'end_to_end_id',
-            message: 'No transaction found with this end_to_end_id',
-            queryTimestamp: new Date().toISOString(),
-          },
-        };
-      }
-
-      // Build entity perspectives array (using snake_case to match database schema)
-      const entityPerspectives = events.map((e) => ({
-        entity_type: e.entity_type,
-        entity_role: e.entity_role,
-        entity_id: e.entity_id,
-        entity_name: e.entity_name ?? 'Unknown Entity',
-        transaction_id: e.transaction_id,
-        tx_amount: parseFloat(e.tx_amount) || 0,
-        tx_ccy: e.tx_ccy,
-        event_ts: e.event_ts,
-      }));
-
-      // Process all events to build summary metrics
-      let totalVolume = 0;
-      let alertsTriggered = 0;
-      let investigatedCount = 0;
-
-      const timeline = events.map((e) => {
-        const amount = parseFloat(e.tx_amount) || 0;
-        const isAlert = e.is_alerted === 1;
-        const isInvest = e.is_investigated === 1;
-
-        totalVolume += amount;
-        if (isAlert) alertsTriggered += 1;
-        if (isInvest) investigatedCount += 1;
-
-        return {
-          transactionId: e.transaction_id,
-          date: e.event_ts,
-          amount,
-          currency: e.tx_ccy,
-          type: e.tx_type ?? 'Unknown',
-          isAlerted: isAlert,
-          isInvestigated: isInvest,
-          entityRole: e.entity_role,
-          entityType: e.entity_type,
-        };
-      });
-
-      // Build cumulative data
-      let runningAmount = 0;
-      const cumulative = events.map((e, index) => {
-        const amount = parseFloat(e.tx_amount) || 0;
-        runningAmount += amount;
-        return {
-          date: e.event_ts,
-          cumulativeAmount: runningAmount,
-          cumulativeCount: index + 1,
-        };
-      });
-
-      // Build recent transactions table with all perspectives
-      const recentTransactions = events.map((e) => {
-        const amount = parseFloat(e.tx_amount) || 0;
-        const isAlert = e.is_alerted === 1;
-        const isInvest = e.is_investigated === 1;
-
-        return {
-          transactionId: e.transaction_id,
-          date: e.event_ts,
-          type: e.tx_type ?? 'Unknown',
-          counterparty: e.entity_name ?? 'Unknown',
-          role: `${e.entity_type} (${e.entity_role})`,
-          amount,
-          currency: e.tx_ccy,
-          status: [...(isAlert ? ['Alert'] : []), ...(isInvest ? ['Investigated'] : [])],
-          actions: {
-            viewDetailsLink: `/triage/transaction-detail/${e.transaction_id}`,
-          },
-        };
-      });
-
-      const firstEvent = events[0];
-
-      return {
-        summary: {
-          totalVolume: Math.round(totalVolume * 100) / 100,
-          totalTransactions: events.length,
-          transactionCount: events.length,
-          alertsTriggered,
-          alertsPercentage: (alertsTriggered / events.length) * 100,
-          investigated: investigatedCount,
-          investigatedPercentage: (investigatedCount / events.length) * 100,
-          avgTransactionsPerDay: events.length, // Since it's one day effectively
-          durationDays: 1,
-          perspectiveCount: events.length,
-        },
-        timeline,
-        cumulative,
-        volumeDistribution: [],
-        recentTransactions,
-        entityPerspectives,
-        meta: {
-          endToEndId,
-          tenantId,
-          queryType: 'end_to_end_id',
-          transactionId: firstEvent.transaction_id,
-          perspectiveCount: events.length,
-          debtorName: firstEvent.debtor_name,
-          creditorName: firstEvent.creditor_name,
-          debtorAccountId: firstEvent.debtor_account_id,
-          creditorAccountId: firstEvent.creditor_account_id,
-          startDate: startDate ?? null,
-          endDate: endDate ?? null,
-          queryTimestamp: new Date().toISOString(),
-        },
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching Transaction History by end_to_end_id (${endToEndId}): ${errorMessage}`, errorStack);
-
-      // Log additional context for debugging
-      this.logger.error(`Query parameters - tenantId: ${tenantId}, startDate: ${startDate}, endDate: ${endDate}`);
-
-      throw new HttpException(`Failed to fetch Transaction History by end_to_end_id: ${errorMessage}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

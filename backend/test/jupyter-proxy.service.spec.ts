@@ -22,7 +22,7 @@ describe('JupyterProxyService', () => {
           provide: TransactionLakehouseService,
           useValue: {
             getCounterpartyNetworkData: jest.fn().mockResolvedValue({}),
-            getTransactionHistoryData: jest.fn().mockResolvedValue({}),
+            getTransactionHistoryByAccountId: jest.fn().mockResolvedValue({}),
             getTransactionNetworkData: jest.fn().mockResolvedValue({}),
           },
         },
@@ -107,12 +107,12 @@ describe('JupyterProxyService', () => {
   describe('getTransactionHistoryData', () => {
     it('delegates with all parameters', async () => {
       await service.getTransactionHistoryData('ent1', 'TENANT_A', '2024-01-01', '2024-12-31', 'day');
-      expect(transactionSvc.getTransactionHistoryData).toHaveBeenCalledWith('ent1', 'TENANT_A', '2024-01-01', '2024-12-31', 'day');
+      expect(transactionSvc.getTransactionHistoryByAccountId).toHaveBeenCalledWith('ent1', 'TENANT_A', '2024-01-01', '2024-12-31', 'day');
     });
 
     it('defaults tenantId to "DEFAULT" when omitted', async () => {
       await service.getTransactionHistoryData('ent1');
-      expect(transactionSvc.getTransactionHistoryData).toHaveBeenCalledWith('ent1', 'DEFAULT', undefined, undefined, undefined);
+      expect(transactionSvc.getTransactionHistoryByAccountId).toHaveBeenCalledWith('ent1', 'DEFAULT', undefined, undefined, undefined);
     });
   });
 

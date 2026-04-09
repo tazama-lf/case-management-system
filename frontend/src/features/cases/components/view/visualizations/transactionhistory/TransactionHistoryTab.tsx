@@ -3,7 +3,6 @@ import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import VoilaFrame from '../network-analysis/VoilaFrame';
 import { useEntityMetadata } from '@/features/cases/hooks/useEntityMetadata';
 
-
 type TimeRange = 'day' | 'month' | 'year' | 'all';
 
 interface TransactionHistoryTabProps {
@@ -18,11 +17,12 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
   transactionId,
   tenantId,
 }) => {
-  const [activeEntityRole, setActiveEntityRole] = React.useState<'creditor' | 'debtor'>('creditor');
+  const [activeEntityRole, setActiveEntityRole] = React.useState<
+    'creditor' | 'debtor'
+  >('creditor');
   const [timeRange, setTimeRange] = React.useState<TimeRange>('month');
   const [showTimeDropdown, setShowTimeDropdown] = React.useState(false);
   const { entityMetadata } = useEntityMetadata(alertId, tenantId);
-
 
   const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
     { value: 'day', label: 'Day' },
@@ -68,25 +68,26 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
 
         {/* Right side (grouped correctly) */}
         <div className="flex items-center gap-3">
-
           {/* Creditor/Debtor toggle */}
           <div className="flex bg-gray-100 p-1 rounded-md">
             <button
               onClick={() => setActiveEntityRole('creditor')}
-              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'creditor'
-                ? 'bg-white shadow text-blue-600 font-medium'
-                : 'text-gray-600 hover:text-gray-800'
-                }`}
+              className={`px-4 py-1.5 text-sm rounded-md transition ${
+                activeEntityRole === 'creditor'
+                  ? 'bg-white shadow text-blue-600 font-medium'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
             >
               Creditor
             </button>
 
             <button
               onClick={() => setActiveEntityRole('debtor')}
-              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'debtor'
-                ? 'bg-white shadow text-blue-600 font-medium'
-                : 'text-gray-600 hover:text-gray-800'
-                }`}
+              className={`px-4 py-1.5 text-sm rounded-md transition ${
+                activeEntityRole === 'debtor'
+                  ? 'bg-white shadow text-blue-600 font-medium'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
             >
               Debtor
             </button>
@@ -111,10 +112,11 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
                       setTimeRange(option.value);
                       setShowTimeDropdown(false);
                     }}
-                    className={`block w-full px-4 py-2 text-left text-sm ${timeRange === option.value
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-gray-700 hover:bg-gray-50'
-                      }`}
+                    className={`block w-full px-4 py-2 text-left text-sm ${
+                      timeRange === option.value
+                        ? 'bg-indigo-50 text-indigo-700'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
                   >
                     {option.label}
                   </button>
@@ -122,7 +124,6 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
               </div>
             )}
           </div>
-
         </div>
       </div>
 
@@ -137,10 +138,9 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
             activeEntityRole === 'creditor'
               ? entityMetadata?.creditorAccountId
               : entityMetadata?.debtorAccountId,
-          timeRange: timeRange,
+          granularity: timeRange,
         }}
       />
-
     </div>
   );
 };

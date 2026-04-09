@@ -9,6 +9,7 @@ import {
   EvaluatedTransactionsResponse,
 } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
 import { AlertHistoryAlertsResponse } from '../gold-lakehouse/types/IAlertHistory.types';
+import { TransactionHistoryResponse } from '../gold-lakehouse/types/transaction-history-response.types';
 
 @Controller('api/v1/jupyter/proxy')
 @ApiTags('Jupyter Proxy')
@@ -137,23 +138,23 @@ export class JupyterProxyController {
     return await this.proxyService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page ?? 1, limit ?? 20);
   }
 
-  @Get('transaction-history/:entityId')
+  @Get('transaction-history/:accountId')
   @ApiOperation({ summary: 'Proxy: Get Transaction History' })
   @ApiQuery({ name: 'tenantId', required: false })
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   @ApiQuery({ name: 'granularity', required: false })
   async getTransactionHistory(
-    @Param('entityId') entityId: string,
+    @Param('accountId') accountId: string,
     @Query('tenantId') tenantId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('granularity') granularity?: string,
     @Headers() headers?: Record<string, any>,
-  ): Promise<unknown> {
+  ): Promise<TransactionHistoryResponse> {
     this.validateSecret(headers ?? {});
-    if (!entityId || entityId.trim() === '') {
-      throw new BadRequestException('entityId is required');
+    if (!accountId || accountId.trim() === '') {
+      throw new BadRequestException('accountId is required');
     }
     // reuse same validation as gold-lakehouse
     if (startDate ?? endDate) {
@@ -168,7 +169,7 @@ export class JupyterProxyController {
     if (granularity && !['day', 'week', 'month', 'year'].includes(granularity)) {
       throw new BadRequestException('Invalid granularity. Must be one of: day, week, month, year');
     }
-    return await this.proxyService.getTransactionHistoryData(entityId, tenantId, startDate, endDate, granularity);
+    return await this.proxyService.getTransactionHistoryData(accountId, tenantId, startDate, endDate, granularity);
   }
 
   @Get('lake/analytics/benford/account/:accountId')
