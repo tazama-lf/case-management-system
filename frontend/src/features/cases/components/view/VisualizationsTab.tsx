@@ -132,12 +132,21 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
         )}
 
         {activeSubTab === 'transaction-history' && (
-          <TransactionHistoryTab
-            caseId={caseId}
-            transactionId={transactionId}
-            tenantId={tenantId}
-          />
-        )}
+          (alertId && tenantId) ? (
+            <TransactionHistoryTab
+
+              alertId={alertId}
+              caseId={caseId}
+              transactionId={transactionId}
+              tenantId={tenantId}
+            />
+          ) : (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <p className="text-sm text-gray-600">
+                Select an alert to view network analysis
+              </p>
+            </div>
+          ))}
 
         {activeSubTab === 'network-analysis' &&
           (alertId && tenantId ? (

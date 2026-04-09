@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import ErrorState from '@/shared/components/ui/ErrorState';
 import LoadingSpinner from '@/shared/components/ui/LoadingSpinner';
 
@@ -46,6 +46,10 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
     setStatus('loading');
     setRetryCount((c) => c + 1);
   };
+
+  useEffect(() => {
+    setStatus('loading');
+  }, [voilaUrl]);
 
   if (!voilaUrl) {
     return (

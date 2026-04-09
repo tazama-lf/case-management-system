@@ -1,155 +1,148 @@
+import React from 'react';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import VoilaFrame from '../network-analysis/VoilaFrame';
+import { useEntityMetadata } from '@/features/cases/hooks/useEntityMetadata';
+
+
+type TimeRange = 'day' | 'month' | 'year' | 'all';
 
 interface TransactionHistoryTabProps {
+  alertId: number;
   caseId?: number;
   transactionId?: string;
   tenantId: string;
 }
 
 const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
-  caseId: _caseId,
-  transactionId: _transactionId,
-  tenantId: _tenantId,
-}) => (
-  <VoilaFrame
-    notebookPath="transaction-viz.ipynb"
-    title="Conditions Timeline"
-    queryParams={{
-      transactionId: _transactionId || '',
-      tenantId: _tenantId || '',
-    }}
-  />
-);
-//   {
-//   const [timeFilter, setTimeFilter] = useState('Last Month');
-//   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-//   const [currentIban, setCurrentIban] = useState<string>('');
-//   const [loading, setLoading] = useState(false);
-//   const [error, setError] = useState<string | null>(null);
+  alertId,
+  transactionId,
+  tenantId,
+}) => {
+  const [activeEntityRole, setActiveEntityRole] = React.useState<'creditor' | 'debtor'>('creditor');
+  const [timeRange, setTimeRange] = React.useState<TimeRange>('month');
+  const [showTimeDropdown, setShowTimeDropdown] = React.useState(false);
+  const { entityMetadata } = useEntityMetadata(alertId, tenantId);
 
-//   const timeFilters = [
-//     'Last Day',
-//     'Last Week',
-//     'Last Month',
-//     'Last Year',
-//     'All History',
-//   ];
 
-//   useEffect(() => {
-//     const fetchData = async () => {
-//       if (!transactionId) return;
+  const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
+    { value: 'day', label: 'Day' },
+    { value: 'month', label: 'Month' },
+    { value: 'year', label: 'Year' },
+    { value: 'all', label: 'All Time' },
+  ];
 
-//       setLoading(true);
-//       setError(null);
-//       try {
-//         const details =
-//           await TransactionDetailsService.getTransactionDetails(transactionId);
-//         const entityId =
-//           details.creditorProfile?.account?.iban ||
-//           details.debtorProfile?.account?.iban ||
-//           'cdtrAcct_3a1f3d24fb2046f2a28dc1fa506d6d69'; // Fallback for testing/missing data
+  const selectedTimeLabel =
+    timeRangeOptions.find((opt) => opt.value === timeRange)?.label ||
+    'Last 30 Days';
 
-//         if (!entityId) {
-//           throw new Error('No entity ID (IBAN) found for this transaction');
-//         }
+  if (!alertId) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <p className="text-sm text-gray-600">
+          Select an alert to view transaction history
+        </p>
+      </div>
+    );
+  }
 
-//         setCurrentIban(entityId);
-//       } catch (err) {
-//         setError(err instanceof Error ? err.message : 'Failed to load history');
-//         console.error(err);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
+  if (!entityMetadata) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <p className="text-sm text-gray-600">Loading entity metadata...</p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        {/* Left side */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Transaction History
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Visualize transaction history
+          </p>
+        </div>
 
-//     fetchData();
-//   }, [transactionId]);
+        {/* Right side (grouped correctly) */}
+        <div className="flex items-center gap-3">
 
-//   return (
-//     <div className="space-y-6">
-//       {error && (
-//         <div className="p-4 rounded-md bg-red-50 border border-red-200">
-//           <div className="flex">
-//             <div className="flex-shrink-0">
-//               <svg
-//                 className="h-5 w-5 text-red-400"
-//                 viewBox="0 0 20 20"
-//                 fill="currentColor"
-//               >
-//                 <path
-//                   fillRule="evenodd"
-//                   d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-//                   clipRule="evenodd"
-//                 />
-//               </svg>
-//             </div>
-//             <div className="ml-3">
-//               <h3 className="text-sm font-medium text-red-800">
-//                 Error loading history
-//               </h3>
-//               <div className="mt-2 text-sm text-red-700">
-//                 <p>{error}</p>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       )}
-//       {/* Header with Filter */}
-//       <div className="flex items-center justify-between">
-//         <div>
-//           <h3 className="text-lg font-semibold text-gray-900">
-//             Transaction History Analysis
-//           </h3>
-//           <p className="text-sm text-gray-600 mt-1">
-//             Historical transaction patterns and behavioral analysis for{' '}
-//             {currentIban || '...'}
-//           </p>
-//         </div>
-//         <div className="flex items-center gap-3">
-//           <div className="relative">
-//             <button
-//               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-//               className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-//             >
-//               {timeFilter}
-//               <ChevronDownIcon className="h-4 w-4" />
-//             </button>
-//             {showFilterDropdown && (
-//               <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10">
-//                 {timeFilters.map((filter) => (
-//                   <button
-//                     key={filter}
-//                     onClick={() => {
-//                       setTimeFilter(filter);
-//                       setShowFilterDropdown(false);
-//                     }}
-//                     className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${filter === timeFilter
-//                       ? 'bg-blue-50 text-blue-700 font-medium'
-//                       : 'text-gray-700'
-//                       }`}
-//                   >
-//                     {filter}
-//                   </button>
-//                 ))}
-//               </div>
-//             )}
-//           </div>
-//         </div>
-//       </div>
+          {/* Creditor/Debtor toggle */}
+          <div className="flex bg-gray-100 p-1 rounded-md">
+            <button
+              onClick={() => setActiveEntityRole('creditor')}
+              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'creditor'
+                ? 'bg-white shadow text-blue-600 font-medium'
+                : 'text-gray-600 hover:text-gray-800'
+                }`}
+            >
+              Creditor
+            </button>
 
-//       <div className="h-[1500px]">
-//         <JupyterVisualization
-//           notebook="transaction-history"
-//           params={{
-//             entityId: currentIban,
-//             filter: timeFilter,
-//           }}
-//           title="Transaction History Analysis"
-//           height="100%"
-//         />
-//       </div>
-//     </div>
-//   );
-// };
+            <button
+              onClick={() => setActiveEntityRole('debtor')}
+              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'debtor'
+                ? 'bg-white shadow text-blue-600 font-medium'
+                : 'text-gray-600 hover:text-gray-800'
+                }`}
+            >
+              Debtor
+            </button>
+          </div>
+
+          {/* Time Range Dropdown (moved here) */}
+          <div className="relative">
+            <button
+              onClick={() => setShowTimeDropdown(!showTimeDropdown)}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              {selectedTimeLabel}
+              <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+            </button>
+
+            {showTimeDropdown && (
+              <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                {timeRangeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setTimeRange(option.value);
+                      setShowTimeDropdown(false);
+                    }}
+                    className={`block w-full px-4 py-2 text-left text-sm ${timeRange === option.value
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+
+      <VoilaFrame
+        key={`${activeEntityRole}-${timeRange}-${transactionId}`}
+        notebookPath="transaction-viz.ipynb"
+        title="Conditions Timeline"
+        queryParams={{
+          transactionId: transactionId || '',
+          tenantId: tenantId || '',
+          entityAccountId:
+            activeEntityRole === 'creditor'
+              ? entityMetadata?.creditorAccountId
+              : entityMetadata?.debtorAccountId,
+          timeRange: timeRange,
+        }}
+      />
+
+    </div>
+  );
+};
 
 export default TransactionHistoryTab;
