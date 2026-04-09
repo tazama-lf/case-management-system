@@ -199,7 +199,7 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
           />
         )}
         {activeSubTab === 'account' && (
-          <AccountNetworkTab caseId={caseId} transactionId={transactionId} tenantId={tenantId} />
+          <AccountNetworkTab caseId={caseId} transactionId={transactionId} />
         )}
         {activeSubTab === 'counterparty' && (
           <CounterpartyNetworkTab

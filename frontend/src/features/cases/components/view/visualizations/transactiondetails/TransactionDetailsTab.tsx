@@ -23,11 +23,9 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
   React.useEffect(() => {
     if (!transactionId) {
       setLoading(false);
-      console.log('No transactionId provided');
       return;
     }
 
-    console.log('Fetching transaction details for:', transactionId);
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -112,7 +110,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
         <h4 className="text-sm font-semibold text-gray-900 mb-4">
           Transaction Overview
         </h4>
-        
+
         {/* PACS.008 - Payment Instruction */}
         <div className="mb-6">
           <div className="text-xs font-semibold text-gray-900 uppercase mb-3 flex items-center gap-2">
@@ -133,8 +131,8 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
                 Timestamp
               </div>
               <div className="text-sm font-medium text-gray-900">
-               {data.transactionOverview?.pacs8?.timestamp &&
-              new Date(data.transactionOverview.pacs8.timestamp).toLocaleString()}
+                {data.transactionOverview?.pacs8?.timestamp &&
+                  new Date(data.transactionOverview.pacs8.timestamp).toLocaleString()}
               </div>
             </div>
             <div>
@@ -176,8 +174,8 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
                 Timestamp
               </div>
               <div className="text-sm font-medium text-gray-900">
-               {data.transactionOverview?.pacs2?.timestamp &&
-               new Date(data.transactionOverview.pacs2.timestamp).toLocaleString()}
+                {data.transactionOverview?.pacs2?.timestamp &&
+                  new Date(data.transactionOverview.pacs2.timestamp).toLocaleString()}
               </div>
             </div>
             <div>
@@ -470,8 +468,8 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
                 Transaction Timestamp
               </div>
               <div className="text-sm text-gray-900">
-               {data.transactionOverview?.pacs8?.timestamp &&
-              new Date(data.transactionOverview.pacs8.timestamp).toLocaleString()}
+                {data.transactionOverview?.pacs8?.timestamp &&
+                  new Date(data.transactionOverview.pacs8.timestamp).toLocaleString()}
               </div>
             </div>
             {data.settlementDetails.settlementDate && (
