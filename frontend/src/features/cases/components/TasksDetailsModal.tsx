@@ -10,6 +10,7 @@ import TaskDetailsTab from './view/TaskDetailsTab';
 import VisualizationsTab from './view/VisualizationsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
 import { caseService } from '../services/caseService';
+import type { Case } from '@/features/alerts/types/triage.types';
 
 type ViewTabKey = 'details' | 'evidence' | 'visualizations' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary';
 
@@ -35,17 +36,18 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [tasks, setTasks] = React.useState<TaskForSupervisor[]>([]);
   const [loadingTasks, setLoadingTasks] = React.useState(false);
   const [parentAlertId, setParentAlertId] = React.useState<number | undefined>(undefined);
+  const [parentCaseDetails, setParentCaseDetails] = React.useState<Case | undefined>(undefined);
 
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
 
   //Extract transaction ID from transaction data
   const transactionId = React.useMemo(() => {
 
-    if (!row?.transaction) {
+    let transactionData = row?.parentId ? parentCaseDetails?.alert.transaction : row?.transaction;
+
+    if (!transactionData) {
       return undefined;
     }
-
-    let transactionData = row.transaction;
 
     // Check if transaction is a string that needs parsing
     if (typeof transactionData === 'string') {
@@ -109,6 +111,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
       caseService.getCaseDetails(row.parentId).then(details => {
         setParentAlertId(details.alert.alert_id);
+        setParentCaseDetails(details);
       }).catch(error => {
         console.error('Failed to fetch case details for parent case:', error);
         setParentAlertId(undefined);
