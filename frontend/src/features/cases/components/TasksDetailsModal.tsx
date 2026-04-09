@@ -9,6 +9,8 @@ import InvestigationSummaryTab from './view/InvestigationsSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
 import VisualizationsTab from './view/VisualizationsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
+import { caseService } from '../services/caseService';
+import type { Case } from '@/features/alerts/types/triage.types';
 
 type ViewTabKey = 'details' | 'evidence' | 'visualizations' | 'linked' | 'tasks' | 'notes' | 'customer' | 'summary';
 
@@ -33,20 +35,19 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [showCollaborate, setShowCollaborate] = React.useState(false);
   const [tasks, setTasks] = React.useState<TaskForSupervisor[]>([]);
   const [loadingTasks, setLoadingTasks] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
-  // const [saveSuccess, setSaveSuccess] = React.useState(false);
+  const [parentAlertId, setParentAlertId] = React.useState<number | undefined>(undefined);
+  const [parentCaseDetails, setParentCaseDetails] = React.useState<Case | undefined>(undefined);
 
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
-  //const [noEvidenceError, setNoEvidenceError] = React.useState(false);
 
   //Extract transaction ID from transaction data
   const transactionId = React.useMemo(() => {
 
-    if (!row?.transaction) {
+    let transactionData = row?.parentId ? parentCaseDetails?.alert.transaction : row?.transaction;
+
+    if (!transactionData) {
       return undefined;
     }
-
-    let transactionData = row.transaction;
 
     // Check if transaction is a string that needs parsing
     if (typeof transactionData === 'string') {
@@ -56,6 +57,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         return undefined;
       }
     }
+
+
 
     const transaction = transactionData as Record<string, unknown>;
 
@@ -102,6 +105,19 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       }
     }
   }, [open, row?.id]);
+
+  React.useEffect(() => {
+    if (row?.parentId) {
+
+      caseService.getCaseDetails(row.parentId).then(details => {
+        setParentAlertId(details.alert.alert_id);
+        setParentCaseDetails(details);
+      }).catch(error => {
+        console.error('Failed to fetch case details for parent case:', error);
+        setParentAlertId(undefined);
+      });
+    }
+  }, [row?.parentId]);
 
   if (!open || !row) return null;
 
@@ -180,7 +196,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 />
               </div>
               <div style={{ display: tab === 'visualizations' ? 'block' : 'none' }}>
-                <VisualizationsTab alertId={row?.alertId} caseId={row?.id} transactionId={transactionId} />
+                <VisualizationsTab alertId={row?.parentId ? parentAlertId : row?.alertId} caseId={row?.id} transactionId={transactionId} />
               </div>
               <div style={{ display: tab === 'linked' ? 'block' : 'none' }}>
                 {row?.id && <LinkedItemsTab caseId={row.id} />}
@@ -228,7 +244,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             type="button"
             onClick={onClose}
             className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-1 focus:ring-gray-400"
-            disabled={saving}
           >
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
             Close

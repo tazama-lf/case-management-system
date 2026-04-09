@@ -102,10 +102,9 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
               key={tab.key}
               onClick={() => setActiveSubTab(tab.key as VisualizationSubTab)}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all
-                ${
-                  isActive
-                    ? 'bg-white shadow text-indigo-600'
-                    : 'text-gray-600 hover:bg-gray-200'
+                ${isActive
+                  ? 'bg-white shadow text-indigo-600'
+                  : 'text-gray-600 hover:bg-gray-200'
                 }`}
             >
               <Icon className="w-4 h-4" />
@@ -136,6 +135,7 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
           <TransactionHistoryTab
             caseId={caseId}
             transactionId={transactionId}
+            tenantId={tenantId}
           />
         )}
 

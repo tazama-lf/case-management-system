@@ -1,21 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { ChevronDownIcon } from '@heroicons/react/24/outline';
-import TransactionDetailsService from '../transactiondetails/services/service';
-import JupyterVisualization from '../shared/JupyterVisualization';
 import VoilaFrame from '../network-analysis/VoilaFrame';
 
 interface TransactionHistoryTabProps {
   caseId?: number;
   transactionId?: string;
+  tenantId: string;
 }
 
 const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
   caseId: _caseId,
   transactionId: _transactionId,
+  tenantId: _tenantId,
 }) => (
   <VoilaFrame
     notebookPath="transaction-viz.ipynb"
     title="Conditions Timeline"
+    queryParams={{
+      transactionId: _transactionId || '',
+      tenantId: _tenantId || '',
+    }}
   />
 );
 //   {
