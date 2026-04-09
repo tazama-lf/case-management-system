@@ -279,45 +279,9 @@ VITE_APP_VERSION=1.0.0
 VITE_ENABLE_ANALYTICS=true
 ```
 
-## Contributing
+Please refer to the deployment guide here: https://github.com/tazama-lf/docs/blob/dev/Guides/User%20Manuals%20for%20Downloading/Case%20Management%20System.docx
 
-### Development Workflow
-
-1. **Feature Development**: Create feature branches
-2. **Code Review**: Pull request process
-3. **Testing**: Comprehensive test coverage
-4. **Documentation**: Update relevant documentation
-
-### Guidelines
-
-- **TypeScript**: Strict typing for all code
-- **Testing**: Write tests for new features
-- **Accessibility**: Ensure accessible implementations
-- **Performance**: Consider performance impact
-- **Documentation**: Keep documentation updated
-
-### Git Hooks
-
-The project includes pre-commit hooks:
-
-- **Linting**: ESLint checks
-- **Type Checking**: TypeScript validation
-- **Testing**: Run affected tests
-- **Formatting**: Prettier formatting
-
-## Resources
-
-### Documentation
-
-- [React Documentation](https://react.dev/)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
-- [Tailwind CSS Docs](https://tailwindcss.com/docs)
-- [TanStack Query Docs](https://tanstack.com/query/latest)
-- [Vite Guide](https://vitejs.dev/guide/)
-
-### Development Tools
-
-- **VS Code Extensions**: Recommended extensions list
-- **Browser DevTools**: React and Redux DevTools
-- **Design Tools**: Figma integration
-- **API Tools**: Postman collections
+# For support or questions
+- Review existing issues, discussions and pull requests
+- Start a discussion in the **Discussions** tab or create an issue in the **Issues** tab in this repository
+- Join the Tazama Slack workspace and post your question in the **#get-help** channel - :point_right: Join here: https://slack.tazama.org
