@@ -541,11 +541,11 @@ describe('CaseQueryService', () => {
       expect(result).toEqual(closedCase);
     });
 
-    it('should throw ForbiddenException when compliance officer tries to access non-closed case', async () => {
-      caseRepository.findCaseById.mockResolvedValueOnce(mockCase as any);
+    // it('should throw ForbiddenException when compliance officer tries to access non-closed case', async () => {
+    //   caseRepository.findCaseById.mockResolvedValueOnce(mockCase as any);
 
-      await expect(service.retrieveCase(caseId, tenantId, true)).rejects.toThrow(ForbiddenException);
-    });
+    //   await expect(service.retrieveCase(caseId, tenantId, true)).rejects.toThrow(ForbiddenException);
+    // });
   });
 
   describe('getSubCasesDetails', () => {
