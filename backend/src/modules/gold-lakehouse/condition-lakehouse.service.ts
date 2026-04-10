@@ -44,9 +44,29 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         ${tenantId && tenantId !== 'DEFAULT' ? `AND tenant_id = '${tenantId}'` : ''}
         ${asOfDateFilter}
       `;
+      //const sql = `SELECT COUNT(*) as total_conditions, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_conditions, SUM(CASE WHEN is_expired = 1 THEN 1 ELSE 0 END) as expired_conditions, SUM(CASE WHEN is_active = 0 AND is_expired = 0 THEN 1 ELSE 0 END) as future_conditions FROM conditions WHERE account_id = 'ACC-ce6e83a6' AND tenant_id = 'DEFAULT'`;
 
       const response = await this.runSqlQuery(sql, 1);
       const summary = response.data?.[0] ?? {};
+
+      // const conditionsSql = `
+      // SELECT
+      //   condition_id,
+      //   condition_reason,
+      //   condition_type,
+      //   perspective,
+      //   condition_inception_ts,
+      //   condition_expiry_ts,
+      //   is_active,
+      //   is_expired,
+      //   created_by_user,
+      //   account_scheme,
+      //   account_agent_mmb_id
+      // FROM conditions
+      // WHERE account_id = 'ACC-ce6e83a6'
+      // AND tenant_id = 'DEFAULT'
+      // LIMIT 100
+      // `;
 
       const conditionsSql = `
       SELECT 
@@ -61,7 +81,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         created_by_user,
         account_scheme,
         account_agent_mmb_id
-      FROM conditions
+      FROM conditions_timeline
       WHERE account_id = '${accountId}'
         ${tenantId && tenantId !== 'DEFAULT' ? `AND tenant_id = '${tenantId}'` : ''}
         ${asOfDateFilter}
@@ -293,6 +313,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
   ): Promise<ConditionsContextByTransactionResponse> {
     try {
       const txSql = `SELECT transaction_id, end_to_end_id, tx_event_ts, tx_event_date, tx_type, interbank_settlement_amount, interbank_settlement_currency, debtor_id, debtor_name, debtor_account_id, creditor_id, creditor_name, creditor_account_id FROM transaction_detail WHERE end_to_end_id = '${transactionId}' AND tenant_id = '${tenantId}' LIMIT 1;`;
+
+      //const txSql = `SELECT transaction_id, end_to_end_id, tx_event_ts, tx_event_date, tx_type, interbank_settlement_amount, interbank_settlement_currency, debtor_id, debtor_name, debtor_account_id, creditor_id, creditor_name, creditor_account_id FROM transaction_detail WHERE end_to_end_id = 'TMICFBPK2801321849114534' AND tenant_id = '${tenantId}' LIMIT 1;`;
 
       const txResponse = await this.runSqlQuery(txSql, 1);
       const tx = txResponse.data?.[0];
