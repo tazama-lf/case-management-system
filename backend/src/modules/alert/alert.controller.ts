@@ -1,6 +1,6 @@
 import { Controller, Get, Query, Req, BadRequestException, UseGuards, Param } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
-import { RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRoleOrComplianceRole } from '../../decorators/auth.decorator';
+import { RequireInvestigatorOrSupervisorRoleOrComplianceRole } from '../../decorators/auth.decorator';
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { AlertStatisticsService } from './alert.statistics.service';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
@@ -214,7 +214,7 @@ export class AlertController {
   }
 
   @Get(':alertId/action-history')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get alert action history',
     description: 'Retrieve all actions taken on a specific alert',
