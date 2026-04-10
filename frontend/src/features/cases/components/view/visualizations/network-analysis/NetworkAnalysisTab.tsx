@@ -35,29 +35,28 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
   >('creditor');
 
   const { entityMetadata, isLoading } = useEntityMetadata(alertId, tenantId);
-  console.log("NetworkAnalysisTab - Entity Metadata:", { entityMetadata, isLoading, creditorId: entityMetadata?.creditorId, debtorId: entityMetadata?.debtorId });
 
   const subTabs: Array<{
     key: NetworkSubTab;
     label: string;
     icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   }> = [
-      {
-        key: 'transaction',
-        label: 'Transaction Network',
-        icon: ArrowsRightLeftIcon,
-      },
-      {
-        key: 'account',
-        label: 'Account Network',
-        icon: BuildingOfficeIcon,
-      },
-      {
-        key: 'counterparty',
-        label: 'Counterparty Network',
-        icon: UsersIcon,
-      },
-    ];
+    {
+      key: 'transaction',
+      label: 'Transaction Network',
+      icon: ArrowsRightLeftIcon,
+    },
+    {
+      key: 'account',
+      label: 'Account Network',
+      icon: BuildingOfficeIcon,
+    },
+    {
+      key: 'counterparty',
+      label: 'Counterparty Network',
+      icon: UsersIcon,
+    },
+  ];
 
   const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
     { value: 'day', label: 'Day' },
@@ -99,31 +98,33 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
             Network Navigator
           </h3>
           <p className="text-sm text-gray-600 mt-1">
-            Visualize relationships and transaction flows across accounts and counterparties
+            Visualize relationships and transaction flows across accounts and
+            counterparties
           </p>
         </div>
 
         {/* Right side (grouped correctly) */}
         <div className="flex items-center gap-3">
-
           {/* Creditor/Debtor toggle */}
           <div className="flex bg-gray-100 p-1 rounded-md">
             <button
               onClick={() => setActiveEntityRole('creditor')}
-              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'creditor'
-                ? 'bg-white shadow text-blue-600 font-medium'
-                : 'text-gray-600 hover:text-gray-800'
-                }`}
+              className={`px-4 py-1.5 text-sm rounded-md transition ${
+                activeEntityRole === 'creditor'
+                  ? 'bg-white shadow text-blue-600 font-medium'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
             >
               Creditor
             </button>
 
             <button
               onClick={() => setActiveEntityRole('debtor')}
-              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'debtor'
-                ? 'bg-white shadow text-blue-600 font-medium'
-                : 'text-gray-600 hover:text-gray-800'
-                }`}
+              className={`px-4 py-1.5 text-sm rounded-md transition ${
+                activeEntityRole === 'debtor'
+                  ? 'bg-white shadow text-blue-600 font-medium'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
             >
               Debtor
             </button>
@@ -148,10 +149,11 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
                       setTimeRange(option.value);
                       setShowTimeDropdown(false);
                     }}
-                    className={`block w-full px-4 py-2 text-left text-sm ${timeRange === option.value
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-gray-700 hover:bg-gray-50'
-                      }`}
+                    className={`block w-full px-4 py-2 text-left text-sm ${
+                      timeRange === option.value
+                        ? 'bg-indigo-50 text-indigo-700'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
                   >
                     {option.label}
                   </button>
@@ -159,10 +161,8 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
               </div>
             )}
           </div>
-
         </div>
       </div>
-
 
       {/* Sub-tabs Navigation */}
       <div className="flex gap-2">
@@ -173,10 +173,11 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
             <button
               key={subTab.key}
               onClick={() => setActiveSubTab(subTab.key)}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${isActive
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
               <Icon className="h-4 w-4" />
               {subTab.label}
@@ -199,20 +200,26 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
           />
         )}
         {activeSubTab === 'account' && (
-          <AccountNetworkTab 
-          caseId={caseId} 
-          transactionId={transactionId}
-          timeRange={timeRange}
-          entityId={activeEntityRole === 'creditor'
-            ? entityMetadata?.creditorId
-            : entityMetadata?.debtorId
-          }
-           />
+          <AccountNetworkTab
+            caseId={caseId}
+            transactionId={transactionId}
+            timeRange={timeRange}
+            entityId={
+              activeEntityRole === 'creditor'
+                ? entityMetadata?.creditorId
+                : entityMetadata?.debtorId
+            }
+          />
         )}
         {activeSubTab === 'counterparty' && (
           <CounterpartyNetworkTab
             caseId={caseId}
             transactionId={transactionId}
+            entityId={
+              activeEntityRole === 'creditor'
+                ? entityMetadata?.creditorId
+                : entityMetadata?.debtorId
+            }
           />
         )}
       </div>
