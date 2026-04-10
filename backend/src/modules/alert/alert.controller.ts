@@ -167,7 +167,7 @@ export class AlertController {
   }
 
   @Get(':alertId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get alert details',
     description: 'Retrieve detailed information about a specific alert',

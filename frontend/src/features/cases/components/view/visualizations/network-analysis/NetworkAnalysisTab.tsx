@@ -35,7 +35,6 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
   >('creditor');
 
   const { entityMetadata, isLoading } = useEntityMetadata(alertId, tenantId);
-  console.log("NetworkAnalysisTab - Entity Metadata:", { entityMetadata, isLoading, creditorId: entityMetadata?.creditorId, debtorId: entityMetadata?.debtorId });
 
   const subTabs: Array<{
     key: NetworkSubTab;
@@ -199,15 +198,15 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
           />
         )}
         {activeSubTab === 'account' && (
-          <AccountNetworkTab 
-          caseId={caseId} 
-          transactionId={transactionId}
-          timeRange={timeRange}
-          entityId={activeEntityRole === 'creditor'
-            ? entityMetadata?.creditorId
-            : entityMetadata?.debtorId
-          }
-           />
+          <AccountNetworkTab
+            caseId={caseId}
+            transactionId={transactionId}
+            timeRange={timeRange}
+            entityId={activeEntityRole === 'creditor'
+              ? entityMetadata?.creditorId
+              : entityMetadata?.debtorId
+            }
+          />
         )}
         {activeSubTab === 'counterparty' && (
           <CounterpartyNetworkTab

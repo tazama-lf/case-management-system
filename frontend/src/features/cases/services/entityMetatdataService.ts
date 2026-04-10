@@ -10,7 +10,6 @@ class EntityMetadataService {
       const response = await apiClient.get<EntityMetadataResponse>(
         `/api/v1/lakehouse/entity-metadata/${alertId}?tenantId=${tenantId}`,
       );
-      console.log("EntityMetadataService - API Response:", response);
       return response;
     } catch (error) {
       throw error;
