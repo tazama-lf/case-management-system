@@ -21,7 +21,6 @@ import { TaskStatus } from '../../services/taskService';
 import authService from '@/features/auth/services/authService';
 import ConfirmUploadEvidenceModal from '../modals/ConfirmUploadEvidenceModal';
 import { formatDate } from '@/shared/utils/dateUtils';
-//import GenerateTransactionProfileModal from '../modals/GenerateTransactionProfileModal';
 
 const evidenceSections: Array<{
   key: string;
@@ -31,41 +30,41 @@ const evidenceSections: Array<{
   emptyMessage: string;
   evidenceType: EvidenceType;
 }> = [
-  {
-    key: 'kyc-edd',
-    title: 'KYC/EDD Report',
-    helper: 'Upload KYC/EDD documentation',
-    commentPlaceholder: 'Add comments about the KYC/EDD report...',
-    emptyMessage: 'No KYC/EDD report attached',
-    evidenceType: 'KYC',
-  },
-  {
-    key: 'sanctions',
-    title: 'Sanctions Screening',
-    helper: 'Upload evidence gathered during sanctions screening',
-    commentPlaceholder:
-      'Add any notes about the sanctions screening results...',
-    emptyMessage: 'No sanctions screening evidence attached',
-    evidenceType: 'SANCTIONS',
-  },
-  {
-    key: 'adverse-media',
-    title: 'Adverse Media Screening',
-    helper: 'Attach supporting documents from adverse media checks',
-    commentPlaceholder:
-      'Summarise any key findings from adverse media screening...',
-    emptyMessage: 'No adverse media screening evidence attached',
-    evidenceType: 'ADVERSE_MEDIA',
-  },
-  {
-    key: 'others',
-    title: 'Others',
-    helper: 'Add any additional evidence that supports this task',
-    commentPlaceholder: 'Provide context for the additional evidence...',
-    emptyMessage: 'No other evidence attached',
-    evidenceType: 'OTHER',
-  },
-];
+    {
+      key: 'kyc-edd',
+      title: 'KYC/EDD Report',
+      helper: 'Upload KYC/EDD documentation',
+      commentPlaceholder: 'Add comments about the KYC/EDD report...',
+      emptyMessage: 'No KYC/EDD report attached',
+      evidenceType: 'KYC',
+    },
+    {
+      key: 'sanctions',
+      title: 'Sanctions Screening',
+      helper: 'Upload evidence gathered during sanctions screening',
+      commentPlaceholder:
+        'Add any notes about the sanctions screening results...',
+      emptyMessage: 'No sanctions screening evidence attached',
+      evidenceType: 'SANCTIONS',
+    },
+    {
+      key: 'adverse-media',
+      title: 'Adverse Media Screening',
+      helper: 'Attach supporting documents from adverse media checks',
+      commentPlaceholder:
+        'Summarise any key findings from adverse media screening...',
+      emptyMessage: 'No adverse media screening evidence attached',
+      evidenceType: 'ADVERSE_MEDIA',
+    },
+    {
+      key: 'others',
+      title: 'Others',
+      helper: 'Add any additional evidence that supports this task',
+      commentPlaceholder: 'Provide context for the additional evidence...',
+      emptyMessage: 'No other evidence attached',
+      evidenceType: 'OTHER',
+    },
+  ];
 
 interface TaskEvidenceTabProps {
   task: TaskForSupervisor;
@@ -75,7 +74,6 @@ interface TaskEvidenceTabProps {
 }
 
 const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
-  caseId,
   task,
   onUploadComplete,
   onSaveRequest,
@@ -93,7 +91,7 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     Record<string, Evidence[]>
   >({});
   const [loading, setLoading] = React.useState(false);
-  const [ , setUploading] = React.useState<Record<string, boolean>>({});
+  const [, setUploading] = React.useState<Record<string, boolean>>({});
   const [openSections, setOpenSections] = React.useState<
     Record<string, boolean>
   >({});
@@ -110,8 +108,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
     fileName: string;
   } | null>(null);
   const { success, error } = useToast();
-  // const [showProfileModal, setShowProfileModal] = React.useState(false);
-  // const [transactionProfile, setTransactionProfile] = React.useState<any>(null);
   const allowedFileTypes: Record<string, string[]> = {
     sanctions: [
       'pdf',
@@ -473,55 +469,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* <section className="rounded-lg border border-purple-300 bg-purple-50/30 p-4 shadow-sm">
-        {transactionProfile ? (
-          <div className="rounded-xl border border-purple-200 bg-purple-50/60 p-4 shadow flex items-center gap-4">
-            <div className="flex items-center gap-2 min-w-[220px]">
-              <ChartBarIcon className="h-6 w-6 text-purple-500" aria-hidden="true" />
-              <div>
-                <div className="font-semibold text-sm text-purple-900">Transaction Profile Analysis</div>
-                <div className="text-xs text-purple-600">Transaction profile generated on {transactionProfile.generatedAt}</div>
-              </div>
-            </div>
-            <div className="flex-1 flex flex-wrap items-center gap-x-8 gap-y-1 text-sm">
-              <span className="text-purple-700">Total Volume: <span className="font-semibold">{transactionProfile.totalVolume}</span></span>
-              <span className="text-purple-700">Anomalies: <span className="font-semibold">{transactionProfile.anomalies}</span></span>
-              <span className="text-purple-700">Risk Level: <span className={
-                transactionProfile.riskLevel === 'High' ? 'font-semibold text-red-500' :
-                  transactionProfile.riskLevel === 'Medium' ? 'font-semibold text-orange-500' :
-                    'font-semibold text-green-600'
-              }>{transactionProfile.riskLevel}</span></span>
-            </div>
-            <div className="ml-auto">
-              <button
-                type="button"
-                onClick={() => setShowProfileModal(true)}
-                className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-purple-700 focus:ring-2 focus:ring-purple-400"
-              >
-                <ChartBarIcon className="h-4 w-4" aria-hidden="true" />
-                View Profile
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900">Transaction Profile Analysis</h3>
-              <p className="mt-1 text-xs text-gray-600">
-                Generate a 90-day transaction profile to analyze behavioral patterns, identify anomalies, and compare against peer averages.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowProfileModal(true)}
-              className="inline-flex items-center gap-2 rounded-md border border-purple-600 bg-purple-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-purple-700 focus:ring-1 focus:ring-purple-600"
-            >
-              <ChartBarIcon className="h-4 w-4" aria-hidden="true" />
-              Generate Profile
-            </button>
-          </div>
-        )}
-      </section> */}
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-gray-900">
           Evidence & Documents
@@ -540,12 +487,11 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
             task.status === 'STATUS_21_BLOCKED'
           }
           className={`inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium shadow-sm
-        ${
-          saving ||
-          !Object.values(sectionFiles).some((files) => files.length > 0)
-            ? 'border-green-600 bg-green-600/70 text-white cursor-not-allowed'
-            : 'border-green-600 bg-green-600 text-white hover:bg-green-700'
-        }
+        ${saving ||
+              !Object.values(sectionFiles).some((files) => files.length > 0)
+              ? 'border-green-600 bg-green-600/70 text-white cursor-not-allowed'
+              : 'border-green-600 bg-green-600 text-white hover:bg-green-700'
+            }
         `}
         >
           <CheckCircleIcon className="h-4 w-4" />
@@ -594,8 +540,8 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                   accept={
                     section.key in allowedFileTypes
                       ? allowedFileTypes[section.key]
-                          .map((ext) => `.${ext}`)
-                          .join(',')
+                        .map((ext) => `.${ext}`)
+                        .join(',')
                       : '*'
                   }
                   ref={(el) => {
@@ -780,9 +726,8 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                       <div className="mt-1">
                         <div className="flex justify-between items-center">
                           <span
-                            className={`text-xs ${
-                              isLimitReached ? 'text-red-500' : 'text-gray-500'
-                            }`}
+                            className={`text-xs ${isLimitReached ? 'text-red-500' : 'text-gray-500'
+                              }`}
                           >
                             {length}/500
                           </span>
@@ -855,17 +800,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
           }}
         />
       )}
-      {/* Generate Transaction Profile Modal */}
-      {/* <GenerateTransactionProfileModal
-        open={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        caseId={caseId}
-        onSaveProfile={(profileData: any) => {
-          setTransactionProfile(profileData);
-          setShowProfileModal(false);
-        }}
-        initialProfile={transactionProfile}
-      /> */}
     </div>
   );
 };

@@ -20,6 +20,9 @@ const CustomerProfileTab: React.FC<CustomerProfileTabProps> = ({
   const [manualId, setManualId] = React.useState('');
 
   React.useEffect(() => {
+    console.log('=== CustomerProfileTab Effect ===');
+    console.log('Received transactionId:', transactionId);
+
     if (!transactionId) {
       setProfile(null);
       setLoading(false);

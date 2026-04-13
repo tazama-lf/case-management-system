@@ -8,9 +8,10 @@ import { AlertController } from './alert.controller';
 import { AlertStatisticsService } from './alert.statistics.service';
 import { EventLogModule } from '../event_log/eventLog.module';
 import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orchestration.module';
+import { GoldLakehouseModule } from '../gold-lakehouse/gold-lakehouse.module';
 
 @Module({
-  imports: [LoggerModule, LoggingOrchestrationModule, ConfigModule, RepositoryModule, CaseModule, EventLogModule],
+  imports: [LoggerModule, LoggingOrchestrationModule, ConfigModule, RepositoryModule, CaseModule, EventLogModule, GoldLakehouseModule],
   providers: [AlertService, AlertStatisticsService],
   exports: [AlertService, AlertStatisticsService],
   controllers: [AlertController],

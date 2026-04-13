@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
@@ -31,6 +31,7 @@ export class CaseQueryService {
       case_id: number;
       status: CaseStatus;
       priority: Priority;
+      parent_id: number | null;
       case_type: CaseType | null;
       created_at: Date;
       updated_at: Date;
@@ -131,6 +132,7 @@ export class CaseQueryService {
           status: caseItem.status,
           priority: caseItem.priority,
           case_type: caseItem.case_type,
+          parent_id: caseItem.parent_id,
           created_at: caseItem.created_at,
           updated_at: caseItem.updated_at,
           user_role: userRole,
@@ -588,7 +590,12 @@ export class CaseQueryService {
         take: limit,
         orderBy: { [sortBy]: sortOrder },
       });
+
       const processedCases = cases.map((caseItem) => {
+        this.logger.log(
+          `CaseDetails:${JSON.stringify(caseItem)} Case${caseItem.case_id} parentId: ${caseItem.parent_id} `,
+          CaseQueryService.name,
+        );
         const taskCounts = this.taskValidationUtil.getTaskStatusCounts(caseItem.tasks);
         const assignedUsers = [...new Set(caseItem.tasks.map((t) => t.assigned_user_id).filter(Boolean))];
         return {

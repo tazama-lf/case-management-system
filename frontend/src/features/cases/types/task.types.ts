@@ -19,4 +19,6 @@ export interface UnifiedWorkQueueTask {
   investigationNotes?: string;
   completedAt?: string;
   slaDeadline?: string;
+  processInstanceId?: string;
+  flowableData?: string;
 }

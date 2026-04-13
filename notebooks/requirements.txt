@@ -1,0 +1,7 @@
+voila
+plotly
+pandas
+requests
+papermill
+jupyter
+ipykernel

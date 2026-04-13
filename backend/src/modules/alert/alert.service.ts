@@ -6,13 +6,14 @@ import { Alert, CaseCreationType, CaseStatus, Priority, Prisma } from '@prisma/c
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { ConfigService } from '@nestjs/config';
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
-import { TransactionDataRespository } from '../repository/transactionalData.respository';
 import { extractReferenceId } from '../repository/utils/extractReferenceId';
 import { JsonValue } from '../repository/utils/types/JsonValue';
 import { CaseCreationService } from '../case/services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { Outcome } from 'src/utils/types/outcome';
 import { EventLogService } from '../event_log/eventLog.service';
+import { GoldLakehouseService } from '../gold-lakehouse/gold-lakehouse.service';
+import { transactionDataResponseDTO } from './dto/transactionHistory.dto';
 
 @Injectable()
 export class AlertService {
@@ -21,9 +22,9 @@ export class AlertService {
     private readonly configService: ConfigService,
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationService,
-    private readonly transactionDataRespository: TransactionDataRespository,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly eventLogService: EventLogService,
+    private readonly goldLakehouseService: GoldLakehouseService,
   ) {}
 
   async createNewAlert(alert: IngestAlertDto, tenantId: string, source: string, caseId: number): Promise<Alert | null> {
@@ -105,9 +106,7 @@ export class AlertService {
     }
   }
 
-  async getAlertTransactionalData(
-    alertId: number,
-  ): Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>> {
+  async getAlertTransactionalData(alertId: number): Promise<{ transactionData: transactionDataResponseDTO[] }> {
     this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
 
     const alert = await this.alertRepository.getAlertById(alertId);
@@ -120,10 +119,17 @@ export class AlertService {
     if (!referenceId) {
       throw new Error('ReferenceId not found in transaction data');
     }
-    const transactionData = await this.transactionDataRespository.getTransactionalData(referenceId);
-    if (!transactionData) throw new InternalServerErrorException(`transactionData not found for AlertId ${alertId}`);
 
-    return transactionData;
+    const transactiondataSql = `
+      SELECT * from transaction_detail where end_to_end_id = '${referenceId}';`;
+
+    const transactionData = await this.goldLakehouseService.runSqlQuery(transactiondataSql, 1000);
+
+    if (!transactionData.data) {
+      throw new InternalServerErrorException(`Transaction history data not found for AlertId ${alertId}`);
+    }
+    this.loggerService.log(`Fetched transaction data for Alert ID ${alertId}: ${JSON.stringify(transactionData)}`, AlertService.name);
+    return { transactionData };
   }
 
   async getAlertDetails(
