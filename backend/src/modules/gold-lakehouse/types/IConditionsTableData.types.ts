@@ -1,4 +1,4 @@
-import type { Condition } from '@tazama-lf/frms-coe-lib/lib/interfaces/event-flow/Condition';
+import type { Condition } from '@tazama-lf/frms-coe-lib';
 
 export interface ConditionsTableDataResponse {
   tableName: string;
