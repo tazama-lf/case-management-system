@@ -35,8 +35,6 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
   >('creditor');
 
   const { entityMetadata, isLoading } = useEntityMetadata(alertId, tenantId);
-  console.log("NetworkAnalysisTab - Entity Metadata:", { entityMetadata, isLoading, creditorId: entityMetadata?.creditorId, debtorId: entityMetadata?.debtorId });
-
   const subTabs: Array<{
     key: NetworkSubTab;
     label: string;
