@@ -16,7 +16,6 @@ const AccountNetworkTab: React.FC<AccountNetworkTabProps> = ({
 }) => {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const tenantId = user?.tenantId || 'DEFAULT';
-  console.log("AccountNetworkTab - Props:", { caseId: _caseId, transactionId: _transactionId, timeRange, entityId, tenantId });
   const queryParams = React.useMemo(
     () => ({
       entity_id: entityId || '',

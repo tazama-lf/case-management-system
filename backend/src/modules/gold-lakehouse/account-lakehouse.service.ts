@@ -53,10 +53,8 @@ export class AccountLakehouseService extends GoldLakehouseService {
   }
 
   /**
-   * Cleans an account ID by removing metadata suffix (MSISDN...).
-   * Examples:
-   *   '1234567890MSISDNfsp001' -> '1234567890'
-   *   'cdtrAcct_8f37705af293453c992da08718fd8e9eMSISDNfsp002' -> 'cdtrAcct_8f37705af293453c992da08718fd8e9e'
+   * Removes the metadata suffix (e.g., MSISDN...) from an account ID.
+   * Example: '1234567890MSISDNfsp001' → '1234567890'
    */
   private cleanAccountId(rawAccountId: string): string {
     if (!rawAccountId) {
@@ -72,9 +70,8 @@ export class AccountLakehouseService extends GoldLakehouseService {
     return rawAccountId;
   }
 
-  /**
-   * Builds empty graph response for entity with no accounts
-   */
+  // Builds an empty graph response for an entity with no associated accounts or transactions
+
   private buildEmptyEntityGraph(entityId: string, tenantId: string, granularity: string): AccountNodeFullDataResponse {
     return {
       network: {
@@ -109,9 +106,8 @@ export class AccountLakehouseService extends GoldLakehouseService {
     };
   }
 
-  /**
-   * Process network rows and build nodes/edges
-   */
+  //  Process network rows and build nodes/edges
+
   private processNetworkRows(networkRows: any[], nodesMap: Map<string, any>, edges: any[], entityId: string): void {
     for (const r of networkRows) {
       const fromId = r.from_account_id;
@@ -178,10 +174,9 @@ export class AccountLakehouseService extends GoldLakehouseService {
     granularity: 'day' | 'month' | 'year' = 'month',
   ): Promise<AccountNodeFullDataResponse> {
     try {
-      // Step 1: Append TAZAMA_EID suffix to entityId
       const enhancedEntityId = `${entityId}TAZAMA_EID`;
 
-      // Step 2: Query account_holder table to fetch associated accounts
+      //Query account_holder table to fetch associated accounts
       const accountHolderSql = `
         SELECT *
         FROM account_holder ah
@@ -192,7 +187,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
       const accountHolderResp = await this.runSqlQuery(accountHolderSql, 100);
       const accountHolderRows = accountHolderResp.data ?? [];
 
-      // Step 3: Extract and clean account IDs
+      //Extract and clean account IDs
       const cleanedAccountIds = accountHolderRows
         .map((row) => row.destination)
         .filter((accountId) => accountId)
@@ -203,7 +198,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
         return this.buildEmptyEntityGraph(entityId, tenantId, granularity);
       }
 
-      // Step 4: Fetch transactions for each account (parallel queries)
+      //Fetch transactions for each account (parallel queries)
       const nodesMap = new Map<string, any>();
       const edges: any[] = [];
 
@@ -247,7 +242,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
         this.processNetworkRows(networkRows, nodesMap, edges, entityId);
       }
 
-      // Step 5: Calculate aggregate metrics
+      // Calculate aggregate metrics
       const totalTransactions = edges.reduce((sum, edge) => sum + edge.txCount, 0);
       const totalValue = edges.reduce((sum, edge) => sum + edge.totalAmount, 0);
 
