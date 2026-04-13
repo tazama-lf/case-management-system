@@ -97,13 +97,13 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
             Network Navigator
           </h3>
           <p className="text-sm text-gray-600 mt-1">
-            Visualize relationships and transaction flows across accounts and counterparties
+            Visualize relationships and transaction flows across accounts and
+            counterparties
           </p>
         </div>
 
         {/* Right side (grouped correctly) */}
         <div className="flex items-center gap-3">
-
           {/* Creditor/Debtor toggle */}
           <div className="flex bg-gray-100 p-1 rounded-md">
             <button
@@ -157,10 +157,8 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
               </div>
             )}
           </div>
-
         </div>
       </div>
-
 
       {/* Sub-tabs Navigation */}
       <div className="flex gap-2">
@@ -197,20 +195,25 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
           />
         )}
         {activeSubTab === 'account' && (
-          <AccountNetworkTab 
-          caseId={caseId} 
-          transactionId={transactionId}
-          timeRange={timeRange}
-          entityId={activeEntityRole === 'creditor'
-            ? entityMetadata?.creditorId
-            : entityMetadata?.debtorId
-          }
-           />
+          <AccountNetworkTab
+            caseId={caseId}
+            transactionId={transactionId}
+            timeRange={timeRange}
+            entityId={activeEntityRole === 'creditor'
+              ? entityMetadata?.creditorId
+              : entityMetadata?.debtorId
+            }
+          />
         )}
         {activeSubTab === 'counterparty' && (
           <CounterpartyNetworkTab
             caseId={caseId}
             transactionId={transactionId}
+            entityId={
+              activeEntityRole === 'creditor'
+                ? entityMetadata?.creditorId
+                : entityMetadata?.debtorId
+            }
           />
         )}
       </div>

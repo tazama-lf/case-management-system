@@ -6,7 +6,7 @@ import { TransactionLakehouseService } from './transaction-lakehouse.service';
 import { ConditionLakehouseService } from './condition-lakehouse.service';
 import { BenfordsLawLakehouseService } from './benfordsLaw-lakehouse.service';
 import { AccountLakehouseService } from './account-lakehouse.service';
-import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
+import { RequireInvestigatorOrSupervisorRoleOrComplianceRole } from 'src/decorators/auth.decorator';
 import { TransactionNetworkResponseDto, CounterpartyNetworkResponseDto } from './dto/network-analysis.dto';
 import {
   AccountNodeFullDataResponse,
@@ -39,7 +39,7 @@ export class GoldLakehouseController {
   ) {}
 
   @Get('entity-metadata/:alertId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Get Entity Metadata for a given Alert ID' })
   async getEntityMetadataByAlertId(
     @Param('alertId') alertId: number,
@@ -53,7 +53,7 @@ export class GoldLakehouseController {
   }
 
   @Get('alert-navigator/:alertId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Get Alert Navigator data for visualization' })
   @ApiResponse({ status: 200 })
   async getAlertNavigatorData(
@@ -67,7 +67,7 @@ export class GoldLakehouseController {
   }
 
   @Get('transaction-detail/:endToEndId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Get Transaction Detail data for visualization' })
   @ApiResponse({ status: 200 })
   async getTransactionDetailData(
@@ -80,7 +80,7 @@ export class GoldLakehouseController {
   // ================ CONDITIONS ENDPOINTS ================
 
   @Get('conditions/summary')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get conditions summary with counts by Account ID',
     description: `Returns aggregated condition counts and basic details for a specific account. 
@@ -160,7 +160,7 @@ export class GoldLakehouseController {
   }
 
   @Get('conditions/details')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get complete condition records with full details by Account ID',
     description: `Returns all condition records with complete field data for a specific account. Primary endpoint for detailed condition analysis.
@@ -254,7 +254,7 @@ export class GoldLakehouseController {
   // ================ NEW ENDPOINTS FOR CONDITIONS VIEW ================
 
   @Get('conditions/by-transaction/:transactionId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get transaction-based conditions context (Transaction Entry Point)',
     description: `Returns complete transaction context with both parties (debtor/creditor), their accounts, and condition statistics. Primary entry point for Conditions Timeline visualization.
@@ -376,7 +376,7 @@ export class GoldLakehouseController {
   }
 
   @Get('conditions/by-entity/:entityId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get all conditions across entity-owned accounts (Entity-Level View)',
     description: `Returns aggregated conditions for all accounts owned by a specific legal entity. Used for entity-level compliance and risk assessment.
@@ -471,7 +471,7 @@ export class GoldLakehouseController {
 
   @Get('alert-history/summary')
   // Access restricted: require investigator or supervisor role
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Alert History Summary',
     description:
@@ -531,7 +531,7 @@ export class GoldLakehouseController {
 
   @Get('alert-history/timeline')
   // Access restricted: require investigator or supervisor role
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Alert History Timeline',
     description:
@@ -619,7 +619,7 @@ export class GoldLakehouseController {
 
   @Get('alert-history/alerts')
   // Access restricted: require investigator or supervisor role
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Alert History Alerts',
     description:
@@ -705,7 +705,7 @@ export class GoldLakehouseController {
 
   // ---------------- TRANSACTION NETWORK ANALYSIS ----------------
   @Get('network-analysis/transaction/:accountId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Transaction Network Analysis',
     description:
@@ -747,7 +747,7 @@ export class GoldLakehouseController {
 
   @Get('network-analysis/entity-network/:entityId')
   // Access restricted: require investigator or supervisor role
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Entity Network graph + entity details',
     description: 'Returns entity network visualization (nodes + edges) for all accounts associated with an entity ID.',
@@ -796,7 +796,7 @@ export class GoldLakehouseController {
   }
 
   @Get('network-analysis/counterparty-node/:counterpartyId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Counterparty Network graph + selected counterparty details',
     description: 'Returns counterparty network visualization (nodes + edges) along with full details for the selected counterparty node.',
@@ -845,7 +845,7 @@ export class GoldLakehouseController {
   }
 
   @Get('lake/analytics/benford/account/:accountId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Apply Benford’s Law on account transactions',
     description:
@@ -919,7 +919,7 @@ export class GoldLakehouseController {
 
   @Get('network-analysis/counterparty/:accountId')
   // Access restricted: require investigator or supervisor role
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Counterparty Network Analysis',
     description:
@@ -965,7 +965,7 @@ export class GoldLakehouseController {
   }
 
   @Post('profile/generate/:alertId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @Audit()
   @ApiOperation({ summary: 'Generate transaction profile for a case (DWH data)' })
   @ApiBody({

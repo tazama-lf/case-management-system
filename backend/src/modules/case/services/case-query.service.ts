@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
@@ -776,12 +776,6 @@ export class CaseQueryService {
 
   async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean): Promise<Case | null> {
     const retrievedCase = await this.caseRepository.findCaseById(caseId, tenantId);
-
-    // Compliance officers can only access STATUS_82_CLOSED_CONFIRMED cases
-    if (isComplianceOfficer && retrievedCase.status !== 'STATUS_82_CLOSED_CONFIRMED') {
-      throw new ForbiddenException('Compliance officers can only access confirmed closed cases');
-    }
-
     return retrievedCase;
   }
 

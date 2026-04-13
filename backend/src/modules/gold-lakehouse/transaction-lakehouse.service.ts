@@ -177,27 +177,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       // Query 1: Fetch EVENT rows with transaction details
       const eventsResponse = await this.runSqlQuery(
         `
-        SELECT 
-          th.transaction_id,
-          th.event_date,
-          th.tx_amount,
-          th.tx_ccy,
-          th.tx_type,
-          th.is_alerted,
-          th.is_investigated,
-          th.cum_tx_count,
-          th.cum_tx_amount,
-          th.entity_role,
-          td.debtor_name,
-          td.creditor_name
-        FROM transaction_history th
-        LEFT JOIN transaction_detail td 
-          ON th.transaction_id = td.transaction_id 
-          AND th.tenant_id = td.tenant_id
-        WHERE th.row_type = 'EVENT'
-          AND th.entity_id = '${accountId}'
-          AND th.tenant_id = '${tenantId}'
-        ORDER BY th.event_date DESC
+        SELECT DISTINCT th.end_to_end_id, th.tx_msg_id, th.end_to_end_id, th.transaction_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td.debtor_name, td.creditor_name FROM transaction_history th LEFT JOIN transaction_detail td ON th.transaction_id = td.transaction_id AND th.tenant_id = td.tenant_id WHERE th.row_type = 'EVENT' AND th.entity_id = '${accountId}' AND th.tenant_id = '${tenantId}' AND td.debtor_name IS NOT NULL AND td.creditor_name IS NOT NULL ORDER BY th.event_date DESC
         `,
         1000,
       );

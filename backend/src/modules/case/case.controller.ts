@@ -532,7 +532,6 @@ export class CaseController {
   @ApiOperation({ summary: 'Retrieve case by ID', description: 'Get detailed information about a specific case' })
   @ApiResponse({ status: 200, description: 'Case retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Case not found' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Compliance officers can only access confirmed closed cases' })
   async getCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<Case | null> {
     const { isComplianceOfficer, tenantId } = extractUserData(req);
     return await this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
