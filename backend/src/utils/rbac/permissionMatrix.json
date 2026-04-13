@@ -1,0 +1,725 @@
+{
+  "_meta": {
+    "version": "0.1.0",
+    "description": "Tier 2 & 3 RBAC permission matrix for CMS. Tier 1 (endpoint + HTTP method role gating) is enforced at the controller level and is not represented here.",
+    "caseStatuses": {
+      "STATUS_00_DRAFT": "Draft — saved but not yet submitted for creation approval",
+      "STATUS_01_PENDING_CASE_CREATION_APPROVAL": "Awaiting supervisor approval to create the case",
+      "STATUS_02_READY_FOR_ASSIGNMENT": "Approved and ready to be assigned to an investigator",
+      "STATUS_03_RETURNED": "Returned by supervisor for review/rework",
+      "STATUS_10_ASSIGNED": "Assigned to an investigator, not yet started",
+      "STATUS_20_IN_PROGRESS": "Actively being investigated",
+      "STATUS_21_SUSPENDED": "Temporarily suspended",
+      "STATUS_22_PENDING_FINAL_APPROVAL": "Investigation complete, awaiting supervisor approval to close",
+      "STATUS_31_PENDING_CASE_REOPENING_APPROVAL": "Closed case awaiting supervisor approval to reopen",
+      "STATUS_71_AUTOCLOSED_CONFIRMED": "Auto-closed as confirmed fraud",
+      "STATUS_72_AUTOCLOSED_REFUTED": "Auto-closed as refuted",
+      "STATUS_81_CLOSED_REFUTED": "Manually closed — refuted",
+      "STATUS_82_CLOSED_CONFIRMED": "Manually closed — confirmed fraud",
+      "STATUS_83_CLOSED_INCONCLUSIVE": "Manually closed — inconclusive",
+      "STATUS_84_COMPLETED": "Completed",
+      "STATUS_99_ABANDONED": "Abandoned"
+    },
+    "taskStatuses": {
+      "STATUS_01_UNASSIGNED": "Unassigned",
+      "STATUS_10_ASSIGNED": "Assigned",
+      "STATUS_20_IN_PROGRESS": "In progress",
+      "STATUS_21_BLOCKED": "Blocked",
+      "STATUS_30_COMPLETED": "Completed"
+    },
+    "roles": {
+      "CMS_INVESTIGATOR": {
+        "bypassAllTiers": false,
+        "description": "Investigates cases: triage alerts, create/manage/close cases, complete tasks, upload evidence"
+      },
+      "CMS_SUPERVISOR": {
+        "bypassAllTiers": false,
+        "description": "All investigator capabilities plus approve/reject case lifecycle transitions and generate reports"
+      },
+      "CMS_COMPLIANCE_OFFICER": {
+        "bypassAllTiers": false,
+        "description": "Read-only access to active and closed cases; can update SAR/STR tasks"
+      },
+      "CMS_ADMIN": {
+        "bypassAllTiers": false,
+        "description": "System administration: manage reference IDs"
+      }
+    }
+  },
+  "endpoints": {
+    "PUT /api/v1/cases/:caseId": {
+      "tier2": {
+        "description": "Updates general case fields (partial update). Only allowed on active/editable cases.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_10_ASSIGNED",
+              "STATUS_20_IN_PROGRESS",
+              "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_21_SUSPENDED"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_10_ASSIGNED",
+              "STATUS_20_IN_PROGRESS",
+              "STATUS_21_SUSPENDED",
+              "STATUS_22_PENDING_FINAL_APPROVAL",
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL",
+              "STATUS_01_PENDING_CASE_CREATION_APPROVAL",
+              "STATUS_81_CLOSED_REFUTED",
+              "STATUS_82_CLOSED_CONFIRMED",
+              "STATUS_83_CLOSED_INCONCLUSIVE",
+              "STATUS_84_COMPLETED"
+            ]
+          },
+          "CMS_COMPLIANCE_OFFICER": {
+            "allowedCurrentStatuses": [
+              "STATUS_82_CLOSED_CONFIRMED"
+            ]
+          }
+        }
+      }
+    },
+    "POST /api/v1/cases/:caseId/complete-case-creation": {
+      "tier2": {
+        "description": "Submits a draft case for creation approval.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_00_DRAFT"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_00_DRAFT"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions per role when completing case creation.",
+        "transitions": {
+          "CMS_INVESTIGATOR": {
+            "STATUS_00_DRAFT": [
+              "STATUS_01_PENDING_CASE_CREATION_APPROVAL"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "STATUS_00_DRAFT": [
+              "STATUS_02_READY_FOR_ASSIGNMENT"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/approve-creation": {
+      "tier2": {
+        "description": "Supervisor approves the creation of a pending case.",
+        "rolePermissions": {
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_01_PENDING_CASE_CREATION_APPROVAL"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when approving case creation.",
+        "transitions": {
+          "CMS_SUPERVISOR": {
+            "STATUS_01_PENDING_CASE_CREATION_APPROVAL": [
+              "STATUS_02_READY_FOR_ASSIGNMENT"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/reject-creation": {
+      "tier2": {
+        "description": "Supervisor rejects the creation of a pending case.",
+        "rolePermissions": {
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_01_PENDING_CASE_CREATION_APPROVAL"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when rejecting case creation.",
+        "transitions": {
+          "CMS_SUPERVISOR": {
+            "STATUS_01_PENDING_CASE_CREATION_APPROVAL": [
+              "STATUS_00_DRAFT"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/approve": {
+      "tier2": {
+        "description": "Supervisor approves case closure (final approval).",
+        "rolePermissions": {
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_22_PENDING_FINAL_APPROVAL"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when approving case closure.",
+        "transitions": {
+          "CMS_SUPERVISOR": {
+            "STATUS_22_PENDING_FINAL_APPROVAL": [
+              "STATUS_81_CLOSED_REFUTED",
+              "STATUS_82_CLOSED_CONFIRMED",
+              "STATUS_83_CLOSED_INCONCLUSIVE",
+              "STATUS_84_COMPLETED"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/reject": {
+      "tier2": {
+        "description": "Supervisor rejects case closure and returns it to investigator.",
+        "rolePermissions": {
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_22_PENDING_FINAL_APPROVAL"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when rejecting case closure.",
+        "transitions": {
+          "CMS_SUPERVISOR": {
+            "STATUS_22_PENDING_FINAL_APPROVAL": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/return-for-review": {
+      "tier2": {
+        "description": "Supervisor returns a case to the investigator for rework.",
+        "rolePermissions": {
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS",
+              "STATUS_22_PENDING_FINAL_APPROVAL"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when returning a case for review.",
+        "transitions": {
+          "CMS_SUPERVISOR": {
+            "STATUS_20_IN_PROGRESS": [
+              "STATUS_03_RETURNED"
+            ],
+            "STATUS_22_PENDING_FINAL_APPROVAL": [
+              "STATUS_03_RETURNED"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/approve-reopening": {
+      "tier2": {
+        "description": "Supervisor approves reopening of a closed case.",
+        "rolePermissions": {
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when approving case reopening.",
+        "transitions": {
+          "CMS_SUPERVISOR": {
+            "STATUS_31_PENDING_CASE_REOPENING_APPROVAL": [
+              "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_10_ASSIGNED"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/reject-reopening": {
+      "tier2": {
+        "description": "Supervisor rejects the reopening request for a closed case.",
+        "rolePermissions": {
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when rejecting case reopening.",
+        "transitions": {
+          "CMS_SUPERVISOR": {
+            "STATUS_31_PENDING_CASE_REOPENING_APPROVAL": [
+              "STATUS_71_AUTOCLOSED_CONFIRMED",
+              "STATUS_72_AUTOCLOSED_REFUTED",
+              "STATUS_81_CLOSED_REFUTED",
+              "STATUS_82_CLOSED_CONFIRMED",
+              "STATUS_83_CLOSED_INCONCLUSIVE"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/close": {
+      "tier2": {
+        "description": "Investigator submits a case for closure (moves to pending final approval).",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when closing a case.",
+        "transitions": {
+          "CMS_INVESTIGATOR": {
+            "STATUS_20_IN_PROGRESS": [
+              "STATUS_22_PENDING_FINAL_APPROVAL"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "STATUS_20_IN_PROGRESS": [
+              "STATUS_84_COMPLETED",
+              "STATUS_81_CLOSED_REFUTED",
+              "STATUS_82_CLOSED_CONFIRMED",
+              "STATUS_83_CLOSED_INCONCLUSIVE"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/reopen": {
+      "tier2": {
+        "description": "Investigator or supervisor submits a request to reopen a closed case.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_81_CLOSED_REFUTED",
+              "STATUS_82_CLOSED_CONFIRMED",
+              "STATUS_83_CLOSED_INCONCLUSIVE",
+              "STATUS_71_AUTOCLOSED_CONFIRMED",
+              "STATUS_72_AUTOCLOSED_REFUTED"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_81_CLOSED_REFUTED",
+              "STATUS_82_CLOSED_CONFIRMED",
+              "STATUS_83_CLOSED_INCONCLUSIVE",
+              "STATUS_71_AUTOCLOSED_CONFIRMED",
+              "STATUS_72_AUTOCLOSED_REFUTED"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when requesting case reopening.",
+        "transitions": {
+          "CMS_INVESTIGATOR": {
+            "STATUS_81_CLOSED_REFUTED": [
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
+            ],
+            "STATUS_82_CLOSED_CONFIRMED": [
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
+            ],
+            "STATUS_83_CLOSED_INCONCLUSIVE": [
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
+            ],
+            "STATUS_71_AUTOCLOSED_CONFIRMED": [
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
+            ],
+            "STATUS_72_AUTOCLOSED_REFUTED": [
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "STATUS_81_CLOSED_REFUTED": [
+              "STATUS_02_READY_FOR_ASSIGNMENT"
+            ],
+            "STATUS_82_CLOSED_CONFIRMED": [
+              "STATUS_02_READY_FOR_ASSIGNMENT"
+            ],
+            "STATUS_83_CLOSED_INCONCLUSIVE": [
+              "STATUS_02_READY_FOR_ASSIGNMENT"
+            ],
+            "STATUS_71_AUTOCLOSED_CONFIRMED": [
+              "STATUS_02_READY_FOR_ASSIGNMENT"
+            ],
+            "STATUS_72_AUTOCLOSED_REFUTED": [
+              "STATUS_02_READY_FOR_ASSIGNMENT"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/suspend": {
+      "tier2": {
+        "description": "Suspends an in-progress case.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when suspending a case.",
+        "transitions": {
+          "CMS_INVESTIGATOR": {
+            "STATUS_20_IN_PROGRESS": [
+              "STATUS_21_SUSPENDED"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "STATUS_20_IN_PROGRESS": [
+              "STATUS_21_SUSPENDED"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/resume": {
+      "tier2": {
+        "description": "Resumes a suspended case.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_21_SUSPENDED"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_21_SUSPENDED"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when resuming a case.",
+        "transitions": {
+          "CMS_INVESTIGATOR": {
+            "STATUS_21_SUSPENDED": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "STATUS_21_SUSPENDED": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/complete": {
+      "tier2": {
+        "description": "Marks a case as completed.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_00_DRAFT"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_00_DRAFT"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when completing a case.",
+        "transitions": {
+          "CMS_INVESTIGATOR": {
+            "STATUS_00_DRAFT": [
+              "STATUS_02_READY_FOR_ASSIGNMENT"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "STATUS_00_DRAFT": [
+              "STATUS_02_READY_FOR_ASSIGNMENT"
+            ]
+          }
+        }
+      }
+    },
+    "PUT /api/v1/cases/:caseId/abandon": {
+      "tier2": {
+        "description": "Abandons a case. Only allowed on unstarted or in-progress cases.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_00_DRAFT"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_00_DRAFT"
+            ]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when abandoning a case.",
+        "transitions": {
+          "CMS_INVESTIGATOR": {
+            "STATUS_00_DRAFT": [
+              "STATUS_99_ABANDONED"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "STATUS_00_DRAFT": [
+              "STATUS_99_ABANDONED"
+            ]
+          }
+        }
+      }
+    },
+    "PATCH /api/v1/task/:taskId/assign": {
+      "tier2": {
+        "description": "Assigns a task to an investigator.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_10_ASSIGNED",
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_10_ASSIGNED",
+              "STATUS_20_IN_PROGRESS",
+              "STATUS_01_PENDING_CASE_CREATION_APPROVAL",
+              "STATUS_22_PENDING_FINAL_APPROVAL",
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
+            ]
+          },
+          "CMS_COMPLIANCE_OFFICER": {
+            "allowedCurrentStatuses": [
+              "STATUS_82_CLOSED_CONFIRMED"
+            ]
+          }
+        }
+      }
+    },
+    "PATCH /api/v1/task/:taskId/reassign": {
+      "tier2": {
+        "description": "Reassigns a task to a different investigator.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_10_ASSIGNED",
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_10_ASSIGNED",
+              "STATUS_20_IN_PROGRESS",
+              "STATUS_01_PENDING_CASE_CREATION_APPROVAL",
+              "STATUS_22_PENDING_FINAL_APPROVAL",
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
+            ]
+          },
+          "CMS_COMPLIANCE_OFFICER": {
+            "allowedCurrentStatuses": [
+              "STATUS_82_CLOSED_CONFIRMED"
+            ]
+          }
+        }
+      }
+    },
+    "PATCH /api/v1/task/:taskId/unassign": {
+      "tier2": {
+        "description": "Unassigns a task from its current assignee.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_10_ASSIGNED",
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_10_ASSIGNED",
+              "STATUS_20_IN_PROGRESS",
+              "STATUS_01_PENDING_CASE_CREATION_APPROVAL",
+              "STATUS_22_PENDING_FINAL_APPROVAL",
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL"
+            ]
+          },
+          "CMS_COMPLIANCE_OFFICER": {
+            "allowedCurrentStatuses": [
+              "STATUS_82_CLOSED_CONFIRMED"
+            ]
+          }
+        }
+      }
+    },
+    "POST /api/v1/task/:taskId/complete": {
+      "tier2": {
+        "description": "Marks a task as complete. Only allowed while the parent case is active.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_COMPLIANCE_OFFICER": {
+            "allowedCurrentStatuses": [
+              "STATUS_82_CLOSED_CONFIRMED"
+            ],
+            "note": "Compliance officer may complete only the SAR/STR task"
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions when completing a task.",
+        "transitions": {
+          "CMS_INVESTIGATOR": {
+            "STATUS_20_IN_PROGRESS": [
+              "STATUS_84_COMPLETED"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "STATUS_20_IN_PROGRESS": [
+              "STATUS_84_COMPLETED"
+            ]
+          },
+          "CMS_COMPLIANCE_OFFICER": {
+            "STATUS_20_IN_PROGRESS": [
+              "STATUS_84_COMPLETED"
+            ]
+          }
+        }
+      }
+    },
+    "POST /api/v1/evidence/upload": {
+      "tier2": {
+        "description": "Uploads evidence for a case or task. Allowed while case is active.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_COMPLIANCE_OFFICER": {
+            "allowedCurrentStatuses": [
+              "STATUS_82_CLOSED_CONFIRMED"
+            ]
+          }
+        }
+      }
+    },
+    "DELETE /api/v1/evidence/:id/attachments/:attachmentName": {
+      "tier2": {
+        "description": "Deletes an evidence attachment. Only allowed while case is active.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_COMPLIANCE_OFFICER": {
+            "allowedCurrentStatuses": [
+              "STATUS_82_CLOSED_CONFIRMED"
+            ]
+          }
+        }
+      }
+    },
+    "POST /api/v1/comment": {
+      "tier2": {
+        "description": "Adds a comment to a case or task. Allowed while case is active.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_00_DRAFT",
+              "STATUS_01_PENDING_CASE_CREATION_APPROVAL",
+              "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_10_ASSIGNED",
+              "STATUS_20_IN_PROGRESS",
+              "STATUS_21_SUSPENDED",
+              "STATUS_22_PENDING_FINAL_APPROVAL",
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL",
+              "STATUS_84_COMPLETED",
+              "STATUS_99_ABANDONED"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_00_DRAFT",
+              "STATUS_01_PENDING_CASE_CREATION_APPROVAL",
+              "STATUS_02_READY_FOR_ASSIGNMENT",
+              "STATUS_10_ASSIGNED",
+              "STATUS_20_IN_PROGRESS",
+              "STATUS_21_SUSPENDED",
+              "STATUS_22_PENDING_FINAL_APPROVAL",
+              "STATUS_31_PENDING_CASE_REOPENING_APPROVAL",
+              "STATUS_84_COMPLETED",
+              "STATUS_99_ABANDONED"
+            ]
+          },
+          "CMS_COMPLIANCE_OFFICER": {
+            "allowedCurrentStatuses": [
+              "STATUS_82_CLOSED_CONFIRMED"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

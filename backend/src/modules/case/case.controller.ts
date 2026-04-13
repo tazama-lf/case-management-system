@@ -7,6 +7,7 @@ import {
   RequireSupervisorRole,
 } from '../../decorators/auth.decorator';
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
+import { EndpointKey } from '../../utils/rbac/rbacHelper';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { extractUserData } from '../../utils/helperFunction';
 import {
@@ -86,7 +87,14 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; task: Task }> {
     const { userId, tenantId } = extractUserData(req);
-    return await this.caseService.abandonCase(caseId, body.reason, userId, tenantId);
+    return await this.caseService.abandonCase(
+      caseId,
+      body.reason,
+      userId,
+      tenantId,
+      req.user,
+      'PUT /api/v1/cases/:caseId/abandon' as EndpointKey,
+    );
   }
 
   @Put(':caseId/reopen')
@@ -114,7 +122,15 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<SimpleMessageResponseDto> {
     const { userId, tenantId, validateClaim } = extractUserData(req);
-    return await this.caseService.reopenCase(caseId, body.reason, userId, tenantId, validateClaim);
+    return await this.caseService.reopenCase(
+      caseId,
+      body.reason,
+      userId,
+      tenantId,
+      validateClaim,
+      req.user,
+      'PUT /api/v1/cases/:caseId/reopen' as EndpointKey,
+    );
   }
 
   @Put(':caseId/suspend')
@@ -141,8 +157,16 @@ export class CaseController {
     @Body() body: RequestSuspendCaseDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; task: Task[] }> {
-    const { userId, tenantId, userInfo, role } = extractUserData(req);
-    return await this.caseService.suspendCase(caseId, body.reason, body.taskIds, userId, tenantId, userInfo, role);
+    const { userId, tenantId } = extractUserData(req);
+    return await this.caseService.suspendCase(
+      caseId,
+      body.reason,
+      body.taskIds,
+      userId,
+      tenantId,
+      req.user,
+      'PUT /api/v1/cases/:caseId/suspend' as EndpointKey,
+    );
   }
 
   @Put(':caseId/resume')
@@ -170,7 +194,15 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; task: Task[] }> {
     const { userId, tenantId, userInfo } = extractUserData(req);
-    return await this.caseService.resumeCase(caseId, body.reason, userId, tenantId, userInfo);
+    return await this.caseService.resumeCase(
+      caseId,
+      body.reason,
+      userId,
+      tenantId,
+      userInfo,
+      req.user,
+      'PUT /api/v1/cases/:caseId/resume' as EndpointKey,
+    );
   }
 
   @Put(':caseId/complete')
@@ -197,7 +229,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; completedTask: Task; newTask: Task }> {
     const { userId, tenantId } = extractUserData(req);
-    return await this.caseService.completeCase(caseId, userId, tenantId);
+    return await this.caseService.completeCase(caseId, userId, tenantId, req.user, 'PUT /api/v1/cases/:caseId/complete' as EndpointKey);
   }
 
   @Post('manual')
@@ -280,7 +312,15 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ message: string; closed_case: { case_id: number; status: string; updated_at: Date }; supervisor_closure?: boolean }> {
     const { userId, tenantId, validateClaim } = extractUserData(req);
-    return await this.caseService.closeCase(caseId, dto, userId, tenantId, validateClaim);
+    return await this.caseService.closeCase(
+      caseId,
+      dto,
+      userId,
+      tenantId,
+      validateClaim,
+      req.user,
+      'PUT /api/v1/cases/:caseId/close' as EndpointKey,
+    );
   }
 
   @Get('all')
@@ -564,8 +604,8 @@ export class CaseController {
   })
   @ApiResponse({ status: 404, description: 'Case not found' })
   async updateCase(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest): Promise<Case> {
-    const { userId } = extractUserData(req);
-    return await this.caseService.updateCase(caseId, dto, userId);
+    const { userId, tenantId } = extractUserData(req);
+    return await this.caseService.updateCase(caseId, dto, userId, req.user, 'PUT /api/v1/cases/:caseId' as EndpointKey, tenantId);
   }
 
   @Post(':caseId/complete-case-creation')
@@ -587,7 +627,15 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; completedTask: Task; message: string; requiresApproval: boolean }> {
     const { userId, tenantId, role } = extractUserData(req);
-    return await this.caseService.completeCaseCreation(caseId, dto, userId, tenantId, role);
+    return await this.caseService.completeCaseCreation(
+      caseId,
+      dto,
+      userId,
+      tenantId,
+      role,
+      req.user,
+      'POST /api/v1/cases/:caseId/complete-case-creation' as EndpointKey,
+    );
   }
 
   @Put(':caseId/approve')
@@ -673,7 +721,15 @@ export class CaseController {
     completed_task: { task_id: number; status: string };
   }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
-    return await this.caseService.approveCaseClosure(caseId, dto.finalOutcome, dto.supervisorComments, supervisorId, tenantId);
+    return await this.caseService.approveCaseClosure(
+      caseId,
+      dto.finalOutcome,
+      dto.supervisorComments,
+      supervisorId,
+      tenantId,
+      req.user,
+      'PUT /api/v1/cases/:caseId/approve' as EndpointKey,
+    );
   }
 
   @Put(':caseId/reject')
@@ -748,7 +804,14 @@ export class CaseController {
     investigation_task: { task_id: number; name: string | null; assigned_to: string; status: string };
   }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
-    return await this.caseService.rejectCaseClosure(caseId, dto.rejectionReason, supervisorId, tenantId);
+    return await this.caseService.rejectCaseClosure(
+      caseId,
+      dto.rejectionReason,
+      supervisorId,
+      tenantId,
+      req.user,
+      'PUT /api/v1/cases/:caseId/reject' as EndpointKey,
+    );
   }
 
   @Put(':caseId/approve-creation')
@@ -793,7 +856,13 @@ export class CaseController {
   ): Promise<{ success: boolean; case: Case; message: string }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
 
-    return await this.caseService.approveCaseCreation(caseId, supervisorId, tenantId);
+    return await this.caseService.approveCaseCreation(
+      caseId,
+      supervisorId,
+      tenantId,
+      req.user,
+      'PUT /api/v1/cases/:caseId/approve-creation' as EndpointKey,
+    );
   }
 
   @Put(':caseId/reject-creation')
@@ -843,7 +912,14 @@ export class CaseController {
     newTask: Task;
   }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
-    return await this.caseService.rejectCaseCreation(caseId, supervisorId, tenantId, body.reason);
+    return await this.caseService.rejectCaseCreation(
+      caseId,
+      supervisorId,
+      tenantId,
+      body.reason,
+      req.user,
+      'PUT /api/v1/cases/:caseId/reject-creation' as EndpointKey,
+    );
   }
 
   @Put(':caseId/approve-reopening')
@@ -916,7 +992,13 @@ export class CaseController {
     };
   }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
-    return await this.caseService.approveCaseReopening(caseId, supervisorId, tenantId);
+    return await this.caseService.approveCaseReopening(
+      caseId,
+      supervisorId,
+      tenantId,
+      req.user,
+      'PUT /api/v1/cases/:caseId/approve-reopening' as EndpointKey,
+    );
   }
 
   @Put(':caseId/reject-reopening')
@@ -1004,7 +1086,14 @@ export class CaseController {
       throw new BadRequestException('Rejection reason is required and must be at least 4 characters');
     }
 
-    return await this.caseService.rejectCaseReopening(caseId, dto.rejectionReason, supervisorId, tenantId);
+    return await this.caseService.rejectCaseReopening(
+      caseId,
+      dto.rejectionReason,
+      supervisorId,
+      tenantId,
+      req.user,
+      'PUT /api/v1/cases/:caseId/reject-reopening' as EndpointKey,
+    );
   }
 
   @Put(':caseId/return-for-review')
@@ -1048,7 +1137,14 @@ export class CaseController {
     case: { case_id: number; status: string; updated_at: Date };
   }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
-    return await this.caseService.returnCaseForReview(caseId, dto.reviewComments, supervisorId, tenantId);
+    return await this.caseService.returnCaseForReview(
+      caseId,
+      dto.reviewComments,
+      supervisorId,
+      tenantId,
+      req.user,
+      'PUT /api/v1/cases/:caseId/return-for-review' as EndpointKey,
+    );
   }
 
   @Post('save-as-draft')

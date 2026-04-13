@@ -30,6 +30,8 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, 
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { Task } from '@prisma/client-cms';
 import { Audit } from '../audit/decorators/audit-log.decorator';
+import { EndpointKey } from '../../utils/rbac/rbacHelper';
+import type { AuthenticatedUser } from '../../utils/types/auth.types';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -201,7 +203,15 @@ export class TaskController {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
 
-    return await this.taskLifecycleService.reassignTask(taskId, userId, tenantId, reassignTaskDto.assignedUserId, reassignTaskDto.note);
+    return await this.taskLifecycleService.reassignTask(
+      taskId,
+      userId,
+      tenantId,
+      reassignTaskDto.assignedUserId,
+      reassignTaskDto.note,
+      req.user as unknown as AuthenticatedUser,
+      'PATCH /api/v1/task/:taskId/reassign' as EndpointKey,
+    );
   }
 
   @Patch(':taskId/unassign')
@@ -301,7 +311,14 @@ export class TaskController {
       throw new BadRequestException('Reason for unassigning task is required');
     }
 
-    return await this.taskLifecycleService.unassignTask(taskId, userId, tenantId, unassignDto.reason);
+    return await this.taskLifecycleService.unassignTask(
+      taskId,
+      userId,
+      tenantId,
+      unassignDto.reason,
+      req.user as unknown as AuthenticatedUser,
+      'PATCH /api/v1/task/:taskId/unassign' as EndpointKey,
+    );
   }
 
   @Patch(':taskId/assign')
@@ -389,6 +406,8 @@ export class TaskController {
       assignTaskDto.assignedUserId,
       userId,
       tenantId,
+      req.user as unknown as AuthenticatedUser,
+      'PATCH /api/v1/task/:taskId/assign' as EndpointKey,
       assignTaskDto.note,
     );
 
@@ -686,6 +705,12 @@ export class TaskController {
   async completeTask(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest): Promise<Task> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
-    return await this.taskLifecycleService.completeTask(taskId, userId, tenantId);
+    return await this.taskLifecycleService.completeTask(
+      taskId,
+      userId,
+      tenantId,
+      req.user as unknown as AuthenticatedUser,
+      'POST /api/v1/task/:taskId/complete' as EndpointKey,
+    );
   }
 }

@@ -15,10 +15,13 @@ import { EvidenceRepository } from '../repository/evidence.repository';
 import { TaskRepository } from '../repository/task.repository';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { TaskHistoryService } from '../task_history/taskHistory.service';
+import { RbacService, EndpointKey } from 'src/utils/rbac/rbacHelper';
+import type { AuthenticatedUser } from 'src/utils/types/auth.types';
 
 @Injectable()
 export class EvidenceService {
   private readonly logger = new Logger(EvidenceService.name);
+  private readonly rbacService = new RbacService();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -61,7 +64,14 @@ export class EvidenceService {
     return Buffer.concat([decipher.update(enc), decipher.final()]);
   }
 
-  async uploadEvidence(files: any[], dto: UploadEvidenceDto, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
+  async uploadEvidence(
+    files: any[],
+    dto: UploadEvidenceDto,
+    userId: string,
+    tenantId: string,
+    user: AuthenticatedUser,
+    endpointKey: EndpointKey,
+  ): Promise<EvidenceResponseDto> {
     const allowedMimeTypes: Record<string, string[]> = {
       KYC: [
         'application/pdf',
@@ -173,6 +183,13 @@ export class EvidenceService {
     const taskWithCase = await this.taskRepository.findTaskWithCase(dto.taskId, tenantId);
     this.logger.log(`Uploading evidence for task ${dto.taskId} taskWithCase ${JSON.stringify(taskWithCase)}`);
 
+    if (!taskWithCase?.case) {
+      throw new ForbiddenException('Cannot verify case status: task has no associated case');
+    }
+    const rbacRole = this.rbacService.getRoleFromUser(user);
+    const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: taskWithCase.case.status });
+    if (!t2.allowed) throw new ForbiddenException(t2.reason);
+
     const evidenceId = `ev_${dto.taskId}_${Date.now()}`;
 
     const metadata: any = {
@@ -267,7 +284,14 @@ export class EvidenceService {
     return metadata;
   }
 
-  async deleteEvidence(evidenceId: string, fileName: string, userId: string, tenantId: string): Promise<EvidenceResponseDto> {
+  async deleteEvidence(
+    evidenceId: string,
+    fileName: string,
+    userId: string,
+    tenantId: string,
+    user: AuthenticatedUser,
+    endpointKey: EndpointKey,
+  ): Promise<EvidenceResponseDto> {
     if (evidenceId.trim() === '' || fileName.trim() === '') {
       this.logger.log(`Evidence Id  ${evidenceId} or fileName  ${fileName} is not found`);
       this.logger.error(`Evidence Id or fileName is not found: ${evidenceId} , ${fileName}`);
@@ -282,6 +306,14 @@ export class EvidenceService {
       this.logger.error(`Evidence ${evidenceId} not found`);
       throw new NotFoundException(`Evidence ${evidenceId} not found`);
     }
+
+    const caseRecord = await this.prisma.case.findUnique({ where: { case_id: doc.caseId } });
+    if (caseRecord?.tenant_id !== tenantId || doc.tenantId !== tenantId) {
+      throw new ForbiddenException('Cannot verify case status: associated case not found');
+    }
+    const rbacRoleDelete = this.rbacService.getRoleFromUser(user);
+    const t2Delete = this.rbacService.checkTier2({ role: rbacRoleDelete, endpointKey, currentStatus: caseRecord.status });
+    if (!t2Delete.allowed) throw new ForbiddenException(t2Delete.reason);
 
     try {
       this.logger.log(`Deleting attachment ${fileName} from evidence ${doc._id} and revision ${doc._rev}`);
@@ -309,7 +341,7 @@ export class EvidenceService {
 
     if (userRole === 'CMS_INVESTIGATOR') {
       query.uploadedBy = userId;
-    } else if (userRole === 'CMS_AUDITOR' || userRole === 'CMS_SUPERVISOR' || userRole === 'CMS_COMPLIANCE_OFFICER') {
+    } else if (userRole === 'CMS_SUPERVISOR' || userRole === 'CMS_COMPLIANCE_OFFICER') {
       //doNothing
     } else {
       throw new UnauthorizedException('Invalid role');
@@ -353,7 +385,7 @@ export class EvidenceService {
       query = { tenantId, reportId: evidenceId, page: 1, limit: 1 };
     }
     // if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) {
+    else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) {
       throw new UnauthorizedException('Invalid role');
     }
     const result = await this.couchdb.queryDocuments(query);
@@ -441,7 +473,7 @@ export class EvidenceService {
 
     const query: any = { tenantId, evidenceId, archive: false, page: 1, limit: 1 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
+    else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
     const [evidenceDoc] = result.data;
@@ -552,7 +584,7 @@ export class EvidenceService {
     const query: any = { caseId, page: 1, limit: 100 };
 
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
+    else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
       throw new UnauthorizedException('Invalid role');
     }
     this.logger.log(`role=${role}`);
@@ -587,7 +619,7 @@ export class EvidenceService {
   async getEvidenceByType(evidenceType: EvidenceType, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
     const query: any = { tenantId, evidenceType, archive: false, page: 1, limit: 100 };
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_AUDITOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
+    else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
     const docs = result.data;

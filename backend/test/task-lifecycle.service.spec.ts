@@ -12,6 +12,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { TaskStatus, CaseStatus } from '@prisma/client-cms';
 import { TASK_NAMES } from '../src/constants/case.constants';
+import { RbacService, EndpointKey } from '../src/utils/rbac/rbacHelper';
+import { AuthenticatedUser } from '../src/utils/types/auth.types';
 
 describe('TaskLifecycleService', () => {
   let service: TaskLifecycleService;
@@ -82,6 +84,38 @@ describe('TaskLifecycleService', () => {
     emit: jest.fn(),
   };
 
+  const mockRbacService = {
+    getRoleFromUser: jest.fn().mockReturnValue('CMS_SUPERVISOR'),
+    checkTier2: jest.fn().mockReturnValue({ allowed: true }),
+    checkTier3: jest.fn().mockReturnValue({ allowed: true }),
+  };
+
+  const mockSupervisorUser: AuthenticatedUser = {
+    token: {} as any,
+    validated: {} as any,
+    validClaims: [],
+    tenantId: 'tenant1',
+    userId: 'supervisor1',
+    actorRole: 'CMS_SUPERVISOR',
+    actorName: 'Supervisor User',
+    actorEmail: 'supervisor@test.com',
+    tenantName: 'Test Tenant',
+  };
+
+  const mockInvestigatorUser: AuthenticatedUser = {
+    token: {} as any,
+    validated: {} as any,
+    validClaims: [],
+    tenantId: 'tenant1',
+    userId: 'user1',
+    actorRole: 'CMS_INVESTIGATOR',
+    actorName: 'Investigator User',
+    actorEmail: 'investigator@test.com',
+    tenantName: 'Test Tenant',
+  };
+
+  const testEndpointKey: EndpointKey = 'PATCH /api/v1/task/:taskId/assign' as EndpointKey;
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -121,6 +155,10 @@ describe('TaskLifecycleService', () => {
         {
           provide: EventEmitter2,
           useValue: mockEventEmitter,
+        },
+        {
+          provide: RbacService,
+          useValue: mockRbacService,
         },
       ],
     }).compile();
@@ -174,7 +212,7 @@ describe('TaskLifecycleService', () => {
         case_owner_user_id: 'user1',
       });
 
-      const result = await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', 'Assign note');
+      const result = await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey, 'Assign note');
 
       expect(result.assigned_user_id).toBe('user1');
       expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalled();
@@ -191,7 +229,7 @@ describe('TaskLifecycleService', () => {
     it('should throw NotFoundException if task not found', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(null);
 
-      await expect(service.assignTaskToInvestigator(999, 'user1', 'supervisor1', 'tenant1')).rejects.toThrow(NotFoundException);
+      await expect(service.assignTaskToInvestigator(999, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey)).rejects.toThrow(NotFoundException);
     });
 
     it('should handle case retrieval', async () => {
@@ -207,7 +245,7 @@ describe('TaskLifecycleService', () => {
         status: CaseStatus.STATUS_10_ASSIGNED,
       });
 
-      const result = await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1');
+      const result = await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey);
       expect(result.assigned_user_id).toBe('user1');
     });
 
@@ -236,7 +274,7 @@ describe('TaskLifecycleService', () => {
         return callback(mockTx);
       });
 
-      await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1');
+      await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey);
 
       expect(mockFlowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
     });
@@ -251,7 +289,7 @@ describe('TaskLifecycleService', () => {
       });
       mockPrisma.case.update.mockResolvedValue(existingCase);
 
-      await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', 'Assignment note');
+      await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey, 'Assignment note');
 
       expect(mockCommentRepository.createComment).toHaveBeenCalled();
     });
@@ -276,7 +314,7 @@ describe('TaskLifecycleService', () => {
         status: CaseStatus.STATUS_10_ASSIGNED,
       });
 
-      await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1');
+      await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey);
 
       expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalled();
     });
@@ -313,7 +351,7 @@ describe('TaskLifecycleService', () => {
         case_owner_user_id: 'user2',
       });
 
-      const result = await service.reassignTask(1, 'supervisor1', 'tenant1', 'user2', 'Reassign note');
+      const result = await service.reassignTask(1, 'supervisor1', 'tenant1', 'user2', 'Reassign note', mockSupervisorUser, testEndpointKey);
 
       expect(result.assigned_user_id).toBe('user2');
       expect(mockCommentRepository.createComment).toHaveBeenCalled();
@@ -323,7 +361,7 @@ describe('TaskLifecycleService', () => {
     it('should throw NotFoundException if task not found', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(null);
 
-      await expect(service.reassignTask(999, 'supervisor1', 'tenant1', 'user2', 'note')).rejects.toThrow(NotFoundException);
+      await expect(service.reassignTask(999, 'supervisor1', 'tenant1', 'user2', 'note', mockSupervisorUser, testEndpointKey)).rejects.toThrow(NotFoundException);
     });
 
     it('should handle parent case update during reassignment', async () => {
@@ -345,7 +383,7 @@ describe('TaskLifecycleService', () => {
         status: CaseStatus.STATUS_10_ASSIGNED,
       });
 
-      await service.reassignTask(1, 'supervisor1', 'tenant1', 'user2', 'Reassign note');
+      await service.reassignTask(1, 'supervisor1', 'tenant1', 'user2', 'Reassign note', mockSupervisorUser, testEndpointKey);
 
       expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalled();
     });
@@ -383,7 +421,7 @@ describe('TaskLifecycleService', () => {
         case_owner_user_id: null,
       });
 
-      const result = await service.unassignTask(1, 'supervisor1', 'tenant1', 'Workload rebalancing');
+      const result = await service.unassignTask(1, 'supervisor1', 'tenant1', 'Workload rebalancing', mockSupervisorUser, testEndpointKey);
 
       expect(result.assigned_user_id).toBeNull();
       expect(result.unassignmentReason).toBe('Workload rebalancing');
@@ -399,13 +437,13 @@ describe('TaskLifecycleService', () => {
     });
 
     it('should throw BadRequestException if reason is empty', async () => {
-      await expect(service.unassignTask(1, 'supervisor1', 'tenant1', '')).rejects.toThrow(
+      await expect(service.unassignTask(1, 'supervisor1', 'tenant1', '', mockSupervisorUser, testEndpointKey)).rejects.toThrow(
         new BadRequestException('Reason for unassigning task is required'),
       );
     });
 
     it('should throw BadRequestException if reason is only whitespace', async () => {
-      await expect(service.unassignTask(1, 'supervisor1', 'tenant1', '   ')).rejects.toThrow(
+      await expect(service.unassignTask(1, 'supervisor1', 'tenant1', '   ', mockSupervisorUser, testEndpointKey)).rejects.toThrow(
         new BadRequestException('Reason for unassigning task is required'),
       );
     });
@@ -414,7 +452,7 @@ describe('TaskLifecycleService', () => {
       const completedTask = { ...existingTask, status: TaskStatus.STATUS_30_COMPLETED };
       mockTaskRepository.findTaskById.mockResolvedValue(completedTask);
 
-      await expect(service.unassignTask(1, 'supervisor1', 'tenant1', 'reason')).rejects.toThrow(
+      await expect(service.unassignTask(1, 'supervisor1', 'tenant1', 'reason', mockSupervisorUser, testEndpointKey)).rejects.toThrow(
         new BadRequestException('Cannot unassign a completed task (1)'),
       );
     });
@@ -423,7 +461,7 @@ describe('TaskLifecycleService', () => {
       const unassignedTask = { ...existingTask, assigned_user_id: null };
       mockTaskRepository.findTaskById.mockResolvedValue(unassignedTask);
 
-      await expect(service.unassignTask(1, 'supervisor1', 'tenant1', 'reason')).rejects.toThrow(
+      await expect(service.unassignTask(1, 'supervisor1', 'tenant1', 'reason', mockSupervisorUser, testEndpointKey)).rejects.toThrow(
         new BadRequestException('Task 1 is already unassigned'),
       );
     });
@@ -431,7 +469,7 @@ describe('TaskLifecycleService', () => {
     it('should throw NotFoundException if task not found', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(null);
 
-      await expect(service.unassignTask(999, 'supervisor1', 'tenant1', 'reason')).rejects.toThrow(NotFoundException);
+      await expect(service.unassignTask(999, 'supervisor1', 'tenant1', 'reason', mockSupervisorUser, testEndpointKey)).rejects.toThrow(NotFoundException);
     });
 
     it('should handle SAR/STR Filing task without updating case status', async () => {
@@ -444,7 +482,7 @@ describe('TaskLifecycleService', () => {
         assigned_user_id: null,
       });
 
-      await service.unassignTask(1, 'supervisor1', 'tenant1', 'reason');
+      await service.unassignTask(1, 'supervisor1', 'tenant1', 'reason', mockSupervisorUser, testEndpointKey);
 
       expect(mockPrisma.task.update).toHaveBeenCalled();
     });
@@ -461,7 +499,7 @@ describe('TaskLifecycleService', () => {
 
       mockNotificationService.sendNotification.mockRejectedValue(new Error('Notification failed'));
 
-      const result = await service.unassignTask(1, 'supervisor1', 'tenant1', 'reason');
+      const result = await service.unassignTask(1, 'supervisor1', 'tenant1', 'reason', mockSupervisorUser, testEndpointKey);
 
       expect(result).toBeDefined();
       expect(mockLoggerService.warn).toHaveBeenCalledWith(
@@ -490,7 +528,7 @@ describe('TaskLifecycleService', () => {
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
       });
 
-      await service.unassignTask(1, 'supervisor1', 'tenant1', 'reason');
+      await service.unassignTask(1, 'supervisor1', 'tenant1', 'reason', mockSupervisorUser, testEndpointKey);
 
       expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalled();
     });
@@ -514,7 +552,7 @@ describe('TaskLifecycleService', () => {
       });
       mockFlowableService.handleTaskCompleted.mockResolvedValue(undefined);
 
-      const result = await service.completeTask(1, 'user1', 'tenant1');
+      const result = await service.completeTask(1, 'user1', 'tenant1', mockInvestigatorUser, testEndpointKey);
 
       expect(result.status).toBe(TaskStatus.STATUS_30_COMPLETED);
       expect(mockTaskRepository.updateTask).toHaveBeenCalledWith(1, { status: TaskStatus.STATUS_30_COMPLETED }, expect.anything(), true);
@@ -532,14 +570,14 @@ describe('TaskLifecycleService', () => {
     it('should throw NotFoundException if task not found', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(null);
 
-      await expect(service.completeTask(999, 'user1', 'tenant1')).rejects.toThrow(NotFoundException);
+      await expect(service.completeTask(999, 'user1', 'tenant1', mockInvestigatorUser, testEndpointKey)).rejects.toThrow(NotFoundException);
     });
 
     it('should handle errors and rethrow them', async () => {
       const error = new Error('Database error');
       mockTaskRepository.findTaskById.mockRejectedValue(error);
 
-      await expect(service.completeTask(1, 'user1', 'tenant1')).rejects.toThrow(error);
+      await expect(service.completeTask(1, 'user1', 'tenant1', mockInvestigatorUser, testEndpointKey)).rejects.toThrow(error);
       expect(mockLoggerService.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to complete task 1'),
         error.stack,
@@ -560,7 +598,7 @@ describe('TaskLifecycleService', () => {
         .mockRejectedValueOnce(new Error('Another failure'))
         .mockResolvedValueOnce(undefined);
 
-      const result = await service.completeTask(1, 'user1', 'tenant1');
+      const result = await service.completeTask(1, 'user1', 'tenant1', mockInvestigatorUser, testEndpointKey);
 
       expect(result.status).toBe(TaskStatus.STATUS_30_COMPLETED);
       expect(mockFlowableService.handleTaskCompleted).toHaveBeenCalledTimes(3);
@@ -576,7 +614,7 @@ describe('TaskLifecycleService', () => {
       // Mock flowable to always fail
       mockFlowableService.handleTaskCompleted.mockRejectedValue(new Error('Persistent failure'));
 
-      const result = await service.completeTask(1, 'user1', 'tenant1');
+      const result = await service.completeTask(1, 'user1', 'tenant1', mockInvestigatorUser, testEndpointKey);
 
       expect(result.status).toBe(TaskStatus.STATUS_30_COMPLETED);
       // Should have attempted retries
@@ -621,7 +659,7 @@ describe('TaskLifecycleService', () => {
       mockFlowableService.handleCaseStatusChanged.mockResolvedValue(undefined);
       mockNotificationService.sendNotification.mockResolvedValue(undefined);
 
-      const result = await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1');
+      const result = await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey);
 
       expect(mockTaskRepository.findTaskById).toHaveBeenCalledWith(1, 'tenant1');
       expect(mockCaseRepository.findCaseById).toHaveBeenCalledWith(1, 'tenant1');
@@ -631,7 +669,7 @@ describe('TaskLifecycleService', () => {
     it('should throw NotFoundException when task not found in fetchTaskAndCase', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(null);
 
-      await expect(service.assignTaskToInvestigator(999, 'user1', 'supervisor1', 'tenant1')).rejects.toThrow(
+      await expect(service.assignTaskToInvestigator(999, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey)).rejects.toThrow(
         new NotFoundException('Task 999 not found'),
       );
     });
@@ -658,7 +696,7 @@ describe('TaskLifecycleService', () => {
       mockCaseRepository.findCaseById.mockResolvedValue(caseObj);
       mockTaskRepository.transaction.mockRejectedValue(new Error('Transaction failed'));
 
-      await expect(service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1')).rejects.toThrow('Transaction failed');
+      await expect(service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey)).rejects.toThrow('Transaction failed');
     });
   });
 });

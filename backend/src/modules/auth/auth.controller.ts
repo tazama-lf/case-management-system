@@ -51,16 +51,18 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
   @RequireAuthenticated()
   getMe(@User() user: AuthenticatedUser): AuthMeResponseDto {
-    const { token, validatedClaims } = user;
+    const firstName = user.actorName ? user.actorName.split(' ')[0] : '';
+    const lastName = user.actorName ? user.actorName.split(' ').slice(1).join(' ') : '';
+
     return {
-      clientId: token.clientId,
-      tenantId: token.tenantId,
-      email: token.email,
-      firstName: token.firstName,
-      lastName: token.lastName,
-      fullName: token.fullName,
-      tenantName: token.tenantName,
-      validatedClaims,
+      clientId: user.userId,
+      tenantId: user.tenantId,
+      email: user.actorEmail ?? '',
+      firstName,
+      lastName,
+      fullName: user.actorName ?? '',
+      tenantName: user.tenantName,
+      validatedClaims: user.validated,
     };
   }
 }
