@@ -2,6 +2,10 @@
 
 Tazama Case and Investigation Management System is a comprehensive solution for managing cases and investigations efficiently. This project aims to streamline workflows, improve collaboration, and provide robust tools for tracking, reporting, and analyzing case data.
 
+## User Manual and Video Demonstration
+
+- Please refer to the user manual here: https://github.com/tazama-lf/docs/blob/dev/Guides/User%20Manuals%20for%20Downloading/Case%20Management%20System.docx
+
 ## Architecture
 
 This is a monorepo containing:
@@ -107,18 +111,27 @@ case-management-system/
 │   │   │   ├── comment/
 │   │   │   ├── couchdb/
 │   │   │   ├── events/
+│   │   │   ├── event_log/
 │   │   │   ├── evidence/
+│   │   │   ├── feature-extraction/
 │   │   │   ├── filter/
 │   │   │   ├── flowable/
+│   │   │   ├── gold-lakehouse/
+│   │   │   ├── jupyter/
+│   │   │   ├── logging-orchestration/
+│   │   │   ├── nats/
 │   │   │   ├── notification/
+│   │   │   ├── notification-preferences/
+│   │   │   ├── process-alert/
 │   │   │   ├── report/
+│   │   │   ├── repository/
+│   │   │   ├── shared/
 │   │   │   ├── task/
-│   │   │   ├── tazama-dwh/
+│   │   │   ├── task_history/
 │   │   │   ├── triage/
 │   │   │   └── user/
 │   │   └── utils/                  # Utility helpers
-│   ├── prisma/                     # Primary DB schema and migrations
-│   ├── prismaDWH/                  # Data warehouse schema and migrations
+│   ├── prisma/                     # DB schema and migrations
 │   ├── test/                       # Backend unit & e2e tests
 │   └── .env.example                # Environment variables template
 ├── frontend/                       # React frontend application
@@ -144,10 +157,10 @@ case-management-system/
 │   ├── public/                     # Static assets
 │   └── .env.example                # Environment variables template
 ├── docker/                         # Docker service configs (e.g. CouchDB)
-├── notebooks/                      # Jupyter notebooks for data analysis
-├── src/                            # Shared audit utilities
+├── notebooks/                      # Jupyter notebooks for data visualization
 ├── docker-compose-cms.yml          # CMS services Docker Compose
 ├── docker-compose-infra.yml        # Infrastructure Docker Compose
+├── Dockerfile.viola                # Voilà notebook server Docker image
 └── README.md
 ```
 
@@ -304,7 +317,7 @@ OPENSEARCH_REFRESH=false
 
 ```bash
 # API Configuration
-VITE_API_BASE_URL=http://localhost:3090
+VITE_API_BASE_URL=http://localhost:3000
 VITE_APP_NAME=Tazama Case Management System
 VITE_APP_VERSION=0.0.1
 
@@ -330,22 +343,7 @@ docker-compose logs -f backend
 docker-compose logs -f frontend
 ```
 
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Guidelines
-
-- Follow TypeScript and ESLint configurations
-- Write tests for new features
-- Update documentation for API changes
-- Follow conventional commit messages
+Please refer to the deployment guide here: https://github.com/tazama-lf/docs/blob/dev/Technical/Deployment-Guides/CMS-Deployment-Guide.md
 
 ---
 
@@ -394,6 +392,7 @@ The documentation is automatically generated from the source code and reflects t
 - **Tailwind CSS** - Utility-first styling
 - **TanStack Query** - Server state management
 - **React Router** - Navigation
+- **Recharts** - Data visualization and analytics charts
 - **Vitest** - Testing framework
 
 ### Backend
@@ -402,6 +401,7 @@ The documentation is automatically generated from the source code and reflects t
 - **TypeScript** - Type safety
 - **Prisma** - Database ORM
 - **PostgreSQL** - Primary database
+- **Flowable** - BPMN workflow engine
 - **JWT** - Authentication tokens
 - **Jest** - Testing framework
 
@@ -409,14 +409,15 @@ The documentation is automatically generated from the source code and reflects t
 
 - **Docker** - Containerization
 - **NATS** - Message broker
+- **Redis (Valkey)** - Caching and session storage
+- **CouchDB** - Evidence document storage
+- **OpenSearch** - Audit log storage and search
 - **Keycloak** - Identity provider
 
 ---
 
-## Support
+# For support or questions
 
-For support and questions:
-
-- Create an issue in the GitHub repository
-- Check the documentation and API guides
-- Review existing issues and discussions
+- Review existing issues, discussions and pull requests
+- Start a discussion in the **Discussions** tab or create an issue in the **Issues** tab in this repository
+- Join the Tazama Slack workspace and post your question in the **#get-help** channel - :point_right: Join here: https://slack.tazama.org

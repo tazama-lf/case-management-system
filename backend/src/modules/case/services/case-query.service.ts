@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
@@ -10,6 +10,7 @@ import { Outcome } from '../../../utils/types/outcome';
 import { UpdateCaseDto } from '../dto';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 import { JsonValue } from '@prisma/client-cms/runtime/library';
+import { TASK_NAMES } from 'src/constants/case.constants';
 
 @Injectable()
 export class CaseQueryService {
@@ -83,8 +84,9 @@ export class CaseQueryService {
         const ownedCasesCondition: any = { case_owner_user_id: userId };
         if (status) ownedCasesCondition.status = status;
         if (priority) ownedCasesCondition.priority = priority;
-        // Compliance officers only see STATUS_82_CLOSED_CONFIRMED cases
-        if (isComplianceOfficer) ownedCasesCondition.status = 'STATUS_82_CLOSED_CONFIRMED';
+        if (isComplianceOfficer) {
+          ownedCasesCondition.status = 'STATUS_82_CLOSED_CONFIRMED';
+        }
         whereConditions.push(ownedCasesCondition);
       }
 
@@ -92,8 +94,9 @@ export class CaseQueryService {
         const taskAssignmentCondition: any = { tasks: { some: { assigned_user_id: userId } } };
         if (status) taskAssignmentCondition.status = status;
         if (priority) taskAssignmentCondition.priority = priority;
-        // Compliance officers only see STATUS_82_CLOSED_CONFIRMED cases
-        if (isComplianceOfficer) taskAssignmentCondition.status = 'STATUS_82_CLOSED_CONFIRMED';
+        if (isComplianceOfficer) {
+          taskAssignmentCondition.status = 'STATUS_82_CLOSED_CONFIRMED';
+        }
         whereConditions.push(taskAssignmentCondition);
       }
 
@@ -353,7 +356,7 @@ export class CaseQueryService {
             NOT: {
               tasks: {
                 some: {
-                  name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] },
+                  name: { in: [TASK_NAMES.SAR_STR_FILING] },
                 },
               },
             },
@@ -439,7 +442,7 @@ export class CaseQueryService {
               orConditions.push({
                 tasks: {
                   some: {
-                    name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] },
+                    name: { in: [TASK_NAMES.SAR_STR_FILING] },
                     status: { in: matchingTaskStatuses },
                   },
                 },
@@ -465,7 +468,7 @@ export class CaseQueryService {
         sarStrFilterCondition = {
           tasks: {
             some: {
-              name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] },
+              name: { in: [TASK_NAMES.SAR_STR_FILING] },
               status: sarStrStatus,
             },
           },
@@ -476,14 +479,13 @@ export class CaseQueryService {
           NOT: {
             tasks: {
               some: {
-                name: { in: ['SAR_STR_FILING', 'SAR/STR Filing', 'File SAR/STR Report'] },
+                name: { in: [TASK_NAMES.SAR_STR_FILING] },
               },
             },
           },
         };
       }
 
-      // Handle compliance officer filtering - only show STATUS_82_CLOSED_CONFIRMED cases
       if (isComplianceOfficer) {
         baseFilters.status = 'STATUS_82_CLOSED_CONFIRMED';
         const andConditions: any[] = [baseFilters];
@@ -776,6 +778,13 @@ export class CaseQueryService {
 
   async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean): Promise<Case | null> {
     const retrievedCase = await this.caseRepository.findCaseById(caseId, tenantId);
+
+    if (isComplianceOfficer) {
+      if (retrievedCase.status !== 'STATUS_82_CLOSED_CONFIRMED') {
+        throw new ForbiddenException('Compliance officers can only access confirmed closed cases');
+      }
+    }
+
     return retrievedCase;
   }
 

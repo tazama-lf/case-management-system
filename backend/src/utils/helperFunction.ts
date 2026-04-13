@@ -23,7 +23,7 @@ export function extractUserData(req: AuthenticatedRequest): IUserData {
     claims,
     validateClaim,
     isComplianceOfficer,
-    userInfo: { tenantName: req.user.token.tenantName, role, token: bearerToken, validateClaim },
+    userInfo: { tenantName: req.user.tenantName, role, token: bearerToken, validateClaim },
   };
 }
 

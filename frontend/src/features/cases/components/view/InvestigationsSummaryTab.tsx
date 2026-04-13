@@ -57,20 +57,20 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
   const [submittedDate, setSubmittedDate] = useState<string>('N/A');
 
   const mapToUnifiedWorkQueueTask = (task: any, caseDetails: Case | null): UnifiedWorkQueueTask => ({
-      id: task.task_id,
-      taskId: task.task_id,
-      name: task.name ?? 'Unnamed Task',
-      description: task.description,
-      assignee: task.assigned_user_id,
-      assigneeName: task.assignedUser?.username ?? task.assigned_user_id,
-      candidateGroup: task.candidateGroup ?? 'investigations',
-      status: task.status,
-      priority: caseDetails?.priority ?? 'NEW',
-      created: task.created_at,
-      dueDate: task.sla_deadline ?? undefined,
-      caseId: task.case_id,
+    id: task.task_id,
+    taskId: task.task_id,
+    name: task.name ?? 'Unnamed Task',
+    description: task.description,
+    assignee: task.assigned_user_id,
+    assigneeName: task.assignedUser?.username ?? task.assigned_user_id,
+    candidateGroup: task.candidateGroup ?? 'investigations',
+    status: task.status,
+    priority: caseDetails?.priority ?? 'NEW',
+    created: task.created_at,
+    dueDate: task.sla_deadline ?? undefined,
+    caseId: task.case_id,
 
-    });
+  });
 
   const loadEvidence = React.useCallback(async (): Promise<void> => {
     if (!currentTaskId) return;
@@ -211,7 +211,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to download evidence:', error);
-      alert(`Failed to download evidence: ${  error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Failed to download evidence: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setDownloadingId(null);
     }
@@ -246,20 +246,34 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
         try {
           const tasks = await taskService.getTasksByCaseId(caseId);
 
-          const approvalTask = tasks.find(
-            (t) => t.name?.toLowerCase().includes('approve')
+          // First find the current investigation task
+          const investigationTask = tasks.find(
+            (t) => t.task_id === currentTaskId
           );
+
+          // Then find the approval task that comes after this investigation task
+          const approvalTask = investigationTask
+            ? tasks
+              .filter((t) =>
+                t.name?.toLowerCase().includes('approve') &&
+                new Date(t.created_at || 0).getTime() > new Date(investigationTask.created_at || 0).getTime()
+              )
+              .sort((a, b) => {
+                const dateA = new Date(a.created_at || 0).getTime();
+                const dateB = new Date(b.created_at || 0).getTime();
+                return dateA - dateB; // ascending order (earliest approval after investigation)
+              })[0]
+            : undefined;
 
           if (approvalTask) {
             const supervisorTaskComments = await commentService.getCommentsByTask(
               approvalTask.task_id
             );
-            setSupervisorComments(supervisorTaskComments || []);
-          }
 
-          const investigationTask = tasks.find(
-            (t) => t.task_id === currentTaskId
-          );
+            const supervisorComment = supervisorTaskComments.filter(comment => comment.case_id === caseId && comment.task_id === approvalTask.task_id && comment.note.toLowerCase().includes('supervisor approval:'));
+
+            setSupervisorComments(supervisorComment || []);
+          }
 
           if (investigationTask) {
             setInvestigationTask(investigationTask);
@@ -408,12 +422,18 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({ caseI
                     />
 
                     {/* Supervisor outcome only */}
-                    <div className="p-3 bg-green-50 border border-green-200 rounded">
-                      <p className="text-xs text-green-600 font-medium mb-1">Supervisor Final Outcome</p>
-                      <p className="text-sm font-semibold text-green-900">
-                        {caseDetails?.status ?? 'N/A'}
-                      </p>
-                    </div>
+                    {caseDetails?.status && (
+                      caseDetails.status === 'STATUS_81_CLOSED_REFUTED' ||
+                      caseDetails.status === 'STATUS_82_CLOSED_CONFIRMED' ||
+                      caseDetails.status === 'STATUS_83_CLOSED_INCONCLUSIVE'
+                    ) && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded">
+                          <p className="text-xs text-green-600 font-medium mb-1">Supervisor Final Outcome</p>
+                          <p className="text-sm font-semibold text-green-900">
+                            {caseDetails?.status ?? 'N/A'}
+                          </p>
+                        </div>
+                      )}
                   </div>
                 );
               })()}
