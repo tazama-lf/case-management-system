@@ -550,17 +550,19 @@ export class TriageService {
       }
 
       if (predictedConfidence >= confidenceThreshold && !predictedTruePositive) {
-        await this.flowableService.handleTaskCompleted({
-          caseId,
-          taskName: triageTask.name!,
-          newStatus: TaskStatus.STATUS_30_COMPLETED,
-          completionVariables: {
-            autoCloseEligible: true,
-            caseType: predictedAlertType,
-            casePriority: priority,
-            draftApprovalRequired: false,
-          },
-        });
+        await this.retry(async () => {
+          await this.flowableService.handleTaskCompleted({
+            caseId,
+            taskName: triageTask.name!,
+            newStatus: TaskStatus.STATUS_30_COMPLETED,
+            completionVariables: {
+              autoCloseEligible: true,
+              caseType: predictedAlertType,
+              casePriority: priority,
+              draftApprovalRequired: false,
+            },
+          });
+        }, 5);
         return await this.autoCloseCase(
           caseId,
           CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,

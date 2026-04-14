@@ -504,6 +504,29 @@ describe('TriageService', () => {
       expect(flowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
     });
 
+    it('should retry handleTaskCompleted up to 5 times on transient failure for false positive auto-close', async () => {
+      const retrySpy = jest.spyOn(service as any, 'retry').mockImplementation(async (fn: () => Promise<void>) => fn());
+
+      taskService.createTask.mockResolvedValue(mockTask as any);
+      casePriorityUtil.determinePriority.mockReturnValue(Priority.URGENT);
+      (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
+      mockedAxios.post.mockResolvedValue({
+        data: { confidence: 0.95, priority: 0.3 },
+      });
+      alertService.updateAlert.mockResolvedValue(mockAlert as any);
+      taskService.updateTask.mockResolvedValue(mockTask as any);
+      taskRepository.updateTask.mockResolvedValue(mockTask as any);
+      loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
+      caseRepository.findCaseById.mockResolvedValue(mockCase as any);
+      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
+
+      await service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123');
+
+      expect(retrySpy).toHaveBeenCalledWith(expect.any(Function), 5);
+      expect(flowableService.handleTaskCompleted).toHaveBeenCalled();
+    });
+
     it('should handle FRAUD_AND_AML type when true positive', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
       casePriorityUtil.determinePriority.mockReturnValue(Priority.URGENT);
