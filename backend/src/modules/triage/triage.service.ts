@@ -730,8 +730,9 @@ export class TriageService {
       //   tenantId,
       // );
       const updatedTask = await this.taskRepository.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED });
+      const updatedCase = await this.caseRepository.updateCase(caseId, { status });
 
-      const updatedCase = await this.caseCreationService.updateCaseStatus(caseId, status, userId, tenantId, undefined, caseType);
+      // const updatedCase = await this.caseCreationService.updateCaseStatus(caseId, status, userId, tenantId, undefined, caseType);
 
       // this.flowableService.handleCaseStatusChanged({
       //   caseId,
