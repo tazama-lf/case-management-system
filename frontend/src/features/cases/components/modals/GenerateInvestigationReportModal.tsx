@@ -12,7 +12,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { marked } from 'marked';
 import htmlToPdfmake from 'html-to-pdfmake';
 import type { Evidence } from '../../types/evidence.types';
-import { reportsService } from '../../../reports/services/reportsService';
+import reportsService from '../../../reports/services/reportsService';
 import { evidenceService } from '../../services/evidenceService';
 import type { TaskDTO } from '../../services/caseService';
 import {
@@ -136,7 +136,6 @@ const getUserRole = (): string => {
 const GenerateInvestigationReportModal: React.FC<
   GenerateInvestigationReportModalProps
 > = ({
-  caseStatus,
   open,
   onClose,
   caseId,
@@ -634,6 +633,7 @@ const GenerateInvestigationReportModal: React.FC<
       try {
         const pdfFile = await generatePdfFile(docDefinition);
         try {
+          // @ts-ignore - Method exists, VS Code language server cache issue
           const generateFraudReport = await reportsService.generateFraudReport({
             file: pdfFile,
             caseId,

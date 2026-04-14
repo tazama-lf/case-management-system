@@ -48,9 +48,9 @@ export const exportToExcel = (
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
     saveAs(blob, `${filename}.xlsx`);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error exporting to Excel:', error);
-    throw new Error('Failed to export to Excel');
+    throw new Error('Failed to export to Excel', { cause: error });
   }
 };
 
@@ -83,9 +83,9 @@ export const exportToCSV = (data: ExportData[], filename: string): void => {
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     saveAs(blob, `${filename}.csv`);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error exporting to CSV:', error);
-    throw new Error('Failed to export to CSV');
+    throw new Error('Failed to export to CSV', { cause: error });
   }
 };
 
@@ -259,9 +259,9 @@ export const exportToPDF = async (
 
     const pdfDoc = (pdfMake as any).createPdf(docDefinition);
     pdfDoc.download(`${filename}.pdf`);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error exporting to PDF:', error);
-    throw new Error('Failed to export to PDF');
+    throw new Error('Failed to export to PDF', { cause: error });
   }
 };
 
@@ -355,10 +355,10 @@ export const formatDataForExport = (
             for (const ev of task.supportingEvidence) {
               rows.push({
                 'Case ID': String(caseItem.caseId),
-                'Task ID': String(task.taskId ?? ''),
-                Finding: caseItem.finding ?? '',
-                Conclusion: caseItem.conclusion ?? '',
-                'Supporting Evidence': ev.fileName ?? '',
+                'Task ID': String(task.taskId),
+                Finding: caseItem.finding,
+                Conclusion: caseItem.conclusion,
+                'Supporting Evidence': ev.fileName,
                 Comments: [
                   ev.id,
                   ev.evidenceType,
@@ -367,7 +367,7 @@ export const formatDataForExport = (
                 ]
                   .filter(Boolean)
                   .join(' | '),
-                'Date Identified': caseItem.dateIdentified ?? '',
+                'Date Identified': caseItem.dateIdentified,
               });
             }
           }
@@ -484,3 +484,4 @@ export const getColumnsForReport = (reportType: string): TableColumn[] => {
       return [];
   }
 };
+

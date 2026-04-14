@@ -144,8 +144,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
               action = 'Task unassigned';
             } else if (operationLower.includes('assigntask')) {
               action = 'Task assigned';
-            }
-            else if (operationLower.includes('completetask')) {
+            } else if (operationLower.includes('completetask')) {
               action = 'Task completed';
             } else if (
               operationLower.includes('upload') ||

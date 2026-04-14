@@ -47,7 +47,7 @@ export const useInvestigatorSupervisorList = (): {
       }
 
       const data = await userService.getInvestigators();
-      if (data?.length > 0) {
+      if (data.length > 0) {
         setInvestigators(data);
         sessionStorage.setItem(investigatorsCacheKey, JSON.stringify(data));
       } else {
@@ -71,7 +71,7 @@ export const useInvestigatorSupervisorList = (): {
       }
 
       const data = await userService.getComplianceOfficers();
-      if (data?.length > 0) {
+      if (data.length > 0) {
         setComplianceOfficers(data);
         sessionStorage.setItem(complianceCacheKey, JSON.stringify(data));
       } else {
@@ -94,7 +94,7 @@ export const useInvestigatorSupervisorList = (): {
       }
 
       const data = await userService.getSupervisors();
-      if (data?.length > 0) {
+      if (data.length > 0) {
         setSupervisors(data);
         sessionStorage.setItem(supervisorsCacheKey, JSON.stringify(data));
       } else {
@@ -136,3 +136,4 @@ export const useInvestigatorSupervisorList = (): {
 };
 
 export default useInvestigatorSupervisorList;
+

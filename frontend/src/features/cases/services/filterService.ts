@@ -24,15 +24,15 @@ export class FilterService {
   private readonly baseUrl = '/api/v1/filter';
 
   async getFilters(
-    user_id: string,
+    userId: string,
     filterType: string,
   ): Promise<UserDefinedFilters[]> {
     try {
       const response = await apiClient.get<UserDefinedFilters[]>(
-        `${this.baseUrl}/user/${user_id}/filterType/${filterType}`,
+        `${this.baseUrl}/user/${userId}/filterType/${filterType}`,
       );
       return Array.isArray(response) ? response : [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         'FilterService: Failed to get filters for user:',
         user_id,
@@ -49,10 +49,10 @@ export class FilterService {
         createFilterDTO,
       );
       return this.validateFilterResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Check for 409 Conflict - duplicate filter
       if (error.response?.status === 409) {
-        throw new Error('FILTER_ALREADY_EXISTS');
+        throw new Error('FILTER_ALREADY_EXISTS', { cause: error });
       }
 
       throw this.handleError(error, 'create filter');
@@ -75,7 +75,7 @@ export class FilterService {
     throw new Error('Filter ID is missing from response');
   }
 
-  private handleError(error: any, operation: string): Error {
+  private handleError(error: unknown, operation: string): Error {
     if (error.response?.data) {
       const apiError = error.response.data as ApiErrorResponse;
       return new Error(apiError.message || `Failed to ${operation}`);

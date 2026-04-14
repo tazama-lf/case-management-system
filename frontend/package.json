@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "npm run lint:eslint && npm run lint:prettier",
+    "lint:eslint": "eslint \"**/*.ts\"",
+    "lint:prettier": "prettier --check \"**/*.ts\"",
+    "fix": "npm run fix:prettier && npm run fix:eslint",
+    "fix:eslint": "eslint --fix \"**/*.ts\"",
     "format": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:fix": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "fix:prettier": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",

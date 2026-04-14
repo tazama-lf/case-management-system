@@ -2,7 +2,7 @@ import { formatDate } from '@/shared/utils/dateUtils';
 import type { TransactionMessage } from '../types/alertsdashboard.types';
 
 export function extractTransactionMessagesFromAlert(
-  transactionData: any,
+  transactionData: Record<string, unknown>,
   transactionId: string,
 ): TransactionMessage[] {
   if (!transactionData || typeof transactionData !== 'object') {
@@ -12,7 +12,7 @@ export function extractTransactionMessagesFromAlert(
   const messages: TransactionMessage[] = [];
 
   try {
-    if (transactionData.FIToFIPmtSts) {
+    if ('FIToFIPmtSts' in transactionData) {
       messages.push({
         id: `msg-${transactionId}-status`,
         type: 'pacs.002.001.12',
@@ -22,7 +22,7 @@ export function extractTransactionMessagesFromAlert(
       });
     }
 
-    if (transactionData.FIToFICstmrCdt) {
+    if ('FIToFICstmrCdt' in transactionData) {
       messages.push({
         id: `msg-${transactionId}-credit`,
         type: 'pacs.008.001.10',
@@ -32,7 +32,7 @@ export function extractTransactionMessagesFromAlert(
       });
     }
 
-    if (transactionData.CstmrPmtStsRpt) {
+    if ('CstmrPmtStsRpt' in transactionData) {
       messages.push({
         id: `msg-${transactionId}-cust-status`,
         type: 'pain.002.001.12',
@@ -62,23 +62,48 @@ export function extractTransactionMessagesFromAlert(
   }
 }
 
-export function extractTransactionIdFromAlert(alert: any): string {
+export function extractTransactionIdFromAlert(
+  alert: Record<string, unknown>,
+): string {
   try {
-    if (alert.transaction?.FIToFIPmtSts?.GrpHdr?.MsgId) {
-      return alert.transaction.FIToFIPmtSts.GrpHdr.MsgId;
-    }
+    const transaction = alert.transaction as
+      | Record<string, unknown>
+      | undefined;
 
-    if (alert.transaction?.FIToFICstmrCdt?.GrpHdr?.MsgId) {
-      return alert.transaction.FIToFICstmrCdt.GrpHdr.MsgId;
+    if (transaction && typeof transaction === 'object') {
+      const fiToFIPmtSts = transaction.FIToFIPmtSts as
+        | Record<string, unknown>
+        | undefined;
+      if (fiToFIPmtSts && typeof fiToFIPmtSts === 'object') {
+        const grpHdr = fiToFIPmtSts.GrpHdr as
+          | Record<string, unknown>
+          | undefined;
+        if (grpHdr?.MsgId) {
+          return String(grpHdr.MsgId);
+        }
+      }
+
+      const fiToFICstmrCdt = transaction.FIToFICstmrCdt as
+        | Record<string, unknown>
+        | undefined;
+      if (fiToFICstmrCdt && typeof fiToFICstmrCdt === 'object') {
+        const grpHdr = fiToFICstmrCdt.GrpHdr as
+          | Record<string, unknown>
+          | undefined;
+        if (grpHdr?.MsgId) {
+          return String(grpHdr.MsgId);
+        }
+      }
     }
 
     if (alert.txtp) {
-      return alert.txtp;
+      return String(alert.txtp);
     }
 
-    return alert.alert_id ?? 'Unknown';
+    return String(alert.alert_id ?? 'Unknown');
   } catch (error) {
     console.warn('Failed to extract transaction ID from alert:', error);
-    return alert.txtp ?? alert.alert_id ?? 'Unknown';
+    return String(alert.txtp ?? alert.alert_id ?? 'Unknown');
   }
 }
+

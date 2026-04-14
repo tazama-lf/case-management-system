@@ -82,15 +82,15 @@ class TriageService {
       totalPages: number;
     }>(url);
 
-    const alerts = backendResponse.data ?? [];
+    const alerts = backendResponse.data;
 
     return {
       alerts,
       pagination: {
-        currentPage: backendResponse.page ?? 1,
-        totalPages: backendResponse.totalPages ?? 1,
-        totalItems: backendResponse.total ?? 0,
-        pageSize: backendResponse.limit ?? 10,
+        currentPage: backendResponse.page,
+        totalPages: backendResponse.totalPages,
+        totalItems: backendResponse.total,
+        pageSize: backendResponse.limit,
       },
     };
   }

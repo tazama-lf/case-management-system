@@ -114,8 +114,6 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
           currentPage: 1,
         },
       };
-    default:
-      return state;
   }
 };
 
@@ -174,19 +172,19 @@ export const useAlerts = () => {
     }
   }, [state.filters.query]);
 
-  const setFilters = (filters: Partial<AlertsSearchFilters>) => {
+  const setFilters = (filters: Partial<AlertsSearchFilters>): void => {
     dispatch({ type: 'SET_FILTERS', payload: filters });
   };
 
-  const setSort = (column: keyof Alert | string, direction: 'asc' | 'desc') => {
+  const setSort = (column: keyof Alert | string, direction: 'asc' | 'desc'): void => {
     dispatch({ type: 'SET_SORT', payload: { column, direction } });
   };
 
-  const setPage = (page: number) => {
+  const setPage = (page: number): void => {
     dispatch({ type: 'SET_PAGE', payload: page });
   };
 
-  const setPageSize = (pageSize: number) => {
+  const setPageSize = (pageSize: number): void => {
     dispatch({ type: 'SET_PAGE_SIZE', payload: pageSize });
   };
 
@@ -236,18 +234,18 @@ export const useAlerts = () => {
     pagination: {
       ...state.pagination,
       totalItems:
-        state.filters.query !== ''
-          ? searchFilteredAlerts.length
-          : state.pagination.totalItems,
+        state.filters.query === ''
+          ? state.pagination.totalItems
+          : searchFilteredAlerts.length,
       totalPages:
-        state.filters.query !== ''
-          ? Math.max(
+        state.filters.query === ''
+          ? state.pagination.totalPages
+          : Math.max(
               1,
               Math.ceil(
                 searchFilteredAlerts.length / state.pagination.pageSize,
               ),
-            )
-          : state.pagination.totalPages,
+            ),
     },
     paginatedAlerts,
     setFilters,

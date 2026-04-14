@@ -10,9 +10,15 @@ interface OperationStates {
   loadingDetails: Set<string>;
 }
 
-export const useAlertOperations = (refreshAlerts: () => void): {
+export const useAlertOperations = (
+  refreshAlerts: () => void,
+): {
   operationStates: OperationStates;
-  handleCloseAlert: (alert: Alert, status: AlertStatus, notes: string) => Promise<void>;
+  handleCloseAlert: (
+    alert: Alert,
+    status: AlertStatus,
+    notes: string,
+  ) => Promise<void>;
 } => {
   const [operationStates, setOperationStates] = useState<OperationStates>({
     convertingToCase: new Set(),

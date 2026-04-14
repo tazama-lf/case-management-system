@@ -288,9 +288,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         setLoadingHistory(true);
         try {
           const history = await triageService.getAlertActionHistory(alertId);
-          setActionHistory(history);
+          setActionHistory(Array.isArray(history) && history.length > 0 ? history[0] : undefined);
         } catch {
-          setActionHistory({} as ActionHistory);
+          setActionHistory(undefined);
         } finally {
           setLoadingHistory(false);
         }

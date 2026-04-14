@@ -67,7 +67,9 @@ export const useCaseDashboard = (): {
     setStatusFilter: React.Dispatch<React.SetStateAction<string>>;
     setPriorityFilter: React.Dispatch<React.SetStateAction<string>>;
     setSarStrStatusFilter: React.Dispatch<React.SetStateAction<string>>;
-    setCaseTypeFilter: React.Dispatch<React.SetStateAction<'all' | 'draft' | 'closed'>>;
+    setCaseTypeFilter: React.Dispatch<
+      React.SetStateAction<'all' | 'draft' | 'closed'>
+    >;
   };
   modalActions: CaseModalActions;
   caseActions: ReturnType<typeof useCaseActions>;
@@ -94,8 +96,10 @@ export const useCaseDashboard = (): {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
   const [sarStrStatusFilter, setSarStrStatusFilter] = useState<string>('');
-  const [caseTypeFilter, setCaseTypeFilter] = useState<'all' | 'draft' | 'closed'>('all');
-  
+  const [caseTypeFilter, setCaseTypeFilter] = useState<
+    'all' | 'draft' | 'closed'
+  >('all');
+
   const debouncedSearch = useDebounce(search, 500);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -404,3 +408,4 @@ export const useCaseDashboard = (): {
 };
 
 export default useCaseDashboard;
+

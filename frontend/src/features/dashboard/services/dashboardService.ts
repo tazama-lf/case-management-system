@@ -20,9 +20,9 @@ class DashboardService {
         recentAlerts,
         activeCases,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to fetch dashboard data:', error);
-      throw new Error('Failed to load dashboard data');
+      throw new Error('Failed to load dashboard data', { cause: error });
     }
   }
 
@@ -35,11 +35,12 @@ class DashboardService {
       return {
         totalAlerts: response.stats?.totalCases ?? 0,
         highPriorityAlerts:
-          response.caseTypes?.find((ct: any) => ct.name === 'FRAUD')?.count ?? 0,
+          response.caseTypes?.find((ct: any) => ct.name === 'FRAUD')?.count ??
+          0,
         openCases: response.stats?.openCases ?? 0,
         casesResolvedThisWeek: response.stats?.closedCases ?? 0,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to fetch dashboard stats:', error);
       return {
         totalAlerts: 42,
@@ -63,7 +64,7 @@ class DashboardService {
         count: caseType.count,
         description: `${caseType.name.toLowerCase()} cases requiring attention`,
       }));
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to fetch recent alerts:', error);
       return [
         {
@@ -109,7 +110,7 @@ class DashboardService {
           description: 'cases resolved recently',
         },
       ];
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to fetch active cases:', error);
       return [
         {

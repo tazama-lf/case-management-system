@@ -61,7 +61,7 @@ function extractRiskScore(alertData: unknown): number {
 export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
   const transformedAlert: UIAlert = {
     alert_id: backendAlert.alert_id,
-    tenant_id: backendAlert.tenant_id ?? 'default-tenant',
+    tenant_id: backendAlert.tenant_id,
     priority: backendAlert.priority,
     alert_type: extractAlertType(backendAlert) ?? undefined,
     source: backendAlert.source,
@@ -109,8 +109,6 @@ function mapPriorityToSeverity(
       return 'high';
     case 'BREACH':
       return 'critical';
-    default:
-      return 'medium';
   }
 }
 
@@ -126,8 +124,6 @@ export function mapSeverityToPriority(
       return 'CRITICAL';
     case 'critical':
       return 'BREACH';
-    default:
-      return 'NEW';
   }
 }
 
@@ -174,8 +170,6 @@ export function mapUIStatusToAlertStatus(
       return 'AUTOCLOSED_REFUTED';
     case 'sent_for_investigation':
       return 'SENT_FOR_INVESTIGATION';
-    default:
-      return 'NEW';
   }
 }
 
@@ -212,3 +206,4 @@ export const convertToTriageAlert = (alert: Alert): TriageAlert => ({
   ...alert,
   alert_type: alert.alert_type! || null,
 });
+

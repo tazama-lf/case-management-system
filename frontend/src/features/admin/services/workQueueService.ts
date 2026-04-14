@@ -35,7 +35,7 @@ class WorkQueueService {
         items: response,
         totalCount: response.length,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get candidate groups');
     }
   }
@@ -49,12 +49,12 @@ class WorkQueueService {
         data,
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'create candidate group');
     }
   }
 
-  private handleError(error: any, operation: string): Error {
+  private handleError(error: unknown, operation: string): Error {
     console.error(`WorkQueueService Error - ${operation}:`, error);
 
     if (error.response?.data) {

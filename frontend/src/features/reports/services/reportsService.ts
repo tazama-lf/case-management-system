@@ -21,9 +21,10 @@ class ReportsService {
       const params = new URLSearchParams();
       if (dateRange) params.append('dateRange', dateRange);
       if (filters?.caseType) params.append('caseType', filters.caseType);
-      if (filters?.priority) params.append('priority', filters.priority);
-      if (filters?.investigator)
-        {params.append('investigator', filters.investigator);}
+      if (filters?.priority) params.append('priorit      if (filters?.investigator) {
+        params.append('investigator', filters.investigator);
+      }
+ filters.investigator);}
 
       const response = await apiClient.get<ReportsData>(
         `/api/v1/reports/case-status?${params.toString()}`,
@@ -555,13 +556,9 @@ class ReportsService {
           inconclusive: 0,
           inProgress: 0,
         },
-        evidenceItems: [],
-        findings: [],
-      };
-    }
-  }
+        evidenceItems  private handleError(error: unknown, operation: string): Error {
 
-  private safeFallback(
+feFallback(
     value: number | null | undefined,
     fallback: number,
   ): number {
@@ -610,5 +607,6 @@ class ReportsService {
   }
 }
 
+// Export both named and default export for better IDE support
 export const reportsService = new ReportsService();
 export default reportsService;

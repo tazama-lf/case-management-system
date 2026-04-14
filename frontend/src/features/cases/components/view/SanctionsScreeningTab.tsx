@@ -416,8 +416,9 @@ const UploadScreeningModal: React.FC<UploadScreeningModalProps> = ({
         match_count: formData.match_count,
         file: file ?? undefined,
         metadata:
-          formData.entities_screened ?? formData.confidence_score ??
-          formData.risk_level
+          (formData.entities_screened ??
+          formData.confidence_score ??
+          formData.risk_level)
             ? {
                 entities_screened: formData.entities_screened,
                 confidence_score: formData.confidence_score,

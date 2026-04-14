@@ -152,7 +152,12 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     modalActions.setIsViewOpen(false);
     modalActions.setSelectedRow(null);
 
-    if (typeof params === 'object' && params && 'caseId' in params && params.caseId) {
+    if (
+      typeof params === 'object' &&
+      params &&
+      'caseId' in params &&
+      params.caseId
+    ) {
       navigate('/cases');
     }
   };
@@ -371,13 +376,19 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     modalActions.setSelectedRow(null);
   };
 
-  const handleReopenSubmit = async (caseId: number, reason: string): Promise<void> => {
+  const handleReopenSubmit = async (
+    caseId: number,
+    reason: string,
+  ): Promise<void> => {
     await caseActions.handleReopenSubmit(caseId, reason);
     modalActions.setIsReopenOpen(false);
     modalActions.setSelectedRow(null);
   };
 
-  const handleAbandonSubmit = async (caseId: number, reason: string): Promise<void> => {
+  const handleAbandonSubmit = async (
+    caseId: number,
+    reason: string,
+  ): Promise<void> => {
     await caseActions.handleAbandonSubmit(caseId, reason);
     modalActions.setIsAbandonOpen(false);
     modalActions.setSelectedRow(null);
@@ -393,7 +404,10 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     modalActions.setSelectedRow(null);
   };
 
-  const handleResumeSubmit = async (caseId: number, reason: string): Promise<void> => {
+  const handleResumeSubmit = async (
+    caseId: number,
+    reason: string,
+  ): Promise<void> => {
     await caseActions.handleResumeSubmit(caseId, reason);
     modalActions.setIsResumeOpen(false);
     modalActions.setSelectedRow(null);
@@ -409,7 +423,9 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     modalActions.setSelectedRow(null);
   };
 
-  const handleApproveSubmit = async (data: ApproveCaseClosureDto): Promise<void> => {
+  const handleApproveSubmit = async (
+    data: ApproveCaseClosureDto,
+  ): Promise<void> => {
     if (!modalState.selectedRow) return;
 
     const { finalOutcome } = data;
@@ -493,7 +509,10 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
     }
   };
 
-  const handleRejectReopenSubmit = async (caseId: number, reason: string): Promise<void> => {
+  const handleRejectReopenSubmit = async (
+    caseId: number,
+    reason: string,
+  ): Promise<void> => {
     try {
       const resp = await caseService.rejectCaseReopening(caseId, reason);
 
@@ -542,8 +561,9 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
                 alertId: modalState.selectedRow.alertId,
                 alertType: ((): AlertType => {
                   const t = (modalState.selectedRow.type ?? '').toUpperCase();
-                  if (t.includes('FRAUD') && t.includes('AML'))
-                    {return 'FRAUD_AND_AML';}
+                  if (t.includes('FRAUD') && t.includes('AML')) {
+                    return 'FRAUD_AND_AML';
+                  }
                   if (t.includes('AML')) return 'AML';
                   return 'FRAUD';
                 })(),
@@ -652,7 +672,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
             modalActions.setIsCloseCaseOpen(false);
           }}
           caseId={
-            modalState.selectedRow?.id != null
+            modalState.selectedRow?.id !== null && modalState.selectedRow?.id !== undefined
               ? modalState.selectedRow.id.toString()
               : ''
           }
@@ -719,9 +739,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           onClose={() => {
             modalActions.setIsCaseClosureDecisionOpen(false);
           }}
-          caseId={
-            modalState.selectedRow?.id ?? null
-          }
+          caseId={modalState.selectedRow?.id ?? null}
           caseName={
             modalState.selectedRow ? `${modalState.selectedRow.type} Case` : ''
           }
@@ -766,9 +784,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           onClose={() => {
             modalActions.setIsApproveReopenOpen(false);
           }}
-          caseId={
-            modalState.selectedRow?.id ?? null
-          }
+          caseId={modalState.selectedRow?.id ?? null}
           requesterRole={undefined}
           onApprove={handleApproveReopenSubmit}
         />
@@ -780,9 +796,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           onClose={() => {
             modalActions.setIsRejectReopenOpen(false);
           }}
-          caseId={
-            modalState.selectedRow?.id ?? null
-          }
+          caseId={modalState.selectedRow?.id ?? null}
           onReject={handleRejectReopenSubmit}
         />
       </Suspense>

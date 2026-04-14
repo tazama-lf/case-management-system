@@ -8,6 +8,6 @@ export interface TablePaginationInfo {
 
 export interface TablePaginationProps {
   pagination: TablePaginationInfo;
-  itemLabel?: string; 
+  itemLabel?: string;
   className?: string;
 }

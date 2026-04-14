@@ -26,7 +26,6 @@ const RejectCaseCreationModal = lazy(
   async () => await import('../RejectCaseCreationModal'),
 );
 
-
 interface CaseModalsProps {
   isCloseCaseOpen: boolean;
   isReopenOpen: boolean;
@@ -147,7 +146,7 @@ const CaseModals: React.FC<CaseModalsProps> = ({
             onClose={() => {
               setIsCloseCaseOpen(false);
             }}
-            caseId={selectedRow?.id != null ? selectedRow.id.toString() : ''}
+            caseId={selectedRow?.id !== null && selectedRow?.id !== undefined ? selectedRow.id.toString() : ''}
             caseName={selectedRow ? `${selectedRow.type} Case` : ''}
             onSubmit={handleCloseCaseSubmit}
           />

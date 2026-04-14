@@ -1,5 +1,5 @@
 import apiClient from '../../../shared/services/apiClient';
-import type { Case, ApiErrorResponse } from '../../alerts/types/triage.types';
+import type { Case } from '../../alerts/types/triage.types';
 
 export interface GetUserCasesQueryDto {
   status?: string;
@@ -232,7 +232,7 @@ export class CaseService {
 
       const response = await apiClient.get<GetUserCasesResponseDto>(url);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get user cases');
     }
   }
@@ -243,7 +243,7 @@ export class CaseService {
         `${this.baseUrl}/user/workload`,
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get user workload stats');
     }
   }
@@ -252,7 +252,7 @@ export class CaseService {
     try {
       const response = await apiClient.get<Case>(`${this.baseUrl}/${caseId}`);
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get case details');
     }
   }
@@ -263,7 +263,7 @@ export class CaseService {
         `${this.baseUrl}/parentId/${caseId}`,
       );
       return this.validateCaseArrayResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get case details');
     }
   }
@@ -278,7 +278,7 @@ export class CaseService {
         closeCaseData,
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'close case');
     }
   }
@@ -290,7 +290,7 @@ export class CaseService {
         manualCreateCaseData,
       );
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'create case');
     }
   }
@@ -304,7 +304,7 @@ export class CaseService {
         manualCreateCaseData,
       );
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'create case');
     }
   }
@@ -319,7 +319,7 @@ export class CaseService {
         updateCaseData,
       );
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'update case');
     }
   }
@@ -334,7 +334,7 @@ export class CaseService {
         completeCaseData,
       );
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'complete case');
     }
   }
@@ -352,7 +352,7 @@ export class CaseService {
         return this.validateCaseResponse(response.case);
       }
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'abandon case');
     }
   }
@@ -367,7 +367,7 @@ export class CaseService {
         resumeCaseData,
       );
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'resume case');
     }
   }
@@ -382,7 +382,7 @@ export class CaseService {
         rejectCaseData,
       );
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'reject case');
     }
   }
@@ -397,7 +397,7 @@ export class CaseService {
         reopenCaseData,
       );
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'reopen case');
     }
   }
@@ -418,7 +418,7 @@ export class CaseService {
         message: 'Case reopening approved',
         case: this.validateCaseResponse(response as unknown as Case),
       } as ApproveReopenResponseDto;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'approve case reopening');
     }
   }
@@ -441,7 +441,7 @@ export class CaseService {
         case: this.validateCaseResponse(response as unknown as Case),
         rejection_reason: rejectionReason,
       } as RejectReopenResponseDto;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'reject case reopening');
     }
   }
@@ -456,7 +456,7 @@ export class CaseService {
         suspendCaseData,
       );
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'suspend case');
     }
   }
@@ -471,7 +471,7 @@ export class CaseService {
         approveCaseData,
       );
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'approve case closure');
     }
   }
@@ -486,7 +486,7 @@ export class CaseService {
         returnCaseData,
       );
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'return case for review');
     }
   }
@@ -498,7 +498,7 @@ export class CaseService {
         {},
       );
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'approve case creation');
     }
   }
@@ -513,7 +513,7 @@ export class CaseService {
         rejectCaseData,
       );
       return this.validateCaseResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'reject case creation');
     }
   }
@@ -599,7 +599,7 @@ export class CaseService {
         pagination?: any;
       }>(url);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get user assigned cases');
     }
   }
@@ -632,18 +632,24 @@ export class CaseService {
         pagination?: any;
       }>(url);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get all cases');
     }
   }
 
-  private handleError(error: any, operation: string): Error {
-    if (error.response?.data) {
-      const apiError = error.response.data as ApiErrorResponse;
-      return new Error(apiError.message || `Failed to ${operation}`);
+  private handleError(error: unknown, operation: string): Error {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const err = error as { response?: { data?: { message?: string } } };
+      if (err.response?.data) {
+        const apiError = err.response.data;
+        return new Error(apiError.message ?? `Failed to ${operation}`);
+      }
     }
-    return new Error(`Failed to ${operation}: ${error.message}`);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return new Error(`Failed to ${operation}: ${message}`);
   }
 }
 
 export const caseService = new CaseService();
+
+

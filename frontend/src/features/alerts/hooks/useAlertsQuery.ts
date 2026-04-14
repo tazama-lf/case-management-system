@@ -24,9 +24,16 @@ export const alertsQueryKeys = {
   filterOptions: () => [...alertsQueryKeys.all, 'filterOptions'] as const,
 };
 
-export const useAlerts = (filters: AlertsFilter = {}): {
+export const useAlerts = (
+  filters: AlertsFilter = {},
+): {
   alerts: Alert[];
-  pagination: { currentPage: number; totalPages: number; totalItems: number; pageSize: number };
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    pageSize: number;
+  };
   isLoading: boolean;
   isFetching: boolean;
   isError: boolean;
@@ -53,10 +60,10 @@ export const useAlerts = (filters: AlertsFilter = {}): {
   });
 
   return {
-    alerts: (data?.alerts ?? []).map((alert) =>
+    alerts: (data?.alerts || []).map((alert) =>
       transformBackendAlertToUI(alert),
     ),
-    pagination: data?.pagination ?? {
+    pagination: data?.pagination || {
       currentPage: 1,
       totalPages: 1,
       totalItems: 0,
@@ -71,7 +78,9 @@ export const useAlerts = (filters: AlertsFilter = {}): {
   };
 };
 
-export const useAlertDetails = (alertId: number | null): {
+export const useAlertDetails = (
+  alertId: number | null,
+): {
   alert: Alert | undefined;
   isLoading: boolean;
   error: Error | null;
@@ -97,7 +106,9 @@ export const useAlertDetails = (alertId: number | null): {
   };
 };
 
-export const useAlertActionHistory = (alertId: number | null): {
+export const useAlertActionHistory = (
+  alertId: number | null,
+): {
   actionHistory: ActionHistory[];
   isLoading: boolean;
   error: Error | null;
@@ -121,13 +132,28 @@ export const useAlertActionHistory = (alertId: number | null): {
 };
 
 export const useAlertOperations = (): {
-  closeAlert: (variables: { alertId: number; status: AlertStatus; notes: string }) => void;
-  updateAlert: (variables: { alertId: number; data: Record<string, unknown> }) => void;
-  performManualTriage: (variables: { alertId: number; data: ManualTriageDto }) => void;
+  closeAlert: (variables: {
+    alertId: number;
+    status: AlertStatus;
+    notes: string;
+  }) => void;
+  updateAlert: (variables: {
+    alertId: number;
+    data: Record<string, unknown>;
+  }) => void;
+  performManualTriage: (variables: {
+    alertId: number;
+    data: ManualTriageDto;
+  }) => void;
   isClosingAlert: boolean;
   isUpdatingAlert: boolean;
   isPerformingManualTriage: boolean;
-  operationStates: { closingAlert: Set<string>; updatingAlert: Set<string>; performingManualTriage: Set<string>; loadingDetails: Set<string> };
+  operationStates: {
+    closingAlert: Set<string>;
+    updatingAlert: Set<string>;
+    performingManualTriage: Set<string>;
+    loadingDetails: Set<string>;
+  };
 } => {
   const queryClient = useQueryClient();
   const { showError } = useNotifications();
@@ -161,7 +187,7 @@ export const useAlertOperations = (): {
       }
     },
     onError: (error: Error) => {
-      showError(error.message ?? 'Failed to close alert');
+      showError(error.message);
     },
   });
 
@@ -195,7 +221,7 @@ export const useAlertOperations = (): {
       }
     },
     onError: (error: Error) => {
-      showError(error.message ?? 'Failed to update alert');
+      showError(error.message);
     },
   });
 
@@ -240,7 +266,11 @@ export const useAlertOperations = (): {
 };
 
 export const useAlertFilterOptions = (): {
-  filterOptions: { priorities: string[]; alertTypes: string[]; sources: string[] };
+  filterOptions: {
+    priorities: string[];
+    alertTypes: string[];
+    sources: string[];
+  };
   isLoading: boolean;
   error: null;
 } => {
@@ -256,3 +286,4 @@ export const useAlertFilterOptions = (): {
     error: null,
   };
 };
+

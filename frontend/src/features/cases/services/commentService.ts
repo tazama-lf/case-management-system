@@ -40,7 +40,7 @@ export class CommentService {
         `${this.baseUrl}/case/${caseId}/comment`,
       );
       return Array.isArray(response) ? response : [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         'CommentService: Failed to get tasks with comments for case:',
         caseId,
@@ -56,7 +56,7 @@ export class CommentService {
         `${this.baseUrl}/task/${taskId}/comment`,
       );
       return Array.isArray(response) ? response : [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         'CommentService: Failed to get tasks with comments for task:',
         taskId,
@@ -74,7 +74,8 @@ export class CommentService {
       console.error('CommentService: Failed to add comment:', error);
       const message =
         error instanceof Error ? error.message : 'Failed to add comment';
-      throw new Error(message);
+
+        throw new Error(message, { cause: error });
     }
   }
 
@@ -88,7 +89,7 @@ export class CommentService {
       console.error('CommentService: Failed to get comment:', error);
       const message =
         error instanceof Error ? error.message : 'Failed to get comment';
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   }
 
@@ -102,7 +103,7 @@ export class CommentService {
       console.error('CommentService: Failed to get comments by case:', error);
       const message =
         error instanceof Error ? error.message : 'Failed to get comments';
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   }
 
@@ -119,16 +120,21 @@ export class CommentService {
       console.error('CommentService: Failed to get comments by task:', error);
       const message =
         error instanceof Error ? error.message : 'Failed to get comments';
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   }
 
-  private handleError(error: any, operation: string): Error {
-    if (error.response?.data) {
-      const apiError = error.response.data as ApiErrorResponse;
-      return new Error(apiError.message || `Failed to ${operation}`);
+  private handleError(error: unknown, operation: string): Error {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const err = error as { response?: { data?: ApiErrorResponse } };
+      if (err.response?.data) {
+        return new Error(err.response.data.message || `Failed to ${operation}`);
+      }
     }
-    return new Error(`Failed to ${operation}: ${error.message}`);
+    if (error instanceof Error) {
+      return new Error(`Failed to ${operation}: ${error.message}`);
+    }
+    return new Error(`Failed to ${operation}`);
   }
 }
 

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { evidenceService }  from '../services/evidenceService';
+import { evidenceService } from '../services/evidenceService';
 import type {
   VerifyEvidenceDto,
   EvidenceSearchFilters,

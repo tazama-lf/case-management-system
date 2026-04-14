@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
 import type { WorkQueue } from '../types/admindashboard.types';
 
-export const useWorkQueueFilter = (workQueues: WorkQueue[]): {
+export const useWorkQueueFilter = (
+  workQueues: WorkQueue[],
+): {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   filteredQueues: WorkQueue[];

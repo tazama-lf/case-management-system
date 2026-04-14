@@ -52,7 +52,7 @@ describe('exportUtils', () => {
       expect(() => {
         try {
           exportToExcel([], 'test-file');
-        } catch (error: any) {
+        } catch (error: unknown) {
           expect(error.message).toBe('No data to export');
           throw error;
         }
@@ -63,7 +63,7 @@ describe('exportUtils', () => {
       expect(() => {
         try {
           exportToExcel(null as any, 'test-file');
-        } catch (error: any) {
+        } catch (error: unknown) {
           expect(error.message).toBe('No data to export');
           throw error;
         }
@@ -250,3 +250,4 @@ describe('exportUtils', () => {
     });
   });
 });
+

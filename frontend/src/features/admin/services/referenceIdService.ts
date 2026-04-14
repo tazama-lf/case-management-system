@@ -21,7 +21,7 @@ class ReferenceIdService {
         items: response,
         totalCount: response.length,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get reference ids');
     }
   }
@@ -35,20 +35,23 @@ class ReferenceIdService {
         data,
       );
       return response;
-    } catch (error: any) {
-      throw this.handleError(error, 'create reference id');
+    } catch (error: unknown) {
+      throw this.handleError(error, 'create referenceId');
     }
   }
 
-  private handleError(error: any, operation: string): Error {
+  private handleError(error: unknown, operation: string): Error {
     console.error(`ReferenceIdService Error - ${operation}:`, error);
 
-    if (error.response?.data) {
-      const apiError = error.response.data;
-      return new Error(apiError.message ?? `Failed to ${operation}`);
+    if (error && typeof error === 'object' && 'response' in error) {
+      const err = error as { response?: { data?: { message?: string } } };
+      if (err.response?.data) {
+        const apiError = err.response.data;
+        return new Error(apiError.message ?? `Failed to ${operation}`);
+      }
     }
 
-    if (error.message) {
+    if (error instanceof Error && error.message) {
       return new Error(error.message);
     }
 
