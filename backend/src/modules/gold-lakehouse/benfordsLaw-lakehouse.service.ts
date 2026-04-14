@@ -21,20 +21,16 @@ export class BenfordsLawLakehouseService extends GoldLakehouseService {
       this.logger.log(`Running Benford analysis for account ${accountId}, tenant ${tenantId}, range ${fromDate} → ${toDate}`);
 
       const sql = `
-      SELECT
-        ABS(interbank_settlement_amount) AS amount
-      FROM transaction_detail
-      WHERE tenant_id = '${tenantId}'
-        AND interbank_settlement_amount IS NOT NULL
-        AND interbank_settlement_amount > 0
-        AND (
-          debtor_account_id = '${accountId}'
-          OR creditor_account_id = '${accountId}'
-        )
-        AND tx_event_date BETWEEN '${fromDate}' AND '${toDate}'
-    `;
+        SELECT ABS(interbank_settlement_amount) AS amount
+        FROM transaction_detail
+        WHERE tenant_id = $1
+          AND interbank_settlement_amount IS NOT NULL
+          AND interbank_settlement_amount > 0
+          AND (debtor_account_id = $2 OR creditor_account_id = $2)
+          AND tx_event_date BETWEEN $3 AND $4
+      `;
 
-      const response = await this.runSqlQuery(sql, 100000);
+      const response = await this.runSqlQuery(sql, 100000, [tenantId, accountId, fromDate, toDate]);
       const rows = response?.data ?? [];
 
       const amounts: number[] = rows.map((r) => Number(r.amount)).filter((v) => !isNaN(v) && v > 0);

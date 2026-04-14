@@ -162,8 +162,10 @@ export class AlertController {
     @Param('alertId') alertId: number,
   ): Promise<{ transactionData: transactionDataResponseDTO[] }> {
     const userId = req.user.token.clientId;
+    const { tenantId } = req.user.token;
+    if (!tenantId) throw new BadRequestException('Missing tenantId');
     if (!userId) throw new BadRequestException('Missing clientId');
-    return await this.alertService.getAlertTransactionalData(alertId);
+    return await this.alertService.getAlertTransactionalData(alertId, tenantId);
   }
 
   @Get(':alertId')

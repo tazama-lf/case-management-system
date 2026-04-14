@@ -31,8 +31,9 @@ export class AccountLakehouseService extends GoldLakehouseService {
         throw new Error('ReferenceId not found in transaction data');
       }
 
-      const entitySQL = `SELECT DISTINCT td.debtor_Id, td.debtor_account_id, td.debtor_name, td.creditor_id, td.creditor_account_id, td.creditor_name FROM transaction_detail td WHERE td.end_to_end_id = '${referenceId}' AND tx_type = 'pacs.008.001.10'`;
-      const entityMetadataResp = await this.runSqlQuery(entitySQL, 1);
+      const entitySQL =
+        '"SELECT DISTINCT td.debtor_Id, td.debtor_account_id, td.debtor_name, td.creditor_id, td.creditor_account_id, td.creditor_name FROM transaction_detail td WHERE td.end_to_end_id = $1 AND tx_type = \'pacs.008.001.10\'"';
+      const entityMetadataResp = await this.runSqlQuery(entitySQL, 1, [referenceId]);
       const entityMetadataRow = entityMetadataResp.data?.[0];
       const entityMetadata = {
         debtorId: entityMetadataRow?.debtor_Id,
@@ -180,11 +181,11 @@ export class AccountLakehouseService extends GoldLakehouseService {
       const accountHolderSql = `
         SELECT *
         FROM account_holder ah
-        WHERE ah.source = '${enhancedEntityId}'
-          AND ah.tenant_id = '${tenantId}'
+        WHERE ah.source = $1
+          AND ah.tenant_id = $2
       `;
 
-      const accountHolderResp = await this.runSqlQuery(accountHolderSql, 100);
+      const accountHolderResp = await this.runSqlQuery(accountHolderSql, 100, [enhancedEntityId, tenantId]);
       const accountHolderRows = accountHolderResp.data ?? [];
 
       //Extract and clean account IDs
@@ -224,14 +225,14 @@ export class AccountLakehouseService extends GoldLakehouseService {
             is_alerted_edge,
             is_investigated_edge
           FROM tx_network_accounts_edges
-          WHERE tenant_id = '${tenantId}'
-            AND bucket_granularity = '${granularity}'
+          WHERE tenant_id = $1
+            AND bucket_granularity = $2
             AND (
-              from_account_id = '${accountId}'
-              OR to_account_id = '${accountId}'
+              from_account_id = $3
+              OR to_account_id = $3
             )
         `;
-        return await this.runSqlQuery(networkSql, 1000);
+        return await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, accountId]);
       });
 
       const networkResponses = await Promise.all(networkQueries);
@@ -301,15 +302,15 @@ export class AccountLakehouseService extends GoldLakehouseService {
         is_alerted_edge,
         is_investigated_edge
       FROM tx_network_counterparties_edges
-      WHERE tenant_id = '${tenantId}'
-        AND bucket_granularity = '${granularity}'
+      WHERE tenant_id = $1
+        AND bucket_granularity = $2
         AND (
-          from_counterparty_id = '${counterpartyId}'
-          OR to_counterparty_id = '${counterpartyId}'
+          from_counterparty_id = $3
+          OR to_counterparty_id = $3
         )
     `;
 
-      const networkResp = await this.runSqlQuery(networkSql, 1000);
+      const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, counterpartyId]);
       const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
 
       const nodesMap = new Map<string, any>();
@@ -374,26 +375,26 @@ export class AccountLakehouseService extends GoldLakehouseService {
         MAX(is_alerted_edge) AS is_alerted,
         MAX(is_investigated_edge) AS is_investigated
       FROM tx_network_counterparties_edges
-      WHERE tenant_id = '${tenantId}'
+      WHERE tenant_id = $1
         AND (
-          from_counterparty_id = '${counterpartyId}'
-          OR to_counterparty_id = '${counterpartyId}'
+          from_counterparty_id = $2
+          OR to_counterparty_id = $2
         )
     `;
 
-      const metricsResp = await this.runSqlQuery(metricsSql, 1);
+      const metricsResp = await this.runSqlQuery(metricsSql, 1, [tenantId, counterpartyId]);
       const metrics = this.stripHudiMetadata(metricsResp.data?.[0] ?? {});
 
       const nameSql = `
       SELECT DISTINCT debtor_name AS holder_name
       FROM transaction_detail td
       JOIN counterparty_account_links cal ON td.debtor_account_id = cal.account_id
-      WHERE td.tenant_id = '${tenantId}'
-        AND cal.counterparty_id = '${counterpartyId}'
+      WHERE td.tenant_id = $1
+        AND cal.counterparty_id = $2
       LIMIT 1
     `;
 
-      const nameResp = await this.runSqlQuery(nameSql, 1);
+      const nameResp = await this.runSqlQuery(nameSql, 1, [tenantId, counterpartyId]);
       const nameRow = nameResp.data?.[0];
 
       const txCount = Number(metrics.transactions ?? 0);
