@@ -491,16 +491,17 @@ describe('TriageService', () => {
       alertService.updateAlert.mockResolvedValue(mockAlert as any);
       taskService.updateTask.mockResolvedValue(mockTask as any);
       taskRepository.updateTask.mockResolvedValue(mockTask as any);
+      caseRepository.updateCase.mockResolvedValue(mockCase as any);
       loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
       caseRepository.findCaseById.mockResolvedValue(mockCase as any);
-      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
       flowableService.handleTaskCompleted.mockResolvedValue(undefined);
 
       const result = await service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123');
 
       expect(result).toHaveProperty('updatedCase');
       expect(result).toHaveProperty('updatedTask');
-      expect(caseCreationService.updateCaseStatus).toHaveBeenCalled();
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_72_AUTOCLOSED_REFUTED });
+      expect(caseCreationService.updateCaseStatus).not.toHaveBeenCalled();
       expect(flowableService.handleTaskCompleted).not.toHaveBeenCalled();
       expect(flowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
     });
@@ -609,15 +610,16 @@ describe('TriageService', () => {
       alertService.updateAlert.mockResolvedValue(mockAlert as any);
       taskService.updateTask.mockResolvedValue(mockTask as any);
       taskRepository.updateTask.mockResolvedValue(mockTask as any);
+      caseRepository.updateCase.mockResolvedValue(mockCase as any);
       loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
       caseRepository.findCaseById.mockResolvedValue(mockCase as any);
-      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
       flowableService.handleTaskCompleted.mockResolvedValue(undefined);
 
       const result = await service.handleAITriage(1, 1, dtoWithInterdiction, 'user-123', 'tenant-123');
 
       expect(result).toHaveProperty('updatedCase');
-      expect(caseCreationService.updateCaseStatus).toHaveBeenCalled();
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED });
+      expect(caseCreationService.updateCaseStatus).not.toHaveBeenCalled();
       expect(flowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
     });
 
@@ -784,7 +786,7 @@ describe('TriageService', () => {
       it('should successfully auto-close case', async () => {
         caseRepository.findCaseById.mockResolvedValue(mockCase as any);
         taskRepository.updateTask.mockResolvedValue(mockTask as any);
-        caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
+        caseRepository.updateCase.mockResolvedValue(mockCase as any);
         loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
 
         const result = await (service as any).autoCloseCase(
@@ -800,7 +802,8 @@ describe('TriageService', () => {
         expect(result).toHaveProperty('updatedCase');
         expect(result).toHaveProperty('updatedTask');
         expect(taskRepository.updateTask).toHaveBeenCalledWith(1, { status: TaskStatus.STATUS_30_COMPLETED });
-        expect(flowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
+        expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_72_AUTOCLOSED_REFUTED });
+        expect(caseCreationService.updateCaseStatus).not.toHaveBeenCalled();
       });
 
       it('should throw NotFoundException when case not found', async () => {
