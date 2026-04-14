@@ -21,6 +21,7 @@ import { PrismaService } from 'prisma/prisma.service';
 import { AlertNavigatorDto, TypologyDto, RuleDto, BlockStatusDto, RelatedLinksDto } from './dto/alert-navigator.dto';
 import { LinkDto, TransactionDetailDto, ChargeDto, CreditorDto, DebtorDto } from './dto/transaction-detail.dto';
 import { setTimeout } from 'node:timers/promises';
+import { TaskRepository } from '../repository/task.repository';
 
 @Injectable()
 export class TriageService {
@@ -36,6 +37,7 @@ export class TriageService {
     private readonly alertRepository: AlertRepository,
     private readonly commentRepository: CommentRepository,
     private readonly caseRepository: CaseRepository,
+    private readonly taskRepository: TaskRepository,
     private readonly flowableService: FlowableService,
     private readonly alertService: AlertService,
     private readonly caseCreationService: CaseCreationApprovalService,
@@ -717,21 +719,22 @@ export class TriageService {
     try {
       const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
 
-      const updatedTask = await this.taskService.updateTask(
-        taskId,
-        {
-          status: TaskStatus.STATUS_30_COMPLETED,
-        },
-        userId,
-        tenantId,
-      );
+      // const updatedTask = await this.taskService.updateTask(
+      //   taskId,
+      //   {
+      //     status: TaskStatus.STATUS_30_COMPLETED,
+      //   },
+      //   userId,
+      //   tenantId,
+      // );
+      const updatedTask = await this.taskRepository.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED });
 
       const updatedCase = await this.caseCreationService.updateCaseStatus(caseId, status, userId, tenantId, undefined, caseType);
 
-      this.flowableService.handleCaseStatusChanged({
-        caseId,
-        newStatus: status,
-      });
+      // this.flowableService.handleCaseStatusChanged({
+      //   caseId,
+      //   newStatus: status,
+      // });
       // this.eventEmitter.emit('case.status.changed', new CaseStatusChangedEvent(caseId, status));
 
       await this.loggingOrchestrationService.logActionsWithHistory(
