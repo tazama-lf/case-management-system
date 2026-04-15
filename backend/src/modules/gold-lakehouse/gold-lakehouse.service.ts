@@ -154,7 +154,7 @@ export class GoldLakehouseService {
       return [row.debtor_account_id, row.creditor_account_id].filter(Boolean) as string[];
     }
 
-    // Try to resolve as entity ID (entity â†’ multiple accounts)
+    // Try to resolve as entity ID (entity -> multiple accounts)
     const resp = await this.query({
       table_name: 'account_holder',
       filters: { source: id, tenant_id: tenantId },

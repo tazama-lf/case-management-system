@@ -106,7 +106,7 @@ export class AlertService {
     }
   }
 
-  async getAlertTransactionalData(alertId: number, tenantId: string): Promise<{ transactionData: transactionDataResponseDTO[] }> {
+  async getAlertTransactionalData(alertId: number, tenantId: string): Promise<{ transactionData: transactionDataResponseDTO }> {
     this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
 
     const alert = await this.alertRepository.getAlertById(alertId);

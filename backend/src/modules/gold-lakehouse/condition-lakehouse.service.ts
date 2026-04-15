@@ -399,6 +399,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         },
       };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Error fetching conditions context by transaction: ${errorMessage}`, errorStack);

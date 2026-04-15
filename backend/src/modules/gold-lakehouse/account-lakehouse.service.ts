@@ -31,8 +31,18 @@ export class AccountLakehouseService extends GoldLakehouseService {
         throw new Error('ReferenceId not found in transaction data');
       }
 
-      const entitySQL =
-        '"SELECT DISTINCT td.debtor_Id, td.debtor_account_id, td.debtor_name, td.creditor_id, td.creditor_account_id, td.creditor_name FROM transaction_detail td WHERE td.end_to_end_id = $1 AND tx_type = \'pacs.008.001.10\'"';
+      const entitySQL = `
+        SELECT 
+        DISTINCT 
+        td.debtor_Id, 
+        td.debtor_account_id, 
+        td.debtor_name, 
+        td.creditor_id, 
+        td.creditor_account_id, 
+        td.creditor_name 
+        FROM transaction_detail td 
+        WHERE td.end_to_end_id = $1 AND tx_type = 'pacs.008.001.10'
+        `;
       const entityMetadataResp = await this.runSqlQuery(entitySQL, 1, [referenceId]);
       const entityMetadataRow = entityMetadataResp.data?.[0];
       const entityMetadata = {

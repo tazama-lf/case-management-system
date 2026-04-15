@@ -160,7 +160,7 @@ export class AlertController {
   async getAlertTransactionalData(
     @Req() req: AuthenticatedRequest,
     @Param('alertId') alertId: number,
-  ): Promise<{ transactionData: transactionDataResponseDTO[] }> {
+  ): Promise<{ transactionData: transactionDataResponseDTO }> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
