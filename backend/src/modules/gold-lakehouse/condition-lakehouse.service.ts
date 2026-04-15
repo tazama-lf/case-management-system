@@ -239,6 +239,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         },
       };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error('Error fetching conditions list by account', errorStack);
       throw new HttpException('Failed to fetch conditions list', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -280,7 +283,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       INNER JOIN transaction_detail td ON (
         (td.debtor_account_id = ct.cond_account_id OR td.creditor_account_id = ct.cond_account_id)
         AND td.tx_event_ts >= ct.cond_inception_ts
-        AND td.tx_event_ts <= ct.cond_expiry_ts
+        AND (ct.cond_expiry_ts IS NULL OR td.tx_event_ts <= ct.cond_expiry_ts)
         AND td.tenant_id = ct.cond_tenant_id
       )
       WHERE ct.cond_account_id = $1
@@ -300,7 +303,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           transactions: [],
           metadata: {
             accountId,
+            totalRecords: 0,
             status: 'DATA_NOT_FOUND',
+            joinMethod: 'Temporal (Time-based)',
             message: 'No transactions found overlapping with condition windows (Temporal Join returned 0 results)',
             queryTimestamp: new Date().toISOString(),
           },
@@ -541,6 +546,11 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           accounts: [],
           conditions: [],
           metadata: {
+            entityId,
+            accountCount: 0,
+            totalConditions: 0,
+            asOfDate: asOfDate ?? 'current',
+            showInactive,
             message: 'No accounts found for this entity',
             queryTimestamp: new Date().toISOString(),
           },
