@@ -334,6 +334,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         },
       };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error('Error fetching evaluated transactions by account', errorStack);
       throw new HttpException('Failed to fetch evaluated transactions', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -607,6 +610,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         },
       };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error('Error fetching conditions by entity', errorStack);
       throw new HttpException('Failed to fetch conditions by entity', HttpStatus.INTERNAL_SERVER_ERROR);

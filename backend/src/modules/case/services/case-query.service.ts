@@ -592,10 +592,6 @@ export class CaseQueryService {
       });
 
       const processedCases = cases.map((caseItem) => {
-        this.logger.log(
-          `CaseDetails:${JSON.stringify(caseItem)} Case${caseItem.case_id} parentId: ${caseItem.parent_id} `,
-          CaseQueryService.name,
-        );
         const taskCounts = this.taskValidationUtil.getTaskStatusCounts(caseItem.tasks);
         const assignedUsers = [...new Set(caseItem.tasks.map((t) => t.assigned_user_id).filter(Boolean))];
         return {
