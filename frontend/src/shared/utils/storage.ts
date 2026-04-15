@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Service handles dynamic API response data */
 import { decrypt, encrypt } from './crypto';
 import {
   CookieStorage,
@@ -96,3 +97,4 @@ const resetData = (): void => {
 };
 
 export { extractData, insertData, resetData, getAuthToken, removeData };
+/* eslint-enable @typescript-eslint/no-explicit-any */

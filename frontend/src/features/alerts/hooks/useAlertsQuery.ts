@@ -60,10 +60,10 @@ export const useAlerts = (
   });
 
   return {
-    alerts: (data?.alerts || []).map((alert) =>
+    alerts: (data?.alerts ?? []).map((alert) =>
       transformBackendAlertToUI(alert),
     ),
-    pagination: data?.pagination || {
+    pagination: data?.pagination ?? {
       currentPage: 1,
       totalPages: 1,
       totalItems: 0,
@@ -73,8 +73,8 @@ export const useAlerts = (
     isFetching,
     isError,
     error,
-    refetch,
-    refreshAlerts: refetch,
+    refetch: (): void => { void refetch(); },
+    refreshAlerts: (): void => { void refetch(); },
   };
 };
 
@@ -102,7 +102,7 @@ export const useAlertDetails = (
     alert,
     isLoading,
     error,
-    refetch,
+    refetch: (): void => { void refetch(); },
   };
 };
 
@@ -170,7 +170,7 @@ export const useAlertOperations = (): {
     }) => await triageService.closeAlert(alertId, status, notes),
     onSuccess: (data, variables) => {
       // showSuccess('Alert closed successfully');
-      queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),
         (oldData: Alert | undefined) =>
@@ -183,7 +183,7 @@ export const useAlertOperations = (): {
           alertsQueryKeys.detail(variables.alertId),
         )?.case_id;
       if (caseId) {
-        queryClient.invalidateQueries({ queryKey: ['case', caseId] });
+        void queryClient.invalidateQueries({ queryKey: ['case', caseId] });
       }
     },
     onError: (error: Error) => {
@@ -200,9 +200,9 @@ export const useAlertOperations = (): {
       data: Record<string, unknown>;
     }) => await triageService.updateAlert(alertId, data),
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
       // Refetch the specific alert detail
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: alertsQueryKeys.detail(variables.alertId),
       });
       queryClient.setQueryData(
@@ -217,7 +217,7 @@ export const useAlertOperations = (): {
           alertsQueryKeys.detail(variables.alertId),
         )?.case_id;
       if (caseId) {
-        queryClient.invalidateQueries({ queryKey: ['case', caseId] });
+        void queryClient.invalidateQueries({ queryKey: ['case', caseId] });
       }
     },
     onError: (error: Error) => {
@@ -235,7 +235,7 @@ export const useAlertOperations = (): {
     }) => await triageService.performManualTriage(alertId, data),
     onSuccess: (data, variables) => {
       // showSuccess('Manual triage completed successfully');
-      queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: alertsQueryKeys.lists() });
       queryClient.setQueryData(
         alertsQueryKeys.detail(variables.alertId),
         (oldData: Alert | undefined) =>

@@ -103,6 +103,8 @@ export const transformBackendCaseToUI = (
       .sort((a, b) => b.task_id - a.task_id)[0] ?? null;
   const sarStrStatus = sarStrTask?.status ?? 'N/A';
 
+  const alert = backendCase.alert;
+
   return {
     id: backendCase.case_id,
     type: backendCase.case_type,
@@ -110,8 +112,8 @@ export const transformBackendCaseToUI = (
     status: formatStatus(backendCase.status),
     statusColor: getStatusColor(backendCase.status),
     typologyId:
-      backendCase.alert.alert_id.toString().substring(0, 8) || 'N/A',
-    score: backendCase.alert.confidence_per || 0,
+      alert?.alert_id?.toString().substring(0, 8) ?? 'N/A',
+    score: alert?.confidence_per ?? 0,
     createdOn: formatDate(backendCase.created_at),
     pickedOn:
       backendCase.user_role === 'owner'
@@ -119,14 +121,14 @@ export const transformBackendCaseToUI = (
         : '-',
     action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
     assignee:
-      backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User', //Check with Umair
+      backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User',
     priority: backendCase.priority,
     userRole: backendCase.user_role,
     totalTasks: backendCase.total_tasks,
-    alertId: backendCase.alert.alert_id,
-    alertMessage: backendCase.alert.message,
-    confidencePercent: backendCase.alert.confidence_per,
-    transaction: backendCase.alert.transaction,
+    alertId: alert?.alert_id ?? 0,
+    alertMessage: alert?.message,
+    confidencePercent: alert?.confidence_per,
+    transaction: alert?.transaction,
     tasks: backendCase.tasks,
     parentId: backendCase.parent_id,
     sarStrStatus,

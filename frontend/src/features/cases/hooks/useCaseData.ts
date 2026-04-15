@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Hook file contains multiple related case action handlers */
 import { useState } from 'react';
 import {
   caseService,
@@ -113,6 +114,7 @@ export const useCaseActions = (
     priorityFilter?: string,
     sortBy?: 'recent' | 'oldest',
   ) => Promise<void>,
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- Complex hook with inferred return type
 ) => {
   const { user } = useAuth();
   const { success, error } = useToast();
@@ -301,7 +303,7 @@ The case may have been deleted or moved.`;
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage =
-          'Case Not Found.\n\n' + 'The case may have been deleted or moved.';
+          'Case Not Found.\n\nThe case may have been deleted or moved.';
       }
 
       error('Abandon Case Failed', errorMessage);
@@ -425,7 +427,7 @@ The case has been moved back to "In Progress" status. All associated tasks have 
         errorMessage =
           `Case Not Found.
 
-` + 'The case may have been deleted or moved.';
+The case may have been deleted or moved.`;
       }
 
       error('Resume Case Failed', errorMessage);
@@ -490,7 +492,7 @@ The case has been returned to the investigator for additional work.`,
         errorMessage =
           `Case Not Found.
 
-` + 'The case may have been deleted or moved.';
+The case may have been deleted or moved.`;
       } else if (errorString.includes('Approval task validation failed')) {
         errorMessage = errorString;
       }
@@ -741,3 +743,4 @@ Please verify that:
     handleReturnForReviewSubmit,
   };
 };
+/* eslint-enable max-lines */

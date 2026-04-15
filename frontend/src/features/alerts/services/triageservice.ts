@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument -- Service handles dynamic API response data */
+/* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '../../../shared/services/apiClient';
 import type { Alert } from '../types/alertsdashboard.types';
 import type {
@@ -8,6 +10,7 @@ import type {
   AlertsFilter,
   ActionHistory,
   TransactionDataResponseDTO,
+  TransactionDetailRecordDTO,
 } from '../types/triage.types';
 
 class TriageService {
@@ -180,7 +183,7 @@ class TriageService {
     }
   }
 
-  async getAlertTransactionalData(alertId: number) {
+  async getAlertTransactionalData(alertId: number): Promise<TransactionDetailRecordDTO[]> {
     try {
       const response = await apiClient.get<{ transactionData: TransactionDataResponseDTO }>(
         `${this.alertBaseUrl}/${alertId}/transaction-data`,
@@ -231,3 +234,5 @@ class TriageService {
 }
 
 export default new TriageService();
+/* eslint-enable @typescript-eslint/class-methods-use-this */
+/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */

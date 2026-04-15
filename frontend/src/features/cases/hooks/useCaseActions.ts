@@ -10,7 +10,7 @@ import { useReopenCaseActions } from './useReopenCaseActions';
 export const useCaseActions = (
   refreshCases: () => Promise<void>,
 ): {
-  handleCloseCaseSubmit: (caseId: number, data: any) => Promise<void>;
+  handleCloseCaseSubmit: (caseId: number, data: CloseCaseDto) => Promise<void>;
   handleAbandonSubmit: (caseId: number, reason: string) => Promise<void>;
   handleSuspendSubmit: (
     caseId: number,
@@ -21,7 +21,10 @@ export const useCaseActions = (
   handleReopenSubmit: (caseId: number, reason: string) => Promise<void>;
   handleApproveClosureSubmit: (
     caseId: number,
-    finalOutcome: any,
+    finalOutcome:
+      | 'STATUS_81_CLOSED_REFUTED'
+      | 'STATUS_82_CLOSED_CONFIRMED'
+      | 'STATUS_83_CLOSED_INCONCLUSIVE',
     supervisorComments?: string,
   ) => Promise<void>;
   handleApproveCreation: (caseId: number) => Promise<void>;

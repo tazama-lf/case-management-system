@@ -6,9 +6,12 @@ import type {
   FindingDetail,
 } from '@/features/reports/types/reports.types';
 
-(pdfMake as any).vfs = (pdfFonts as any).vfs;
+interface PdfMakeStatic { vfs: Record<string, string>; createPdf: (docDefinition: Record<string, unknown>) => { download: (filename: string) => void } }
+interface PdfTableNode { table: { body: unknown[][]; widths: unknown[] } }
 
-export type ExportData = Record<string, any>;
+(pdfMake as unknown as PdfMakeStatic).vfs = (pdfFonts as unknown as { vfs: Record<string, string> }).vfs;
+
+export type ExportData = Record<string, unknown>;
 
 export interface TableColumn {
   key: string;
@@ -22,11 +25,11 @@ export const exportToExcel = (
   sheetName = 'Data',
 ): void => {
   try {
-    if (!data || data.length === 0) {
+    if (data.length === 0) {
       throw new Error('No data to export');
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
+    const worksheet = XLSX.utils.json_to_sheet(data as Array<Record<string, unknown>>);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
@@ -34,7 +37,7 @@ export const exportToExcel = (
       const colWidths = Object.keys(data[0] ?? {}).map((key) => ({
         wch: Math.max(
           key.length,
-          ...data.map((row) => String(row[key] ?? '').length),
+          ...data.map((row) => String((row[key] ?? '') as string | number).length),
         ),
       }));
       worksheet['!cols'] = colWidths;
@@ -43,7 +46,7 @@ export const exportToExcel = (
     const excelBuffer = XLSX.write(workbook, {
       bookType: 'xlsx',
       type: 'array',
-    });
+    }) as BlobPart;
     const blob = new Blob([excelBuffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
@@ -56,7 +59,7 @@ export const exportToExcel = (
 
 export const exportToCSV = (data: ExportData[], filename: string): void => {
   try {
-    if (!data || data.length === 0) {
+    if (data.length === 0) {
       throw new Error('No data to export');
     }
 
@@ -75,7 +78,7 @@ export const exportToCSV = (data: ExportData[], filename: string): void => {
             ) {
               return `"${value.replace(/"/gu, '""')}"`;
             }
-            return value ?? '';
+            return String((value ?? '') as string | number);
           })
           .join(','),
       ),
@@ -89,14 +92,14 @@ export const exportToCSV = (data: ExportData[], filename: string): void => {
   }
 };
 
-export const exportToPDF = async (
+export const exportToPDF = (
   data: ExportData[],
   filename: string,
   title: string,
   columns: TableColumn[],
-): Promise<void> => {
+): void => {
   try {
-    if (!data || data.length === 0) {
+    if (data.length === 0) {
       throw new Error('No data to export');
     }
 
@@ -123,7 +126,7 @@ export const exportToPDF = async (
           let displayValue = '';
 
           if (value !== undefined && value !== null) {
-            displayValue = String(value);
+            displayValue = String(value as string | number);
           }
 
           return {
@@ -184,15 +187,15 @@ export const exportToPDF = async (
                   ? '#f3f4f6'
                   : '#ffffff';
             },
-            hLineWidth: function (i: number, node: any) {
+            hLineWidth: function (i: number, node: PdfTableNode) {
               return i === 0 || i === 1 || i === node.table.body.length
                 ? 1
                 : 0.5;
             },
-            vLineWidth: function (i: number, node: any) {
+            vLineWidth: function (i: number, node: PdfTableNode) {
               return i === 0 || i === node.table.widths.length ? 1 : 0.5;
             },
-            hLineColor: function (i: number, node: any) {
+            hLineColor: function (i: number, node: PdfTableNode) {
               return i === 0 || i === 1 || i === node.table.body.length
                 ? '#1f2937'
                 : '#d1d5db';
@@ -257,7 +260,7 @@ export const exportToPDF = async (
       },
     };
 
-    const pdfDoc = (pdfMake as any).createPdf(docDefinition);
+    const pdfDoc = (pdfMake as unknown as PdfMakeStatic).createPdf(docDefinition);
     pdfDoc.download(`${filename}.pdf`);
   } catch (error: unknown) {
     console.error('Error exporting to PDF:', error);
@@ -266,7 +269,7 @@ export const exportToPDF = async (
 };
 
 export const formatDataForExport = (
-  data: any[],
+  data: Array<Record<string, unknown>>,
   reportType: string,
 ): ExportData[] => {
   switch (reportType) {
@@ -280,73 +283,70 @@ export const formatDataForExport = (
       }));
 
     case 'TASK_COMPLETION':
-      return data.map((item) => ({
-        'Task Type': item.taskType ?? '',
-        Total: item.total ?? 0,
-        Completed: item.completed ?? 0,
-        'Completion Rate': `${item.completionRate ?? 0}%`,
-        'Avg Time (Days)': item.avgTime ?? 0,
-        Trend: `${item.trend > 0 ? '+' : ''}${item.trend ?? 0}%`,
-      }));
+      return data.map((rawItem) => {
+        const item = rawItem as Record<string, string | number | undefined>;
+        return {
+          'Task Type': item.taskType ?? '',
+          Total: item.total ?? 0,
+          Completed: item.completed ?? 0,
+          'Completion Rate': `${String(item.completionRate ?? 0)}%`,
+          'Avg Time (Days)': item.avgTime ?? 0,
+          Trend: `${Number(item.trend ?? 0) > 0 ? '+' : ''}${String(item.trend ?? 0)}%`,
+        };
+      });
 
     case 'AUDIT_LOGS':
-      return data.map((item) => ({
-        'Log ID': String(item.audit_log_id ?? item.logId ?? item.id ?? ''),
-        'User ID': String(item.user_id ?? item.userId ?? item.user ?? ''),
-        Operation: item.operation ?? '',
-        'Entity Name': item.entity_name ?? item.entityName ?? '',
-        'Action Performed':
-          item.action_performed ?? item.actionPerformed ?? item.action ?? '',
-        Outcome: item.outcome ?? '',
-        'Performed At':
-          item.performed_at ?? item.performedAt ?? item.timestamp ?? '',
-        Type: item.type ?? 'Info',
-      }));
+      return data.map((rawItem) => {
+        const item = rawItem as Record<string, string | number | undefined>;
+        return {
+          'Log ID': String(item.audit_log_id ?? item.logId ?? item.id ?? ''),
+          'User ID': String(item.user_id ?? item.userId ?? item.user ?? ''),
+          Operation: item.operation ?? '',
+          'Entity Name': item.entity_name ?? item.entityName ?? '',
+          'Action Performed':
+            item.action_performed ?? item.actionPerformed ?? item.action ?? '',
+          Outcome: item.outcome ?? '',
+          'Performed At':
+            item.performed_at ?? item.performedAt ?? item.timestamp ?? '',
+          Type: item.type ?? 'Info',
+        };
+      });
 
     case 'CASE_AGEING':
-      return data.map((item) => ({
-        'Case ID': String(item.caseId ?? item.case_id ?? item.id ?? ''),
-        Type: item.type ?? item.caseType ?? '',
-        Status: item.status ?? '',
-        'Created Date':
-          item.createdDate ?? item.created_date ?? item.createdAt ?? '',
-        'Age (Days)': item.ageDays ?? item.age_days ?? item.age ?? 0,
-        Priority: item.priority ?? 'Normal',
-        'User ID': String(
-          item.userId ??
-            item.user_id ??
-            item.assigneeId ??
-            item.assignee_id ??
-            '',
-        ),
-        Investigator:
-          item.investigator ??
-          item.assignee ??
-          item.assigned_to ??
-          'Unassigned',
-      }));
+      return data.map((rawItem) => {
+        const item = rawItem as Record<string, string | number | undefined>;
+        return {
+          'Case ID': String(item.caseId ?? item.case_id ?? item.id ?? ''),
+          Type: item.type ?? item.caseType ?? '',
+          Status: item.status ?? '',
+          'Created Date':
+            item.createdDate ?? item.created_date ?? item.createdAt ?? '',
+          'Age (Days)': item.ageDays ?? item.age_days ?? item.age ?? 0,
+          Priority: item.priority ?? 'Normal',
+          'User ID': String(
+            item.userId ?? item.user_id ?? item.assigneeId ?? item.assignee_id ?? '',
+          ),
+          Investigator:
+            item.investigator ?? item.assignee ?? item.assigned_to ?? 'Unassigned',
+        };
+      });
 
     case 'INVESTIGATOR_WORKLOAD':
-      return data.map((item) => ({
-        'Investigator ID': String(
-          item.investigatorId ??
-            item.investigator_id ??
-            item.userId ??
-            item.user_id ??
-            '',
-        ),
-        Investigator:
-          item.investigator ?? item.name ?? item.fullName ?? 'Unknown',
-        Role: item.role ?? 'Investigator',
-        'Active Cases': item.activeCases ?? item.active_cases ?? 0,
-        'Completed Cases': item.completedCases ?? item.completed_cases ?? 0,
-        'Avg Resolution Time (Days)':
-          item.avgResolutionTime ?? item.avg_resolution_time ?? 0,
-        'Case Closure Rate (%)':
-          item.caseClosureRate ?? item.case_closure_rate ?? 0,
-        'Performance Trend':
-          item.performanceTrend ?? item.performance_trend ?? 'Stable',
-      }));
+      return data.map((rawItem) => {
+        const item = rawItem as Record<string, string | number | undefined>;
+        return {
+          'Investigator ID': String(
+            item.investigatorId ?? item.investigator_id ?? item.userId ?? item.user_id ?? '',
+          ),
+          Investigator: item.investigator ?? item.name ?? item.fullName ?? 'Unknown',
+          Role: item.role ?? 'Investigator',
+          'Active Cases': item.activeCases ?? item.active_cases ?? 0,
+          'Completed Cases': item.completedCases ?? item.completed_cases ?? 0,
+          'Avg Resolution Time (Days)': item.avgResolutionTime ?? item.avg_resolution_time ?? 0,
+          'Case Closure Rate (%)': item.caseClosureRate ?? item.case_closure_rate ?? 0,
+          'Performance Trend': item.performanceTrend ?? item.performance_trend ?? 'Stable',
+        };
+      });
 
     case 'EVIDENCE_FINDINGS':
       return (data as FindingDetail[]).reduce<Array<Record<string, string>>>(
@@ -377,16 +377,16 @@ export const formatDataForExport = (
       );
 
     default:
-      return data.map((item) => {
+      return data.map((item: Record<string, unknown>) => {
         const formatted: ExportData = {};
         Object.keys(item).forEach((key) => {
-          const value = item[key];
+          const value: unknown = item[key];
 
           if (
             key.toLowerCase().includes('id') ||
             key.toLowerCase().includes('case')
           ) {
-            formatted[key] = String(value ?? '');
+            formatted[key] = String((value ?? '') as string | number);
           } else {
             formatted[key] = value;
           }

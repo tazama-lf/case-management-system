@@ -12,6 +12,7 @@ export const useCloseCaseActions = (refreshCases: () => Promise<void>): {
     try {
       await caseService.closeCase(caseId, data);
       const user = authService.getUser();
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive: user may be null at runtime if session expired
       const isSupervisor = Boolean(user?.validatedClaims?.CMS_SUPERVISOR);
 
       success(

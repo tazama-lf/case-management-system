@@ -117,6 +117,7 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- Hook return type is inferred
 export const useAlerts = () => {
   const [state, dispatch] = useReducer(alertsReducer, initialState);
 

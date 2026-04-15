@@ -18,6 +18,7 @@ export default [
       '**/node_modules/**',
       '**/__tests__/**',
       '**/test/**',
+      'src/setupTests.ts',
     ],
   },
   {

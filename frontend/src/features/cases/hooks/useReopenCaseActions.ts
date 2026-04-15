@@ -13,8 +13,9 @@ export const useReopenCaseActions = (
 
   React.useEffect(() => {
     const user = authService.getUser();
-    const isSupervisor = user?.validatedClaims?.CMS_SUPERVISOR === true;
-    setIsSupervisor(isSupervisor);
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive: user may be null at runtime if session expired
+    const supervisorFlag = user?.validatedClaims?.CMS_SUPERVISOR === true;
+    setIsSupervisor(supervisorFlag);
   }, []);
 
   const handleReopenSubmit = async (
@@ -28,13 +29,13 @@ export const useReopenCaseActions = (
 
       await caseService.reopenCase(caseId, reopenCaseData);
 
-      {
-        isSupervisor
-          ? success('Case Reopened', `Case ${caseId} reopened successfully.`)
-          : success(
-              'Reopen Request Submitted',
-              `Reopen request for case ${caseId} submitted. Reason: ${reason}`,
-            );
+      if (isSupervisor) {
+        success('Case Reopened', `Case ${caseId} reopened successfully.`);
+      } else {
+        success(
+          'Reopen Request Submitted',
+          `Reopen request for case ${caseId} submitted. Reason: ${reason}`,
+        );
       }
       await refreshCases();
     } catch (err) {

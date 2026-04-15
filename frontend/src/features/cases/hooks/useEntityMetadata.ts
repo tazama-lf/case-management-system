@@ -31,5 +31,5 @@ export const useEntityMetadata = (
     enabled: !!alertId && !!tenantId,
   });
 
-  return { entityMetadata, error, isLoading, refetch };
+  return { entityMetadata, error, isLoading, refetch: (): void => { void refetch(); } };
 };

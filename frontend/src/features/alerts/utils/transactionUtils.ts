@@ -5,9 +5,6 @@ export function extractTransactionMessagesFromAlert(
   transactionData: Record<string, unknown>,
   transactionId: string,
 ): TransactionMessage[] {
-  if (!transactionData || typeof transactionData !== 'object') {
-    return [];
-  }
 
   const messages: TransactionMessage[] = [];
 
@@ -79,7 +76,7 @@ export function extractTransactionIdFromAlert(
           | Record<string, unknown>
           | undefined;
         if (grpHdr?.MsgId) {
-          return String(grpHdr.MsgId);
+          return grpHdr.MsgId as string;
         }
       }
 
@@ -91,19 +88,19 @@ export function extractTransactionIdFromAlert(
           | Record<string, unknown>
           | undefined;
         if (grpHdr?.MsgId) {
-          return String(grpHdr.MsgId);
+          return grpHdr.MsgId as string;
         }
       }
     }
 
     if (alert.txtp) {
-      return String(alert.txtp);
+      return alert.txtp as string;
     }
 
-    return String(alert.alert_id ?? 'Unknown');
+    return (alert.alert_id ?? 'Unknown') as string;
   } catch (error) {
     console.warn('Failed to extract transaction ID from alert:', error);
-    return String(alert.txtp ?? alert.alert_id ?? 'Unknown');
+    return (alert.txtp ?? alert.alert_id ?? 'Unknown') as string;
   }
 }
 

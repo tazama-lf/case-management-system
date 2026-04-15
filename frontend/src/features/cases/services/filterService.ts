@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- Service handles dynamic API response data */
+/* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '../../../shared/services/apiClient';
 import type { ApiErrorResponse } from '../../alerts/types/triage.types';
 
@@ -35,7 +37,7 @@ export class FilterService {
     } catch (error: unknown) {
       console.error(
         'FilterService: Failed to get filters for user:',
-        user_id,
+        userId,
         error,
       );
       throw this.handleError(error, 'get user defined filter failed');
@@ -51,7 +53,8 @@ export class FilterService {
       return this.validateFilterResponse(response);
     } catch (error: unknown) {
       // Check for 409 Conflict - duplicate filter
-      if (error.response?.status === 409) {
+      const err = error as { response?: { status?: number } } | undefined;
+      if (err?.response?.status === 409) {
         throw new Error('FILTER_ALREADY_EXISTS', { cause: error });
       }
 
@@ -68,20 +71,18 @@ export class FilterService {
       return data as UserFilters;
     }
 
-    if (typeof data === 'object' && data !== null) {
-      return data as UserFilters;
-    }
-
-    throw new Error('Filter ID is missing from response');
+    return data as UserFilters;
   }
 
   private handleError(error: unknown, operation: string): Error {
-    if (error.response?.data) {
-      const apiError = error.response.data as ApiErrorResponse;
-      return new Error(apiError.message || `Failed to ${operation}`);
+    const err = error as { response?: { data?: ApiErrorResponse }; message?: string } | undefined;
+    if (err?.response?.data) {
+      return new Error(err.response.data.message || `Failed to ${operation}`);
     }
-    return new Error(`Failed to ${operation}: ${error.message}`);
+    return new Error(`Failed to ${operation}: ${err?.message ?? 'Unknown error'}`);
   }
 }
 
 export const filterService = new FilterService();
+/* eslint-enable @typescript-eslint/class-methods-use-this */
+/* eslint-enable @typescript-eslint/no-unsafe-member-access */

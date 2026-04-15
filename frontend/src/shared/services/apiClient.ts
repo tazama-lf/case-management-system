@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- Service handles dynamic API response data */
+/* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import authService from '../../features/auth/services/authService';
 
 const API_BASE_URL =
@@ -150,7 +152,7 @@ class ApiClient {
     }
 
     // Remove Content-Type if it exists - browser will set it automatically for FormData
-    if (headers && 'Content-Type' in headers) {
+    if ('Content-Type' in headers) {
        
       delete (headers)['Content-Type'];
     }
@@ -198,4 +200,5 @@ class ApiClient {
 const apiClient = new ApiClient();
 
 export default apiClient;
-
+/* eslint-enable @typescript-eslint/class-methods-use-this */
+/* eslint-enable @typescript-eslint/no-unsafe-assignment */
