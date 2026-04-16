@@ -368,8 +368,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
       const filterDate = asOfDate ?? tx.tx_event_ts;
 
-      const displayId = `TXN-${tx.tx_event_date?.replace(/-/gv, '')}${transactionId}`;
-
+      // const displayId = `TXN-${tx.tx_event_date?.replace(/-/gv, '')}${transactionId}`;
+      const dateSegment = tx.tx_event_date?.replace(/-/gv, '') ?? '';
+      const displayId = `TXN-${dateSegment}${transactionId}`;
       const debtorAccounts = await this.getEntityAccountsWithConditionCounts(tx.debtor_id, tx.debtor_account_id, tenantId, filterDate);
 
       const creditorAccounts = await this.getEntityAccountsWithConditionCounts(
@@ -516,8 +517,11 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       return accountsWithCounts;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Error fetching entity accounts with condition counts: ${errorMessage}`);
-      return [];
+      this.logger.error(
+        `Error fetching entity accounts with condition counts: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw error;
     }
   }
 
