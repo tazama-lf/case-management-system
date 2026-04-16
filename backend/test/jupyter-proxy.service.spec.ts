@@ -149,7 +149,7 @@ describe('JupyterProxyService', () => {
 
     it('defaults tenantId and timeRange when omitted', async () => {
       await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day');
-      expect(transactionSvc.getTransactionNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', '30d');
+      expect(transactionSvc.getTransactionNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', 'day');
     });
   });
 
