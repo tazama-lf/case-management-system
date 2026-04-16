@@ -7,7 +7,7 @@ export class JupyterService {
 
   constructor(private readonly configService: ConfigService) {
     // Require VOILA_URL to be provided via environment / config
-    this.voilaUrl = this.configService.getOrThrow<string>('VOILA_URL') || 'http://10.10.80.19:8866';
+    this.voilaUrl = this.configService.getOrThrow<string>('VOILA_URL');
   }
 
   getVisualizationUrl(notebookName: string, params: Record<string, string>): string {
@@ -20,6 +20,7 @@ export class JupyterService {
       'transaction-history': 'transaction-viz.ipynb',
       'alert-history': 'alert-history.ipynb',
       'transaction-network': 'transaction-network.ipynb',
+      'conditions-timeline': 'conditions-timeline.ipynb',
     };
 
     const filename = notebookMapping[notebookName];

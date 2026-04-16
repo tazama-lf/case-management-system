@@ -11,16 +11,17 @@ WORKDIR /home/app
 
 COPY ./src ./src
 COPY ./prisma ./prisma
-COPY ./prismaDWH ./prismaDWH
 COPY ./package*.json ./
 COPY ./tsconfig.json ./
 COPY .npmrc ./
 COPY ./migrate.sh ./migrate.sh
 
+# Ensure shell script is Linux-compatible even when checked out with CRLF on Windows.
+RUN sed -i 's/\r$//' /home/app/migrate.sh && chmod +x /home/app/migrate.sh
+
 RUN --mount=type=secret,id=GH_TOKEN,env=GH_TOKEN npm ci --ignore-scripts
 
 RUN npx prisma generate
-RUN npx prisma generate --schema=prismaDWH/schema.dwh.prisma
 
 RUN npm run build
 

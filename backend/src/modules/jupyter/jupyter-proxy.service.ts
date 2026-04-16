@@ -1,45 +1,40 @@
 import { Injectable } from '@nestjs/common';
-import { GoldLakehouseService } from '../gold-lakehouse/gold-lakehouse.service';
+import { TransactionLakehouseService } from '../gold-lakehouse/transaction-lakehouse.service';
+import { AccountLakehouseService } from '../gold-lakehouse/account-lakehouse.service';
+import { AlertsLakehouseService } from '../gold-lakehouse/alerts-lakehouse.service';
+import { BenfordsLawLakehouseService } from '../gold-lakehouse/benfordsLaw-lakehouse.service';
+import { ConditionLakehouseService } from '../gold-lakehouse/condition-lakehouse.service';
 import { CounterpartyNetworkResponseDto, TransactionNetworkResponseDto } from '../gold-lakehouse/dto/network-analysis.dto';
-import { Alerts, Edge, Node } from '../gold-lakehouse/types/gold-lakehouse.types';
+import {
+  AccountNodeFullDataResponse,
+  ConditionsContextByTransactionResponse,
+  CounterpartyNodeFullDataResponse,
+  EvaluatedTransactionsResponse,
+} from '../gold-lakehouse/types/gold-lakehouse-responses.types';
+import { AccountConditionsSummary, ConditionsListByAccountResponse } from '../gold-lakehouse/types/IAccountConditions.types';
+import { AlertHistoryAlertsResponse } from '../gold-lakehouse/types/IAlertHistory.types';
+import { TransactionHistoryResponse } from '../gold-lakehouse/types/transaction-history-response.types';
 
 @Injectable()
 export class JupyterProxyService {
-  constructor(private readonly goldLakehouseService: GoldLakehouseService) {}
+  constructor(
+    private readonly transactionLakehouseService: TransactionLakehouseService,
+    private readonly accountLakehouseService: AccountLakehouseService,
+    private readonly alertsLakehouseService: AlertsLakehouseService,
+    private readonly benfordsLawLakehouseService: BenfordsLawLakehouseService,
+    private readonly conditionLakehouseService: ConditionLakehouseService,
+  ) {}
 
   async getCounterpartyNetworkData(accountId: string, tenantId: string, timeRange: string): Promise<CounterpartyNetworkResponseDto> {
-    return await this.goldLakehouseService.getCounterpartyNetworkData(accountId, tenantId, timeRange);
+    return await this.transactionLakehouseService.getCounterpartyNetworkData(accountId, tenantId, timeRange);
   }
 
   async getCounterpartyNodeFullData(
     counterpartyId: string,
     tenantId: string,
     granularity: 'day' | 'month' | 'year' = 'month',
-  ): Promise<{
-    network: {
-      rootNodeId: string;
-      nodes: Node[];
-      edges: Edge[];
-    };
-    counterpartyDetails: {
-      counterpartyId: string;
-      name: string;
-      type: string;
-      transactions: number;
-      totalValue: number;
-      velocity: string;
-      flags: {
-        alerted: boolean;
-        investigated: boolean;
-      };
-    };
-    meta: {
-      tenantId: string;
-      granularity: 'day' | 'month' | 'year';
-      generatedAt: string;
-    };
-  }> {
-    return await this.goldLakehouseService.getCounterpartyNodeFullData(counterpartyId, tenantId, granularity);
+  ): Promise<CounterpartyNodeFullDataResponse> {
+    return await this.accountLakehouseService.getCounterpartyNodeFullData(counterpartyId, tenantId, granularity);
   }
 
   async getAlertHistorySummary(
@@ -53,21 +48,27 @@ export class JupyterProxyService {
     sarFilings: number;
     totalValue: number;
   }> {
-    return await this.goldLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all');
+    return await this.alertsLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all');
   }
 
   async getTransactionHistoryData(
-    entityId: string,
+    accountId: string,
     tenantId?: string,
     startDate?: string,
     endDate?: string,
     granularity?: string,
-  ): Promise<unknown> {
-    return await this.goldLakehouseService.getTransactionHistoryData(entityId, tenantId ?? 'DEFAULT', startDate, endDate, granularity);
+  ): Promise<TransactionHistoryResponse> {
+    return await this.transactionLakehouseService.getTransactionHistoryByAccountId(
+      accountId,
+      tenantId ?? 'DEFAULT',
+      startDate,
+      endDate,
+      granularity,
+    );
   }
 
   async getAlertHistoryTimeline(endToEndId?: string, tenantId?: string, dateRange?: string, granularity = 'day'): Promise<unknown> {
-    return await this.goldLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity);
+    return await this.alertsLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity);
   }
 
   async getAlertHistoryAlerts(
@@ -76,51 +77,20 @@ export class JupyterProxyService {
     dateRange?: string,
     page = 1,
     limit = 20,
-  ): Promise<{
-    alerts: Alerts[];
-    pagination: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
-  }> {
-    return await this.goldLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page, limit);
+  ): Promise<AlertHistoryAlertsResponse> {
+    return await this.alertsLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page, limit);
   }
 
-  async getTransactionNetworkData(accountId: string, tenantId?: string, timeRange?: string): Promise<TransactionNetworkResponseDto> {
-    return await this.goldLakehouseService.getTransactionNetworkData(accountId, tenantId ?? 'DEFAULT', timeRange ?? '30d');
+  async getTransactionNetworkData(accountId: string, tenantId: string, timeRange: string): Promise<TransactionNetworkResponseDto> {
+    return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId, timeRange);
   }
 
   async getAccountNetworkData(
-    accountId: string,
+    entityId: string,
     tenantId?: string,
     granularity: 'day' | 'month' | 'year' = 'month',
-  ): Promise<{
-    network: {
-      rootNodeId: string;
-      nodes: Node[];
-      edges: Edge[];
-    };
-    accountDetails: {
-      accountId: string;
-      accountHolder: string;
-      relationship: string;
-      transactions: number;
-      totalValue: number;
-      velocity: string;
-      flags: {
-        alerted: boolean;
-        investigated: boolean;
-      };
-    };
-    meta: {
-      tenantId: string;
-      granularity: 'day' | 'month' | 'year';
-      generatedAt: string;
-    };
-  }> {
-    return await this.goldLakehouseService.getAccountNodeFullData(accountId, tenantId ?? 'DEFAULT', granularity);
+  ): Promise<AccountNodeFullDataResponse> {
+    return await this.accountLakehouseService.getAccountNodeFullData(entityId, tenantId ?? 'DEFAULT', granularity);
   }
 
   async getBenfordByAccount(
@@ -139,6 +109,33 @@ export class JupyterProxyService {
       toDate: string;
     };
   }> {
-    return await this.goldLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, from, to);
+    return await this.benfordsLawLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, from, to);
+  }
+
+  // ================ CONDITIONS PROXY METHODS ================
+
+  async getConditionsContextByTransaction(
+    transactionId: string,
+    tenantId: string,
+    asOfDate?: string,
+  ): Promise<ConditionsContextByTransactionResponse> {
+    return await this.conditionLakehouseService.getConditionsContextByTransaction(transactionId, tenantId, asOfDate);
+  }
+
+  async getConditionsSummary(accountId: string, tenantId: string, asOfDate?: string): Promise<AccountConditionsSummary> {
+    return await this.conditionLakehouseService.getConditionsSummaryByAccount(accountId, tenantId, undefined, asOfDate);
+  }
+
+  async getConditionsDetails(
+    accountId: string,
+    tenantId: string,
+    asOfDate?: string,
+    showInactive?: boolean,
+  ): Promise<ConditionsListByAccountResponse> {
+    return await this.conditionLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive ?? false);
+  }
+
+  async getConditionsEvaluatedTransactions(accountId: string, tenantId: string, fromDate?: string): Promise<EvaluatedTransactionsResponse> {
+    return await this.conditionLakehouseService.getEvaluatedTransactionsByAccount(accountId, tenantId, fromDate);
   }
 }

@@ -7,11 +7,15 @@ import LinkedItemsTab from './view/LinkedItemsTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import InvestigationSummaryTab from './view/InvestigationsSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
+import VisualizationsTab from './view/VisualizationsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
+import { caseService } from '../services/caseService';
+import type { Case } from '@/features/alerts/types/triage.types';
 
 type ViewTabKey =
   | 'details'
   | 'evidence'
+  | 'visualizations'
   | 'linked'
   | 'tasks'
   | 'notes'
@@ -39,10 +43,29 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [showCollaborate, setShowCollaborate] = React.useState(false);
   const [tasks, setTasks] = React.useState<TaskForSupervisor[]>([]);
   const [loadingTasks, setLoadingTasks] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
-  // const [saveSuccess, setSaveSuccess] = React.useState(false);
+  const [parentAlertId, setParentAlertId] = React.useState<number | undefined>(
+    undefined,
+  );
+  const [parentCaseDetails, setParentCaseDetails] = React.useState<
+    Case | undefined
+  >(undefined);
 
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
+
+  React.useEffect(() => {
+    if (row?.parentId) {
+      caseService
+        .getCaseDetails(row.parentId)
+        .then((details) => {
+          setParentAlertId(details.alert.alert_id);
+          setParentCaseDetails(details);
+        })
+        .catch((error) => {
+          console.error('Failed to fetch case details for parent case:', error);
+          setParentAlertId(undefined);
+        });
+    }
+  }, [row?.parentId]);
 
   React.useEffect(() => {
     if (open) {
@@ -68,6 +91,48 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       }
     }
   }, [open, row?.id]);
+
+  //Extract transaction ID from transaction data
+  const transactionId = React.useMemo(() => {
+    let transactionData = row?.parentId
+      ? parentCaseDetails?.alert.transaction
+      : row?.transaction;
+
+    if (!transactionData) {
+      return undefined;
+    }
+
+    // Check if transaction is a string that needs parsing
+    if (typeof transactionData === 'string') {
+      try {
+        transactionData = JSON.parse(transactionData);
+      } catch (e) {
+        return undefined;
+      }
+    }
+
+    const transaction = transactionData as Record<string, unknown>;
+
+    const fiToFIPmtSts = transaction?.FIToFIPmtSts as
+      | Record<string, unknown>
+      | undefined;
+    const txInfAndSts = fiToFIPmtSts?.TxInfAndSts as
+      | Record<string, unknown>
+      | undefined;
+
+    // Try multiple possible field locations
+    const extractedId =
+      txInfAndSts?.OrgnlEndToEndId ||
+      txInfAndSts?.EndToEndId ||
+      transaction?.transaction_id ||
+      transaction?.transactionId;
+
+    if (extractedId && typeof extractedId === 'string') {
+      return extractedId;
+    }
+
+    return undefined;
+  }, [row, parentCaseDetails]);
 
   if (!open || !row) return null;
 
@@ -98,6 +163,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 { key: 'details', label: 'Task Details' },
                 { key: 'linked', label: 'Linked Items' },
                 { key: 'evidence', label: 'Evidence' },
+                { key: 'visualizations', label: 'Visualizations' },
                 { key: 'notes', label: 'Investigation Notes' },
                 { key: 'summary', label: 'Investigation Summary' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
@@ -136,9 +202,22 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
                 <TaskEvidenceTab
                   task={tasks.filter((t) => t.task_id === selectedTask?.id)[0]}
+                  caseId={row.id}
+                  // onSaveRequest={(uploadFn) => {
+                  //   uploadEvidenceRef.current = uploadFn;
+                  // }}
                   onUploadComplete={() => {
                     setSummaryRefreshKey((prev) => prev + 1);
                   }}
+                />
+              </div>
+              <div
+                style={{ display: tab === 'visualizations' ? 'block' : 'none' }}
+              >
+                <VisualizationsTab
+                  alertId={row?.parentId ? parentAlertId : row?.alertId}
+                  caseId={row?.id}
+                  transactionId={transactionId}
                 />
               </div>
               <div style={{ display: tab === 'linked' ? 'block' : 'none' }}>
@@ -187,7 +266,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             type="button"
             onClick={onClose}
             className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-1 focus:ring-gray-400"
-            disabled={saving}
           >
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
             Close

@@ -1,617 +1,251 @@
-import { Controller, Get, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Param, Query, UseGuards, BadRequestException, ParseIntPipe, Post, Body, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
-import { GoldLakehouseService } from './gold-lakehouse.service';
-import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
+import { AlertsLakehouseService } from './alerts-lakehouse.service';
+import { TransactionLakehouseService } from './transaction-lakehouse.service';
+import { ConditionLakehouseService } from './condition-lakehouse.service';
+import { BenfordsLawLakehouseService } from './benfordsLaw-lakehouse.service';
+import { AccountLakehouseService } from './account-lakehouse.service';
+import { RequireInvestigatorOrSupervisorRoleOrComplianceRole } from 'src/decorators/auth.decorator';
 import { TransactionNetworkResponseDto, CounterpartyNetworkResponseDto } from './dto/network-analysis.dto';
-import { Alerts, Edge, Node } from './types/gold-lakehouse.types';
+import { AccountNodeFullDataResponse, CounterpartyNodeFullDataResponse } from './types/gold-lakehouse-responses.types';
+import { AlertNavigatorDataResponse } from './types/alert-navigator.types';
+import { TransactionDetailDataResponse } from './types/transaction-detail.types';
+import { AccountConditionsSummary, ConditionsListByAccountResponse } from './types/IAccountConditions.types';
+import { AlertHistoryTimelineResponse } from './types/IAlertHistoryTimeline.types';
+import { AlertHistoryAlertsResponse } from './types/IAlertHistory.types';
+import { Audit } from '../audit/decorators/audit-log.decorator';
+import { GenerateProfileDto } from './dto/generate-profile.dto';
+import { GenerateProfileResponseDto } from './dto/profile-response.dto';
+import { AuthenticatedRequest } from 'src/utils/types/auth.types';
+import { EntityMetadataResponse } from './interfaces/entity-metadata.interfaces';
 
 @ApiTags('Gold Lakehouse')
 @Controller('api/v1/lakehouse')
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class GoldLakehouseController {
-  constructor(private readonly goldLakehouseService: GoldLakehouseService) {}
+  constructor(
+    private readonly alertsLakehouseService: AlertsLakehouseService,
+    private readonly transactionLakehouseService: TransactionLakehouseService,
+    private readonly conditionLakehouseService: ConditionLakehouseService,
+    private readonly benfordsLawLakehouseService: BenfordsLawLakehouseService,
+    private readonly accountLakehouseService: AccountLakehouseService,
+  ) {}
 
-  @Get('alert-navigator/:alertId')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get Alert Navigator data for visualization' })
-  @ApiResponse({ status: 200 })
-  async getAlertNavigatorData(
+  @Get('entity-metadata/:alertId')
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @ApiOperation({ summary: 'Get Entity Metadata for a given Alert ID' })
+  async getEntityMetadataByAlertId(
     @Param('alertId') alertId: number,
-    @Query('tenantId') tenantId?: string,
-  ): Promise<{
-    alertMetadata: {
-      alertId: number;
-      transactionId: string;
-      timestamp: string;
-      transactionType: string;
-      amount: number;
-      currency: string;
-      status: string;
-      reason: string;
-      blockReason: string;
-    };
-    typologies: Array<{
-      typologyId: string;
-      typologyCfg: string;
-      typologyScore: number;
-      alertThreshold: number;
-      interdictionThreshold: number;
-      ruleCount: number;
-      rules: string;
-    }>;
-    statistics: {
-      totalTypologies: number;
-      totalRules: number;
-      avgScore: number;
-    };
-    meta: {
-      alertId: number;
-      tenantId: string;
-    };
-  }> {
+    @Query('tenantId') tenantId: string,
+  ): Promise<EntityMetadataResponse> {
     if (isNaN(alertId)) {
       throw new BadRequestException('Invalid alertId: must be a number');
     }
-    return await this.goldLakehouseService.getAlertNavigatorData(alertId, tenantId ?? 'DEFAULT');
+    const entityMetadata = await this.accountLakehouseService.getEntityMetadataByAlertId(alertId, tenantId);
+    return entityMetadata;
   }
 
-  @Get('transaction-detail/:transactionId')
-  @RequireInvestigatorOrSupervisorRole()
+  @Get('alert-navigator/:alertId')
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @ApiOperation({ summary: 'Get Alert Navigator data for visualization' })
+  @ApiResponse({ status: 200 })
+  async getAlertNavigatorData(@Param('alertId') alertId: number, @Query('tenantId') tenantId: string): Promise<AlertNavigatorDataResponse> {
+    if (isNaN(alertId)) {
+      throw new BadRequestException('Invalid alertId: must be a number');
+    }
+    return await this.alertsLakehouseService.getAlertNavigatorData(alertId, tenantId);
+  }
+
+  @Get('transaction-detail/:endToEndId')
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Get Transaction Detail data for visualization' })
   @ApiResponse({ status: 200 })
   async getTransactionDetailData(
-    @Param('transactionId') transactionId: string,
-    @Query('tenantId') tenantId?: string,
-  ): Promise<{
-    transactionOverview: {
-      transactionId: string;
-      transactionType: string;
-      timestamp: string;
-    };
-    transactionFlow: {
-      debtor: {
-        name: string;
-        account: {
-          iban: string;
-          type: string;
-        };
-        bank: string;
-      };
-      amount: {
-        amount: number;
-        currency: string;
-      };
-      creditor: {
-        name: string;
-        account: {
-          iban: string;
-          type: string;
-        };
-        bankName: string;
-      };
-    };
-    debtorProfile: {
-      name: string;
-      account: {
-        iban: string;
-        type: string;
-      };
-      bank: string;
-      swiftCode: string;
-      address: string;
-      accountType: string;
-    };
-    creditorProfile: {
-      name: string;
-      account: {
-        iban: string;
-        type: string;
-      };
-      bank: string;
-      swiftCode: string;
-      address: string;
-      accountType: string;
-    };
-    amountAndCurrency: Array<
-      | {
-          originalAmount: number;
-          exchangeRate: number;
-          convertedAmount: number;
-        }
-      | {
-          senderCharges: never[];
-          intermediaryCharges: never[];
-          receiverCharges: never[];
-        }
-      | {
-          totalCharges: number;
-        }
-    >;
-    settlementDetails: {
-      settlementDate: string;
-      reference: string;
-      purpose: string;
-    };
-    links: Array<{
-      rel: string;
-      href: string;
-    }>;
-  }> {
-    const transactionIdNum = parseInt(transactionId, 10);
-    if (isNaN(transactionIdNum)) {
-      throw new BadRequestException('Invalid transactionId: must be a number');
-    }
-    return await this.goldLakehouseService.getTransactionDetailData(transactionIdNum, tenantId ?? 'DEFAULT');
+    @Param('endToEndId') endToEndId: string,
+    @Query('tenantId') tenantId: string,
+  ): Promise<TransactionDetailDataResponse> {
+    return await this.transactionLakehouseService.getTransactionDetailData(endToEndId, tenantId);
   }
 
-  @Get('alert-navigator-metrics/:alertId')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get Alert Navigator Metrics data for visualization' })
-  @ApiResponse({ status: 200 })
-  async getAlertNavigatorMetrics(
-    @Param('alertId') alertId: number,
-    @Query('tenantId') tenantId?: string,
-  ): Promise<{
-    total_typologies: number;
-    total_rules: number;
-    avg_typology_score: number | null;
-    alertId: number;
-    tenantId: string;
-  }> {
-    if (isNaN(alertId)) {
-      throw new BadRequestException('Invalid alertId: must be a number');
-    }
-    return await this.goldLakehouseService.getAlertNavigatorMetrics(alertId, tenantId ?? 'DEFAULT');
-  }
-
-  // ---------------- CONDITIONS VIEW ----------------
+  // ================ CONDITIONS ENDPOINTS ================
 
   @Get('conditions/summary')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get Conditions summary metrics' })
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @ApiOperation({
+    summary: 'Get conditions summary with counts by Account ID',
+    description: `Returns aggregated condition counts and basic details for a specific account. 
+    
+    Features:
+    - Condition counts by status (active, expired, future)
+    - Account metadata (scheme, FSP ID)
+    - Historical view support via asOfDate parameter
+    - Summary of each condition (type, reason, dates)
+    
+    Use Cases:
+    - Dashboard metrics and KPIs
+    - Quick account condition overview
+    - Historical compliance checks
+    - Account risk assessment
+    
+    Test with: 87f16412f0d147c1ad2fe94cac078f2c (has rich condition data with real metadata)`,
+  })
   @ApiQuery({
     name: 'accountId',
-    description: 'Account ID - REQUIRED',
+    description: 'Account ID from conditions_timeline.cond_account_id field',
     required: true,
     type: String,
-    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011',
+    example: '6665bafaee4b430692dafe4bd0efb3fa',
   })
   @ApiQuery({
     name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    description: 'Tenant ID for multi-tenant filtering (use DEFAULT for cross-tenant)',
     required: false,
     type: String,
     example: 'DEFAULT',
   })
   @ApiQuery({
-    name: 'fromDate',
-    description: 'Filter start date - OPTIONAL (YYYY-MM-DD). If omitted, returns all history.',
+    name: 'asOfDate',
+    description:
+      'Historical view: Show conditions as they were at this ISO timestamp. Filters based on inception/expiry dates. If omitted, uses current timestamp.',
     required: false,
     type: String,
-    example: '2026-01-01',
+    example: '2025-12-31T08:00:00',
   })
-  @ApiResponse({ status: 200 })
+  @ApiResponse({
+    status: 200,
+    description: 'Condition summary with counts and basic condition details',
+    schema: {
+      example: {
+        accountId: '87f16412f0d147c1ad2fe94cac078f2c',
+        accountScheme: 'MSISDN',
+        fspId: 'fsp001',
+        totalConditions: 1,
+        activeConditions: 0,
+        expiredConditions: 1,
+        futureConditions: 0,
+        conditions: [
+          {
+            conditionId: 'ba36e82f-d2e1-46fa-a9a4-ed95007db7e0',
+            type: 'override',
+            perspective: 'creditor',
+            reason: 'Suspicion of Money Laundering',
+            status: 'expired',
+            inceptionDate: '2026-02-04T02:22:33.452000',
+            expiryDate: '2026-02-05T02:22:00',
+            createdBy: 'demo UI',
+          },
+        ],
+      },
+    },
+  })
   async getConditionsSummary(
     @Query('accountId') accountId: string,
-    @Query('tenantId') tenantId?: string,
-    @Query('fromDate') fromDate?: string,
-  ): Promise<{
-    activeConditions: number;
-    blockedTransactions: number;
-    overriddenTransactions: number;
-    futureConditions: number;
-  }> {
+    @Query('tenantId') tenantId: string,
+    @Query('asOfDate') asOfDate?: string,
+  ): Promise<AccountConditionsSummary> {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
-
-    return await this.goldLakehouseService.getConditionsSummary(accountId, tenantId ?? 'DEFAULT', fromDate);
+    return await this.conditionLakehouseService.getConditionsSummaryByAccount(accountId, tenantId, undefined, asOfDate);
   }
 
-  @Get('conditions/active')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get Active Conditions for an account within a time range' })
-  @ApiQuery({
-    name: 'accountId',
-    description: 'Account ID - REQUIRED',
-    required: true,
-    type: String,
-    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011',
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
-    required: false,
-    type: String,
-    example: 'DEFAULT',
-  })
-  @ApiQuery({
-    name: 'fromDate',
-    description: 'Filter start date - OPTIONAL (YYYY-MM-DD). If omitted, returns all history.',
-    required: false,
-    type: String,
-    example: '2026-01-01',
-  })
-  @ApiResponse({ status: 200 })
-  async getActiveConditions(
-    @Query('accountId') accountId: string,
-    @Query('tenantId') tenantId?: string,
-    @Query('fromDate') fromDate?: string,
-  ): Promise<any[]> {
-    if (!accountId) {
-      throw new BadRequestException('accountId is required');
-    }
-
-    return await this.goldLakehouseService.getActiveConditions(accountId, tenantId ?? 'DEFAULT', fromDate);
-  }
-
-  @Get('conditions/expired')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get expired conditions for an account' })
-  @ApiQuery({
-    name: 'accountId',
-    description: 'Account ID - REQUIRED',
-    required: true,
-    type: String,
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
-    required: false,
-    type: String,
-  })
-  @ApiResponse({ status: 200 })
-  async getExpiredConditions(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string): Promise<any[]> {
-    if (!accountId) {
-      throw new BadRequestException('accountId is required');
-    }
-
-    return await this.goldLakehouseService.getExpiredConditions(accountId, tenantId ?? 'DEFAULT');
-  }
-
-  @Get('conditions/future')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get future conditions for an account' })
-  @ApiQuery({
-    name: 'accountId',
-    description: 'Account ID - REQUIRED',
-    required: true,
-    type: String,
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
-    required: false,
-    type: String,
-  })
-  @ApiResponse({ status: 200 })
-  async getFutureConditions(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string): Promise<any[]> {
-    if (!accountId) {
-      throw new BadRequestException('accountId is required');
-    }
-
-    return await this.goldLakehouseService.getFutureConditions(accountId, tenantId ?? 'DEFAULT');
-  }
-
-  @Get('conditions')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({ summary: 'Get Conditions list (active / expired / future)' })
-  @ApiQuery({
-    name: 'accountId',
-    description: 'Account ID - REQUIRED',
-    required: true,
-    type: String,
-    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011',
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
-    required: false,
-    type: String,
-    example: 'DEFAULT',
-  })
-  @ApiResponse({ status: 200 })
-  async getConditionsList(@Query('accountId') accountId: string, @Query('tenantId') tenantId?: string): Promise<any[]> {
-    if (!accountId) {
-      throw new BadRequestException('accountId is required');
-    }
-
-    return await this.goldLakehouseService.getConditionsList(accountId, tenantId);
-  }
-
-  @Get('conditions/evaluated-transactions')
-  @RequireInvestigatorOrSupervisorRole()
+  @Get('conditions/details')
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
-    summary: 'Get evaluated transactions for Conditions view',
+    summary: 'Get complete condition records with full details by Account ID',
+    description: `Returns all condition records with complete field data for a specific account. Primary endpoint for detailed condition analysis.
+    
+    Features:
+    - Full condition record details (all database fields)
+    - Filter by active status (showInactive parameter)
+    - Historical view support (asOfDate parameter)
+    - Includes bucket granularity and bucket start dates
+    - Force create flags and event type details
+    
+    Use Cases:
+    - Detailed condition investigation
+    - Compliance audit trails
+    - Historical condition analysis
+    - Condition lifecycle tracking
+    
+    Test with: 87f16412f0d147c1ad2fe94cac078f2c (has full condition data with real creators)`,
   })
   @ApiQuery({
     name: 'accountId',
-    description: 'Account ID - REQUIRED',
+    description: 'Account ID from conditions_timeline.cond_account_id field',
     required: true,
     type: String,
-    example: '6665bafaeeb430692dafe4bd0efb3faMSISDNfsp011',
+    example: '6665bafaee4b430692dafe4bd0efb3fa',
   })
   @ApiQuery({
     name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
-    required: false,
+    description: 'Tenant ID for multi-tenant filtering (use DEFAULT for cross-tenant)',
+    required: true,
     type: String,
     example: 'DEFAULT',
   })
   @ApiQuery({
-    name: 'fromDate',
-    description: 'Filter start date - OPTIONAL (YYYY-MM-DD). If omitted, returns all transactions.',
+    name: 'asOfDate',
+    description: 'Historical view: Show conditions as they were at this ISO timestamp',
     required: false,
     type: String,
-    example: '2026-01-01',
-  })
-  @ApiResponse({ status: 200 })
-  async getEvaluatedTransactions(
-    @Query('accountId') accountId: string,
-    @Query('tenantId') tenantId?: string,
-    @Query('fromDate') fromDate?: string,
-  ): Promise<any[]> {
-    if (!accountId) {
-      throw new BadRequestException('accountId is required');
-    }
-
-    return await this.goldLakehouseService.getEvaluatedTransactions(accountId, tenantId, fromDate);
-  }
-
-  @Get('transaction-history/:endToEndId')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
-    summary: 'Get Transaction History data by End-to-End ID or Entity ID',
-    description:
-      'Returns transaction data based on the provided ID. Accepts either end_to_end_id (UUID format) for single transaction with all entity perspectives, or entity_id (account/counterparty) for historical timeline showing multiple transactions over time. Auto-detects ID type. Optional filters: startDate, endDate, granularity.',
-  })
-  @ApiParam({
-    name: 'endToEndId',
-    description: 'Transaction End-to-End ID (UUID) or Entity ID (account/counterparty identifier) - REQUIRED. Auto-detects type.',
-    required: true,
-    type: String,
-    example: 'ee4f3638-c42d-4a7e-abec-4c3aff068570',
+    example: '2025-12-31T08:00:00',
   })
   @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
+    name: 'showInactive',
+    description: 'Include expired and future conditions. Set to true for complete history. Default: false (active only)',
     required: false,
-    type: String,
-    example: 'DEFAULT',
-  })
-  @ApiQuery({
-    name: 'startDate',
-    description: 'Filter start date - OPTIONAL (YYYY-MM-DD). ',
-    required: false,
-    type: String,
-    example: '2026-01-01',
-  })
-  @ApiQuery({
-    name: 'endDate',
-    description: 'Filter end date - OPTIONAL (YYYY-MM-DD).',
-    required: false,
-    type: String,
-    example: '2026-01-31',
-  })
-  @ApiQuery({
-    name: 'granularity',
-    description: 'Aggregation bucket granularity - OPTIONAL (day, week, month, year). ',
-    required: false,
-    enum: ['day', 'week', 'month', 'year'],
-    type: String,
-    example: 'day',
+    type: Boolean,
+    example: true,
   })
   @ApiResponse({
     status: 200,
-    description:
-      'Transaction history data including timeline with cumulative amounts, volume distribution, recent transactions table, and summary statistics',
+    description: 'Complete condition records with all database fields',
     schema: {
       example: {
-        summary: {
-          totalVolume: 102518.5,
-          totalTransactions: 154,
-          alertsTriggered: 6,
-          alertsPercentage: 3.9,
-          investigated: 0,
-          investigatedPercentage: 0,
-          avgTransactionsPerDay: 5.13,
-          durationDays: 30,
-        },
-        timeline: [
+        accountId: '87f16412f0d147c1ad2fe94cac078f2c',
+        totalConditions: 1,
+        conditions: [
           {
-            transactionId: 15,
-            date: '2026-01-15',
-            amount: 1250.0,
-            currency: 'USD',
-            type: 'pacs.008.001.10',
-            isAlerted: true,
-            isInvestigated: false,
-          },
-        ],
-        cumulative: [
-          {
-            date: '2026-01-01',
-            cumulativeAmount: 50000.0,
-            cumulativeCount: 40,
-          },
-        ],
-        volumeDistribution: [
-          {
-            bucketStart: '2026-01-01',
-            granularity: 'day',
-            transactionCount: 5,
-            totalVolume: 5000.0,
-          },
-        ],
-        recentTransactions: [
-          {
-            transactionId: 15,
-            date: '2026-01-15',
-            type: 'pacs.008.001.10',
-            counterparty: 'Jane Smith',
-            amount: 1250.0,
-            currency: 'USD',
-            status: ['Alert'],
-            actions: {
-              viewDetailsLink: '/triage/transaction-detail/15',
-            },
+            conditionId: 'ba36e82f-d2e1-46fa-a9a4-ed95007db7e0',
+            pk: 'no mapping found',
+            tenantId: 'DEFAULT',
+            bucketGranularity: 'no data found',
+            bucketStart: 'no data found',
+            accountId: '87f16412f0d147c1ad2fe94cac078f2c',
+            accountScheme: 'MSISDN',
+            type: 'override',
+            perspective: 'creditor',
+            reason: 'Suspicion of Money Laundering',
+            eventTypes: 'all',
+            inceptionDate: '2026-02-04T02:22:33.452000',
+            expiryDate: '2026-02-05T02:22:00',
+            createdDate: '2026-02-04T02:22:33.452000',
+            isActive: false,
+            isExpired: true,
+            createdBy: 'demo UI',
           },
         ],
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Invalid ID or date format' })
-  async getTransactionHistoryData(
-    @Param('endToEndId') endToEndId: string,
-    @Query('tenantId') tenantId?: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('granularity') granularity?: string,
-  ): Promise<any> {
-    // Validate ID
-    if (!endToEndId || endToEndId.trim() === '') {
-      throw new BadRequestException('Transaction ID or Entity ID is required');
+  async getConditionsDetails(
+    @Query('accountId') accountId: string,
+    @Query('tenantId') tenantId: string,
+    @Query('asOfDate') asOfDate?: string,
+    @Query('showInactive') showInactive?: boolean,
+  ): Promise<ConditionsListByAccountResponse> {
+    if (!accountId) {
+      throw new BadRequestException('accountId is required');
     }
-
-    // Validate date format if provided
-    if (startDate ?? endDate) {
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/v;
-      if ((startDate && !dateRegex.test(startDate)) ?? (endDate && !dateRegex.test(endDate))) {
-        throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
-      }
-
-      // Both dates must be provided together
-      if ((startDate && !endDate) ?? (!startDate && endDate)) {
-        throw new BadRequestException('Both startDate and endDate must be provided together');
-      }
-    }
-
-    // Validate granularity if provided
-    if (granularity) {
-      const validGranularities = ['day', 'week', 'month', 'year'];
-      if (!validGranularities.includes(granularity)) {
-        throw new BadRequestException(`Invalid granularity. Must be one of: ${validGranularities.join(', ')}`);
-      }
-    }
-
-    return await this.goldLakehouseService.getTransactionHistoryData(endToEndId, tenantId ?? 'DEFAULT', startDate, endDate, granularity);
-  }
-
-  @Get('transaction-perspectives/:endToEndId')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
-    summary: 'Get Transaction Perspectives by End-to-End ID',
-    description:
-      'Returns all entity perspectives (Debtor Account, Creditor Account, Debtor Counterparty, Creditor Counterparty) for a single transaction. Shows how the transaction appears from each entity viewpoint. Query by end_to_end_id (transaction UUID) to get complete transaction context.',
-  })
-  @ApiParam({
-    name: 'endToEndId',
-    description: 'Transaction End-to-End ID (UUID) - REQUIRED',
-    required: true,
-    type: String,
-    example: 'ee4f3638-c42d-4a7e-abec-4c3aff068570',
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL (defaults to DEFAULT)',
-    required: false,
-    type: String,
-    example: 'DEFAULT',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Transaction perspectives data showing all entity views of the transaction',
-    schema: {
-      example: {
-        endToEndId: 'ee4f3638-c42d-4a7e-abec-4c3aff068570',
-        tenantId: 'DEFAULT',
-        perspectiveCount: 4,
-        transactionDetails: {
-          transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
-          endToEndId: 'ee4f3638-c42d-4a7e-abec-4c3aff068570',
-          amount: 1500.0,
-          currency: 'USD',
-          type: 'pacs.008.001.10',
-          date: '2026-01-20',
-          timestamp: '2026-01-20T10:30:00Z',
-          isAlerted: true,
-          isInvestigated: false,
-          debtorName: 'John Smith',
-          creditorName: 'Jane Doe',
-          debtorAccountId: 'dbtrAcct_abc123',
-          creditorAccountId: 'cdtrAcct_def456',
-        },
-        perspectives: [
-          {
-            entityType: 'ACCOUNT',
-            entityRole: 'DEBTOR',
-            entityId: 'dbtrAcct_abc123',
-            entityName: 'John Smith Account',
-            transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
-            amount: 1500.0,
-            currency: 'USD',
-            timestamp: '2026-01-20T10:30:00Z',
-          },
-          {
-            entityType: 'ACCOUNT',
-            entityRole: 'CREDITOR',
-            entityId: 'cdtrAcct_def456',
-            entityName: 'Jane Doe Account',
-            transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
-            amount: 1500.0,
-            currency: 'USD',
-            timestamp: '2026-01-20T10:30:00Z',
-          },
-          {
-            entityType: 'COUNTERPARTY',
-            entityRole: 'DEBTOR',
-            entityId: 'dbtr_xyz789',
-            entityName: 'John Smith',
-            transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
-            amount: 1500.0,
-            currency: 'USD',
-            timestamp: '2026-01-20T10:30:00Z',
-          },
-          {
-            entityType: 'COUNTERPARTY',
-            entityRole: 'CREDITOR',
-            entityId: 'cdtr_uvw321',
-            entityName: 'Jane Doe',
-            transactionId: '9dbb43f2-ebf9-46ad-abe1-c3e31e2b4371',
-            amount: 1500.0,
-            currency: 'USD',
-            timestamp: '2026-01-20T10:30:00Z',
-          },
-        ],
-        meta: {
-          queryTimestamp: '2026-02-10T12:00:00.000Z',
-          message: 'Retrieved 4 entity perspective(s) for transaction',
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 400, description: 'Invalid end-to-end ID format' })
-  @ApiResponse({ status: 404, description: 'Transaction not found' })
-  async getTransactionPerspectives(@Param('endToEndId') endToEndId: string, @Query('tenantId') tenantId?: string): Promise<unknown> {
-    // Validate end-to-end ID
-    if (!endToEndId || endToEndId.trim() === '') {
-      throw new BadRequestException('End-to-End ID is required');
-    }
-
-    // Basic UUID format validation (optional but recommended)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iv;
-    if (!uuidRegex.test(endToEndId)) {
-      throw new BadRequestException('Invalid end-to-end ID format. Must be a valid UUID.');
-    }
-
-    return await this.goldLakehouseService.getTransactionPerspectivesByEndToEndId(endToEndId, tenantId ?? 'DEFAULT');
+    return await this.conditionLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive);
   }
 
   @Get('alert-history/summary')
   // Access restricted: require investigator or supervisor role
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Alert History Summary',
     description:
@@ -627,7 +261,7 @@ export class GoldLakehouseController {
   @ApiQuery({
     name: 'tenantId',
     description: 'Tenant ID - OPTIONAL',
-    required: false,
+    required: true,
     type: String,
     example: 'DEFAULT',
   })
@@ -653,8 +287,8 @@ export class GoldLakehouseController {
     },
   })
   async getAlertHistorySummary(
+    @Query('tenantId') tenantId: string,
     @Query('endToEndId') endToEndId?: string,
-    @Query('tenantId') tenantId?: string,
     @Query('dateRange') dateRange?: string,
   ): Promise<{
     totalAlerts: number;
@@ -666,12 +300,12 @@ export class GoldLakehouseController {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
-    return await this.goldLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all');
+    return await this.alertsLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all');
   }
 
   @Get('alert-history/timeline')
   // Access restricted: require investigator or supervisor role
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Alert History Timeline',
     description:
@@ -686,8 +320,8 @@ export class GoldLakehouseController {
   })
   @ApiQuery({
     name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL',
-    required: false,
+    description: 'Tenant ID - REQUIRED',
+    required: true,
     type: String,
     example: 'DEFAULT',
   })
@@ -740,11 +374,11 @@ export class GoldLakehouseController {
     },
   })
   async getAlertHistoryTimeline(
+    @Query('tenantId') tenantId: string,
     @Query('endToEndId') endToEndId?: string,
-    @Query('tenantId') tenantId?: string,
     @Query('dateRange') dateRange?: string,
     @Query('granularity') granularity = 'day',
-  ): Promise<any> {
+  ): Promise<AlertHistoryTimelineResponse> {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
@@ -754,12 +388,12 @@ export class GoldLakehouseController {
         throw new BadRequestException(`Invalid granularity. Must be one of: ${validGranularities.join(', ')}`);
       }
     }
-    return await this.goldLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity);
+    return await this.alertsLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity);
   }
 
   @Get('alert-history/alerts')
   // Access restricted: require investigator or supervisor role
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Alert History Alerts',
     description:
@@ -774,8 +408,8 @@ export class GoldLakehouseController {
   })
   @ApiQuery({
     name: 'tenantId',
-    description: 'Tenant ID - OPTIONAL',
-    required: false,
+    description: 'Tenant ID - REQUIRED',
+    required: true,
     type: String,
     example: 'DEFAULT',
   })
@@ -831,54 +465,21 @@ export class GoldLakehouseController {
     },
   })
   async getAlertHistoryAlerts(
+    @Query('tenantId') tenantId: string,
     @Query('endToEndId') endToEndId?: string,
-    @Query('tenantId') tenantId?: string,
     @Query('dateRange') dateRange?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ): Promise<{
-    alerts: Alerts[];
-    pagination: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
-  }> {
+    @Query('page', ParseIntPipe) page?: number,
+    @Query('limit', ParseIntPipe) limit?: number,
+  ): Promise<AlertHistoryAlertsResponse> {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
-    return await this.goldLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page ?? 1, limit ?? 20);
-  }
-
-  // ---------------- TRANSACTION VIEW ----------------
-
-  @Get('network-analysis/test-accounts')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
-    summary: 'Get Test Account IDs',
-    description: 'Fetches account IDs with network activity for testing network analysis endpoints',
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID',
-    required: false,
-    example: 'DEFAULT',
-  })
-  @ApiQuery({
-    name: 'minConnections',
-    description: 'Minimum number of unique connections required (default: 1)',
-    required: false,
-    example: 2,
-  })
-  @ApiResponse({ status: 200, description: 'List of test account IDs with network statistics' })
-  async getTestAccountIds(@Query('tenantId') tenantId?: string, @Query('minConnections') minConnections?: number): Promise<unknown> {
-    return await this.goldLakehouseService.getTestAccountIds(tenantId ?? 'DEFAULT', minConnections ?? 1);
+    return await this.alertsLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page ?? 1, limit ?? 20);
   }
 
   // ---------------- TRANSACTION NETWORK ANALYSIS ----------------
   @Get('network-analysis/transaction/:accountId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Transaction Network Analysis',
     description:
@@ -899,7 +500,7 @@ export class GoldLakehouseController {
   @ApiQuery({
     name: 'tenantId',
     description: 'Tenant ID',
-    required: false,
+    required: true,
     example: 'DEFAULT',
   })
   @ApiResponse({
@@ -908,34 +509,33 @@ export class GoldLakehouseController {
     type: TransactionNetworkResponseDto,
   })
   async getTransactionNetworkAnalysis(
+    @Query('tenantId') tenantId: string,
     @Param('accountId') accountId: string,
     @Query('timeRange') timeRange?: string,
-    @Query('tenantId') tenantId?: string,
   ): Promise<TransactionNetworkResponseDto> {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    return await this.goldLakehouseService.getTransactionNetworkData(accountId, tenantId ?? 'DEFAULT', timeRange ?? '30d');
+    return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId, timeRange ?? '30d');
   }
 
-  @Get('network-analysis/account/:accountId')
+  @Get('network-analysis/entity-network/:entityId')
   // Access restricted: require investigator or supervisor role
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
-    summary: 'Get Account Network graph + selected account details',
-    description:
-      'Returns account network visualization (nodes + edges) along with full details for the selected account node (metrics, alerts, investigation status).',
+    summary: 'Get Entity Network graph + entity details',
+    description: 'Returns entity network visualization (nodes + edges) for all accounts associated with an entity ID.',
   })
   @ApiParam({
-    name: 'accountId',
-    description: 'Root Account ID for network visualization',
+    name: 'entityId',
+    description: 'Entity ID to fetch network data for',
     required: true,
-    example: 'dbtrAcct_e8b116f1ebd14de7b653d7d3c520ffdd',
+    example: 'entity123',
   })
   @ApiQuery({
     name: 'tenantId',
     description: 'Tenant ID (defaults to DEFAULT)',
-    required: false,
+    required: true,
     example: 'DEFAULT',
   })
   @ApiQuery({
@@ -947,53 +547,30 @@ export class GoldLakehouseController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Account network graph and selected account detail panel data',
+    description: 'Entity network graph and associated accounts data',
   })
-  async getAccountNetworkWithDetails(
-    @Param('accountId') accountId: string,
-    @Query('tenantId') tenantId?: string,
+  async getEntityNetworkWithDetails(
+    @Param('entityId') entityId: string,
+    @Query('tenantId') tenantId: string,
     @Query('granularity') granularity?: string,
-  ): Promise<{
-    network: {
-      rootNodeId: string;
-      nodes: Node[];
-      edges: Edge[];
-    };
-    accountDetails: {
-      accountId: string;
-      accountHolder: string;
-      relationship: string;
-      transactions: number;
-      totalValue: number;
-      velocity: string;
-      flags: {
-        alerted: boolean;
-        investigated: boolean;
-      };
-    };
-    meta: {
-      tenantId: string;
-      granularity: 'day' | 'month' | 'year';
-      generatedAt: string;
-    };
-  }> {
-    if (!accountId || accountId.trim() === '') {
-      throw new BadRequestException('accountId is required');
+  ): Promise<AccountNodeFullDataResponse> {
+    if (!entityId || entityId.trim() === '') {
+      throw new BadRequestException('entityId is required');
     }
 
     if (granularity && !['day', 'month', 'year'].includes(granularity)) {
       throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
 
-    return await this.goldLakehouseService.getAccountNodeFullData(
-      accountId,
-      tenantId ?? 'DEFAULT',
+    return await this.accountLakehouseService.getAccountNodeFullData(
+      entityId,
+      tenantId,
       (granularity as 'day' | 'month' | 'year' | undefined) ?? 'month',
     );
   }
 
   @Get('network-analysis/counterparty-node/:counterpartyId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Counterparty Network graph + selected counterparty details',
     description: 'Returns counterparty network visualization (nodes + edges) along with full details for the selected counterparty node.',
@@ -1007,7 +584,7 @@ export class GoldLakehouseController {
   @ApiQuery({
     name: 'tenantId',
     description: 'Tenant ID (defaults to DEFAULT)',
-    required: false,
+    required: true,
     example: 'DEFAULT',
   })
   @ApiQuery({
@@ -1023,32 +600,9 @@ export class GoldLakehouseController {
   })
   async getCounterpartyNetworkWithDetails(
     @Param('counterpartyId') counterpartyId: string,
-    @Query('tenantId') tenantId?: string,
+    @Query('tenantId') tenantId: string,
     @Query('granularity') granularity?: string,
-  ): Promise<{
-    network: {
-      rootNodeId: string;
-      nodes: Node[];
-      edges: Edge[];
-    };
-    counterpartyDetails: {
-      counterpartyId: string;
-      name: string;
-      type: string;
-      transactions: number;
-      totalValue: number;
-      velocity: string;
-      flags: {
-        alerted: boolean;
-        investigated: boolean;
-      };
-    };
-    meta: {
-      tenantId: string;
-      granularity: 'day' | 'month' | 'year';
-      generatedAt: string;
-    };
-  }> {
+  ): Promise<CounterpartyNodeFullDataResponse> {
     if (!counterpartyId || counterpartyId.trim() === '') {
       throw new BadRequestException('counterpartyId is required');
     }
@@ -1057,15 +611,15 @@ export class GoldLakehouseController {
       throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
 
-    return await this.goldLakehouseService.getCounterpartyNodeFullData(
+    return await this.accountLakehouseService.getCounterpartyNodeFullData(
       counterpartyId,
-      tenantId ?? 'DEFAULT',
+      tenantId,
       (granularity as 'day' | 'month' | 'year' | undefined) ?? 'month',
     );
   }
 
   @Get('lake/analytics/benford/account/:accountId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Apply Benford’s Law on account transactions',
     description:
@@ -1132,14 +686,14 @@ export class GoldLakehouseController {
       throw new BadRequestException('from date cannot be after to date');
     }
 
-    return await this.goldLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, fromDate, toDate);
+    return await this.benfordsLawLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, fromDate, toDate);
   }
 
   // ---------------- COUNTERPARTY VIEW ----------------
 
   @Get('network-analysis/counterparty/:accountId')
   // Access restricted: require investigator or supervisor role
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get Counterparty Network Analysis',
     description:
@@ -1160,7 +714,7 @@ export class GoldLakehouseController {
   @ApiQuery({
     name: 'tenantId',
     description: 'Tenant ID',
-    required: false,
+    required: true,
     example: 'DEFAULT',
   })
   @ApiResponse({
@@ -1175,12 +729,38 @@ export class GoldLakehouseController {
   })
   async getCounterpartyNetworkAnalysis(
     @Param('accountId') accountId: string,
+    @Query('tenantId') tenantId: string,
     @Query('timeRange') timeRange?: string,
-    @Query('tenantId') tenantId?: string,
   ): Promise<CounterpartyNetworkResponseDto> {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    return await this.goldLakehouseService.getCounterpartyNetworkData(accountId, tenantId ?? 'DEFAULT', timeRange ?? '30d');
+    return await this.transactionLakehouseService.getCounterpartyNetworkData(accountId, tenantId, timeRange ?? '30d');
+  }
+
+  @Post('profile/generate/:alertId')
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @Audit()
+  @ApiOperation({ summary: 'Generate transaction profile for a case (DWH data)' })
+  @ApiBody({
+    type: GenerateProfileDto,
+    examples: {
+      default: {
+        summary: 'Typical profile generation',
+        value: {
+          tenantId: 'DEFAULT',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Profile generated', type: GenerateProfileResponseDto })
+  async generateProfile(
+    @Param('alertId') alertId: number,
+    @Body() dto: GenerateProfileDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<GenerateProfileResponseDto> {
+    const userId = req.user.token.clientId;
+    const { tenantId } = req.user;
+    return await this.transactionLakehouseService.generateProfile(alertId, dto, userId, tenantId);
   }
 }

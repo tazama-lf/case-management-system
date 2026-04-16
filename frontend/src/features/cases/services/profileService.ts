@@ -1,90 +1,42 @@
 import apiClient from '../../../shared/services/apiClient';
+import type { GenerateProfileRequest, GenerateProfileResponse } from './types/profile.types';
 
-export interface GenerateProfileFilters {
-  dateFrom?: string;
-  dateTo?: string;
-  channel?: string;
-  type?: string;
-}
 
-export interface GenerateProfileRequest {
-  tenantId: string;
-  filters?: GenerateProfileFilters;
-  notes?: string;
-}
-
-export interface DetectedAnomaly {
-  date: string;
-  type: string;
-  amount: number;
-  description: string;
-  risk: 'High' | 'Medium' | 'Low';
-}
-
-export interface ProfileMetrics {
-  totalVolume: number;
-  totalValue: number;
-  avgTicketSize: number;
-  crossBorderCount: number;
-}
-
-export interface SummaryTable {
-  totalVolume: number;
-  totalValue: number;
-  avgTicketSize: number;
-  deviationPercent: string;
-}
-
-export interface TransactionProfile {
-  caseId: string;
-  filters?: Record<string, string | number>;
-  metrics: ProfileMetrics;
-  outliers?: Record<string, unknown>;
-  summaryTable?: SummaryTable;
-  notes?: string;
-  visualization?: string;
-  detectedAnomalies?: DetectedAnomaly[];
-}
-
-export interface GenerateProfileResponse extends TransactionProfile {}
-
-export interface GetProfileResponse extends TransactionProfile {}
 
 export class ProfileService {
-  private readonly baseUrl = '/api/v1/dwh/profile';
+  private readonly baseUrl = '/api/v1/lakehouse';
 
-  async generateProfile(
-    request: GenerateProfileRequest,
+  async generateProfile(alertId: number
   ): Promise<GenerateProfileResponse> {
+
+    if (!alertId) {
+      return Promise.reject(new Error('Alert ID is required to generate profile'));
+    }
+
     try {
       const user = localStorage.getItem('user');
-      let { tenantId } = request;
+      let tenantId = '';
       if (user) {
         try {
           const userData = JSON.parse(user);
-          tenantId = userData.tenantId ?? request.tenantId;
-        } catch {
-          // Ignore JSON parse errors and use the default tenantId
-        }
+          tenantId = userData.tenantId || '';
+        } catch { }
       }
+
+      if (!tenantId) {
+        throw new Error('Tenant ID is required to generate profile');
+      }
+
+      const request: GenerateProfileRequest = {
+        tenantId,
+      };
       const response = await apiClient.post<GenerateProfileResponse>(
-        `${this.baseUrl}/generate`,
+        `${this.baseUrl}/profile/generate/${alertId}`,
         { ...request, tenantId },
       );
       return response;
     } catch (error: any) {
       throw this.handleError(error, 'generate transaction profile');
-    }
-  }
-
-  async getProfile(caseId: string): Promise<GetProfileResponse> {
-    try {
-      const response = await apiClient.get<GetProfileResponse>(
-        `${this.baseUrl}/${caseId}`,
-      );
-      return response;
-    } catch (error: any) {
-      throw this.handleError(error, 'get transaction profile');
     }
   }
 

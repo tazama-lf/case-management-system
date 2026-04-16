@@ -1,6 +1,6 @@
 import { Controller, Get, Query, Req, BadRequestException, UseGuards, Param } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
-import { RequireInvestigatorOrSupervisorRole, RequireInvestigatorOrSupervisorRoleOrComplianceRole } from '../../decorators/auth.decorator';
+import { RequireInvestigatorOrSupervisorRoleOrComplianceRole } from '../../decorators/auth.decorator';
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { AlertStatisticsService } from './alert.statistics.service';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
@@ -9,6 +9,7 @@ import { AlertService } from './alert.service';
 import { AlertDetailsResponseDTO } from './dto/AlertDetailsResponse.dto';
 import { AlertActionHistoryDTO } from './dto/AlertActionHistory.dto';
 import { Priority, Prisma } from '@prisma/client-cms';
+import { transactionDataResponseDTO } from './dto/transactionHistory.dto';
 
 @Controller('api/v1/alert')
 @UseGuards(TazamaAuthGuard)
@@ -159,14 +160,16 @@ export class AlertController {
   async getAlertTransactionalData(
     @Req() req: AuthenticatedRequest,
     @Param('alertId') alertId: number,
-  ): Promise<Array<{ transactionData: Prisma.JsonValue; transactionId: number; tenantId: string; endToEndId: string; createdAt: Date }>> {
+  ): Promise<{ transactionData: transactionDataResponseDTO }> {
     const userId = req.user.token.clientId;
+    const { tenantId } = req.user.token;
+    if (!tenantId) throw new BadRequestException('Missing tenantId');
     if (!userId) throw new BadRequestException('Missing clientId');
-    return await this.alertService.getAlertTransactionalData(alertId);
+    return await this.alertService.getAlertTransactionalData(alertId, tenantId);
   }
 
   @Get(':alertId')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get alert details',
     description: 'Retrieve detailed information about a specific alert',
@@ -213,7 +216,7 @@ export class AlertController {
   }
 
   @Get(':alertId/action-history')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
     summary: 'Get alert action history',
     description: 'Retrieve all actions taken on a specific alert',

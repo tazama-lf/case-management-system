@@ -1,12 +1,11 @@
 {
-    "Voila": {
-        "ip": "0.0.0.0",
-        "port": 8866,
-        "enable_nbextensions": true,
-        "tornado_settings": {
-            "headers": {
-                "Content-Security-Policy": "frame-ancestors 'self' http://localhost:5173 http://localhost:3000"
-            }
-        }
+  "Voila": {
+    "ip": "0.0.0.0",
+    "port": 8866,
+    "tornado_settings": {
+      "headers": {
+        "Content-Security-Policy": "frame-ancestors 'self' http://localhost:5175 http://10.10.80.16:5175"
+      }
     }
+  }
 }

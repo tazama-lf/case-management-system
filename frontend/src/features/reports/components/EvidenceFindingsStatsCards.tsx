@@ -52,7 +52,7 @@ const EvidenceFindingsStatsCards: React.FC<EvidenceFindingsStatsCardsProps> = ({
       color: 'indigo' as const,
     },
     {
-      title: 'In Progress',
+      title: 'Ongoing',
       value: stats.inProgressFindings,
       icon: <EllipsisHorizontalCircleIcon className="h-4 w-4" />,
       color: 'yellow' as const,

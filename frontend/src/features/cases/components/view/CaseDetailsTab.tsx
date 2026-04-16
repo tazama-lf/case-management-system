@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { CaseRow } from '../casesTable.utils';
 import CaseActionsPanel from './CaseActionsPanel';
 import { getCaseStatusBadge } from '@/shared/constants/case.constant';
-import type { TransactionHistoryDto } from '../../../alerts/types/triage.types';
+import type { TransactionDetailDTO } from '../../../alerts/types/triage.types';
 import triageService from '../../../alerts/services/triageservice';
 import {
   ChevronDownIcon,
@@ -83,11 +83,10 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   onApproveCaseCreation,
   onRejectCaseCreation,
 }) => {
-  const [transactionalData, setTransactionData] =
-    React.useState<TransactionHistoryDto[]>();
-  const [openTransactions, setOpenTransactions] = React.useState<
-    Record<string, boolean>
-  >({});
+  const [pacs002Data, setPacs002Data] = React.useState<TransactionDetailDTO[]>([]);
+  const [pacs008Data, setPacs008Data] = React.useState<TransactionDetailDTO[]>([]);
+  const [openPacs002, setOpenPacs002] = React.useState(false);
+  const [openPacs008, setOpenPacs008] = React.useState(false);
   const [, setViewingId] = useState<string | null>(null);
   const [latestReports, setLatestReports] = useState<
     Record<string, LatestReport | null>
@@ -113,22 +112,6 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   };
 
   getTransactionData();
-
-  const getNestedValue = (
-    obj: Record<string, unknown> | null,
-    path: string[],
-  ): string => {
-    if (!obj) return 'N/A';
-    let current: unknown = obj;
-    for (const key of path) {
-      if (current && typeof current === 'object' && key in current) {
-        current = (current as Record<string, unknown>)[key];
-      } else {
-        return 'N/A';
-      }
-    }
-    return typeof current === 'string' ? current : 'N/A';
-  };
 
   const escapeHtml = (unsafe: string): string =>
     unsafe
@@ -161,15 +144,32 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     return highlighted.replace(/\n/gu, '<br/>').replace(/ /gu, '&nbsp;');
   };
 
+  const stripHudiMetadata = (record: TransactionDetailDTO): TransactionDetailDTO => {
+    const hudiFields = ['_hoodie_commit_time', '_hoodie_commit_seqno', '_hoodie_record_key', '_hoodie_partition_path', '_hoodie_file_name'];
+    return Object.fromEntries(Object.entries(record).filter(([key]) => !hudiFields.includes(key))) as TransactionDetailDTO;
+  };
+
   React.useEffect(() => {
     const fetchTransactionData = async (): Promise<void> => {
       if (!row?.alertId) return;
 
       try {
-        const transactionData = await triageService.getAlertTransactionalData(
+        const response = await triageService.getAlertTransactionalData(
           row.alertId,
         );
-        setTransactionData(transactionData);
+
+        // Separate pacs.002 and pacs.008 records from the transaction data
+        const pacs002Records = response.filter((record: TransactionDetailDTO) =>
+          record.tx_type.includes('pacs.002')
+        ).map(stripHudiMetadata);
+        const pacs008Records = response.filter((record: TransactionDetailDTO) =>
+          record.tx_type.includes('pacs.008')
+        ).map(stripHudiMetadata);
+
+
+
+        setPacs002Data(pacs002Records);
+        setPacs008Data(pacs008Records);
       } catch (error) {
         console.error(
           `Unable to retrieve Transaction Data for alert ID ${row.alertId}`,
@@ -532,68 +532,79 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         )}
       </div>
 
-      {/* Transactions */}
-      {transactionalData && transactionalData.length > 0 && (
+      {/* PACS.002 Data */}
+      {pacs002Data.length > 0 && (
         <div className="space-y-3">
-          <div className="text-sm font-semibold text-gray-700">
-            Transactions
-          </div>
-
-          {transactionalData.map((tx) => {
-            const isOpen = openTransactions[tx.transactionId] || false;
-            const txTp = getNestedValue(
-              tx.transactionData as Record<string, unknown>,
-              ['TxTp'],
-            );
-
-            return (
-              <section
-                key={tx.transactionId}
-                className="rounded-lg border border-gray-200 bg-white shadow-sm"
-              >
-                {/* HEADER */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenTransactions((prev) => ({
-                      ...prev,
-                      [tx.transactionId]: !prev[tx.transactionId],
-                    }));
-                  }}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
-                >
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900">
-                      {txTp}
-                    </h4>
+          <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
+            <button
+              type="button"
+              onClick={() => setOpenPacs002(!openPacs002)}
+              className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+            >
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">
+                  pacs.002.001.12
+                </h4>
+              </div>
+              {openPacs002 ? (
+                <ChevronUpIcon className="h-4 w-4 text-gray-500" />
+              ) : (
+                <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+              )}
+            </button>
+            {openPacs002 && (
+              <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+                {pacs002Data.map((record, index) => (
+                  <div key={record.pk || index} className="mb-4 last:mb-0">
+                    <pre
+                      className="whitespace-pre-wrap break-words max-h-64 overflow-auto text-sm"
+                      dangerouslySetInnerHTML={{
+                        __html: syntaxHighlightJson(record),
+                      }}
+                    />
                   </div>
-                  {isOpen ? (
-                    <ChevronUpIcon className="h-4 w-4 text-gray-500" />
-                  ) : (
-                    <ChevronDownIcon className="h-4 w-4 text-gray-500" />
-                  )}
-                </button>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
 
-                {/* BODY */}
-                {isOpen && (
-                  <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-                    {tx.transactionData ? (
-                      <pre
-                        className="whitespace-pre-wrap break-words max-h-64 overflow-auto text-sm"
-                        dangerouslySetInnerHTML={{
-                          __html: syntaxHighlightJson(tx.transactionData),
-                        }}
-                      />
-                    ) : (
-                      <div className="text-sm text-gray-600">
-                        No transaction data
-                      </div>
-                    )}
+      {/* PACS.008 Data */}
+      {pacs008Data.length > 0 && (
+        <div className="space-y-3">
+          <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
+            <button
+              type="button"
+              onClick={() => setOpenPacs008(!openPacs008)}
+              className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+            >
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">
+                  {pacs008Data[0].tx_type}
+                </h4>
+              </div>
+              {openPacs008 ? (
+                <ChevronUpIcon className="h-4 w-4 text-gray-500" />
+              ) : (
+                <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+              )}
+            </button>
+            {openPacs008 && (
+              <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+                {pacs008Data.map((record, index) => (
+                  <div key={record.pk || index} className="mb-4 last:mb-0">
+                    <pre
+                      className="whitespace-pre-wrap break-words max-h-64 overflow-auto text-sm"
+                      dangerouslySetInnerHTML={{
+                        __html: syntaxHighlightJson(record),
+                      }}
+                    />
                   </div>
-                )}
-              </section>
-            );
-          })}
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       )}
 

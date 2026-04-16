@@ -53,12 +53,87 @@ export interface ActionHistory {
   performed_at: string;
 }
 
-export interface TransactionHistoryDto {
-  transactionId: number;
-  tenantId: string;
-  endToEndId: string;
-  transactionData: unknown;
-  createdAt: Date;
+// export interface TransactionHistoryDto {
+//   transactionId: number;
+//   tenantId: string;
+//   endToEndId: string;
+//   transactionData: unknown;
+//   createdAt: Date;
+// }
+
+export class TransactionDetailDTO {
+  pk!: string;
+  transaction_id!: number;
+  end_to_end_id!: string;
+  tenant_id!: string;
+  tx_tenant_id!: string;
+  tx_type!: string;
+  tx_msg_id!: string;
+  tx_event_ts!: string;
+  tx_event_date!: string;
+  debtor_name!: string | null;
+  debtor_id!: string | null;
+  creditor_name!: string | null;
+  creditor_id!: string | null;
+  debtor_account_id!: string | null;
+  creditor_account_id!: string | null;
+  instructed_amount!: number | null;
+  instructed_currency!: string | null;
+  interbank_settlement_amount!: number | null;
+  interbank_settlement_currency!: string | null;
+  exchange_rate!: number | null;
+  instg_mmb_id!: string;
+  instd_mmb_id!: string;
+  charge_count!: number;
+  charge_total_amount!: number;
+  charge_currency!: string;
+  source_file_path!: string;
+  record_hash!: string;
+  ingested_at_ts!: string;
+}
+
+export class TransactionDetailRecordDTO {
+  _hoodie_commit_time!: string;
+  _hoodie_commit_seqno!: string;
+  _hoodie_record_key!: string;
+  _hoodie_partition_path!: string;
+  _hoodie_file_name!: string;
+  pk!: string;
+  transaction_id!: number;
+  end_to_end_id!: string;
+  tenant_id!: string;
+  tx_tenant_id!: string;
+  tx_type!: string;
+  tx_msg_id!: string;
+  tx_event_ts!: string;
+  tx_event_date!: string;
+  debtor_name!: string | null;
+  debtor_id!: string | null;
+  creditor_name!: string | null;
+  creditor_id!: string | null;
+  debtor_account_id!: string | null;
+  creditor_account_id!: string | null;
+  instructed_amount!: number | null;
+  instructed_currency!: string | null;
+  interbank_settlement_amount!: number | null;
+  interbank_settlement_currency!: string | null;
+  exchange_rate!: number | null;
+  instg_mmb_id!: string;
+  instd_mmb_id!: string;
+  charge_count!: number;
+  charge_total_amount!: number;
+  charge_currency!: string;
+  source_file_path!: string;
+  record_hash!: string;
+  ingested_at_ts!: string;
+}
+
+export class TransactionDataResponseDTO {
+  status!: string;
+  code!: number;
+  table!: string;
+  row_count!: number;
+  data!: TransactionDetailRecordDTO[];
 }
 
 export const CaseType = {
@@ -106,6 +181,7 @@ export interface Alert extends Record<string, unknown> {
 }
 
 export interface Case {
+  alert: Alert;
   case_id: number;
   case_creator_user_id: string;
   case_owner_user_id: string;
@@ -151,10 +227,10 @@ export interface ManualTriageDto {
   priorityScore: number;
   alertType?: AlertType;
   predictionOutcome?:
-    | 'FALSE_POSITIVE'
-    | 'TRUE_POSITIVE'
-    | 'FALSE_NEGATIVE'
-    | 'TRUE_NEGATIVE';
+  | 'FALSE_POSITIVE'
+  | 'TRUE_POSITIVE'
+  | 'FALSE_NEGATIVE'
+  | 'TRUE_NEGATIVE';
   note: string;
   status: CaseStatus;
 }
