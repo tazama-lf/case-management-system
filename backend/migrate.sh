@@ -3,7 +3,7 @@
 echo "Waiting for postgres..."
 
 until nc -z "$POSTGRES_HOST" "$POSTGRES_PORT"; do
-  sleep 2
+  sleep 2
 done
 
 echo "Creating databases if not exist..."
@@ -23,8 +23,8 @@ echo "Seeding reference_ids..."
 psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "tazama_cms" <<'SQL'
 INSERT INTO "reference_ids" ("txTp", "referenceIdName")
 VALUES
-  ('pacs.008.001.10', 'EndToEndId'),
-  ('pacs.002.001.12', 'OrgnlEndToEndId')
+  ('pacs.008.001.10', 'EndToEndId'),
+  ('pacs.002.001.12', 'OrgnlEndToEndId')
 ON CONFLICT ("txTp")
 DO UPDATE SET "referenceIdName" = EXCLUDED."referenceIdName";
 SQL
