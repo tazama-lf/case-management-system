@@ -120,7 +120,7 @@ describe('AccountLakehouseService', () => {
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getAccountNodeFullData('entity1')).rejects.toThrow(HttpException);
+      await expect(service.getAccountNodeFullData('entity1', 'DEFAULT', 'month')).rejects.toThrow(HttpException);
     });
 
     it('uses MEDIUM velocity when txCount between 10 and 49', async () => {
@@ -147,7 +147,7 @@ describe('AccountLakehouseService', () => {
           }),
         ),
       );
-      const result = await service.getAccountNodeFullData('entity1');
+      const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'year');
       expect(result.accountDetails.velocity).toBe('MEDIUM');
     });
 
@@ -168,7 +168,7 @@ describe('AccountLakehouseService', () => {
           { from_account_id: 'acc2', to_account_id: 'acc1', tx_count: 2, total_amount: 200, is_alerted_edge: 0, is_investigated_edge: 0 },
         ]),
       );
-      const result = await service.getAccountNodeFullData('entity1');
+      const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'year');
       // Should have entity node + acc1 + acc2 = 3 nodes minimum
       expect(result.network.nodes.length).toBeGreaterThanOrEqual(3);
     });
@@ -213,7 +213,7 @@ describe('AccountLakehouseService', () => {
         )
         .mockReturnValueOnce(okHttp([{ transactions: 20, total_value: 2000, is_alerted: 0, is_investigated: 0 }]))
         .mockReturnValueOnce(okHttp([{ holder_name: 'CP Name' }]));
-      const result = await service.getCounterpartyNodeFullData('cp1');
+      const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT', 'month');
       expect(result.counterpartyDetails.velocity).toBe('MEDIUM');
     });
 
@@ -233,13 +233,13 @@ describe('AccountLakehouseService', () => {
         )
         .mockReturnValueOnce(okHttp([{ transactions: 10, total_value: 5000, is_alerted: 1, is_investigated: 1 }]))
         .mockReturnValueOnce(okHttp([{}]));
-      const result = await service.getCounterpartyNodeFullData('cp1');
+      const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT');
       expect(result.counterpartyDetails.flags.alerted).toBe(true);
     });
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getCounterpartyNodeFullData('cp1')).rejects.toThrow(HttpException);
+      await expect(service.getCounterpartyNodeFullData('cp1', 'DEFAULT')).rejects.toThrow(HttpException);
     });
 
     it('adds unseen fromId counterparty node to network', async () => {
@@ -258,7 +258,7 @@ describe('AccountLakehouseService', () => {
         )
         .mockReturnValueOnce(okHttp([{ transactions: 2, total_value: 500, is_alerted: 0, is_investigated: 0 }]))
         .mockReturnValueOnce(okHttp([{ holder_name: 'CP Name' }]));
-      const result = await service.getCounterpartyNodeFullData('cp1');
+      const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT');
       expect(result.network.nodes.length).toBeGreaterThanOrEqual(2);
     });
   });

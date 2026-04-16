@@ -201,7 +201,7 @@ describe('TransactionLakehouseService', () => {
         )
         .mockReturnValueOnce(okHttp([]))
         .mockReturnValueOnce(okHttp([]));
-      const result = await service.getTransactionNetworkData('acc1');
+      const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day');
       expect(result.connectedAccounts[0].transactionStats.velocity).toBe('HIGH');
     });
 
@@ -222,18 +222,18 @@ describe('TransactionLakehouseService', () => {
         )
         .mockReturnValueOnce(okHttp([]))
         .mockReturnValueOnce(okHttp([]));
-      const result = await service.getTransactionNetworkData('acc1');
+      const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day');
       expect(result.connectedAccounts[0].transactionStats.velocity).toBe('MEDIUM');
     });
 
     it('throws when account not found', async () => {
       http.mockReturnValue(okHttp([]));
-      await expect(service.getTransactionNetworkData('nonexistent')).rejects.toThrow(HttpException);
+      await expect(service.getTransactionNetworkData('nonexistent', 'DEFAULT', 'day')).rejects.toThrow(HttpException);
     });
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getTransactionNetworkData('acc1')).rejects.toThrow(HttpException);
+      await expect(service.getTransactionNetworkData('acc1', 'DEFAULT', 'day')).rejects.toThrow(HttpException);
     });
   });
 
@@ -264,7 +264,7 @@ describe('TransactionLakehouseService', () => {
 
     it('handles empty entity history', async () => {
       http.mockReturnValue(okHttp([]));
-      const result: any = await service.getTransactionHistoryByAccountId('entity1');
+      const result: any = await service.getTransactionHistoryByAccountId('entity1', 'DEFAULT');
       expect(result.summary.totalTransactions).toBe(0);
     });
 
@@ -304,7 +304,7 @@ describe('TransactionLakehouseService', () => {
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getTransactionHistoryByAccountId('entity1')).rejects.toThrow(HttpException);
+      await expect(service.getTransactionHistoryByAccountId('entity1', 'DEFAULT')).rejects.toThrow(HttpException);
     });
   });
 
@@ -342,23 +342,23 @@ describe('TransactionLakehouseService', () => {
         .mockReturnValueOnce(okHttp([{ counterparty_id: 'cp1' }]))
         .mockReturnValueOnce(okHttp([{ from_counterparty_id: 'cp1', to_counterparty_id: 'cp2', tx_count: 2, total_amount: 500 }]))
         .mockReturnValueOnce(okHttp([]));
-      const result = await service.getCounterpartyNetworkData('acc1');
+      const result = await service.getCounterpartyNetworkData('acc1', 'DEFAULT', 'month');
       expect(result.counterparties[0].frequency).toBe('LOW');
     });
 
     it('throws when account not found', async () => {
       http.mockReturnValue(okHttp([]));
-      await expect(service.getCounterpartyNetworkData('nonexistent')).rejects.toThrow(HttpException);
+      await expect(service.getCounterpartyNetworkData('nonexistent', 'DEFAULT', 'month')).rejects.toThrow(HttpException);
     });
 
     it('throws when no counterparties found', async () => {
       http.mockReturnValueOnce(okHttp([{ debtor_account_id: 'acc1' }])).mockReturnValueOnce(okHttp([]));
-      await expect(service.getCounterpartyNetworkData('acc1')).rejects.toThrow(HttpException);
+      await expect(service.getCounterpartyNetworkData('acc1', 'DEFAULT', 'month')).rejects.toThrow(HttpException);
     });
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getCounterpartyNetworkData('acc1')).rejects.toThrow(HttpException);
+      await expect(service.getCounterpartyNetworkData('acc1', 'DEFAULT', 'month')).rejects.toThrow(HttpException);
     });
   });
 
