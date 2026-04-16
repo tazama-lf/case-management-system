@@ -6,7 +6,7 @@ class TransactionDetailsService {
 
   async getTransactionDetails(
     transactionId: string,
-    tenantId: string = 'DEFAULT',
+    tenantId: string
   ): Promise<TransactionDetailsDto> {
     if (!transactionId) {
       throw new Error('Transaction ID is required');

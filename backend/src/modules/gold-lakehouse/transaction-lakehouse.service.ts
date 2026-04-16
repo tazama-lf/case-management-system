@@ -166,7 +166,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
 
   async getTransactionHistoryByAccountId(
     accountId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     startDate?: string,
     endDate?: string,
     granularity?: string,
@@ -357,7 +357,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async getTransactionNetworkData(accountId: string, tenantId = 'DEFAULT', timeRange = '30d'): Promise<TransactionNetworkResponseDto> {
+  async getTransactionNetworkData(accountId: string, tenantId: string, timeRange: string): Promise<TransactionNetworkResponseDto> {
     try {
       this.logger.log(`Fetching transaction network for account: ${accountId}, timeRange: ${timeRange}`);
 
@@ -494,7 +494,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async getCounterpartyNetworkData(accountId: string, tenantId = 'DEFAULT', timeRange = '30d'): Promise<CounterpartyNetworkResponseDto> {
+  async getCounterpartyNetworkData(accountId: string, tenantId: string, timeRange = '30d'): Promise<CounterpartyNetworkResponseDto> {
     try {
       this.logger.log(`Fetching counterparty network for account: ${accountId}`);
 

@@ -121,6 +121,7 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
             alertId={alertId}
             caseId={caseId}
             transactionId={transactionId}
+            tenantId={tenantId}
           />
         )}
 
@@ -128,6 +129,7 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
           <TransactionDetailsTab
             caseId={caseId}
             transactionId={transactionId}
+            tenantId={tenantId}
           />
         )}
 
@@ -165,7 +167,7 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
           ))}
 
         {activeSubTab === 'alert-history' && (
-          <AlertHistoryTab caseId={caseId} transactionId={transactionId} />
+          <AlertHistoryTab caseId={caseId} transactionId={transactionId} tenantId={tenantId} />
         )}
 
         {activeSubTab === 'conditions' && (

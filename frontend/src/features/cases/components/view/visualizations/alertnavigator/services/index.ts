@@ -4,7 +4,7 @@ import type { AlertNavigatorDto } from '../types';
 class AlertNavigatorService {
   private baseUrl = '/api/v1/lakehouse/alert-navigator';
 
-  async getAlertNavigator(alertId: number, tenantId: string = 'DEFAULT'): Promise<AlertNavigatorDto> {
+  async getAlertNavigator(alertId: number, tenantId: string): Promise<AlertNavigatorDto> {
     const response = await apiClient.get<any>(
       `${this.baseUrl}/${alertId}?tenantId=${tenantId}`,
     );
@@ -14,8 +14,8 @@ class AlertNavigatorService {
       ...response,
       typologies: response.typologies?.map((typology: any) => ({
         ...typology,
-        rules: typeof typology.rules === 'string' 
-          ? JSON.parse(typology.rules) 
+        rules: typeof typology.rules === 'string'
+          ? JSON.parse(typology.rules)
           : typology.rules || [],
       })) || [],
     };

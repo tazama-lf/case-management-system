@@ -187,6 +187,7 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
             caseId={caseId}
             transactionId={transactionId}
             timeRange={timeRange}
+            tenantId={tenantId}
             entityAccountId={
               activeEntityRole === 'creditor'
                 ? entityMetadata?.creditorAccountId
@@ -199,6 +200,7 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
             caseId={caseId}
             transactionId={transactionId}
             timeRange={timeRange}
+            tenantId={tenantId}
             entityId={activeEntityRole === 'creditor'
               ? entityMetadata?.creditorId
               : entityMetadata?.debtorId
@@ -209,6 +211,8 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
           <CounterpartyNetworkTab
             caseId={caseId}
             transactionId={transactionId}
+            timeRange={timeRange}
+            tenantId={tenantId}
             entityId={
               activeEntityRole === 'creditor'
                 ? entityMetadata?.creditorId

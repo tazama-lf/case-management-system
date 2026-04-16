@@ -1,18 +1,20 @@
 import React, { useEffect } from 'react';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import alertNavigatorService from './services';
-import type { AlertNavigatorDto} from './types';
+import type { AlertNavigatorDto } from './types';
 
 interface AlertNavigatorTabProps {
   alertId?: number;
   caseId?: number;
   transactionId?: string;
+  tenantId: string;
 }
 
 const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
   alertId,
   caseId: _caseId,
   transactionId: _transactionId,
+  tenantId,
 }) => {
   const [data, setData] = React.useState<AlertNavigatorDto | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -29,7 +31,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
       try {
         setLoading(true);
         setError(null);
-        const result = await alertNavigatorService.getAlertNavigator(alertId);
+        const result = await alertNavigatorService.getAlertNavigator(alertId, tenantId);
         setData(result);
         if (result.typologies && result.typologies.length > 0) {
           const firstTypologyId = result.typologies[0].typologyId;
@@ -93,7 +95,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
     return (
       <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
         <p className="text-sm text-yellow-700 font-medium">
-        Alert Navigator Data Unavailable
+          Alert Navigator Data Unavailable
         </p>
         <p className="text-sm text-yellow-600 mt-1">{error}</p>
         {alertId && (

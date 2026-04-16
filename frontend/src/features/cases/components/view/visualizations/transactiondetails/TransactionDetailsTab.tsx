@@ -10,11 +10,13 @@ import type { TransactionDetailsDto } from './types/types';
 interface TransactionDetailsTabProps {
   caseId?: number;
   transactionId?: string;
+  tenantId: string;
 }
 
 const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
   caseId: _caseId,
   transactionId,
+  tenantId,
 }) => {
   const [data, setData] = React.useState<TransactionDetailsDto | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -31,7 +33,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
         setLoading(true);
         setError(null);
         const result =
-          await transactionDetailsService.getTransactionDetails(transactionId);
+          await transactionDetailsService.getTransactionDetails(transactionId, tenantId);
         setData(result);
       } catch (err) {
         const message =
@@ -117,7 +119,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
             <span className="underline">PACS.008 - Payment Instruction</span>
             <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">Primary</span>
           </div>
-          <div className="grid grid-cols-4 gap-30">
+          <div className="grid grid-cols-2 gap-5">
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">
                 Message ID
@@ -160,7 +162,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
             <span className="underline">PACS.002 - Payment Status Report</span>
             <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">Acknowledgment</span>
           </div>
-          <div className="grid grid-cols-4 gap-30">
+          <div className="grid grid-cols-2 gap-5">
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">
                 Message ID

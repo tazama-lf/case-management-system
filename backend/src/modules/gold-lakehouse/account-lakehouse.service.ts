@@ -181,7 +181,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
 
   async getAccountNodeFullData(
     entityId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     granularity: 'day' | 'month' | 'year' = 'month',
   ): Promise<AccountNodeFullDataResponse> {
     try {
@@ -296,7 +296,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
 
   async getCounterpartyNodeFullData(
     counterpartyId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     granularity: 'day' | 'month' | 'year' = 'month',
   ): Promise<CounterpartyNodeFullDataResponse> {
     try {

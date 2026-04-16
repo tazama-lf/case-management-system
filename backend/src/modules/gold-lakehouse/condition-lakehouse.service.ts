@@ -18,7 +18,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
   async getConditionsSummaryByAccount(
     accountId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     fromDate?: string,
     asOfDate?: string,
   ): Promise<AccountConditionsSummary> {
@@ -35,11 +35,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         params.push(asOfDate);
       }
 
-      let tenantFilter = '';
-      if (tenantId && tenantId !== 'DEFAULT') {
-        tenantFilter = `AND tenant_id = $${params.length + 1}`;
-        params.push(tenantId);
-      }
+      const tenantFilter = `AND tenant_id = $${params.length + 1}`;
+      params.push(tenantId);
 
       const sql = `
       SELECT 
@@ -76,13 +73,10 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       // `;
 
       const conditionsParams: any[] = [accountId];
-      let conditionsTenantFilter = '';
       let conditionsAsOfDateFilter = '';
 
-      if (tenantId && tenantId !== 'DEFAULT') {
-        conditionsTenantFilter = `AND tenant_id = $${conditionsParams.length + 1}`;
-        conditionsParams.push(tenantId);
-      }
+      const conditionsTenantFilter = `AND tenant_id = $${conditionsParams.length + 1}`;
+      conditionsParams.push(tenantId);
 
       if (asOfDate) {
         conditionsAsOfDateFilter = `
@@ -153,7 +147,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
   async getConditionsListByAccount(
     id: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     asOfDate?: string,
     showInactive = false,
   ): Promise<ConditionsListByAccountResponse> {
@@ -170,11 +164,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         params.push(asOfDate);
       }
 
-      let tenantFilter = '';
-      if (tenantId && tenantId !== 'DEFAULT') {
-        tenantFilter = `AND ct.tenant_id = $${params.length + 1}`;
-        params.push(tenantId);
-      }
+      const tenantFilter = `AND ct.tenant_id = $${params.length + 1}`;
+      params.push(tenantId);
 
       const sql = `
       SELECT
@@ -248,11 +239,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async getEvaluatedTransactionsByAccount(
-    accountId: string,
-    tenantId = 'DEFAULT',
-    fromDate?: string,
-  ): Promise<EvaluatedTransactionsResponse> {
+  async getEvaluatedTransactionsByAccount(accountId: string, tenantId: string, fromDate?: string): Promise<EvaluatedTransactionsResponse> {
     try {
       this.logger.log(`Fetching evaluated transactions for account: ${accountId}`);
       const params: any[] = [accountId, tenantId];
@@ -352,7 +339,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
   async getConditionsContextByTransaction(
     transactionId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     asOfDate?: string,
   ): Promise<ConditionsContextByTransactionResponse> {
     try {
@@ -527,7 +514,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
   async getConditionsByEntity(
     entityId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     asOfDate?: string,
     showInactive = false,
   ): Promise<ConditionsByEntityResponse> {

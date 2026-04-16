@@ -720,25 +720,8 @@ export class TriageService {
   ): Promise<{ updatedCase: Case; updatedTask: Task }> {
     try {
       const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
-
-      // const updatedTask = await this.taskService.updateTask(
-      //   taskId,
-      //   {
-      //     status: TaskStatus.STATUS_30_COMPLETED,
-      //   },
-      //   userId,
-      //   tenantId,
-      // );
       const updatedTask = await this.taskRepository.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED });
       const updatedCase = await this.caseRepository.updateCase(caseId, { status });
-
-      // const updatedCase = await this.caseCreationService.updateCaseStatus(caseId, status, userId, tenantId, undefined, caseType);
-
-      // this.flowableService.handleCaseStatusChanged({
-      //   caseId,
-      //   newStatus: status,
-      // });
-      // this.eventEmitter.emit('case.status.changed', new CaseStatusChangedEvent(caseId, status));
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
