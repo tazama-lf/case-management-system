@@ -435,8 +435,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         WHERE source = $1
           AND tenant_id = $2
         `;
-
-        const accountsResponse = await this.runSqlQuery(accountsSql, 100, [entityId, tenantId]);
+        const enhancedEntityId = `${entityId}TAZAMA_EID`;
+        const accountsResponse = await this.runSqlQuery(accountsSql, 100, [enhancedEntityId, tenantId]);
         accountsResponse.data?.forEach((r) => {
           if (r.account_id) {
             accountIdsSet.add(r.account_id);

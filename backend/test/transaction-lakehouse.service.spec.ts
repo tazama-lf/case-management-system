@@ -430,7 +430,7 @@ describe('TransactionLakehouseService', () => {
 
       http.mockReturnValueOnce(okHttp(mockCreditorResponse.data)).mockReturnValueOnce(okHttp(mockDebtorResponse.data));
 
-      const result = await service.generateProfile(1, mockDto, 'user123');
+      const result = await service.generateProfile(1, mockDto, 'user123', 'DEFAULT');
 
       expect(result).toHaveProperty('tenantId', 'DEFAULT');
       expect(result).toHaveProperty('transactionCreditorResp');
@@ -442,7 +442,7 @@ describe('TransactionLakehouseService', () => {
     it('throws InternalServerErrorException when alert not found', async () => {
       alertRepository.getAlertById.mockResolvedValue(null);
 
-      await expect(service.generateProfile(999, mockDto, 'user123')).rejects.toThrow(InternalServerErrorException);
+      await expect(service.generateProfile(999, mockDto, 'user123', 'DEFAULT')).rejects.toThrow(InternalServerErrorException);
 
       expect(alertRepository.getAlertById).toHaveBeenCalledWith(999);
     });
@@ -456,7 +456,7 @@ describe('TransactionLakehouseService', () => {
       alertRepository.getAlertById.mockResolvedValue(alertWithoutReferenceId as any);
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
 
-      await expect(service.generateProfile(1, mockDto, 'user123')).rejects.toThrow(InternalServerErrorException);
+      await expect(service.generateProfile(1, mockDto, 'user123', 'DEFAULT')).rejects.toThrow(InternalServerErrorException);
     });
 
     it('throws InternalServerErrorException when SQL query fails', async () => {
@@ -465,7 +465,7 @@ describe('TransactionLakehouseService', () => {
 
       http.mockReturnValue(errHttp('Database connection failed'));
 
-      await expect(service.generateProfile(1, mockDto, 'user123')).rejects.toThrow(InternalServerErrorException);
+      await expect(service.generateProfile(1, mockDto, 'user123', 'DEFAULT')).rejects.toThrow(InternalServerErrorException);
     });
 
     it('handles empty creditor and debtor responses', async () => {
@@ -474,7 +474,7 @@ describe('TransactionLakehouseService', () => {
 
       http.mockReturnValueOnce(okHttp([])).mockReturnValueOnce(okHttp([]));
 
-      const result = await service.generateProfile(1, mockDto, 'user123');
+      const result = await service.generateProfile(1, mockDto, 'user123', 'DEFAULT');
 
       expect(result).toHaveProperty('tenantId', 'DEFAULT');
       expect(result.transactionCreditorResp.data).toEqual([]);
@@ -495,7 +495,7 @@ describe('TransactionLakehouseService', () => {
 
       http.mockReturnValueOnce(okHttp(mockMultipleCreditorResponse.data)).mockReturnValueOnce(okHttp([]));
 
-      const result = await service.generateProfile(1, mockDto, 'user123');
+      const result = await service.generateProfile(1, mockDto, 'user123', 'DEFAULT');
 
       expect(result.transactionCreditorResp.data).toHaveLength(3);
     });

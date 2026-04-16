@@ -689,7 +689,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async generateProfile(alertId: number, dto: GenerateProfileDto, userId: string): Promise<GenerateProfileResponseDto> {
+  async generateProfile(alertId: number, dto: GenerateProfileDto, userId: string, tenantId: string): Promise<GenerateProfileResponseDto> {
     this.logger.log(`Alert ID:  ${alertId}`, GoldLakehouseService.name);
 
     try {
@@ -705,16 +705,16 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       }
 
       const transactionCreditorSql = `
-      SELECT DISTINCT th.tx_msg_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.creditor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.creditor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = $1 AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC`;
+      SELECT DISTINCT th.tx_msg_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.creditor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.creditor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = $1 AND td_src.tenant_id = $2 AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC`;
 
-      const transactionCreditorResp = await this.runSqlQuery(transactionCreditorSql, 1000, [referenceId]);
+      const transactionCreditorResp = await this.runSqlQuery(transactionCreditorSql, 1000, [referenceId, tenantId]);
 
       const transactionDebtorSql = `
-      SELECT DISTINCT th.tx_msg_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.debtor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.debtor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = $1 AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC`;
+      SELECT DISTINCT th.tx_msg_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.debtor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.debtor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = $1 AND td_src.tenant_id = $2 AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC`;
 
-      const transactionDebtorResp = await this.runSqlQuery(transactionDebtorSql, 1000, [referenceId]);
+      const transactionDebtorResp = await this.runSqlQuery(transactionDebtorSql, 1000, [referenceId, tenantId]);
       return {
-        tenantId: dto.tenantId,
+        tenantId,
         transactionCreditorResp,
         transactionDebtorResp,
       };

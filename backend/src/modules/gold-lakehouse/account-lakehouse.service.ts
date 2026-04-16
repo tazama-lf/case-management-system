@@ -41,9 +41,9 @@ export class AccountLakehouseService extends GoldLakehouseService {
         td.creditor_account_id, 
         td.creditor_name 
         FROM transaction_detail td 
-        WHERE td.end_to_end_id = $1 AND tx_type = 'pacs.008.001.10'
+        WHERE td.end_to_end_id = $1 AND td.tenant_id = $2 AND td.tx_type = 'pacs.008.001.10'
         `;
-      const entityMetadataResp = await this.runSqlQuery(entitySQL, 1, [referenceId]);
+      const entityMetadataResp = await this.runSqlQuery(entitySQL, 1, [referenceId, tenantId]);
       const entityMetadataRow = entityMetadataResp.data?.[0];
       const entityMetadata = {
         debtorId: entityMetadataRow?.debtor_Id,
@@ -386,13 +386,14 @@ export class AccountLakehouseService extends GoldLakehouseService {
         MAX(is_investigated_edge) AS is_investigated
       FROM tx_network_counterparties_edges
       WHERE tenant_id = $1
+        AND bucket_granularity = $2
         AND (
-          from_counterparty_id = $2
-          OR to_counterparty_id = $2
+          from_counterparty_id = $3
+          OR to_counterparty_id = $3
         )
     `;
 
-      const metricsResp = await this.runSqlQuery(metricsSql, 1, [tenantId, counterpartyId]);
+      const metricsResp = await this.runSqlQuery(metricsSql, 1, [tenantId, granularity, counterpartyId]);
       const metrics = this.stripHudiMetadata(metricsResp.data?.[0] ?? {});
 
       const nameSql = `
