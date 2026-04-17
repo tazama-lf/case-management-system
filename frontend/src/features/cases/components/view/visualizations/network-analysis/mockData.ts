@@ -7,9 +7,7 @@ import type { NetworkNodeData, NetworkEdgeData } from './NetworkGraph';
  */
 
 // Transaction Network Mock Data - matches screenshot 2
-export const generateTransactionNetworkNodes = (
-  _accountId?: string,
-): NetworkNodeData[] => [
+export const generateTransactionNetworkNodes = (_accountId?: string): NetworkNodeData[] => [
   {
     id: 'ACC-1234',
     label: 'John Smith',
@@ -64,9 +62,7 @@ export const generateTransactionNetworkEdges = (): NetworkEdgeData[] => [
 ];
 
 // Account Network Mock Data - matches screenshot 1
-export const generateAccountNetworkNodes = (
-  _counterpartyId?: string,
-): NetworkNodeData[] => [
+export const generateAccountNetworkNodes = (_counterpartyId?: string): NetworkNodeData[] => [
   {
     id: 'CP-5678',
     label: 'Global Trading ...',
@@ -127,9 +123,7 @@ export const generateAccountNetworkEdges = (): NetworkEdgeData[] => [
 ];
 
 // Counterparty Network Mock Data
-export const generateCounterpartyNetworkNodes = (
-  _transactionId?: string,
-): NetworkNodeData[] => [
+export const generateCounterpartyNetworkNodes = (_transactionId?: string): NetworkNodeData[] => [
   {
     id: 'CP-1000',
     label: 'Main Corp',
@@ -179,3 +173,4 @@ export const generateCounterpartyNetworkEdges = (): NetworkEdgeData[] => [
   { id: 'e3', source: 'CP-1000', target: 'CP-2003', type: 'outbound' },
   { id: 'e4', source: 'CP-2004', target: 'CP-1000', type: 'inbound' },
 ];
+

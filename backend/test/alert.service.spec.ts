@@ -334,20 +334,21 @@ describe('AlertService', () => {
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
       goldLakehouseService.runSqlQuery.mockResolvedValue(mockTransactionData as any);
 
-      const result = await service.getAlertTransactionalData(1);
+      const result = await service.getAlertTransactionalData(1, 'tenant-123');
 
       expect(result).toEqual({ transactionData: mockTransactionData });
       expect(alertRepository.getReferenceId).toHaveBeenCalledWith('pacs.002.001.12');
       expect(goldLakehouseService.runSqlQuery).toHaveBeenCalledWith(
-        expect.stringContaining("SELECT * from transaction_detail where end_to_end_id = 'tx-123'"),
+        expect.stringContaining("SELECT * from transaction_detail where end_to_end_id = $1"),
         1000,
+        ['tx-123'],
       );
     });
 
     it('throws when alert not found', async () => {
       alertRepository.getAlertById.mockResolvedValue(null);
 
-      await expect(service.getAlertTransactionalData(1)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.getAlertTransactionalData(1, 'tenant-123')).rejects.toThrow(NotFoundException);
     });
 
     it('throws when referenceId not in transaction', async () => {
@@ -355,7 +356,7 @@ describe('AlertService', () => {
       alertRepository.getAlertById.mockResolvedValue(alertNoRef);
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
 
-      await expect(service.getAlertTransactionalData(1)).rejects.toThrow('ReferenceId not found in transaction data');
+      await expect(service.getAlertTransactionalData(1, 'tenant-123')).rejects.toThrow('ReferenceId not found in transaction data');
     });
 
     it('throws when goldLakehouseService returns data without data property', async () => {
@@ -363,7 +364,7 @@ describe('AlertService', () => {
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
       goldLakehouseService.runSqlQuery.mockResolvedValue({ status: 'success', code: 200 } as any);
 
-      await expect(service.getAlertTransactionalData(1)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.getAlertTransactionalData(1, 'tenant-123')).rejects.toThrow(InternalServerErrorException);
     });
 
     it('throws when goldLakehouseService returns null data', async () => {
@@ -371,7 +372,7 @@ describe('AlertService', () => {
       alertRepository.getReferenceId.mockResolvedValue(mockReferenceIdData as any);
       goldLakehouseService.runSqlQuery.mockResolvedValue({ data: null } as any);
 
-      await expect(service.getAlertTransactionalData(1)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.getAlertTransactionalData(1, 'tenant-123')).rejects.toThrow(InternalServerErrorException);
     });
   });
 

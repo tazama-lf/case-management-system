@@ -28,7 +28,10 @@ const NetworkLegend: React.FC<NetworkLegendProps> = ({ items }) => {
             strokeDasharray={item.lineStyle === 'dashed' ? '4,2' : undefined}
           />
           {item.hasArrow && (
-            <polygon points="16,4 24,8 16,12" fill={item.color} />
+            <polygon
+              points="16,4 24,8 16,12"
+              fill={item.color}
+            />
           )}
         </svg>
       );
@@ -46,7 +49,12 @@ const NetworkLegend: React.FC<NetworkLegendProps> = ({ items }) => {
             strokeWidth={2}
           />
         )}
-        <circle cx="8" cy="8" r={item.ringColor ? 5 : 6} fill={item.color} />
+        <circle
+          cx="8"
+          cy="8"
+          r={item.ringColor ? 5 : 6}
+          fill={item.color}
+        />
       </svg>
     );
   };

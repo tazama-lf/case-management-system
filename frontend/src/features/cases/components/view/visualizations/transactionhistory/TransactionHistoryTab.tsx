@@ -71,23 +71,21 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
           {/* Creditor/Debtor toggle */}
           <div className="flex bg-gray-100 p-1 rounded-md">
             <button
-              onClick={() => { setActiveEntityRole('creditor'); }}
-              className={`px-4 py-1.5 text-sm rounded-md transition ${
-                activeEntityRole === 'creditor'
+              onClick={() => setActiveEntityRole('creditor')}
+              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'creditor'
                   ? 'bg-white shadow text-blue-600 font-medium'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
             >
               Creditor
             </button>
 
             <button
-              onClick={() => { setActiveEntityRole('debtor'); }}
-              className={`px-4 py-1.5 text-sm rounded-md transition ${
-                activeEntityRole === 'debtor'
+              onClick={() => setActiveEntityRole('debtor')}
+              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'debtor'
                   ? 'bg-white shadow text-blue-600 font-medium'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
             >
               Debtor
             </button>
@@ -96,7 +94,7 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
           {/* Time Range Dropdown (moved here) */}
           <div className="relative">
             <button
-              onClick={() => { setShowTimeDropdown(!showTimeDropdown); }}
+              onClick={() => setShowTimeDropdown(!showTimeDropdown)}
               className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               {selectedTimeLabel}
@@ -112,11 +110,10 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
                       setTimeRange(option.value);
                       setShowTimeDropdown(false);
                     }}
-                    className={`block w-full px-4 py-2 text-left text-sm ${
-                      timeRange === option.value
+                    className={`block w-full px-4 py-2 text-left text-sm ${timeRange === option.value
                         ? 'bg-indigo-50 text-indigo-700'
                         : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {option.label}
                   </button>

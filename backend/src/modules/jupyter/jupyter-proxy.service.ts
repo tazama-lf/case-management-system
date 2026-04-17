@@ -81,8 +81,8 @@ export class JupyterProxyService {
     return await this.alertsLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page, limit);
   }
 
-  async getTransactionNetworkData(accountId: string, tenantId?: string, timeRange?: string): Promise<TransactionNetworkResponseDto> {
-    return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId ?? 'DEFAULT', timeRange ?? '30d');
+  async getTransactionNetworkData(accountId: string, tenantId: string, timeRange: string): Promise<TransactionNetworkResponseDto> {
+    return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId, timeRange);
   }
 
   async getAccountNetworkData(
@@ -116,30 +116,26 @@ export class JupyterProxyService {
 
   async getConditionsContextByTransaction(
     transactionId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     asOfDate?: string,
   ): Promise<ConditionsContextByTransactionResponse> {
     return await this.conditionLakehouseService.getConditionsContextByTransaction(transactionId, tenantId, asOfDate);
   }
 
-  async getConditionsSummary(accountId: string, tenantId = 'DEFAULT', asOfDate?: string): Promise<AccountConditionsSummary> {
+  async getConditionsSummary(accountId: string, tenantId: string, asOfDate?: string): Promise<AccountConditionsSummary> {
     return await this.conditionLakehouseService.getConditionsSummaryByAccount(accountId, tenantId, undefined, asOfDate);
   }
 
   async getConditionsDetails(
     accountId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     asOfDate?: string,
     showInactive?: boolean,
   ): Promise<ConditionsListByAccountResponse> {
     return await this.conditionLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive ?? false);
   }
 
-  async getConditionsEvaluatedTransactions(
-    accountId: string,
-    tenantId = 'DEFAULT',
-    fromDate?: string,
-  ): Promise<EvaluatedTransactionsResponse> {
+  async getConditionsEvaluatedTransactions(accountId: string, tenantId: string, fromDate?: string): Promise<EvaluatedTransactionsResponse> {
     return await this.conditionLakehouseService.getEvaluatedTransactionsByAccount(accountId, tenantId, fromDate);
   }
 }

@@ -148,8 +148,8 @@ describe('JupyterProxyService', () => {
     });
 
     it('defaults tenantId and timeRange when omitted', async () => {
-      await service.getTransactionNetworkData('acc1');
-      expect(transactionSvc.getTransactionNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', '30d');
+      await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day');
+      expect(transactionSvc.getTransactionNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', 'day');
     });
   });
 
@@ -180,7 +180,7 @@ describe('JupyterProxyService', () => {
     });
 
     it('defaults tenantId to "DEFAULT" when omitted', async () => {
-      await service.getConditionsContextByTransaction('TMICFBPK2801321903297120');
+      await service.getConditionsContextByTransaction('TMICFBPK2801321903297120', 'DEFAULT');
       expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith('TMICFBPK2801321903297120', 'DEFAULT', undefined);
     });
   });
@@ -192,7 +192,7 @@ describe('JupyterProxyService', () => {
     });
 
     it('defaults tenantId to "DEFAULT" when omitted', async () => {
-      await service.getConditionsSummary('acc1');
+      await service.getConditionsSummary('acc1', 'DEFAULT');
       expect(conditionSvc.getConditionsSummaryByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, undefined);
     });
   });
@@ -204,7 +204,7 @@ describe('JupyterProxyService', () => {
     });
 
     it('applies defaults when parameters are omitted', async () => {
-      await service.getConditionsDetails('acc1');
+      await service.getConditionsDetails('acc1', 'DEFAULT');
       expect(conditionSvc.getConditionsListByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, false);
     });
   });
@@ -216,7 +216,7 @@ describe('JupyterProxyService', () => {
     });
 
     it('defaults tenantId to "DEFAULT" when omitted', async () => {
-      await service.getConditionsEvaluatedTransactions('acc1');
+      await service.getConditionsEvaluatedTransactions('acc1', 'DEFAULT');
       expect(conditionSvc.getEvaluatedTransactionsByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined);
     });
   });

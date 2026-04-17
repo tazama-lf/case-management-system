@@ -255,28 +255,31 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
 
         {/* Case Type Filter Dropdown */}
         <div className="w-48">
-          {isComplianceOfficer ? (
-            <select
-              disabled={true}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
-            >
-              <option value="closed">Closed Cases</option>
-            </select>
-          ) : (
-            <select
-              value={caseTypeFilter}
-              onChange={(e) => {
-                onCaseTypeFilterChange(
-                  e.target.value as 'all' | 'draft' | 'closed',
-                );
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">Open Cases</option>
-              <option value="draft">Draft Cases</option>
-              <option value="closed">Closed Cases</option>
-            </select>
-          )}
+          {
+            isComplianceOfficer ? (
+              <select
+                disabled={true}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+              >
+                <option value="closed">Closed Cases</option>
+              </select>
+            ) : (
+              <select
+                value={caseTypeFilter}
+                onChange={(e) => {
+                  onCaseTypeFilterChange(
+                    e.target.value as 'all' | 'draft' | 'closed',
+                  );
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">Open Cases</option>
+                <option value="draft">Draft Cases</option>
+                <option value="closed">Closed Cases</option>
+              </select>
+            )
+          }
+
         </div>
 
         {/* Filter button */}

@@ -166,7 +166,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
 
   async getTransactionHistoryByAccountId(
     accountId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     startDate?: string,
     endDate?: string,
     granularity?: string,
@@ -177,9 +177,10 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       // Query 1: Fetch EVENT rows with transaction details
       const eventsResponse = await this.runSqlQuery(
         `
-        SELECT DISTINCT th.end_to_end_id, th.tx_msg_id, th.end_to_end_id, th.transaction_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td.debtor_name, td.creditor_name FROM transaction_history th LEFT JOIN transaction_detail td ON th.transaction_id = td.transaction_id AND th.tenant_id = td.tenant_id WHERE th.row_type = 'EVENT' AND th.entity_id = '${accountId}' AND th.tenant_id = '${tenantId}' AND td.debtor_name IS NOT NULL AND td.creditor_name IS NOT NULL ORDER BY th.event_date DESC
+        SELECT DISTINCT th.end_to_end_id, th.tx_msg_id, th.end_to_end_id, th.transaction_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td.debtor_name, td.creditor_name FROM transaction_history th LEFT JOIN transaction_detail td ON th.transaction_id = td.transaction_id AND th.tenant_id = td.tenant_id WHERE th.row_type = 'EVENT' AND th.entity_id = $1 AND th.tenant_id = $2 AND td.debtor_name IS NOT NULL AND td.creditor_name IS NOT NULL ORDER BY th.event_date DESC
         `,
         1000,
+        [accountId, tenantId],
       );
 
       // Query 2: Fetch AGG rows for volume distribution (if granularity provided)
@@ -194,12 +195,13 @@ export class TransactionLakehouseService extends GoldLakehouseService {
             bucket_granularity
           FROM transaction_history
           WHERE row_type = 'AGG'
-            AND entity_id = '${accountId}'
-            AND bucket_granularity = '${granularity}'
-            AND tenant_id = '${tenantId}'
+            AND entity_id = $1
+            AND bucket_granularity = $2
+            AND tenant_id = $3
           ORDER BY bucket_start ASC
           `,
           1000,
+          [accountId, granularity, tenantId],
         );
         aggregates = (aggResponse?.data ?? []).map((a) => this.stripHudiMetadata(a));
       }
@@ -220,10 +222,11 @@ export class TransactionLakehouseService extends GoldLakehouseService {
             SUM(tx_count) as total_tx_count,
             SUM(total_amount) as total_amount
           FROM counterparty_account_links
-          WHERE account_id = '${accountId}'
-            AND tenant_id = '${tenantId}'
+          WHERE account_id = $1
+            AND tenant_id = $2
           `,
           100,
+          [accountId, tenantId],
         );
         const baseline = baselineResponse?.data?.[0];
         if (baseline) {
@@ -354,7 +357,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async getTransactionNetworkData(accountId: string, tenantId = 'DEFAULT', timeRange = '30d'): Promise<TransactionNetworkResponseDto> {
+  async getTransactionNetworkData(accountId: string, tenantId: string, timeRange: string): Promise<TransactionNetworkResponseDto> {
     try {
       this.logger.log(`Fetching transaction network for account: ${accountId}, timeRange: ${timeRange}`);
 
@@ -363,12 +366,12 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           COALESCE(debtor_account_id, creditor_account_id) as account_id,
           COALESCE(debtor_name, creditor_name) as account_name
         FROM transaction_detail
-        WHERE (debtor_account_id = '${accountId}' OR creditor_account_id = '${accountId}')
-          AND tenant_id = '${tenantId}'
+        WHERE (debtor_account_id = $1 OR creditor_account_id = $1)
+          AND tenant_id = $2
         LIMIT 1
       `;
 
-      const centerAccountResponse = await this.runSqlQuery(centerAccountSql, 1);
+      const centerAccountResponse = await this.runSqlQuery(centerAccountSql, 1, [accountId, tenantId]);
       const centerAccountRow = centerAccountResponse?.data?.[0];
 
       if (!centerAccountRow) {
@@ -388,8 +391,8 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           MIN(tx_event_ts) as first_tx_date,
           MAX(tx_event_ts) as last_tx_date
         FROM transaction_detail
-        WHERE debtor_account_id = '${accountId}'
-          AND tenant_id = '${tenantId}'
+        WHERE debtor_account_id = $1
+          AND tenant_id = $2
         GROUP BY creditor_account_id, creditor_name
       `;
 
@@ -404,19 +407,19 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           MIN(tx_event_ts) as first_tx_date,
           MAX(tx_event_ts) as last_tx_date
         FROM transaction_detail
-        WHERE creditor_account_id = '${accountId}'
-          AND tenant_id = '${tenantId}'
+        WHERE creditor_account_id = $1
+          AND tenant_id = $2
         GROUP BY debtor_account_id, debtor_name
       `;
 
       const alertFlagsSql = `
-        SELECT DISTINCT '${accountId}' as account_id WHERE 1=0
+        SELECT DISTINCT $1 as account_id WHERE 1=0
       `;
 
       const [outboundResponse, inboundResponse, alertFlagsResponse] = await Promise.all([
-        this.runSqlQuery(outboundSql, 1000),
-        this.runSqlQuery(inboundSql, 1000),
-        this.runSqlQuery(alertFlagsSql, 10),
+        this.runSqlQuery(outboundSql, 1000, [accountId, tenantId]),
+        this.runSqlQuery(inboundSql, 1000, [accountId, tenantId]),
+        this.runSqlQuery(alertFlagsSql, 10, [accountId]),
       ]);
 
       const outboundData = (outboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
@@ -491,7 +494,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async getCounterpartyNetworkData(accountId: string, tenantId = 'DEFAULT', timeRange = '30d'): Promise<CounterpartyNetworkResponseDto> {
+  async getCounterpartyNetworkData(accountId: string, tenantId: string, timeRange = '30d'): Promise<CounterpartyNetworkResponseDto> {
     try {
       this.logger.log(`Fetching counterparty network for account: ${accountId}`);
 
@@ -502,12 +505,12 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           debtor_account_id,
           creditor_account_id
         FROM transaction_detail
-        WHERE (debtor_account_id = '${accountId}' OR creditor_account_id = '${accountId}')
-          AND tenant_id = '${tenantId}'
+        WHERE (debtor_account_id = $1 OR creditor_account_id = $1)
+          AND tenant_id = $2
         LIMIT 1
       `;
 
-      const accountHolderResponse = await this.runSqlQuery(accountHolderSql, 1);
+      const accountHolderResponse = await this.runSqlQuery(accountHolderSql, 1, [accountId, tenantId]);
       const accountRow = accountHolderResponse?.data?.[0];
 
       if (!accountRow) {
@@ -520,12 +523,12 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       const counterpartyLinksSql = `
         SELECT DISTINCT counterparty_id
         FROM counterparty_account_links
-        WHERE account_id = '${accountId}'
-          AND tenant_id = '${tenantId}'
+        WHERE account_id = $1
+          AND tenant_id = $2
         LIMIT 1
       `;
 
-      const counterpartyLinksResponse = await this.runSqlQuery(counterpartyLinksSql, 1);
+      const counterpartyLinksResponse = await this.runSqlQuery(counterpartyLinksSql, 1, [accountId, tenantId]);
       const counterpartyIds = (counterpartyLinksResponse?.data ?? []).map((row) => this.stripHudiMetadata(row).counterparty_id);
 
       if (counterpartyIds.length === 0) {
@@ -545,12 +548,12 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           first_event_ts,
           last_event_ts
         FROM tx_network_counterparties_edges
-        WHERE (from_counterparty_id = '${centerCounterpartyId}' 
-           OR to_counterparty_id = '${centerCounterpartyId}')
-          AND tenant_id = '${tenantId}'
+        WHERE (from_counterparty_id = $1 
+           OR to_counterparty_id = $1)
+          AND tenant_id = $2
       `;
 
-      const edgesResponse = await this.runSqlQuery(networkEdgesSql, 1000);
+      const edgesResponse = await this.runSqlQuery(networkEdgesSql, 1000, [centerCounterpartyId, tenantId]);
       const edges = (edgesResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
 
       const allCounterpartyIds = new Set<string>([centerCounterpartyId]);
@@ -563,9 +566,8 @@ export class TransactionLakehouseService extends GoldLakehouseService {
 
       // Optimize: Get all counterparty names in a single query instead of N+1 queries
       if (allCounterpartyIds.size > 0) {
-        const counterpartyIdsList = Array.from(allCounterpartyIds)
-          .map((id) => `'${id}'`)
-          .join(',');
+        const counterpartyIdsArray = Array.from(allCounterpartyIds);
+        const counterpartyPlaceholders = counterpartyIdsArray.map((_, idx) => `$${idx + 1}`).join(',');
 
         const namesSql = `
           SELECT DISTINCT
@@ -579,12 +581,12 @@ export class TransactionLakehouseService extends GoldLakehouseService {
             (cal.counterparty_id LIKE 'dbtr_%' AND td.debtor_account_id = cal.account_id) OR
             (cal.counterparty_id LIKE 'cdtr_%' AND td.creditor_account_id = cal.account_id)
           )
-          WHERE cal.counterparty_id IN (${counterpartyIdsList})
-            AND cal.tenant_id = '${tenantId}'
-            AND td.tenant_id = '${tenantId}'
+          WHERE cal.counterparty_id IN (${counterpartyPlaceholders})
+            AND cal.tenant_id = $${counterpartyIdsArray.length + 1}
+            AND td.tenant_id = $${counterpartyIdsArray.length + 1}
         `;
 
-        const namesResponse = await this.runSqlQuery(namesSql, 1000);
+        const namesResponse = await this.runSqlQuery(namesSql, 1000, [...counterpartyIdsArray, tenantId]);
         const namesRows = (namesResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
 
         namesRows.forEach((row) => {
@@ -687,7 +689,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async generateProfile(alertId: number, dto: GenerateProfileDto, userId: string): Promise<GenerateProfileResponseDto> {
+  async generateProfile(alertId: number, dto: GenerateProfileDto, userId: string, tenantId: string): Promise<GenerateProfileResponseDto> {
     this.logger.log(`Alert ID:  ${alertId}`, GoldLakehouseService.name);
 
     try {
@@ -703,16 +705,16 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       }
 
       const transactionCreditorSql = `
-      SELECT DISTINCT th.tx_msg_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.creditor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.creditor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = '${referenceId}' AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC`;
+      SELECT DISTINCT th.tx_msg_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.creditor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.creditor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = $1 AND td_src.tenant_id = $2 AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC`;
 
-      const transactionCreditorResp = await this.runSqlQuery(transactionCreditorSql, 1000);
+      const transactionCreditorResp = await this.runSqlQuery(transactionCreditorSql, 1000, [referenceId, tenantId]);
 
       const transactionDebtorSql = `
-      SELECT DISTINCT th.tx_msg_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.debtor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.debtor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = '${referenceId}' AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC`;
+      SELECT DISTINCT th.tx_msg_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.debtor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.debtor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = $1 AND td_src.tenant_id = $2 AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC`;
 
-      const transactionDebtorResp = await this.runSqlQuery(transactionDebtorSql, 1000);
+      const transactionDebtorResp = await this.runSqlQuery(transactionDebtorSql, 1000, [referenceId, tenantId]);
       return {
-        tenantId: dto.tenantId,
+        tenantId,
         transactionCreditorResp,
         transactionDebtorResp,
       };

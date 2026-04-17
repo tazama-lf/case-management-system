@@ -1,4 +1,5 @@
 import type { Condition } from '@tazama-lf/frms-coe-lib';
+
 export interface AccountConditionsSummary {
   accountId: string;
   accountScheme: string;

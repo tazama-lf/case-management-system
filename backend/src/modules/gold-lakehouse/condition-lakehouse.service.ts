@@ -18,20 +18,25 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
   async getConditionsSummaryByAccount(
     accountId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     fromDate?: string,
     asOfDate?: string,
   ): Promise<AccountConditionsSummary> {
     try {
       this.logger.log(`Fetching conditions summary for account: ${accountId}`);
 
+      const params: any[] = [accountId];
       let asOfDateFilter = '';
       if (asOfDate) {
         asOfDateFilter = `
-          AND condition_inception_ts <= '${asOfDate}'
-          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= '${asOfDate}')
+          AND condition_inception_ts <= $${params.length + 1}
+          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= $${params.length + 1})
         `;
+        params.push(asOfDate);
       }
+
+      const tenantFilter = `AND tenant_id = $${params.length + 1}`;
+      params.push(tenantId);
 
       const sql = `
       SELECT 
@@ -40,13 +45,12 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         SUM(CASE WHEN is_expired = 1 THEN 1 ELSE 0 END) as expired_conditions,
         SUM(CASE WHEN is_active = 0 AND is_expired = 0 THEN 1 ELSE 0 END) as future_conditions
       FROM conditions
-      WHERE account_id = '${accountId}'
-        ${tenantId && tenantId !== 'DEFAULT' ? `AND tenant_id = '${tenantId}'` : ''}
+      WHERE account_id = $1
+        ${tenantFilter}
         ${asOfDateFilter}
       `;
-      //const sql = `SELECT COUNT(*) as total_conditions, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_conditions, SUM(CASE WHEN is_expired = 1 THEN 1 ELSE 0 END) as expired_conditions, SUM(CASE WHEN is_active = 0 AND is_expired = 0 THEN 1 ELSE 0 END) as future_conditions FROM conditions WHERE account_id = 'ACC-ce6e83a6' AND tenant_id = 'DEFAULT'`;
 
-      const response = await this.runSqlQuery(sql, 1);
+      const response = await this.runSqlQuery(sql, 1, params);
       const summary = response.data?.[0] ?? {};
 
       // const conditionsSql = `
@@ -68,6 +72,20 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       // LIMIT 100
       // `;
 
+      const conditionsParams: any[] = [accountId];
+      let conditionsAsOfDateFilter = '';
+
+      const conditionsTenantFilter = `AND tenant_id = $${conditionsParams.length + 1}`;
+      conditionsParams.push(tenantId);
+
+      if (asOfDate) {
+        conditionsAsOfDateFilter = `
+          AND condition_inception_ts <= $${conditionsParams.length + 1}
+          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= $${conditionsParams.length + 1})
+        `;
+        conditionsParams.push(asOfDate);
+      }
+
       const conditionsSql = `
       SELECT 
         condition_id,
@@ -82,13 +100,13 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         account_scheme,
         account_agent_mmb_id
       FROM conditions_timeline
-      WHERE account_id = '${accountId}'
-        ${tenantId && tenantId !== 'DEFAULT' ? `AND tenant_id = '${tenantId}'` : ''}
-        ${asOfDateFilter}
+      WHERE account_id = $1
+        ${conditionsTenantFilter}
+        ${conditionsAsOfDateFilter}
       LIMIT 100
       `;
 
-      const conditionsResponse = await this.runSqlQuery(conditionsSql, 100);
+      const conditionsResponse = await this.runSqlQuery(conditionsSql, 100, conditionsParams);
       const conditions = (conditionsResponse.data ?? []).map((cond) => ({
         conditionId: cond.condition_id,
         type: cond.condition_type ?? 'no data found',
@@ -129,20 +147,25 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
   async getConditionsListByAccount(
     id: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     asOfDate?: string,
     showInactive = false,
   ): Promise<ConditionsListByAccountResponse> {
     try {
       this.logger.log(`Fetching all conditions for ID: ${id}`);
 
+      const params: any[] = [id];
       let dateFilter = '';
       if (asOfDate && !showInactive) {
         dateFilter = `
-          AND condition_inception_ts <= '${asOfDate}'
-          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= '${asOfDate}')
+          AND condition_inception_ts <= $${params.length + 1}
+          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= $${params.length + 1})
         `;
+        params.push(asOfDate);
       }
+
+      const tenantFilter = `AND ct.tenant_id = $${params.length + 1}`;
+      params.push(tenantId);
 
       const sql = `
       SELECT
@@ -161,14 +184,14 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         ct.event_types_csv,
         ct.created_by_user
       FROM conditions ct
-      WHERE ct.account_id = '${id}'
-        ${tenantId && tenantId !== 'DEFAULT' ? `AND ct.tenant_id = '${tenantId}'` : ''}
+      WHERE ct.account_id = $1
+        ${tenantFilter}
         ${dateFilter}
       ORDER BY ct.condition_inception_ts DESC
       LIMIT 500
       `;
 
-      const response = await this.runSqlQuery(sql, 500);
+      const response = await this.runSqlQuery(sql, 500, params);
       const rows = response.data ?? [];
 
       this.logger.log(`Found ${rows.length} conditions for ID ${id}`);
@@ -207,20 +230,23 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         },
       };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error('Error fetching conditions list by account', errorStack);
       throw new HttpException('Failed to fetch conditions list', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async getEvaluatedTransactionsByAccount(
-    accountId: string,
-    tenantId = 'DEFAULT',
-    fromDate?: string,
-  ): Promise<EvaluatedTransactionsResponse> {
+  async getEvaluatedTransactionsByAccount(accountId: string, tenantId: string, fromDate?: string): Promise<EvaluatedTransactionsResponse> {
     try {
       this.logger.log(`Fetching evaluated transactions for account: ${accountId}`);
-      const dateFilter = fromDate ? `AND ct.cond_inception_ts >= '${fromDate}'` : '';
+      const params: any[] = [accountId, tenantId];
+      const dateFilter = fromDate ? `AND ct.cond_inception_ts >= $${params.length + 1}` : '';
+      if (fromDate) {
+        params.push(fromDate);
+      }
 
       const sql = `
       SELECT DISTINCT
@@ -244,17 +270,17 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       INNER JOIN transaction_detail td ON (
         (td.debtor_account_id = ct.cond_account_id OR td.creditor_account_id = ct.cond_account_id)
         AND td.tx_event_ts >= ct.cond_inception_ts
-        AND td.tx_event_ts <= ct.cond_expiry_ts
+        AND (ct.cond_expiry_ts IS NULL OR td.tx_event_ts <= ct.cond_expiry_ts)
         AND td.tenant_id = ct.cond_tenant_id
       )
-      WHERE ct.cond_account_id = '${accountId}'
-        AND ct.cond_tenant_id = '${tenantId}'
+      WHERE ct.cond_account_id = $1
+        AND ct.cond_tenant_id = $2
         ${dateFilter}
       ORDER BY td.tx_event_ts DESC
       LIMIT 500
       `;
 
-      const response = await this.runSqlQuery(sql, 500);
+      const response = await this.runSqlQuery(sql, 500, params);
       const rows = response.data ?? [];
 
       this.logger.log(`Found ${rows.length} transactions for account ${accountId}`);
@@ -264,7 +290,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           transactions: [],
           metadata: {
             accountId,
+            totalRecords: 0,
             status: 'DATA_NOT_FOUND',
+            joinMethod: 'Temporal (Time-based)',
             message: 'No transactions found overlapping with condition windows (Temporal Join returned 0 results)',
             queryTimestamp: new Date().toISOString(),
           },
@@ -298,6 +326,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         },
       };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error('Error fetching evaluated transactions by account', errorStack);
       throw new HttpException('Failed to fetch evaluated transactions', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -308,15 +339,14 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
   async getConditionsContextByTransaction(
     transactionId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     asOfDate?: string,
   ): Promise<ConditionsContextByTransactionResponse> {
     try {
-      const txSql = `SELECT transaction_id, end_to_end_id, tx_event_ts, tx_event_date, tx_type, interbank_settlement_amount, interbank_settlement_currency, debtor_id, debtor_name, debtor_account_id, creditor_id, creditor_name, creditor_account_id FROM transaction_detail WHERE end_to_end_id = '${transactionId}' AND tenant_id = '${tenantId}' LIMIT 1;`;
+      const txSql =
+        'SELECT transaction_id, end_to_end_id, tx_event_ts, tx_event_date, tx_type, interbank_settlement_amount, interbank_settlement_currency, debtor_id, debtor_name, debtor_account_id, creditor_id, creditor_name, creditor_account_id FROM transaction_detail WHERE end_to_end_id = $1 AND tenant_id = $2 LIMIT 1;';
 
-      //const txSql = `SELECT transaction_id, end_to_end_id, tx_event_ts, tx_event_date, tx_type, interbank_settlement_amount, interbank_settlement_currency, debtor_id, debtor_name, debtor_account_id, creditor_id, creditor_name, creditor_account_id FROM transaction_detail WHERE end_to_end_id = 'TMICFBPK2801321849114534' AND tenant_id = '${tenantId}' LIMIT 1;`;
-
-      const txResponse = await this.runSqlQuery(txSql, 1);
+      const txResponse = await this.runSqlQuery(txSql, 1, [transactionId, tenantId]);
       const tx = txResponse.data?.[0];
 
       if (!tx) {
@@ -325,8 +355,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
       const filterDate = asOfDate ?? tx.tx_event_ts;
 
-      const displayId = `TXN-${tx.tx_event_date?.replace(/-/gv, '')}${transactionId}`;
-
+      // const displayId = `TXN-${tx.tx_event_date?.replace(/-/gv, '')}${transactionId}`;
+      const dateSegment = tx.tx_event_date?.replace(/-/gv, '') ?? '';
+      const displayId = `TXN-${dateSegment}${transactionId}`;
       const debtorAccounts = await this.getEntityAccountsWithConditionCounts(tx.debtor_id, tx.debtor_account_id, tenantId, filterDate);
 
       const creditorAccounts = await this.getEntityAccountsWithConditionCounts(
@@ -364,6 +395,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         },
       };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Error fetching conditions context by transaction: ${errorMessage}`, errorStack);
@@ -398,11 +432,11 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         const accountsSql = `
         SELECT DISTINCT destination as account_id
         FROM account_holder
-        WHERE source = '${entityId}'
-          AND tenant_id = '${tenantId}'
+        WHERE source = $1
+          AND tenant_id = $2
         `;
-
-        const accountsResponse = await this.runSqlQuery(accountsSql, 100);
+        const enhancedEntityId = `${entityId}TAZAMA_EID`;
+        const accountsResponse = await this.runSqlQuery(accountsSql, 100, [enhancedEntityId, tenantId]);
         accountsResponse.data?.forEach((r) => {
           if (r.account_id) {
             accountIdsSet.add(r.account_id);
@@ -429,28 +463,28 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           SELECT 
             COUNT(*) as total,
             SUM(CASE 
-              WHEN condition_inception_ts <= '${asOfDate}' 
-              AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= '${asOfDate}')
+              WHEN condition_inception_ts <= $1 
+              AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= $1)
               AND is_active = 1 
               THEN 1 ELSE 0 
             END) as active,
             SUM(CASE 
-              WHEN condition_expiry_ts < '${asOfDate}' 
+              WHEN condition_expiry_ts < $1 
               AND is_expired = 1 
               THEN 1 ELSE 0 
             END) as expired,
             SUM(CASE 
-              WHEN condition_inception_ts > '${asOfDate}' 
+              WHEN condition_inception_ts > $1 
               AND is_active = 0 
               AND is_expired = 0 
               THEN 1 ELSE 0 
             END) as future
           FROM conditions
-          WHERE account_id = '${accountId}'
-            AND tenant_id = '${tenantId}'
+          WHERE account_id = $2
+            AND tenant_id = $3
           `;
 
-          const countsResponse = await this.runSqlQuery(conditionsSql, 1);
+          const countsResponse = await this.runSqlQuery(conditionsSql, 1, [asOfDate, accountId, tenantId]);
           const counts = countsResponse.data?.[0] ?? {};
 
           const accountNumber = accountId.slice(-12);
@@ -470,14 +504,17 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       return accountsWithCounts;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Error fetching entity accounts with condition counts: ${errorMessage}`);
-      return [];
+      this.logger.error(
+        `Error fetching entity accounts with condition counts: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw error;
     }
   }
 
   async getConditionsByEntity(
     entityId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string,
     asOfDate?: string,
     showInactive = false,
   ): Promise<ConditionsByEntityResponse> {
@@ -487,11 +524,11 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       const accountsSql = `
       SELECT DISTINCT destination as account_id
       FROM account_holder
-      WHERE source = '${entityId}'
-        AND tenant_id = '${tenantId}'
+      WHERE source = $1
+        AND tenant_id = $2
       `;
 
-      const accountsResponse = await this.runSqlQuery(accountsSql, 100);
+      const accountsResponse = await this.runSqlQuery(accountsSql, 100, [entityId, tenantId]);
       const accountIds = accountsResponse.data?.map((r) => r.account_id).filter(Boolean) ?? [];
 
       if (accountIds.length === 0) {
@@ -500,21 +537,31 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           accounts: [],
           conditions: [],
           metadata: {
+            entityId,
+            accountCount: 0,
+            totalConditions: 0,
+            asOfDate: asOfDate ?? 'current',
+            showInactive,
             message: 'No accounts found for this entity',
             queryTimestamp: new Date().toISOString(),
           },
         };
       }
 
+      const params: any[] = [tenantId, entityId];
       let dateFilter = '';
       if (asOfDate && !showInactive) {
         dateFilter = `
-          AND condition_inception_ts <= '${asOfDate}'
-          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= '${asOfDate}')
+          AND condition_inception_ts <= $${params.length + 1}
+          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= $${params.length + 1})
         `;
+        params.push(asOfDate);
       }
 
-      const accountFilter = accountIds.map((id) => `'${id}'`).join(',');
+      // Build parameterized IN clause
+      const accountPlaceholders = accountIds.map((_, idx) => `$${params.length + idx + 1}`).join(',');
+      params.push(...accountIds);
+
       const conditionsSql = `
       SELECT
         condition_id,
@@ -529,15 +576,15 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         condition_created_ts,
         created_by_user
       FROM conditions
-      WHERE ((account_id IN (${accountFilter}) AND identity_type = 'ACCOUNT')
-             OR (entity_id = '${entityId}' AND identity_type = 'ENTITY'))
-        AND tenant_id = '${tenantId}'
+      WHERE ((account_id IN (${accountPlaceholders}) AND identity_type = 'ACCOUNT')
+             OR (entity_id = $2 AND identity_type = 'ENTITY'))
+        AND tenant_id = $1
         ${dateFilter}
       ORDER BY condition_inception_ts DESC
       LIMIT 500
       `;
 
-      const response = await this.runSqlQuery(conditionsSql, 500);
+      const response = await this.runSqlQuery(conditionsSql, 500, params);
       const rows = response.data ?? [];
 
       return {
@@ -564,6 +611,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         },
       };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error('Error fetching conditions by entity', errorStack);
       throw new HttpException('Failed to fetch conditions by entity', HttpStatus.INTERNAL_SERVER_ERROR);

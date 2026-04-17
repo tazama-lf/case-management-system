@@ -6,6 +6,7 @@ interface AccountNetworkTabProps {
   transactionId?: string;
   timeRange?: string;
   entityId?: string;
+  tenantId: string;
 }
 
 const AccountNetworkTab: React.FC<AccountNetworkTabProps> = ({
@@ -13,14 +14,13 @@ const AccountNetworkTab: React.FC<AccountNetworkTabProps> = ({
   transactionId: _transactionId,
   timeRange,
   entityId,
+  tenantId,
 }) => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const tenantId = user?.tenantId || 'DEFAULT';
   const queryParams = React.useMemo(
     () => ({
       entity_id: entityId || '',
       tenantId,
-      timeRange: timeRange || 'month',
+      granularity: timeRange || 'month',
     }),
     [entityId, tenantId, timeRange],
   );

@@ -30,41 +30,41 @@ const evidenceSections: Array<{
   emptyMessage: string;
   evidenceType: EvidenceType;
 }> = [
-  {
-    key: 'kyc-edd',
-    title: 'KYC/EDD Report',
-    helper: 'Upload KYC/EDD documentation',
-    commentPlaceholder: 'Add comments about the KYC/EDD report...',
-    emptyMessage: 'No KYC/EDD report attached',
-    evidenceType: 'KYC',
-  },
-  {
-    key: 'sanctions',
-    title: 'Sanctions Screening',
-    helper: 'Upload evidence gathered during sanctions screening',
-    commentPlaceholder:
-      'Add any notes about the sanctions screening results...',
-    emptyMessage: 'No sanctions screening evidence attached',
-    evidenceType: 'SANCTIONS',
-  },
-  {
-    key: 'adverse-media',
-    title: 'Adverse Media Screening',
-    helper: 'Attach supporting documents from adverse media checks',
-    commentPlaceholder:
-      'Summarise any key findings from adverse media screening...',
-    emptyMessage: 'No adverse media screening evidence attached',
-    evidenceType: 'ADVERSE_MEDIA',
-  },
-  {
-    key: 'others',
-    title: 'Others',
-    helper: 'Add any additional evidence that supports this task',
-    commentPlaceholder: 'Provide context for the additional evidence...',
-    emptyMessage: 'No other evidence attached',
-    evidenceType: 'OTHER',
-  },
-];
+    {
+      key: 'kyc-edd',
+      title: 'KYC/EDD Report',
+      helper: 'Upload KYC/EDD documentation',
+      commentPlaceholder: 'Add comments about the KYC/EDD report...',
+      emptyMessage: 'No KYC/EDD report attached',
+      evidenceType: 'KYC',
+    },
+    {
+      key: 'sanctions',
+      title: 'Sanctions Screening',
+      helper: 'Upload evidence gathered during sanctions screening',
+      commentPlaceholder:
+        'Add any notes about the sanctions screening results...',
+      emptyMessage: 'No sanctions screening evidence attached',
+      evidenceType: 'SANCTIONS',
+    },
+    {
+      key: 'adverse-media',
+      title: 'Adverse Media Screening',
+      helper: 'Attach supporting documents from adverse media checks',
+      commentPlaceholder:
+        'Summarise any key findings from adverse media screening...',
+      emptyMessage: 'No adverse media screening evidence attached',
+      evidenceType: 'ADVERSE_MEDIA',
+    },
+    {
+      key: 'others',
+      title: 'Others',
+      helper: 'Add any additional evidence that supports this task',
+      commentPlaceholder: 'Provide context for the additional evidence...',
+      emptyMessage: 'No other evidence attached',
+      evidenceType: 'OTHER',
+    },
+  ];
 
 interface TaskEvidenceTabProps {
   task: TaskForSupervisor;
@@ -487,12 +487,11 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
             task.status === 'STATUS_21_BLOCKED'
           }
           className={`inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium shadow-sm
-        ${
-          saving ||
-          !Object.values(sectionFiles).some((files) => files.length > 0)
-            ? 'border-green-600 bg-green-600/70 text-white cursor-not-allowed'
-            : 'border-green-600 bg-green-600 text-white hover:bg-green-700'
-        }
+        ${saving ||
+              !Object.values(sectionFiles).some((files) => files.length > 0)
+              ? 'border-green-600 bg-green-600/70 text-white cursor-not-allowed'
+              : 'border-green-600 bg-green-600 text-white hover:bg-green-700'
+            }
         `}
         >
           <CheckCircleIcon className="h-4 w-4" />
@@ -541,8 +540,8 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                   accept={
                     section.key in allowedFileTypes
                       ? allowedFileTypes[section.key]
-                          .map((ext) => `.${ext}`)
-                          .join(',')
+                        .map((ext) => `.${ext}`)
+                        .join(',')
                       : '*'
                   }
                   ref={(el) => {
@@ -727,9 +726,8 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                       <div className="mt-1">
                         <div className="flex justify-between items-center">
                           <span
-                            className={`text-xs ${
-                              isLimitReached ? 'text-red-500' : 'text-gray-500'
-                            }`}
+                            className={`text-xs ${isLimitReached ? 'text-red-500' : 'text-gray-500'
+                              }`}
                           >
                             {length}/500
                           </span>

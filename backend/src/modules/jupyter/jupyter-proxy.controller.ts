@@ -72,11 +72,11 @@ export class JupyterProxyController {
   @Get('alert-history/summary')
   @ApiOperation({ summary: 'Proxy: Get Alert History Summary' })
   @ApiQuery({ name: 'endToEndId', required: false })
-  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'tenantId', required: true })
   @ApiQuery({ name: 'dateRange', required: false, example: '30days' })
   async getAlertHistorySummary(
+    @Query('tenantId') tenantId: string,
     @Query('endToEndId') endToEndId?: string,
-    @Query('tenantId') tenantId?: string,
     @Query('dateRange') dateRange?: string,
     @Headers() headers?: Record<string, any>,
   ): Promise<{
@@ -96,12 +96,12 @@ export class JupyterProxyController {
   @Get('alert-history/timeline')
   @ApiOperation({ summary: 'Proxy: Get Alert History Timeline' })
   @ApiQuery({ name: 'endToEndId', required: false })
-  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'tenantId', required: true })
   @ApiQuery({ name: 'dateRange', required: false })
   @ApiQuery({ name: 'granularity', required: false })
   async getAlertHistoryTimeline(
+    @Query('tenantId') tenantId: string,
     @Query('endToEndId') endToEndId?: string,
-    @Query('tenantId') tenantId?: string,
     @Query('dateRange') dateRange?: string,
     @Query('granularity') granularity = 'day',
     @Headers() headers?: Record<string, any>,
@@ -119,13 +119,13 @@ export class JupyterProxyController {
   @Get('alert-history/alerts')
   @ApiOperation({ summary: 'Proxy: Get Alert History Alerts' })
   @ApiQuery({ name: 'endToEndId', required: false })
-  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'tenantId', required: true })
   @ApiQuery({ name: 'dateRange', required: false })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   async getAlertHistoryAlerts(
+    @Query('tenantId') tenantId: string,
     @Query('endToEndId') endToEndId?: string,
-    @Query('tenantId') tenantId?: string,
     @Query('dateRange') dateRange?: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
@@ -204,17 +204,14 @@ export class JupyterProxyController {
   @Get('network-analysis/transaction/:accountId')
   @ApiOperation({ summary: 'Proxy: Get Transaction Network Analysis' })
   @ApiQuery({ name: 'timeRange', required: false })
-  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'tenantId', required: true })
   async getTransactionNetwork(
     @Param('accountId') accountId: string,
-    @Query('timeRange') timeRange?: string,
-    @Query('tenantId') tenantId?: string,
+    @Query('tenantId') tenantId: string,
+    @Query('timeRange') timeRange: string,
     @Headers() headers?: Record<string, any>,
   ): Promise<TransactionNetworkResponseDto> {
     this.validateSecret(headers ?? {});
-    if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
-      throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
-    }
     return await this.proxyService.getTransactionNetworkData(accountId, tenantId, timeRange);
   }
 
@@ -240,11 +237,11 @@ export class JupyterProxyController {
 
   @Get('conditions/by-transaction/:transactionId')
   @ApiOperation({ summary: 'Proxy: Get transaction context with conditions for both parties' })
-  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'tenantId', required: true })
   @ApiQuery({ name: 'asOfDate', required: false })
   async getConditionsContextByTransaction(
     @Param('transactionId') transactionId: string,
-    @Query('tenantId') tenantId?: string,
+    @Query('tenantId') tenantId: string,
     @Query('asOfDate') asOfDate?: string,
     @Headers() headers?: Record<string, any>,
   ): Promise<ConditionsContextByTransactionResponse> {
@@ -252,17 +249,17 @@ export class JupyterProxyController {
       throw new BadRequestException('transactionId is required');
     }
     this.validateSecret(headers ?? {});
-    return await this.proxyService.getConditionsContextByTransaction(transactionId, tenantId ?? 'DEFAULT', asOfDate);
+    return await this.proxyService.getConditionsContextByTransaction(transactionId, tenantId, asOfDate);
   }
 
   @Get('conditions/summary')
   @ApiOperation({ summary: 'Proxy: Get conditions summary with counts by Account ID' })
   @ApiQuery({ name: 'accountId', required: true })
-  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'tenantId', required: true })
   @ApiQuery({ name: 'asOfDate', required: false })
   async getConditionsSummary(
     @Query('accountId') accountId: string,
-    @Query('tenantId') tenantId?: string,
+    @Query('tenantId') tenantId: string,
     @Query('asOfDate') asOfDate?: string,
     @Headers() headers?: Record<string, any>,
   ): Promise<{
@@ -283,18 +280,18 @@ export class JupyterProxyController {
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
-    return await this.proxyService.getConditionsSummary(accountId, tenantId ?? 'DEFAULT', asOfDate);
+    return await this.proxyService.getConditionsSummary(accountId, tenantId, asOfDate);
   }
 
   @Get('conditions/details')
   @ApiOperation({ summary: 'Proxy: Get complete condition records with full details by Account ID' })
   @ApiQuery({ name: 'accountId', required: true })
-  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'tenantId', required: true })
   @ApiQuery({ name: 'asOfDate', required: false })
   @ApiQuery({ name: 'showInactive', required: false })
   async getConditionsDetails(
     @Query('accountId') accountId: string,
-    @Query('tenantId') tenantId?: string,
+    @Query('tenantId') tenantId: string,
     @Query('asOfDate') asOfDate?: string,
     @Query('showInactive') showInactive?: boolean,
     @Headers() headers?: Record<string, any>,
@@ -315,16 +312,16 @@ export class JupyterProxyController {
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
-    return await this.proxyService.getConditionsDetails(accountId, tenantId ?? 'DEFAULT', asOfDate, showInactive);
+    return await this.proxyService.getConditionsDetails(accountId, tenantId, asOfDate, showInactive);
   }
 
   @Get('conditions/evaluated-transactions/:accountId')
   @ApiOperation({ summary: 'Proxy: Get evaluated transactions for a condition/account' })
-  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiQuery({ name: 'tenantId', required: true })
   @ApiQuery({ name: 'fromDate', required: false })
   async getConditionsEvaluatedTransactions(
     @Param('accountId') accountId: string,
-    @Query('tenantId') tenantId?: string,
+    @Query('tenantId') tenantId: string,
     @Query('fromDate') fromDate?: string,
     @Headers() headers?: Record<string, any>,
   ): Promise<EvaluatedTransactionsResponse> {
@@ -332,6 +329,6 @@ export class JupyterProxyController {
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
-    return await this.proxyService.getConditionsEvaluatedTransactions(accountId, tenantId ?? 'DEFAULT', fromDate);
+    return await this.proxyService.getConditionsEvaluatedTransactions(accountId, tenantId, fromDate);
   }
 }

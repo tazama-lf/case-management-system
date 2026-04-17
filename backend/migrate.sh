@@ -19,4 +19,14 @@ psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -c "CREATE DATABASE tazama_cms"
 echo "Running CMS migrations..."
 npx prisma migrate deploy
 
+echo "Seeding reference_ids..."
+psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "tazama_cms" <<'SQL'
+INSERT INTO "reference_ids" ("txTp", "referenceIdName")
+VALUES
+  ('pacs.008.001.10', 'EndToEndId'),
+  ('pacs.002.001.12', 'OrgnlEndToEndId')
+ON CONFLICT ("txTp")
+DO UPDATE SET "referenceIdName" = EXCLUDED."referenceIdName";
+SQL
+
 echo "Migrations complete."

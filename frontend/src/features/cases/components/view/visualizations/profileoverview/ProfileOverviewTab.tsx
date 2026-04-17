@@ -10,19 +10,21 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-import { profileService } from '../../../../services/profileService';
+import {
+  profileService,
+} from '../../../../services/profileService';
 
 interface ProfileOverviewTabProps {
   alertId?: number;
   transactionId?: string;
 }
 
-const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
-  alertId,
-  transactionId,
-}) => {
+const ProfileOverviewTab: React.FC<
+  ProfileOverviewTabProps
+> = ({ alertId, transactionId }) => {
   const [loading, setLoading] = useState(false);
-  const [profileData, setProfileData] = useState<any | null>(null);
+  const [profileData, setProfileData] =
+    useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'creditor' | 'debtor'>('creditor');
   const [sortConfig, setSortConfig] = useState<{
@@ -38,6 +40,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
     }
     const fetchData = async () => {
       try {
+
         setLoading(true);
         setProfileData(null);
         setError(null);
@@ -55,8 +58,8 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
 
         setError(
           err?.response?.data?.message ||
-            err?.message ||
-            'Something went wrong while fetching profile',
+          err?.message ||
+          'Something went wrong while fetching profile'
         );
       } finally {
         setLoading(false);
@@ -76,10 +79,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
     }
   }, [profileData, activeTab]);
 
-  const totalTransactions =
-    activeTab === 'creditor'
-      ? profileData?.transactionCreditorResp?.row_count
-      : profileData?.transactionDebtorResp?.row_count;
+  const totalTransactions = activeTab === 'creditor' ? profileData?.transactionCreditorResp?.row_count : profileData?.transactionDebtorResp?.row_count;
 
   const selectedList =
     activeTab === 'creditor'
@@ -89,12 +89,12 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
   const sortedTransactions = React.useMemo(() => {
     if (!selectedList) return [];
 
-    const sortable = [...selectedList];
+    let sortable = [...selectedList];
 
     if (sortConfig !== null) {
       sortable.sort((a: any, b: any) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
 
         // Handle date
         if (sortConfig.key === 'event_date') {
@@ -120,13 +120,12 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
     return sortable;
   }, [selectedList, sortConfig]);
 
-  const handleSort = (
-    key: 'event_date' | 'tx_amount' | 'tx_type' | 'tx_ccy',
-  ) => {
+  const handleSort = (key: 'event_date' | 'tx_amount' | 'tx_type' | 'tx_ccy') => {
     let direction: 'asc' | 'desc' = 'asc';
 
     if (
-      sortConfig?.key === key &&
+      sortConfig &&
+      sortConfig.key === key &&
       sortConfig.direction === 'asc'
     ) {
       direction = 'desc';
@@ -135,7 +134,9 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
     setSortConfig({ key, direction });
   };
 
-  const totalAmount = selectedList.reduce((sum: number, tx: any) => sum + (Number(tx.tx_amount) || 0), 0);
+  const totalAmount = selectedList.reduce((sum: number, tx: any) => {
+    return sum + (Number(tx.tx_amount) || 0);
+  }, 0);
 
   //Volume Trend Data for last 90 days
   const volumeTrendData = React.useMemo(() => {
@@ -146,7 +147,8 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
 
       if (!date) return;
 
-      grouped[date] = (grouped[date] || 0) + (Number(tx.tx_amount) || 0);
+      grouped[date] =
+        (grouped[date] || 0) + (Number(tx.tx_amount) || 0);
     });
 
     return Object.entries(grouped)
@@ -172,9 +174,10 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
   }, [selectedList]);
 
   const getSortIcon = (key: string) => {
-    if (sortConfig?.key !== key) return '⬍';
+    if (!sortConfig || sortConfig.key !== key) return '⬍';
     return sortConfig.direction === 'asc' ? '↑' : '↓';
   };
+
 
   if (loading) {
     return (
@@ -218,23 +221,21 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
 
         <div className="flex bg-gray-100 p-1 rounded-md">
           <button
-            onClick={() => { setActiveTab('creditor'); }}
-            className={`px-4 py-1.5 text-sm rounded-md transition ${
-              activeTab === 'creditor'
-                ? 'bg-white shadow text-blue-600 font-medium'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
+            onClick={() => setActiveTab('creditor')}
+            className={`px-4 py-1.5 text-sm rounded-md transition ${activeTab === 'creditor'
+              ? 'bg-white shadow text-blue-600 font-medium'
+              : 'text-gray-600 hover:text-gray-800'
+              }`}
           >
             Creditor
           </button>
 
           <button
-            onClick={() => { setActiveTab('debtor'); }}
-            className={`px-4 py-1.5 text-sm rounded-md transition ${
-              activeTab === 'debtor'
-                ? 'bg-white shadow text-blue-600 font-medium'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
+            onClick={() => setActiveTab('debtor')}
+            className={`px-4 py-1.5 text-sm rounded-md transition ${activeTab === 'debtor'
+              ? 'bg-white shadow text-blue-600 font-medium'
+              : 'text-gray-600 hover:text-gray-800'
+              }`}
           >
             Debtor
           </button>
@@ -246,6 +247,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
       </h3>
 
       <div className="overflow-y-auto flex-1 px-6 py-5">
+
         <div className="space-y-6">
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <h3 className="mb-4 text-sm font-semibold text-gray-900">
@@ -285,8 +287,11 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
+
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-              <h3 className="text-xs font-medium text-gray-500">Total Value</h3>
+              <h3 className="text-xs font-medium text-gray-500">
+                Total Value
+              </h3>
               <p className="mt-2 text-2xl font-bold text-gray-900">
                 {totalAmount.toLocaleString()}
               </p>
@@ -300,15 +305,15 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
               <p className="mt-2 text-2xl font-bold text-gray-900">
                 {totalTransactions?.toLocaleString() ?? 'N/A'}
               </p>
-              <p className="mt-1 text-xs text-gray-500">Transaction count</p>
+              <p className="mt-1 text-xs text-gray-500">
+                Transaction count
+              </p>
             </div>
           </div>
 
           {/* Transaction Volume Trend Chart */}
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <h3 className="mb-4 text-sm font-semibold text-gray-900">
-              Transaction Volume Trend (90 Days)
-            </h3>
+            <h3 className="mb-4 text-sm font-semibold text-gray-900">Transaction Volume Trend (90 Days)</h3>
             {volumeTrendData.length === 0 ? (
               <p className="text-gray-500 text-sm">No data available</p>
             ) : (
@@ -323,12 +328,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
                   />
                   <YAxis />
                   <Tooltip />
-                  <Area
-                    type="monotone"
-                    dataKey="volume"
-                    stroke="#3b82f6"
-                    fill="#93c5fd"
-                  />
+                  <Area type="monotone" dataKey="volume" stroke="#3b82f6" fill="#93c5fd" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -336,9 +336,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
 
           {/* Daily Transaction Count Chart */}
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <h3 className="mb-4 text-sm font-semibold text-gray-900">
-              Daily Transaction Count
-            </h3>
+            <h3 className="mb-4 text-sm font-semibold text-gray-900">Daily Transaction Count</h3>
             {transactionCountData.length === 0 ? (
               <p className="text-gray-500 text-sm">No data available</p>
             ) : (
@@ -372,29 +370,31 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
                   <thead className="bg-gray-50">
                     <tr>
                       <th
-                        onClick={() => { handleSort('event_date'); }}
+                        onClick={() => handleSort('event_date')}
                         className="cursor-pointer px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
                       >
                         Date {getSortIcon('event_date')}
                       </th>
                       <th
-                        onClick={() => { handleSort('tx_amount'); }}
+                        onClick={() => handleSort('tx_amount')}
                         className="cursor-pointer px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
                       >
                         Transaction Amount {getSortIcon('tx_amount')}
+
                       </th>
                       <th
-                        onClick={() => { handleSort('tx_ccy'); }}
+                        onClick={() => handleSort('tx_ccy')}
                         className="cursor-pointer px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
                       >
                         Transaction Currency {getSortIcon('tx_ccy')}
                       </th>
                       <th
-                        onClick={() => { handleSort('tx_type'); }}
+                        onClick={() => handleSort('tx_type')}
                         className="cursor-pointer px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
                       >
                         Transaction Type {getSortIcon('tx_type')}
                       </th>
+
                     </tr>
                   </thead>
 

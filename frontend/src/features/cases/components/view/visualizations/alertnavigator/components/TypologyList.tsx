@@ -33,26 +33,21 @@ export const TypologyList: React.FC<TypologyListProps> = ({
         <div
           key={index}
           className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer"
-          onClick={() => { onToggle(index); }}
+          onClick={() => onToggle(index)}
         >
           <div className="flex items-center gap-2">
             <div
-              className={`h-2 w-2 rounded-full ${
-                typology.score >= 80
+              className={`h-2 w-2 rounded-full ${typology.score >= 80
                   ? 'bg-red-500'
                   : typology.score >= 60
                     ? 'bg-orange-500'
                     : 'bg-yellow-500'
-              }`}
+                }`}
             />
-            <span className="text-sm font-medium text-gray-900">
-              {typology.name}
-            </span>
+            <span className="text-sm font-medium text-gray-900">{typology.name}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span
-              className={`text-sm font-semibold ${getScoreTextColor(typology.score)}`}
-            >
+            <span className={`text-sm font-semibold ${getScoreTextColor(typology.score)}`}>
               {typology.score}
             </span>
             <div className="w-16 bg-gray-200 rounded-full h-2">

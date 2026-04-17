@@ -74,12 +74,12 @@ describe('ConditionLakehouseService', () => {
 
     it('re-throws HttpException directly', async () => {
       http.mockReturnValue(throwError(() => new HttpException('Not found', 404)));
-      await expect(service.getConditionsSummaryByAccount('acc1')).rejects.toThrow('Not found');
+      await expect(service.getConditionsSummaryByAccount('acc1', 'DEFAULT')).rejects.toThrow('Not found');
     });
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getConditionsSummaryByAccount('acc1')).rejects.toThrow(HttpException);
+      await expect(service.getConditionsSummaryByAccount('acc1', 'DEFAULT')).rejects.toThrow(HttpException);
     });
   });
 
@@ -116,7 +116,7 @@ describe('ConditionLakehouseService', () => {
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getConditionsListByAccount('acc1')).rejects.toThrow(HttpException);
+      await expect(service.getConditionsListByAccount('acc1', 'DEFAULT')).rejects.toThrow(HttpException);
     });
   });
 
@@ -142,13 +142,13 @@ describe('ConditionLakehouseService', () => {
 
     it('returns DATA_NOT_FOUND metadata when empty', async () => {
       http.mockReturnValue(okHttp([]));
-      const result = await service.getEvaluatedTransactionsByAccount('acc1');
+      const result = await service.getEvaluatedTransactionsByAccount('acc1', 'DEFAULT');
       expect(result.metadata.status).toBe('DATA_NOT_FOUND');
     });
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getEvaluatedTransactionsByAccount('acc1')).rejects.toThrow(HttpException);
+      await expect(service.getEvaluatedTransactionsByAccount('acc1', 'DEFAULT')).rejects.toThrow(HttpException);
     });
   });
 
@@ -249,7 +249,7 @@ describe('ConditionLakehouseService', () => {
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getConditionsByEntity('entity1')).rejects.toThrow(HttpException);
+      await expect(service.getConditionsByEntity('entity1', 'DEFAULT')).rejects.toThrow(HttpException);
     });
   });
 });

@@ -106,12 +106,16 @@ export class AlertService {
     }
   }
 
-  async getAlertTransactionalData(alertId: number): Promise<{ transactionData: transactionDataResponseDTO[] }> {
+  async getAlertTransactionalData(alertId: number, tenantId: string): Promise<{ transactionData: transactionDataResponseDTO }> {
     this.loggerService.log(`Alert ID:  ${alertId}`, AlertService.name);
 
     const alert = await this.alertRepository.getAlertById(alertId);
     if (!alert) {
-      throw new InternalServerErrorException(`Unable to fetch details for AlertId ${alertId}`);
+      throw new NotFoundException(`Alert ${alertId} not found`);
+    }
+
+    if (alert.tenant_id !== tenantId) {
+      throw new NotFoundException(`Alert ${alertId} is not accessible for this tenant`);
     }
 
     const referenceIdData = await this.alertRepository.getReferenceId(alert.txtp);
@@ -121,9 +125,9 @@ export class AlertService {
     }
 
     const transactiondataSql = `
-      SELECT * from transaction_detail where end_to_end_id = '${referenceId}';`;
+      SELECT * from transaction_detail where end_to_end_id = $1`;
 
-    const transactionData = await this.goldLakehouseService.runSqlQuery(transactiondataSql, 1000);
+    const transactionData = await this.goldLakehouseService.runSqlQuery(transactiondataSql, 1000, [referenceId]);
 
     if (!transactionData.data) {
       throw new InternalServerErrorException(`Transaction history data not found for AlertId ${alertId}`);

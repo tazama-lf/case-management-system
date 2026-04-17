@@ -3,19 +3,21 @@ import VoilaFrame from './VoilaFrame';
 interface TransactionNetworkTabProps {
   caseId?: number;
   transactionId?: string;
-  timeRange?: string;
+  timeRange: string;
+  tenantId: string;
   entityAccountId: string;
 }
 
 const TransactionNetworkTab: React.FC<TransactionNetworkTabProps> = ({
   caseId: _caseId,
   transactionId: _transactionId,
-  timeRange = '30d',
+  timeRange,
+  tenantId,
   entityAccountId,
 }) => {
   const queryParams = React.useMemo(
-    () => ({ accountId: entityAccountId, timeRange }),
-    [entityAccountId, timeRange],
+    () => ({ accountId: entityAccountId, granularity: timeRange, tenantId }),
+    [entityAccountId, timeRange, tenantId],
   );
 
   return (

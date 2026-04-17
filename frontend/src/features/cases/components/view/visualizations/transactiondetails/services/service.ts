@@ -2,11 +2,11 @@ import apiClient from '@/shared/services/apiClient';
 import type { TransactionDetailsDto } from '../types/types';
 
 class TransactionDetailsService {
-  private readonly baseUrl = '/api/v1/lakehouse/transaction-detail';
+  private baseUrl = '/api/v1/lakehouse/transaction-detail';
 
   async getTransactionDetails(
     transactionId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string
   ): Promise<TransactionDetailsDto> {
     if (!transactionId) {
       throw new Error('Transaction ID is required');

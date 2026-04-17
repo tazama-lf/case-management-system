@@ -4,14 +4,15 @@ import VoilaFrame from '../network-analysis/VoilaFrame';
 interface AlertHistoryTabProps {
   caseId?: number;
   transactionId?: string;
+  tenantId: string;
 }
 
 const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
-  caseId: _caseId,
+  caseId,
   transactionId,
+  tenantId
+
 }) => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const tenantId = user?.tenantId || 'DEFAULT';
 
   // Build query parameters for Voila
   const queryParams = React.useMemo(() => {
@@ -50,8 +51,8 @@ const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
             Transaction Data Unavailable
           </h3>
           <p className="text-sm text-gray-600 max-w-md">
-            Alert history requires transaction information to display relevant
-            data. This case may not have associated transaction details.
+            Alert history requires transaction information to display relevant data.
+            This case may not have associated transaction details.
           </p>
         </div>
       </div>

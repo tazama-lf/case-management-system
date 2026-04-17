@@ -41,37 +41,39 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
           // For FRAUD_AND_AML Cases, map parent alert
 
           if (currentCase.parent_id) {
-            const parentCase = await caseService.getCaseDetails(
-              currentCase.parent_id,
-            );
+            const parentCase = await caseService.getCaseDetails(currentCase.parent_id);
 
             if (parentCase?.alert.alert_id) {
-              const alert = await triageService.getAlertById(
-                parentCase.alert.alert_id,
-              );
+              const alert = await triageService.getAlertById(parentCase.alert.alert_id);
 
-              const mappedAlerts: LinkedAlert[] = [alert].map((alert) => ({
+              const mappedAlerts: LinkedAlert[] = [alert].map(alert => ({
                 id: alert.alert_id,
                 label: alert.message || 'Alert',
-                type: alert.alert_type || 'N/A',
+                type: alert.alert_type || 'N/A'
               }));
 
               setLinkedAlerts(mappedAlerts);
-            }
-          }
-        } else if (currentCase?.alert.alert_id) {
-            const alert = await triageService.getAlertById(
-              currentCase.alert.alert_id,
-            );
 
-            const mappedAlerts: LinkedAlert[] = [alert].map((alert) => ({
+
+
+            }
+
+          }
+
+        } else {
+
+          if (currentCase?.alert.alert_id) {
+            const alert = await triageService.getAlertById(currentCase.alert.alert_id);
+
+            const mappedAlerts: LinkedAlert[] = [alert].map(alert => ({
               id: alert.alert_id,
               label: alert.message || 'Alert',
-              type: alert.alert_type || 'N/A',
+              type: alert.alert_type || 'N/A'
             }));
 
             setLinkedAlerts(mappedAlerts);
           }
+        }
 
         setLoading(false);
       } catch (error) {

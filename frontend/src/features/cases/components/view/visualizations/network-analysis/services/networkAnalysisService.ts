@@ -44,11 +44,11 @@ export interface AccountNetworkResponse {
 }
 
 class NetworkAnalysisService {
-  private readonly baseUrl = '/api/v1/lakehouse/network-analysis';
+  private baseUrl = '/api/v1/lakehouse/network-analysis';
 
   async getAccountNetwork(
     accountId: string,
-    tenantId = 'DEFAULT',
+    tenantId: string = 'DEFAULT',
   ): Promise<AccountNetworkResponse> {
     if (!accountId) {
       throw new Error('Account ID is required');
@@ -60,10 +60,7 @@ class NetworkAnalysisService {
       );
       return response;
     } catch (error) {
-      console.error(
-        `Failed to fetch network data for account ${accountId}:`,
-        error,
-      );
+      console.error(`Failed to fetch network data for account ${accountId}:`, error);
       throw error;
     }
   }

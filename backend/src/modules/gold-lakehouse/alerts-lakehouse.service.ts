@@ -15,9 +15,33 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     super(httpService, configService);
   }
 
+  /**
+   * Escapes a string value for safe use in SQL queries.
+   * Replaces single quotes with two single quotes to prevent SQL injection.
+   */
+  private escapeSqlString(value: string): string {
+    // Escape single quotes by doubling them and wrap in quotes
+    // prettier-ignore
+    return value.replace(/'/gv, '\'\'');
+  }
+
+  private clampPositiveInteger(value: number, min = 1, max = 10000): number {
+    const parsed = Math.floor(Math.abs(value));
+    return Math.max(min, Math.min(max, parsed));
+  }
+
+  private validateGranularity(granularity: string): 'day' | 'week' | 'month' | 'year' {
+    const allowed = ['day', 'week', 'month', 'year'];
+    return allowed.includes(granularity) ? (granularity as 'day' | 'week' | 'month' | 'year') : 'day';
+  }
+
   async getAlertNavigatorData(alertId: number, tenantId = 'DEFAULT'): Promise<AlertNavigatorDataResponse> {
     try {
       this.logger.log(`Fetching Alert Navigator data for alert: ${alertId}`);
+
+      // Validate inputs to prevent SQL injection
+      const safeAlertId = this.clampPositiveInteger(alertId, 1, Number.MAX_SAFE_INTEGER);
+      const safeTenantId = this.escapeSqlString(tenantId);
 
       const sql = `
         WITH rules_agg AS (
@@ -38,8 +62,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
                     )
                 ) AS rules
             FROM alert_navigator_rules anr
-            WHERE anr.alert_id  = ${alertId}
-              AND anr.tenant_id = '${tenantId}'
+            WHERE anr.alert_id  = ${safeAlertId}
+              AND anr.tenant_id = '${safeTenantId}'
               AND anr.rule_weight > 0
             GROUP BY
                 anr.alert_id,
@@ -98,8 +122,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             AND ra.typology_cfg = ant.typology_cfg
 
         WHERE
-            anh.alert_id  = ${alertId}
-            AND anh.tenant_id = '${tenantId}'
+            anh.alert_id  = ${safeAlertId}
+            AND anh.tenant_id = '${safeTenantId}'
 
         GROUP BY
             anh.alert_id,
@@ -218,8 +242,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
   }> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
-      const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
-      const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
+      const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${this.escapeSqlString(effectiveEndToEndId)}'` : '';
+      const tenantFilter = tenantId ? `AND a.tenant_id = '${this.escapeSqlString(tenantId)}'` : '';
 
       let dateFilter = '';
       if (dateRange && dateRange !== 'all') {
@@ -290,8 +314,9 @@ export class AlertsLakehouseService extends GoldLakehouseService {
   ): Promise<AlertHistoryTimelineResponse> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
-      const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
-      const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
+      const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${this.escapeSqlString(effectiveEndToEndId)}'` : '';
+      const tenantFilter = tenantId ? `AND a.tenant_id = '${this.escapeSqlString(tenantId)}'` : '';
+      const safeGranularity = this.validateGranularity(granularity);
 
       let dateFilter = '';
       if (dateRange && dateRange !== 'all') {
@@ -322,7 +347,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
 
       const sql = `
       SELECT
-        DATE_TRUNC('${granularity}', a.created_at_ts) as date,
+        DATE_TRUNC('${safeGranularity}', a.created_at_ts) as date,
         COUNT(DISTINCT a.alert_id) as alert_count,
         COUNT(DISTINCT c.case_id) FILTER (WHERE c.case_id IS NOT NULL) as case_count,
         COUNT(DISTINCT CASE WHEN c.status LIKE 'STATUS_%' AND c.status != 'STATUS_00_DRAFT' THEN c.case_id END) as investigation_count,
@@ -334,7 +359,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         ${endToEndFilter}
         ${tenantFilter}
         ${dateFilter}
-      GROUP BY DATE_TRUNC('${granularity}', a.created_at_ts)
+      GROUP BY DATE_TRUNC('${safeGranularity}', a.created_at_ts)
       ORDER BY date ASC
       `;
 
@@ -373,8 +398,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
   ): Promise<AlertHistoryAlertsResponse> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
-      const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${effectiveEndToEndId}'` : '';
-      const tenantFilter = tenantId ? `AND a.tenant_id = '${tenantId}'` : '';
+      const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${this.escapeSqlString(effectiveEndToEndId)}'` : '';
+      const tenantFilter = tenantId ? `AND a.tenant_id = '${this.escapeSqlString(tenantId)}'` : '';
 
       let dateFilter = '';
       if (dateRange && dateRange !== 'all') {
@@ -403,7 +428,10 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         }
       }
 
-      const offset = (page - 1) * limit;
+      // Validate and clamp pagination parameters
+      const safePage = this.clampPositiveInteger(page, 1, 100000);
+      const safeLimit = this.clampPositiveInteger(limit, 1, 1000);
+      const offset = (safePage - 1) * safeLimit;
 
       const countSql = `
       SELECT COUNT(DISTINCT a.alert_id) as total
@@ -434,10 +462,10 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         ${tenantFilter}
         ${dateFilter}
       ORDER BY date DESC
-      LIMIT ${limit} OFFSET ${offset}
+      LIMIT ${safeLimit} OFFSET ${offset}
       `;
 
-      const response = await this.runSqlQuery(sql, limit);
+      const response = await this.runSqlQuery(sql, safeLimit);
       const rows = response.data ?? [];
 
       const alerts = rows.map((r) => {
@@ -467,9 +495,9 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         alerts,
         pagination: {
           total,
-          page,
-          limit,
-          totalPages: Math.ceil(total / limit),
+          page: safePage,
+          limit: safeLimit,
+          totalPages: Math.ceil(total / safeLimit),
         },
       };
     } catch (error) {

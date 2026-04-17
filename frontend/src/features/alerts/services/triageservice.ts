@@ -10,7 +10,6 @@ import type {
   AlertsFilter,
   ActionHistory,
   TransactionDataResponseDTO,
-  TransactionDetailRecordDTO,
 } from '../types/triage.types';
 
 class TriageService {

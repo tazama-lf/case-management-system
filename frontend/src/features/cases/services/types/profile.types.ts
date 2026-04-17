@@ -32,4 +32,5 @@ export interface GenerateProfileResponse {
   tenantId: string;
   transactionCreditorResp: SqlResponseDto;
   transactionDebtorResp: SqlResponseDto;
+
 }

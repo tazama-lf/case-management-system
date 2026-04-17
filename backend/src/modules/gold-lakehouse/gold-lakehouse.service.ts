@@ -62,16 +62,46 @@ export class GoldLakehouseService {
     }
   }
 
-  async runSqlQuery(sql: string, limit = 1): Promise<any> {
+  /**
+   * Escapes a value for safe SQL interpolation
+   * @param value - The value to escape
+   * @returns Escaped SQL string value
+   */
+  private escapeSqlValue(value: any): string {
+    if (value === null || value === undefined) {
+      return 'NULL';
+    }
+    if (typeof value === 'number') {
+      return value.toString();
+    }
+    // Escape single quotes by doubling them and wrap in quotes
+    // prettier-ignore
+    const escaped = String(value).replace(/'/gv, '\'\'');
+    return `'${escaped}'`;
+  }
+
+  async runSqlQuery(sql: string, limit = 1, parameters?: any[]): Promise<any> {
     try {
+      let finalSql = sql;
+
+      // If parameters are provided, substitute them safely
+      if (parameters && parameters.length > 0) {
+        parameters.forEach((param, index) => {
+          const placeholder = `$${index + 1}`;
+          const escapedValue = this.escapeSqlValue(param);
+          // Use replaceAll to handle multiple occurrences of the same parameter
+          finalSql = finalSql.replaceAll(placeholder, escapedValue);
+        });
+      }
+
       this.logger.log('Running raw SQL query on Gold Lakehouse');
-      this.logger.debug(sql);
+      this.logger.log(finalSql);
 
       const response = await firstValueFrom(
         this.httpService.post(
           `${this.apiUrl}/execute_sql`,
           {
-            sql_query: sql,
+            sql_query: finalSql,
             limit,
           },
           { timeout: this.timeout },
@@ -124,7 +154,7 @@ export class GoldLakehouseService {
       return [row.debtor_account_id, row.creditor_account_id].filter(Boolean) as string[];
     }
 
-    // Try to resolve as entity ID (entity â†’ multiple accounts)
+    // Try to resolve as entity ID (entity -> multiple accounts)
     const resp = await this.query({
       table_name: 'account_holder',
       filters: { source: id, tenant_id: tenantId },

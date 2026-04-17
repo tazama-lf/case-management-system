@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # SPDX-License-Identifier: Apache-2.0
 ARG BUILD_IMAGE=node:20-bullseye
 ARG RUN_IMAGE=gcr.io/distroless/nodejs20-debian11:nonroot
@@ -14,9 +15,11 @@ COPY ./package*.json ./
 COPY ./tsconfig.json ./
 COPY .npmrc ./
 COPY ./migrate.sh ./migrate.sh
-ARG GH_TOKEN
 
-RUN npm ci --ignore-scripts
+# Ensure shell script is Linux-compatible even when checked out with CRLF on Windows.
+RUN sed -i 's/\r$//' /home/app/migrate.sh && chmod +x /home/app/migrate.sh
+
+RUN --mount=type=secret,id=GH_TOKEN,env=GH_TOKEN npm ci --ignore-scripts
 
 RUN npx prisma generate
 

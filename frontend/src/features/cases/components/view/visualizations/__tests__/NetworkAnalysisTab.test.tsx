@@ -23,37 +23,27 @@ describe('NetworkAnalysisTab', () => {
 
   it('defaults to Transaction Network tab', () => {
     render(<NetworkAnalysisTab {...mockProps} />);
-    expect(
-      screen.getByText(/Upstream and downstream transaction flows/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Upstream and downstream transaction flows/i)).toBeInTheDocument();
   });
 
   it('switches to Account Network tab when clicked', async () => {
     const user = userEvent.setup();
     render(<NetworkAnalysisTab {...mockProps} />);
 
-    const accountNetworkButton = screen.getByRole('button', {
-      name: /Account Network/i,
-    });
+    const accountNetworkButton = screen.getByRole('button', { name: /Account Network/i });
     await user.click(accountNetworkButton);
 
-    expect(
-      screen.getByText(/Accounts linked to counterparties/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Accounts linked to counterparties/i)).toBeInTheDocument();
   });
 
   it('switches to Counterparty Network tab when clicked', async () => {
     const user = userEvent.setup();
     render(<NetworkAnalysisTab {...mockProps} />);
 
-    const counterpartyNetworkButton = screen.getByRole('button', {
-      name: /Counterparty Network/i,
-    });
+    const counterpartyNetworkButton = screen.getByRole('button', { name: /Counterparty Network/i });
     await user.click(counterpartyNetworkButton);
 
-    expect(
-      screen.getByText(/Counterparties linked to transactions/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Counterparties linked to transactions/i)).toBeInTheDocument();
   });
 
   it('passes props to child components', () => {

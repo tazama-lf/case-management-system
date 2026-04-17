@@ -490,18 +490,20 @@ describe('TriageService', () => {
       });
       alertService.updateAlert.mockResolvedValue(mockAlert as any);
       taskService.updateTask.mockResolvedValue(mockTask as any);
+      taskRepository.updateTask.mockResolvedValue(mockTask as any);
+      caseRepository.updateCase.mockResolvedValue(mockCase as any);
       loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
       caseRepository.findCaseById.mockResolvedValue(mockCase as any);
-      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
       flowableService.handleTaskCompleted.mockResolvedValue(undefined);
-      flowableService.handleCaseStatusChanged.mockResolvedValue(undefined);
 
       const result = await service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123');
 
       expect(result).toHaveProperty('updatedCase');
       expect(result).toHaveProperty('updatedTask');
-      expect(caseCreationService.updateCaseStatus).toHaveBeenCalled();
-      expect(flowableService.handleCaseStatusChanged).toHaveBeenCalled();
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_72_AUTOCLOSED_REFUTED });
+      expect(caseCreationService.updateCaseStatus).not.toHaveBeenCalled();
+      expect(flowableService.handleTaskCompleted).not.toHaveBeenCalled();
+      expect(flowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
     });
 
     it('should handle FRAUD_AND_AML type when true positive', async () => {
@@ -607,17 +609,18 @@ describe('TriageService', () => {
 
       alertService.updateAlert.mockResolvedValue(mockAlert as any);
       taskService.updateTask.mockResolvedValue(mockTask as any);
+      taskRepository.updateTask.mockResolvedValue(mockTask as any);
+      caseRepository.updateCase.mockResolvedValue(mockCase as any);
       loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
       caseRepository.findCaseById.mockResolvedValue(mockCase as any);
-      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
       flowableService.handleTaskCompleted.mockResolvedValue(undefined);
-      flowableService.handleCaseStatusChanged.mockResolvedValue(undefined);
 
       const result = await service.handleAITriage(1, 1, dtoWithInterdiction, 'user-123', 'tenant-123');
 
       expect(result).toHaveProperty('updatedCase');
-      expect(caseCreationService.updateCaseStatus).toHaveBeenCalled();
-      expect(flowableService.handleCaseStatusChanged).toHaveBeenCalled();
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED });
+      expect(caseCreationService.updateCaseStatus).not.toHaveBeenCalled();
+      expect(flowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
     });
 
     it('should create investigation task for FRAUD when transaction occurred', async () => {
@@ -782,9 +785,8 @@ describe('TriageService', () => {
     describe('autoCloseCase', () => {
       it('should successfully auto-close case', async () => {
         caseRepository.findCaseById.mockResolvedValue(mockCase as any);
-        taskService.updateTask.mockResolvedValue(mockTask as any);
-        caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
-        flowableService.handleCaseStatusChanged.mockResolvedValue(undefined);
+        taskRepository.updateTask.mockResolvedValue(mockTask as any);
+        caseRepository.updateCase.mockResolvedValue(mockCase as any);
         loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
 
         const result = await (service as any).autoCloseCase(
@@ -799,7 +801,9 @@ describe('TriageService', () => {
 
         expect(result).toHaveProperty('updatedCase');
         expect(result).toHaveProperty('updatedTask');
-        expect(flowableService.handleCaseStatusChanged).toHaveBeenCalled();
+        expect(taskRepository.updateTask).toHaveBeenCalledWith(1, { status: TaskStatus.STATUS_30_COMPLETED });
+        expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_72_AUTOCLOSED_REFUTED });
+        expect(caseCreationService.updateCaseStatus).not.toHaveBeenCalled();
       });
 
       it('should throw NotFoundException when case not found', async () => {
@@ -812,7 +816,7 @@ describe('TriageService', () => {
 
       it('should throw InternalServerErrorException on failure', async () => {
         caseRepository.findCaseById.mockResolvedValue(mockCase as any);
-        taskService.updateTask.mockRejectedValue(new Error('Update failed'));
+        taskRepository.updateTask.mockRejectedValue(new Error('Update failed'));
 
         await expect(
           (service as any).autoCloseCase(1, CaseStatus.STATUS_72_AUTOCLOSED_REFUTED, 'user-123', 1, 'tenant-123'),

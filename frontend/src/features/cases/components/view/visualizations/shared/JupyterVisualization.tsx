@@ -32,7 +32,8 @@ const JupyterVisualization: React.FC<JupyterVisualizationProps> = ({
         `/api/v1/jupyter/visualization-url?${queryParams.toString()}`,
       );
 
-      console.log('response================', response.url);
+
+      console.log('response================', response.url)
 
       setIframeUrl(response.url);
     } catch (err) {
@@ -105,7 +106,9 @@ const JupyterVisualization: React.FC<JupyterVisualizationProps> = ({
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-2 px-1">
-        <h4 className="text-sm font-medium text-gray-500"></h4>
+        <h4 className="text-sm font-medium text-gray-500">
+
+        </h4>
         <button
           onClick={fetchUrl}
           className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
@@ -122,7 +125,7 @@ const JupyterVisualization: React.FC<JupyterVisualizationProps> = ({
             className="border-0"
             title={title}
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            onError={() => { setError('Failed to load iframe content'); }}
+            onError={() => setError('Failed to load iframe content')}
           />
         )}
       </div>

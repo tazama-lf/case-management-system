@@ -8,19 +8,14 @@ interface BenfordsAnalysisProps {
   }>;
 }
 
-export const BenfordsAnalysis: React.FC<BenfordsAnalysisProps> = ({
-  digits,
-}) => (
+export const BenfordsAnalysis: React.FC<BenfordsAnalysisProps> = ({ digits }) => {
+  return (
     <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <h4 className="text-sm font-semibold text-gray-900 mb-4">
-        Benford's Law Analysis
-      </h4>
+      <h4 className="text-sm font-semibold text-gray-900 mb-4">Benford's Law Analysis</h4>
       <div className="space-y-2">
         {digits.map((item) => (
           <div key={item.digit} className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-900">
-              Digit {item.digit}
-            </span>
+            <span className="text-sm font-medium text-gray-900">Digit {item.digit}</span>
             <div className="flex items-center gap-4">
               <div className="w-48 bg-gray-200 rounded-full h-2">
                 <div
@@ -40,3 +35,4 @@ export const BenfordsAnalysis: React.FC<BenfordsAnalysisProps> = ({
       </div>
     </div>
   );
+};

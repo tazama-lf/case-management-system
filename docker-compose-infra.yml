@@ -1,46 +1,47 @@
 services:
-  postgres:
-    image: postgres:18
-    container_name: tazama-postgres-1
-    restart: unless-stopped
-    env_file:
-      - ./backend/.env
-    ports:
-      - 15432:5432
-    volumes:
-      - postgres_data:/var/lib/postgresql/18/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - ./backend/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    networks:
-      - tazama_default
+  postgres:
+    image: postgres:18
+    container_name: tazama-postgres-1
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    ports:
+      - 15432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/18/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=unused
+    networks:
+      - tazama_default
 
-  valkey:
-    image: valkey/valkey:7.2.5
-    container_name: tazama-valkey-1
-    restart: unless-stopped
-    ports:
-      - 16379:6379
-    volumes:
-      - valkey_data:/data
-    networks:
-      - tazama_default
-  nats:
-    image: nats:2.10-alpine
-    container_name: tazama-nats-1
-    restart: unless-stopped
-    ports:
-      - 14222:4222
-      - 16222:6222
-      - 18222:8222
-    command: ["--jetstream", "--http_port", "8222"]
-    networks:
-      - tazama_default
+  valkey:
+    image: valkey/valkey:7.2.5
+    container_name: tazama-valkey-1
+    restart: unless-stopped
+    ports:
+      - 16379:6379
+    volumes:
+      - valkey_data:/data
+    networks:
+      - tazama_default
+  nats:
+    image: nats:2.10-alpine
+    container_name: tazama-nats-1
+    restart: unless-stopped
+    ports:
+      - 14222:4222
+      - 16222:6222
+      - 18222:8222
+    command: ["--jetstream", "--http_port", "8222"]
+    networks:
+      - tazama_default
 
 volumes:
-  postgres_data:
-  valkey_data:
+  postgres_data:
+  valkey_data:
 
 networks:
-  tazama_default:
-    name: tazama_default
-    driver: bridge
+  tazama_default:
+    name: tazama_default
+    driver: bridge
