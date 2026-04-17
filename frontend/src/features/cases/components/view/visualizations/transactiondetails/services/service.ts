@@ -2,7 +2,7 @@ import apiClient from '@/shared/services/apiClient';
 import type { TransactionDetailsDto } from '../types/types';
 
 class TransactionDetailsService {
-  private baseUrl = '/api/v1/lakehouse/transaction-detail';
+  private readonly baseUrl = '/api/v1/lakehouse/transaction-detail';
 
   async getTransactionDetails(
     transactionId: string,

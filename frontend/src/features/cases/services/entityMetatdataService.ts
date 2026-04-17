@@ -1,20 +1,16 @@
 import { apiClient } from '@/shared';
 import type { EntityMetadataResponse } from './types/entityMetadata.interface';
 
-class EntityMetadataService {
+const EntityMetadataService = {
   async fetchEntityMetadata(
     alertId: number,
     tenantId: string,
   ): Promise<EntityMetadataResponse> {
-    try {
-      const response = await apiClient.get<EntityMetadataResponse>(
-        `/api/v1/lakehouse/entity-metadata/${alertId}?tenantId=${tenantId}`,
-      );
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-}
+    const response = await apiClient.get<EntityMetadataResponse>(
+      `/api/v1/lakehouse/entity-metadata/${alertId}?tenantId=${tenantId}`,
+    );
+    return response;
+  },
+};
 
-export default new EntityMetadataService();
+export default EntityMetadataService;

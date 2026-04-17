@@ -12,7 +12,7 @@ export class ProfileService {
   ): Promise<GenerateProfileResponse> {
 
     if (!alertId) {
-      return Promise.reject(new Error('Alert ID is required to generate profile'));
+      return await Promise.reject(new Error('Alert ID is required to generate profile'));
     }
 
     try {
@@ -21,7 +21,7 @@ export class ProfileService {
       if (user) {
         try {
           const userData = JSON.parse(user);
-          tenantId = userData.tenantId || '';
+          tenantId = userData.tenantId ?? '';
         } catch { }
       }
 
@@ -42,11 +42,15 @@ export class ProfileService {
     }
   }
 
-  private handleError(error: any, operation: string): Error {
-    if (error.response?.data) {
-      return new Error(error.response.data.message ?? `Failed to ${operation}`);
+  private handleError(error: unknown, operation: string): Error {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const errorWithResponse = error as { response?: { data?: { message?: string } }; message?: string };
+      if (errorWithResponse.response?.data) {
+        return new Error(errorWithResponse.response.data.message ?? `Failed to ${operation}`);
+      }
+      return new Error(`Failed to ${operation}: ${errorWithResponse.message ?? 'Unknown error'}`);
     }
-    return new Error(`Failed to ${operation}: ${error.message}`);
+    return new Error(`Failed to ${operation}`);
   }
 }
 

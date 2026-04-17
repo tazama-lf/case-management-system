@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access -- Service handles dynamic API response data */
+ 
 /* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '../../../shared/services/apiClient';
 import type { ApiErrorResponse } from '../../alerts/types/triage.types';
@@ -85,4 +85,4 @@ export class FilterService {
 
 export const filterService = new FilterService();
 /* eslint-enable @typescript-eslint/class-methods-use-this */
-/* eslint-enable @typescript-eslint/no-unsafe-member-access */
+ 

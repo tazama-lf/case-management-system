@@ -1,6 +1,14 @@
 import { formatDate } from '@/shared/utils/dateUtils';
 import type { CaseWithTasksDto, TaskDTO } from '../services/caseService';
 
+// Score threshold constants
+const SCORE_HIGH_THRESHOLD = 80;
+const SCORE_MEDIUM_THRESHOLD = 60;
+const SCORE_LOW_THRESHOLD = 40;
+const SCORE_MIN = 0;
+const TYPOLOGY_ID_SUBSTRING_START = 0;
+const TYPOLOGY_ID_SUBSTRING_END = 8;
+
 export interface CaseRow {
   id: number;
   type: string;
@@ -62,10 +70,10 @@ export const getPriorityColor = (priority: string): string => {
 };
 
 export const getScoreColor = (score: number): string => {
-  if (score >= 80) return 'text-red-600 bg-red-50';
-  if (score >= 60) return 'text-orange-600 bg-orange-50';
-  if (score >= 40) return 'text-yellow-600 bg-yellow-50';
-  if (score > 0) return 'text-green-600 bg-green-50';
+  if (score >= SCORE_HIGH_THRESHOLD) return 'text-red-600 bg-red-50';
+  if (score >= SCORE_MEDIUM_THRESHOLD) return 'text-orange-600 bg-orange-50';
+  if (score >= SCORE_LOW_THRESHOLD) return 'text-yellow-600 bg-yellow-50';
+  if (score > SCORE_MIN) return 'text-green-600 bg-green-50';
   return 'text-gray-600 bg-gray-50';
 };
 
@@ -90,20 +98,19 @@ export const formatSarStrStatus = (status: string): string => {
     STATUS_30_COMPLETED: 'Completed',
     'N/A': 'N/A',
   };
-  return statusLabels[status] || status;
+  return statusLabels[status] ?? status;
 };
 
 export const transformBackendCaseToUI = (
   backendCase: CaseWithTasksDto,
 ): CaseRow => {
   // Find SAR/STR Filing task status
+  const { tasks, alert } = backendCase;
   const sarStrTask =
-    backendCase.tasks
+    tasks
       ?.filter((task) => task.name === 'SAR/STR Filing')
-      .sort((a, b) => b.task_id - a.task_id)[0] ?? null;
+      .sort((a, b) => b.task_id - a.task_id)[SCORE_MIN] ?? null;
   const sarStrStatus = sarStrTask?.status ?? 'N/A';
-
-  const alert = backendCase.alert;
 
   return {
     id: backendCase.case_id,
@@ -112,8 +119,8 @@ export const transformBackendCaseToUI = (
     status: formatStatus(backendCase.status),
     statusColor: getStatusColor(backendCase.status),
     typologyId:
-      alert?.alert_id?.toString().substring(0, 8) ?? 'N/A',
-    score: alert?.confidence_per ?? 0,
+      alert?.alert_id.toString().substring(TYPOLOGY_ID_SUBSTRING_START, TYPOLOGY_ID_SUBSTRING_END) ?? 'N/A',
+    score: alert?.confidence_per ?? SCORE_MIN,
     createdOn: formatDate(backendCase.created_at),
     pickedOn:
       backendCase.user_role === 'owner'
@@ -125,7 +132,7 @@ export const transformBackendCaseToUI = (
     priority: backendCase.priority,
     userRole: backendCase.user_role,
     totalTasks: backendCase.total_tasks,
-    alertId: alert?.alert_id ?? 0,
+    alertId: alert?.alert_id ?? SCORE_MIN,
     alertMessage: alert?.message,
     confidencePercent: alert?.confidence_per,
     transaction: alert?.transaction,
