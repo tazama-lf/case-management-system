@@ -67,7 +67,10 @@ describe('LinkExistingAlerts', () => {
   });
 
   it('loads and displays alerts', async () => {
-    (triageService.getNALTAlerts as any).mockResolvedValue(mockAlerts);
+    (triageService.getNALTAlerts as any).mockResolvedValue({
+      alerts: mockAlerts,
+      pagination: { currentPage: 1, totalPages: 1, totalItems: 2, pageSize: 10 },
+    });
 
     render(
       <LinkExistingAlerts
@@ -84,7 +87,10 @@ describe('LinkExistingAlerts', () => {
   });
 
   it('allows selecting an alert', async () => {
-    (triageService.getNALTAlerts as any).mockResolvedValue(mockAlerts);
+    (triageService.getNALTAlerts as any).mockResolvedValue({
+      alerts: mockAlerts,
+      pagination: { currentPage: 1, totalPages: 1, totalItems: 2, pageSize: 10 },
+    });
     const user = userEvent.setup();
 
     render(

@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { CaseRow } from '../../casesTable.utils';
 
 // Mock the lazily-loaded modal components so Suspense resolves immediately in tests
-vi.mock('../CloseCaseModal', () => ({
+vi.mock('../../CloseCaseModal', () => ({
   __esModule: true,
   default: ({ open }: { open: boolean }) =>
     open ? (
@@ -14,49 +14,49 @@ vi.mock('../CloseCaseModal', () => ({
     ) : null,
 }));
 
-vi.mock('../ReopenCaseModal', () => ({
+vi.mock('../../ReopenCaseModal', () => ({
   __esModule: true,
   default: ({ open }: { open: boolean }) =>
     open ? <div>Reopen Case</div> : null,
 }));
 
-vi.mock('../AbandonCaseModal', () => ({
+vi.mock('../../AbandonCaseModal', () => ({
   __esModule: true,
   default: ({ open }: { open: boolean }) =>
     open ? <h1>Abandon Case</h1> : null,
 }));
 
-vi.mock('../SuspendCaseModal', () => ({
+vi.mock('../../SuspendCaseModal', () => ({
   __esModule: true,
   default: ({ open }: { open: boolean }) =>
     open ? <h1>Suspend Case</h1> : null,
 }));
 
-vi.mock('../ResumeCaseModal', () => ({
+vi.mock('../../ResumeCaseModal', () => ({
   __esModule: true,
   default: ({ open }: { open: boolean }) =>
     open ? <h1>Resume Case</h1> : null,
 }));
 
-vi.mock('../ApproveCaseCreationModal', () => ({
+vi.mock('../../ApproveCaseCreationModal', () => ({
   __esModule: true,
   default: ({ open }: { open: boolean }) =>
     open ? <h1>Approve Case Creation</h1> : null,
 }));
 
-vi.mock('../RejectCaseCreationModal', () => ({
+vi.mock('../../RejectCaseCreationModal', () => ({
   __esModule: true,
   default: ({ open }: { open: boolean }) =>
     open ? <h1>Reject Case Creation</h1> : null,
 }));
 
-vi.mock('../ApproveCaseReopenModal', () => ({
+vi.mock('../../ApproveCaseReopenModal', () => ({
   __esModule: true,
   default: ({ open }: { open: boolean }) =>
     open ? <div>Approve Case Reopening</div> : null,
 }));
 
-vi.mock('../RejectCaseReopenModal', () => ({
+vi.mock('../../RejectCaseReopenModal', () => ({
   __esModule: true,
   default: ({ open }: { open: boolean }) =>
     open ? <div>Reject Case Reopening</div> : null,

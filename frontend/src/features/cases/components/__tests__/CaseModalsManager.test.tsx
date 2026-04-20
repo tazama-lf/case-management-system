@@ -19,6 +19,21 @@ vi.mock('@/shared/utils/routeUtils', () => ({
   }),
 }));
 
+vi.mock('@/features/alerts/hooks/useAlertsQuery', () => ({
+  useAlertOperations: () => ({
+    performManualTriage: vi.fn(),
+  }),
+}));
+
+vi.mock('@/features/auth/components/AuthContext', () => ({
+  useAuth: () => ({
+    hasComplianceOfficerRole: () => false,
+    hasSupervisorRole: () => false,
+    user: { id: 1, username: 'test' },
+    isAuthenticated: true,
+  }),
+}));
+
 // Mock the lazy loaded components to avoid suspense issues in tests
 vi.mock('@/features/cases/components/CreateCaseModal', () => ({
   default: ({ open }: { open: boolean }) =>
@@ -91,6 +106,11 @@ describe('CaseModalsManager', () => {
 
   const mockOnRefreshCases = vi.fn();
 
+  const mockPermissions = {
+    canManageSupervisorActions: false,
+    isInvestigatorOnly: false,
+  };
+
   it('renders nothing when all modals are closed', () => {
     render(
       <CaseModalsManager
@@ -98,6 +118,7 @@ describe('CaseModalsManager', () => {
         modalActions={mockModalActions}
         caseActions={mockCaseActions}
         onRefreshCases={mockOnRefreshCases}
+        permissions={mockPermissions}
       />,
     );
 
@@ -112,6 +133,7 @@ describe('CaseModalsManager', () => {
         modalActions={mockModalActions}
         caseActions={mockCaseActions}
         onRefreshCases={mockOnRefreshCases}
+        permissions={mockPermissions}
       />,
     );
 
@@ -125,6 +147,7 @@ describe('CaseModalsManager', () => {
         modalActions={mockModalActions}
         caseActions={mockCaseActions}
         onRefreshCases={mockOnRefreshCases}
+        permissions={mockPermissions}
       />,
     );
 
@@ -138,6 +161,7 @@ describe('CaseModalsManager', () => {
         modalActions={mockModalActions}
         caseActions={mockCaseActions}
         onRefreshCases={mockOnRefreshCases}
+        permissions={mockPermissions}
       />,
     );
 

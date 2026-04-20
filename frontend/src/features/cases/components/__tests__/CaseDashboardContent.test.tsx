@@ -4,6 +4,14 @@ import CaseDashboardContent from '../CaseDashboardContent';
 import { vi, describe, it, expect } from 'vitest';
 import type { CaseDashboardState } from '../hooks/useCaseDashboard';
 
+vi.mock('@/features/auth/components/AuthContext', () => ({
+  useAuth: () => ({
+    hasComplianceOfficerRole: () => false,
+    user: { id: 1, username: 'test' },
+    isAuthenticated: true,
+  }),
+}));
+
 // Mock child components to avoid complex setup
 vi.mock('@/features/cases/components/CaseFilters', () => ({
   default: () => <div data-testid="case-filters">Case Filters</div>,

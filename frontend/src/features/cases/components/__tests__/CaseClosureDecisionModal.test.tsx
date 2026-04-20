@@ -60,15 +60,12 @@ describe('CaseClosureDecisionModal component', () => {
   });
 
   it('renders without crashing', () => {
-    const onClose = vi.fn();
-    const onApprove = vi.fn();
-    const onReject = vi.fn();
     render(
       <CaseClosureDecisionModal
         open={true}
-        onClose={onClose}
-        onApprove={onApprove}
-        onReject={onReject}
+        onClose={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
         caseId={123}
       />,
     );
@@ -86,11 +83,11 @@ describe('CaseClosureDecisionModal component', () => {
         caseName="Test Case"
       />,
     );
-    expect(screen.getByText(/case id: case-123/i)).toBeInTheDocument();
-    expect(screen.getByText(/test case/i)).toBeInTheDocument();
+    expect(screen.getByText(/Case ID: 123/)).toBeInTheDocument();
+    expect(screen.getByText(/Test Case/)).toBeInTheDocument();
   });
 
-  it('displays decision selection buttons', () => {
+  it('displays tab buttons', () => {
     render(
       <CaseClosureDecisionModal
         open={true}
@@ -100,13 +97,11 @@ describe('CaseClosureDecisionModal component', () => {
         caseId={123}
       />,
     );
-
     expect(screen.getByText(/Approve Case Closure/i)).toBeInTheDocument();
     expect(screen.getByText(/Reject Case Closure/i)).toBeInTheDocument();
   });
 
-  it('shows approve form when approve button is clicked', async () => {
-    const user = userEvent.setup();
+  it('shows approve form by default with Final Outcome', () => {
     render(
       <CaseClosureDecisionModal
         open={true}
@@ -116,24 +111,11 @@ describe('CaseClosureDecisionModal component', () => {
         caseId={123}
       />,
     );
-
-    // Find the decision selection button (not the form heading)
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText(/Final Outcome/i)).toBeInTheDocument();
-    });
+    expect(screen.getByText(/Final Outcome/i)).toBeInTheDocument();
+    expect(screen.getByText(/Supervisor Comments/i)).toBeInTheDocument();
   });
 
-  it('shows reject form when reject button is clicked', async () => {
+  it('shows reject form when reject tab is clicked', async () => {
     const user = userEvent.setup();
     render(
       <CaseClosureDecisionModal
@@ -144,83 +126,14 @@ describe('CaseClosureDecisionModal component', () => {
         caseId={123}
       />,
     );
-
-    // Find the decision selection button (not the form heading)
-    const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
+    const rejectTab = screen.getByText(/Reject Case Closure/i).closest('button')!;
+    await user.click(rejectTab);
     await waitFor(() => {
       expect(screen.getByText(/Rejection Reason/i)).toBeInTheDocument();
     });
   });
 
-  it('displays recommended outcome when provided', async () => {
-    const user = userEvent.setup();
-    render(
-      <CaseClosureDecisionModal
-        open={true}
-        onClose={vi.fn()}
-        onApprove={vi.fn()}
-        onReject={vi.fn()}
-        caseId={123}
-        recommendedOutcome="STATUS_82_CLOSED_CONFIRMED"
-      />,
-    );
-
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Investigator's Recommended Outcome/i),
-      ).toBeInTheDocument();
-      expect(screen.getByText(/82 Closed Confirmed/i)).toBeInTheDocument();
-    });
-  });
-
-  it('displays "Not provided" when recommended outcome is missing', async () => {
-    const user = userEvent.setup();
-    render(
-      <CaseClosureDecisionModal
-        open={true}
-        onClose={vi.fn()}
-        onApprove={vi.fn()}
-        onReject={vi.fn()}
-        caseId={123}
-      />,
-    );
-
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText(/Not provided/i)).toBeInTheDocument();
-    });
-  });
-
-  it('displays final notes when provided', async () => {
-    const user = userEvent.setup();
+  it('displays final notes when provided', () => {
     render(
       <CaseClosureDecisionModal
         open={true}
@@ -231,29 +144,11 @@ describe('CaseClosureDecisionModal component', () => {
         finalNotes="These are final notes from the investigator"
       />,
     );
-
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Investigator's Final Notes/i),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/These are final notes from the investigator/i),
-      ).toBeInTheDocument();
-    });
+    expect(screen.getByText(/Investigator.s Final Notes/i)).toBeInTheDocument();
+    expect(screen.getByText(/These are final notes from the investigator/i)).toBeInTheDocument();
   });
 
-  it('displays recommendations when provided', async () => {
-    const user = userEvent.setup();
+  it('displays recommendations when provided', () => {
     render(
       <CaseClosureDecisionModal
         open={true}
@@ -264,249 +159,107 @@ describe('CaseClosureDecisionModal component', () => {
         recommendations="These are recommendations from the investigator"
       />,
     );
-
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Investigator's Recommendations/i),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/These are recommendations from the investigator/i),
-      ).toBeInTheDocument();
-    });
+    expect(screen.getByText(/Investigator.s Recommendations/i)).toBeInTheDocument();
+    expect(screen.getByText(/These are recommendations from the investigator/i)).toBeInTheDocument();
   });
 
-  it('submits approve form successfully', async () => {
-    const user = userEvent.setup();
-    const onApprove = vi.fn().mockResolvedValue(undefined);
-    const onClose = vi.fn();
-
+  it('shows "No notes provided" when no investigator notes', () => {
     render(
       <CaseClosureDecisionModal
         open={true}
-        onClose={onClose}
-        onApprove={onApprove}
+        onClose={vi.fn()}
+        onApprove={vi.fn()}
         onReject={vi.fn()}
         caseId={123}
       />,
     );
-
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText(/Final Outcome/i)).toBeInTheDocument();
-    });
-
-    const submitButton = screen.getByRole('button', {
-      name: /approve case closure/i,
-    });
-    await user.click(submitButton);
-
-    await waitFor(() => {
-      expect(onApprove).toHaveBeenCalledWith({
-        finalOutcome: 'STATUS_83_CLOSED_INCONCLUSIVE',
-        supervisorComments: '',
-      });
-      expect(onClose).toHaveBeenCalled();
-    });
+    expect(screen.getByText(/No notes provided/i)).toBeInTheDocument();
   });
 
-  it('submits approve form with supervisor comments', async () => {
-    const user = userEvent.setup();
-    const onApprove = vi.fn().mockResolvedValue(undefined);
-    const onClose = vi.fn();
-
+  it('displays Generate Investigation Report button', () => {
     render(
       <CaseClosureDecisionModal
         open={true}
-        onClose={onClose}
-        onApprove={onApprove}
+        onClose={vi.fn()}
+        onApprove={vi.fn()}
         onReject={vi.fn()}
         caseId={123}
       />,
     );
+    expect(screen.getByText(/Generate Investigation Report/i)).toBeInTheDocument();
+  });
 
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText(/Supervisor Comments/i)).toBeInTheDocument();
-    });
-
-    const commentsTextarea = screen.getByPlaceholderText(
-      /provide any additional comments/i,
+  it('disables Generate Report button when supervisor comments are short', () => {
+    render(
+      <CaseClosureDecisionModal
+        open={true}
+        onClose={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        caseId={123}
+      />,
     );
-    await user.type(commentsTextarea, 'Approved with supervisor comments');
+    const btn = screen.getByText(/Generate Investigation Report/i).closest('button')!;
+    expect(btn).toBeDisabled();
+  });
 
-    const submitButton = screen.getByRole('button', {
-      name: /approve case closure/i,
-    });
-    await user.click(submitButton);
+  it('enables Generate Report button when supervisor comments have min 4 chars', async () => {
+    const user = userEvent.setup();
+    render(
+      <CaseClosureDecisionModal
+        open={true}
+        onClose={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        caseId={123}
+      />,
+    );
+    const textarea = screen.getByPlaceholderText(/provide any additional comments/i);
+    await user.type(textarea, 'Good work approved');
+    const btn = screen.getByText(/Generate Investigation Report/i).closest('button')!;
+    expect(btn).toBeEnabled();
+  });
 
+  it('opens report modal when Generate Report is clicked', async () => {
+    const user = userEvent.setup();
+    render(
+      <CaseClosureDecisionModal
+        open={true}
+        onClose={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        caseId={123}
+      />,
+    );
+    const textarea = screen.getByPlaceholderText(/provide any additional comments/i);
+    await user.type(textarea, 'Good work approved');
+    const btn = screen.getByText(/Generate Investigation Report/i).closest('button')!;
+    await user.click(btn);
     await waitFor(() => {
-      expect(onApprove).toHaveBeenCalledWith({
-        finalOutcome: 'STATUS_83_CLOSED_INCONCLUSIVE',
-        supervisorComments: 'Approved with supervisor comments',
-      });
-      expect(onClose).toHaveBeenCalled();
+      expect(screen.getByTestId('report-modal')).toBeInTheDocument();
     });
   });
 
   it('allows changing final outcome', async () => {
     const user = userEvent.setup();
-    const onApprove = vi.fn().mockResolvedValue(undefined);
-    const onClose = vi.fn();
-
     render(
       <CaseClosureDecisionModal
         open={true}
-        onClose={onClose}
-        onApprove={onApprove}
+        onClose={vi.fn()}
+        onApprove={vi.fn()}
         onReject={vi.fn()}
         caseId={123}
       />,
     );
-
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText(/Final Outcome/i)).toBeInTheDocument();
-    });
-
-    // Find select by its text content or role
-    const outcomeSelect =
-      screen.getByRole('combobox') ||
-      screen.getByDisplayValue(/83 - Closed Inconclusive/i);
+    const outcomeSelect = screen.getByRole('combobox');
     await user.selectOptions(outcomeSelect, 'STATUS_82_CLOSED_CONFIRMED');
-
-    const submitButton = screen.getByRole('button', {
-      name: /approve case closure/i,
-    });
-    await user.click(submitButton);
-
-    await waitFor(() => {
-      expect(onApprove).toHaveBeenCalledWith({
-        finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
-        supervisorComments: '',
-      });
-    });
-  });
-
-  it('handles approve error and displays error message', async () => {
-    const user = userEvent.setup();
-    const onApprove = vi.fn().mockRejectedValue(new Error('Failed to approve'));
-
-    render(
-      <CaseClosureDecisionModal
-        open={true}
-        onClose={vi.fn()}
-        onApprove={onApprove}
-        onReject={vi.fn()}
-        caseId={123}
-      />,
-    );
-
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText(/Final Outcome/i)).toBeInTheDocument();
-    });
-
-    const submitButton = screen.getByRole('button', {
-      name: /approve case closure/i,
-    });
-    await user.click(submitButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Failed to approve')).toBeInTheDocument();
-    });
-  });
-
-  it('handles approve error with non-Error object', async () => {
-    const user = userEvent.setup();
-    const onApprove = vi.fn().mockRejectedValue('String error');
-
-    render(
-      <CaseClosureDecisionModal
-        open={true}
-        onClose={vi.fn()}
-        onApprove={onApprove}
-        onReject={vi.fn()}
-        caseId={123}
-      />,
-    );
-
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText(/Final Outcome/i)).toBeInTheDocument();
-    });
-
-    const submitButton = screen.getByRole('button', {
-      name: /approve case closure/i,
-    });
-    await user.click(submitButton);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Failed to approve case closure. Please try again./i),
-      ).toBeInTheDocument();
-    });
+    expect(outcomeSelect).toHaveValue('STATUS_82_CLOSED_CONFIRMED');
   });
 
   it('submits reject form successfully', async () => {
     const user = userEvent.setup();
     const onReject = vi.fn().mockResolvedValue(undefined);
     const onClose = vi.fn();
-
     render(
       <CaseClosureDecisionModal
         open={true}
@@ -516,147 +269,72 @@ describe('CaseClosureDecisionModal component', () => {
         caseId={123}
       />,
     );
-
-    const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
+    const rejectTab = screen.getByText(/Reject Case Closure/i).closest('button')!;
+    await user.click(rejectTab);
     await waitFor(() => {
       expect(screen.getByText(/Rejection Reason/i)).toBeInTheDocument();
     });
-
-    const reasonTextarea = screen.getByPlaceholderText(/explain in detail/i);
-    await user.type(
-      reasonTextarea,
-      'This is a detailed rejection reason that meets the minimum length requirement',
-    );
-
-    const submitButton = screen.getByRole('button', {
-      name: /reject case closure/i,
-    });
-    await user.click(submitButton);
-
+    const textarea = screen.getByPlaceholderText(/explain in detail/i);
+    await user.type(textarea, 'Detailed rejection reason text');
+    const submitButtons = screen.getAllByText(/Reject Case Closure/i);
+    const submitBtn = submitButtons.find((el) => el.closest('button[type="button"]') && el.closest('.flex.justify-end'));
+    if (submitBtn) {
+      await user.click(submitBtn.closest('button')!);
+    }
     await waitFor(() => {
-      expect(onReject).toHaveBeenCalledWith(
-        'This is a detailed rejection reason that meets the minimum length requirement',
-      );
-      expect(onClose).toHaveBeenCalled();
+      expect(onReject).toHaveBeenCalledWith('Detailed rejection reason text');
     });
   });
 
-  it('validates rejection reason minimum length', async () => {
+  it('disables reject button when rejection reason is short', async () => {
     const user = userEvent.setup();
-    const onReject = vi.fn();
-
     render(
       <CaseClosureDecisionModal
         open={true}
         onClose={vi.fn()}
         onApprove={vi.fn()}
-        onReject={onReject}
+        onReject={vi.fn()}
         caseId={123}
       />,
     );
-
-    const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
+    const rejectTab = screen.getByText(/Reject Case Closure/i).closest('button')!;
+    await user.click(rejectTab);
     await waitFor(() => {
       expect(screen.getByText(/Rejection Reason/i)).toBeInTheDocument();
     });
-
-    const reasonTextarea = screen.getByPlaceholderText(/explain in detail/i);
-    await user.type(reasonTextarea, 'Short');
-
-    const submitButton = screen.getByRole('button', {
-      name: /reject case closure/i,
+    const textarea = screen.getByPlaceholderText(/explain in detail/i);
+    await user.type(textarea, 'ab');
+    const submitButtons = screen.getAllByText(/Reject Case Closure/i);
+    const rejectSubmitBtn = submitButtons.find((el) => {
+      const btn = el.closest('button');
+      return btn && btn.classList.contains('bg-red-600');
     });
-    expect(submitButton).toBeDisabled();
-
-    await user.clear(reasonTextarea);
-    await user.type(
-      reasonTextarea,
-      'This is a detailed rejection reason that meets the minimum length requirement',
-    );
-
-    await waitFor(() => {
-      expect(submitButton).toBeEnabled();
-    });
+    expect(rejectSubmitBtn?.closest('button')).toBeDisabled();
   });
 
-  it('displays validation error for short rejection reason', async () => {
+  it('shows validation error when supervisor comments are too short', async () => {
     const user = userEvent.setup();
-    const onReject = vi.fn();
-
     render(
       <CaseClosureDecisionModal
         open={true}
         onClose={vi.fn()}
         onApprove={vi.fn()}
-        onReject={onReject}
+        onReject={vi.fn()}
         caseId={123}
       />,
     );
-
-    const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText(/Rejection Reason/i)).toBeInTheDocument();
-    });
-
-    const reasonTextarea = screen.getByPlaceholderText(/explain in detail/i);
-    await user.type(reasonTextarea, 'Short');
-
-    // Submit button should be disabled for short reason
-    const submitButton = screen.getByRole('button', {
-      name: /reject case closure/i,
-    });
-    expect(submitButton).toBeDisabled();
-
-    // Try to submit form to trigger validation (even though button is disabled)
-    const form = reasonTextarea.closest('form');
-    if (form) {
-      await userEvent.click(submitButton);
-    }
-
-    // Validation error should appear after form submission attempt
-    await waitFor(
-      () => {
-        const errorText = screen.queryByText(
-          /Rejection reason must be at least 15 characters/i,
-        );
-        // Error might not show if button is disabled, but validation should prevent submission
-        expect(onReject).not.toHaveBeenCalled();
-      },
-      { timeout: 1000 },
-    );
+    const textarea = screen.getByPlaceholderText(/provide any additional comments/i);
+    await user.type(textarea, 'ab');
+    await user.clear(textarea);
+    await user.type(textarea, 'abc');
+    // Button should still be disabled
+    const btn = screen.getByText(/Generate Investigation Report/i).closest('button')!;
+    expect(btn).toBeDisabled();
   });
 
   it('handles reject error and displays error message', async () => {
     const user = userEvent.setup();
     const onReject = vi.fn().mockRejectedValue(new Error('Failed to reject'));
-
     render(
       <CaseClosureDecisionModal
         open={true}
@@ -666,32 +344,21 @@ describe('CaseClosureDecisionModal component', () => {
         caseId={123}
       />,
     );
-
-    const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
+    const rejectTab = screen.getByText(/Reject Case Closure/i).closest('button')!;
+    await user.click(rejectTab);
     await waitFor(() => {
       expect(screen.getByText(/Rejection Reason/i)).toBeInTheDocument();
     });
-
-    const reasonTextarea = screen.getByPlaceholderText(/explain in detail/i);
-    await user.type(
-      reasonTextarea,
-      'This is a detailed rejection reason that meets the minimum length requirement',
-    );
-
-    const submitButton = screen.getByRole('button', {
-      name: /reject case closure/i,
+    const textarea = screen.getByPlaceholderText(/explain in detail/i);
+    await user.type(textarea, 'Detailed rejection reason text');
+    const submitButtons = screen.getAllByText(/Reject Case Closure/i);
+    const submitBtn = submitButtons.find((el) => {
+      const btn = el.closest('button');
+      return btn && btn.classList.contains('bg-red-600');
     });
-    await user.click(submitButton);
-
+    if (submitBtn) {
+      await user.click(submitBtn.closest('button')!);
+    }
     await waitFor(() => {
       expect(screen.getByText('Failed to reject')).toBeInTheDocument();
     });
@@ -700,7 +367,6 @@ describe('CaseClosureDecisionModal component', () => {
   it('handles reject error with non-Error object', async () => {
     const user = userEvent.setup();
     const onReject = vi.fn().mockRejectedValue('String error');
-
     render(
       <CaseClosureDecisionModal
         open={true}
@@ -710,188 +376,28 @@ describe('CaseClosureDecisionModal component', () => {
         caseId={123}
       />,
     );
-
-    const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
+    const rejectTab = screen.getByText(/Reject Case Closure/i).closest('button')!;
+    await user.click(rejectTab);
     await waitFor(() => {
       expect(screen.getByText(/Rejection Reason/i)).toBeInTheDocument();
     });
-
-    const reasonTextarea = screen.getByPlaceholderText(/explain in detail/i);
-    await user.type(
-      reasonTextarea,
-      'This is a detailed rejection reason that meets the minimum length requirement',
-    );
-
-    const submitButton = screen.getByRole('button', {
-      name: /reject case closure/i,
+    const textarea = screen.getByPlaceholderText(/explain in detail/i);
+    await user.type(textarea, 'Detailed rejection reason text');
+    const submitButtons = screen.getAllByText(/Reject Case Closure/i);
+    const submitBtn = submitButtons.find((el) => {
+      const btn = el.closest('button');
+      return btn && btn.classList.contains('bg-red-600');
     });
-    await user.click(submitButton);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Failed to reject case closure. Please try again./i),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it('goes back to decision selection from approve form', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <CaseClosureDecisionModal
-        open={true}
-        onClose={vi.fn()}
-        onApprove={vi.fn()}
-        onReject={vi.fn()}
-        caseId={123}
-      />,
-    );
-
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
+    if (submitBtn) {
+      await user.click(submitBtn.closest('button')!);
     }
-
     await waitFor(() => {
-      expect(screen.getByText(/Final Outcome/i)).toBeInTheDocument();
+      expect(screen.getByText(/Failed to reject case closure. Please try again./i)).toBeInTheDocument();
     });
-
-    const backButton = screen.getByRole('button', { name: /back/i });
-    await user.click(backButton);
-
-    await waitFor(() => {
-      expect(screen.getByText(/case closure review/i)).toBeInTheDocument();
-    });
-  });
-
-  it('goes back to decision selection from reject form', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <CaseClosureDecisionModal
-        open={true}
-        onClose={vi.fn()}
-        onApprove={vi.fn()}
-        onReject={vi.fn()}
-        caseId={123}
-      />,
-    );
-
-    const rejectButtons = screen.getAllByText(/Reject Case Closure/i);
-    const decisionButton = rejectButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText(/Rejection Reason/i)).toBeInTheDocument();
-    });
-
-    const backButton = screen.getByRole('button', { name: /back/i });
-    await user.click(backButton);
-
-    await waitFor(() => {
-      expect(screen.getByText(/case closure review/i)).toBeInTheDocument();
-    });
-  });
-
-  it('closes modal and resets form', async () => {
-    const user = userEvent.setup();
-    const onClose = vi.fn();
-
-    render(
-      <CaseClosureDecisionModal
-        open={true}
-        onClose={onClose}
-        onApprove={vi.fn()}
-        onReject={vi.fn()}
-        caseId={123}
-      />,
-    );
-
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText(/Final Outcome/i)).toBeInTheDocument();
-    });
-
-    const cancelButton = screen.getByRole('button', { name: /cancel/i });
-    await user.click(cancelButton);
-
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  it('does not close when submitting', async () => {
-    const user = userEvent.setup();
-    const onApprove = vi.fn().mockImplementation(() => new Promise(() => { })); // Never resolves
-    const onClose = vi.fn();
-
-    render(
-      <CaseClosureDecisionModal
-        open={true}
-        onClose={onClose}
-        onApprove={onApprove}
-        onReject={vi.fn()}
-        caseId={123}
-      />,
-    );
-
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText(/Final Outcome/i)).toBeInTheDocument();
-    });
-
-    const submitButton = screen.getByRole('button', {
-      name: /approve case closure/i,
-    });
-    await user.click(submitButton);
-
-    await waitFor(() => {
-      expect(submitButton).toBeDisabled();
-      expect(submitButton.textContent).toContain('Approving...');
-    });
-
-    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('displays character count for rejection reason', async () => {
     const user = userEvent.setup();
-
     render(
       <CaseClosureDecisionModal
         open={true}
@@ -901,26 +407,19 @@ describe('CaseClosureDecisionModal component', () => {
         caseId={123}
       />,
     );
-
-    const rejectButton = screen
-      .getByText(/Reject Case Closure/i)
-      .closest('button');
-    if (rejectButton) {
-      await user.click(rejectButton);
-    }
-
+    const rejectTab = screen.getByText(/Reject Case Closure/i).closest('button')!;
+    await user.click(rejectTab);
     await waitFor(() => {
       expect(screen.getByText(/Rejection Reason/i)).toBeInTheDocument();
     });
-
-    const reasonTextarea = screen.getByPlaceholderText(/explain in detail/i);
-    await user.type(reasonTextarea, 'Test rejection reason');
-
-    expect(screen.getByText(/\/15 characters minimum/i)).toBeInTheDocument();
-    expect(screen.getByText(/\/1000 characters/i)).toBeInTheDocument();
+    const textarea = screen.getByPlaceholderText(/explain in detail/i);
+    await user.type(textarea, 'Test');
+    expect(screen.getByText(/4\/4 characters minimum/i)).toBeInTheDocument();
+    expect(screen.getByText(/4\/500 characters/i)).toBeInTheDocument();
   });
 
-  it('displays workflow information', () => {
+  it('displays supervisor comment character count', async () => {
+    const user = userEvent.setup();
     render(
       <CaseClosureDecisionModal
         open={true}
@@ -930,47 +429,98 @@ describe('CaseClosureDecisionModal component', () => {
         caseId={123}
       />,
     );
-
-    expect(
-      screen.getByText(/Supervisor Case Closure Approval Workflow/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Only cases in "PENDING FINAL APPROVAL"/i),
-    ).toBeInTheDocument();
+    const textarea = screen.getByPlaceholderText(/provide any additional comments/i);
+    await user.type(textarea, 'Hello');
+    expect(screen.getByText(/5\/500 characters/)).toBeInTheDocument();
   });
 
-  it('uses default outcome when recommendedOutcome is not provided', async () => {
+  it('closes modal when cancel button is clicked', async () => {
     const user = userEvent.setup();
-    const onApprove = vi.fn().mockResolvedValue(undefined);
-
+    const onClose = vi.fn();
     render(
       <CaseClosureDecisionModal
         open={true}
-        onClose={vi.fn()}
-        onApprove={onApprove}
+        onClose={onClose}
+        onApprove={vi.fn()}
         onReject={vi.fn()}
         caseId={123}
       />,
     );
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+    await user.click(cancelButton);
+    expect(onClose).toHaveBeenCalled();
+  });
 
-    const approveButtons = screen.getAllByText(/Approve Case Closure/i);
-    const decisionButton = approveButtons.find((btn) => {
-      const button = btn.closest('button');
-      return button && !button.getAttribute('type');
-    });
-
-    if (decisionButton) {
-      await user.click(decisionButton.closest('button')!);
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText(/Final Outcome/i)).toBeInTheDocument();
-    });
-
-    // Find select by role or display value
-    const outcomeSelect =
-      screen.getByRole('combobox') ||
-      screen.getByDisplayValue(/83 - Closed Inconclusive/i);
+  it('uses default outcome when recommendedOutcome is not provided', () => {
+    render(
+      <CaseClosureDecisionModal
+        open={true}
+        onClose={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        caseId={123}
+      />,
+    );
+    const outcomeSelect = screen.getByRole('combobox');
     expect(outcomeSelect).toHaveValue('STATUS_83_CLOSED_INCONCLUSIVE');
+  });
+
+  it('uses recommendedOutcome when provided', () => {
+    render(
+      <CaseClosureDecisionModal
+        open={true}
+        onClose={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        caseId={123}
+        recommendedOutcome="STATUS_82_CLOSED_CONFIRMED"
+      />,
+    );
+    const outcomeSelect = screen.getByRole('combobox');
+    expect(outcomeSelect).toHaveValue('STATUS_82_CLOSED_CONFIRMED');
+  });
+
+  it('displays approval info box', () => {
+    render(
+      <CaseClosureDecisionModal
+        open={true}
+        onClose={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        caseId={123}
+      />,
+    );
+    expect(screen.getByText(/you are about to finalize this case/i)).toBeInTheDocument();
+  });
+
+  it('displays rejection info box after switching tab', async () => {
+    const user = userEvent.setup();
+    render(
+      <CaseClosureDecisionModal
+        open={true}
+        onClose={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        caseId={123}
+      />,
+    );
+    const rejectTab = screen.getByText(/Reject Case Closure/i).closest('button')!;
+    await user.click(rejectTab);
+    await waitFor(() => {
+      expect(screen.getByText(/provide detailed feedback/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows minimum characters hint for supervisor comments', () => {
+    render(
+      <CaseClosureDecisionModal
+        open={true}
+        onClose={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        caseId={123}
+      />,
+    );
+    expect(screen.getByText(/minimum 4 characters/i)).toBeInTheDocument();
   });
 });

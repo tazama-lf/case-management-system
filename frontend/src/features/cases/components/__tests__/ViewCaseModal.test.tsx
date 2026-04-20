@@ -4,6 +4,22 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { CaseRow } from '../casesTable.utils';
 
+vi.mock('@/features/auth/components/AuthContext', () => ({
+  useAuth: () => ({
+    hasComplianceOfficerRole: () => false,
+    hasSupervisorRole: () => false,
+    user: { id: 1, username: 'test' },
+    isAuthenticated: true,
+  }),
+}));
+
+vi.mock('../services/caseService', () => ({
+  caseService: {
+    getCaseDetails: vi.fn().mockResolvedValue({}),
+  },
+  transformBackendCaseToUI: vi.fn(),
+}));
+
 // Mock child components
 vi.mock('../view/CaseDetailsTab', () => ({
   default: () => <div>Case Details Tab</div>,

@@ -35,6 +35,22 @@ vi.mock('../view/CollaboratePanel', () => ({
   default: () => <div>Collaborate Panel</div>,
 }));
 
+vi.mock('@/features/auth/components/AuthContext', () => ({
+  useAuth: () => ({
+    hasComplianceOfficerRole: () => false,
+    hasSupervisorRole: () => false,
+    user: { id: 1, username: 'test' },
+    isAuthenticated: true,
+  }),
+}));
+
+vi.mock('@/shared/providers/ToastProvider', () => ({
+  useToast: () => ({
+    success: vi.fn(),
+    error: vi.fn(),
+  }),
+}));
+
 import TasksDetailsModal from '../TasksDetailsModal';
 
 // Mock taskService - the component imports from '../services/taskService'
@@ -57,7 +73,7 @@ vi.mock('../../services/taskService', () => ({
 import { taskService } from '../../services/taskService';
 
 const mockCaseData: CaseRow = {
-  id: 'CASE-123',
+  id: 123,
   type: 'FRAUD',
   typeColor: 'bg-red-50',
   status: 'STATUS_20_IN_PROGRESS',
@@ -71,6 +87,7 @@ const mockCaseData: CaseRow = {
   priority: 'HIGH',
   userRole: 'owner',
   totalTasks: 1,
+  alertId: 1,
 };
 
 describe('TasksDetailsModal', () => {
@@ -127,7 +144,7 @@ describe('TasksDetailsModal', () => {
     renderModal({});
 
     await waitFor(() => {
-      expect(taskService.getTasksByCaseId).toHaveBeenCalledWith('CASE-123');
+      expect(taskService.getTasksByCaseId).toHaveBeenCalledWith(123);
     });
   });
 

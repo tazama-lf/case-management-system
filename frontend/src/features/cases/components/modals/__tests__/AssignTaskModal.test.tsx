@@ -7,13 +7,15 @@ import type { UnifiedWorkQueueTask } from '../../../../workqueue/types/flowable.
 import authService from '../../../../auth/services/authService';
 
 vi.mock('../../../../auth/services/authService');
+
+const mockFetchInvestigatorsList = vi.fn();
 vi.mock('../../../../cases/hooks/useInvestigatorSupervisorList', () => ({
   useInvestigatorSupervisorList: () => ({
-    fetchInvestigatorsList: vi.fn(),
+    fetchInvestigatorsList: mockFetchInvestigatorsList,
     loadingInvestigators: false,
     investigators: [
-      { value: 'inv-1', label: 'John Doe' },
-      { value: 'inv-2', label: 'Jane Smith' },
+      { id: 'inv-1', firstName: 'John', lastName: 'Doe', name: 'johndoe', username: 'johndoe', email: 'john@test.com' },
+      { id: 'inv-2', firstName: 'Jane', lastName: 'Smith', name: 'janesmith', username: 'janesmith', email: 'jane@test.com' },
     ],
     fetchComplianceOfficersList: vi.fn(),
     complianceOfficers: [],
@@ -59,13 +61,11 @@ describe('AssignTaskModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (authService.fetchAllInvestigators as vi.Mock).mockResolvedValue(
-      mockInvestigators,
-    );
     (authService.getUser as vi.Mock).mockReturnValue({
       userId: 'user-1',
       fullName: 'Current User',
       email: 'user@test.com',
+      validatedClaims: { CMS_SUPERVISOR: true },
     });
   });
 
@@ -120,7 +120,7 @@ describe('AssignTaskModal', () => {
     );
 
     await waitFor(() => {
-      expect(authService.fetchAllInvestigators).toHaveBeenCalled();
+      expect(mockFetchInvestigatorsList).toHaveBeenCalled();
     });
   });
 
