@@ -6,7 +6,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import type { CaseRow } from '../casesTable.utils';
 
 const mockCaseRow: CaseRow = {
-  id: 'CASE-123',
+  id: 123,
   type: 'FRAUD',
   typeColor: 'bg-red-50',
   status: 'STATUS_10_ASSIGNED',
@@ -20,6 +20,7 @@ const mockCaseRow: CaseRow = {
   priority: 'HIGH',
   userRole: 'owner',
   totalTasks: 1,
+  alertId: 1,
 };
 
 describe('AbandonCaseModal component', () => {
@@ -70,7 +71,7 @@ describe('AbandonCaseModal component', () => {
   it('renders the case id to provide context to the reviewer', () => {
     renderModal();
 
-    expect(screen.getByText(/case id:/i)).toHaveTextContent('CASE-123');
+    expect(screen.getByText(/case id:/i)).toHaveTextContent('123');
   });
 
   it('enables submit button when reason is at least 10 characters', async () => {
@@ -91,17 +92,17 @@ describe('AbandonCaseModal component', () => {
     });
   });
 
-  it('shows validation error when reason is less than 10 characters', async () => {
+  it('shows validation error when reason is less than 4 characters', async () => {
     const user = userEvent.setup();
     renderModal();
 
     const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
 
-    await user.type(textarea, 'Short');
+    await user.type(textarea, 'abc');
 
     await waitFor(() => {
       expect(
-        screen.getByText(/reason must be at least 10 characters/i),
+        screen.getByText(/reason must be at least 4 characters/i),
       ).toBeInTheDocument();
     });
   });
@@ -112,11 +113,11 @@ describe('AbandonCaseModal component', () => {
 
     const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
 
-    await user.type(textarea, 'Short');
+    await user.type(textarea, 'abc');
 
     await waitFor(() => {
       expect(
-        screen.getByText(/reason must be at least 10 characters/i),
+        screen.getByText(/reason must be at least 4 characters/i),
       ).toBeInTheDocument();
     });
 
@@ -125,7 +126,7 @@ describe('AbandonCaseModal component', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByText(/reason must be at least 10 characters/i),
+        screen.queryByText(/reason must be at least 4 characters/i),
       ).not.toBeInTheDocument();
     });
   });
@@ -144,7 +145,7 @@ describe('AbandonCaseModal component', () => {
 
     await waitFor(() => {
       expect(onAbandon).toHaveBeenCalledWith(
-        'CASE-123',
+        123,
         'This is a valid reason that is long enough',
       );
       expect(onClose).toHaveBeenCalled();
@@ -235,7 +236,7 @@ describe('AbandonCaseModal component', () => {
   it('does not close when submitting', async () => {
     const user = userEvent.setup();
     const { onAbandon, onClose } = renderModal();
-    onAbandon.mockImplementation(() => new Promise(() => {})); // Never resolves
+    onAbandon.mockImplementation(() => new Promise(() => { })); // Never resolves
 
     const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
     const submitButton = screen.getByRole('button', {
@@ -266,8 +267,8 @@ describe('AbandonCaseModal component', () => {
     const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
     await user.type(textarea, 'Test reason');
 
-    // Character count shows current length / 10 minimum
-    expect(screen.getByText(/\/10 characters minimum/i)).toBeInTheDocument();
+    // Character count shows current length / 4 minimum
+    expect(screen.getByText(/\/4 characters minimum/i)).toBeInTheDocument();
   });
 
   it('shows warning message about abandoning case', () => {

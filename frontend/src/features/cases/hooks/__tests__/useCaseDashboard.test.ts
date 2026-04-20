@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import useCaseDashboard from '../useCaseDashboard';
+import { useCaseDashboard } from '../useCaseDashboard';
 import { caseService } from '@/features/cases/services/caseService';
 
 const authMocks = {
@@ -61,8 +61,12 @@ vi.mock('@/features/cases/components/casesTable.utils', () => ({
     transformBackendCaseToUI(backendCase),
 }));
 
+vi.mock('@/shared/hooks/useDebounce', () => ({
+  default: (value: any) => value,
+}));
+
 type BackendCase = {
-  case_id: string;
+  case_id: number;
   case_type: string;
   status: string;
   priority?: string;
@@ -76,7 +80,7 @@ type BackendCase = {
 const createBackendCase = (
   overrides: Partial<BackendCase> = {},
 ): BackendCase => ({
-  case_id: 'CASE-001',
+  case_id: 1,
   case_type: 'FRAUD',
   status: 'STATUS_20_IN_PROGRESS',
   priority: 'HIGH',
@@ -98,26 +102,27 @@ describe('useCaseDashboard', () => {
     authMocks.hasSupervisorRole.mockReturnValue(false);
     authMocks.hasCMSAdminRole.mockReturnValue(false);
 
-    (caseService.getUserAssignedCases as unknown as vi.Mock).mockResolvedValue({
-      cases: [],
-    });
     (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
       cases: [],
+      pagination: { total: 0, totalPages: 1 },
     });
   });
 
-  it('fetches investigator-only cases and applies search filtering', async () => {
-    authMocks.hasInvestigatorRole.mockReturnValue(true);
+  it('fetches cases and applies search filtering via backend', async () => {
     const backendCases = [
-      createBackendCase({ case_id: 'CASE-100' }),
-      createBackendCase({ case_id: 'CASE-200', case_type: 'AML' }),
+      createBackendCase({ case_id: 100 }),
+      createBackendCase({ case_id: 200, case_type: 'AML' }),
     ];
 
-    (
-      caseService.getUserAssignedCases as unknown as vi.Mock
-    ).mockResolvedValueOnce({
-      cases: backendCases,
-    });
+    (caseService.getAllCases as unknown as vi.Mock)
+      .mockResolvedValueOnce({
+        cases: backendCases,
+        pagination: { total: 2, totalPages: 1 },
+      })
+      .mockResolvedValueOnce({
+        cases: [backendCases[1]],
+        pagination: { total: 1, totalPages: 1 },
+      });
 
     const { result } = renderHook(() => useCaseDashboard());
 
@@ -125,14 +130,12 @@ describe('useCaseDashboard', () => {
       expect(result.current.dashboardState.loading).toBe(false),
     );
 
-    expect(caseService.getUserAssignedCases).toHaveBeenCalledWith({
-      status: undefined,
-      priority: undefined,
-      includeTaskAssignments: true,
-      includeOwnedCases: true,
-      sortBy: 'updated_at',
-      sortOrder: 'desc',
-    });
+    expect(caseService.getAllCases).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sortBy: 'updated_at',
+        sortOrder: 'desc',
+      }),
+    );
 
     expect(result.current.dashboardState.cases).toHaveLength(2);
 
@@ -140,16 +143,19 @@ describe('useCaseDashboard', () => {
       result.current.filterActions.setSearch('200');
     });
 
-    expect(result.current.dashboardState.cases).toHaveLength(1);
-    expect(result.current.dashboardState.cases[0].id).toBe('CASE-200');
+    await waitFor(() =>
+      expect(result.current.dashboardState.cases).toHaveLength(1),
+    );
+
+    expect(result.current.dashboardState.cases[0].id).toBe(200);
   });
 
   it('opens the view modal when a route param matches a case id', async () => {
-    authMocks.hasSupervisorRole.mockReturnValue(true);
-    routeMock.params = { caseId: 'CASE-777' };
+    routeMock.params = { caseId: '777' };
 
     (caseService.getAllCases as unknown as vi.Mock).mockResolvedValueOnce({
-      cases: [createBackendCase({ case_id: 'CASE-777' })],
+      cases: [createBackendCase({ case_id: 777 })],
+      pagination: { total: 1, totalPages: 1 },
     });
 
     const { result } = renderHook(() => useCaseDashboard());
@@ -158,28 +164,27 @@ describe('useCaseDashboard', () => {
       expect(result.current.dashboardState.loading).toBe(false),
     );
 
-    expect(caseService.getAllCases).toHaveBeenCalledWith({
-      status: undefined,
-      priority: undefined,
-      sortBy: 'updated_at',
-      sortOrder: 'desc',
-    });
+    expect(caseService.getAllCases).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sortBy: 'updated_at',
+        sortOrder: 'desc',
+      }),
+    );
 
     expect(result.current.modalState.isViewOpen).toBe(true);
-    expect(result.current.modalState.selectedRow?.id).toBe('CASE-777');
+    expect(result.current.modalState.selectedRow?.id).toBe(777);
 
     act(() => {
       const firstRow = result.current.dashboardState.cases[0];
       result.current.dashboardActions.handleView(firstRow);
     });
 
-    expect(routeMock.navigate).toHaveBeenCalledWith('/cases/CASE-777');
+    expect(routeMock.navigate).toHaveBeenCalledWith('/cases/777');
   });
 
   it('surfaces an error state when the service call fails', async () => {
-    authMocks.hasInvestigatorRole.mockReturnValue(true);
     (
-      caseService.getUserAssignedCases as unknown as vi.Mock
+      caseService.getAllCases as unknown as vi.Mock
     ).mockRejectedValueOnce(new Error('boom'));
 
     const { result } = renderHook(() => useCaseDashboard());

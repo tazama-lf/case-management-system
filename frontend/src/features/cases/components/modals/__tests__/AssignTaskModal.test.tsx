@@ -7,6 +7,23 @@ import type { UnifiedWorkQueueTask } from '../../../../workqueue/types/flowable.
 import authService from '../../../../auth/services/authService';
 
 vi.mock('../../../../auth/services/authService');
+vi.mock('../../../../cases/hooks/useInvestigatorSupervisorList', () => ({
+  useInvestigatorSupervisorList: () => ({
+    fetchInvestigatorsList: vi.fn(),
+    loadingInvestigators: false,
+    investigators: [
+      { value: 'inv-1', label: 'John Doe' },
+      { value: 'inv-2', label: 'Jane Smith' },
+    ],
+    fetchComplianceOfficersList: vi.fn(),
+    complianceOfficers: [],
+  }),
+}));
+vi.mock('@/features/auth', () => ({
+  useAuth: () => ({
+    hasComplianceOfficerRole: () => false,
+  }),
+}));
 
 const mockTask: UnifiedWorkQueueTask = {
   id: 'TASK-123',

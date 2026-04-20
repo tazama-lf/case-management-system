@@ -91,7 +91,7 @@ describe('useRejectCaseActions', () => {
       await waitFor(() => {
         expect(mockError).toHaveBeenCalledWith(
           'Reject Case Creation Failed',
-          expect.stringContaining('Unable to reject case creation right now'),
+          expect.stringContaining('Cannot reject case creation'),
         );
       });
     });
@@ -211,7 +211,7 @@ describe('useRejectCaseActions', () => {
       await waitFor(() => {
         expect(mockError).toHaveBeenCalledWith(
           'Reject Case Creation Failed',
-          expect.stringContaining('Something went wrong'),
+          expect.stringContaining('Could not reject case creation'),
         );
       });
     });
@@ -275,7 +275,7 @@ describe('useRejectCaseActions', () => {
       await waitFor(() => {
         expect(mockError).toHaveBeenCalledWith(
           'Reject Case Failed',
-          expect.stringContaining('Unable to reject case right now'),
+          expect.stringContaining('Cannot reject case'),
         );
       });
     });
@@ -361,7 +361,7 @@ describe('useRejectCaseActions', () => {
       await waitFor(() => {
         expect(mockError).toHaveBeenCalledWith(
           'Reject Case Reopening Failed',
-          expect.stringContaining('Unable to reject case reopening right now'),
+          expect.stringContaining('Cannot reject case reopening'),
         );
       });
     });

@@ -330,30 +330,25 @@ describe('ReportsService', () => {
     });
   });
 
-  describe('safeFallback', () => {
+  describe('safeFallback (via formatDisplayValue)', () => {
     it('should return fallback for null values', () => {
-      const result = (reportsService as any).safeFallback(null, 0);
-      expect(result).toBe(0);
+      expect(reportsService.formatDisplayValue(null)).toBe('0');
     });
 
     it('should return fallback for undefined values', () => {
-      const result = (reportsService as any).safeFallback(undefined, 0);
-      expect(result).toBe(0);
+      expect(reportsService.formatDisplayValue(undefined)).toBe('0');
     });
 
     it('should return fallback for NaN values', () => {
-      const result = (reportsService as any).safeFallback(NaN, 0);
-      expect(result).toBe(0);
+      expect(reportsService.formatDisplayValue(NaN)).toBe('0');
     });
 
     it('should return fallback for Infinity values', () => {
-      const result = (reportsService as any).safeFallback(Infinity, 0);
-      expect(result).toBe(0);
+      expect(reportsService.formatDisplayValue(Infinity)).toBe('0');
     });
 
     it('should return value for valid numbers', () => {
-      const result = (reportsService as any).safeFallback(42, 0);
-      expect(result).toBe(42);
+      expect(reportsService.formatDisplayValue(42)).toBe('42');
     });
   });
 

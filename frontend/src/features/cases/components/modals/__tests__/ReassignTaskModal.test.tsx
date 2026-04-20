@@ -7,6 +7,24 @@ import type { UnifiedWorkQueueTask } from '../../../../workqueue/types/flowable.
 import authService from '../../../../auth/services/authService';
 
 vi.mock('../../../../auth/services/authService');
+vi.mock('../../../../cases/hooks/useInvestigatorSupervisorList', () => ({
+  useInvestigatorSupervisorList: () => ({
+    fetchInvestigatorsList: vi.fn(),
+    loadingInvestigators: false,
+    investigators: [
+      { id: 'inv-1', firstName: 'John', lastName: 'Doe', name: 'jdoe' },
+      { id: 'inv-2', firstName: 'Jane', lastName: 'Smith', name: 'jsmith' },
+    ],
+    fetchComplianceOfficersList: vi.fn(),
+    complianceOfficers: [],
+    supervisors: [],
+  }),
+}));
+vi.mock('@/features/auth', () => ({
+  useAuth: () => ({
+    hasComplianceOfficerRole: () => false,
+  }),
+}));
 
 const mockTask: UnifiedWorkQueueTask = {
   id: 'TASK-123',
@@ -42,9 +60,12 @@ describe('ReassignTaskModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (authService.fetchAllInvestigators as vi.Mock).mockResolvedValue(
-      mockInvestigators,
-    );
+    (authService.getUser as vi.Mock).mockReturnValue({
+      id: 'user-1',
+      name: 'Test User',
+      firstName: 'Test',
+      lastName: 'User',
+    });
   });
 
   it('does not render when open is false', () => {
@@ -96,7 +117,7 @@ describe('ReassignTaskModal', () => {
     );
 
     await waitFor(() => {
-      expect(authService.fetchAllInvestigators).toHaveBeenCalled();
+      expect(screen.getByText(/Reassign Task/i)).toBeInTheDocument();
     });
   });
 

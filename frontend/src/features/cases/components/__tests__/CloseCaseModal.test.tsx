@@ -4,6 +4,20 @@ import CloseCaseModal from '../CloseCaseModal';
 import { vi, describe, it, expect } from 'vitest';
 import userEvent from '@testing-library/user-event';
 
+vi.mock('@/features/auth', () => ({
+  authService: {
+    getUser: vi.fn().mockReturnValue(null),
+  },
+}));
+
+vi.mock('@/shared/constants/case.constant', () => ({
+  getCaseStatusBadge: vi.fn((status: string) => status),
+}));
+
+vi.mock('../modals/GenerateInvestigationReportModal', () => ({
+  default: () => null,
+}));
+
 describe('CloseCaseModal', () => {
   const mockOnClose = vi.fn();
   const mockOnSubmit = vi.fn();
@@ -33,7 +47,7 @@ describe('CloseCaseModal', () => {
     render(<CloseCaseModal {...defaultProps} />);
 
     const submitBtn = screen.getByRole('button', {
-      name: /submit for supervisor approval/i,
+      name: /submit for approval/i,
     });
     fireEvent.click(submitBtn);
 
@@ -51,7 +65,7 @@ describe('CloseCaseModal', () => {
     await user.type(notesInput, 'Investigation completed successfully.');
 
     const submitBtn = screen.getByRole('button', {
-      name: /submit for supervisor approval/i,
+      name: /submit for approval/i,
     });
     await user.click(submitBtn);
 
@@ -72,7 +86,7 @@ describe('CloseCaseModal', () => {
     await user.type(notesInput, 'Valid notes for error test.');
 
     const submitBtn = screen.getByRole('button', {
-      name: /submit for supervisor approval/i,
+      name: /submit for approval/i,
     });
     await user.click(submitBtn);
 

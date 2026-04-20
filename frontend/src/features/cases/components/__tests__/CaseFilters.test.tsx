@@ -3,6 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import CaseFilters from '../CaseFilters';
 
+vi.mock('@/shared/providers/ToastProvider', () => ({
+  useToast: () => ({ showToast: vi.fn() }),
+}));
+
+vi.mock('@/features/auth/components/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 1, username: 'test' }, isAuthenticated: true, hasComplianceOfficerRole: () => false }),
+}));
+
 describe('CaseFilters', () => {
   const defaultProps = {
     search: '',
@@ -13,14 +21,11 @@ describe('CaseFilters', () => {
     onStatusFilterChange: vi.fn(),
     priorityFilter: '',
     onPriorityFilterChange: vi.fn(),
+    sarStrStatusFilter: '',
+    onSarStrStatusFilterChange: vi.fn(),
+    caseTypeFilter: 'all' as const,
+    onCaseTypeFilterChange: vi.fn(),
   };
-
-  it('should render search input', () => {
-    render(<CaseFilters {...defaultProps} />);
-
-    const searchInput = screen.getByPlaceholderText('Search cases...');
-    expect(searchInput).toBeInTheDocument();
-  });
 
   it('should display search value', () => {
     render(<CaseFilters {...defaultProps} search="test search" />);

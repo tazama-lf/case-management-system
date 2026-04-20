@@ -185,13 +185,13 @@ describe('CaseService', () => {
         status: 'STATUS_20_IN_PROGRESS',
         priority: 'HIGH',
       };
-      (apiClient.post as vi.Mock).mockResolvedValue(mockCase);
+      (apiClient.put as vi.Mock).mockResolvedValue(mockCase);
 
       const result = await caseService.updateCase('CASE-123', {
         status: 'STATUS_20_IN_PROGRESS',
       });
 
-      expect(apiClient.post).toHaveBeenCalledWith(
+      expect(apiClient.put).toHaveBeenCalledWith(
         '/api/v1/cases/CASE-123',
         expect.objectContaining({ status: 'STATUS_20_IN_PROGRESS' }),
       );
@@ -494,57 +494,6 @@ describe('CaseService', () => {
     });
   });
 
-  describe('getCaseHistory', () => {
-    it('fetches case history and filters by case ID', async () => {
-      const mockAuditLogs = [
-        {
-          id: '1',
-          user_id: 'user-1',
-          operation: 'updateCase',
-          entity_name: 'Case',
-          action_performed: 'Case CASE-123 updated',
-          outcome: 'success',
-          performed_at: new Date(),
-        },
-        {
-          id: '2',
-          user_id: 'user-2',
-          operation: 'updateCase',
-          entity_name: 'Case',
-          action_performed: 'Case CASE-456 updated',
-          outcome: 'success',
-          performed_at: new Date(),
-        },
-      ];
-      const mockTasks = [{ task_id: 'TASK-1' }];
-
-      (apiClient.get as vi.Mock)
-        .mockResolvedValueOnce(mockAuditLogs)
-        .mockResolvedValueOnce(mockTasks);
-
-      const result = await caseService.getCaseHistory('CASE-123');
-
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/reports/audit-logs');
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/task/case/CASE-123');
-      expect(result.length).toBe(1);
-      expect(result[0].action_performed).toContain('CASE-123');
-    });
-
-    it('returns empty array on error', async () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-      (apiClient.get as vi.Mock).mockRejectedValue(new Error('Failed'));
-
-      const result = await caseService.getCaseHistory('CASE-123');
-
-      expect(result).toEqual([]);
-      expect(consoleErrorSpy).toHaveBeenCalled();
-
-      consoleErrorSpy.mockRestore();
-    });
-  });
-
   describe('error handling', () => {
     it('handles API errors with response data', async () => {
       const apiError = {
@@ -554,18 +503,20 @@ describe('CaseService', () => {
           },
         },
       };
-      (apiClient.get as vi.Mock).mockRejectedValue(apiError);
+      (apiClient.get as vi.Mock).mockReset();
+      (apiClient.get as vi.Mock).mockRejectedValueOnce(apiError);
 
-      await expect(caseService.getCaseDetails('CASE-123')).rejects.toThrow(
+      await expect(caseService.getCaseDetails('CASE-123' as any)).rejects.toThrow(
         'Custom error message',
       );
     });
 
     it('handles API errors without response data', async () => {
       const error = new Error('Network error');
-      (apiClient.get as vi.Mock).mockRejectedValue(error);
+      (apiClient.get as vi.Mock).mockReset();
+      (apiClient.get as vi.Mock).mockRejectedValueOnce(error);
 
-      await expect(caseService.getCaseDetails('CASE-123')).rejects.toThrow(
+      await expect(caseService.getCaseDetails('CASE-123' as any)).rejects.toThrow(
         'Failed to get case details: Network error',
       );
     });

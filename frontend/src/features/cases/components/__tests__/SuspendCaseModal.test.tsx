@@ -6,7 +6,7 @@ import SuspendCaseModal from '../SuspendCaseModal';
 import type { CaseRow } from '../casesTable.utils';
 
 const mockCaseData: CaseRow = {
-  id: 'CASE-123',
+  id: 123,
   type: 'FRAUD',
   typeColor: 'bg-red-50',
   status: 'STATUS_20_IN_PROGRESS',
@@ -20,6 +20,7 @@ const mockCaseData: CaseRow = {
   priority: 'HIGH',
   userRole: 'owner',
   totalTasks: 1,
+  alertId: 1,
 };
 
 describe('SuspendCaseModal', () => {
@@ -55,10 +56,10 @@ describe('SuspendCaseModal', () => {
     expect(
       screen.getByRole('heading', { name: /Suspend Case/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Case ID: CASE-123/i)).toBeInTheDocument();
+    expect(screen.getByText(/Case ID: 123/)).toBeInTheDocument();
   });
 
-  it('displays suspension workflow information', () => {
+  it('displays suspension information', () => {
     render(
       <SuspendCaseModal
         open={true}
@@ -68,15 +69,12 @@ describe('SuspendCaseModal', () => {
       />,
     );
 
-    expect(screen.getByText(/Suspension Workflow/i)).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /Task status becomes "BLOCKED", case status becomes "SUSPENDED"/i,
-      ),
+      screen.getByText(/Temporarily pause a case/i),
     ).toBeInTheDocument();
   });
 
-  it('validates reason minimum length (10 characters)', async () => {
+  it('validates reason minimum length (4 characters)', async () => {
     const user = userEvent.setup();
     render(
       <SuspendCaseModal
@@ -92,13 +90,12 @@ describe('SuspendCaseModal', () => {
     );
     const submitButton = screen.getByRole('button', { name: /Suspend Case/i });
 
-    await user.type(textarea, 'short');
-    await user.click(submitButton);
+    await user.type(textarea, 'ab');
 
     expect(
-      await screen.findByText(/Reason must be at least 10 characters/i),
+      screen.getByText(/Reason must be at least 4 characters/i),
     ).toBeInTheDocument();
-    expect(mockOnSuspend).not.toHaveBeenCalled();
+    expect(submitButton).toBeDisabled();
   });
 
   it('enables submit button when reason is valid', async () => {
@@ -149,8 +146,9 @@ describe('SuspendCaseModal', () => {
 
     await waitFor(() => {
       expect(mockOnSuspend).toHaveBeenCalledWith(
-        'CASE-123',
+        123,
         'This is a valid suspension reason',
+        [],
       );
     });
 

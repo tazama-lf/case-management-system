@@ -6,7 +6,7 @@ import ResumeCaseModal from '../ResumeCaseModal';
 import type { CaseRow } from '../casesTable.utils';
 
 const mockCaseData: CaseRow = {
-  id: 'CASE-123',
+  id: 123,
   type: 'FRAUD',
   typeColor: 'bg-red-50',
   status: 'STATUS_21_SUSPENDED',
@@ -20,6 +20,7 @@ const mockCaseData: CaseRow = {
   priority: 'HIGH',
   userRole: 'owner',
   totalTasks: 1,
+  alertId: 1,
 };
 
 describe('ResumeCaseModal', () => {
@@ -55,7 +56,7 @@ describe('ResumeCaseModal', () => {
     expect(
       screen.getByRole('heading', { name: /Resume Case/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Case ID: CASE-123/i)).toBeInTheDocument();
+    expect(screen.getByText(/Case ID: 123/)).toBeInTheDocument();
   });
 
   it('displays resumption information', () => {
@@ -75,7 +76,7 @@ describe('ResumeCaseModal', () => {
     ).toBeInTheDocument();
   });
 
-  it('validates reason minimum length (5 characters)', async () => {
+  it('validates reason minimum length (4 characters)', async () => {
     const user = userEvent.setup();
     render(
       <ResumeCaseModal
@@ -91,10 +92,10 @@ describe('ResumeCaseModal', () => {
     );
     const submitButton = screen.getByRole('button', { name: /Resume Case/i });
 
-    await user.type(textarea, 'test');
+    await user.type(textarea, 'tes');
     expect(submitButton).toBeDisabled();
 
-    await user.type(textarea, 't'); // Now 5 characters
+    await user.type(textarea, 't'); // Now 4 characters
     await waitFor(() => {
       expect(submitButton).not.toBeDisabled();
     });
@@ -123,7 +124,7 @@ describe('ResumeCaseModal', () => {
 
     await waitFor(() => {
       expect(mockOnResume).toHaveBeenCalledWith(
-        'CASE-123',
+        123,
         'This is a valid reason',
       );
     });

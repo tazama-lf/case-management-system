@@ -4,6 +4,43 @@ import userEvent from '@testing-library/user-event';
 import CaseClosureDecisionModal from '../CaseClosureDecisionModal';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
+vi.mock('@/features/auth', () => ({
+  useAuth: vi.fn().mockReturnValue({
+    hasSupervisorRole: () => true,
+  }),
+}));
+
+vi.mock('../../services/commentService', () => ({
+  commentService: {
+    getCommentsByTaskId: vi.fn().mockResolvedValue([]),
+  },
+}));
+
+vi.mock('../../services/taskService', () => ({
+  TaskStatus: {
+    STATUS_01_UNASSIGNED: 'STATUS_01_UNASSIGNED',
+    STATUS_20_IN_PROGRESS: 'STATUS_20_IN_PROGRESS',
+  },
+}));
+
+vi.mock('../modals/GenerateInvestigationReportModal', () => ({
+  default: ({
+    open,
+    onApproved,
+    onClose,
+  }: {
+    open: boolean;
+    onApproved: () => void;
+    onClose: () => void;
+  }) =>
+    open ? (
+      <div data-testid="report-modal">
+        <button onClick={onApproved}>Confirm Report</button>
+        <button onClick={onClose}>Close Report</button>
+      </div>
+    ) : null,
+}));
+
 describe('CaseClosureDecisionModal component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -16,7 +53,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
     expect(container.firstChild).toBeNull();
@@ -32,7 +69,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={onClose}
         onApprove={onApprove}
         onReject={onReject}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
     expect(screen.getByText(/case closure review/i)).toBeInTheDocument();
@@ -45,7 +82,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
         caseName="Test Case"
       />,
     );
@@ -60,7 +97,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -76,7 +113,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -104,7 +141,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -132,7 +169,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
         recommendedOutcome="STATUS_82_CLOSED_CONFIRMED"
       />,
     );
@@ -163,7 +200,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -190,7 +227,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
         finalNotes="These are final notes from the investigator"
       />,
     );
@@ -223,7 +260,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
         recommendations="These are recommendations from the investigator"
       />,
     );
@@ -259,7 +296,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={onClose}
         onApprove={onApprove}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -302,7 +339,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={onClose}
         onApprove={onApprove}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -350,7 +387,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={onClose}
         onApprove={onApprove}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -397,7 +434,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={onApprove}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -435,7 +472,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={onApprove}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -476,7 +513,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={onClose}
         onApprove={vi.fn()}
         onReject={onReject}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -523,7 +560,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={onReject}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -570,7 +607,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={onReject}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -626,7 +663,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={onReject}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -670,7 +707,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={onReject}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -715,7 +752,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -750,7 +787,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -786,7 +823,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={onClose}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -812,7 +849,7 @@ describe('CaseClosureDecisionModal component', () => {
 
   it('does not close when submitting', async () => {
     const user = userEvent.setup();
-    const onApprove = vi.fn().mockImplementation(() => new Promise(() => {})); // Never resolves
+    const onApprove = vi.fn().mockImplementation(() => new Promise(() => { })); // Never resolves
     const onClose = vi.fn();
 
     render(
@@ -821,7 +858,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={onClose}
         onApprove={onApprove}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -861,7 +898,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -890,7 +927,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -912,7 +949,7 @@ describe('CaseClosureDecisionModal component', () => {
         onClose={vi.fn()}
         onApprove={onApprove}
         onReject={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 

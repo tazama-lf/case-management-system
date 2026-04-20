@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { dashboardService } from '../dashboardService';
 import apiClient from '../../../../shared/services/apiClient';
 
@@ -34,7 +34,7 @@ describe('dashboardService', () => {
         { status: 'assigned', count: 3, description: 'Assigned cases' },
       ];
 
-      (apiClient.get as vi.Mock)
+      (apiClient.get as Mock)
         .mockResolvedValueOnce({
           stats: { totalCases: 10, openCases: 3, closedCases: 7 },
           caseTypes: [{ name: 'FRAUD', count: 5 }],
@@ -59,10 +59,28 @@ describe('dashboardService', () => {
       });
     });
 
+    it('returns combined data with all three keys present', async () => {
+      (apiClient.get as Mock)
+        .mockResolvedValueOnce({
+          stats: { totalCases: 0, openCases: 0, closedCases: 0 },
+          caseTypes: [],
+        })
+        .mockResolvedValueOnce({ caseTypes: [] })
+        .mockResolvedValueOnce({ statusDistribution: {} });
+
+      const result = await dashboardService.getDashboardData();
+
+      expect(result).toHaveProperty('stats');
+      expect(result).toHaveProperty('recentAlerts');
+      expect(result).toHaveProperty('activeCases');
+      expect(Array.isArray(result.recentAlerts)).toBe(true);
+      expect(Array.isArray(result.activeCases)).toBe(true);
+    });
+
     it('handles errors and throws with message', async () => {
       const consoleSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
       const error = new Error('Network error');
 
       // Mock getDashboardStats to throw, which will cause Promise.all to reject
@@ -85,7 +103,7 @@ describe('dashboardService', () => {
 
   describe('getDashboardStats', () => {
     it('fetches and transforms dashboard stats successfully', async () => {
-      (apiClient.get as vi.Mock).mockResolvedValue({
+      (apiClient.get as Mock).mockResolvedValue({
         stats: { totalCases: 10, openCases: 3, closedCases: 7 },
         caseTypes: [{ name: 'FRAUD', count: 5 }],
       });
@@ -103,8 +121,8 @@ describe('dashboardService', () => {
     it('returns default values when API call fails', async () => {
       const consoleSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => {});
-      (apiClient.get as vi.Mock).mockRejectedValue(new Error('API error'));
+        .mockImplementation(() => { });
+      (apiClient.get as Mock).mockRejectedValue(new Error('API error'));
 
       const result = await dashboardService.getDashboardStats();
 
@@ -121,7 +139,7 @@ describe('dashboardService', () => {
     });
 
     it('handles missing stats in response', async () => {
-      (apiClient.get as vi.Mock).mockResolvedValue({
+      (apiClient.get as Mock).mockResolvedValue({
         caseTypes: [],
       });
 
@@ -136,7 +154,7 @@ describe('dashboardService', () => {
     });
 
     it('handles missing FRAUD case type', async () => {
-      (apiClient.get as vi.Mock).mockResolvedValue({
+      (apiClient.get as Mock).mockResolvedValue({
         stats: { totalCases: 10, openCases: 3, closedCases: 7 },
         caseTypes: [{ name: 'AML', count: 5 }],
       });
@@ -145,11 +163,42 @@ describe('dashboardService', () => {
 
       expect(result.highPriorityAlerts).toBe(0);
     });
+
+    it('handles undefined caseTypes in response', async () => {
+      (apiClient.get as Mock).mockResolvedValue({
+        stats: { totalCases: 5, openCases: 2, closedCases: 3 },
+      });
+
+      const result = await dashboardService.getDashboardStats();
+
+      expect(result).toEqual({
+        totalAlerts: 5,
+        highPriorityAlerts: 0,
+        openCases: 2,
+        casesResolvedThisWeek: 3,
+      });
+    });
+
+    it('handles null caseTypes in response', async () => {
+      (apiClient.get as Mock).mockResolvedValue({
+        stats: { totalCases: 8, openCases: 4, closedCases: 4 },
+        caseTypes: null,
+      });
+
+      const result = await dashboardService.getDashboardStats();
+
+      expect(result).toEqual({
+        totalAlerts: 8,
+        highPriorityAlerts: 0,
+        openCases: 4,
+        casesResolvedThisWeek: 4,
+      });
+    });
   });
 
   describe('getRecentAlerts', () => {
     it('fetches and transforms recent alerts successfully', async () => {
-      (apiClient.get as vi.Mock).mockResolvedValue({
+      (apiClient.get as Mock).mockResolvedValue({
         caseTypes: [
           { name: 'FRAUD', count: 5 },
           { name: 'AML', count: 3 },
@@ -175,8 +224,8 @@ describe('dashboardService', () => {
     it('returns default alerts when API call fails', async () => {
       const consoleSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => {});
-      (apiClient.get as vi.Mock).mockRejectedValue(new Error('API error'));
+        .mockImplementation(() => { });
+      (apiClient.get as Mock).mockRejectedValue(new Error('API error'));
 
       const result = await dashboardService.getRecentAlerts();
 
@@ -204,9 +253,25 @@ describe('dashboardService', () => {
     });
 
     it('handles empty case types array', async () => {
-      (apiClient.get as vi.Mock).mockResolvedValue({
+      (apiClient.get as Mock).mockResolvedValue({
         caseTypes: [],
       });
+
+      const result = await dashboardService.getRecentAlerts();
+
+      expect(result).toEqual([]);
+    });
+
+    it('handles undefined caseTypes in response', async () => {
+      (apiClient.get as Mock).mockResolvedValue({});
+
+      const result = await dashboardService.getRecentAlerts();
+
+      expect(result).toEqual([]);
+    });
+
+    it('handles null caseTypes in response', async () => {
+      (apiClient.get as Mock).mockResolvedValue({ caseTypes: null });
 
       const result = await dashboardService.getRecentAlerts();
 
@@ -216,7 +281,7 @@ describe('dashboardService', () => {
 
   describe('getActiveCases', () => {
     it('fetches and transforms active cases successfully', async () => {
-      (apiClient.get as vi.Mock).mockResolvedValue({
+      (apiClient.get as Mock).mockResolvedValue({
         statusDistribution: {
           assigned: 5,
           pendingApproval: 3,
@@ -248,8 +313,8 @@ describe('dashboardService', () => {
     it('returns default cases when API call fails', async () => {
       const consoleSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => {});
-      (apiClient.get as vi.Mock).mockRejectedValue(new Error('API error'));
+        .mockImplementation(() => { });
+      (apiClient.get as Mock).mockRejectedValue(new Error('API error'));
 
       const result = await dashboardService.getActiveCases();
 
@@ -277,7 +342,7 @@ describe('dashboardService', () => {
     });
 
     it('handles missing status distribution', async () => {
-      (apiClient.get as vi.Mock).mockResolvedValue({});
+      (apiClient.get as Mock).mockResolvedValue({});
 
       const result = await dashboardService.getActiveCases();
 
@@ -303,7 +368,7 @@ describe('dashboardService', () => {
 
   describe('mapCaseTypeToPriority', () => {
     it('maps FRAUD to high priority', async () => {
-      (apiClient.get as vi.Mock).mockResolvedValue({
+      (apiClient.get as Mock).mockResolvedValue({
         caseTypes: [{ name: 'FRAUD', count: 5 }],
       });
 
@@ -313,7 +378,7 @@ describe('dashboardService', () => {
     });
 
     it('maps FRAUD_AND_AML to high priority', async () => {
-      (apiClient.get as vi.Mock).mockResolvedValue({
+      (apiClient.get as Mock).mockResolvedValue({
         caseTypes: [{ name: 'FRAUD_AND_AML', count: 5 }],
       });
 
@@ -323,7 +388,7 @@ describe('dashboardService', () => {
     });
 
     it('maps AML to medium priority', async () => {
-      (apiClient.get as vi.Mock).mockResolvedValue({
+      (apiClient.get as Mock).mockResolvedValue({
         caseTypes: [{ name: 'AML', count: 5 }],
       });
 
@@ -333,7 +398,7 @@ describe('dashboardService', () => {
     });
 
     it('maps unknown case types to low priority', async () => {
-      (apiClient.get as vi.Mock).mockResolvedValue({
+      (apiClient.get as Mock).mockResolvedValue({
         caseTypes: [{ name: 'UNKNOWN', count: 5 }],
       });
 

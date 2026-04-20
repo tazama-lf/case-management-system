@@ -66,7 +66,7 @@ vi.mock('../RejectCaseReopenModal', () => ({
 import CaseModals from '../CaseModals';
 
 const mockCaseData: CaseRow = {
-  id: 'CASE-123',
+  id: 123,
   type: 'FRAUD',
   typeColor: 'bg-red-50',
   status: 'STATUS_20_IN_PROGRESS',
@@ -80,6 +80,7 @@ const mockCaseData: CaseRow = {
   priority: 'HIGH',
   userRole: 'owner',
   totalTasks: 1,
+  alertId: 1,
 };
 
 describe('CaseModals', () => {

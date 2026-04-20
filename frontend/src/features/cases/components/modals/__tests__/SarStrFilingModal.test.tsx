@@ -13,8 +13,40 @@ vi.mock('../../../services/evidenceService', () => ({
   },
 }));
 
+vi.mock('../../../../../shared/providers/ToastProvider', () => ({
+  useToast: () => ({
+    showToast: vi.fn(),
+  }),
+}));
+
+vi.mock('@/features/auth', () => ({
+  useAuth: () => ({
+    user: { id: 'user-1', name: 'Test User' },
+    hasComplianceOfficerRole: () => false,
+    hasSupervisorRole: () => false,
+  }),
+}));
+
+vi.mock('../../../services/taskService', () => ({
+  taskService: {
+    completeTask: vi.fn(),
+    updateTaskStatus: vi.fn(),
+  },
+  TaskStatus: {},
+}));
+
 describe('SarStrFilingModal', () => {
   const mockOnClose = vi.fn();
+  const mockTask = {
+    id: 'TASK-123',
+    name: 'SAR/STR Filing',
+    status: 'STATUS_20_IN_PROGRESS',
+    caseId: 'CASE-123',
+    assignee: 'user-1',
+    created: '2024-01-01T00:00:00Z',
+    dueDate: null,
+    description: 'File SAR/STR',
+  } as any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,8 +60,9 @@ describe('SarStrFilingModal', () => {
       <SarStrFilingModal
         open={false}
         onClose={mockOnClose}
-        taskId="TASK-123"
-        caseId="CASE-123"
+        taskId={123}
+        caseId={123}
+        task={mockTask}
       />,
     );
     expect(
@@ -42,8 +75,9 @@ describe('SarStrFilingModal', () => {
       <SarStrFilingModal
         open={true}
         onClose={mockOnClose}
-        taskId="TASK-123"
-        caseId="CASE-123"
+        taskId={123}
+        caseId={123}
+        task={mockTask}
       />,
     );
 
@@ -71,13 +105,14 @@ describe('SarStrFilingModal', () => {
       <SarStrFilingModal
         open={true}
         onClose={mockOnClose}
-        taskId="TASK-123"
-        caseId="CASE-123"
+        taskId={123}
+        caseId={123}
+        task={mockTask}
       />,
     );
 
     await waitFor(() => {
-      expect(evidenceService.getTaskEvidence).toHaveBeenCalledWith('TASK-123');
+      expect(evidenceService.getTaskEvidence).toHaveBeenCalledWith(123);
     });
   });
 
@@ -87,8 +122,9 @@ describe('SarStrFilingModal', () => {
       <SarStrFilingModal
         open={true}
         onClose={mockOnClose}
-        taskId="TASK-123"
-        caseId="CASE-123"
+        taskId={123}
+        caseId={123}
+        task={mockTask}
       />,
     );
 

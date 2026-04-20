@@ -40,7 +40,7 @@ describe('taskService', () => {
     it('handles errors gracefully', async () => {
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
       const error = new Error('Failed to fetch');
       (apiClient.get as vi.Mock).mockRejectedValue(error);
 
@@ -252,81 +252,14 @@ describe('taskService', () => {
     });
   });
 
-  describe('getWorkQueue', () => {
-    it('gets work queue without filters', async () => {
-      const mockResponse = {
-        tasks: [],
-        total: 0,
-      };
-      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
-
-      const result = await taskService.getWorkQueue();
-
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/task/work-queue?');
-      expect(result).toEqual(mockResponse);
-    });
-
-    it('gets work queue with filters', async () => {
-      const mockResponse = {
-        tasks: [],
-        total: 0,
-      };
-      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
-
-      await taskService.getWorkQueue({
-        role: 'investigator',
-        candidateGroup: 'investigations',
-        page: 1,
-        limit: 20,
-      });
-
-      expect(apiClient.get).toHaveBeenCalledWith(
-        expect.stringContaining('role=investigator'),
-      );
-    });
-
-    it('filters out undefined and null values', async () => {
-      const mockResponse = {
-        tasks: [],
-        total: 0,
-      };
-      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
-
-      await taskService.getWorkQueue({
-        role: 'investigator',
-        candidateGroup: undefined,
-        page: null as any,
-        limit: 20,
-      });
-
-      const callUrl = (apiClient.get as vi.Mock).mock.calls[0][0] as string;
-      expect(callUrl).toContain('role=investigator');
-      expect(callUrl).toContain('limit=20');
-      expect(callUrl).not.toContain('candidateGroup');
-      expect(callUrl).not.toContain('page');
-    });
-
-    it('handles errors gracefully', async () => {
-      const error = new Error('Failed to fetch work queue');
-      (apiClient.get as vi.Mock).mockRejectedValue(error);
-
-      await expect(taskService.getWorkQueue()).rejects.toThrow();
-    });
-  });
-
   describe('completeTask', () => {
     it('completes a task', async () => {
-      const mockTask = {
-        id: 'TASK-1',
-        status: TaskStatus.STATUS_30_COMPLETED,
-      };
-      (apiClient.patch as vi.Mock).mockResolvedValue(mockTask);
+      const mockResponse = { task_id: 1 };
+      (apiClient.post as vi.Mock).mockResolvedValue(mockResponse);
 
-      const result = await taskService.completeTask('TASK-1');
+      const result = await taskService.completeTask('TASK-1' as any);
 
-      expect(apiClient.patch).toHaveBeenCalledWith('/api/v1/task/TASK-1', {
-        status: TaskStatus.STATUS_30_COMPLETED,
-      });
+      expect(apiClient.post).toHaveBeenCalledWith('/api/v1/task/TASK-1/complete');
       expect(result.success).toBe(true);
     });
   });
@@ -449,7 +382,7 @@ describe('taskService', () => {
     it('handles getInvestigationTaskForCase errors', async () => {
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
       const error = new Error('Failed to fetch');
       (apiClient.get as vi.Mock).mockRejectedValue(error);
 

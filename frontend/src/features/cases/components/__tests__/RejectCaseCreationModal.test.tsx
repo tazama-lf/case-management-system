@@ -5,8 +5,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import RejectCaseCreationModal from '../RejectCaseCreationModal';
 import type { CaseRow } from '../casesTable.utils';
 
+vi.mock('@/features/alerts', () => ({
+  triageService: {
+    getAlertById: vi.fn().mockResolvedValue({
+      alert_id: 123,
+      confidence_per: 85,
+      alert_type: 'FRAUD',
+      message: 'Suspicious transaction detected',
+      source: 'System',
+      priority: 'HIGH',
+      created_at: '2023-01-01',
+      transaction: null,
+    }),
+  },
+}));
+
+vi.mock('@/shared/utils/dateUtils', () => ({
+  formatDate: vi.fn((date: string) => date),
+}));
+
 const mockCaseData: CaseRow = {
-  id: 'CASE-123',
+  id: 123,
   type: 'FRAUD',
   typeColor: 'bg-red-50',
   status: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
@@ -20,7 +39,7 @@ const mockCaseData: CaseRow = {
   priority: 'HIGH',
   userRole: 'owner',
   totalTasks: 1,
-  alertId: 'ALERT-123',
+  alertId: 123,
   confidencePercent: 85,
   alertMessage: 'Suspicious transaction detected',
 };
@@ -74,7 +93,7 @@ describe('RejectCaseCreationModal', () => {
     expect(
       screen.getByRole('heading', { name: /Reject Case Creation/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Case ID: CASE-123/i)).toBeInTheDocument();
+    expect(screen.getByText(/Case ID: 123/)).toBeInTheDocument();
     // FRAUD appears multiple times, just check it exists
     expect(screen.getAllByText(/FRAUD/i).length).toBeGreaterThan(0);
   });
@@ -95,7 +114,7 @@ describe('RejectCaseCreationModal', () => {
     expect(screen.getByText('Created On')).toBeInTheDocument();
   });
 
-  it('displays alert information when alertId is present', () => {
+  it('displays alert information when alertId is present', async () => {
     render(
       <RejectCaseCreationModal
         open={true}
@@ -106,8 +125,7 @@ describe('RejectCaseCreationModal', () => {
     );
 
     expect(screen.getByText('Associated Alert')).toBeInTheDocument();
-    expect(screen.getByText('ALERT-123')).toBeInTheDocument();
-    expect(screen.getByText('85%')).toBeInTheDocument();
+    expect(await screen.findByText('85.00%')).toBeInTheDocument();
   });
 
   it('validates rejection reason minimum length', async () => {
@@ -129,12 +147,11 @@ describe('RejectCaseCreationModal', () => {
     });
 
     // Try to submit with short reason
-    await user.type(textarea, 'short');
-    await user.click(submitButton);
+    await user.type(textarea, 'ab');
 
     expect(
-      await screen.findByText(
-        /Rejection reason must be at least 10 characters/i,
+      screen.getByText(
+        /Rejection reason must be at least 4 characters/i,
       ),
     ).toBeInTheDocument();
     expect(mockOnSubmit).not.toHaveBeenCalled();
@@ -194,7 +211,7 @@ describe('RejectCaseCreationModal', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(mockOnSubmit).toHaveBeenCalledWith('CASE-123', {
+      expect(mockOnSubmit).toHaveBeenCalledWith(123, {
         reason: 'This is a valid rejection reason',
       });
     });
@@ -312,12 +329,11 @@ describe('RejectCaseCreationModal', () => {
     });
 
     // Submit with invalid reason
-    await user.type(textarea, 'short');
-    await user.click(submitButton);
+    await user.type(textarea, 'ab');
 
     expect(
-      await screen.findByText(
-        /Rejection reason must be at least 10 characters/i,
+      screen.getByText(
+        /Rejection reason must be at least 4 characters/i,
       ),
     ).toBeInTheDocument();
 
@@ -327,7 +343,7 @@ describe('RejectCaseCreationModal', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByText(/Rejection reason must be at least 10 characters/i),
+        screen.queryByText(/Rejection reason must be at least 4 characters/i),
       ).not.toBeInTheDocument();
     });
   });

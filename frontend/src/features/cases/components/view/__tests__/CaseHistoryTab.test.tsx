@@ -2,13 +2,13 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CaseHistoryTab from '../CaseHistoryTab';
-import { caseService } from '../../../services/caseService';
-import { taskService } from '../../../services/taskService';
+import { caseHistoryService } from '../../../services/caseHistoryService';
+import { taskHistoryService } from '../../../services/taskHistoryService';
 import authService from '@/features/auth/services/authService';
 import type { CaseRow } from '../../casesTable.utils';
 
-vi.mock('../../../services/caseService');
-vi.mock('../../../services/taskService');
+vi.mock('../../../services/caseHistoryService');
+vi.mock('../../../services/taskHistoryService');
 vi.mock('@/features/auth/services/authService');
 
 const mockCaseRow: CaseRow = {
@@ -37,84 +37,56 @@ describe('CaseHistoryTab', () => {
   });
 
   it('renders loading state initially', () => {
-    (caseService.getCaseDetails as vi.Mock).mockImplementation(
+    (caseHistoryService.getCaseHistory as vi.Mock).mockImplementation(
       () => new Promise(() => {}),
     );
-    render(<CaseHistoryTab caseId="CASE-123" />);
+    (taskHistoryService.getCaseHistory as vi.Mock).mockImplementation(
+      () => new Promise(() => {}),
+    );
+    render(<CaseHistoryTab caseId={123} />);
     expect(document.querySelector('.animate-spin')).toBeInTheDocument();
   });
 
   it('displays case timeline after loading', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      case_type: 'FRAUD',
-      status: 'STATUS_20_IN_PROGRESS',
-      priority: 'HIGH',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      case_creator_user_id: 'user-1',
-      case_owner_user_id: 'user-1',
-    };
-    const mockTasks: any[] = [];
-    const mockHistory: any[] = [];
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([]);
+    (taskHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([]);
 
-    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue(mockHistory);
-
-    render(<CaseHistoryTab caseId="CASE-123" />);
+    render(<CaseHistoryTab caseId={123} />);
 
     await waitFor(() => {
       expect(screen.getByText('Case Timeline')).toBeInTheDocument();
     });
   });
 
-  it('fetches case details, tasks, and history on mount', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      case_type: 'FRAUD',
-      status: 'STATUS_20_IN_PROGRESS',
-      priority: 'HIGH',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      case_creator_user_id: 'user-1',
-      case_owner_user_id: 'user-1',
-    };
-    const mockTasks: any[] = [];
-    const mockHistory: any[] = [];
+  it('fetches case history and task history on mount', async () => {
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([]);
+    (taskHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([]);
 
-    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue(mockHistory);
-
-    render(<CaseHistoryTab caseId="CASE-123" />);
+    render(<CaseHistoryTab caseId={123} />);
 
     await waitFor(() => {
-      expect(caseService.getCaseDetails).toHaveBeenCalledWith('CASE-123');
-      expect(taskService.getTasksByCaseId).toHaveBeenCalledWith('CASE-123');
-      expect(caseService.getCaseHistory).toHaveBeenCalledWith('CASE-123');
+      expect(caseHistoryService.getCaseHistory).toHaveBeenCalledWith(123);
+      expect(taskHistoryService.getCaseHistory).toHaveBeenCalledWith(123);
     });
   });
 
   it('displays case creation event', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      case_type: 'FRAUD',
-      status: 'STATUS_20_IN_PROGRESS',
-      priority: 'HIGH',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      case_creator_user_id: 'user-1',
-      case_owner_user_id: 'user-1',
-    };
-    const mockTasks: any[] = [];
-    const mockHistory: any[] = [];
+    const mockCaseHistory = [
+      {
+        event_log_id: '1',
+        user_id: 'user-1',
+        operation: 'createCase',
+        entity_name: 'User',
+        action_performed: 'Case submitted for approval',
+        case_id: 123,
+        performed_at: '2023-01-01T00:00:00Z',
+      },
+    ];
 
-    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue(mockHistory);
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue(mockCaseHistory);
+    (taskHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([]);
 
-    render(<CaseHistoryTab caseId="CASE-123" />);
+    render(<CaseHistoryTab caseId={123} />);
 
     await waitFor(() => {
       expect(
@@ -124,35 +96,23 @@ describe('CaseHistoryTab', () => {
   });
 
   it('displays task events', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      case_type: 'FRAUD',
-      status: 'STATUS_20_IN_PROGRESS',
-      priority: 'HIGH',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      case_creator_user_id: 'user-1',
-      case_owner_user_id: 'user-1',
-    };
-    const mockTasks = [
+    const mockTaskHistory = [
       {
-        task_id: 'TASK-1',
-        name: 'Investigate Case',
-        description: 'Investigate',
-        status: 'STATUS_30_COMPLETED',
-        created_at: '2023-01-01T00:00:00Z',
-        updated_at: '2023-01-03T00:00:00Z',
-        assigned_user_id: 'user-1',
-        assignedUser: { username: 'jdoe' },
+        event_log_id: '1',
+        user_id: 'user-1',
+        operation: 'completeTask',
+        entity_name: 'User',
+        action_performed: 'Investigation completed',
+        case_id: 123,
+        performed_at: '2023-01-03T00:00:00Z',
+        task_id: 1,
       },
     ];
-    const mockHistory: any[] = [];
 
-    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue(mockHistory);
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([]);
+    (taskHistoryService.getCaseHistory as vi.Mock).mockResolvedValue(mockTaskHistory);
 
-    render(<CaseHistoryTab caseId="CASE-123" />);
+    render(<CaseHistoryTab caseId={123} />);
 
     await waitFor(() => {
       expect(screen.getByText(/Investigation completed/i)).toBeInTheDocument();
@@ -160,64 +120,48 @@ describe('CaseHistoryTab', () => {
   });
 
   it('displays audit log events', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      case_type: 'FRAUD',
-      status: 'STATUS_20_IN_PROGRESS',
-      priority: 'HIGH',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      case_creator_user_id: 'user-1',
-      case_owner_user_id: 'user-1',
-    };
-    const mockTasks: any[] = [];
-    const mockHistory = [
+    const mockCaseHistory = [
       {
-        id: '1',
-        operation: 'addComment',
-        action_performed: 'Comment added to case',
-        performed_at: '2023-01-02T00:00:00Z',
+        event_log_id: '1',
         user_id: 'user-1',
+        operation: 'addComment',
         entity_name: 'User',
-        outcome: 'success',
+        action_performed: 'Comment added to case',
+        case_id: 123,
+        performed_at: '2023-01-02T00:00:00Z',
       },
     ];
 
-    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue(mockHistory);
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue(mockCaseHistory);
+    (taskHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([]);
 
-    render(<CaseHistoryTab caseId="CASE-123" />);
+    render(<CaseHistoryTab caseId={123} />);
 
     await waitFor(() => {
-      // Check that audit log event is present (may appear multiple times due to case creation event)
       const commentEvents = screen.getAllByText(/Comment added/i);
       expect(commentEvents.length).toBeGreaterThan(0);
     });
   });
 
   it('displays case timeline even with minimal events', async () => {
-    const mockCase = {
-      case_id: 'CASE-123',
-      case_type: 'FRAUD',
-      status: 'STATUS_20_IN_PROGRESS',
-      priority: 'HIGH',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      case_creator_user_id: 'user-1',
-      case_owner_user_id: 'user-1',
-    };
-    const mockTasks: any[] = [];
-    const mockHistory: any[] = [];
+    const mockCaseHistory = [
+      {
+        event_log_id: '1',
+        user_id: 'user-1',
+        operation: 'createCase',
+        entity_name: 'User',
+        action_performed: 'Case submitted for approval',
+        case_id: 123,
+        performed_at: '2023-01-01T00:00:00Z',
+      },
+    ];
 
-    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue(mockHistory);
+    (caseHistoryService.getCaseHistory as vi.Mock).mockResolvedValue(mockCaseHistory);
+    (taskHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([]);
 
-    render(<CaseHistoryTab caseId="CASE-123" />);
+    render(<CaseHistoryTab caseId={123} />);
 
     await waitFor(() => {
-      // Component always creates at least a case creation event
       expect(screen.getByText('Case Timeline')).toBeInTheDocument();
       expect(
         screen.getByText(/Case submitted for approval/i),
@@ -227,11 +171,10 @@ describe('CaseHistoryTab', () => {
 
   it('handles errors gracefully', async () => {
     const error = new Error('Failed to fetch');
-    (caseService.getCaseDetails as vi.Mock).mockRejectedValue(error);
-    (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue([]);
-    (caseService.getCaseHistory as vi.Mock).mockResolvedValue([]);
+    (caseHistoryService.getCaseHistory as vi.Mock).mockRejectedValue(error);
+    (taskHistoryService.getCaseHistory as vi.Mock).mockResolvedValue([]);
 
-    render(<CaseHistoryTab caseId="CASE-123" />);
+    render(<CaseHistoryTab caseId={123} />);
 
     await waitFor(
       () => {

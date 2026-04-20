@@ -7,6 +7,9 @@ import triageService from '@/features/alerts/services/triageservice';
 
 vi.mock('../../../services/caseService');
 vi.mock('@/features/alerts/services/triageservice');
+vi.mock('@/features/alerts/components/AlertsDetailModal', () => ({
+  default: () => <div data-testid="alerts-detail-modal" />,
+}));
 
 describe('LinkedItemsTab', () => {
   beforeEach(() => {
@@ -15,83 +18,74 @@ describe('LinkedItemsTab', () => {
 
   it('renders loading state initially', () => {
     (caseService.getCaseDetails as vi.Mock).mockImplementation(
-      () => new Promise(() => {}),
+      () => new Promise(() => { }),
     );
-    render(<LinkedItemsTab caseId="CASE-123" />);
+    render(<LinkedItemsTab caseId={123} />);
     // Loading spinner is present but doesn't have role="status"
     expect(document.querySelector('.animate-spin')).toBeInTheDocument();
   });
 
   it('displays related items after loading', async () => {
     const mockCase = {
-      case_id: 'CASE-123',
+      case_id: 123,
       case_type: 'FRAUD',
       parent_id: null,
+      alert: { alert_id: 1 },
     };
-    const mockAlerts = {
-      alerts: [
-        {
-          alert_id: 'ALERT-1',
-          case_id: 'CASE-123',
-          message: 'Test Alert',
-          alert_type: 'FRAUD',
-          transaction: { TransactionID: 'TXN-1' },
-        },
-      ],
-    };
-    const mockCases = {
-      cases: [mockCase],
+    const mockAlert = {
+      alert_id: 1,
+      message: 'Test Alert',
+      alert_type: 'FRAUD',
     };
 
     (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (triageService.getAlerts as vi.Mock).mockResolvedValue(mockAlerts);
-    (caseService.getAllCases as vi.Mock).mockResolvedValue(mockCases);
+    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
 
-    render(<LinkedItemsTab caseId="CASE-123" />);
+    render(<LinkedItemsTab caseId={123} />);
 
     await waitFor(() => {
       expect(screen.getByText('Related Items')).toBeInTheDocument();
     });
   });
 
-  it('displays no related cases message when none found', async () => {
+  it('displays no related alerts message when none found', async () => {
     const mockCase = {
-      case_id: 'CASE-123',
+      case_id: 123,
       case_type: 'FRAUD',
       parent_id: null,
+      alert: null,
     };
-    const mockAlerts = { alerts: [] };
-    const mockCases = { cases: [mockCase] };
 
     (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (triageService.getAlerts as vi.Mock).mockResolvedValue(mockAlerts);
-    (caseService.getAllCases as vi.Mock).mockResolvedValue(mockCases);
 
-    render(<LinkedItemsTab caseId="CASE-123" />);
+    render(<LinkedItemsTab caseId={123} />);
 
     await waitFor(() => {
-      expect(screen.getByText('No related cases found')).toBeInTheDocument();
+      expect(screen.getByText('No related alerts found')).toBeInTheDocument();
     });
   });
 
-  it('fetches case details and alerts on mount', async () => {
+  it('fetches case details on mount', async () => {
     const mockCase = {
-      case_id: 'CASE-123',
+      case_id: 123,
       case_type: 'FRAUD',
       parent_id: null,
+      alert: { alert_id: 1 },
     };
-    const mockAlerts = { alerts: [] };
-    const mockCases = { cases: [mockCase] };
+    const mockAlert = {
+      alert_id: 1,
+      message: 'Test Alert',
+      alert_type: 'FRAUD',
+    };
 
     (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
-    (triageService.getAlerts as vi.Mock).mockResolvedValue(mockAlerts);
-    (caseService.getAllCases as vi.Mock).mockResolvedValue(mockCases);
+    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
 
-    render(<LinkedItemsTab caseId="CASE-123" />);
+    render(<LinkedItemsTab caseId={123} />);
 
     await waitFor(() => {
-      expect(caseService.getCaseDetails).toHaveBeenCalledWith('CASE-123');
-      expect(triageService.getAlerts).toHaveBeenCalled();
+      expect(caseService.getCaseDetails).toHaveBeenCalledWith(123);
+      expect(triageService.getAlertById).toHaveBeenCalledWith(1);
     });
   });
 });

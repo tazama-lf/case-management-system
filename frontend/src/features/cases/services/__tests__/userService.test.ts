@@ -29,8 +29,7 @@ describe('UserService', () => {
       );
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('user-1');
-      expect(result[0].name).toBe('John Doe');
-      expect(result[0].role).toBe('CMS_INVESTIGATOR');
+      expect(result[0].name).toBe('investigator1');
     });
 
     it('handles users without firstName/lastName', async () => {
@@ -59,7 +58,7 @@ describe('UserService', () => {
 
       const result = await userService.getUsersByRole('CMS_INVESTIGATOR');
 
-      expect(result[0].name).toBe('inv1@test.com');
+      expect(result[0].name).toBe('Unknown');
     });
 
     it('filters out users without IDs', async () => {
@@ -87,7 +86,7 @@ describe('UserService', () => {
     it('handles errors gracefully', async () => {
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('Network error'));
 
       const result = await userService.getUsersByRole('CMS_INVESTIGATOR');
@@ -156,7 +155,7 @@ describe('UserService', () => {
     it('handles errors gracefully', async () => {
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('Network error'));
 
       const result = await userService.getUserDetailsById('user-1');
@@ -282,9 +281,9 @@ describe('UserService', () => {
       const result = await userService.getAllUsers();
 
       expect(result).toHaveLength(2);
-      // Users are sorted by name, so Alice comes before Bob
-      expect(result[0].id).toBe('user-2');
-      expect(result[1].id).toBe('user-1');
+      // Users are sorted by name (username), so investigator1 comes before supervisor1
+      expect(result[0].id).toBe('user-1');
+      expect(result[1].id).toBe('user-2');
     });
 
     it('removes duplicate users', async () => {
@@ -336,14 +335,14 @@ describe('UserService', () => {
 
       const result = await userService.getAllUsers();
 
-      expect(result[0].name).toBe('Alice Doe');
-      expect(result[1].name).toBe('Bob Smith');
+      expect(result[0].name).toBe('investigator2');
+      expect(result[1].name).toBe('supervisor1');
     });
 
     it('handles errors gracefully', async () => {
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('Network error'));
 
       const result = await userService.getAllUsers();

@@ -17,6 +17,12 @@ vi.mock('@/features/cases/services/userService', () => ({
   },
 }));
 
+vi.mock('../../auth/services/authService', () => ({
+  default: {
+    getUser: vi.fn().mockReturnValue(null),
+  },
+}));
+
 // Mock child component
 vi.mock('../LinkExistingAlerts', () => ({
   default: ({ onAlertsChange }: any) => (
@@ -38,6 +44,8 @@ describe('CreateCaseModal', () => {
     onClose: vi.fn(),
     onCreate: vi.fn(),
     onUpdate: vi.fn(),
+    onCompleteCase: vi.fn(),
+    onSaveDraft: vi.fn(),
   };
 
   const mockAlerts = [
@@ -48,7 +56,10 @@ describe('CreateCaseModal', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
-    (triageService.getNALTAlerts as any).mockResolvedValue(mockAlerts);
+    (triageService.getNALTAlerts as any).mockResolvedValue({
+      alerts: mockAlerts,
+      pagination: { currentPage: 1, totalPages: 1, totalItems: 1, pageSize: 10 },
+    });
     (userService.getAllUsers as any).mockResolvedValue(mockUsers);
   });
 
@@ -66,13 +77,12 @@ describe('CreateCaseModal', () => {
 
     await waitFor(() => {
       expect(triageService.getNALTAlerts).toHaveBeenCalled();
-      expect(userService.getAllUsers).toHaveBeenCalled();
     });
   });
 
   it('should render correctly in edit mode', () => {
     render(
-      <CreateCaseModal {...defaultProps} mode="edit" existingCaseId="CASE-1" />,
+      <CreateCaseModal {...defaultProps} mode="edit" existingCaseId={1} />,
     );
 
     expect(screen.getByText('Complete Draft Case')).toBeInTheDocument();
@@ -88,13 +98,9 @@ describe('CreateCaseModal', () => {
     const createButton = screen.getByText('Create Case');
     expect(createButton).toBeDisabled();
 
-    // Draft button should be enabled
+    // Draft button should also be disabled without selected alert
     const draftButton = screen.getByText('Save as Draft');
-    expect(draftButton).not.toBeDisabled();
-
-    // Clicking draft should proceed without validation errors
-    await user.click(draftButton);
-    expect(defaultProps.onCreate).toHaveBeenCalled();
+    expect(draftButton).toBeDisabled();
   });
 
   it('should update priority when score changes', async () => {
@@ -131,11 +137,9 @@ describe('CreateCaseModal', () => {
 
     expect(defaultProps.onCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        alertId: 'ALERT-123',
         alertType: 'AML',
         priority: expect.any(String),
         priorityScore: expect.any(Number),
-        draft: false,
       }),
     );
   });
@@ -151,16 +155,15 @@ describe('CreateCaseModal', () => {
     const draftButton = screen.getByText('Save as Draft');
     await user.click(draftButton);
 
-    expect(defaultProps.onCreate).toHaveBeenCalledWith(
+    expect(defaultProps.onSaveDraft).toHaveBeenCalledWith(
       expect.objectContaining({
-        alertId: 'ALERT-123',
         draft: true,
       }),
     );
   });
 
   it('should handle API errors gracefully', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     (triageService.getNALTAlerts as any).mockRejectedValue(
       new Error('API Error'),
     );

@@ -15,7 +15,7 @@ describe('ApproveCaseReopenModal component', () => {
         open={false}
         onClose={vi.fn()}
         onApprove={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
     expect(container.firstChild).toBeNull();
@@ -29,7 +29,7 @@ describe('ApproveCaseReopenModal component', () => {
         open={true}
         onClose={onClose}
         onApprove={onApprove}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
     expect(screen.getByText(/approve case reopen/i)).toBeInTheDocument();
@@ -41,10 +41,10 @@ describe('ApproveCaseReopenModal component', () => {
         open={true}
         onClose={vi.fn()}
         onApprove={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
-    expect(screen.getByText(/case id: case-123/i)).toBeInTheDocument();
+    expect(screen.getByText(/case id: 123/i)).toBeInTheDocument();
   });
 
   it('displays requester role when provided - ANALYST', () => {
@@ -53,7 +53,7 @@ describe('ApproveCaseReopenModal component', () => {
         open={true}
         onClose={vi.fn()}
         onApprove={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
         requesterRole="ANALYST"
       />,
     );
@@ -66,7 +66,7 @@ describe('ApproveCaseReopenModal component', () => {
         open={true}
         onClose={vi.fn()}
         onApprove={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
         requesterRole="SUPERVISOR"
       />,
     );
@@ -79,7 +79,7 @@ describe('ApproveCaseReopenModal component', () => {
         open={true}
         onClose={vi.fn()}
         onApprove={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
     expect(screen.queryByText(/requested by:/i)).not.toBeInTheDocument();
@@ -95,7 +95,7 @@ describe('ApproveCaseReopenModal component', () => {
         open={true}
         onClose={onClose}
         onApprove={onApprove}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -105,7 +105,7 @@ describe('ApproveCaseReopenModal component', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(onApprove).toHaveBeenCalledWith('CASE-123', undefined);
+      expect(onApprove).toHaveBeenCalledWith(123, undefined);
       expect(onClose).toHaveBeenCalled();
     });
   });
@@ -120,7 +120,7 @@ describe('ApproveCaseReopenModal component', () => {
         open={true}
         onClose={onClose}
         onApprove={onApprove}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -134,7 +134,7 @@ describe('ApproveCaseReopenModal component', () => {
 
     await waitFor(() => {
       expect(onApprove).toHaveBeenCalledWith(
-        'CASE-123',
+        123,
         'Approved with additional context',
       );
       expect(onClose).toHaveBeenCalled();
@@ -151,7 +151,7 @@ describe('ApproveCaseReopenModal component', () => {
         open={true}
         onClose={onClose}
         onApprove={onApprove}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -164,7 +164,7 @@ describe('ApproveCaseReopenModal component', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(onApprove).toHaveBeenCalledWith('CASE-123', 'Trimmed comment');
+      expect(onApprove).toHaveBeenCalledWith(123, 'Trimmed comment');
       expect(onClose).toHaveBeenCalled();
     });
   });
@@ -178,7 +178,7 @@ describe('ApproveCaseReopenModal component', () => {
         open={true}
         onClose={vi.fn()}
         onApprove={onApprove}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -201,7 +201,7 @@ describe('ApproveCaseReopenModal component', () => {
         open={true}
         onClose={vi.fn()}
         onApprove={onApprove}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -226,7 +226,7 @@ describe('ApproveCaseReopenModal component', () => {
         open={true}
         onClose={onClose}
         onApprove={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -238,14 +238,14 @@ describe('ApproveCaseReopenModal component', () => {
 
   it('does not close when submitting', async () => {
     const user = userEvent.setup();
-    const onApprove = vi.fn().mockImplementation(() => new Promise(() => {})); // Never resolves
+    const onApprove = vi.fn().mockImplementation(() => new Promise(() => { })); // Never resolves
 
     render(
       <ApproveCaseReopenModal
         open={true}
         onClose={vi.fn()}
         onApprove={onApprove}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
@@ -260,20 +260,17 @@ describe('ApproveCaseReopenModal component', () => {
     });
   });
 
-  it('displays workflow information', () => {
+  it('displays optional comments field', () => {
     render(
       <ApproveCaseReopenModal
         open={true}
         onClose={vi.fn()}
         onApprove={vi.fn()}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 
-    expect(screen.getByText(/Reopening Workflow/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Case must be in "PENDING CASE REOPENING APPROVAL"/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Supervisor Comments/i)).toBeInTheDocument();
   });
 
   it('clears comments after successful submission', async () => {
@@ -286,7 +283,7 @@ describe('ApproveCaseReopenModal component', () => {
         open={true}
         onClose={onClose}
         onApprove={onApprove}
-        caseId="CASE-123"
+        caseId={123}
       />,
     );
 

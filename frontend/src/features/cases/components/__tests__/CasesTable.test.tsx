@@ -6,7 +6,7 @@ import type { CaseRow } from '../casesTable.utils';
 describe('CasesTable', () => {
   const mockRows: CaseRow[] = [
     {
-      id: 'CASE-001',
+      id: 1,
       type: 'FRAUD',
       typeColor: 'bg-red-50 text-red-700',
       status: 'STATUS_20_IN_PROGRESS',
@@ -20,9 +20,10 @@ describe('CasesTable', () => {
       priority: 'HIGH',
       userRole: 'owner',
       totalTasks: 5,
+      alertId: 1,
     },
     {
-      id: 'CASE-002',
+      id: 2,
       type: 'AML',
       typeColor: 'bg-purple-50 text-purple-700',
       status: 'STATUS_00_DRAFT',
@@ -36,6 +37,7 @@ describe('CasesTable', () => {
       priority: 'LOW',
       userRole: 'none',
       totalTasks: 0,
+      alertId: 2,
     },
   ];
 
@@ -154,12 +156,12 @@ describe('CasesTable', () => {
     const supervisorRows: CaseRow[] = [
       {
         ...mockRows[0],
-        id: 'CASE-SUP-1',
+        id: 101,
         status: 'STATUS_22_PENDING_FINAL_APPROVAL',
       },
       {
         ...mockRows[0],
-        id: 'CASE-SUP-2',
+        id: 102,
         status: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
       },
     ];
@@ -195,7 +197,7 @@ describe('CasesTable', () => {
     const supervisorRows: CaseRow[] = [
       {
         ...mockRows[0],
-        id: 'CASE-SUP-1',
+        id: 101,
         status: 'STATUS_22_PENDING_FINAL_APPROVAL',
       },
     ];

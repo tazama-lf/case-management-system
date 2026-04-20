@@ -28,6 +28,8 @@ describe('CaseDashboardContent', () => {
       sortBy: 'recent',
       statusFilter: 'all',
       priorityFilter: 'all',
+      sarStrStatusFilter: '',
+      caseTypeFilter: 'all',
     },
     pagination: {
       currentPage: 1,
@@ -45,6 +47,8 @@ describe('CaseDashboardContent', () => {
     onSortChange: vi.fn(),
     onStatusFilterChange: vi.fn(),
     onPriorityFilterChange: vi.fn(),
+    onSarStrStatusFilterChange: vi.fn(),
+    onCaseTypeFilterChange: vi.fn(),
     onPageChange: vi.fn(),
     onPageSizeChange: vi.fn(),
     onCreateNew: vi.fn(),

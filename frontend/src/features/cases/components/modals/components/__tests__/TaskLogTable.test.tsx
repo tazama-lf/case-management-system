@@ -1,9 +1,9 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TaskLogTable from '../TaskLogTable';
-import type { UnifiedWorkQueueTask } from '../../../../../workqueue/types/flowable.types';
+import type { UnifiedWorkQueueTask } from '../../../../types/task.types';
 
 vi.mock('../../../../../shared/utils/dateUtils', () => ({
   formatDate: (date: string) => date,
@@ -12,7 +12,7 @@ vi.mock('../../../../../shared/utils/dateUtils', () => ({
 const mockTasks: UnifiedWorkQueueTask[] = [
   {
     id: 'TASK-1',
-    name: 'Review Transaction',
+    name: 'Investigate Transaction',
     caseId: 'CASE-1',
     status: 'UNASSIGNED',
     assignee: null,
@@ -23,14 +23,14 @@ const mockTasks: UnifiedWorkQueueTask[] = [
   },
   {
     id: 'TASK-2',
-    name: 'Complete Investigation',
+    name: 'Complete Review',
     caseId: 'CASE-2',
     status: 'IN_PROGRESS',
     assignee: 'user-1',
     createdAt: '2024-01-02T00:00:00Z',
     created: '2024-01-02T00:00:00Z',
     dueDate: null,
-    description: 'Complete investigation',
+    description: 'Complete review',
   },
 ];
 
@@ -52,7 +52,7 @@ describe('TaskLogTable', () => {
 
     expect(screen.getByText('Task ID')).toBeInTheDocument();
     expect(screen.getByText('TASK-1')).toBeInTheDocument();
-    expect(screen.getByText('Review Transaction')).toBeInTheDocument();
+    expect(screen.getByText('Investigate Transaction')).toBeInTheDocument();
   });
 
   it('displays all table columns', () => {
@@ -146,11 +146,9 @@ describe('TaskLogTable', () => {
       />,
     );
 
-    const taskRow = screen.getByText('Review Transaction').closest('tr');
-    if (taskRow) {
-      await user.click(taskRow);
-      expect(mockOnTaskClick).toHaveBeenCalledWith(mockTasks[0]);
-    }
+    const taskIdCell = screen.getByText('TASK-1');
+    await user.click(taskIdCell);
+    expect(mockOnTaskClick).toHaveBeenCalledWith(mockTasks[0]);
   });
 
   it('displays empty state when no tasks', () => {
