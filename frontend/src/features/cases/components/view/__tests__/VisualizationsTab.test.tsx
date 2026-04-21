@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import VisualizationsTab from '../VisualizationsTab';
 
@@ -38,6 +38,14 @@ describe('VisualizationsTab', () => {
     transactionId: 'TXN-001',
   };
 
+  beforeEach(() => {
+    localStorage.setItem('user', JSON.stringify({ tenantId: 'DEFAULT' }));
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
   it('renders with default alert navigator tab active', () => {
     render(<VisualizationsTab {...defaultProps} />);
     expect(screen.getByText('Alert Navigator')).toBeInTheDocument();
@@ -59,10 +67,12 @@ describe('VisualizationsTab', () => {
     expect(screen.getByTestId('transaction-details-tab')).toBeInTheDocument();
   });
 
-  it('switches to network analysis tab', () => {
+  it('switches to network analysis tab', async () => {
     render(<VisualizationsTab {...defaultProps} />);
     const buttons = screen.getAllByText('Network Analysis');
     fireEvent.click(buttons[0]);
-    expect(screen.getByTestId('network-analysis-tab')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('network-analysis-tab')).toBeInTheDocument();
+    });
   });
 });

@@ -31,6 +31,7 @@ vi.mock('react-router-dom', async () => {
 vi.mock('@/features/auth/components/AuthContext', () => ({
   useAuth: vi.fn(() => ({
     hasAdminRole: () => true,
+    hasCMSAdminRole: () => true,
     hasInvestigatorRole: () => false,
     hasSupervisorRole: () => false,
     hasComplianceOfficerRole: () => false,

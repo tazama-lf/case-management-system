@@ -38,6 +38,8 @@ describe('RoleBasedRedirect', () => {
     (useAuth as vi.Mock).mockReturnValue({
       loading: false,
       user: { id: '1', username: 'test' },
+      hasCMSAdminRole: () => false,
+      hasComplianceOfficerRole: () => false,
     });
 
     render(

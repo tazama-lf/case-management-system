@@ -108,8 +108,8 @@ describe('exportUtils', () => {
       expect(pdfMake.createPdf).toHaveBeenCalled();
     });
 
-    it('throws error when data is empty', async () => {
-      await expect(exportToPDF([], 'test-file', 'Test', [])).rejects.toThrow(
+    it('throws error when data is empty', () => {
+      expect(() => exportToPDF([], 'test-file', 'Test', [])).toThrow(
         'Failed to export to PDF',
       );
     });

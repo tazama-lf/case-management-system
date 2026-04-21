@@ -33,8 +33,10 @@ vi.mock('@/features/cases/hooks/useInvestigatorSupervisorList', () => ({
   useInvestigatorSupervisorList: () => ({
     investigators: [],
     supervisors: [],
+    complianceOfficers: [],
     fetchInvestigatorsList: vi.fn(),
     fetchSupervisorsList: vi.fn(),
+    fetchComplianceOfficersList: vi.fn(),
   }),
 }));
 

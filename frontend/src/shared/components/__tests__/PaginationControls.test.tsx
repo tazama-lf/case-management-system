@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import PaginationControls from '../PaginationControls';
+import PaginationControls from '../../PaginationControls';
 
 describe('PaginationControls', () => {
   const defaultProps = {

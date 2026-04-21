@@ -5,7 +5,7 @@ import ProfileOverviewTab from '../profileoverview/ProfileOverviewTab';
 
 const mockGenerateProfile = vi.fn();
 
-vi.mock('../../../services/profileService', () => ({
+vi.mock('@/features/cases/services/profileService', () => ({
   profileService: {
     generateProfile: (...args: any[]) => mockGenerateProfile(...args),
   },
@@ -24,21 +24,21 @@ vi.mock('recharts', () => ({
 }));
 
 describe('ProfileOverviewTab', () => {
-  it('shows error when alertId is not provided', () => {
+  it('shows unable to display message when alertId is not provided', () => {
     render(<ProfileOverviewTab />);
-    expect(screen.getByText('Alert ID is required to generate profile')).toBeInTheDocument();
+    expect(screen.getByText('Unable to display profile data')).toBeInTheDocument();
   });
 
   it('shows loading state while fetching', () => {
     mockGenerateProfile.mockReturnValue(new Promise(() => {}));
-    render(<ProfileOverviewTab alertId={1} />);
+    render(<ProfileOverviewTab alertId={1} transactionId="tx-1" />);
     // Loading state shows spinner
     expect(document.querySelector('.animate-spin')).toBeTruthy();
   });
 
   it('shows error on fetch failure', async () => {
     mockGenerateProfile.mockRejectedValue(new Error('Service error'));
-    render(<ProfileOverviewTab alertId={1} />);
+    render(<ProfileOverviewTab alertId={1} transactionId="tx-1" />);
     await waitFor(() => {
       expect(screen.getByText('Service error')).toBeInTheDocument();
     });

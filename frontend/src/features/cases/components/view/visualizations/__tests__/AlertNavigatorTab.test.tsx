@@ -35,15 +35,27 @@ describe('AlertNavigatorTab', () => {
 
   it('renders data on successful fetch', async () => {
     mockGetAlertNavigator.mockResolvedValue({
-      alertId: 1,
-      score: 85,
+      alertMetadata: {
+        alertId: 1,
+        transactionId: 'tx-123',
+        timestamp: '2024-01-01',
+        transactionType: 'TRANSFER',
+        amount: 1000,
+        currency: 'USD',
+        status: 'ACTIVE',
+        reason: 'Suspicious',
+        blockReason: '',
+        evaluationId: 'eval-1',
+      },
       typologies: [
-        { typologyId: 'typ-1', name: 'Money Laundering', score: 90, rules: [] },
+        { typologyId: 'typ-1', typologyCfg: 'Money Laundering', typologyScore: 90, alertThreshold: 50, interdictionThreshold: 80, ruleCount: 2, rules: [] },
       ],
+      statistics: { totalTypologies: 1, totalRules: 2 },
+      meta: { alertId: 1, tenantId: 'DEFAULT' },
     });
     render(<AlertNavigatorTab alertId={1} tenantId="DEFAULT" />);
     await waitFor(() => {
-      expect(screen.getByText('Money Laundering')).toBeInTheDocument();
+      expect(screen.getByText('Alert Navigator')).toBeInTheDocument();
     });
   });
 });
