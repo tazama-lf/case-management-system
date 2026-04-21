@@ -5,6 +5,9 @@ export function extractTransactionMessagesFromAlert(
   transactionData: Record<string, unknown>,
   transactionId: string,
 ): TransactionMessage[] {
+  if (!transactionData) {
+    return [];
+  }
 
   const messages: TransactionMessage[] = [];
 

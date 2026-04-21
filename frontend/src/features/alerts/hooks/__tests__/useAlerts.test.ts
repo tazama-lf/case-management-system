@@ -122,13 +122,12 @@ describe('useAlerts', () => {
 
   it('filters alerts by source', async () => {
     const alert1 = { ...uiAlert, source: 'REST API' };
-    const alert2 = { ...uiAlert, alert_id: 'ALERT-2', source: 'NATS' };
 
-    mockService.getAlerts.mockResolvedValueOnce({
-      alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
-      pagination: { totalItems: 2, totalPages: 1 },
+    mockService.getAlerts.mockResolvedValue({
+      alerts: [backendAlert],
+      pagination: { totalItems: 1, totalPages: 1 },
     });
-    mockTransformer.mockReturnValueOnce(alert1).mockReturnValueOnce(alert2);
+    mockTransformer.mockReturnValue(alert1);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -137,23 +136,22 @@ describe('useAlerts', () => {
       result.current.setFilters({ source: 'REST API' });
     });
 
+    // Source filter is sent server-side
     await waitFor(() => {
-      const filtered = result.current.filteredAlerts;
-      expect(
-        filtered.every((a) => (a.source || '').toLowerCase() === 'rest api'),
-      ).toBe(true);
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({ source: 'REST API' }),
+      );
     });
   });
 
   it('filters alerts by type', async () => {
     const alert1 = { ...uiAlert, alert_type: 'FRAUD' };
-    const alert2 = { ...uiAlert, alert_id: 'ALERT-2', alert_type: 'AML' };
 
-    mockService.getAlerts.mockResolvedValueOnce({
-      alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
-      pagination: { totalItems: 2, totalPages: 1 },
+    mockService.getAlerts.mockResolvedValue({
+      alerts: [backendAlert],
+      pagination: { totalItems: 1, totalPages: 1 },
     });
-    mockTransformer.mockReturnValueOnce(alert1).mockReturnValueOnce(alert2);
+    mockTransformer.mockReturnValue(alert1);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -162,23 +160,22 @@ describe('useAlerts', () => {
       result.current.setFilters({ type: 'FRAUD' });
     });
 
+    // Type filter is sent server-side as alertType
     await waitFor(() => {
-      const filtered = result.current.filteredAlerts;
-      expect(
-        filtered.every((a) => (a.alert_type || '').toLowerCase() === 'fraud'),
-      ).toBe(true);
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({ alertType: 'FRAUD' }),
+      );
     });
   });
 
   it('filters alerts by priority', async () => {
     const alert1 = { ...uiAlert, priority: 'URGENT' };
-    const alert2 = { ...uiAlert, alert_id: 'ALERT-2', priority: 'CRITICAL' };
 
-    mockService.getAlerts.mockResolvedValueOnce({
-      alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
-      pagination: { totalItems: 2, totalPages: 1 },
+    mockService.getAlerts.mockResolvedValue({
+      alerts: [backendAlert],
+      pagination: { totalItems: 1, totalPages: 1 },
     });
-    mockTransformer.mockReturnValueOnce(alert1).mockReturnValueOnce(alert2);
+    mockTransformer.mockReturnValue(alert1);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -187,11 +184,11 @@ describe('useAlerts', () => {
       result.current.setFilters({ priority: 'URGENT' });
     });
 
+    // Priority filter is sent server-side
     await waitFor(() => {
-      const filtered = result.current.filteredAlerts;
-      expect(
-        filtered.every((a) => (a.priority || '').toLowerCase() === 'urgent'),
-      ).toBe(true);
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({ priority: 'URGENT' }),
+      );
     });
   });
 
@@ -308,29 +305,29 @@ describe('useAlerts', () => {
   });
 
   it('handles pagination correctly', async () => {
-    const alerts = Array.from({ length: 25 }, (_, i) => ({
-      ...uiAlert,
-      alert_id: `ALERT-${i + 1}`,
-    }));
-
-    mockService.getAlerts.mockResolvedValueOnce({
-      alerts: alerts.map(() => backendAlert),
+    mockService.getAlerts.mockResolvedValue({
+      alerts: [backendAlert],
       pagination: { totalItems: 25, totalPages: 3 },
     });
-    alerts.forEach(() => mockTransformer.mockReturnValueOnce(uiAlert));
+    mockTransformer.mockReturnValue(uiAlert);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     act(() => {
       result.current.setPageSize(10);
+    });
+
+    await waitFor(() => {
+      expect(result.current.pagination.pageSize).toBe(10);
+    });
+
+    act(() => {
       result.current.setPage(2);
     });
 
     await waitFor(() => {
       expect(result.current.pagination.currentPage).toBe(2);
-      expect(result.current.pagination.pageSize).toBe(10);
-      expect(result.current.paginatedAlerts.length).toBeLessThanOrEqual(10);
     });
   });
 

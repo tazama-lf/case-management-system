@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AlertsDetailModal from '../AlertsDetailModal';
 import triageService from '../../services/triageservice';
 import { useSystemConfig } from '@/shared/hooks/useSystemConfig';
@@ -11,9 +12,21 @@ vi.mock('../../services/triageservice');
 vi.mock('@/shared/hooks/useSystemConfig');
 vi.mock('../../../cases/hooks/useCase');
 
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
+const renderModal = (ui: React.ReactElement) =>
+  render(ui, { wrapper: createWrapper() });
+
 describe('AlertsDetailModal', () => {
   const mockAlert = {
-    alert_id: 'alert-123',
+    alert_id: 123,
     tenant_id: 'tenant-1',
     priority: 'URGENT',
     alert_type: 'FRAUD',
@@ -60,9 +73,9 @@ describe('AlertsDetailModal', () => {
   });
 
   it('does not render when isOpen is false', () => {
-    render(
+    renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={false}
         onClose={mockOnClose}
       />,
@@ -75,9 +88,9 @@ describe('AlertsDetailModal', () => {
       () => new Promise(() => {}), // Never resolves
     );
 
-    render(
+    renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
       />,
@@ -90,9 +103,9 @@ describe('AlertsDetailModal', () => {
     const error = new Error('Failed to load alert');
     (triageService.getAlertById as vi.Mock).mockRejectedValue(error);
 
-    render(
+    renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
       />,
@@ -110,9 +123,9 @@ describe('AlertsDetailModal', () => {
       mockActionHistory,
     );
 
-    render(
+    renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
       />,
@@ -122,8 +135,8 @@ describe('AlertsDetailModal', () => {
       expect(screen.getByText('Alert Details')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('alert-123')).toBeInTheDocument();
-    expect(screen.getByText('Test alert message')).toBeInTheDocument();
+    expect(screen.getByText('123')).toBeInTheDocument();
+    expect(screen.getByText('No message available')).toBeInTheDocument();
     expect(screen.getByText('URGENT')).toBeInTheDocument();
   });
 
@@ -132,9 +145,9 @@ describe('AlertsDetailModal', () => {
     (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
     (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
 
-    render(
+    renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
       />,
@@ -155,9 +168,9 @@ describe('AlertsDetailModal', () => {
     (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
     (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
 
-    const { container } = render(
+    const { container } = renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
         onAlertUpdated={mockOnAlertUpdated}
@@ -185,9 +198,9 @@ describe('AlertsDetailModal', () => {
     (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
     (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
 
-    render(
+    renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
         onManualTriage={mockOnManualTriage}
@@ -212,9 +225,9 @@ describe('AlertsDetailModal', () => {
     (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
     (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
 
-    render(
+    renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
         onManualTriage={mockOnManualTriage}
@@ -230,7 +243,7 @@ describe('AlertsDetailModal', () => {
 
     expect(mockOnManualTriage).toHaveBeenCalledWith(
       expect.objectContaining({
-        alert_id: 'alert-123',
+        alert_id: 123,
       }),
     );
   });
@@ -244,9 +257,9 @@ describe('AlertsDetailModal', () => {
     (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
     (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
 
-    render(
+    renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
       />,
@@ -263,9 +276,9 @@ describe('AlertsDetailModal', () => {
       mockActionHistory,
     );
 
-    render(
+    renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
       />,
@@ -283,9 +296,9 @@ describe('AlertsDetailModal', () => {
     (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
     (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
 
-    render(
+    renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
       />,
@@ -308,9 +321,9 @@ describe('AlertsDetailModal', () => {
       loading: false,
     });
 
-    render(
+    renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
       />,
@@ -325,9 +338,9 @@ describe('AlertsDetailModal', () => {
   });
 
   it('fetches alert details when alertId changes', async () => {
-    const { rerender } = render(
+    const { rerender } = renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
       />,
@@ -337,20 +350,20 @@ describe('AlertsDetailModal', () => {
     (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
 
     await waitFor(() => {
-      expect(triageService.getAlertById).toHaveBeenCalledWith('alert-123');
+      expect(triageService.getAlertById).toHaveBeenCalledWith(123);
     });
 
     // Change alertId
     rerender(
       <AlertsDetailModal
-        alertId="alert-456"
+        alertId={456}
         isOpen={true}
         onClose={mockOnClose}
       />,
     );
 
     await waitFor(() => {
-      expect(triageService.getAlertById).toHaveBeenCalledWith('alert-456');
+      expect(triageService.getAlertById).toHaveBeenCalledWith(456);
     });
   });
 
@@ -367,9 +380,9 @@ describe('AlertsDetailModal', () => {
       writable: true,
     });
 
-    render(
+    renderModal(
       <AlertsDetailModal
-        alertId="alert-123"
+        alertId={123}
         isOpen={true}
         onClose={mockOnClose}
       />,

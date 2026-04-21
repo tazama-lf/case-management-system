@@ -96,6 +96,34 @@ describe('EvidenceFindingsReport', () => {
         finding: 'Evidence collected for investigation',
         conclusion: 'Confirmed' as const,
         evidenceCount: 3,
+        tasks: [
+          {
+            taskId: 'TASK-1',
+            taskTitle: 'Investigation Task',
+            findings: [
+              {
+                finding: 'Evidence collected for investigation',
+                conclusion: 'Confirmed',
+              },
+            ],
+            evidence: [
+              {
+                id: 'evidence-1',
+                fileName: 'document.pdf',
+                fileSize: 1024,
+                mimeType: 'application/pdf',
+              },
+            ],
+            supportingEvidence: [
+              {
+                id: 'evidence-1',
+                fileName: 'document.pdf',
+                fileSize: 1024,
+                mimeType: 'application/pdf',
+              },
+            ],
+          },
+        ],
         supportingEvidence: [
           {
             id: 'evidence-1',
@@ -111,6 +139,7 @@ describe('EvidenceFindingsReport', () => {
         finding: 'Another finding',
         conclusion: 'Refuted' as const,
         evidenceCount: 2,
+        tasks: [],
         supportingEvidence: ['evidence-2', 'evidence-3'],
         dateIdentified: '2024-01-02T10:00:00Z',
       },
@@ -201,7 +230,7 @@ describe('EvidenceFindingsReport', () => {
       expect(screen.getByText('All Statuses')).toBeInTheDocument();
     });
 
-    const statusSelect = screen.getByRole('combobox');
+    const statusSelect = screen.getByDisplayValue('All Statuses');
     await user.selectOptions(statusSelect, 'Confirmed');
 
     expect(statusSelect).toHaveValue('Confirmed');
@@ -348,7 +377,7 @@ describe('EvidenceFindingsReport', () => {
       expect(screen.getByText('All Statuses')).toBeInTheDocument();
     });
 
-    const statusSelect = screen.getByRole('combobox');
+    const statusSelect = screen.getByDisplayValue('All Statuses');
     await user.selectOptions(statusSelect, 'Confirmed');
 
     await waitFor(() => {
@@ -373,12 +402,12 @@ describe('EvidenceFindingsReport', () => {
 
     const findingElement = screen
       .getByText('Evidence collected for investigation')
-      .closest('div');
+      .closest('div[class*="cursor-pointer"]');
     if (findingElement) {
       await user.click(findingElement);
 
       await waitFor(() => {
-        expect(screen.getByText('Supporting Evidence')).toBeInTheDocument();
+        expect(screen.getByText(/Task ID: TASK-1/)).toBeInTheDocument();
       });
     }
   });

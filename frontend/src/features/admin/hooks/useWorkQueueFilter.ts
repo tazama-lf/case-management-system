@@ -6,9 +6,12 @@ export const useWorkQueueFilter = (
 ): {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
+  statusFilter: string;
+  setStatusFilter: (status: string) => void;
   filteredQueues: WorkQueue[];
 } => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All Status');
 
   const filteredQueues = useMemo(
     () =>
@@ -16,14 +19,18 @@ export const useWorkQueueFilter = (
         const matchesSearch = queue.name
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
-        return matchesSearch;
+        const matchesStatus =
+          statusFilter === 'All Status' || queue.status === statusFilter;
+        return matchesSearch && matchesStatus;
       }),
-    [workQueues, searchTerm],
+    [workQueues, searchTerm, statusFilter],
   );
 
   return {
     searchTerm,
     setSearchTerm,
+    statusFilter,
+    setStatusFilter,
     filteredQueues,
   };
 };

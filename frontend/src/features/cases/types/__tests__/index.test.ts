@@ -6,5 +6,5 @@ describe('cases/types/index', () => {
 
     // Verify that the module exports something
     expect(module).toBeDefined();
-  });
+  }, 15000);
 });

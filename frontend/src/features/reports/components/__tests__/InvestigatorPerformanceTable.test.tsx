@@ -5,24 +5,17 @@ import userEvent from '@testing-library/user-event';
 import InvestigatorPerformanceTable from '../InvestigatorPerformanceTable';
 import type { InvestigatorPerformance } from '../../types/reports.types';
 
-// Mock authService
-vi.mock('@/features/auth/services/authService', () => ({
-  default: {
-    fetchAllInvestigators: vi.fn().mockResolvedValue([
-      {
-        id: 'user-1',
-        username: 'investigator1',
-        firstName: 'John',
-        lastName: 'Doe',
-      },
-      {
-        id: 'user-2',
-        username: 'investigator2',
-        firstName: 'Jane',
-        lastName: 'Smith',
-      },
-    ]),
-  },
+// Mock useInvestigatorSupervisorList
+vi.mock('../../../cases/hooks/useInvestigatorSupervisorList', () => ({
+  useInvestigatorSupervisorList: () => ({
+    investigators: [
+      { id: 'user-1', username: 'investigator1', firstName: 'John', lastName: 'Doe' },
+      { id: 'user-2', username: 'investigator2', firstName: 'Jane', lastName: 'Smith' },
+    ],
+    supervisors: [],
+    fetchInvestigatorsList: vi.fn(),
+    fetchSupervisorsList: vi.fn(),
+  }),
 }));
 
 // Mock usePagination hook
@@ -57,33 +50,31 @@ vi.mock('../../../shared/hooks/usePagination', () => {
   };
 });
 
-// Mock PaginationControls
-vi.mock('../../../shared/components/PaginationControls', () => {
+// Mock TablePagination
+vi.mock('../../../shared/components/TablePagination', () => {
   return {
-    default: ({
-      currentPage,
-      totalPages,
-      onPageChange,
-      onNext,
-      onPrevious,
-    }: any) => (
-      <div data-testid="pagination-controls">
-        <button onClick={onPrevious} disabled={currentPage === 1}>
-          Previous
-        </button>
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
-        <button onClick={onNext} disabled={currentPage === totalPages}>
-          Next
-        </button>
-        {totalPages > 1 && (
-          <button onClick={() => onPageChange(2)} data-testid="go-to-page-2">
-            Go to page 2
+    default: ({ pagination }: any) => {
+      if (!pagination) return null;
+      const { currentPage, totalPages, onPageChange } = pagination;
+      return (
+        <div data-testid="pagination-controls">
+          <button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>
+            Previous
           </button>
-        )}
-      </div>
-    ),
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}>
+            Next
+          </button>
+          {totalPages > 1 && (
+            <button onClick={() => onPageChange(2)} data-testid="go-to-page-2">
+              Go to page 2
+            </button>
+          )}
+        </div>
+      );
+    },
   };
 });
 
@@ -300,7 +291,7 @@ describe('InvestigatorPerformanceTable', () => {
     const incompleteData: InvestigatorPerformance[] = [
       {
         investigator: 'Investigator 1',
-        investigatorId: '',
+        investigatorId: 'user-1',
         role: '',
         activeCases: 0,
         completedCases: 0,
@@ -318,7 +309,7 @@ describe('InvestigatorPerformanceTable', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Investigator 1')).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
 
     // Check for default role in table header, not in data

@@ -4,6 +4,24 @@ import userEvent from '@testing-library/user-event';
 import AlertsSearchAndFilters from '../AlertsSearchAndFilters';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Mock dependencies
+vi.mock('@/shared/providers/ToastProvider', () => ({
+  useToast: () => ({ success: vi.fn(), error: vi.fn() }),
+}));
+
+vi.mock('../../../cases/services/filterService', () => ({
+  filterService: {
+    getFilters: vi.fn().mockResolvedValue([]),
+    createFilter: vi.fn().mockResolvedValue({}),
+  },
+}));
+
+vi.mock('../../../auth/services/authService', () => ({
+  default: {
+    getUser: vi.fn().mockReturnValue({ userId: 'user-1' }),
+  },
+}));
+
 const baseFilters = {
   query: '',
   source: '',
@@ -56,7 +74,8 @@ describe('AlertsSearchAndFilters', () => {
     expect(onFilterChange).toHaveBeenCalledWith('query', 'ALERT-1');
 
     await userEvent.click(screen.getByRole('button', { name: /filters/i }));
-    fireEvent.change(screen.getByLabelText(/Time Range/i), {
+    const timeRangeSelect = screen.getByText('Time Range').parentElement?.querySelector('select') as HTMLSelectElement;
+    fireEvent.change(timeRangeSelect, {
       target: { value: 'custom' },
     });
     expect(onFilterChange).toHaveBeenCalledWith('timeRange', 'custom');
@@ -66,7 +85,8 @@ describe('AlertsSearchAndFilters', () => {
     const { rerender } = renderComponent();
 
     await userEvent.click(screen.getByRole('button', { name: /filters/i }));
-    fireEvent.change(screen.getByLabelText(/Time Range/i), {
+    const timeRangeSelect2 = screen.getByText('Time Range').parentElement?.querySelector('select') as HTMLSelectElement;
+    fireEvent.change(timeRangeSelect2, {
       target: { value: 'custom' },
     });
 
@@ -83,10 +103,12 @@ describe('AlertsSearchAndFilters', () => {
       />,
     );
 
-    fireEvent.change(await screen.findByLabelText(/Start Date/i), {
+    const startDateInput = screen.getByText('Start Date').parentElement?.querySelector('input') as HTMLInputElement;
+    const endDateInput = screen.getByText('End Date').parentElement?.querySelector('input') as HTMLInputElement;
+    fireEvent.change(startDateInput, {
       target: { value: '2024-01-01' },
     });
-    fireEvent.change(await screen.findByLabelText(/End Date/i), {
+    fireEvent.change(endDateInput, {
       target: { value: '2024-01-02' },
     });
 

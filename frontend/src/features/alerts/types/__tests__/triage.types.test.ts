@@ -51,7 +51,6 @@ describe('Triage Types - Constants', () => {
     expect(AlertType.FRAUD).toBe('FRAUD');
     expect(AlertType.AML).toBe('AML');
     expect(AlertType.FRAUD_AND_AML).toBe('FRAUD_AND_AML');
-    expect(AlertType.NONE).toBe('NONE');
   });
 
   it('CaseStatus constants should be defined', () => {
