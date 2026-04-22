@@ -1,38 +1,32 @@
 import { describe, it, expect } from 'vitest';
+import * as VisualizationsExports from '../index';
 
 describe('visualizations index barrel exports', () => {
-  it('exports AlertNavigatorTab', async () => {
-    const mod = await import('../index');
-    expect(mod.AlertNavigatorTab).toBeDefined();
-  }, 10000);
+  it('exports AlertNavigatorTab', () => {
+    expect(VisualizationsExports.AlertNavigatorTab).toBeDefined();
+  });
 
-  it('exports alertNavigatorService', async () => {
-    const mod = await import('../index');
-    expect(mod.alertNavigatorService).toBeDefined();
-  }, 10000);
+  it('exports alertNavigatorService', () => {
+    expect(VisualizationsExports.alertNavigatorService).toBeDefined();
+  });
 
-  it('exports AlertHistoryTab', async () => {
-    const mod = await import('../index');
-    expect(mod.AlertHistoryTab).toBeDefined();
-  }, 10000);
+  it('exports AlertHistoryTab', () => {
+    expect(VisualizationsExports.AlertHistoryTab).toBeDefined();
+  });
 
-  it('exports ConditionsTab', async () => {
-    const mod = await import('../index');
-    expect(mod.ConditionsTab).toBeDefined();
-  }, 10000);
+  it('exports ConditionsTab', () => {
+    expect(VisualizationsExports.ConditionsTab).toBeDefined();
+  });
 
-  it('exports TransactionDetailsTab', async () => {
-    const mod = await import('../index');
-    expect(mod.TransactionDetailsTab).toBeDefined();
-  }, 10000);
+  it('exports TransactionDetailsTab', () => {
+    expect(VisualizationsExports.TransactionDetailsTab).toBeDefined();
+  });
 
-  it('exports TransactionHistoryTab', async () => {
-    const mod = await import('../index');
-    expect(mod.TransactionHistoryTab).toBeDefined();
-  }, 10000);
+  it('exports TransactionHistoryTab', () => {
+    expect(VisualizationsExports.TransactionHistoryTab).toBeDefined();
+  });
 
-  it('exports NetworkAnalysisTab', async () => {
-    const mod = await import('../index');
-    expect(mod.NetworkAnalysisTab).toBeDefined();
-  }, 10000);
+  it('exports NetworkAnalysisTab', () => {
+    expect(VisualizationsExports.NetworkAnalysisTab).toBeDefined();
+  });
 });

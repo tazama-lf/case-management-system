@@ -1,18 +1,16 @@
 import { describe, it, expect } from 'vitest';
+import * as AdminExports from '../index';
 
 describe('admin barrel exports', () => {
-  it('exports DashboardSection', async () => {
-    const mod = await import('../index');
-    expect(mod.DashboardSection).toBeDefined();
-  }, 10000);
+  it('exports DashboardSection', () => {
+    expect(AdminExports.DashboardSection).toBeDefined();
+  });
 
-  it('exports WorkQueueManagement', async () => {
-    const mod = await import('../index');
-    expect(mod.WorkQueueManagement).toBeDefined();
-  }, 10000);
+  it('exports WorkQueueManagement', () => {
+    expect(AdminExports.WorkQueueManagement).toBeDefined();
+  });
 
-  it('exports AdminDashboard', async () => {
-    const mod = await import('../index');
-    expect(mod.AdminDashboard).toBeDefined();
-  }, 10000);
+  it('exports AdminDashboard', () => {
+    expect(AdminExports.AdminDashboard).toBeDefined();
+  });
 });
