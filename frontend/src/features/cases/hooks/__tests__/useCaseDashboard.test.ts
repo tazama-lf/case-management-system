@@ -183,9 +183,9 @@ describe('useCaseDashboard', () => {
   });
 
   it('surfaces an error state when the service call fails', async () => {
-    (
-      caseService.getAllCases as unknown as vi.Mock
-    ).mockRejectedValueOnce(new Error('boom'));
+    (caseService.getAllCases as unknown as vi.Mock).mockRejectedValueOnce(
+      new Error('boom'),
+    );
 
     const { result } = renderHook(() => useCaseDashboard());
 
@@ -197,5 +197,368 @@ describe('useCaseDashboard', () => {
       'Failed to load cases. Please try again.',
     );
     expect(result.current.dashboardState.cases).toHaveLength(0);
+  });
+
+  it('sets caseTypeFilter to draft and fetches with STATUS_00_DRAFT', async () => {
+    const backendCases = [
+      createBackendCase({ case_id: 1, status: 'STATUS_00_DRAFT' }),
+    ];
+    (caseService.getAllCases as unknown as vi.Mock)
+      .mockResolvedValueOnce({
+        cases: [],
+        pagination: { total: 0, totalPages: 1 },
+      })
+      .mockResolvedValueOnce({
+        cases: backendCases,
+        pagination: { total: 1, totalPages: 1 },
+      });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    act(() => {
+      result.current.filterActions.setCaseTypeFilter('draft');
+    });
+
+    await waitFor(() =>
+      expect(caseService.getAllCases).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'STATUS_00_DRAFT' }),
+      ),
+    );
+  });
+
+  it('sets caseTypeFilter to closed and fetches with closedOnly', async () => {
+    (caseService.getAllCases as unknown as vi.Mock)
+      .mockResolvedValueOnce({
+        cases: [],
+        pagination: { total: 0, totalPages: 1 },
+      })
+      .mockResolvedValueOnce({
+        cases: [],
+        pagination: { total: 0, totalPages: 1 },
+      });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    act(() => {
+      result.current.filterActions.setCaseTypeFilter('closed');
+    });
+
+    await waitFor(() =>
+      expect(caseService.getAllCases).toHaveBeenCalledWith(
+        expect.objectContaining({ closedOnly: true }),
+      ),
+    );
+  });
+
+  it('default all caseTypeFilter excludes draft and closed', async () => {
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      cases: [],
+      pagination: { total: 0, totalPages: 1 },
+    });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    expect(caseService.getAllCases).toHaveBeenCalledWith(
+      expect.objectContaining({ excludeDraft: true, excludeClosed: true }),
+    );
+  });
+
+  it('handleComplete opens update alert modal when row.type is null', async () => {
+    const backendCases = [createBackendCase({ case_id: 1 })];
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      cases: backendCases,
+      pagination: { total: 1, totalPages: 1 },
+    });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    const row = {
+      ...result.current.dashboardState.cases[0],
+      type: null,
+    } as any;
+    act(() => {
+      result.current.dashboardActions.handleComplete(row);
+    });
+    expect(result.current.modalState.isUpdateAlertOpen).toBe(true);
+  });
+
+  it('handleComplete opens create modal in edit mode when row.type is set', async () => {
+    const backendCases = [createBackendCase({ case_id: 1 })];
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      cases: backendCases,
+      pagination: { total: 1, totalPages: 1 },
+    });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    const row = result.current.dashboardState.cases[0];
+    act(() => {
+      result.current.dashboardActions.handleComplete(row);
+    });
+    expect(result.current.modalState.isCreateOpen).toBe(true);
+    expect(result.current.modalState.createModalMode).toBe('edit');
+  });
+
+  it('opens close/reopen/abandon/suspend/resume modals', async () => {
+    const backendCases = [createBackendCase({ case_id: 1 })];
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      cases: backendCases,
+      pagination: { total: 1, totalPages: 1 },
+    });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    const row = result.current.dashboardState.cases[0];
+
+    act(() => {
+      result.current.dashboardActions.handleCloseCase(row);
+    });
+    expect(result.current.modalState.isCloseCaseOpen).toBe(true);
+
+    act(() => {
+      result.current.dashboardActions.handleReopenCase(row);
+    });
+    expect(result.current.modalState.isReopenOpen).toBe(true);
+
+    act(() => {
+      result.current.dashboardActions.handleAbandonCase(row);
+    });
+    expect(result.current.modalState.isAbandonOpen).toBe(true);
+
+    act(() => {
+      result.current.dashboardActions.handleSuspendCase(row);
+    });
+    expect(result.current.modalState.isSuspendOpen).toBe(true);
+
+    act(() => {
+      result.current.dashboardActions.handleResumeCase(row);
+    });
+    expect(result.current.modalState.isResumeOpen).toBe(true);
+  });
+
+  it('opens reject/approve/creation/reopen modals', async () => {
+    const backendCases = [createBackendCase({ case_id: 1 })];
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      cases: backendCases,
+      pagination: { total: 1, totalPages: 1 },
+    });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    const row = result.current.dashboardState.cases[0];
+
+    act(() => {
+      result.current.dashboardActions.handleRejectCase(row);
+    });
+    expect(result.current.modalState.isCaseClosureDecisionOpen).toBe(true);
+
+    act(() => {
+      result.current.dashboardActions.handleApproveCase(row);
+    });
+    expect(result.current.modalState.isCaseClosureDecisionOpen).toBe(true);
+
+    act(() => {
+      result.current.dashboardActions.handleApproveCaseCreation(row);
+    });
+    expect(result.current.modalState.isApproveCreationOpen).toBe(true);
+
+    act(() => {
+      result.current.dashboardActions.handleRejectCaseCreation(row);
+    });
+    expect(result.current.modalState.isRejectCreationOpen).toBe(true);
+
+    act(() => {
+      result.current.dashboardActions.handleApproveCaseReopen(row);
+    });
+    expect(result.current.modalState.isApproveReopenOpen).toBe(true);
+
+    act(() => {
+      result.current.dashboardActions.handleRejectCaseReopen(row);
+    });
+    expect(result.current.modalState.isRejectReopenOpen).toBe(true);
+  });
+
+  it('handleCreateNew opens create modal in create mode', async () => {
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      cases: [],
+      pagination: { total: 0, totalPages: 1 },
+    });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    act(() => {
+      result.current.dashboardActions.handleCreateNew();
+    });
+    expect(result.current.modalState.isCreateOpen).toBe(true);
+    expect(result.current.modalState.createModalMode).toBe('create');
+  });
+
+  it('setPageSize resets to page 1', async () => {
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      cases: [],
+      pagination: { total: 0, totalPages: 1 },
+    });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    act(() => {
+      result.current.setPageSize(50);
+    });
+    expect(result.current.dashboardState.pagination.currentPage).toBe(1);
+    expect(result.current.dashboardState.pagination.pageSize).toBe(50);
+  });
+
+  it('setCurrentPage updates page', async () => {
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      cases: [],
+      pagination: { total: 100, totalPages: 5 },
+    });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    act(() => {
+      result.current.setCurrentPage(3);
+    });
+    expect(result.current.dashboardState.pagination.currentPage).toBe(3);
+  });
+
+  it('sets permissions for supervisor', async () => {
+    authMocks.hasSupervisorRole.mockReturnValue(true);
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      cases: [],
+      pagination: { total: 0, totalPages: 1 },
+    });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    expect(
+      result.current.dashboardState.permissions.canManageSupervisorActions,
+    ).toBe(true);
+    expect(result.current.dashboardState.permissions.isInvestigatorOnly).toBe(
+      false,
+    );
+  });
+
+  it('sets permissions for investigator only', async () => {
+    authMocks.hasInvestigatorRole.mockReturnValue(true);
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      cases: [],
+      pagination: { total: 0, totalPages: 1 },
+    });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    expect(result.current.dashboardState.permissions.isInvestigatorOnly).toBe(
+      true,
+    );
+    expect(
+      result.current.dashboardState.permissions.canManageSupervisorActions,
+    ).toBe(false);
+  });
+
+  it('navigates away when route caseId does not match any case', async () => {
+    routeMock.params = { caseId: '999' };
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      cases: [createBackendCase({ case_id: 1 })],
+      pagination: { total: 1, totalPages: 1 },
+    });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    expect(routeMock.navigate).toHaveBeenCalledWith('/cases');
+  });
+
+  it('applies sortBy filter', async () => {
+    (caseService.getAllCases as unknown as vi.Mock)
+      .mockResolvedValueOnce({
+        cases: [],
+        pagination: { total: 0, totalPages: 1 },
+      })
+      .mockResolvedValueOnce({
+        cases: [],
+        pagination: { total: 0, totalPages: 1 },
+      });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    act(() => {
+      result.current.filterActions.setSortBy('oldest');
+    });
+
+    await waitFor(() =>
+      expect(caseService.getAllCases).toHaveBeenCalledWith(
+        expect.objectContaining({ sortOrder: 'asc' }),
+      ),
+    );
+  });
+
+  it('applies status and priority filters', async () => {
+    (caseService.getAllCases as unknown as vi.Mock).mockResolvedValue({
+      cases: [],
+      pagination: { total: 0, totalPages: 1 },
+    });
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    act(() => {
+      result.current.filterActions.setStatusFilter('STATUS_20_IN_PROGRESS');
+      result.current.filterActions.setPriorityFilter('HIGH');
+      result.current.filterActions.setSarStrStatusFilter('completed');
+    });
+
+    await waitFor(() =>
+      expect(caseService.getAllCases).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'STATUS_20_IN_PROGRESS',
+          priority: 'HIGH',
+          sarStrStatus: 'completed',
+        }),
+      ),
+    );
   });
 });

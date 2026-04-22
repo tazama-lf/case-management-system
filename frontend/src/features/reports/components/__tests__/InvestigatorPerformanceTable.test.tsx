@@ -9,8 +9,18 @@ import type { InvestigatorPerformance } from '../../types/reports.types';
 vi.mock('../../../cases/hooks/useInvestigatorSupervisorList', () => ({
   useInvestigatorSupervisorList: () => ({
     investigators: [
-      { id: 'user-1', username: 'investigator1', firstName: 'John', lastName: 'Doe' },
-      { id: 'user-2', username: 'investigator2', firstName: 'Jane', lastName: 'Smith' },
+      {
+        id: 'user-1',
+        username: 'investigator1',
+        firstName: 'John',
+        lastName: 'Doe',
+      },
+      {
+        id: 'user-2',
+        username: 'investigator2',
+        firstName: 'Jane',
+        lastName: 'Smith',
+      },
     ],
     supervisors: [],
     fetchInvestigatorsList: vi.fn(),
@@ -58,13 +68,19 @@ vi.mock('../../../shared/components/TablePagination', () => {
       const { currentPage, totalPages, onPageChange } = pagination;
       return (
         <div data-testid="pagination-controls">
-          <button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>
+          <button
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+          >
             Previous
           </button>
           <span>
             Page {currentPage} of {totalPages}
           </span>
-          <button onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}>
+          <button
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+          >
             Next
           </button>
           {totalPages > 1 && (

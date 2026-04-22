@@ -2,14 +2,21 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-import type {
-  FindingDetail,
-} from '@/features/reports/types/reports.types';
+import type { FindingDetail } from '@/features/reports/types/reports.types';
 
-interface PdfMakeStatic { vfs: Record<string, string>; createPdf: (docDefinition: Record<string, unknown>) => { download: (filename: string) => void } }
-interface PdfTableNode { table: { body: unknown[][]; widths: unknown[] } }
+interface PdfMakeStatic {
+  vfs: Record<string, string>;
+  createPdf: (docDefinition: Record<string, unknown>) => {
+    download: (filename: string) => void;
+  };
+}
+interface PdfTableNode {
+  table: { body: unknown[][]; widths: unknown[] };
+}
 
-(pdfMake as unknown as PdfMakeStatic).vfs = (pdfFonts as unknown as { vfs: Record<string, string> }).vfs;
+(pdfMake as unknown as PdfMakeStatic).vfs = (
+  pdfFonts as unknown as { vfs: Record<string, string> }
+).vfs;
 
 export type ExportData = Record<string, unknown>;
 
@@ -29,7 +36,9 @@ export const exportToExcel = (
       throw new Error('No data to export');
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(data as Array<Record<string, unknown>>);
+    const worksheet = XLSX.utils.json_to_sheet(
+      data as Array<Record<string, unknown>>,
+    );
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
@@ -37,7 +46,9 @@ export const exportToExcel = (
       const colWidths = Object.keys(data[0] ?? {}).map((key) => ({
         wch: Math.max(
           key.length,
-          ...data.map((row) => String((row[key] ?? '') as string | number).length),
+          ...data.map(
+            (row) => String((row[key] ?? '') as string | number).length,
+          ),
         ),
       }));
       worksheet['!cols'] = colWidths;
@@ -260,7 +271,9 @@ export const exportToPDF = (
       },
     };
 
-    const pdfDoc = (pdfMake as unknown as PdfMakeStatic).createPdf(docDefinition);
+    const pdfDoc = (pdfMake as unknown as PdfMakeStatic).createPdf(
+      docDefinition,
+    );
     pdfDoc.download(`${filename}.pdf`);
   } catch (error: unknown) {
     console.error('Error exporting to PDF:', error);
@@ -324,10 +337,17 @@ export const formatDataForExport = (
           'Age (Days)': item.ageDays ?? item.age_days ?? item.age ?? 0,
           Priority: item.priority ?? 'Normal',
           'User ID': String(
-            item.userId ?? item.user_id ?? item.assigneeId ?? item.assignee_id ?? '',
+            item.userId ??
+              item.user_id ??
+              item.assigneeId ??
+              item.assignee_id ??
+              '',
           ),
           Investigator:
-            item.investigator ?? item.assignee ?? item.assigned_to ?? 'Unassigned',
+            item.investigator ??
+            item.assignee ??
+            item.assigned_to ??
+            'Unassigned',
         };
       });
 
@@ -336,15 +356,23 @@ export const formatDataForExport = (
         const item = rawItem as Record<string, string | number | undefined>;
         return {
           'Investigator ID': String(
-            item.investigatorId ?? item.investigator_id ?? item.userId ?? item.user_id ?? '',
+            item.investigatorId ??
+              item.investigator_id ??
+              item.userId ??
+              item.user_id ??
+              '',
           ),
-          Investigator: item.investigator ?? item.name ?? item.fullName ?? 'Unknown',
+          Investigator:
+            item.investigator ?? item.name ?? item.fullName ?? 'Unknown',
           Role: item.role ?? 'Investigator',
           'Active Cases': item.activeCases ?? item.active_cases ?? 0,
           'Completed Cases': item.completedCases ?? item.completed_cases ?? 0,
-          'Avg Resolution Time (Days)': item.avgResolutionTime ?? item.avg_resolution_time ?? 0,
-          'Case Closure Rate (%)': item.caseClosureRate ?? item.case_closure_rate ?? 0,
-          'Performance Trend': item.performanceTrend ?? item.performance_trend ?? 'Stable',
+          'Avg Resolution Time (Days)':
+            item.avgResolutionTime ?? item.avg_resolution_time ?? 0,
+          'Case Closure Rate (%)':
+            item.caseClosureRate ?? item.case_closure_rate ?? 0,
+          'Performance Trend':
+            item.performanceTrend ?? item.performance_trend ?? 'Stable',
         };
       });
 
@@ -484,4 +512,3 @@ export const getColumnsForReport = (reportType: string): TableColumn[] => {
       return [];
   }
 };
-

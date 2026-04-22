@@ -177,7 +177,10 @@ export const useAlerts = () => {
     dispatch({ type: 'SET_FILTERS', payload: filters });
   };
 
-  const setSort = (column: keyof Alert | string, direction: 'asc' | 'desc'): void => {
+  const setSort = (
+    column: keyof Alert | string,
+    direction: 'asc' | 'desc',
+  ): void => {
     dispatch({ type: 'SET_SORT', payload: { column, direction } });
   };
 

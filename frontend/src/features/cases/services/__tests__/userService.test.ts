@@ -86,7 +86,7 @@ describe('UserService', () => {
     it('handles errors gracefully', async () => {
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => { });
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('Network error'));
 
       const result = await userService.getUsersByRole('CMS_INVESTIGATOR');
@@ -155,7 +155,7 @@ describe('UserService', () => {
     it('handles errors gracefully', async () => {
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => { });
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('Network error'));
 
       const result = await userService.getUserDetailsById('user-1');
@@ -342,7 +342,7 @@ describe('UserService', () => {
     it('handles errors gracefully', async () => {
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => { });
+        .mockImplementation(() => {});
       (apiClient.get as vi.Mock).mockRejectedValue(new Error('Network error'));
 
       const result = await userService.getAllUsers();

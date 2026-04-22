@@ -32,7 +32,9 @@ describe('AdminWorkQueuesTable', () => {
 
   it('shows empty message when no queues', () => {
     render(<AdminWorkQueuesTable queues={[]} />);
-    expect(screen.getByText('No work queues found matching your search criteria.')).toBeInTheDocument();
+    expect(
+      screen.getByText('No work queues found matching your search criteria.'),
+    ).toBeInTheDocument();
   });
 
   it('renders pagination when provided', () => {
@@ -44,7 +46,9 @@ describe('AdminWorkQueuesTable', () => {
       onPageChange: vi.fn(),
       onPageSizeChange: vi.fn(),
     };
-    render(<AdminWorkQueuesTable queues={mockQueues} pagination={pagination} />);
+    render(
+      <AdminWorkQueuesTable queues={mockQueues} pagination={pagination} />,
+    );
     expect(screen.getByTestId('table-pagination')).toBeInTheDocument();
   });
 

@@ -18,9 +18,7 @@ describe('AlertNavigatorService', () => {
     const mockResponse = {
       alertId: 1,
       score: 85,
-      typologies: [
-        { typologyId: 'typ-1', name: 'ML', score: 90, rules: '[]' },
-      ],
+      typologies: [{ typologyId: 'typ-1', name: 'ML', score: 90, rules: '[]' }],
     };
     vi.mocked(apiClient.get).mockResolvedValue(mockResponse);
 
@@ -35,12 +33,19 @@ describe('AlertNavigatorService', () => {
     const mockResponse = {
       alertId: 1,
       typologies: [
-        { typologyId: 'typ-1', name: 'ML', score: 90, rules: [{ ruleId: 'r1', name: 'Rule 1' }] },
+        {
+          typologyId: 'typ-1',
+          name: 'ML',
+          score: 90,
+          rules: [{ ruleId: 'r1', name: 'Rule 1' }],
+        },
       ],
     };
     vi.mocked(apiClient.get).mockResolvedValue(mockResponse);
 
     const result = await alertNavigatorService.getAlertNavigator(1, 'T1');
-    expect(result.typologies[0].rules).toEqual([{ ruleId: 'r1', name: 'Rule 1' }]);
+    expect(result.typologies[0].rules).toEqual([
+      { ruleId: 'r1', name: 'Rule 1' },
+    ]);
   });
 });

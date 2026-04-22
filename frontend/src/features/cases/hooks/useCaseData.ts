@@ -114,7 +114,7 @@ export const useCaseActions = (
     priorityFilter?: string,
     sortBy?: 'recent' | 'oldest',
   ) => Promise<void>,
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- Complex hook with inferred return type
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- Complex hook with inferred return type
 ) => {
   const { user } = useAuth();
   const { success, error } = useToast();
@@ -299,7 +299,7 @@ The case may have been deleted or moved.`;
       ) {
         errorMessage =
           'Access Denied.\n\n' +
-          'You don\'t have permission to abandon this case.\n' +
+          "You don't have permission to abandon this case.\n" +
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage =
@@ -358,7 +358,7 @@ The case has been suspended and all associated tasks have been blocked. Supervis
       ) {
         errorMessage =
           'Access Denied.\n\n' +
-          'You don\'t have permission to suspend this case.\n' +
+          "You don't have permission to suspend this case.\n" +
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage = `Case Not Found.
@@ -424,8 +424,7 @@ The case has been moved back to "In Progress" status. All associated tasks have 
 ` +
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
-        errorMessage =
-          `Case Not Found.
+        errorMessage = `Case Not Found.
 
 The case may have been deleted or moved.`;
       }
@@ -489,8 +488,7 @@ The case has been returned to the investigator for additional work.`,
 ` +
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
-        errorMessage =
-          `Case Not Found.
+        errorMessage = `Case Not Found.
 
 The case may have been deleted or moved.`;
       } else if (errorString.includes('Approval task validation failed')) {

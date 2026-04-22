@@ -672,7 +672,8 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
             modalActions.setIsCloseCaseOpen(false);
           }}
           caseId={
-            modalState.selectedRow?.id !== null && modalState.selectedRow?.id !== undefined
+            modalState.selectedRow?.id !== null &&
+            modalState.selectedRow?.id !== undefined
               ? modalState.selectedRow.id.toString()
               : ''
           }

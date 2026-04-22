@@ -15,7 +15,9 @@ describe('AlertNavigatorTab', () => {
   it('shows no-alert message when alertId is not provided', async () => {
     render(<AlertNavigatorTab tenantId="DEFAULT" />);
     await waitFor(() => {
-      expect(screen.getByText('Select an alert to view navigator details')).toBeInTheDocument();
+      expect(
+        screen.getByText('Select an alert to view navigator details'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -29,7 +31,9 @@ describe('AlertNavigatorTab', () => {
     mockGetAlertNavigator.mockRejectedValue(new Error('Network error'));
     render(<AlertNavigatorTab alertId={1} tenantId="DEFAULT" />);
     await waitFor(() => {
-      expect(screen.getByText('Alert Navigator Data Unavailable')).toBeInTheDocument();
+      expect(
+        screen.getByText('Alert Navigator Data Unavailable'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -48,7 +52,15 @@ describe('AlertNavigatorTab', () => {
         evaluationId: 'eval-1',
       },
       typologies: [
-        { typologyId: 'typ-1', typologyCfg: 'Money Laundering', typologyScore: 90, alertThreshold: 50, interdictionThreshold: 80, ruleCount: 2, rules: [] },
+        {
+          typologyId: 'typ-1',
+          typologyCfg: 'Money Laundering',
+          typologyScore: 90,
+          alertThreshold: 50,
+          interdictionThreshold: 80,
+          ruleCount: 2,
+          rules: [],
+        },
       ],
       statistics: { totalTypologies: 1, totalRules: 2 },
       meta: { alertId: 1, tenantId: 'DEFAULT' },

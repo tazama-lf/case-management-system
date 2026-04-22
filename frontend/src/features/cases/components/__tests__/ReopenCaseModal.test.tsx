@@ -74,9 +74,7 @@ describe('ReopenCaseModal', () => {
     );
 
     expect(
-      screen.getByText(
-        /Request reopening of a previously closed case/i,
-      ),
+      screen.getByText(/Request reopening of a previously closed case/i),
     ).toBeInTheDocument();
   });
 
@@ -173,7 +171,7 @@ describe('ReopenCaseModal', () => {
 
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
-      .mockImplementation(() => { });
+      .mockImplementation(() => {});
 
     render(
       <ReopenCaseModal

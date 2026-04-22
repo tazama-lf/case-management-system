@@ -1,4 +1,3 @@
- 
 /* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '@/shared/services/apiClient';
 import type {
@@ -59,7 +58,9 @@ class WorkQueueService {
   private handleError(error: unknown, operation: string): Error {
     console.error(`WorkQueueService Error - ${operation}:`, error);
 
-    const err = error as { response?: { data?: { message?: string } }; message?: string } | undefined;
+    const err = error as
+      | { response?: { data?: { message?: string } }; message?: string }
+      | undefined;
     if (err?.response?.data) {
       return new Error(err.response.data.message ?? `Failed to ${operation}`);
     }
@@ -75,4 +76,3 @@ class WorkQueueService {
 const workQueueService = new WorkQueueService();
 export default workQueueService;
 /* eslint-enable @typescript-eslint/class-methods-use-this */
- 

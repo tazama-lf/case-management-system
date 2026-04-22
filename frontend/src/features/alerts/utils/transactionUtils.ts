@@ -2,7 +2,7 @@ import { formatDate } from '@/shared/utils/dateUtils';
 import type { TransactionMessage } from '../types/alertsdashboard.types';
 
 export function extractTransactionMessagesFromAlert(
-  transactionData: Record<string, unknown>,
+  transactionData: Record<string, unknown> | null | undefined,
   transactionId: string,
 ): TransactionMessage[] {
   if (!transactionData) {
@@ -106,4 +106,3 @@ export function extractTransactionIdFromAlert(
     return (alert.txtp ?? alert.alert_id ?? 'Unknown') as string;
   }
 }
-

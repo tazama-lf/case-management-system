@@ -60,7 +60,10 @@ class NetworkAnalysisService {
       );
       return response;
     } catch (error) {
-      console.error(`Failed to fetch network data for account ${accountId}:`, error);
+      console.error(
+        `Failed to fetch network data for account ${accountId}:`,
+        error,
+      );
       throw error;
     }
   }

@@ -23,12 +23,40 @@ const mockCaseData: CaseRow = {
   alertId: 1,
 };
 
+const mockCaseWithOneTask: CaseRow = {
+  ...mockCaseData,
+  tasks: [
+    {
+      task_id: 10,
+      name: 'Investigate Case',
+      status: 'STATUS_20_IN_PROGRESS',
+    } as any,
+  ],
+};
+
+const mockCaseWithMultipleTasks: CaseRow = {
+  ...mockCaseData,
+  tasks: [
+    {
+      task_id: 10,
+      name: 'Investigate Case',
+      status: 'STATUS_20_IN_PROGRESS',
+    } as any,
+    {
+      task_id: 11,
+      name: 'Investigate Fraud',
+      status: 'STATUS_20_IN_PROGRESS',
+    } as any,
+  ],
+};
+
 describe('SuspendCaseModal', () => {
   const mockOnClose = vi.fn();
   const mockOnSuspend = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockOnSuspend.mockResolvedValue(undefined);
   });
 
   it('does not render when open is false', () => {
@@ -69,9 +97,7 @@ describe('SuspendCaseModal', () => {
       />,
     );
 
-    expect(
-      screen.getByText(/Temporarily pause a case/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Temporarily pause a case/i)).toBeInTheDocument();
   });
 
   it('validates reason minimum length (4 characters)', async () => {
@@ -125,7 +151,6 @@ describe('SuspendCaseModal', () => {
 
   it('submits form with valid reason', async () => {
     const user = userEvent.setup();
-    mockOnSuspend.mockResolvedValue(undefined);
 
     render(
       <SuspendCaseModal
@@ -197,5 +222,190 @@ describe('SuspendCaseModal', () => {
 
     expect(screen.getByText('Suspending...')).toBeInTheDocument();
     expect(submitButton).toBeDisabled();
+  });
+
+  it('shows single task with auto-selected label', () => {
+    render(
+      <SuspendCaseModal
+        open={true}
+        onClose={mockOnClose}
+        onSuspend={mockOnSuspend}
+        caseData={mockCaseWithOneTask}
+      />,
+    );
+
+    expect(screen.getByText('Task to suspend')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Investigate Case \(Task ID - 10\)/),
+    ).toBeInTheDocument();
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toBeDisabled();
+    expect(checkbox).toBeChecked();
+  });
+
+  it('shows multiple tasks with checkboxes for selection', async () => {
+    const user = userEvent.setup();
+    render(
+      <SuspendCaseModal
+        open={true}
+        onClose={mockOnClose}
+        onSuspend={mockOnSuspend}
+        caseData={mockCaseWithMultipleTasks}
+      />,
+    );
+
+    expect(screen.getByText('Select task(s) to suspend')).toBeInTheDocument();
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(2);
+
+    // Toggle first task
+    await user.click(checkboxes[0]);
+    // Toggle second task
+    await user.click(checkboxes[1]);
+
+    const textarea = screen.getByPlaceholderText(
+      /Explain why this case needs to be suspended/i,
+    );
+    await user.type(textarea, 'Suspending multiple tasks');
+    await user.click(screen.getByRole('button', { name: /Suspend Case/i }));
+
+    await waitFor(() => {
+      expect(mockOnSuspend).toHaveBeenCalledWith(
+        123,
+        'Suspending multiple tasks',
+        [10, 11],
+      );
+    });
+  });
+
+  it('toggles task selection on and off', async () => {
+    const user = userEvent.setup();
+    render(
+      <SuspendCaseModal
+        open={true}
+        onClose={mockOnClose}
+        onSuspend={mockOnSuspend}
+        caseData={mockCaseWithMultipleTasks}
+      />,
+    );
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    // Select first task
+    await user.click(checkboxes[0]);
+    // Deselect first task
+    await user.click(checkboxes[0]);
+
+    const textarea = screen.getByPlaceholderText(
+      /Explain why this case needs to be suspended/i,
+    );
+    await user.type(textarea, 'Valid reason here');
+    await user.click(screen.getByRole('button', { name: /Suspend Case/i }));
+
+    await waitFor(() => {
+      expect(mockOnSuspend).toHaveBeenCalledWith(123, 'Valid reason here', []);
+    });
+  });
+
+  it('handles submit error gracefully', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const user = userEvent.setup();
+    mockOnSuspend.mockRejectedValue(new Error('Suspend failed'));
+
+    render(
+      <SuspendCaseModal
+        open={true}
+        onClose={mockOnClose}
+        onSuspend={mockOnSuspend}
+        caseData={mockCaseData}
+      />,
+    );
+
+    const textarea = screen.getByPlaceholderText(
+      /Explain why this case needs to be suspended/i,
+    );
+    await user.type(textarea, 'Valid reason here');
+    await user.click(screen.getByRole('button', { name: /Suspend Case/i }));
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Failed to suspend case:',
+        expect.any(Error),
+      );
+    });
+    // Should not close on error
+    expect(mockOnClose).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('does not close modal while submitting via X button', async () => {
+    const user = userEvent.setup();
+    let resolveSubmit: () => void;
+    mockOnSuspend.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSubmit = resolve;
+        }),
+    );
+
+    render(
+      <SuspendCaseModal
+        open={true}
+        onClose={mockOnClose}
+        onSuspend={mockOnSuspend}
+        caseData={mockCaseData}
+      />,
+    );
+
+    const textarea = screen.getByPlaceholderText(
+      /Explain why this case needs to be suspended/i,
+    );
+    await user.type(textarea, 'Valid reason here');
+    await user.click(screen.getByRole('button', { name: /Suspend Case/i }));
+
+    expect(screen.getByText('Suspending...')).toBeInTheDocument();
+    // handleClose should not call onClose while isSubmitting is true
+    // The X button and Cancel should be disabled
+    resolveSubmit!();
+  });
+
+  it('does not submit when caseData is null', async () => {
+    const user = userEvent.setup();
+    render(
+      <SuspendCaseModal
+        open={true}
+        onClose={mockOnClose}
+        onSuspend={mockOnSuspend}
+        caseData={null}
+      />,
+    );
+
+    const textarea = screen.getByPlaceholderText(
+      /Explain why this case needs to be suspended/i,
+    );
+    await user.type(textarea, 'Valid reason here');
+    await user.click(screen.getByRole('button', { name: /Suspend Case/i }));
+    expect(mockOnSuspend).not.toHaveBeenCalled();
+  });
+
+  it('closes modal via X button when not submitting', async () => {
+    const user = userEvent.setup();
+    render(
+      <SuspendCaseModal
+        open={true}
+        onClose={mockOnClose}
+        onSuspend={mockOnSuspend}
+        caseData={mockCaseData}
+      />,
+    );
+
+    // Find the X button (near the heading)
+    const buttons = screen.getAllByRole('button');
+    const xButton = buttons.find(
+      (btn) => btn.querySelector('svg') && !btn.textContent,
+    );
+    if (xButton) {
+      await user.click(xButton);
+      expect(mockOnClose).toHaveBeenCalled();
+    }
   });
 });

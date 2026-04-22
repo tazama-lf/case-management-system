@@ -23,7 +23,10 @@ describe('NetworkAnalysisService', () => {
     };
     vi.mocked(apiClient.get).mockResolvedValue(mockResponse);
 
-    const result = await NetworkAnalysisService.getAccountNetwork('ACC-001', 'DEFAULT');
+    const result = await NetworkAnalysisService.getAccountNetwork(
+      'ACC-001',
+      'DEFAULT',
+    );
     expect(apiClient.get).toHaveBeenCalledWith(
       '/api/v1/lakehouse/network-analysis/account/ACC-001?tenantId=DEFAULT',
     );
@@ -31,8 +34,8 @@ describe('NetworkAnalysisService', () => {
   });
 
   it('throws error when accountId is empty', async () => {
-    await expect(
-      NetworkAnalysisService.getAccountNetwork(''),
-    ).rejects.toThrow('Account ID is required');
+    await expect(NetworkAnalysisService.getAccountNetwork('')).rejects.toThrow(
+      'Account ID is required',
+    );
   });
 });

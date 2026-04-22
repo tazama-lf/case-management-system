@@ -22,7 +22,9 @@ describe('CounterpartyNetworkTab', () => {
       />,
     );
     expect(screen.getByTestId('voila-frame')).toBeInTheDocument();
-    expect(screen.getByText('Counterparty Network Analysis')).toBeInTheDocument();
+    expect(
+      screen.getByText('Counterparty Network Analysis'),
+    ).toBeInTheDocument();
     expect(screen.getByText('counterparty-network.ipynb')).toBeInTheDocument();
   });
 });

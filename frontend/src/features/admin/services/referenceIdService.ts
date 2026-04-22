@@ -1,4 +1,3 @@
- 
 /* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '@/shared/services/apiClient';
 import type {
@@ -64,4 +63,3 @@ class ReferenceIdService {
 const referenceIdService = new ReferenceIdService();
 export default referenceIdService;
 /* eslint-enable @typescript-eslint/class-methods-use-this */
- 

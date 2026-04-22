@@ -136,4 +136,3 @@ export const useInvestigatorSupervisorList = (): {
 };
 
 export default useInvestigatorSupervisorList;
-

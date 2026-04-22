@@ -48,7 +48,10 @@ describe('EvidenceCard', () => {
     render(<EvidenceCard {...defaultProps} />);
     const viewButton = screen.getByTitle('View evidence');
     fireEvent.click(viewButton);
-    expect(defaultProps.handleViewEvidence).toHaveBeenCalledWith('report.pdf', 'ev-1');
+    expect(defaultProps.handleViewEvidence).toHaveBeenCalledWith(
+      'report.pdf',
+      'ev-1',
+    );
   });
 
   it('calls handleDownloadEvidence on download button click', () => {
@@ -62,5 +65,81 @@ describe('EvidenceCard', () => {
     render(<EvidenceCard {...defaultProps} viewingId="ev-1" />);
     const viewButton = screen.getByTitle('Loading...');
     expect(viewButton).toBeDisabled();
+  });
+
+  it('disables buttons when downloading', () => {
+    render(<EvidenceCard {...defaultProps} downloadingId="ev-1" />);
+    const downloadButton = screen.getByTitle('Downloading...');
+    expect(downloadButton).toBeDisabled();
+  });
+
+  it('renders evidence with mimeType', () => {
+    render(
+      <EvidenceCard
+        {...defaultProps}
+        evidence={{
+          id: 'ev-2',
+          fileName: 'photo.jpg',
+          mimeType: 'image/jpeg',
+          evidenceType: 'KYC',
+          uploadedAt: '2024-01-01',
+        }}
+      />,
+    );
+    expect(screen.getByText('image/jpeg')).toBeInTheDocument();
+    expect(screen.getByText('KYC')).toBeInTheDocument();
+  });
+
+  it('renders uploaded by name via getAssigneeFullName', () => {
+    render(
+      <EvidenceCard
+        {...defaultProps}
+        evidence={{
+          id: 'ev-3',
+          fileName: 'doc.pdf',
+          uploadedBy: 'user-99',
+        }}
+        getAssigneeFullName={() => 'John Doe'}
+      />,
+    );
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+  });
+
+  it('renders uploaded by ID when name is empty', () => {
+    render(
+      <EvidenceCard
+        {...defaultProps}
+        evidence={{
+          id: 'ev-3',
+          fileName: 'doc.pdf',
+          uploadedBy: 'user-id-123',
+        }}
+        getAssigneeFullName={() => ''}
+      />,
+    );
+    expect(screen.getByText('user-id-123')).toBeInTheDocument();
+  });
+
+  it('stops propagation on view button click', () => {
+    const viewFn = vi.fn();
+    render(<EvidenceCard {...defaultProps} handleViewEvidence={viewFn} />);
+    const viewButton = screen.getByTitle('View evidence');
+    const event = new MouseEvent('click', { bubbles: true });
+    const stopPropagation = vi.spyOn(event, 'stopPropagation');
+    viewButton.dispatchEvent(event);
+  });
+
+  it('renders file size when present', () => {
+    render(
+      <EvidenceCard
+        {...defaultProps}
+        evidence={{
+          id: 'ev-4',
+          fileName: 'doc.pdf',
+          fileSize: 2048,
+        }}
+      />,
+    );
+    expect(screen.getByText('2048 bytes')).toBeInTheDocument();
   });
 });

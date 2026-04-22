@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import VisualizationsTab from '../VisualizationsTab';
 
 vi.mock('../visualizations/alertnavigator/AlertNavigatorTab', () => ({
@@ -8,11 +8,15 @@ vi.mock('../visualizations/alertnavigator/AlertNavigatorTab', () => ({
 }));
 
 vi.mock('../visualizations/transactiondetails/TransactionDetailsTab', () => ({
-  default: () => <div data-testid="transaction-details-tab">TransactionDetails</div>,
+  default: () => (
+    <div data-testid="transaction-details-tab">TransactionDetails</div>
+  ),
 }));
 
 vi.mock('../visualizations/transactionhistory/TransactionHistoryTab', () => ({
-  default: () => <div data-testid="transaction-history-tab">TransactionHistory</div>,
+  default: () => (
+    <div data-testid="transaction-history-tab">TransactionHistory</div>
+  ),
 }));
 
 vi.mock('../visualizations/network-analysis/NetworkAnalysisTab', () => ({
@@ -59,6 +63,8 @@ describe('VisualizationsTab', () => {
     expect(screen.getByText('Transaction History')).toBeInTheDocument();
     expect(screen.getByText('Network Analysis')).toBeInTheDocument();
     expect(screen.getByText('Alert History')).toBeInTheDocument();
+    expect(screen.getByText('Conditions')).toBeInTheDocument();
+    expect(screen.getByText('Profile Overview')).toBeInTheDocument();
   });
 
   it('switches to transaction details tab', () => {
@@ -74,5 +80,69 @@ describe('VisualizationsTab', () => {
     await waitFor(() => {
       expect(screen.getByTestId('network-analysis-tab')).toBeInTheDocument();
     });
+  });
+
+  it('switches to transaction history tab', () => {
+    render(<VisualizationsTab {...defaultProps} />);
+    fireEvent.click(screen.getByText('Transaction History'));
+    expect(screen.getByTestId('transaction-history-tab')).toBeInTheDocument();
+  });
+
+  it('switches to alert history tab', () => {
+    render(<VisualizationsTab {...defaultProps} />);
+    fireEvent.click(screen.getByText('Alert History'));
+    expect(screen.getByTestId('alert-history-tab')).toBeInTheDocument();
+  });
+
+  it('switches to conditions tab', () => {
+    render(<VisualizationsTab {...defaultProps} />);
+    fireEvent.click(screen.getByText('Conditions'));
+    expect(screen.getByTestId('conditions-tab')).toBeInTheDocument();
+  });
+
+  it('switches to profile overview tab', () => {
+    render(<VisualizationsTab {...defaultProps} />);
+    fireEvent.click(screen.getByText('Profile Overview'));
+    expect(screen.getByTestId('profile-overview-tab')).toBeInTheDocument();
+  });
+
+  it('shows fallback message for network analysis when alertId is missing', () => {
+    render(<VisualizationsTab caseId={10} transactionId="TXN-001" />);
+    const buttons = screen.getAllByText('Network Analysis');
+    fireEvent.click(buttons[0]);
+    expect(
+      screen.getByText('Select an alert to view network analysis'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows fallback message for transaction history when alertId is missing', () => {
+    render(<VisualizationsTab caseId={10} transactionId="TXN-001" />);
+    fireEvent.click(screen.getByText('Transaction History'));
+    expect(
+      screen.getByText('Select an alert to view network analysis'),
+    ).toBeInTheDocument();
+  });
+
+  it('handles missing tenantId from localStorage', () => {
+    localStorage.removeItem('user');
+    render(<VisualizationsTab {...defaultProps} />);
+    expect(screen.getByTestId('alert-navigator-tab')).toBeInTheDocument();
+  });
+
+  it('handles invalid JSON in localStorage', () => {
+    localStorage.setItem('user', 'invalid-json');
+    render(<VisualizationsTab {...defaultProps} />);
+    expect(screen.getByTestId('alert-navigator-tab')).toBeInTheDocument();
+  });
+
+  it('handles user without tenantId in localStorage', () => {
+    localStorage.setItem('user', JSON.stringify({}));
+    render(<VisualizationsTab {...defaultProps} />);
+    // Network analysis without tenantId should show fallback
+    const buttons = screen.getAllByText('Network Analysis');
+    fireEvent.click(buttons[0]);
+    expect(
+      screen.getByText('Select an alert to view network analysis'),
+    ).toBeInTheDocument();
   });
 });

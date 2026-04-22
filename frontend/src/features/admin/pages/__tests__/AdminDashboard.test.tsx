@@ -46,7 +46,10 @@ vi.mock('../../components/ReferenceResultsTable', () => ({
     <div data-testid="reference-results-table">
       <span data-testid="table-row-count">{data.length}</span>
       {pagination?.onPageChange && (
-        <button data-testid="next-page-btn" onClick={() => pagination.onPageChange(2)}>
+        <button
+          data-testid="next-page-btn"
+          onClick={() => pagination.onPageChange(2)}
+        >
           Next Page
         </button>
       )}
@@ -55,8 +58,18 @@ vi.mock('../../components/ReferenceResultsTable', () => ({
 }));
 
 const mockResults = [
-  { id: 1, txTp: 'pacs.002.001.12', referenceIdName: 'EndToEndId', createdAt: '2026-01-01' },
-  { id: 2, txTp: 'pacs.008.001.10', referenceIdName: 'InstrId', createdAt: '2026-01-02' },
+  {
+    id: 1,
+    txTp: 'pacs.002.001.12',
+    referenceIdName: 'EndToEndId',
+    createdAt: '2026-01-01',
+  },
+  {
+    id: 2,
+    txTp: 'pacs.008.001.10',
+    referenceIdName: 'InstrId',
+    createdAt: '2026-01-02',
+  },
 ];
 
 describe('AdminDashboard', () => {
@@ -64,7 +77,11 @@ describe('AdminDashboard', () => {
     vi.clearAllMocks();
     defaultHookReturn.results = [];
     defaultHookReturn.loading = false;
-    defaultHookReturn.pagination = { currentPage: 1, pageSize: 10, totalItems: 0 };
+    defaultHookReturn.pagination = {
+      currentPage: 1,
+      pageSize: 10,
+      totalItems: 0,
+    };
   });
 
   it('renders dashboard title', () => {
@@ -74,7 +91,9 @@ describe('AdminDashboard', () => {
 
   it('renders the Add Reference section with heading and description', () => {
     render(<AdminDashboard />);
-    expect(screen.getByRole('heading', { name: 'Add Reference' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Add Reference' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/Enter the Transaction Type and System Reference ID/),
     ).toBeInTheDocument();
@@ -83,12 +102,16 @@ describe('AdminDashboard', () => {
   it('renders Transaction Type and System Reference ID input fields', () => {
     render(<AdminDashboard />);
     expect(screen.getByPlaceholderText('Transaction Type')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('System Reference ID')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('System Reference ID'),
+    ).toBeInTheDocument();
   });
 
   it('renders add reference button', () => {
     render(<AdminDashboard />);
-    expect(screen.getByRole('button', { name: /Add Reference/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Add Reference/i }),
+    ).toBeInTheDocument();
   });
 
   it('disables add button when both inputs are empty', () => {
@@ -102,7 +125,9 @@ describe('AdminDashboard', () => {
     fireEvent.change(screen.getByPlaceholderText('Transaction Type'), {
       target: { value: 'pacs.002.001.12' },
     });
-    expect(screen.getByRole('button', { name: /Add Reference/i })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: /Add Reference/i }),
+    ).toBeDisabled();
   });
 
   it('disables add button when only reference ID is filled', () => {
@@ -110,7 +135,9 @@ describe('AdminDashboard', () => {
     fireEvent.change(screen.getByPlaceholderText('System Reference ID'), {
       target: { value: 'EndToEndId' },
     });
-    expect(screen.getByRole('button', { name: /Add Reference/i })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: /Add Reference/i }),
+    ).toBeDisabled();
   });
 
   it('enables add button when both inputs are filled', () => {
@@ -121,7 +148,9 @@ describe('AdminDashboard', () => {
     fireEvent.change(screen.getByPlaceholderText('System Reference ID'), {
       target: { value: 'EndToEndId' },
     });
-    expect(screen.getByRole('button', { name: /Add Reference/i })).not.toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: /Add Reference/i }),
+    ).not.toBeDisabled();
   });
 
   it('calls addReference and clears inputs on submit', async () => {
@@ -136,7 +165,10 @@ describe('AdminDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: /Add Reference/i }));
 
     await waitFor(() => {
-      expect(mockAddReference).toHaveBeenCalledWith('pacs.002.001.12', 'EndToEndId');
+      expect(mockAddReference).toHaveBeenCalledWith(
+        'pacs.002.001.12',
+        'EndToEndId',
+      );
     });
 
     await waitFor(() => {
@@ -148,14 +180,20 @@ describe('AdminDashboard', () => {
   it('shows loading spinner when loading is true', () => {
     defaultHookReturn.loading = true;
     render(<AdminDashboard />);
-    expect(screen.getByText('Loading reference records...')).toBeInTheDocument();
+    expect(
+      screen.getByText('Loading reference records...'),
+    ).toBeInTheDocument();
   });
 
   it('does not show results table or empty state while loading', () => {
     defaultHookReturn.loading = true;
     render(<AdminDashboard />);
-    expect(screen.queryByTestId('reference-results-table')).not.toBeInTheDocument();
-    expect(screen.queryByText('No reference records found.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('reference-results-table'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('No reference records found.'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows empty state when no results and not loading', () => {
@@ -167,7 +205,11 @@ describe('AdminDashboard', () => {
 
   it('renders results table when results exist', () => {
     defaultHookReturn.results = mockResults;
-    defaultHookReturn.pagination = { currentPage: 1, pageSize: 10, totalItems: 2 };
+    defaultHookReturn.pagination = {
+      currentPage: 1,
+      pageSize: 10,
+      totalItems: 2,
+    };
     render(<AdminDashboard />);
     expect(screen.getByTestId('reference-results-table')).toBeInTheDocument();
     expect(screen.getByTestId('table-row-count')).toHaveTextContent('2');
@@ -175,7 +217,11 @@ describe('AdminDashboard', () => {
 
   it('renders results summary when results exist', () => {
     defaultHookReturn.results = mockResults;
-    defaultHookReturn.pagination = { currentPage: 1, pageSize: 10, totalItems: 2 };
+    defaultHookReturn.pagination = {
+      currentPage: 1,
+      pageSize: 10,
+      totalItems: 2,
+    };
     render(<AdminDashboard />);
     expect(screen.getByTestId('results-summary')).toBeInTheDocument();
     expect(screen.getByTestId('total-items')).toHaveTextContent('2');
@@ -184,12 +230,18 @@ describe('AdminDashboard', () => {
   it('does not render results summary or table when results are empty', () => {
     render(<AdminDashboard />);
     expect(screen.queryByTestId('results-summary')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('reference-results-table')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('reference-results-table'),
+    ).not.toBeInTheDocument();
   });
 
   it('passes onPageChange to the results table pagination', () => {
     defaultHookReturn.results = mockResults;
-    defaultHookReturn.pagination = { currentPage: 1, pageSize: 10, totalItems: 2 };
+    defaultHookReturn.pagination = {
+      currentPage: 1,
+      pageSize: 10,
+      totalItems: 2,
+    };
     render(<AdminDashboard />);
     fireEvent.click(screen.getByTestId('next-page-btn'));
     expect(mockOnPageChange).toHaveBeenCalledWith(2);
@@ -197,7 +249,11 @@ describe('AdminDashboard', () => {
 
   it('passes onPageSizeChange to results summary', () => {
     defaultHookReturn.results = mockResults;
-    defaultHookReturn.pagination = { currentPage: 1, pageSize: 10, totalItems: 2 };
+    defaultHookReturn.pagination = {
+      currentPage: 1,
+      pageSize: 10,
+      totalItems: 2,
+    };
     render(<AdminDashboard />);
     fireEvent.click(screen.getByTestId('page-size-btn'));
     expect(mockOnPageSizeChange).toHaveBeenCalledWith(25);

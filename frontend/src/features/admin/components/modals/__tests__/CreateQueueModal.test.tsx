@@ -35,8 +35,12 @@ describe('CreateQueueModal', () => {
   it('renders form when open', () => {
     render(<CreateQueueModal open={true} onClose={onClose} />);
     expect(screen.getByText('Create Work Queue')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Enter a unique queue identifier')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Enter a descriptive name for the queue')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('Enter a unique queue identifier'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('Enter a descriptive name for the queue'),
+    ).toBeInTheDocument();
   });
 
   it('disables create button when fields are empty', () => {
@@ -47,12 +51,18 @@ describe('CreateQueueModal', () => {
 
   it('enables create button when fields are filled', () => {
     render(<CreateQueueModal open={true} onClose={onClose} />);
-    fireEvent.change(screen.getByPlaceholderText('Enter a unique queue identifier'), {
-      target: { value: 'fraud-team' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('Enter a descriptive name for the queue'), {
-      target: { value: 'Fraud Team' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Enter a unique queue identifier'),
+      {
+        target: { value: 'fraud-team' },
+      },
+    );
+    fireEvent.change(
+      screen.getByPlaceholderText('Enter a descriptive name for the queue'),
+      {
+        target: { value: 'Fraud Team' },
+      },
+    );
     const createBtn = screen.getByRole('button', { name: /create queue/i });
     expect(createBtn).not.toBeDisabled();
   });
@@ -65,13 +75,21 @@ describe('CreateQueueModal', () => {
 
   it('creates queue successfully', async () => {
     mockCreateCandidateGroup.mockResolvedValue({});
-    render(<CreateQueueModal open={true} onClose={onClose} onCreate={onCreate} />);
-    fireEvent.change(screen.getByPlaceholderText('Enter a unique queue identifier'), {
-      target: { value: 'fraud-team' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('Enter a descriptive name for the queue'), {
-      target: { value: 'Fraud Team' },
-    });
+    render(
+      <CreateQueueModal open={true} onClose={onClose} onCreate={onCreate} />,
+    );
+    fireEvent.change(
+      screen.getByPlaceholderText('Enter a unique queue identifier'),
+      {
+        target: { value: 'fraud-team' },
+      },
+    );
+    fireEvent.change(
+      screen.getByPlaceholderText('Enter a descriptive name for the queue'),
+      {
+        target: { value: 'Fraud Team' },
+      },
+    );
     fireEvent.click(screen.getByRole('button', { name: /create queue/i }));
 
     await waitFor(() => {
@@ -82,23 +100,35 @@ describe('CreateQueueModal', () => {
       });
     });
     await waitFor(() => {
-      expect(mockSuccess).toHaveBeenCalledWith('Queue Created', 'Candidate group created successfully');
+      expect(mockSuccess).toHaveBeenCalledWith(
+        'Queue Created',
+        'Candidate group created successfully',
+      );
     });
   });
 
   it('handles creation error', async () => {
     mockCreateCandidateGroup.mockRejectedValue(new Error('Duplicate group'));
     render(<CreateQueueModal open={true} onClose={onClose} />);
-    fireEvent.change(screen.getByPlaceholderText('Enter a unique queue identifier'), {
-      target: { value: 'fraud-team' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('Enter a descriptive name for the queue'), {
-      target: { value: 'Fraud Team' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Enter a unique queue identifier'),
+      {
+        target: { value: 'fraud-team' },
+      },
+    );
+    fireEvent.change(
+      screen.getByPlaceholderText('Enter a descriptive name for the queue'),
+      {
+        target: { value: 'Fraud Team' },
+      },
+    );
     fireEvent.click(screen.getByRole('button', { name: /create queue/i }));
 
     await waitFor(() => {
-      expect(mockError).toHaveBeenCalledWith('Creation Failed', 'Duplicate group');
+      expect(mockError).toHaveBeenCalledWith(
+        'Creation Failed',
+        'Duplicate group',
+      );
     });
   });
 });

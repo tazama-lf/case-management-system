@@ -153,8 +153,7 @@ class ApiClient {
 
     // Remove Content-Type if it exists - browser will set it automatically for FormData
     if ('Content-Type' in headers) {
-       
-      delete (headers)['Content-Type'];
+      delete headers['Content-Type'];
     }
 
     const config: RequestInit = {
@@ -173,7 +172,6 @@ class ApiClient {
           const newAuthHeaders = authService.getAuthHeader();
           const retryHeaders = { ...headers, ...newAuthHeaders };
           if ('Content-Type' in retryHeaders) {
-             
             delete (retryHeaders as Record<string, string>)['Content-Type'];
           }
           const retryConfig: RequestInit = {

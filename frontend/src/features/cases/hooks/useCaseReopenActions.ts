@@ -22,7 +22,10 @@ export const useCaseReopenActions = (
     }
   };
 
-  const handleRejectReopenSubmit = async (caseId: number, reason: string): Promise<void> => {
+  const handleRejectReopenSubmit = async (
+    caseId: number,
+    reason: string,
+  ): Promise<void> => {
     try {
       await caseService.rejectCaseReopening(caseId, reason);
       success(

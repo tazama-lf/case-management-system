@@ -21,11 +21,11 @@ export class EvidenceService {
 
     const totalFileSize =
       evidence.fileSize ??
-      (evidence.attachments?.reduce(
+      evidence.attachments?.reduce(
         (sum: number, att: any) => sum + (att.fileSize ?? 0),
         0,
       ) ??
-        0);
+      0;
 
     return {
       ...evidence,
@@ -337,12 +337,14 @@ export class EvidenceService {
       params.append('page', page.toString());
       params.append('limit', limit.toString());
 
-      if (filters.evidenceType)
-        {params.append('evidenceType', filters.evidenceType);}
+      if (filters.evidenceType) {
+        params.append('evidenceType', filters.evidenceType);
+      }
       if (filters.taskId) params.append('taskId', filters.taskId.toString());
       if (filters.uploadedBy) params.append('uploadedBy', filters.uploadedBy);
-      if (filters.verified !== undefined)
-        {params.append('verified', filters.verified.toString());}
+      if (filters.verified !== undefined) {
+        params.append('verified', filters.verified.toString());
+      }
       if (filters.search) params.append('search', filters.search);
 
       const queryString = params.toString();

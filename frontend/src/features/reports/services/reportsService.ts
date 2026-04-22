@@ -37,7 +37,10 @@ class ReportsService {
         ...response,
         stats: {
           totalCases: ReportsService.safeFallback(response.stats.totalCases, 0),
-          closedCases: ReportsService.safeFallback(response.stats.closedCases, 0),
+          closedCases: ReportsService.safeFallback(
+            response.stats.closedCases,
+            0,
+          ),
           openCases: ReportsService.safeFallback(response.stats.openCases, 0),
           avgResolutionTime: ReportsService.safeFallback(
             response.stats.avgResolutionTime,
@@ -148,12 +151,18 @@ class ReportsService {
         ...response,
         stats: {
           totalTasks: ReportsService.safeFallback(response.stats.totalTasks, 0),
-          completionRate: ReportsService.safeFallback(response.stats.completionRate, 0),
+          completionRate: ReportsService.safeFallback(
+            response.stats.completionRate,
+            0,
+          ),
           avgCompletionTime: ReportsService.safeFallback(
             response.stats.avgCompletionTime,
             0,
           ),
-          overdueTasks: ReportsService.safeFallback(response.stats.overdueTasks, 0),
+          overdueTasks: ReportsService.safeFallback(
+            response.stats.overdueTasks,
+            0,
+          ),
         },
         completionByType: response.completionByType,
         avgCompletionTime: response.avgCompletionTime,
@@ -216,9 +225,18 @@ class ReportsService {
         ...response,
         stats: {
           totalLogs: ReportsService.safeFallback(response.stats.totalLogs, 0),
-          caseActions: ReportsService.safeFallback(response.stats.caseActions, 0),
-          userSessions: ReportsService.safeFallback(response.stats.userSessions, 0),
-          systemWarnings: ReportsService.safeFallback(response.stats.systemWarnings, 0),
+          caseActions: ReportsService.safeFallback(
+            response.stats.caseActions,
+            0,
+          ),
+          userSessions: ReportsService.safeFallback(
+            response.stats.userSessions,
+            0,
+          ),
+          systemWarnings: ReportsService.safeFallback(
+            response.stats.systemWarnings,
+            0,
+          ),
         },
         auditLogs: response.auditLogs,
       };
@@ -299,7 +317,9 @@ class ReportsService {
 
       const cases = Array.isArray(casesResponse)
         ? casesResponse
-        : ((casesResponse.data ?? casesResponse.cases ?? []) as Array<Record<string, unknown>>);
+        : ((casesResponse.data ?? casesResponse.cases ?? []) as Array<
+            Record<string, unknown>
+          >);
 
       if (cases.length === 0) {
         console.warn(
@@ -374,60 +394,64 @@ class ReportsService {
           totalEvidenceItems += caseEvidence.length;
 
           // Map evidence to include full object with all available fields
-          caseEvidence.map(
-            (e: Record<string, unknown>) => {
-              const evidenceId =
-                (e.id as string) ||
-                (e.evidenceId as string) ||
-                (e.evidence_id as string) ||
-                `unknown_${Date.now()}`;
+          caseEvidence.map((e: Record<string, unknown>) => {
+            const evidenceId =
+              (e.id as string) ||
+              (e.evidenceId as string) ||
+              (e.evidence_id as string) ||
+              `unknown_${Date.now()}`;
 
-              // Extract fileName from attachments array if it exists there
-              const attachments = e.attachments as
-                | Array<Record<string, unknown>>
-                | undefined;
-              const firstAttachment = attachments?.[0];
+            // Extract fileName from attachments array if it exists there
+            const attachments = e.attachments as
+              | Array<Record<string, unknown>>
+              | undefined;
+            const firstAttachment = attachments?.[0];
 
-              const fileName =
-                (e.fileName as string) ||
-                (e.file_name as string) ||
-                (firstAttachment?.fileName as string) ||
-                'Unknown Document';
+            const fileName =
+              (e.fileName as string) ||
+              (e.file_name as string) ||
+              (firstAttachment?.fileName as string) ||
+              'Unknown Document';
 
-              const fileSize =
-                (e.fileSize as number) ||
-                (firstAttachment?.fileSize as number) ||
-                undefined;
+            const fileSize =
+              (e.fileSize as number) ||
+              (firstAttachment?.fileSize as number) ||
+              undefined;
 
-              const mimeType =
-                (e.mimeType as string) ||
-                (firstAttachment?.mimeType as string) ||
-                undefined;
+            const mimeType =
+              (e.mimeType as string) ||
+              (firstAttachment?.mimeType as string) ||
+              undefined;
 
-              const hash =
-                (e.hash as string) ||
-                (firstAttachment?.hash as string) ||
-                undefined;
+            const hash =
+              (e.hash as string) ||
+              (firstAttachment?.hash as string) ||
+              undefined;
 
-              return {
-                id: evidenceId,
-                fileName,
-                fileSize,
-                mimeType,
-                evidenceType: (e.evidenceType as string) || undefined,
-                uploadedBy: (e.uploadedBy as string) || undefined,
-                uploadedByName: (e.uploadedByName as string) || undefined,
-                uploadedAt: (e.uploadedAt as string) || undefined,
-                description: (e.description as string) || undefined,
-                hash,
-              };
-            },
-          );
+            return {
+              id: evidenceId,
+              fileName,
+              fileSize,
+              mimeType,
+              evidenceType: (e.evidenceType as string) || undefined,
+              uploadedBy: (e.uploadedBy as string) || undefined,
+              uploadedByName: (e.uploadedByName as string) || undefined,
+              uploadedAt: (e.uploadedAt as string) || undefined,
+              description: (e.description as string) || undefined,
+              hash,
+            };
+          });
 
-          const evidenceByTask: Record<string, Array<Record<string, unknown>>> = {};
+          const evidenceByTask: Record<
+            string,
+            Array<Record<string, unknown>>
+          > = {};
           caseEvidence.forEach((e) => {
             const rawTaskId = e.taskId ?? e.task_id;
-            const taskId = typeof rawTaskId === 'string' || typeof rawTaskId === 'number' ? String(rawTaskId) : 'unknown_task';
+            const taskId =
+              typeof rawTaskId === 'string' || typeof rawTaskId === 'number'
+                ? String(rawTaskId)
+                : 'unknown_task';
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Dynamic key access may return undefined at runtime
             evidenceByTask[taskId] ||= [];
             evidenceByTask[taskId].push(e);
@@ -437,7 +461,9 @@ class ReportsService {
             ([taskId, evidences]) => ({
               taskId: taskId === 'unknown_task' ? undefined : Number(taskId),
               supportingEvidence: evidences.map((e) => {
-                const attachments = e.attachments as Array<Record<string, unknown>> | undefined;
+                const attachments = e.attachments as
+                  | Array<Record<string, unknown>>
+                  | undefined;
                 const firstAttachment = attachments?.[0];
 
                 return {
@@ -445,9 +471,16 @@ class ReportsService {
                     ((e.id as string | undefined) ?? '') ||
                     ((e.evidenceId as string | undefined) ?? '') ||
                     `unknown_${String(Date.now())}`,
-                  fileName: (e.fileName ?? e.file_name ?? firstAttachment?.fileName ?? 'Unknown Document') as string,
-                  fileSize: (e.fileSize ?? firstAttachment?.fileSize) as number | undefined,
-                  mimeType: (e.mimeType ?? firstAttachment?.mimeType) as string | undefined,
+                  fileName: (e.fileName ??
+                    e.file_name ??
+                    firstAttachment?.fileName ??
+                    'Unknown Document') as string,
+                  fileSize: (e.fileSize ?? firstAttachment?.fileSize) as
+                    | number
+                    | undefined,
+                  mimeType: (e.mimeType ?? firstAttachment?.mimeType) as
+                    | string
+                    | undefined,
                   evidenceType: e.evidenceType as string | undefined,
                   uploadedBy: e.uploadedBy as string | undefined,
                   uploadedByName: e.uploadedByName as string | undefined,

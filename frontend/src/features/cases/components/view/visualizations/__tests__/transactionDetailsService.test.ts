@@ -22,7 +22,10 @@ describe('TransactionDetailsService', () => {
     };
     vi.mocked(apiClient.get).mockResolvedValue(mockResponse);
 
-    const result = await transactionDetailsService.getTransactionDetails('TXN-001', 'DEFAULT');
+    const result = await transactionDetailsService.getTransactionDetails(
+      'TXN-001',
+      'DEFAULT',
+    );
     expect(apiClient.get).toHaveBeenCalledWith(
       '/api/v1/lakehouse/transaction-detail/TXN-001?tenantId=DEFAULT',
     );

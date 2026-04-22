@@ -18,7 +18,10 @@ describe('TransactionHistoryService', () => {
     const mockResponse = { transactions: [], summary: {} };
     vi.mocked(apiClient.get).mockResolvedValue(mockResponse);
 
-    const result = await transactionHistoryService.getTransactionHistory('ENT-001', 'DEFAULT');
+    const result = await transactionHistoryService.getTransactionHistory(
+      'ENT-001',
+      'DEFAULT',
+    );
     expect(apiClient.get).toHaveBeenCalledWith(
       '/api/v1/lakehouse/transaction-history/ENT-001?tenantId=DEFAULT',
     );

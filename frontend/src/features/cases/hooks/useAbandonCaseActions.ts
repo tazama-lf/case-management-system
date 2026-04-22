@@ -8,7 +8,10 @@ export const useAbandonCaseActions = (
 } => {
   const { success, error } = useToast();
 
-  const handleAbandonSubmit = async (caseId: number, reason: string): Promise<void> => {
+  const handleAbandonSubmit = async (
+    caseId: number,
+    reason: string,
+  ): Promise<void> => {
     try {
       const abandonCaseData: AbandonCaseDto = {
         reason: reason.trim(),

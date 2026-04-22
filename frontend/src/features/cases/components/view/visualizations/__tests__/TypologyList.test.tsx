@@ -12,7 +12,11 @@ describe('TypologyList', () => {
 
   it('renders all typology names', () => {
     render(
-      <TypologyList typologies={typologies} expandedIndex={null} onToggle={vi.fn()} />,
+      <TypologyList
+        typologies={typologies}
+        expandedIndex={null}
+        onToggle={vi.fn()}
+      />,
     );
     expect(screen.getByText('Money Laundering')).toBeInTheDocument();
     expect(screen.getByText('Fraud')).toBeInTheDocument();
@@ -21,7 +25,11 @@ describe('TypologyList', () => {
 
   it('displays scores', () => {
     render(
-      <TypologyList typologies={typologies} expandedIndex={null} onToggle={vi.fn()} />,
+      <TypologyList
+        typologies={typologies}
+        expandedIndex={null}
+        onToggle={vi.fn()}
+      />,
     );
     expect(screen.getByText('90')).toBeInTheDocument();
     expect(screen.getByText('65')).toBeInTheDocument();
@@ -31,7 +39,11 @@ describe('TypologyList', () => {
   it('calls onToggle when clicked', () => {
     const onToggle = vi.fn();
     render(
-      <TypologyList typologies={typologies} expandedIndex={null} onToggle={onToggle} />,
+      <TypologyList
+        typologies={typologies}
+        expandedIndex={null}
+        onToggle={onToggle}
+      />,
     );
     fireEvent.click(screen.getByText('Money Laundering'));
     expect(onToggle).toHaveBeenCalledWith(0);

@@ -14,9 +14,7 @@ vi.mock('../network-analysis/VoilaFrame', () => ({
 
 describe('AccountNetworkTab', () => {
   it('renders VoilaFrame with account network config', () => {
-    render(
-      <AccountNetworkTab entityId="ACC-001" tenantId="DEFAULT" />,
-    );
+    render(<AccountNetworkTab entityId="ACC-001" tenantId="DEFAULT" />);
     expect(screen.getByTestId('voila-frame')).toBeInTheDocument();
     expect(screen.getByText('Account Network Analysis')).toBeInTheDocument();
     expect(screen.getByText('account-network.ipynb')).toBeInTheDocument();

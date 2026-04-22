@@ -150,9 +150,7 @@ describe('RejectCaseCreationModal', () => {
     await user.type(textarea, 'ab');
 
     expect(
-      screen.getByText(
-        /Rejection reason must be at least 4 characters/i,
-      ),
+      screen.getByText(/Rejection reason must be at least 4 characters/i),
     ).toBeInTheDocument();
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
@@ -332,9 +330,7 @@ describe('RejectCaseCreationModal', () => {
     await user.type(textarea, 'ab');
 
     expect(
-      screen.getByText(
-        /Rejection reason must be at least 4 characters/i,
-      ),
+      screen.getByText(/Rejection reason must be at least 4 characters/i),
     ).toBeInTheDocument();
 
     // Type valid reason

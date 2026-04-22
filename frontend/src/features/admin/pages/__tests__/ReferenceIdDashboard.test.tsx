@@ -12,18 +12,16 @@ vi.mock('@/shared/components/ui', () => ({
   ),
 }));
 
-vi.mock('../..', () => ({
-  ReferenceDashboardContent: () => <div data-testid="reference-dashboard-content" />,
-}));
-
 describe('ReferenceIdDashboard', () => {
   it('renders with title', () => {
     render(<ReferenceIdDashboard />);
     expect(screen.getByText('Reference ID Dashboard')).toBeInTheDocument();
   });
 
-  it('renders ReferenceDashboardContent', () => {
+  it('renders dashboard content', () => {
     render(<ReferenceIdDashboard />);
-    expect(screen.getByTestId('reference-dashboard-content')).toBeInTheDocument();
+    expect(
+      screen.getByText('Reference ID Dashboard content'),
+    ).toBeInTheDocument();
   });
 });

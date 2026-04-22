@@ -170,7 +170,10 @@ export const useCaseDashboard = (): {
 
       // Update pagination state from backend response
       if (response.pagination) {
-        const pagination = response.pagination as { total: number; totalPages: number };
+        const pagination = response.pagination as {
+          total: number;
+          totalPages: number;
+        };
         setBackendTotalItems(pagination.total);
         setBackendTotalPages(pagination.totalPages);
       }
@@ -412,4 +415,3 @@ export const useCaseDashboard = (): {
 };
 
 export default useCaseDashboard;
-

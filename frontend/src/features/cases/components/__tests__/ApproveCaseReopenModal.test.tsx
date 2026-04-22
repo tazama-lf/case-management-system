@@ -238,7 +238,7 @@ describe('ApproveCaseReopenModal component', () => {
 
   it('does not close when submitting', async () => {
     const user = userEvent.setup();
-    const onApprove = vi.fn().mockImplementation(() => new Promise(() => { })); // Never resolves
+    const onApprove = vi.fn().mockImplementation(() => new Promise(() => {})); // Never resolves
 
     render(
       <ApproveCaseReopenModal

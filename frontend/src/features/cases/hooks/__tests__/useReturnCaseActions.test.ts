@@ -75,9 +75,7 @@ describe('useReturnCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Return Case for Review Failed',
-        expect.stringContaining(
-          'Cannot return case for review',
-        ),
+        expect.stringContaining('Cannot return case for review'),
       );
     });
   });

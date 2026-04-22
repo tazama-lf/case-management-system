@@ -1,4 +1,3 @@
- 
 /* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '../../../shared/services/apiClient';
 import type {
@@ -35,12 +34,14 @@ class DashboardService {
       );
 
       const stats = response.stats as Record<string, unknown> | undefined;
-      const caseTypes = (response.caseTypes ?? []) as Array<Record<string, unknown>>;
+      const caseTypes = (response.caseTypes ?? []) as Array<
+        Record<string, unknown>
+      >;
 
       return {
         totalAlerts: (stats?.totalCases ?? 0) as number,
-        highPriorityAlerts:
-          (caseTypes.find((ct) => ct.name === 'FRAUD')?.count ?? 0) as number,
+        highPriorityAlerts: (caseTypes.find((ct) => ct.name === 'FRAUD')
+          ?.count ?? 0) as number,
         openCases: (stats?.openCases ?? 0) as number,
         casesResolvedThisWeek: (stats?.closedCases ?? 0) as number,
       };
@@ -61,10 +62,14 @@ class DashboardService {
         '/api/v1/reports/case-status?dateRange=last7',
       );
 
-      const caseTypes = (response.caseTypes ?? []) as Array<Record<string, unknown>>;
+      const caseTypes = (response.caseTypes ?? []) as Array<
+        Record<string, unknown>
+      >;
 
       return caseTypes.map((caseType) => ({
-        priority: DashboardService.mapCaseTypeToPriority(caseType.name as string),
+        priority: DashboardService.mapCaseTypeToPriority(
+          caseType.name as string,
+        ),
         count: caseType.count as number,
         description: `${String(caseType.name).toLowerCase()} cases requiring attention`,
       }));
@@ -95,7 +100,10 @@ class DashboardService {
       const response = await apiClient.get<Record<string, unknown>>(
         '/api/v1/reports/case-status?dateRange=last30',
       );
-      const statusDist = (response.statusDistribution ?? {}) as Record<string, unknown>;
+      const statusDist = (response.statusDistribution ?? {}) as Record<
+        string,
+        unknown
+      >;
 
       return [
         {
@@ -136,7 +144,9 @@ class DashboardService {
     }
   }
 
-  private static mapCaseTypeToPriority(caseType: string): 'high' | 'medium' | 'low' {
+  private static mapCaseTypeToPriority(
+    caseType: string,
+  ): 'high' | 'medium' | 'low' {
     switch (caseType) {
       case 'FRAUD':
       case 'FRAUD_AND_AML':
@@ -152,4 +162,3 @@ class DashboardService {
 export const dashboardService = new DashboardService();
 export default dashboardService;
 /* eslint-enable @typescript-eslint/class-methods-use-this */
- 

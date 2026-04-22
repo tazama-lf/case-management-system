@@ -1,4 +1,3 @@
- 
 import type {
   Alert as TriageAlert,
   Priority,
@@ -23,10 +22,14 @@ function extractAlertType(backendAlert: unknown): AlertType | null {
 
   try {
     const alertData = alert.alert_data as Record<string, unknown> | undefined;
-    const tadpResult = alertData?.tadpResult as Record<string, unknown> | undefined;
+    const tadpResult = alertData?.tadpResult as
+      | Record<string, unknown>
+      | undefined;
     const typologyResults = tadpResult?.typologyResult;
     if (Array.isArray(typologyResults) && typologyResults.length > 0) {
-      const firstResult = typologyResults[0] as Record<string, unknown> | undefined;
+      const firstResult = typologyResults[0] as
+        | Record<string, unknown>
+        | undefined;
       const typologyId = firstResult?.id;
       if (typologyId && typeof typologyId === 'string') {
         if (typologyId.includes('typology')) return 'AML';
@@ -53,7 +56,9 @@ function extractRiskScore(alertData: unknown): number {
     const tadpResult = data?.tadpResult as Record<string, unknown> | undefined;
     const typologyResults = tadpResult?.typologyResult;
     if (Array.isArray(typologyResults) && typologyResults.length > 0) {
-      const firstResult = typologyResults[0] as Record<string, unknown> | undefined;
+      const firstResult = typologyResults[0] as
+        | Record<string, unknown>
+        | undefined;
       const result = firstResult?.result;
       return typeof result === 'number' ? result : 0;
     }
@@ -180,7 +185,9 @@ function extractTransactionId(transaction: unknown): string | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
   const txn = transaction as Record<string, unknown>;
-  return (txn.transactionId ?? txn.txnId ?? txn.id ?? txn.TxId ?? undefined) as string | undefined;
+  return (txn.transactionId ?? txn.txnId ?? txn.id ?? txn.TxId ?? undefined) as
+    | string
+    | undefined;
 }
 
 function extractAmount(transaction: unknown): number | undefined {
@@ -189,14 +196,20 @@ function extractAmount(transaction: unknown): number | undefined {
   const txn = transaction as Record<string, unknown>;
   const amount = txn.amount ?? txn.AmtRaw ?? txn.TxAmt ?? txn.value;
 
-  return typeof amount === 'number' ? amount : parseFloat(amount as string) || undefined;
+  return typeof amount === 'number'
+    ? amount
+    : parseFloat(amount as string) || undefined;
 }
 
 function extractCurrency(transaction: unknown): string | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
   const txn = transaction as Record<string, unknown>;
-  return (txn.currency ?? txn.ccy ?? txn.CcyCode ?? txn.currencyCode ?? 'USD') as string;
+  return (txn.currency ??
+    txn.ccy ??
+    txn.CcyCode ??
+    txn.currencyCode ??
+    'USD') as string;
 }
 
 export function transformBackendAlertsToUI(
@@ -209,4 +222,3 @@ export const convertToTriageAlert = (alert: Alert): TriageAlert => ({
   ...alert,
   alert_type: alert.alert_type ?? null,
 });
- 

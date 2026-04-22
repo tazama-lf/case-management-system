@@ -79,11 +79,7 @@ describe('useAlertsQuery', () => {
         { search: 'test' },
       ]);
       expect(alertsQueryKeys.details()).toEqual(['alerts', 'detail']);
-      expect(alertsQueryKeys.detail(1)).toEqual([
-        'alerts',
-        'detail',
-        1,
-      ]);
+      expect(alertsQueryKeys.detail(1)).toEqual(['alerts', 'detail', 1]);
       expect(alertsQueryKeys.actionHistory(1)).toEqual([
         'alerts',
         'detail',
@@ -290,9 +286,7 @@ describe('useAlertsQuery', () => {
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.actionHistory).toEqual(mockHistory);
-      expect(mockTriageService.getAlertActionHistory).toHaveBeenCalledWith(
-        1,
-      );
+      expect(mockTriageService.getAlertActionHistory).toHaveBeenCalledWith(1);
     });
 
     it('returns empty array when alertId is null', () => {
@@ -440,13 +434,10 @@ describe('useAlertsQuery', () => {
       });
 
       await waitFor(() => {
-        expect(mockTriageService.performManualTriage).toHaveBeenCalledWith(
-          1,
-          {
-            action: 'APPROVE',
-            notes: 'Looks good',
-          },
-        );
+        expect(mockTriageService.performManualTriage).toHaveBeenCalledWith(1, {
+          action: 'APPROVE',
+          notes: 'Looks good',
+        });
       });
     });
 

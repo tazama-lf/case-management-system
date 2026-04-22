@@ -1,4 +1,3 @@
- 
 /* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '../../../shared/services/apiClient';
 import type { ApiErrorResponse } from '../../alerts/types/triage.types';
@@ -77,7 +76,7 @@ export class CommentService {
       const message =
         error instanceof Error ? error.message : 'Failed to add comment';
 
-        throw new Error(message, { cause: error });
+      throw new Error(message, { cause: error });
     }
   }
 
@@ -142,4 +141,3 @@ export class CommentService {
 
 export const commentService = new CommentService();
 /* eslint-enable @typescript-eslint/class-methods-use-this */
- 

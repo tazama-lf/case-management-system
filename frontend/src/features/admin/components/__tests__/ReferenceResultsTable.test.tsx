@@ -11,8 +11,18 @@ vi.mock('@/shared', () => ({
 
 describe('ReferenceResultsTable', () => {
   const mockData = [
-    { id: 1, txTp: 'pacs.008', referenceIdName: 'REF-001', createdAt: '2024-01-01' },
-    { id: 2, txTp: 'pacs.002', referenceIdName: 'REF-002', createdAt: '2024-01-02' },
+    {
+      id: 1,
+      txTp: 'pacs.008',
+      referenceIdName: 'REF-001',
+      createdAt: '2024-01-01',
+    },
+    {
+      id: 2,
+      txTp: 'pacs.002',
+      referenceIdName: 'REF-002',
+      createdAt: '2024-01-02',
+    },
   ];
 
   it('renders table headers', () => {
@@ -33,7 +43,11 @@ describe('ReferenceResultsTable', () => {
 
   it('shows empty message when no data', () => {
     render(<ReferenceResultsTable data={[]} />);
-    expect(screen.getByText('No reference records found matching your search criteria.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'No reference records found matching your search criteria.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('renders pagination when provided', () => {

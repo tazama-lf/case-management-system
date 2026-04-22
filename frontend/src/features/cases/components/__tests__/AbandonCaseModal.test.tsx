@@ -236,7 +236,7 @@ describe('AbandonCaseModal component', () => {
   it('does not close when submitting', async () => {
     const user = userEvent.setup();
     const { onAbandon, onClose } = renderModal();
-    onAbandon.mockImplementation(() => new Promise(() => { })); // Never resolves
+    onAbandon.mockImplementation(() => new Promise(() => {})); // Never resolves
 
     const textarea = screen.getByPlaceholderText(/provide a detailed reason/i);
     const submitButton = screen.getByRole('button', {

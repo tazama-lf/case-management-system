@@ -1,4 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type Mock,
+} from 'vitest';
 import { dashboardService } from '../dashboardService';
 import apiClient from '../../../../shared/services/apiClient';
 
@@ -80,7 +88,7 @@ describe('dashboardService', () => {
     it('handles errors and throws with message', async () => {
       const consoleSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => { });
+        .mockImplementation(() => {});
       const error = new Error('Network error');
 
       // Mock getDashboardStats to throw, which will cause Promise.all to reject
@@ -121,7 +129,7 @@ describe('dashboardService', () => {
     it('returns default values when API call fails', async () => {
       const consoleSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => { });
+        .mockImplementation(() => {});
       (apiClient.get as Mock).mockRejectedValue(new Error('API error'));
 
       const result = await dashboardService.getDashboardStats();
@@ -224,7 +232,7 @@ describe('dashboardService', () => {
     it('returns default alerts when API call fails', async () => {
       const consoleSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => { });
+        .mockImplementation(() => {});
       (apiClient.get as Mock).mockRejectedValue(new Error('API error'));
 
       const result = await dashboardService.getRecentAlerts();
@@ -313,7 +321,7 @@ describe('dashboardService', () => {
     it('returns default cases when API call fails', async () => {
       const consoleSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => { });
+        .mockImplementation(() => {});
       (apiClient.get as Mock).mockRejectedValue(new Error('API error'));
 
       const result = await dashboardService.getActiveCases();

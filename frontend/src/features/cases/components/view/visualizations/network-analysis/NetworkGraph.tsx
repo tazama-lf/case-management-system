@@ -38,9 +38,9 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({
   const [zoom, setZoom] = React.useState(1);
   const svgRef = React.useRef<SVGSVGElement>(null);
 
-  const handleZoomIn = () => setZoom((prev) => Math.min(prev + 0.2, 2));
-  const handleZoomOut = () => setZoom((prev) => Math.max(prev - 0.2, 0.5));
-  const handleReset = () => setZoom(1);
+  const handleZoomIn = () => { setZoom((prev) => Math.min(prev + 0.2, 2)); };
+  const handleZoomOut = () => { setZoom((prev) => Math.max(prev - 0.2, 0.5)); };
+  const handleReset = () => { setZoom(1); };
 
   const getNodeColor = (node: NetworkNodeData) => {
     if (node.type === 'counterparty') {
@@ -203,13 +203,10 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({
         </text>
 
         {/* Node Label */}
-        <text
-          y={10}
-          textAnchor="middle"
-          fill="#6B7280"
-          fontSize={fontSize - 2}
-        >
-          {node.label.length > 12 ? `${node.label.slice(0, 12)}...` : node.label}
+        <text y={10} textAnchor="middle" fill="#6B7280" fontSize={fontSize - 2}>
+          {node.label.length > 12
+            ? `${node.label.slice(0, 12)}...`
+            : node.label}
         </text>
 
         {/* Sublabel */}

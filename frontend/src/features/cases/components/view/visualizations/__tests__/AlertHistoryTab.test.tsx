@@ -15,13 +15,13 @@ vi.mock('../network-analysis/VoilaFrame', () => ({
 describe('AlertHistoryTab', () => {
   it('shows error state when no transactionId', () => {
     render(<AlertHistoryTab tenantId="DEFAULT" />);
-    expect(screen.getByText('Transaction Data Unavailable')).toBeInTheDocument();
+    expect(
+      screen.getByText('Transaction Data Unavailable'),
+    ).toBeInTheDocument();
   });
 
   it('renders VoilaFrame with transaction data', () => {
-    render(
-      <AlertHistoryTab transactionId="TXN-001" tenantId="DEFAULT" />,
-    );
+    render(<AlertHistoryTab transactionId="TXN-001" tenantId="DEFAULT" />);
     expect(screen.getByTestId('voila-frame')).toBeInTheDocument();
     expect(screen.getByText('Alert History')).toBeInTheDocument();
   });

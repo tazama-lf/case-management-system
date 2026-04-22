@@ -32,12 +32,16 @@ describe('JupyterVisualization', () => {
       />,
     );
     await waitFor(() => {
-      expect(screen.getByText('Failed to load visualization configuration')).toBeInTheDocument();
+      expect(
+        screen.getByText('Failed to load visualization configuration'),
+      ).toBeInTheDocument();
     });
   });
 
   it('renders iframe on successful fetch', async () => {
-    vi.mocked(apiClient.get).mockResolvedValue({ url: 'https://jupyter.test/viz' });
+    vi.mocked(apiClient.get).mockResolvedValue({
+      url: 'https://jupyter.test/viz',
+    });
     const { container } = render(
       <JupyterVisualization
         notebook="test-notebook"

@@ -1,4 +1,3 @@
- 
 /* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '../../../shared/services/apiClient';
 import type { Alert } from '../types/alertsdashboard.types';
@@ -182,11 +181,13 @@ class TriageService {
     }
   }
 
-  async getAlertTransactionalData(alertId: number): Promise<TransactionDetailRecordDTO[]> {
+  async getAlertTransactionalData(
+    alertId: number,
+  ): Promise<TransactionDetailRecordDTO[]> {
     try {
-      const response = await apiClient.get<{ transactionData: TransactionDataResponseDTO }>(
-        `${this.alertBaseUrl}/${alertId}/transaction-data`,
-      );
+      const response = await apiClient.get<{
+        transactionData: TransactionDataResponseDTO;
+      }>(`${this.alertBaseUrl}/${alertId}/transaction-data`);
       return response.transactionData.data;
     } catch (error) {
       throw this.handleError(error, 'close alert');
@@ -234,4 +235,3 @@ class TriageService {
 
 export default new TriageService();
 /* eslint-enable @typescript-eslint/class-methods-use-this */
- 

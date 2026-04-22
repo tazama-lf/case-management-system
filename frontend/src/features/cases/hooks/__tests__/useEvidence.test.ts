@@ -81,9 +81,7 @@ describe('useEvidence', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(evidenceService.getCaseEvidence).toHaveBeenCalledWith(
-        123,
-      );
+      expect(evidenceService.getCaseEvidence).toHaveBeenCalledWith(123);
     });
   });
 

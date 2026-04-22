@@ -1,4 +1,3 @@
- 
 /* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '../../../shared/services/apiClient';
 import type { ApiErrorResponse } from '../../alerts/types/triage.types';
@@ -75,14 +74,17 @@ export class FilterService {
   }
 
   private handleError(error: unknown, operation: string): Error {
-    const err = error as { response?: { data?: ApiErrorResponse }; message?: string } | undefined;
+    const err = error as
+      | { response?: { data?: ApiErrorResponse }; message?: string }
+      | undefined;
     if (err?.response?.data) {
       return new Error(err.response.data.message || `Failed to ${operation}`);
     }
-    return new Error(`Failed to ${operation}: ${err?.message ?? 'Unknown error'}`);
+    return new Error(
+      `Failed to ${operation}: ${err?.message ?? 'Unknown error'}`,
+    );
   }
 }
 
 export const filterService = new FilterService();
 /* eslint-enable @typescript-eslint/class-methods-use-this */
- 

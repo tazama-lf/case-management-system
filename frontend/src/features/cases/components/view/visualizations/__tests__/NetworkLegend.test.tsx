@@ -6,9 +6,20 @@ import type { LegendItem } from '../network-analysis/NetworkLegend';
 
 describe('NetworkLegend', () => {
   const items: LegendItem[] = [
-    { color: '#EF4444', label: 'Alert Triggered', type: 'circle', ringColor: '#EF4444' },
+    {
+      color: '#EF4444',
+      label: 'Alert Triggered',
+      type: 'circle',
+      ringColor: '#EF4444',
+    },
     { color: '#6366F1', label: 'Normal Account', type: 'circle' },
-    { color: '#F472B6', label: 'Outbound Flow', type: 'line', lineStyle: 'dashed', hasArrow: true },
+    {
+      color: '#F472B6',
+      label: 'Outbound Flow',
+      type: 'line',
+      lineStyle: 'dashed',
+      hasArrow: true,
+    },
   ];
 
   it('renders legend title', () => {

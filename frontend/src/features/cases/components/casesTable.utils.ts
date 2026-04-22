@@ -119,7 +119,10 @@ export const transformBackendCaseToUI = (
     status: formatStatus(backendCase.status),
     statusColor: getStatusColor(backendCase.status),
     typologyId:
-      alert?.alert_id.toString().substring(TYPOLOGY_ID_SUBSTRING_START, TYPOLOGY_ID_SUBSTRING_END) ?? 'N/A',
+      alert?.alert_id
+        .toString()
+        .substring(TYPOLOGY_ID_SUBSTRING_START, TYPOLOGY_ID_SUBSTRING_END) ??
+      'N/A',
     score: alert?.confidence_per ?? SCORE_MIN,
     createdOn: formatDate(backendCase.created_at),
     pickedOn:

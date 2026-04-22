@@ -270,7 +270,7 @@ describe('ApproveCaseCreationModal component', () => {
 
   it('does not close when submitting', async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn().mockImplementation(() => new Promise(() => { })); // Never resolves
+    const onSubmit = vi.fn().mockImplementation(() => new Promise(() => {})); // Never resolves
     const onClose = vi.fn();
 
     render(

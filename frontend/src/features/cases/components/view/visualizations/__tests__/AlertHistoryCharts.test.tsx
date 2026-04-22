@@ -6,8 +6,12 @@ import { AlertHistoryCharts } from '../alerthistory/components/AlertHistoryChart
 // Mock recharts
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: any) => <div>{children}</div>,
-  LineChart: ({ children }: any) => <div data-testid="line-chart">{children}</div>,
-  BarChart: ({ children }: any) => <div data-testid="bar-chart">{children}</div>,
+  LineChart: ({ children }: any) => (
+    <div data-testid="line-chart">{children}</div>
+  ),
+  BarChart: ({ children }: any) => (
+    <div data-testid="bar-chart">{children}</div>
+  ),
   Line: () => <div />,
   Bar: () => <div />,
   XAxis: () => <div />,
@@ -29,7 +33,9 @@ describe('AlertHistoryCharts', () => {
 
   it('renders both charts', () => {
     render(<AlertHistoryCharts countData={countData} valueData={valueData} />);
-    expect(screen.getByText('Alert, Case & Investigation Trend')).toBeInTheDocument();
+    expect(
+      screen.getByText('Alert, Case & Investigation Trend'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Transaction Value Trend')).toBeInTheDocument();
   });
 

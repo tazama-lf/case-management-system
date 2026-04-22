@@ -123,10 +123,7 @@ describe('ResumeCaseModal', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(mockOnResume).toHaveBeenCalledWith(
-        123,
-        'This is a valid reason',
-      );
+      expect(mockOnResume).toHaveBeenCalledWith(123, 'This is a valid reason');
     });
 
     expect(mockOnClose).toHaveBeenCalled();

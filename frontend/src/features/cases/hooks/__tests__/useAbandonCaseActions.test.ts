@@ -73,7 +73,104 @@ describe('useAbandonCaseActions', () => {
     ).rejects.toThrow();
 
     await waitFor(() => {
-      expect(mockError).toHaveBeenCalled();
+      expect(mockError).toHaveBeenCalledWith(
+        'Abandon Case Failed',
+        expect.stringContaining('Access denied'),
+      );
+    });
+  });
+
+  it('handles 403 error', async () => {
+    const error = new Error('403 Forbidden');
+    (caseService.abandonCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useAbandonCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleAbandonSubmit('CASE-123', 'Test reason'),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Abandon Case Failed',
+        expect.stringContaining('Access denied'),
+      );
+    });
+  });
+
+  it('handles not found error', async () => {
+    const error = new Error('Case not found 404');
+    (caseService.abandonCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useAbandonCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleAbandonSubmit('CASE-123', 'Test reason'),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Abandon Case Failed',
+        expect.stringContaining('Case not found'),
+      );
+    });
+  });
+
+  it('handles No complete new Case Task error', async () => {
+    const error = new Error('No complete new Case Task exists');
+    (caseService.abandonCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useAbandonCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleAbandonSubmit('CASE-123', 'Test reason'),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Abandon Case Failed',
+        expect.stringContaining('Cannot abandon case (pending task)'),
+      );
+    });
+  });
+
+  it('handles generic backend error', async () => {
+    const error = new Error('Something unexpected');
+    (caseService.abandonCase as vi.Mock).mockRejectedValue(error);
+
+    const { result } = renderHook(() =>
+      useAbandonCaseActions(mockRefreshCases),
+    );
+
+    await expect(
+      result.current.handleAbandonSubmit('CASE-123', 'Test reason'),
+    ).rejects.toThrow();
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Abandon Case Failed',
+        'Something unexpected',
+      );
+    });
+  });
+
+  it('trims reason before sending', async () => {
+    (caseService.abandonCase as vi.Mock).mockResolvedValue({});
+
+    const { result } = renderHook(() =>
+      useAbandonCaseActions(mockRefreshCases),
+    );
+
+    await result.current.handleAbandonSubmit('CASE-123', '  trimmed  ');
+
+    expect(caseService.abandonCase).toHaveBeenCalledWith('CASE-123', {
+      reason: 'trimmed',
     });
   });
 });

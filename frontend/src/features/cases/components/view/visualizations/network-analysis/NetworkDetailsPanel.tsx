@@ -24,8 +24,7 @@ const NetworkDetailsPanel: React.FC<NetworkDetailsPanelProps> = ({
   fields,
   summaryTitle,
   summaryFields,
-}) => {
-  return (
+}) => (
     <div className="h-full w-72 border-gray-200 bg-white p-4">
       <h3 className="text-base font-semibold text-gray-900">{title}</h3>
 
@@ -36,8 +35,9 @@ const NetworkDetailsPanel: React.FC<NetworkDetailsPanelProps> = ({
               {field.label}
             </div>
             <div
-              className={`mt-1 text-sm font-medium ${field.highlight ? 'text-red-600' : 'text-gray-900'
-                }`}
+              className={`mt-1 text-sm font-medium ${
+                field.highlight ? 'text-red-600' : 'text-gray-900'
+              }`}
             >
               {field.value}
             </div>
@@ -58,8 +58,9 @@ const NetworkDetailsPanel: React.FC<NetworkDetailsPanelProps> = ({
               <div key={index} className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">{field.label}:</span>
                 <span
-                  className={`text-sm font-semibold ${field.highlight ? 'text-red-600' : 'text-gray-900'
-                    }`}
+                  className={`text-sm font-semibold ${
+                    field.highlight ? 'text-red-600' : 'text-gray-900'
+                  }`}
                 >
                   {field.value}
                 </span>
@@ -70,6 +71,5 @@ const NetworkDetailsPanel: React.FC<NetworkDetailsPanelProps> = ({
       )}
     </div>
   );
-};
 
 export default NetworkDetailsPanel;

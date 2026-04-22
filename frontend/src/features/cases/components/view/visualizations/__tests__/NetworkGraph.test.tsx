@@ -5,9 +5,27 @@ import NetworkGraph from '../network-analysis/NetworkGraph';
 
 describe('NetworkGraph', () => {
   const nodes = [
-    { id: 'n1', label: 'Account A', type: 'account' as const, status: 'normal' as const, position: { x: 100, y: 100 } },
-    { id: 'n2', label: 'Account B', type: 'account' as const, status: 'alert' as const, position: { x: 200, y: 200 } },
-    { id: 'n3', label: 'Counterparty', type: 'counterparty' as const, status: 'normal' as const, position: { x: 300, y: 100 } },
+    {
+      id: 'n1',
+      label: 'Account A',
+      type: 'account' as const,
+      status: 'normal' as const,
+      position: { x: 100, y: 100 },
+    },
+    {
+      id: 'n2',
+      label: 'Account B',
+      type: 'account' as const,
+      status: 'alert' as const,
+      position: { x: 200, y: 200 },
+    },
+    {
+      id: 'n3',
+      label: 'Counterparty',
+      type: 'counterparty' as const,
+      status: 'normal' as const,
+      position: { x: 300, y: 100 },
+    },
   ];
 
   const edges = [
@@ -31,7 +49,9 @@ describe('NetworkGraph', () => {
 
   it('calls onNodeClick when node is clicked', () => {
     const onNodeClick = vi.fn();
-    render(<NetworkGraph nodes={nodes} edges={edges} onNodeClick={onNodeClick} />);
+    render(
+      <NetworkGraph nodes={nodes} edges={edges} onNodeClick={onNodeClick} />,
+    );
     fireEvent.click(screen.getByText('Account A'));
     expect(onNodeClick).toHaveBeenCalled();
   });

@@ -31,14 +31,18 @@ export const useReferenceLookup = (): {
         totalItems: response.totalCount,
       }));
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      const errorMessage =
+        err instanceof Error ? err.message : 'An error occurred';
       error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const addReference = async (txnType: string, referenceId: string): Promise<void> => {
+  const addReference = async (
+    txnType: string,
+    referenceId: string,
+  ): Promise<void> => {
     if (!txnType || !referenceId) return;
 
     setLoading(true);
@@ -53,7 +57,8 @@ export const useReferenceLookup = (): {
       );
       await fetchReferences();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      const errorMessage =
+        err instanceof Error ? err.message : 'An error occurred';
       error('Failed to add Reference', errorMessage);
     } finally {
       setLoading(false);

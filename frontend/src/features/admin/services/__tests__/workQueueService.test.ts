@@ -34,10 +34,16 @@ describe('workQueueService', () => {
     });
 
     it('fetches candidate groups with custom params', async () => {
-      const mockGroups = [{ id: '1', name: 'AML Group' }, { id: '2', name: 'FRAUD Group' }];
+      const mockGroups = [
+        { id: '1', name: 'AML Group' },
+        { id: '2', name: 'FRAUD Group' },
+      ];
       mockApi.get.mockResolvedValueOnce(mockGroups);
 
-      const result = await workQueueService.getCandidateGroups({ size: 25, start: 10 });
+      const result = await workQueueService.getCandidateGroups({
+        size: 25,
+        start: 10,
+      });
 
       expect(mockApi.get).toHaveBeenCalledWith(
         '/api/v1/workqueue/candidate-groups?size=25&start=10',
@@ -76,7 +82,9 @@ describe('workQueueService', () => {
       const payload = { name: 'AML Queue', type: 'FRAUD' };
       mockApi.post.mockResolvedValueOnce(payload);
 
-      const result = await workQueueService.createCandidateGroup(payload as any);
+      const result = await workQueueService.createCandidateGroup(
+        payload as any,
+      );
 
       expect(mockApi.post).toHaveBeenCalledWith(
         '/api/v1/workqueue/candidate-group',

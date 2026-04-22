@@ -73,8 +73,12 @@ export const useAlerts = (
     isFetching,
     isError,
     error,
-    refetch: (): void => { void refetch(); },
-    refreshAlerts: (): void => { void refetch(); },
+    refetch: (): void => {
+      void refetch();
+    },
+    refreshAlerts: (): void => {
+      void refetch();
+    },
   };
 };
 
@@ -102,7 +106,9 @@ export const useAlertDetails = (
     alert,
     isLoading,
     error,
-    refetch: (): void => { void refetch(); },
+    refetch: (): void => {
+      void refetch();
+    },
   };
 };
 
@@ -286,4 +292,3 @@ export const useAlertFilterOptions = (): {
     error: null,
   };
 };
-

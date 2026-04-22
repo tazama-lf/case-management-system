@@ -21,7 +21,9 @@ describe('AlertMetadata', () => {
     expect(screen.getByText('pacs.008')).toBeInTheDocument();
     expect(screen.getByText('TestBank')).toBeInTheDocument();
     expect(screen.getByText('TXN-001')).toBeInTheDocument();
-    expect(screen.getByText('Suspicious activity detected')).toBeInTheDocument();
+    expect(
+      screen.getByText('Suspicious activity detected'),
+    ).toBeInTheDocument();
   });
 
   it('renders blockReason when provided', () => {
