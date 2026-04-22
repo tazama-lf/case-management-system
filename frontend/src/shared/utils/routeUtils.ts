@@ -115,7 +115,6 @@ export const ROUTES = {
   REPORTS: '/reports',
   REPORT_DETAIL: '/reports/:reportType',
   ADMIN: '/admin',
-  REFERENCE_ID: '/reference_id',
 } as const;
 
 /**
