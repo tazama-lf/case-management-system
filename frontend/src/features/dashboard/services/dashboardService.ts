@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '../../../shared/services/apiClient';
 import type {
   DashboardData,
@@ -20,26 +21,31 @@ class DashboardService {
         recentAlerts,
         activeCases,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to fetch dashboard data:', error);
-      throw new Error('Failed to load dashboard data');
+      throw new Error('Failed to load dashboard data', { cause: error });
     }
   }
 
   async getDashboardStats(): Promise<DashboardStats> {
     try {
-      const response = (await apiClient.get(
+      const response = await apiClient.get<Record<string, unknown>>(
         '/api/v1/reports/case-status?dateRange=last30',
-      )) as any;
+      );
+
+      const stats = response.stats as Record<string, unknown> | undefined;
+      const caseTypes = (response.caseTypes ?? []) as Array<
+        Record<string, unknown>
+      >;
 
       return {
-        totalAlerts: response.stats?.totalCases ?? 0,
-        highPriorityAlerts:
-          response.caseTypes?.find((ct: any) => ct.name === 'FRAUD')?.count ?? 0,
-        openCases: response.stats?.openCases ?? 0,
-        casesResolvedThisWeek: response.stats?.closedCases ?? 0,
+        totalAlerts: (stats?.totalCases ?? 0) as number,
+        highPriorityAlerts: (caseTypes.find((ct) => ct.name === 'FRAUD')
+          ?.count ?? 0) as number,
+        openCases: (stats?.openCases ?? 0) as number,
+        casesResolvedThisWeek: (stats?.closedCases ?? 0) as number,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to fetch dashboard stats:', error);
       return {
         totalAlerts: 42,
@@ -52,18 +58,22 @@ class DashboardService {
 
   async getRecentAlerts(): Promise<AlertSummary[]> {
     try {
-      const response = (await apiClient.get(
+      const response = await apiClient.get<Record<string, unknown>>(
         '/api/v1/reports/case-status?dateRange=last7',
-      )) as any;
+      );
 
-      const caseTypes = response.caseTypes ?? [];
+      const caseTypes = (response.caseTypes ?? []) as Array<
+        Record<string, unknown>
+      >;
 
-      return caseTypes.map((caseType: any) => ({
-        priority: this.mapCaseTypeToPriority(caseType.name),
-        count: caseType.count,
-        description: `${caseType.name.toLowerCase()} cases requiring attention`,
+      return caseTypes.map((caseType) => ({
+        priority: DashboardService.mapCaseTypeToPriority(
+          caseType.name as string,
+        ),
+        count: caseType.count as number,
+        description: `${String(caseType.name).toLowerCase()} cases requiring attention`,
       }));
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to fetch recent alerts:', error);
       return [
         {
@@ -87,29 +97,32 @@ class DashboardService {
 
   async getActiveCases(): Promise<CaseSummary[]> {
     try {
-      const response = (await apiClient.get(
+      const response = await apiClient.get<Record<string, unknown>>(
         '/api/v1/reports/case-status?dateRange=last30',
-      )) as any;
-      const statusDist = response.statusDistribution ?? {};
+      );
+      const statusDist = (response.statusDistribution ?? {}) as Record<
+        string,
+        unknown
+      >;
 
       return [
         {
           status: 'assigned',
-          count: statusDist.assigned ?? 0,
+          count: (statusDist.assigned ?? 0) as number,
           description: 'cases requiring your action',
         },
         {
           status: 'pending',
-          count: statusDist.pendingApproval ?? 0,
+          count: (statusDist.pendingApproval ?? 0) as number,
           description: 'cases awaiting your approval',
         },
         {
           status: 'closed',
-          count: statusDist.closed ?? 0,
+          count: (statusDist.closed ?? 0) as number,
           description: 'cases resolved recently',
         },
       ];
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to fetch active cases:', error);
       return [
         {
@@ -131,7 +144,9 @@ class DashboardService {
     }
   }
 
-  private mapCaseTypeToPriority(caseType: string): 'high' | 'medium' | 'low' {
+  private static mapCaseTypeToPriority(
+    caseType: string,
+  ): 'high' | 'medium' | 'low' {
     switch (caseType) {
       case 'FRAUD':
       case 'FRAUD_AND_AML':
@@ -146,3 +161,4 @@ class DashboardService {
 
 export const dashboardService = new DashboardService();
 export default dashboardService;
+/* eslint-enable @typescript-eslint/class-methods-use-this */

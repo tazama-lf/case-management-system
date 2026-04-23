@@ -142,7 +142,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
       <div className="mt-6 w-full max-w-5xl rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
-        { }
+        {}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900">
@@ -158,7 +158,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
           </button>
         </div>
 
-        { }
+        {}
         {!showCollaborate && (
           <div className="flex items-center gap-2 px-6 pt-3 border-b border-gray-200">
             {(
@@ -174,10 +174,11 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                 onClick={() => {
                   setTab(t.key);
                 }}
-                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${tab === t.key
+                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${
+                  tab === t.key
                     ? 'border-b-2 border-indigo-600 text-indigo-700'
                     : 'text-gray-600 hover:text-gray-800'
-                  }`}
+                }`}
               >
                 {t.label}
               </button>
@@ -185,7 +186,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
           </div>
         )}
 
-        { }
+        {}
         <div className="px-6 py-5 overflow-y-auto flex-1">
           {showCollaborate ? (
             <CollaboratePanel />
@@ -241,7 +242,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
           )}
         </div>
 
-        { }
+        {}
         {!showCollaborate && tab === 'details' && (
           <div className="border-t border-gray-200 bg-white px-6 py-4">
             <CaseActionsPanel

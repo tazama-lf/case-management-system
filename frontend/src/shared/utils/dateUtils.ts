@@ -111,10 +111,12 @@ export const getTimeAgo = (
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffMins < 1) return 'Just now';
-  if (diffMins < 60)
-    {return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;}
-  if (diffHours < 24)
-    {return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;}
+  if (diffMins < 60) {
+    return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+  }
+  if (diffHours < 24) {
+    return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  }
   if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
 
   return formatDateOnly(start);

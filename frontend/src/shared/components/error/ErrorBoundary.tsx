@@ -25,10 +25,10 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('Uncaught error:', error, errorInfo);
   }
 
-  public async render() {
+  public render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        return await this.props.fallback;
+        return this.props.fallback;
       }
 
       return (
@@ -66,7 +66,7 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return await this.props.children;
+    return this.props.children;
   }
 }
 

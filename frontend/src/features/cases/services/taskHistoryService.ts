@@ -25,7 +25,6 @@ export class TaskHistoryService {
       return [];
     }
   }
-
 }
 
 export const taskHistoryService = new TaskHistoryService();

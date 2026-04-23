@@ -3,15 +3,21 @@ import { caseService } from '../services/caseService';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import authService from '@/features/auth/services/authService';
 
-export const useCloseCaseActions = (refreshCases: () => Promise<void>): {
+export const useCloseCaseActions = (
+  refreshCases: () => Promise<void>,
+): {
   handleCloseCaseSubmit: (caseId: number, data: CloseCaseDto) => Promise<void>;
 } => {
   const { success, error } = useToast();
 
-  const handleCloseCaseSubmit = async (caseId: number, data: CloseCaseDto): Promise<void> => {
+  const handleCloseCaseSubmit = async (
+    caseId: number,
+    data: CloseCaseDto,
+  ): Promise<void> => {
     try {
       await caseService.closeCase(caseId, data);
       const user = authService.getUser();
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive: user may be null at runtime if session expired
       const isSupervisor = Boolean(user?.validatedClaims?.CMS_SUPERVISOR);
 
       success(

@@ -1,12 +1,17 @@
 import { caseService, type AbandonCaseDto } from '../services/caseService';
 import { useToast } from '../../../shared/providers/ToastProvider';
 
-export const useAbandonCaseActions = (refreshCases: () => Promise<void>): {
+export const useAbandonCaseActions = (
+  refreshCases: () => Promise<void>,
+): {
   handleAbandonSubmit: (caseId: number, reason: string) => Promise<void>;
 } => {
   const { success, error } = useToast();
 
-  const handleAbandonSubmit = async (caseId: number, reason: string) => {
+  const handleAbandonSubmit = async (
+    caseId: number,
+    reason: string,
+  ): Promise<void> => {
     try {
       const abandonCaseData: AbandonCaseDto = {
         reason: reason.trim(),

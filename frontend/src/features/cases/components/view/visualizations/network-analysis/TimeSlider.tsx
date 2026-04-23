@@ -87,7 +87,7 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ config, onChange }) => {
           {timeRanges.map((range) => (
             <button
               key={range.value}
-              onClick={() => handleRangeChange(range.value)}
+              onClick={() => { handleRangeChange(range.value); }}
               className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                 config.range === range.value
                   ? 'bg-indigo-600 text-white'

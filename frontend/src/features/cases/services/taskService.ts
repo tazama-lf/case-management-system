@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument -- Service handles dynamic API response data */
+/* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '../../../shared/services/apiClient';
-import type { ApiErrorResponse } from '../../alerts/types/triage.types';
 
 export const TaskStatus = {
   STATUS_01_UNASSIGNED: 'STATUS_01_UNASSIGNED',
@@ -108,7 +109,7 @@ export class TaskService {
         `${this.baseUrl}?${params}`,
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get tasks');
     }
   }
@@ -125,7 +126,7 @@ export class TaskService {
 
       const response = await apiClient.get<TaskForSupervisor[]>(url);
       return Array.isArray(response) ? response : [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         'TaskService: Failed to get all tasks from backend:',
         error,
@@ -138,7 +139,7 @@ export class TaskService {
     try {
       const response = await apiClient.get<Task>(`${this.baseUrl}/${taskId}`);
       return this.validateTaskResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'get task details');
     }
   }
@@ -158,7 +159,7 @@ export class TaskService {
       );
 
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('TaskService: Task assignment failed:', error);
       throw this.handleError(error, 'assign task to investigator');
     }
@@ -179,7 +180,7 @@ export class TaskService {
       });
 
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('TaskService: Task reassignment failed:', error);
       throw this.handleError(error, 'reassign task');
     }
@@ -195,7 +196,7 @@ export class TaskService {
         message: string;
       }>(`${this.baseUrl}/${taskId}/assign`, data);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'assign task');
     }
   }
@@ -210,7 +211,7 @@ export class TaskService {
         message: string;
       }>(`${this.baseUrl}/${taskId}/unassign`, data);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'unassign task');
     }
   }
@@ -222,7 +223,7 @@ export class TaskService {
         data,
       );
       return this.validateTaskResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'update task');
     }
   }
@@ -243,7 +244,7 @@ export class TaskService {
         data,
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'update task for supervisor');
     }
   }
@@ -254,7 +255,7 @@ export class TaskService {
     try {
       const response = await apiClient.post<Task>(this.baseUrl, data);
       return this.validateTaskResponse(response);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'create task');
     }
   }
@@ -265,7 +266,7 @@ export class TaskService {
 
       const response = await apiClient.get<TaskForSupervisor[]>(url);
       return Array.isArray(response) ? response : [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         'TaskService: Failed to get tasks for case:',
         caseId,
@@ -285,7 +286,7 @@ export class TaskService {
         t.name?.toLowerCase().includes('investigation'),
       );
       return investigationTask ?? null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         'TaskService: Failed to get investigation task for case:',
         caseId,
@@ -308,7 +309,7 @@ export class TaskService {
         id: response.task_id,
         message: 'Task completed successfully',
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'complete task');
     }
   }
@@ -328,7 +329,7 @@ export class TaskService {
         success: true,
         message: 'Task closed successfully',
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw this.handleError(error, 'close task');
     }
   }
@@ -364,13 +365,19 @@ export class TaskService {
     return task;
   }
 
-  private handleError(error: any, operation: string): Error {
-    if (error.response?.data) {
-      const apiError = error.response.data as ApiErrorResponse;
-      return new Error(apiError.message || `Failed to ${operation}`);
+  private handleError(error: unknown, operation: string): Error {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const err = error as { response?: { data?: { message?: string } } };
+      if (err.response?.data) {
+        const apiError = err.response.data;
+        return new Error(apiError.message ?? `Failed to ${operation}`);
+      }
     }
-    return new Error(`Failed to ${operation}: ${error.message}`);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return new Error(`Failed to ${operation}: ${message}`);
   }
 }
 
 export const taskService = new TaskService();
+/* eslint-enable @typescript-eslint/class-methods-use-this */
+/* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */

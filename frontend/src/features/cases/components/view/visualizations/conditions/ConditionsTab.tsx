@@ -1,6 +1,6 @@
-import React from "react";
+import React from 'react';
 // import JupyterVisualization from "../shared/JupyterVisualization";
-import VoilaFrame from "../network-analysis/VoilaFrame";
+import VoilaFrame from '../network-analysis/VoilaFrame';
 
 interface ConditionsTabProps {
   caseId?: number;
@@ -12,8 +12,7 @@ const ConditionsTab: React.FC<ConditionsTabProps> = ({
   caseId: _caseId,
   transactionId: _transactionId,
   tenantId: _tenantId,
-}) =>
-(
+}) => (
   <VoilaFrame
     notebookPath="conditions-timeline.ipynb"
     title="Conditions Timeline"

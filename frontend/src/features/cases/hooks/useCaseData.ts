@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Hook file contains multiple related case action handlers */
 import { useState } from 'react';
 import {
   caseService,
@@ -20,8 +21,16 @@ export const useCaseData = (): {
   setCases: React.Dispatch<React.SetStateAction<CaseRow[]>>;
   loading: boolean;
   errorState: string | null;
-  fetchCases: (statusFilter?: string, priorityFilter?: string, sortBy?: 'recent' | 'oldest') => Promise<void>;
-  refreshCases: (statusFilter?: string, priorityFilter?: string, sortBy?: 'recent' | 'oldest') => Promise<void>;
+  fetchCases: (
+    statusFilter?: string,
+    priorityFilter?: string,
+    sortBy?: 'recent' | 'oldest',
+  ) => Promise<void>;
+  refreshCases: (
+    statusFilter?: string,
+    priorityFilter?: string,
+    sortBy?: 'recent' | 'oldest',
+  ) => Promise<void>;
 } => {
   const { hasInvestigatorRole, hasSupervisorRole, hasAdminRole } = useAuth();
 
@@ -32,7 +41,7 @@ export const useCaseData = (): {
     statusFilter?: string,
     priorityFilter?: string,
     sortBy?: 'recent' | 'oldest',
-  ) => {
+  ): Promise<void> => {
     setLoading(true);
     setErrorState(null);
 
@@ -75,7 +84,7 @@ export const useCaseData = (): {
     statusFilter?: string,
     priorityFilter?: string,
     sortBy?: 'recent' | 'oldest',
-  ) => {
+  ): Promise<void> => {
     try {
       const response = await caseService.getAllCases({
         status: statusFilter ?? undefined,
@@ -105,6 +114,7 @@ export const useCaseActions = (
     priorityFilter?: string,
     sortBy?: 'recent' | 'oldest',
   ) => Promise<void>,
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- Complex hook with inferred return type
 ) => {
   const { user } = useAuth();
   const { success, error } = useToast();
@@ -119,7 +129,7 @@ export const useCaseActions = (
     alertType: AlertType;
     assignee?: string;
     draft?: boolean;
-  }) => {
+  }): Promise<void> => {
     setCreateCaseLoading(true);
     setCreateCaseError('');
 
@@ -163,7 +173,7 @@ export const useCaseActions = (
       alertType: AlertType;
       assignee?: string;
     },
-  ) => {
+  ): Promise<void> => {
     setCreateCaseLoading(true);
     setCreateCaseError('');
 
@@ -194,7 +204,10 @@ export const useCaseActions = (
     }
   };
 
-  const handleReopenSubmit = async (caseId: number, reason: string): Promise<void> => {
+  const handleReopenSubmit = async (
+    caseId: number,
+    reason: string,
+  ): Promise<void> => {
     try {
       const reopenCaseData = {
         reason: reason.trim(),
@@ -240,7 +253,10 @@ The case may have been deleted or moved.`;
     }
   };
 
-  const handleAbandonSubmit = async (caseId: number, reason: string): Promise<void> => {
+  const handleAbandonSubmit = async (
+    caseId: number,
+    reason: string,
+  ): Promise<void> => {
     try {
       const abandonCaseData: AbandonCaseDto = {
         reason: reason.trim(),
@@ -283,11 +299,11 @@ The case may have been deleted or moved.`;
       ) {
         errorMessage =
           'Access Denied.\n\n' +
-          'You don\'t have permission to abandon this case.\n' +
+          "You don't have permission to abandon this case.\n" +
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage =
-          'Case Not Found.\n\n' + 'The case may have been deleted or moved.';
+          'Case Not Found.\n\nThe case may have been deleted or moved.';
       }
 
       error('Abandon Case Failed', errorMessage);
@@ -298,7 +314,7 @@ The case may have been deleted or moved.`;
     caseId: number,
     reason: string,
     tasksIds: number[],
-  ) => {
+  ): Promise<void> => {
     try {
       const suspendCaseData: SuspendCaseDto = {
         reason: reason.trim(),
@@ -342,7 +358,7 @@ The case has been suspended and all associated tasks have been blocked. Supervis
       ) {
         errorMessage =
           'Access Denied.\n\n' +
-          'You don\'t have permission to suspend this case.\n' +
+          "You don't have permission to suspend this case.\n" +
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage = `Case Not Found.
@@ -356,7 +372,10 @@ The case may have been deleted or moved.`;
     }
   };
 
-  const handleResumeSubmit = async (caseId: number, reason: string): Promise<void> => {
+  const handleResumeSubmit = async (
+    caseId: number,
+    reason: string,
+  ): Promise<void> => {
     try {
       const resumeCaseData = {
         reason: reason.trim(),
@@ -405,10 +424,9 @@ The case has been moved back to "In Progress" status. All associated tasks have 
 ` +
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
-        errorMessage =
-          `Case Not Found.
+        errorMessage = `Case Not Found.
 
-` + 'The case may have been deleted or moved.';
+The case may have been deleted or moved.`;
       }
 
       error('Resume Case Failed', errorMessage);
@@ -418,7 +436,7 @@ The case has been moved back to "In Progress" status. All associated tasks have 
   const handleRejectSubmit = async (
     rejectionReason: string,
     selectedRow: CaseRow | null,
-  ) => {
+  ): Promise<void> => {
     if (!selectedRow) return;
 
     try {
@@ -470,10 +488,9 @@ The case has been returned to the investigator for additional work.`,
 ` +
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
-        errorMessage =
-          `Case Not Found.
+        errorMessage = `Case Not Found.
 
-` + 'The case may have been deleted or moved.';
+The case may have been deleted or moved.`;
       } else if (errorString.includes('Approval task validation failed')) {
         errorMessage = errorString;
       }
@@ -485,7 +502,7 @@ The case has been returned to the investigator for additional work.`,
   const handleApproveSubmit = async (
     data: ApproveCaseClosureDto,
     selectedRow: CaseRow | null,
-  ) => {
+  ): Promise<void> => {
     if (!selectedRow) return;
 
     try {
@@ -600,7 +617,7 @@ The case may have been deleted or moved.`;
   const handleRejectCreationSubmit = async (
     caseId: number,
     data: RejectCaseCreationDto,
-  ) => {
+  ): Promise<void> => {
     try {
       const rejectedCase = await caseService.rejectCaseCreation(caseId, data);
 
@@ -650,7 +667,7 @@ The case may have been deleted or moved.`;
   const handleReturnForReviewSubmit = async (
     caseId: number,
     data: ReturnCaseForReviewDto,
-  ) => {
+  ): Promise<void> => {
     try {
       const returnedCase = await caseService.returnCaseForReview(caseId, data);
 
@@ -724,3 +741,4 @@ Please verify that:
     handleReturnForReviewSubmit,
   };
 };
+/* eslint-enable max-lines */

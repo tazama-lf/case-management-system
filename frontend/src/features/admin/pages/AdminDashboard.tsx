@@ -4,6 +4,12 @@ import { PageContainer } from '@/shared/components/ui';
 import ResultsSummary from '@/shared/components/ui/ResultsSummary';
 import ReferenceResultsTable from '../components/ReferenceResultsTable';
 import { useReferenceLookup } from '../hooks/useReferences';
+import React, { useState } from 'react';
+import { PlusIcon } from '@heroicons/react/24/outline';
+import { PageContainer } from '@/shared/components/ui';
+import ResultsSummary from '@/shared/components/ui/ResultsSummary';
+import ReferenceResultsTable from '../components/ReferenceResultsTable';
+import { useReferenceLookup } from '../hooks/useReferences';
 
 const AdminDashboard: React.FC = () => {
   const [txnType, setTxnType] = useState('');
@@ -23,9 +29,9 @@ const AdminDashboard: React.FC = () => {
   const handleAddReference = async () => {
     const trimmedTxnType = txnType.trim();
     const trimmedReferenceId = referenceId.trim();
-    
+
     if (!trimmedTxnType || !trimmedReferenceId) return;
-    
+
     const success = await addReference(trimmedTxnType, trimmedReferenceId);
     if (success) {
       setTxnType('');
@@ -53,10 +59,13 @@ const AdminDashboard: React.FC = () => {
             </p>
           </div>
 
-          <form onSubmit={handleFormSubmit} className="flex flex-col sm:flex-row flex-wrap gap-3 w-full lg:w-auto">
+          <form
+            onSubmit={handleFormSubmit}
+            className="flex flex-col sm:flex-row flex-wrap gap-3 w-full lg:w-auto"
+          >
             <div className="flex flex-col gap-1">
-              <label 
-                htmlFor="txnType" 
+              <label
+                htmlFor="txnType"
                 className="text-sm font-medium text-gray-700 sr-only"
               >
                 Transaction Type
@@ -75,8 +84,8 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label 
-                htmlFor="referenceId" 
+              <label
+                htmlFor="referenceId"
                 className="text-sm font-medium text-gray-700 sr-only"
               >
                 System Reference ID

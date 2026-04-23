@@ -19,18 +19,18 @@ export const useInvestigatorSupervisorList = (): {
 
   const [supervisors, setSupervisors] = useState<UserOption[]>(() => {
     const cached = sessionStorage.getItem(supervisorsCacheKey);
-    return cached ? JSON.parse(cached) : [];
+    return cached ? (JSON.parse(cached) as UserOption[]) : [];
   });
 
   const [investigators, setInvestigators] = useState<UserOption[]>(() => {
     const cached = sessionStorage.getItem(investigatorsCacheKey);
-    return cached ? JSON.parse(cached) : [];
+    return cached ? (JSON.parse(cached) as UserOption[]) : [];
   });
 
   const [complianceOfficers, setComplianceOfficers] = useState<UserOption[]>(
     () => {
       const cached = sessionStorage.getItem(complianceCacheKey);
-      return cached ? JSON.parse(cached) : [];
+      return cached ? (JSON.parse(cached) as UserOption[]) : [];
     },
   );
 
@@ -42,12 +42,12 @@ export const useInvestigatorSupervisorList = (): {
     try {
       const cached = sessionStorage.getItem(investigatorsCacheKey);
       if (cached) {
-        setInvestigators(JSON.parse(cached));
+        setInvestigators(JSON.parse(cached) as UserOption[]);
         return;
       }
 
       const data = await userService.getInvestigators();
-      if (data?.length > 0) {
+      if (data.length > 0) {
         setInvestigators(data);
         sessionStorage.setItem(investigatorsCacheKey, JSON.stringify(data));
       } else {
@@ -66,12 +66,12 @@ export const useInvestigatorSupervisorList = (): {
     try {
       const cached = sessionStorage.getItem(complianceCacheKey);
       if (cached) {
-        setComplianceOfficers(JSON.parse(cached));
+        setComplianceOfficers(JSON.parse(cached) as UserOption[]);
         return;
       }
 
       const data = await userService.getComplianceOfficers();
-      if (data?.length > 0) {
+      if (data.length > 0) {
         setComplianceOfficers(data);
         sessionStorage.setItem(complianceCacheKey, JSON.stringify(data));
       } else {
@@ -89,12 +89,12 @@ export const useInvestigatorSupervisorList = (): {
     try {
       const cached = sessionStorage.getItem(supervisorsCacheKey);
       if (cached) {
-        setSupervisors(JSON.parse(cached));
+        setSupervisors(JSON.parse(cached) as UserOption[]);
         return;
       }
 
       const data = await userService.getSupervisors();
-      if (data?.length > 0) {
+      if (data.length > 0) {
         setSupervisors(data);
         sessionStorage.setItem(supervisorsCacheKey, JSON.stringify(data));
       } else {

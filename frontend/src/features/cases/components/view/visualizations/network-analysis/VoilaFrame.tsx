@@ -36,7 +36,7 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
     const url = new URL(`/voila/render/${notebookPath}`, base);
     if (queryParams) {
       Object.entries(queryParams).forEach(([k, v]) =>
-        url.searchParams.set(k, v),
+        { url.searchParams.set(k, v); },
       );
     }
     return url.toString();
@@ -97,8 +97,8 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
         className={`h-full w-full rounded-lg border-0${status !== 'loaded' ? ' invisible' : ''}`}
         title={title}
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-        onLoad={() => setStatus('loaded')}
-        onError={() => setStatus('error')}
+        onLoad={() => { setStatus('loaded'); }}
+        onError={() => { setStatus('error'); }}
       />
     </div>
   );

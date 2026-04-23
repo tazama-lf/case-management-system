@@ -8,10 +8,10 @@ import type {
 import type { Alert as UIAlert } from '../types/alertsdashboard.types';
 
 function extractAlertType(backendAlert: unknown): AlertType | null {
-  const alert = backendAlert as any;
+  const alert = backendAlert as Record<string, unknown>;
   if (alert.alert_type) {
     const validTypes = ['FRAUD', 'AML', 'FRAUD_AND_AML', 'NONE'];
-    if (validTypes.includes(alert.alert_type)) {
+    if (validTypes.includes(alert.alert_type as string)) {
       return alert.alert_type as AlertType;
     }
   }
@@ -21,9 +21,16 @@ function extractAlertType(backendAlert: unknown): AlertType | null {
   }
 
   try {
-    const typologyResults = alert.alert_data?.tadpResult?.typologyResult;
+    const alertData = alert.alert_data as Record<string, unknown> | undefined;
+    const tadpResult = alertData?.tadpResult as
+      | Record<string, unknown>
+      | undefined;
+    const typologyResults = tadpResult?.typologyResult;
     if (Array.isArray(typologyResults) && typologyResults.length > 0) {
-      const typologyId = typologyResults[0]?.id;
+      const firstResult = typologyResults[0] as
+        | Record<string, unknown>
+        | undefined;
+      const typologyId = firstResult?.id;
       if (typologyId && typeof typologyId === 'string') {
         if (typologyId.includes('typology')) return 'AML';
         if (typologyId.includes('fraud')) return 'FRAUD';
@@ -34,7 +41,7 @@ function extractAlertType(backendAlert: unknown): AlertType | null {
     console.warn('Failed to extract alert type from typology data:', error);
   }
 
-  const txType = alert.txtp;
+  const txType = alert.txtp as string | undefined;
   if (txType) {
     if (txType.includes('pacs')) return 'FRAUD';
     if (txType.includes('pain')) return 'FRAUD';
@@ -45,10 +52,14 @@ function extractAlertType(backendAlert: unknown): AlertType | null {
 
 function extractRiskScore(alertData: unknown): number {
   try {
-    const data = alertData as any;
-    const typologyResults = data?.tadpResult?.typologyResult;
+    const data = alertData as Record<string, unknown> | undefined;
+    const tadpResult = data?.tadpResult as Record<string, unknown> | undefined;
+    const typologyResults = tadpResult?.typologyResult;
     if (Array.isArray(typologyResults) && typologyResults.length > 0) {
-      const result = typologyResults[0]?.result;
+      const firstResult = typologyResults[0] as
+        | Record<string, unknown>
+        | undefined;
+      const result = firstResult?.result;
       return typeof result === 'number' ? result : 0;
     }
     return 0;
@@ -61,7 +72,7 @@ function extractRiskScore(alertData: unknown): number {
 export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
   const transformedAlert: UIAlert = {
     alert_id: backendAlert.alert_id,
-    tenant_id: backendAlert.tenant_id ?? 'default-tenant',
+    tenant_id: backendAlert.tenant_id,
     priority: backendAlert.priority,
     alert_type: extractAlertType(backendAlert) ?? undefined,
     source: backendAlert.source,
@@ -80,10 +91,7 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
     description: backendAlert.message,
     type: extractAlertType(backendAlert) ?? 'Unknown',
     severity: mapPriorityToSeverity(backendAlert.priority),
-    riskScore:
-      extractRiskScore(backendAlert.alert_data) ??
-      backendAlert.confidence_per ??
-      0,
+    riskScore: extractRiskScore(backendAlert.alert_data),
     confidence: backendAlert.confidence_per,
     createdAt: backendAlert.created_at,
     updatedAt: backendAlert.created_at,
@@ -109,8 +117,6 @@ function mapPriorityToSeverity(
       return 'high';
     case 'BREACH':
       return 'critical';
-    default:
-      return 'medium';
   }
 }
 
@@ -126,8 +132,6 @@ export function mapSeverityToPriority(
       return 'CRITICAL';
     case 'critical':
       return 'BREACH';
-    default:
-      return 'NEW';
   }
 }
 
@@ -136,7 +140,7 @@ export function transformUIAlertToBackend(uiAlert: UIAlert): TriageAlert {
     alert_id: uiAlert.alert_id,
     tenant_id: uiAlert.tenant_id,
     priority: uiAlert.priority,
-    alert_type: uiAlert.alert_type as any,
+    alert_type: uiAlert.alert_type ?? null,
     source: uiAlert.source,
     txtp: uiAlert.txtp,
     message: uiAlert.message,
@@ -174,32 +178,38 @@ export function mapUIStatusToAlertStatus(
       return 'AUTOCLOSED_REFUTED';
     case 'sent_for_investigation':
       return 'SENT_FOR_INVESTIGATION';
-    default:
-      return 'NEW';
   }
 }
 
 function extractTransactionId(transaction: unknown): string | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
-  const txn = transaction as any;
-  return txn.transactionId ?? txn.txnId ?? txn.id ?? txn.TxId ?? undefined;
+  const txn = transaction as Record<string, unknown>;
+  return (txn.transactionId ?? txn.txnId ?? txn.id ?? txn.TxId ?? undefined) as
+    | string
+    | undefined;
 }
 
 function extractAmount(transaction: unknown): number | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
-  const txn = transaction as any;
+  const txn = transaction as Record<string, unknown>;
   const amount = txn.amount ?? txn.AmtRaw ?? txn.TxAmt ?? txn.value;
 
-  return typeof amount === 'number' ? amount : parseFloat(amount) ?? undefined;
+  return typeof amount === 'number'
+    ? amount
+    : parseFloat(amount as string) || undefined;
 }
 
 function extractCurrency(transaction: unknown): string | undefined {
   if (!transaction || typeof transaction !== 'object') return undefined;
 
-  const txn = transaction as any;
-  return txn.currency ?? txn.ccy ?? txn.CcyCode ?? txn.currencyCode ?? 'USD';
+  const txn = transaction as Record<string, unknown>;
+  return (txn.currency ??
+    txn.ccy ??
+    txn.CcyCode ??
+    txn.currencyCode ??
+    'USD') as string;
 }
 
 export function transformBackendAlertsToUI(
@@ -210,5 +220,5 @@ export function transformBackendAlertsToUI(
 
 export const convertToTriageAlert = (alert: Alert): TriageAlert => ({
   ...alert,
-  alert_type: alert.alert_type! || null,
+  alert_type: alert.alert_type ?? null,
 });

@@ -41,39 +41,37 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
           // For FRAUD_AND_AML Cases, map parent alert
 
           if (currentCase.parent_id) {
-            const parentCase = await caseService.getCaseDetails(currentCase.parent_id);
+            const parentCase = await caseService.getCaseDetails(
+              currentCase.parent_id,
+            );
 
             if (parentCase?.alert.alert_id) {
-              const alert = await triageService.getAlertById(parentCase.alert.alert_id);
+              const alert = await triageService.getAlertById(
+                parentCase.alert.alert_id,
+              );
 
-              const mappedAlerts: LinkedAlert[] = [alert].map(alert => ({
+              const mappedAlerts: LinkedAlert[] = [alert].map((alert) => ({
                 id: alert.alert_id,
                 label: alert.message || 'Alert',
-                type: alert.alert_type || 'N/A'
+                type: alert.alert_type || 'N/A',
               }));
 
               setLinkedAlerts(mappedAlerts);
-
-
-
             }
-
           }
+        } else if (currentCase?.alert.alert_id) {
+            const alert = await triageService.getAlertById(
+              currentCase.alert.alert_id,
+            );
 
-        } else {
-
-          if (currentCase?.alert.alert_id) {
-            const alert = await triageService.getAlertById(currentCase.alert.alert_id);
-
-            const mappedAlerts: LinkedAlert[] = [alert].map(alert => ({
+            const mappedAlerts: LinkedAlert[] = [alert].map((alert) => ({
               id: alert.alert_id,
               label: alert.message || 'Alert',
-              type: alert.alert_type || 'N/A'
+              type: alert.alert_type || 'N/A',
             }));
 
             setLinkedAlerts(mappedAlerts);
           }
-        }
 
         setLoading(false);
       } catch (error) {
@@ -99,17 +97,23 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
       {/* Related Alerts Section */}
       <br></br>
       <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Related Alerts</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">
+          Related Alerts
+        </h3>
         <div className="space-y-2">
           {linkedAlerts.length > 0 ? (
             linkedAlerts.map((item) => (
               <button
                 key={item.id}
-                onClick={() => handleAlertClick(item.id)}
+                onClick={() => {
+                  handleAlertClick(item.id);
+                }}
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline text-sm text-left"
               >
                 <LinkIcon className="h-4 w-4 flex-shrink-0" />
-                <span>{item.id} - {item.label}</span>
+                <span>
+                  {item.id} - {item.label}
+                </span>
               </button>
             ))
           ) : (

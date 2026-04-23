@@ -147,7 +147,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           .toUpperCase();
 
         const datePart =
-          parsed.startDate ?? parsed.endDate
+          (parsed.startDate ?? parsed.endDate)
             ? ` ${[parsed.startDate, parsed.endDate].filter(Boolean).join(' - ')}`
             : '';
 
