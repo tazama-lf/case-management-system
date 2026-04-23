@@ -1,144 +1,138 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import WorkQueueManagement from '../WorkQueueManagement';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useWorkQueues } from '../../hooks/useWorkQueues';
-import { useWorkQueueFilter } from '../../hooks/useWorkQueueFilter';
-import workQueueService from '../../services/workQueueService';
+import WorkQueueManagement from '../WorkQueueManagement';
 
-const mockDelete = vi.fn();
 const mockRefetch = vi.fn();
 
-const mockQueues = [
-  {
-    id: 'queue-1',
-    name: 'Investigations',
-    description: 'Handles AML alerts',
-    roles: ['Analyst'],
-    taskTypes: ['Review'],
-    status: 'Active',
-    taskCount: 10,
-  },
-];
+const mockCandidateGroupsReturn = {
+  workQueues: [
+    { id: 'q1', name: 'Fraud Team', type: 'candidate' },
+    { id: 'q2', name: 'AML Analysts', type: 'candidate' },
+  ] as any[],
+  loading: false,
+  error: null as string | null,
+  pagination: { currentPage: 1, pageSize: 10, totalItems: 2 },
+  onPageChange: vi.fn(),
+  onPageSizeChange: vi.fn(),
+  refetch: mockRefetch,
+};
 
-vi.mock('../../hooks/useWorkQueues', () => ({
-  useWorkQueues: vi.fn(),
+vi.mock('../../hooks/useCandidateGroups', () => ({
+  useCandidateGroups: () => mockCandidateGroupsReturn,
 }));
 
 vi.mock('../../hooks/useWorkQueueFilter', () => ({
-  useWorkQueueFilter: vi.fn(),
+  useWorkQueueFilter: (queues: any[]) => ({
+    searchTerm: '',
+    setSearchTerm: vi.fn(),
+    filteredQueues: queues,
+  }),
 }));
 
-vi.mock('../../services/workQueueService', () => ({
-  __esModule: true,
-  default: {
-    deleteWorkQueue: vi.fn(),
-  },
-}));
-
-vi.mock('../WorkQueuesTable', () => ({
-  __esModule: true,
-  default: ({ queues, onEdit, onDelete }: any) => (
-    <div data-testid="work-queues-table">
-      <p>rows: {queues.length}</p>
-      <button onClick={() => onEdit(queues[0])}>edit-first</button>
-      <button onClick={() => onDelete(queues[0]?.id)}>delete-first</button>
-    </div>
+vi.mock('@/shared/components/ui', () => ({
+  PageContainer: ({ children, className }: any) => (
+    <div className={className}>{children}</div>
   ),
 }));
 
+vi.mock('@/shared/components/ui/ResultsSummary', () => ({
+  default: () => <div data-testid="results-summary" />,
+}));
+
+vi.mock('@/features/admin/components/AdminWorkQueuesTable', () => ({
+  default: () => <div data-testid="admin-work-queues-table" />,
+}));
+
 vi.mock('../SearchInput', () => ({
-  __esModule: true,
-  default: ({ value, onChange }: any) => (
+  default: ({ value, onChange, placeholder }: any) => (
     <input
       data-testid="search-input"
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e: any) => onChange(e.target.value)}
+      placeholder={placeholder}
     />
   ),
 }));
 
-vi.mock('../StatusFilter', () => ({
-  __esModule: true,
-  default: ({ value, onChange }: any) => (
-    <select
-      data-testid="status-filter"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="All Status">All</option>
-      <option value="Active">Active</option>
-    </select>
-  ),
+vi.mock('../modals/CreateQueueModal', () => ({
+  default: ({ open, onClose }: any) =>
+    open ? (
+      <div data-testid="create-queue-modal">
+        <button onClick={onClose}>Close</button>
+      </div>
+    ) : null,
 }));
 
 describe('WorkQueueManagement', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
-    useWorkQueues.mockReturnValue({
-      workQueues: mockQueues,
-      loading: false,
-      error: null,
-      totalPages: 1,
+    mockCandidateGroupsReturn.workQueues = [
+      { id: 'q1', name: 'Fraud Team', type: 'candidate' },
+      { id: 'q2', name: 'AML Analysts', type: 'candidate' },
+    ];
+    mockCandidateGroupsReturn.loading = false;
+    mockCandidateGroupsReturn.error = null;
+    mockCandidateGroupsReturn.pagination = {
       currentPage: 1,
-      total: 1,
-      refetch: mockRefetch,
-      updateFilters: vi.fn(),
-    });
-
-    useWorkQueueFilter.mockReturnValue({
-      searchTerm: '',
-      setSearchTerm: vi.fn(),
-      statusFilter: 'All Status',
-      setStatusFilter: vi.fn(),
-      filteredQueues: mockQueues,
-    });
-
-    (workQueueService.deleteWorkQueue as vi.Mock).mockImplementation(
-      mockDelete,
-    );
+      pageSize: 10,
+      totalItems: 2,
+    };
   });
 
-  it('renders an error state and allows retrying when hook returns an error', async () => {
-    const retry = vi.fn();
-    useWorkQueues.mockReturnValue({
-      workQueues: [],
-      loading: false,
-      error: 'Boom',
-      totalPages: 0,
-      currentPage: 1,
-      total: 0,
-      refetch: retry,
-      updateFilters: vi.fn(),
-    });
-
+  it('renders work queues section', () => {
     render(<WorkQueueManagement />);
-
-    expect(screen.getByText(/Error loading work queues/i)).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: /Retry/i }));
-    expect(retry).toHaveBeenCalled();
+    expect(screen.getByText('Work Queues')).toBeInTheDocument();
+    expect(screen.getByText('Create New Queue')).toBeInTheDocument();
   });
 
-  it('passes filtered queues to the table and reacts to delete actions', async () => {
-    const user = userEvent.setup();
-    (workQueueService.deleteWorkQueue as vi.Mock).mockResolvedValueOnce(
-      undefined,
-    );
-
+  it('opens create queue modal on button click', () => {
     render(<WorkQueueManagement />);
+    expect(screen.queryByTestId('create-queue-modal')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Create New Queue'));
+    expect(screen.getByTestId('create-queue-modal')).toBeInTheDocument();
+  });
 
-    expect(screen.getByTestId('work-queues-table')).toHaveTextContent(
-      'rows: 1',
-    );
+  it('renders search input', () => {
+    render(<WorkQueueManagement />);
+    expect(screen.getByTestId('search-input')).toBeInTheDocument();
+  });
 
-    await user.click(screen.getByText('delete-first'));
+  it('shows loading spinner when loading', () => {
+    mockCandidateGroupsReturn.loading = true;
+    render(<WorkQueueManagement />);
+    expect(
+      screen.queryByTestId('admin-work-queues-table'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('results-summary')).not.toBeInTheDocument();
+  });
 
-    await waitFor(() => {
-      expect(workQueueService.deleteWorkQueue).toHaveBeenCalledWith('queue-1');
-    });
+  it('shows error state with retry button', () => {
+    mockCandidateGroupsReturn.error = 'Network error';
+    render(<WorkQueueManagement />);
+    expect(screen.getByText('Error loading work queues')).toBeInTheDocument();
+    expect(screen.getByText('Network error')).toBeInTheDocument();
+    expect(screen.getByText('Retry')).toBeInTheDocument();
+  });
+
+  it('calls refetch when retry button is clicked', async () => {
+    mockCandidateGroupsReturn.error = 'Network error';
+    render(<WorkQueueManagement />);
+    fireEvent.click(screen.getByText('Retry'));
     expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it('closes create queue modal', () => {
+    render(<WorkQueueManagement />);
+    fireEvent.click(screen.getByText('Create New Queue'));
+    expect(screen.getByTestId('create-queue-modal')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Close'));
+    expect(screen.queryByTestId('create-queue-modal')).not.toBeInTheDocument();
+  });
+
+  it('renders results summary and table when not loading', () => {
+    render(<WorkQueueManagement />);
+    expect(screen.getByTestId('results-summary')).toBeInTheDocument();
+    expect(screen.getByTestId('admin-work-queues-table')).toBeInTheDocument();
   });
 });
