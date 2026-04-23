@@ -1,90 +1,93 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Export Functionality Test</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .test-section {
-            margin: 20px 0;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
-        button {
-            background: #3b82f6;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            margin: 5px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #2563eb;
-        }
-        .success {
-            color: green;
-            font-weight: bold;
-        }
-        .error {
-            color: red;
-            font-weight: bold;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 10px 0;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+      button {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin: 5px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #2563eb;
+      }
+      .success {
+        color: green;
+        font-weight: bold;
+      }
+      .error {
+        color: red;
+        font-weight: bold;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Export Functionality Test</h1>
-    <p>This page tests the export functionality for Excel, CSV, and PDF formats.</p>
+    <p>
+      This page tests the export functionality for Excel, CSV, and PDF formats.
+    </p>
 
     <div class="test-section">
-        <h2>Test Data</h2>
-        <table id="testTable">
-            <thead>
-                <tr>
-                    <th>Status</th>
-                    <th>Count</th>
-                    <th>Percentage</th>
-                    <th>Avg Time in Status</th>
-                    <th>Current Trend Period</th>
-                </tr>
-            </thead>
-            <tbody id="testTableBody">
-                <!-- Data will be populated by JavaScript -->
-            </tbody>
-        </table>
+      <h2>Test Data</h2>
+      <table id="testTable">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Count</th>
+            <th>Percentage</th>
+            <th>Avg Time in Status</th>
+            <th>Current Trend Period</th>
+          </tr>
+        </thead>
+        <tbody id="testTableBody">
+          <!-- Data will be populated by JavaScript -->
+        </tbody>
+      </table>
     </div>
 
     <div class="test-section">
-        <h2>Export Tests</h2>
-        <button onclick="testExcelExport()">Test Excel Export</button>
-        <button onclick="testCSVExport()">Test CSV Export</button>
-        <button onclick="testPDFExport()">Test PDF Export</button>
-        <button onclick="testAllExports()">Test All Exports</button>
+      <h2>Export Tests</h2>
+      <button onclick="testExcelExport()">Test Excel Export</button>
+      <button onclick="testCSVExport()">Test CSV Export</button>
+      <button onclick="testPDFExport()">Test PDF Export</button>
+      <button onclick="testAllExports()">Test All Exports</button>
     </div>
 
     <div class="test-section">
-        <h2>Test Results</h2>
-        <div id="results"></div>
+      <h2>Test Results</h2>
+      <div id="results"></div>
     </div>
 
     <!-- Include the required libraries -->
@@ -94,136 +97,181 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <script>
-        // Test data
-        const testData = [
-            { 'Status': 'Open', 'Count': 15, 'Percentage': '75%', 'Avg Time in Status': '5 days', 'Current Trend Period': '+10%' },
-            { 'Status': 'Closed', 'Count': 5, 'Percentage': '25%', 'Avg Time in Status': '3 days', 'Current Trend Period': '-5%' },
-            { 'Status': 'In Progress', 'Count': 8, 'Percentage': '40%', 'Avg Time in Status': '2 days', 'Current Trend Period': '+15%' },
-            { 'Status': 'Pending', 'Count': 3, 'Percentage': '15%', 'Avg Time in Status': '1 day', 'Current Trend Period': '0%' }
-        ];
+      // Test data
+      const testData = [
+        {
+          Status: 'Open',
+          Count: 15,
+          Percentage: '75%',
+          'Avg Time in Status': '5 days',
+          'Current Trend Period': '+10%',
+        },
+        {
+          Status: 'Closed',
+          Count: 5,
+          Percentage: '25%',
+          'Avg Time in Status': '3 days',
+          'Current Trend Period': '-5%',
+        },
+        {
+          Status: 'In Progress',
+          Count: 8,
+          Percentage: '40%',
+          'Avg Time in Status': '2 days',
+          'Current Trend Period': '+15%',
+        },
+        {
+          Status: 'Pending',
+          Count: 3,
+          Percentage: '15%',
+          'Avg Time in Status': '1 day',
+          'Current Trend Period': '0%',
+        },
+      ];
 
-        // Populate the test table
-        function populateTable() {
-            const tbody = document.getElementById('testTableBody');
-            tbody.innerHTML = '';
-            testData.forEach(row => {
-                const tr = document.createElement('tr');
-                Object.values(row).forEach(value => {
-                    const td = document.createElement('td');
-                    td.textContent = value;
-                    tr.appendChild(td);
-                });
-                tbody.appendChild(tr);
-            });
+      // Populate the test table
+      function populateTable() {
+        const tbody = document.getElementById('testTableBody');
+        tbody.innerHTML = '';
+        testData.forEach((row) => {
+          const tr = document.createElement('tr');
+          Object.values(row).forEach((value) => {
+            const td = document.createElement('td');
+            td.textContent = value;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+      }
+
+      function logResult(message, isError = false) {
+        const results = document.getElementById('results');
+        const div = document.createElement('div');
+        div.className = isError ? 'error' : 'success';
+        div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+        results.appendChild(div);
+      }
+
+      function testExcelExport() {
+        try {
+          const worksheet = XLSX.utils.json_to_sheet(testData);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Data');
+
+          // Auto-size columns
+          const colWidths = Object.keys(testData[0]).map((key) => ({
+            wch: Math.max(
+              key.length,
+              ...testData.map((row) => String(row[key] || '').length),
+            ),
+          }));
+          worksheet['!cols'] = colWidths;
+
+          const excelBuffer = XLSX.write(workbook, {
+            bookType: 'xlsx',
+            type: 'array',
+          });
+          const blob = new Blob([excelBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          });
+          saveAs(blob, 'test-export.xlsx');
+          logResult('Excel export successful - file downloaded');
+        } catch (error) {
+          logResult(`Excel export failed: ${error.message}`, true);
         }
+      }
 
-        function logResult(message, isError = false) {
-            const results = document.getElementById('results');
-            const div = document.createElement('div');
-            div.className = isError ? 'error' : 'success';
-            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
-            results.appendChild(div);
+      function testCSVExport() {
+        try {
+          const headers = Object.keys(testData[0]);
+          const csvContent = [
+            headers.join(','),
+            ...testData.map((row) =>
+              headers
+                .map((header) => {
+                  const value = row[header];
+                  if (
+                    typeof value === 'string' &&
+                    (value.includes(',') || value.includes('"'))
+                  ) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                  }
+                  return value || '';
+                })
+                .join(','),
+            ),
+          ].join('\n');
+
+          const blob = new Blob([csvContent], {
+            type: 'text/csv;charset=utf-8;',
+          });
+          saveAs(blob, 'test-export.csv');
+          logResult('CSV export successful - file downloaded');
+        } catch (error) {
+          logResult(`CSV export failed: ${error.message}`, true);
         }
+      }
 
-        function testExcelExport() {
-            try {
-                const worksheet = XLSX.utils.json_to_sheet(testData);
-                const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Data');
-                
-                // Auto-size columns
-                const colWidths = Object.keys(testData[0]).map(key => ({
-                    wch: Math.max(key.length, ...testData.map(row => String(row[key] || '').length))
-                }));
-                worksheet['!cols'] = colWidths;
-                
-                const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-                const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                saveAs(blob, 'test-export.xlsx');
-                logResult('Excel export successful - file downloaded');
-            } catch (error) {
-                logResult(`Excel export failed: ${error.message}`, true);
-            }
+      function testPDFExport() {
+        try {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+
+          // Add title
+          doc.setFontSize(16);
+          doc.text('Test Report', 14, 22);
+
+          // Add timestamp
+          doc.setFontSize(10);
+          doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+
+          const columns = [
+            'Status',
+            'Count',
+            'Percentage',
+            'Avg Time in Status',
+            'Current Trend Period',
+          ];
+          const tableData = testData.map((row) =>
+            columns.map((col) => row[col] || ''),
+          );
+
+          doc.autoTable({
+            head: [columns],
+            body: tableData,
+            startY: 40,
+            styles: {
+              fontSize: 8,
+              cellPadding: 3,
+            },
+            headStyles: {
+              fillColor: [59, 130, 246],
+              textColor: 255,
+              fontStyle: 'bold',
+            },
+            alternateRowStyles: {
+              fillColor: [249, 250, 251],
+            },
+            margin: { top: 40 },
+          });
+
+          doc.save('test-export.pdf');
+          logResult('PDF export successful - file downloaded');
+        } catch (error) {
+          logResult(`PDF export failed: ${error.message}`, true);
         }
+      }
 
-        function testCSVExport() {
-            try {
-                const headers = Object.keys(testData[0]);
-                const csvContent = [
-                    headers.join(','),
-                    ...testData.map(row => 
-                        headers.map(header => {
-                            const value = row[header];
-                            if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-                                return `"${value.replace(/"/g, '""')}"`;
-                            }
-                            return value || '';
-                        }).join(',')
-                    )
-                ].join('\n');
+      function testAllExports() {
+        logResult('Starting all export tests...');
+        testExcelExport();
+        setTimeout(() => testCSVExport(), 1000);
+        setTimeout(() => testPDFExport(), 2000);
+      }
 
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                saveAs(blob, 'test-export.csv');
-                logResult('CSV export successful - file downloaded');
-            } catch (error) {
-                logResult(`CSV export failed: ${error.message}`, true);
-            }
-        }
-
-        function testPDFExport() {
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                
-                // Add title
-                doc.setFontSize(16);
-                doc.text('Test Report', 14, 22);
-                
-                // Add timestamp
-                doc.setFontSize(10);
-                doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
-                
-                const columns = ['Status', 'Count', 'Percentage', 'Avg Time in Status', 'Current Trend Period'];
-                const tableData = testData.map(row => 
-                    columns.map(col => row[col] || '')
-                );
-
-                doc.autoTable({
-                    head: [columns],
-                    body: tableData,
-                    startY: 40,
-                    styles: {
-                        fontSize: 8,
-                        cellPadding: 3,
-                    },
-                    headStyles: {
-                        fillColor: [59, 130, 246],
-                        textColor: 255,
-                        fontStyle: 'bold',
-                    },
-                    alternateRowStyles: {
-                        fillColor: [249, 250, 251],
-                    },
-                    margin: { top: 40 },
-                });
-
-                doc.save('test-export.pdf');
-                logResult('PDF export successful - file downloaded');
-            } catch (error) {
-                logResult(`PDF export failed: ${error.message}`, true);
-            }
-        }
-
-        function testAllExports() {
-            logResult('Starting all export tests...');
-            testExcelExport();
-            setTimeout(() => testCSVExport(), 1000);
-            setTimeout(() => testPDFExport(), 2000);
-        }
-
-        // Initialize the page
-        populateTable();
-        logResult('Export test page loaded successfully');
+      // Initialize the page
+      populateTable();
+      logResult('Export test page loaded successfully');
     </script>
-</body>
+  </body>
 </html>

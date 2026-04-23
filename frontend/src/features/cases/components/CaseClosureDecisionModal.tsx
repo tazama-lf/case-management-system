@@ -93,7 +93,7 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
 
     async function loadTasks() {
       try {
-        if (taskId == null) {
+        if (taskId === null || taskId === undefined) {
           console.error('TaskId is missing');
           return;
         }
@@ -137,9 +137,9 @@ const CaseClosureDecisionModal: React.FC<CaseClosureDecisionModalProps> = ({
     setShowReportModal(true);
   };
 
-  const handleApproveSubmit = async (e: React.FormEvent) => {
+  const handleApproveSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    approveCase();
+    void approveCase();
   };
 
   const approveCase = async () => {

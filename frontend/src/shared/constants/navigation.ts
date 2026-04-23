@@ -4,7 +4,6 @@ import {
   ExclamationTriangleIcon,
   FolderIcon,
   Cog6ToothIcon,
-  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItem } from '../types/navigation.types';
 export const NAVIGATION_ITEMS: NavItem[] = [
@@ -44,13 +43,6 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     icon: Cog6ToothIcon,
     roles: ['CMS_ADMIN'],
   },
-
-  {
-    name: 'Reference ID',
-    href: '/reference_id',
-    icon: DocumentTextIcon,
-    roles: ['CMS_ADMIN'],
-  },
 ];
 
 export { ROLE_HIERARCHY } from '../config/roles.config';
@@ -61,5 +53,4 @@ export const ROUTES = {
   CASES: '/cases',
   ADMIN: '/admin',
   LOGIN: '/login',
-  REFERENCE_ID: '/reference_id',
 } as const;

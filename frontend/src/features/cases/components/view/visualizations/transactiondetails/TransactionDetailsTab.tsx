@@ -32,8 +32,10 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
       try {
         setLoading(true);
         setError(null);
-        const result =
-          await transactionDetailsService.getTransactionDetails(transactionId, tenantId);
+        const result = await transactionDetailsService.getTransactionDetails(
+          transactionId,
+          tenantId,
+        );
         setData(result);
       } catch (err) {
         const message =
@@ -117,7 +119,9 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
         <div className="mb-6">
           <div className="text-xs font-semibold text-gray-900 uppercase mb-3 flex items-center gap-2">
             <span className="underline">PACS.008 - Payment Instruction</span>
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">Primary</span>
+            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+              Primary
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-5">
             <div>
@@ -134,7 +138,9 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               </div>
               <div className="text-sm font-medium text-gray-900">
                 {data.transactionOverview?.pacs8?.timestamp &&
-                  new Date(data.transactionOverview.pacs8.timestamp).toLocaleString()}
+                  new Date(
+                    data.transactionOverview.pacs8.timestamp,
+                  ).toLocaleString()}
               </div>
             </div>
             <div>
@@ -160,7 +166,9 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
         <div className="pt-4 border-t border-gray-100">
           <div className="text-xs font-semibold text-gray-900 uppercase mb-3 flex items-center gap-2">
             <span className="underline">PACS.002 - Payment Status Report</span>
-            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">Acknowledgment</span>
+            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+              Acknowledgment
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-5">
             <div>
@@ -177,7 +185,9 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               </div>
               <div className="text-sm font-medium text-gray-900">
                 {data.transactionOverview?.pacs2?.timestamp &&
-                  new Date(data.transactionOverview.pacs2.timestamp).toLocaleString()}
+                  new Date(
+                    data.transactionOverview.pacs2.timestamp,
+                  ).toLocaleString()}
               </div>
             </div>
             <div>
@@ -315,8 +325,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
                 {data.debtorProfile.account.iban}
               </div>
             </div>
-            <div>
-            </div>
+            <div></div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">
                 Bank
@@ -325,8 +334,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
                 {data.debtorProfile.bank}
               </div>
             </div>
-            <div>
-            </div>
+            <div></div>
           </div>
         </div>
 
@@ -355,8 +363,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
                 {data.creditorProfile.account.iban}
               </div>
             </div>
-            <div>
-            </div>
+            <div></div>
             <div>
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">
                 Bank
@@ -466,7 +473,6 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
           <div className="space-y-3">
             {data.amountAndCurrency.map((amountItem, idx) => (
               <div key={idx} className="space-y-3">
-
                 {amountItem.originalAmount != null && (
                   <div>
                     <div className="text-xs font-medium text-gray-500 uppercase mb-1">
@@ -504,7 +510,6 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
                 {idx !== data.amountAndCurrency.length - 1 && (
                   <div className="border-t border-gray-100 pt-2" />
                 )}
-
               </div>
             ))}
           </div>
@@ -537,7 +542,9 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               </div>
               <div className="text-sm text-gray-900">
                 {data.transactionOverview?.pacs8?.timestamp &&
-                  new Date(data.transactionOverview.pacs8.timestamp).toLocaleString()}
+                  new Date(
+                    data.transactionOverview.pacs8.timestamp,
+                  ).toLocaleString()}
               </div>
             </div>
             {data.settlementDetails.settlementDate && (

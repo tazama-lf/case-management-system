@@ -203,9 +203,9 @@ Structured API layer:
 ```typescript
 // Example service structure
 class TriageService {
-  async getAlerts(filters: AlertsFilter): Promise<AlertsResponse>
-  async getAlertById(id: string): Promise<Alert>
-  async performManualTriage(data: ManualTriageDto): Promise<void>
+  async getAlerts(filters: AlertsFilter): Promise<AlertsResponse>;
+  async getAlertById(id: string): Promise<Alert>;
+  async performManualTriage(data: ManualTriageDto): Promise<void>;
 }
 ```
 
@@ -282,6 +282,7 @@ VITE_ENABLE_ANALYTICS=true
 Please refer to the deployment guide here: https://github.com/tazama-lf/docs/blob/dev/Guides/User%20Manuals%20for%20Downloading/Case%20Management%20System.docx
 
 # For support or questions
+
 - Review existing issues, discussions and pull requests
 - Start a discussion in the **Discussions** tab or create an issue in the **Issues** tab in this repository
 - Join the Tazama Slack workspace and post your question in the **#get-help** channel - :point_right: Join here: https://slack.tazama.org

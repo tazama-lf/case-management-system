@@ -9,7 +9,12 @@ export const useDynamicRoute = (): {
   goToAlertDetail: (alertId: number) => Promise<void>;
   goToReport: (reportType: string) => Promise<void>;
   goBack: () => Promise<void>;
-  getCurrentRoute: () => { pathname: string; search: string; hash: string; state: unknown };
+  getCurrentRoute: () => {
+    pathname: string;
+    search: string;
+    hash: string;
+    state: unknown;
+  };
 } => {
   const params = useParams();
   const navigate = useNavigate();
@@ -110,7 +115,6 @@ export const ROUTES = {
   REPORTS: '/reports',
   REPORT_DETAIL: '/reports/:reportType',
   ADMIN: '/admin',
-  REFERENCE_ID: '/reference_id',
 } as const;
 
 /**

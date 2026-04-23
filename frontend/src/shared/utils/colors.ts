@@ -17,7 +17,7 @@ export const TaskStatus = {
 
 export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus];
 
-export function getCaseTypeColor(caseType: CaseType | string | null): string {
+export function getCaseTypeColor(caseType: string | null): string {
   switch (caseType) {
     case CaseType.FRAUD:
     case 'FRAUD':
@@ -35,7 +35,7 @@ export function getCaseTypeColor(caseType: CaseType | string | null): string {
   }
 }
 
-export function getTaskStatusColor(status: TaskStatus | string): string {
+export function getTaskStatusColor(status: string): string {
   switch (status) {
     case TaskStatus.STATUS_30_COMPLETED:
     case 'STATUS_30_COMPLETED':
@@ -57,9 +57,7 @@ export function getTaskStatusColor(status: TaskStatus | string): string {
   }
 }
 
-export function getCaseTypeColorClass(
-  caseType: CaseType | string | null,
-): string {
+export function getCaseTypeColorClass(caseType: string | null): string {
   switch (caseType) {
     case CaseType.FRAUD:
     case 'FRAUD':
@@ -77,7 +75,7 @@ export function getCaseTypeColorClass(
   }
 }
 
-export function getTaskStatusColorClass(status: TaskStatus | string): string {
+export function getTaskStatusColorClass(status: string): string {
   switch (status) {
     case TaskStatus.STATUS_30_COMPLETED:
     case 'STATUS_30_COMPLETED':

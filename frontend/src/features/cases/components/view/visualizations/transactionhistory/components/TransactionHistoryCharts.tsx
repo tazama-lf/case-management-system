@@ -1,5 +1,16 @@
 import React from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 interface ChartData {
   date: string;
@@ -12,12 +23,15 @@ interface TransactionHistoryChartsProps {
   data: ChartData[];
 }
 
-export const TransactionHistoryCharts: React.FC<TransactionHistoryChartsProps> = ({ data }) => {
-  return (
+export const TransactionHistoryCharts: React.FC<
+  TransactionHistoryChartsProps
+> = ({ data }) => (
     <div className="space-y-6">
       {/* Amount Chart */}
       <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <h4 className="text-sm font-semibold text-gray-900 mb-4">Transaction Amount Trend</h4>
+        <h4 className="text-sm font-semibold text-gray-900 mb-4">
+          Transaction Amount Trend
+        </h4>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -49,7 +63,9 @@ export const TransactionHistoryCharts: React.FC<TransactionHistoryChartsProps> =
 
       {/* Count Chart */}
       <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <h4 className="text-sm font-semibold text-gray-900 mb-4">Transaction Count</h4>
+        <h4 className="text-sm font-semibold text-gray-900 mb-4">
+          Transaction Count
+        </h4>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -63,4 +79,3 @@ export const TransactionHistoryCharts: React.FC<TransactionHistoryChartsProps> =
       </div>
     </div>
   );
-};
