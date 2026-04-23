@@ -8,7 +8,7 @@ export const useReferenceLookup = (): {
   loading: boolean;
   pagination: { currentPage: number; pageSize: number; totalItems: number };
   fetchReferences: () => Promise<void>;
-  addReference: (txnType: string, referenceId: string) => Promise<void>;
+  addReference: (txnType: string, referenceId: string) => Promise<boolean>;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
 } => {
@@ -37,8 +37,8 @@ export const useReferenceLookup = (): {
     }
   };
 
-  const addReference = async (txnType: string, referenceId: string) => {
-    if (!txnType || !referenceId) return;
+  const addReference = async (txnType: string, referenceId: string): Promise<boolean> => {
+    if (!txnType || !referenceId) return false;
 
     setLoading(true);
     try {
@@ -51,8 +51,10 @@ export const useReferenceLookup = (): {
         `Reference ID: ${txnType} ${referenceId} added successfully.`,
       );
       await fetchReferences();
+      return true;
     } catch (err: any) {
       error('Failed to add Reference', err.message);
+      return false;
     } finally {
       setLoading(false);
     }
