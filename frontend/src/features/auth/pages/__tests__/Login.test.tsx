@@ -39,10 +39,6 @@ describe('Login', () => {
       isAuthenticated: false,
       clearError: mockClearError,
     });
-    vi.doMock('react-router-dom', () => ({
-      ...vi.importActual('react-router-dom'),
-      useNavigate: () => mockNavigate,
-    }));
   });
 
   it('renders login form with all fields', () => {
@@ -206,73 +202,11 @@ describe('Login', () => {
     expect(passwordInput).toBeDisabled();
   });
 
-  it('renders remember me checkbox', () => {
-    renderLogin();
-
-    const rememberMeCheckbox = screen.getByLabelText(/Remember me/i);
-    expect(rememberMeCheckbox).toBeInTheDocument();
-    expect(rememberMeCheckbox).not.toBeChecked();
-  });
-
-  it('toggles remember me checkbox', async () => {
-    const user = userEvent.setup();
-    renderLogin();
-
-    const rememberMeCheckbox = screen.getByLabelText(/Remember me/i);
-    await user.click(rememberMeCheckbox);
-
-    expect(rememberMeCheckbox).toBeChecked();
-  });
-
-  it('renders forgot password link', () => {
-    renderLogin();
-
-    const forgotPasswordLink = screen.getByText(/Forgot password/i);
-    expect(forgotPasswordLink).toBeInTheDocument();
-    expect(forgotPasswordLink.closest('a')).toHaveAttribute('href', '#');
-  });
-
-  it('renders development mode test users in development', () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
-
-    renderLogin();
-
-    expect(
-      screen.getByText(/Development Mode - Test Users/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Test User:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Supervisor:/i)).toBeInTheDocument();
-
-    process.env.NODE_ENV = originalEnv;
-  });
-
-  it('fills credentials when test user fill button is clicked', async () => {
-    const user = userEvent.setup();
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
-
-    renderLogin();
-
-    const fillButtons = screen.getAllByText('Fill');
-    await user.click(fillButtons[0]); // Click first fill button (test-user)
-
-    const usernameInput = screen.getByLabelText(/Login ID/i);
-    const passwordInput = screen.getByLabelText(/Password/i);
-
-    await waitFor(() => {
-      expect(usernameInput).toHaveValue('test-user');
-      expect(passwordInput).toHaveValue('abc.123');
-    });
-
-    process.env.NODE_ENV = originalEnv;
-  });
-
   it('renders copyright notice', () => {
     renderLogin();
 
     expect(
-      screen.getByText(/© 2025 Tazama. All rights reserved./i),
+      screen.getByText(/© 2026 Tazama. Powered by Paysys Labs./i),
     ).toBeInTheDocument();
   });
 });

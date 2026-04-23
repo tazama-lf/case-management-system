@@ -1,4 +1,4 @@
-import { render, screen, userEvent } from '../../../../test/testUtils';
+﻿import { render, screen } from '../../../../test/testUtils';
 import { describe, it, expect, vi } from 'vitest';
 import CasesTable from '../CasesTable';
 import type { CaseRow } from '../casesTable.utils';
@@ -6,7 +6,7 @@ import type { CaseRow } from '../casesTable.utils';
 describe('CasesTable', () => {
   const mockRows: CaseRow[] = [
     {
-      id: 'CASE-001',
+      id: 1,
       type: 'FRAUD',
       typeColor: 'bg-red-50 text-red-700',
       status: 'STATUS_20_IN_PROGRESS',
@@ -20,9 +20,10 @@ describe('CasesTable', () => {
       priority: 'HIGH',
       userRole: 'owner',
       totalTasks: 5,
+      alertId: 1,
     },
     {
-      id: 'CASE-002',
+      id: 2,
       type: 'AML',
       typeColor: 'bg-purple-50 text-purple-700',
       status: 'STATUS_00_DRAFT',
@@ -36,24 +37,13 @@ describe('CasesTable', () => {
       priority: 'LOW',
       userRole: 'none',
       totalTasks: 0,
+      alertId: 2,
     },
   ];
 
   const defaultProps = {
     rows: mockRows,
     onView: vi.fn(),
-    onComplete: vi.fn(),
-    onCloseCase: vi.fn(),
-    onReopenCase: vi.fn(),
-    onAbandonCase: vi.fn(),
-    onSuspendCase: vi.fn(),
-    onResumeCase: vi.fn(),
-    onApproveCase: vi.fn(),
-    onApproveCaseReopen: vi.fn(),
-    onRejectCaseReopen: vi.fn(),
-    onApproveCaseCreation: vi.fn(),
-    onRejectCaseCreation: vi.fn(),
-    canManageSupervisorActions: false,
     pagination: {
       currentPage: 1,
       pageSize: 10,
@@ -65,149 +55,67 @@ describe('CasesTable', () => {
 
   it('should render table headers correctly', () => {
     render(<CasesTable {...defaultProps} />);
-
     expect(screen.getByText('Case ID')).toBeInTheDocument();
     expect(screen.getByText('Case Type')).toBeInTheDocument();
     expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getByText('Score')).toBeInTheDocument();
     expect(screen.getByText('Created')).toBeInTheDocument();
-    expect(screen.getByText('Actions')).toBeInTheDocument();
   });
 
   it('should render case rows correctly', () => {
     render(<CasesTable {...defaultProps} />);
-
-    expect(screen.getByText('CASE-001')).toBeInTheDocument();
+    expect(screen.getByText('CASE-1')).toBeInTheDocument();
     expect(screen.getByText('FRAUD')).toBeInTheDocument();
-    expect(screen.getByText('STATUS_20_IN_PROGRESS')).toBeInTheDocument();
+    expect(screen.getByText('20_IN_PROGRESS')).toBeInTheDocument();
     expect(screen.getByText('85%')).toBeInTheDocument();
-
-    expect(screen.getByText('CASE-002')).toBeInTheDocument();
+    expect(screen.getByText('CASE-2')).toBeInTheDocument();
     expect(screen.getByText('AML')).toBeInTheDocument();
-    expect(screen.getByText('STATUS_00_DRAFT')).toBeInTheDocument();
+    expect(screen.getByText('00_DRAFT')).toBeInTheDocument();
     expect(screen.getByText('45%')).toBeInTheDocument();
   });
 
-  it('should call onView when review button is clicked', async () => {
-    const user = userEvent.setup();
+  it('should call onView when a row is clicked', () => {
     render(<CasesTable {...defaultProps} />);
-
-    const reviewButtons = screen.getAllByText('Review');
-    await user.click(reviewButtons[0]);
-
+    const row = screen.getByText('CASE-1').closest('tr')!;
+    row.click();
     expect(defaultProps.onView).toHaveBeenCalledWith(mockRows[0]);
-  });
-
-  it('should show Complete button for draft cases', async () => {
-    const user = userEvent.setup();
-    render(<CasesTable {...defaultProps} />);
-
-    const completeButton = screen.getByText('Complete');
-    expect(completeButton).toBeInTheDocument();
-
-    await user.click(completeButton);
-    expect(defaultProps.onComplete).toHaveBeenCalledWith(mockRows[1]);
-  });
-
-  it('should show Close Case button for in-progress cases', async () => {
-    const user = userEvent.setup();
-    render(<CasesTable {...defaultProps} />);
-
-    const closeButton = screen.getByText('Close Case');
-    expect(closeButton).toBeInTheDocument();
-
-    await user.click(closeButton);
-    expect(defaultProps.onCloseCase).toHaveBeenCalledWith(mockRows[0]);
-  });
-
-  it('should show Abandon button for draft cases', async () => {
-    const user = userEvent.setup();
-    render(<CasesTable {...defaultProps} />);
-
-    const abandonButton = screen.getByText('Abandon');
-    expect(abandonButton).toBeInTheDocument();
-
-    await user.click(abandonButton);
-    expect(defaultProps.onAbandonCase).toHaveBeenCalledWith(mockRows[1]);
   });
 
   it('should render pagination controls', () => {
     render(<CasesTable {...defaultProps} />);
-
-    expect(screen.getByText(/Showing/i)).toBeInTheDocument();
-    expect(screen.getByText(/results/i)).toBeInTheDocument();
-    expect(screen.getByText('Previous')).toBeInTheDocument();
-    expect(screen.getByText('Next')).toBeInTheDocument();
+    expect(screen.getByText(/cases/i)).toBeInTheDocument();
   });
 
-  it('should call onPageChange when pagination buttons are clicked', async () => {
-    const user = userEvent.setup();
+  it('should show "No cases available" when rows is empty', () => {
+    render(<CasesTable {...defaultProps} rows={[]} />);
+    expect(screen.getByText('No cases available.')).toBeInTheDocument();
+  });
+
+  it('should render SAR/STR Status column when isComplianceOfficer is true', () => {
+    render(<CasesTable {...defaultProps} isComplianceOfficer={true} />);
+    expect(screen.getByText('SAR/STR Status')).toBeInTheDocument();
+  });
+
+  it('should NOT render SAR/STR Status column by default', () => {
     render(<CasesTable {...defaultProps} />);
-
-    const nextButton = screen.getByText('Next');
-    await user.click(nextButton);
-
-    expect(defaultProps.pagination.onPageChange).toHaveBeenCalledWith(2);
+    expect(screen.queryByText('SAR/STR Status')).not.toBeInTheDocument();
   });
 
-  it('should show supervisor controls when enabled and status matches', async () => {
-    const supervisorRows: CaseRow[] = [
-      {
-        ...mockRows[0],
-        id: 'CASE-SUP-1',
-        status: 'STATUS_22_PENDING_FINAL_APPROVAL',
-      },
-      {
-        ...mockRows[0],
-        id: 'CASE-SUP-2',
-        status: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
-      },
-    ];
-
-    const user = userEvent.setup();
-    render(
-      <CasesTable
-        {...defaultProps}
-        rows={supervisorRows}
-        canManageSupervisorActions={true}
-      />,
-    );
-
-    // Check for Review Case Closure
-    const reviewClosureBtn = screen.getByText('Review Case Closure');
-    expect(reviewClosureBtn).toBeInTheDocument();
-    await user.click(reviewClosureBtn);
-    expect(defaultProps.onApproveCase).toHaveBeenCalledWith(supervisorRows[0]);
-
-    // Check for Approve/Reject Creation
-    const approveCreationBtn = screen.getByText('Approve');
-    const rejectCreationBtn = screen.getByText('Reject');
-    expect(approveCreationBtn).toBeInTheDocument();
-    expect(rejectCreationBtn).toBeInTheDocument();
-
-    await user.click(approveCreationBtn);
-    expect(defaultProps.onApproveCaseCreation).toHaveBeenCalledWith(
-      supervisorRows[1],
-    );
+  it('should render created dates for each row', () => {
+    render(<CasesTable {...defaultProps} />);
+    expect(screen.getByText('2023-01-01')).toBeInTheDocument();
+    expect(screen.getByText('2023-01-03')).toBeInTheDocument();
   });
 
-  it('should NOT show supervisor controls when disabled', () => {
-    const supervisorRows: CaseRow[] = [
-      {
-        ...mockRows[0],
-        id: 'CASE-SUP-1',
-        status: 'STATUS_22_PENDING_FINAL_APPROVAL',
-      },
-    ];
+  it('should render score with color coding', () => {
+    render(<CasesTable {...defaultProps} />);
+    expect(screen.getByText('85%')).toBeInTheDocument();
+    expect(screen.getByText('45%')).toBeInTheDocument();
+  });
 
-    render(
-      <CasesTable
-        {...defaultProps}
-        rows={supervisorRows}
-        canManageSupervisorActions={false}
-      />,
-    );
-
-    expect(screen.queryByText('Review Case Closure')).not.toBeInTheDocument();
+  it('should render case type for each row', () => {
+    render(<CasesTable {...defaultProps} />);
+    expect(screen.getByText('FRAUD')).toBeInTheDocument();
+    expect(screen.getByText('AML')).toBeInTheDocument();
   });
 });

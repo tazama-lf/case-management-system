@@ -76,7 +76,7 @@ describe('useApproveCaseActions', () => {
           'CASE-123',
           {
             finalOutcome: 'STATUS_82_CLOSED_CONFIRMED',
-            supervisorComments: undefined,
+            supervisorComments: '',
           },
         );
       });
@@ -130,7 +130,7 @@ describe('useApproveCaseActions', () => {
       await waitFor(() => {
         expect(mockError).toHaveBeenCalledWith(
           'Approve Case Closure Failed',
-          expect.stringContaining('Unable to approve case closure right now'),
+          expect.stringContaining('Cannot approve case closure'),
         );
       });
     });
@@ -291,7 +291,7 @@ describe('useApproveCaseActions', () => {
       await waitFor(() => {
         expect(mockError).toHaveBeenCalledWith(
           'Approve Case Creation Failed',
-          expect.stringContaining('Unable to approve case creation right now'),
+          expect.stringContaining('Cannot approve case creation'),
         );
       });
     });
@@ -376,7 +376,7 @@ describe('useApproveCaseActions', () => {
       await waitFor(() => {
         expect(mockError).toHaveBeenCalledWith(
           'Approve Case Reopening Failed',
-          expect.stringContaining('Unable to approve case reopening right now'),
+          expect.stringContaining('Cannot approve case reopening'),
         );
       });
     });

@@ -75,9 +75,7 @@ describe('useReturnCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Return Case for Review Failed',
-        expect.stringContaining(
-          'Unable to return this case for review right now',
-        ),
+        expect.stringContaining('Cannot return case for review'),
       );
     });
   });
@@ -185,7 +183,7 @@ describe('useReturnCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Return Case for Review Failed',
-        expect.stringContaining('Something went wrong'),
+        expect.stringContaining('Could not return case for review'),
       );
     });
   });

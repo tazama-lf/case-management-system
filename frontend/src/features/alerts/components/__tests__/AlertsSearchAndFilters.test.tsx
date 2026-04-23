@@ -1,8 +1,30 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AlertsSearchAndFilters from '../AlertsSearchAndFilters';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { filterService } from '../../../cases/services/filterService';
+
+const mockSuccess = vi.fn();
+const mockError = vi.fn();
+
+// Mock dependencies
+vi.mock('@/shared/providers/ToastProvider', () => ({
+  useToast: () => ({ success: mockSuccess, error: mockError }),
+}));
+
+vi.mock('../../../cases/services/filterService', () => ({
+  filterService: {
+    getFilters: vi.fn().mockResolvedValue([]),
+    createFilter: vi.fn().mockResolvedValue({}),
+  },
+}));
+
+vi.mock('../../../auth/services/authService', () => ({
+  default: {
+    getUser: vi.fn().mockReturnValue({ userId: 'user-1' }),
+  },
+}));
 
 const baseFilters = {
   query: '',
@@ -56,7 +78,10 @@ describe('AlertsSearchAndFilters', () => {
     expect(onFilterChange).toHaveBeenCalledWith('query', 'ALERT-1');
 
     await userEvent.click(screen.getByRole('button', { name: /filters/i }));
-    fireEvent.change(screen.getByLabelText(/Time Range/i), {
+    const timeRangeSelect = screen
+      .getByText('Time Range')
+      .parentElement?.querySelector('select') as HTMLSelectElement;
+    fireEvent.change(timeRangeSelect, {
       target: { value: 'custom' },
     });
     expect(onFilterChange).toHaveBeenCalledWith('timeRange', 'custom');
@@ -66,7 +91,10 @@ describe('AlertsSearchAndFilters', () => {
     const { rerender } = renderComponent();
 
     await userEvent.click(screen.getByRole('button', { name: /filters/i }));
-    fireEvent.change(screen.getByLabelText(/Time Range/i), {
+    const timeRangeSelect2 = screen
+      .getByText('Time Range')
+      .parentElement?.querySelector('select') as HTMLSelectElement;
+    fireEvent.change(timeRangeSelect2, {
       target: { value: 'custom' },
     });
 
@@ -83,13 +111,99 @@ describe('AlertsSearchAndFilters', () => {
       />,
     );
 
-    fireEvent.change(await screen.findByLabelText(/Start Date/i), {
+    const startDateInput = screen
+      .getByText('Start Date')
+      .parentElement?.querySelector('input') as HTMLInputElement;
+    const endDateInput = screen
+      .getByText('End Date')
+      .parentElement?.querySelector('input') as HTMLInputElement;
+    fireEvent.change(startDateInput, {
       target: { value: '2024-01-01' },
     });
-    fireEvent.change(await screen.findByLabelText(/End Date/i), {
+    fireEvent.change(endDateInput, {
       target: { value: '2024-01-02' },
     });
 
     expect(onCustomDateRangeChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('saves current filters successfully', async () => {
+    (filterService.createFilter as vi.Mock).mockResolvedValue({});
+    renderComponent({ priority: 'URGENT' });
+
+    await userEvent.click(screen.getByRole('button', { name: /filters/i }));
+    await userEvent.click(
+      screen.getByRole('button', { name: /save current filters/i }),
+    );
+
+    await waitFor(() => {
+      expect(filterService.createFilter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'user-1',
+          filterType: 'Alert',
+        }),
+      );
+      expect(mockSuccess).toHaveBeenCalledWith(
+        'Filter Created',
+        expect.any(String),
+      );
+    });
+  });
+
+  it('handles save filter error', async () => {
+    (filterService.createFilter as vi.Mock).mockRejectedValue(
+      new Error('Save failed'),
+    );
+    renderComponent({ priority: 'URGENT' });
+
+    await userEvent.click(screen.getByRole('button', { name: /filters/i }));
+    await userEvent.click(
+      screen.getByRole('button', { name: /save current filters/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockError).toHaveBeenCalledWith(
+        'Create Filter Failed',
+        'Save failed',
+      );
+    });
+  });
+
+  it('loads and selects saved filters', async () => {
+    (filterService.getFilters as vi.Mock).mockResolvedValue([
+      {
+        filter_Id: 1,
+        user_filters: JSON.stringify({
+          alertType: 'FRAUD',
+          priority: 'URGENT',
+          source: 'System A',
+          timeRange: 'today',
+        }),
+      },
+    ]);
+
+    renderComponent();
+    await userEvent.click(screen.getByRole('button', { name: /filters/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/select a saved filter/i)).toBeInTheDocument();
+    });
+
+    const savedSelect = screen
+      .getByText(/select a saved filter/i)
+      .closest('select') as HTMLSelectElement;
+    fireEvent.change(savedSelect, { target: { value: '1' } });
+
+    expect(onFilterChange).toHaveBeenCalledWith('type', 'FRAUD');
+    expect(onFilterChange).toHaveBeenCalledWith('priority', 'URGENT');
+    expect(onFilterChange).toHaveBeenCalledWith('source', 'System A');
+  });
+
+  it('renders filter dropdowns with provided options', async () => {
+    renderComponent();
+    await userEvent.click(screen.getByRole('button', { name: /filters/i }));
+    expect(screen.getByText('Alert Type')).toBeInTheDocument();
+    expect(screen.getByText('Priority')).toBeInTheDocument();
+    expect(screen.getByText('Source')).toBeInTheDocument();
   });
 });

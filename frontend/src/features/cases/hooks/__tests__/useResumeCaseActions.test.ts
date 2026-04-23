@@ -71,7 +71,7 @@ describe('useResumeCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Resume Case Failed',
-        expect.stringContaining('Unable to resume this case right now'),
+        expect.stringContaining('Cannot resume case'),
       );
     });
   });
@@ -179,7 +179,7 @@ describe('useResumeCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Resume Case Failed',
-        expect.stringContaining('Something went wrong'),
+        expect.stringContaining('Could not resume case'),
       );
     });
   });

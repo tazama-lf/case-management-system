@@ -59,7 +59,7 @@ describe('casesTable.utils', () => {
       expect(result.type).toBe('FRAUD');
       expect(result.status).toBe('STATUS_20_IN_PROGRESS');
       expect(result.score).toBe(85);
-      expect(result.assignee).toBe('user-1');
+      expect(result.assignee).toBe('Current User');
       expect(result.userRole).toBe('owner');
       expect(result.action).toBe('View');
     });

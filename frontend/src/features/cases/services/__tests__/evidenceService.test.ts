@@ -436,4 +436,192 @@ describe('EvidenceService', () => {
       ).rejects.toThrow();
     });
   });
+
+  describe('deleteEvidence', () => {
+    it('deletes evidence by id and filename', async () => {
+      (apiClient.delete as vi.Mock).mockResolvedValue(undefined);
+
+      await evidenceService.deleteEvidence('ev-1', 'report.pdf');
+
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/api/v1/evidence/ev-1/attachments/report.pdf',
+      );
+    });
+
+    it('encodes filename with special characters', async () => {
+      (apiClient.delete as vi.Mock).mockResolvedValue(undefined);
+
+      await evidenceService.deleteEvidence('ev-1', 'my file (1).pdf');
+
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        expect.stringContaining('my%20file%20(1).pdf'),
+      );
+    });
+
+    it('throws on error', async () => {
+      (apiClient.delete as vi.Mock).mockRejectedValue(new Error('fail'));
+
+      await expect(
+        evidenceService.deleteEvidence('ev-1', 'file.pdf'),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('searchEvidence', () => {
+    it('searches evidence with filters', async () => {
+      const mockResponse = {
+        evidence: [{ id: 'ev-1', fileName: 'report.pdf' }],
+      };
+      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
+
+      const result = await evidenceService.searchEvidence({
+        evidenceType: 'KYC',
+        taskId: 5,
+        uploadedBy: 'user-1',
+        verified: true,
+        search: 'report',
+      });
+
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('evidenceType=KYC'),
+      );
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('taskId=5'),
+      );
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('uploadedBy=user-1'),
+      );
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('verified=true'),
+      );
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('search=report'),
+      );
+      expect(result.evidence).toHaveLength(1);
+    });
+
+    it('searches with custom page and limit', async () => {
+      const mockResponse = { evidence: [] };
+      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
+
+      await evidenceService.searchEvidence({}, 3, 50);
+
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('page=3'),
+      );
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('limit=50'),
+      );
+    });
+  });
+
+  describe('downloadEvidence edge cases', () => {
+    it('handles JSON error response', async () => {
+      localStorageMock.getItem.mockReturnValue('mock-token');
+      (global.fetch as vi.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Server Error',
+        headers: {
+          get: (h: string) =>
+            h === 'content-type' ? 'application/json' : null,
+        },
+        json: async () => ({ message: 'Internal error' }),
+      });
+
+      await expect(evidenceService.downloadEvidence('ev-1')).rejects.toThrow(
+        'Internal error',
+      );
+    });
+
+    it('handles text error response', async () => {
+      localStorageMock.getItem.mockReturnValue('mock-token');
+      (global.fetch as vi.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Server Error',
+        headers: {
+          get: () => 'text/plain',
+        },
+        text: async () => 'Something went wrong',
+      });
+
+      await expect(evidenceService.downloadEvidence('ev-1')).rejects.toThrow(
+        'Something went wrong',
+      );
+    });
+
+    it('re-wraps blob with content-type header when blob type is octet-stream', async () => {
+      localStorageMock.getItem.mockReturnValue('mock-token');
+      const mockBlob = new Blob(['content'], {
+        type: 'application/octet-stream',
+      });
+      (global.fetch as vi.Mock).mockResolvedValue({
+        ok: true,
+        headers: {
+          get: (h: string) => (h === 'content-type' ? 'application/pdf' : null),
+        },
+        blob: async () => mockBlob,
+      });
+
+      const result = await evidenceService.downloadEvidence('ev-1');
+      expect(result.type).toBe('application/pdf');
+    });
+  });
+
+  describe('handleError edge cases', () => {
+    it('returns the error itself when error is an instance of Error', async () => {
+      const customError = new Error('Custom message');
+      (apiClient.get as vi.Mock).mockRejectedValue(customError);
+
+      await expect(evidenceService.getEvidenceById('ev-1')).rejects.toThrow(
+        'Custom message',
+      );
+    });
+
+    it('handles error with response.data.message', async () => {
+      const apiError = {
+        response: { data: { message: 'API error' } },
+      };
+      (apiClient.get as vi.Mock).mockRejectedValue(apiError);
+
+      await expect(evidenceService.getEvidenceById('ev-1')).rejects.toThrow(
+        'API error',
+      );
+    });
+
+    it('handles error with only message property', async () => {
+      const error = { message: 'Network fail' };
+      (apiClient.get as vi.Mock).mockRejectedValue(error);
+
+      await expect(evidenceService.getEvidenceById('ev-1')).rejects.toThrow(
+        'Network fail',
+      );
+    });
+
+    it('handles completely unknown error', async () => {
+      (apiClient.get as vi.Mock).mockRejectedValue(42);
+
+      await expect(evidenceService.getEvidenceById('ev-1')).rejects.toThrow(
+        'Failed to get evidence details',
+      );
+    });
+  });
+
+  describe('validateFile edge cases', () => {
+    it('accepts file with empty MIME type', () => {
+      const mockFile = new File(['data'], 'file.bin', { type: '' });
+      const result = evidenceService.validateFile(mockFile);
+      expect(result.valid).toBe(true);
+    });
+
+    it('accepts custom max size', () => {
+      const data = new Uint8Array(2 * 1024 * 1024); // 2MB
+      const mockFile = new File([data], 'large.pdf', {
+        type: 'application/pdf',
+      });
+      const result = evidenceService.validateFile(mockFile, 1); // 1MB limit
+      expect(result.valid).toBe(false);
+    });
+  });
 });
