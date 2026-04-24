@@ -17,7 +17,7 @@ vi.mock('@/features/cases/services/userService', () => ({
   },
 }));
 
-vi.mock('../../auth/services/authService', () => ({
+vi.mock('@/features/auth/services/authService', () => ({
   default: {
     getUser: vi.fn().mockReturnValue({ userId: 'user-1' }),
   },

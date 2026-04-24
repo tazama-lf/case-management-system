@@ -265,7 +265,7 @@ describe('TasksDetailsModal', () => {
   });
 
   it('handles parent case details fetch error', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockGetCaseDetails.mockRejectedValue(new Error('fetch failed'));
 
     renderModal({ row: mockCaseWithParent });
@@ -280,7 +280,7 @@ describe('TasksDetailsModal', () => {
   });
 
   it('handles task fetch error gracefully', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockGetTasksByCaseId.mockRejectedValue(new Error('task fetch failed'));
 
     renderModal({});
@@ -385,7 +385,8 @@ describe('TasksDetailsModal', () => {
     expect(mockGetTasksByCaseId).toHaveBeenCalledTimes(2); // once on open, once on refresh
   });
 
-  it('extracts transactionId from EndToEndId field', () => {
+  it('extracts transactionId from EndToEndId field', async () => {
+    const user = userEvent.setup();
     const caseWithEndToEnd: CaseRow = {
       ...mockCaseData,
       transaction: JSON.stringify({
@@ -397,10 +398,13 @@ describe('TasksDetailsModal', () => {
       }),
     };
     renderModal({ row: caseWithEndToEnd });
-    expect(screen.getAllByText(/Task Details/)[0]).toBeInTheDocument();
+
+    await user.click(screen.getByText('Visualizations'));
+    expect(screen.getByText(/txn:E2E-TXN-001/)).toBeInTheDocument();
   });
 
-  it('extracts transactionId from transaction_id field', () => {
+  it('extracts transactionId from transaction_id field', async () => {
+    const user = userEvent.setup();
     const caseWithTxnId: CaseRow = {
       ...mockCaseData,
       transaction: JSON.stringify({
@@ -408,10 +412,13 @@ describe('TasksDetailsModal', () => {
       }),
     };
     renderModal({ row: caseWithTxnId });
-    expect(screen.getAllByText(/Task Details/)[0]).toBeInTheDocument();
+
+    await user.click(screen.getByText('Visualizations'));
+    expect(screen.getByText(/txn:SIMPLE-TXN-001/)).toBeInTheDocument();
   });
 
-  it('extracts transactionId from transactionId field', () => {
+  it('extracts transactionId from transactionId field', async () => {
+    const user = userEvent.setup();
     const caseWithTxnId: CaseRow = {
       ...mockCaseData,
       transaction: JSON.stringify({
@@ -419,6 +426,8 @@ describe('TasksDetailsModal', () => {
       }),
     };
     renderModal({ row: caseWithTxnId });
-    expect(screen.getAllByText(/Task Details/)[0]).toBeInTheDocument();
+
+    await user.click(screen.getByText('Visualizations'));
+    expect(screen.getByText(/txn:CAMEL-TXN-001/)).toBeInTheDocument();
   });
 });

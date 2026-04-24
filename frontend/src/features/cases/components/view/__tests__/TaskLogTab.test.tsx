@@ -189,14 +189,14 @@ vi.mock('../../modals/SarStrFilingModal', () => ({
 }));
 
 describe('TaskLogTab', () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-
-  const renderWithProviders = (ui: React.ReactElement) =>
-    render(
+  const renderWithProviders = (ui: React.ReactElement) => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    return render(
       <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
     );
+  };
 
   const mockTasks = [
     {
@@ -267,7 +267,7 @@ describe('TaskLogTab', () => {
 
   it('displays loading state initially', async () => {
     (taskService.getTasksByCaseId as vi.Mock).mockImplementation(
-      () => new Promise(() => {}),
+      () => new Promise(() => { }),
     );
     renderWithProviders(<TaskLogTab caseId={123} />);
     expect(screen.getByText('Loading tasks...')).toBeInTheDocument();

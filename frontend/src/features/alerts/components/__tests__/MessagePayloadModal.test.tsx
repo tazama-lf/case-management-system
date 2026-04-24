@@ -38,7 +38,8 @@ describe('MessagePayloadModal', () => {
   });
 
   afterEach(() => {
-    // Restore originals manually instead of using vi.restoreAllMocks
+    vi.restoreAllMocks();
+    // Restore originals manually since these were assigned directly, not via vi.spyOn
     global.URL.createObjectURL = originalCreateObjectURL;
     global.URL.revokeObjectURL = originalRevokeObjectURL;
   });
