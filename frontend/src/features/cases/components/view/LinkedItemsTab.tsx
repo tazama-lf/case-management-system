@@ -45,11 +45,32 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
               currentCase.parent_id,
             );
 
-            if (parentCase?.alert.alert_id) {
+            if (parentCase?.alert?.alert_id) {
               const alert = await triageService.getAlertById(
                 parentCase.alert.alert_id,
               );
 
+              if (alert) {
+                const mappedAlerts: LinkedAlert[] = [alert].map((alert) => ({
+                  id: alert.alert_id,
+                  label: alert.message || 'Alert',
+                  type: alert.alert_type || 'N/A',
+                }));
+
+                setLinkedAlerts(mappedAlerts);
+              } else {
+                setLinkedAlerts([]);
+              }
+            } else {
+              setLinkedAlerts([]);
+            }
+          }
+        } else if (currentCase?.alert?.alert_id) {
+            const alert = await triageService.getAlertById(
+              currentCase.alert.alert_id,
+            );
+
+            if (alert) {
               const mappedAlerts: LinkedAlert[] = [alert].map((alert) => ({
                 id: alert.alert_id,
                 label: alert.message || 'Alert',
@@ -57,20 +78,11 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
               }));
 
               setLinkedAlerts(mappedAlerts);
+            } else {
+              setLinkedAlerts([]);
             }
-          }
-        } else if (currentCase?.alert.alert_id) {
-            const alert = await triageService.getAlertById(
-              currentCase.alert.alert_id,
-            );
-
-            const mappedAlerts: LinkedAlert[] = [alert].map((alert) => ({
-              id: alert.alert_id,
-              label: alert.message || 'Alert',
-              type: alert.alert_type || 'N/A',
-            }));
-
-            setLinkedAlerts(mappedAlerts);
+          } else {
+            setLinkedAlerts([]);
           }
 
         setLoading(false);

@@ -245,6 +245,12 @@ const GenerateInvestigationReportModal: React.FC<
   }, [selectedOutcome]);
 
   useEffect(() => {
+    if (supervisorComments && supervisorComments.length > 0) {
+      setSupervisorFeedback(supervisorComments[0].note ?? '');
+    }
+  }, [supervisorComments]);
+
+  useEffect(() => {
     const checkTaskCompletion = async (): Promise<void> => {
       if (!open || !caseId) return;
 
@@ -289,7 +295,6 @@ const GenerateInvestigationReportModal: React.FC<
   const [executiveSummary, setExecutiveSummary] = useState(
     buildExecutiveSummary(),
   );
-  const [keyFindings] = useState(investigationNotes ?? '');
   const [recommendations, setRecommendations] = useState(
     'Based on the investigation findings and evidence review:\n\n1. Review investigator\'s recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure.',
   );
@@ -632,50 +637,45 @@ const GenerateInvestigationReportModal: React.FC<
 
     try {
       const pdfFile = await generatePdfFile(docDefinition);
-      try {
-        // @ts-ignore - Method exists, VS Code language server cache issue
-        const generateFraudReport = await reportsService.generateFraudReport({
-          file: pdfFile,
-          caseId,
-          investigatorInputs: keyFindings,
-          supervisorRemarks: supervisorFeedback,
-          outcome: finalOutcome,
-          reportType: 'INVESTIGATION_REPORT',
-          description: 'Investigation Report',
-        });
+      
+      const generateFraudReport = await reportsService.generateFraudReport({
+        file: pdfFile,
+        caseId,
+        investigatorInputs: investigationNotes,
+        supervisorRemarks: supervisorFeedback,
+        outcome: finalOutcome,
+        reportType: 'INVESTIGATION_REPORT',
+        description: 'Investigation Report',
+      });
 
-        if (!generateFraudReport) {
-          throw new Error('Failed to generate report');
-        }
-        setStep('generated');
-
-        if (latestInvestigateTask && investigationNotes) {
-          try {
-            await taskService.updateTaskForSupervisor(
-              latestInvestigateTask.task_id,
-              {
-                investigationNotes,
-              },
-            );
-          } catch {
-            // Ignore task update errors
-          }
-        }
-
-        const outcomeKey = `fraud-report-outcome-${caseId}`;
-        localStorage.setItem(
-          outcomeKey,
-          JSON.stringify({
-            outcome: reportOutcome,
-            approvedAt: new Date().toISOString(),
-            reportId: generateFraudReport.fileName || `${caseId}-v1`,
-          }),
-        );
-      } catch {
-        showError('Failed to generate report. Please try again.');
-      } finally {
-        setIsFinalizing(false);
+      if (!generateFraudReport) {
+        throw new Error('Failed to generate report');
       }
+      
+      setStep('generated');
+
+      if (latestInvestigateTask && investigationNotes) {
+        try {
+          await taskService.updateTaskForSupervisor(
+            latestInvestigateTask.task_id,
+            {
+              investigationNotes,
+            },
+          );
+        } catch {
+          // Ignore task update errors
+        }
+      }
+
+      const outcomeKey = `fraud-report-outcome-${caseId}`;
+      localStorage.setItem(
+        outcomeKey,
+        JSON.stringify({
+          outcome: reportOutcome,
+          approvedAt: new Date().toISOString(),
+          reportId: generateFraudReport.fileName || `${caseId}-v1`,
+        }),
+      );
 
       setIsApproved(true);
       showSuccess('Report has been finalized and approved successfully!');
@@ -684,7 +684,7 @@ const GenerateInvestigationReportModal: React.FC<
       setTimeout(() => {
         handleClose();
       }, 1500);
-    } catch {
+    } catch (error) {
       showError('Failed to finalize report. Please try again.');
     } finally {
       setIsFinalizing(false);

@@ -371,29 +371,41 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th
-                        onClick={() => { handleSort('event_date'); }}
-                        className="cursor-pointer px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                      >
-                        Date {getSortIcon('event_date')}
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <button
+                          onClick={() => { handleSort('event_date'); }}
+                          className="w-full text-left cursor-pointer hover:text-gray-700"
+                          aria-label="Sort by Date"
+                        >
+                          Date {getSortIcon('event_date')}
+                        </button>
                       </th>
-                      <th
-                        onClick={() => { handleSort('tx_amount'); }}
-                        className="cursor-pointer px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                      >
-                        Transaction Amount {getSortIcon('tx_amount')}
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <button
+                          onClick={() => { handleSort('tx_amount'); }}
+                          className="w-full text-left cursor-pointer hover:text-gray-700"
+                          aria-label="Sort by Transaction Amount"
+                        >
+                          Transaction Amount {getSortIcon('tx_amount')}
+                        </button>
                       </th>
-                      <th
-                        onClick={() => { handleSort('tx_ccy'); }}
-                        className="cursor-pointer px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                      >
-                        Transaction Currency {getSortIcon('tx_ccy')}
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <button
+                          onClick={() => { handleSort('tx_ccy'); }}
+                          className="w-full text-left cursor-pointer hover:text-gray-700"
+                          aria-label="Sort by Transaction Currency"
+                        >
+                          Transaction Currency {getSortIcon('tx_ccy')}
+                        </button>
                       </th>
-                      <th
-                        onClick={() => { handleSort('tx_type'); }}
-                        className="cursor-pointer px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                      >
-                        Transaction Type {getSortIcon('tx_type')}
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <button
+                          onClick={() => { handleSort('tx_type'); }}
+                          className="w-full text-left cursor-pointer hover:text-gray-700"
+                          aria-label="Sort by Transaction Type"
+                        >
+                          Transaction Type {getSortIcon('tx_type')}
+                        </button>
                       </th>
                     </tr>
                   </thead>

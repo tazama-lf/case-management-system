@@ -31,9 +31,6 @@ const JupyterVisualization: React.FC<JupyterVisualizationProps> = ({
       const response = await apiClient.get<{ url: string }>(
         `/api/v1/jupyter/visualization-url?${queryParams.toString()}`,
       );
-
-      console.log('response================', response.url);
-
       setIframeUrl(response.url);
     } catch (err) {
       console.error('Failed to fetch Jupyter URL:', err);
