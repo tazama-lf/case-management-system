@@ -104,7 +104,7 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/task/${taskId}`,
       );
-      response.evidence = response.evidence.map((e) =>
+      response.evidence = (response.evidence ?? []).map((e) =>
         this.normalizeEvidenceData(e),
       );
       return response;
@@ -118,7 +118,7 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/case/${caseId}`,
       );
-      response.evidence = response.evidence.map((e) =>
+      response.evidence = (response.evidence ?? []).map((e) =>
         this.normalizeEvidenceData(e),
       );
       return response;
@@ -135,7 +135,7 @@ export class EvidenceService {
         `${this.baseUrl}/evidenceType/${evidenceType}`,
       );
 
-      response.evidence = response.evidence.map((e) =>
+      response.evidence = (response.evidence ?? []).map((e) =>
         this.normalizeEvidenceData(e),
       );
       return response;
@@ -352,7 +352,7 @@ export class EvidenceService {
         `${this.baseUrl}/search?${queryString}`,
       );
 
-      response.evidence = response.evidence.map((e) =>
+      response.evidence = (response.evidence ?? []).map((e) =>
         this.normalizeEvidenceData(e),
       );
       return response;

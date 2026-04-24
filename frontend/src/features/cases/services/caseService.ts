@@ -582,13 +582,13 @@ export class CaseService {
 
       if (query?.status) params.append('status', query.status);
       if (query?.priority) params.append('priority', query.priority);
-      if (query?.includeTaskAssignments) {
+      if (query?.includeTaskAssignments !== undefined) {
         params.append(
           'includeTaskAssignments',
           String(query.includeTaskAssignments),
         );
       }
-      if (query?.includeOwnedCases) {
+      if (query?.includeOwnedCases !== undefined) {
         params.append('includeOwnedCases', String(query.includeOwnedCases));
       }
       if (query?.page) params.append('page', String(query.page));

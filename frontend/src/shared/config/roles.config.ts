@@ -62,12 +62,21 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 
 export function getRolePermissions(role: Role): Permission[] {
   const inheritedRoles = ROLE_HIERARCHY[role];
+  
+  if (!inheritedRoles) {
+    console.warn(`Unknown role: ${role}`);
+    return [];
+  }
+  
   const permissions = new Set<Permission>();
 
   inheritedRoles.forEach((inheritedRole) => {
-    ROLE_PERMISSIONS[inheritedRole].forEach((permission) => {
-      permissions.add(permission);
-    });
+    const rolePermissions = ROLE_PERMISSIONS[inheritedRole];
+    if (rolePermissions) {
+      rolePermissions.forEach((permission) => {
+        permissions.add(permission);
+      });
+    }
   });
 
   return Array.from(permissions);
@@ -90,7 +99,7 @@ export function hasAnyRole(
   return requiredRoles.some((requiredRole) =>
     userRoles.some((userRole) => {
       const hierarchy = ROLE_HIERARCHY[userRole as Role];
-      return hierarchy.includes(requiredRole as Role);
+      return hierarchy ? hierarchy.includes(requiredRole as Role) : false;
     }),
   );
 }
@@ -100,9 +109,11 @@ export function getEffectiveRoles(userRoles: string[]): string[] {
 
   userRoles.forEach((role) => {
     const hierarchy = ROLE_HIERARCHY[role as Role];
-    hierarchy.forEach((inheritedRole) => {
-      effectiveRoles.add(inheritedRole);
-    });
+    if (hierarchy) {
+      hierarchy.forEach((inheritedRole) => {
+        effectiveRoles.add(inheritedRole);
+      });
+    }
   });
 
   return Array.from(effectiveRoles);

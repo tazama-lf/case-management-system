@@ -47,11 +47,23 @@ class ReportsService {
             0,
           ),
         },
-        statusDistribution: response.statusDistribution,
-        caseTypes: response.caseTypes,
-        outcomes: response.outcomes,
-        monthlyTrend: response.monthlyTrend,
-        statusDetails: response.statusDetails,
+        statusDistribution: response.statusDistribution ?? {
+          assigned: 0,
+          inProgress: 0,
+          draft: 0,
+          suspended: 0,
+          pendingApproval: 0,
+          closed: 0,
+        },
+        caseTypes: response.caseTypes ?? [],
+        outcomes: response.outcomes ?? {
+          resolved: 0,
+          confirmed: 0,
+          inconclusive: 0,
+          pending: 0,
+        },
+        monthlyTrend: response.monthlyTrend ?? [],
+        statusDetails: response.statusDetails ?? [],
       };
 
       return processedResponse;
@@ -114,11 +126,11 @@ class ReportsService {
             0,
           ),
         },
-        workloadData: response.workloadData,
-        volumeTrend: response.volumeTrend,
-        efficiencyData: response.efficiencyData,
-        outcomeData: response.outcomeData,
-        performanceData: response.performanceData,
+        workloadData: response.workloadData ?? [],
+        volumeTrend: response.volumeTrend ?? [],
+        efficiencyData: response.efficiencyData ?? [],
+        outcomeData: response.outcomeData ?? [],
+        performanceData: response.performanceData ?? [],
       };
 
       return processedResponse;
@@ -164,11 +176,11 @@ class ReportsService {
             0,
           ),
         },
-        completionByType: response.completionByType,
-        avgCompletionTime: response.avgCompletionTime,
-        completionTrend: response.completionTrend,
-        statusDistribution: response.statusDistribution,
-        taskDetails: response.taskDetails,
+        completionByType: response.completionByType ?? [],
+        avgCompletionTime: response.avgCompletionTime ?? [],
+        completionTrend: response.completionTrend ?? [],
+        statusDistribution: response.statusDistribution ?? [],
+        taskDetails: response.taskDetails ?? [],
       };
 
       return processedResponse;
@@ -238,7 +250,7 @@ class ReportsService {
             0,
           ),
         },
-        auditLogs: response.auditLogs,
+        auditLogs: response.auditLogs ?? [],
       };
 
       return processedResponse;
@@ -279,11 +291,11 @@ class ReportsService {
             0,
           ),
         },
-        ageingByStatus: response.ageingByStatus,
-        resolutionTrend: response.resolutionTrend,
-        ageingDistribution: response.ageingDistribution,
-        caseTypeResolution: response.caseTypeResolution,
-        caseDetails: response.caseDetails,
+        ageingByStatus: response.ageingByStatus ?? [],
+        resolutionTrend: response.resolutionTrend ?? [],
+        ageingDistribution: response.ageingDistribution ?? [],
+        caseTypeResolution: response.caseTypeResolution ?? [],
+        caseDetails: response.caseDetails ?? [],
       };
 
       return processedResponse;
