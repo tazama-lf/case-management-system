@@ -21,9 +21,6 @@ const CasesDashboard = lazy(
 const AdminDashboard = lazy(
   async () => await import('@/features/admin/pages/AdminDashboard'),
 );
-const ReferenceIdDashboard = lazy(
-  async () => await import('@/features/admin/pages/ReferenceIdDashboard'),
-);
 
 // Loading fallback component
 const PageLoadingFallback = () => (
