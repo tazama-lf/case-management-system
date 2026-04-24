@@ -254,7 +254,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
 
-  const [actionHistory, setActionHistory] = useState<ActionHistory>();
+  const [actionHistory, setActionHistory] = useState<ActionHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isCompleteNewCaseCompleted, setIsCompleteNewCaseCompleted] =
     useState(false);
@@ -289,12 +289,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         try {
           const history = await triageService.getAlertActionHistory(alertId);
           setActionHistory(
-            Array.isArray(history) && history.length > 0
-              ? history[0]
-              : undefined,
+            Array.isArray(history) ? history : [],
           );
         } catch {
-          setActionHistory(undefined);
+          setActionHistory([]);
         } finally {
           setLoadingHistory(false);
         }
@@ -480,7 +478,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       {}
                       {(() => {
                         const triageCompleted =
-                          actionHistory?.operation.includes('ALERT_UPDATED');
+                          actionHistory.some((a) => a.operation.includes('ALERT_UPDATED'));
                         const showButton =
                           canPerformActions &&
                           onManualTriage &&
@@ -606,29 +604,29 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           Loading...
                         </span>
                       </div>
-                    ) : actionHistory ? (
+                    ) : actionHistory.length > 0 ? (
                       <div className="space-y-3 max-h-64 overflow-y-auto">
-                        {/* {actionHistory.map((action) => ( */}
-                        <div
-                          key={actionHistory.audit_log_id}
-                          className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
-                        >
+                        {actionHistory.map((action) => (
                           <div
-                            className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
-                              actionHistory.outcome === 'SUCCESS'
-                                ? 'bg-green-100 text-green-600'
-                                : actionHistory.outcome === 'FAILURE'
-                                  ? 'bg-red-100 text-red-600'
-                                  : 'bg-blue-100 text-blue-600'
-                            }`}
+                            key={action.audit_log_id}
+                            className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
                           >
-                            <ClockIcon className="w-4 h-4" />
+                            <div
+                              className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
+                                action.outcome === 'SUCCESS'
+                                  ? 'bg-green-100 text-green-600'
+                                  : action.outcome === 'FAILURE'
+                                    ? 'bg-red-100 text-red-600'
+                                    : 'bg-blue-100 text-blue-600'
+                              }`}
+                            >
+                              <ClockIcon className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <ActionHistoryItem action={action} />
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <ActionHistoryItem action={actionHistory} />
-                          </div>
-                        </div>
-                        {/* ))} */}
+                        ))}
                       </div>
                     ) : (
                       <div className="text-center py-4">

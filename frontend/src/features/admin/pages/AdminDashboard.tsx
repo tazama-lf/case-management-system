@@ -18,10 +18,17 @@ const AdminDashboard: React.FC = () => {
     onPageSizeChange,
   } = useReferenceLookup();
 
-  const canAdd = txnType && referenceId;
+  const canAdd = txnType.trim() && referenceId.trim() && !loading;
 
   const handleAddReference = async () => {
-    await addReference(txnType, referenceId);
+    const trimmedTxnType = txnType.trim();
+    const trimmedReferenceId = referenceId.trim();
+    
+    if (!trimmedTxnType || !trimmedReferenceId || loading) {
+      return;
+    }
+    
+    await addReference(trimmedTxnType, trimmedReferenceId);
     setTxnType('');
     setReferenceId('');
   };
@@ -47,6 +54,7 @@ const AdminDashboard: React.FC = () => {
                 setTxnType(e.target.value);
               }}
               placeholder="Transaction Type"
+              aria-label="Transaction Type"
               className="h-10 min-w-[180px] flex-1 rounded-md border border-gray-300 px-4 text-sm focus:ring-2 focus:ring-indigo-300"
             />
 
@@ -57,6 +65,7 @@ const AdminDashboard: React.FC = () => {
                 setReferenceId(e.target.value);
               }}
               placeholder="System Reference ID"
+              aria-label="System Reference ID"
               className="h-10 min-w-[220px] flex-1 rounded-md border border-gray-300 px-4 text-sm focus:ring-2 focus:ring-indigo-300"
             />
 

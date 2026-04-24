@@ -48,7 +48,6 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow-xl">
-        {}
         <div className="sticky top-0 bg-white px-6 py-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">
@@ -77,7 +76,6 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
 
         <div className="p-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {}
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -115,7 +113,6 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
                 </div>
               </div>
 
-              {}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Related Items
@@ -156,7 +153,6 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
               </div>
             </div>
 
-            {}
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -183,7 +179,6 @@ const RelatedAlertModal: React.FC<RelatedAlertModalProps> = ({
             </div>
           </div>
 
-          {}
           <div className="mt-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Rules & Typologies
