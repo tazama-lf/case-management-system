@@ -18,12 +18,26 @@ const AdminDashboard: React.FC = () => {
     onPageSizeChange,
   } = useReferenceLookup();
 
-  const canAdd = txnType && referenceId;
+  const canAdd = txnType.trim() && referenceId.trim();
 
   const handleAddReference = async () => {
-    await addReference(txnType, referenceId);
-    setTxnType('');
-    setReferenceId('');
+    const trimmedTxnType = txnType.trim();
+    const trimmedReferenceId = referenceId.trim();
+    
+    if (!trimmedTxnType || !trimmedReferenceId) return;
+    
+    const success = await addReference(trimmedTxnType, trimmedReferenceId);
+    if (success) {
+      setTxnType('');
+      setReferenceId('');
+    }
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (canAdd && !loading) {
+      handleAddReference();
+    }
   };
 
   return (
@@ -39,38 +53,58 @@ const AdminDashboard: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full lg:w-auto">
-            <input
-              type="text"
-              value={txnType}
-              onChange={(e) => {
-                setTxnType(e.target.value);
-              }}
-              placeholder="Transaction Type"
-              className="h-10 min-w-[180px] flex-1 rounded-md border border-gray-300 px-4 text-sm focus:ring-2 focus:ring-indigo-300"
-            />
+          <form onSubmit={handleFormSubmit} className="flex flex-col sm:flex-row flex-wrap gap-3 w-full lg:w-auto">
+            <div className="flex flex-col gap-1">
+              <label 
+                htmlFor="txnType" 
+                className="text-sm font-medium text-gray-700 sr-only"
+              >
+                Transaction Type
+              </label>
+              <input
+                id="txnType"
+                type="text"
+                value={txnType}
+                onChange={(e) => {
+                  setTxnType(e.target.value);
+                }}
+                placeholder="Transaction Type"
+                aria-label="Transaction Type"
+                className="h-10 min-w-[180px] flex-1 rounded-md border border-gray-300 px-4 text-sm focus:ring-2 focus:ring-indigo-300"
+              />
+            </div>
 
-            <input
-              type="text"
-              value={referenceId}
-              onChange={(e) => {
-                setReferenceId(e.target.value);
-              }}
-              placeholder="System Reference ID"
-              className="h-10 min-w-[220px] flex-1 rounded-md border border-gray-300 px-4 text-sm focus:ring-2 focus:ring-indigo-300"
-            />
+            <div className="flex flex-col gap-1">
+              <label 
+                htmlFor="referenceId" 
+                className="text-sm font-medium text-gray-700 sr-only"
+              >
+                System Reference ID
+              </label>
+              <input
+                id="referenceId"
+                type="text"
+                value={referenceId}
+                onChange={(e) => {
+                  setReferenceId(e.target.value);
+                }}
+                placeholder="System Reference ID"
+                aria-label="System Reference ID"
+                className="h-10 min-w-[220px] flex-1 rounded-md border border-gray-300 px-4 text-sm focus:ring-2 focus:ring-indigo-300"
+              />
+            </div>
 
             <button
-              disabled={!canAdd}
-              onClick={handleAddReference}
-              className={`h-10 min-w-[160px] inline-flex items-center justify-center gap-2 px-4 rounded-xl text-white font-medium
-            ${canAdd ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-400 cursor-not-allowed'}
+              type="submit"
+              disabled={!canAdd || loading}
+              className={`h-10 min-w-[160px] inline-flex items-center justify-center gap-2 px-4 rounded-xl text-white font-medium transition-colors
+            ${canAdd && !loading ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-400 cursor-not-allowed'}
           `}
             >
               <PlusIcon className="h-5 w-5" />
-              Add Reference
+              {loading ? 'Adding...' : 'Add Reference'}
             </button>
-          </div>
+          </form>
         </div>
       </div>
 
