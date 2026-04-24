@@ -329,23 +329,28 @@ describe('TasksDetailsModal', () => {
     });
   });
 
-  it('returns undefined transactionId when transaction data is invalid JSON', () => {
+  it('returns undefined transactionId when transaction data is invalid JSON', async () => {
+    const user = userEvent.setup();
     const caseWithBadTransaction: CaseRow = {
       ...mockCaseData,
       transaction: 'invalid json{{{',
     };
     renderModal({ row: caseWithBadTransaction });
-    // Should not crash, still renders
-    expect(screen.getAllByText(/Task Details/)[0]).toBeInTheDocument();
+
+    await user.click(screen.getByText('Visualizations'));
+    expect(screen.queryByText(/txn:/)).not.toBeInTheDocument();
   });
 
-  it('returns undefined transactionId when transaction is null', () => {
+  it('returns undefined transactionId when transaction is null', async () => {
+    const user = userEvent.setup();
     const caseWithNoTransaction: CaseRow = {
       ...mockCaseData,
       transaction: undefined,
     };
     renderModal({ row: caseWithNoTransaction });
-    expect(screen.getAllByText(/Task Details/)[0]).toBeInTheDocument();
+
+    await user.click(screen.getByText('Visualizations'));
+    expect(screen.queryByText(/txn:/)).not.toBeInTheDocument();
   });
 
   it('increments summaryRefreshKey on evidence upload complete', async () => {

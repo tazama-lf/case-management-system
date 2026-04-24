@@ -752,15 +752,24 @@ describe('TaskLogTab', () => {
     await waitFor(() => {
       expect(screen.getByText('Investigate Case')).toBeInTheDocument();
     });
-  });
 
-  it('investigator name uses username fallback', async () => {
-    (authService.fetchAllInvestigators as vi.Mock).mockResolvedValue([
-      { id: 'user-1', firstName: '', lastName: '', username: 'jdoe' },
-    ]);
-    renderWithProviders(<TaskLogTab caseId={123} />);
+    fireEvent.click(screen.getByTestId('complete-1'));
     await waitFor(() => {
-      expect(screen.getByText('Investigate Case')).toBeInTheDocument();
+      expect(screen.getByTestId('complete-modal')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Confirm Complete'));
+    await waitFor(() => {
+      expect(taskService.updateTaskForSupervisor).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ status: 'STATUS_30_COMPLETED' }),
+      );
+    });
+    await waitFor(() => {
+      expect(mockSuccess).toHaveBeenCalledWith(
+        'Task Completed Successfully',
+        expect.stringContaining('completed successfully'),
+      );
     });
   });
 
