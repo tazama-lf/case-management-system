@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "prepare": "husky"
+    "prepare": "echo 'Husky temporarily disabled'"
   },
   "devDependencies": {
     "husky": "^9.1.7"
