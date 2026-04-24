@@ -22,7 +22,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
   const [expandedTypologies, setExpandedTypologies] = React.useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!alertId) {
+    if (!alertId || !tenantId) {
       setLoading(false);
       return;
     }
@@ -48,7 +48,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
     };
 
     fetchData();
-  }, [alertId]);
+  }, [alertId, tenantId]);
 
   const toggleTypology = (typologyId: string) => {
     setExpandedTypologies((prev) => {
