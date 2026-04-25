@@ -29,6 +29,5 @@ CMD voila /app/notebooks \
 --config=/app/notebooks/voila.json \
 --Voila.ip=0.0.0.0 \
 --Voila.port=8866 \
---Voila.base_url=/voila/ \
 --Voila.tornado_settings="{\"headers\": {\"Content-Security-Policy\": \"frame-ancestors 'self' ${CMS_FRONTEND_ORIGIN}\"}}" \
 --no-browser
