@@ -20,8 +20,15 @@ EXPOSE 8866
 # backend url (default)
 ENV CASE_MGMT_BACKEND_URL=http://10.10.80.16:3090
 ENV VOILA_PORT=8866
+# CMS frontend origins for frame-ancestors CSP (can be overridden at runtime)
+ENV CMS_FRONTEND_ORIGIN="http://localhost:5175 http://10.10.80.16:5175"
 
 WORKDIR /app/notebooks
 
-# run voila
-CMD ["voila", "--config=/app/notebooks/voila.json", "--Voila.ip=0.0.0.0", "--Voila.port=8866", "--no-browser"]
+# run voila with CSP configured via environment variable
+# Using shell form to allow env var expansion
+CMD voila --config=/app/notebooks/voila.json \
+    --Voila.ip=0.0.0.0 \
+    --Voila.port=8866 \
+    --Voila.tornado_settings="{\"headers\": {\"Content-Security-Policy\": \"frame-ancestors 'self' ${CMS_FRONTEND_ORIGIN}\"}}" \
+    --no-browser
