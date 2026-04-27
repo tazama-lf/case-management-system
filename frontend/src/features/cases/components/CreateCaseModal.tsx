@@ -99,7 +99,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   open,
   onClose,
   onCreate,
-  onSaveDraft = () => { },
+  onSaveDraft = () => {},
   onUpdate,
   onCompleteCase,
   loading,
@@ -360,7 +360,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
       });
     }
   };
-  const completeCase = async () => {
+  const completeCase = () => {
     const errors = validateForm();
 
     if (Object.keys(errors).length > 0) {
@@ -400,7 +400,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-          { }
+          {}
           {(error ?? Object.keys(validationErrors).length > 0) && (
             <div className="rounded-md bg-red-50 p-4">
               <div className="flex">
@@ -422,11 +422,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
             </div>
           )}
 
-          { }
+          {}
           {mode === 'edit' ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                { }
+                {}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Priority
@@ -435,20 +435,21 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     </span>
                   </label>
                   <div
-                    className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${priority === 'BREACH'
-                      ? 'text-red-600 border-red-200'
-                      : priority === 'CRITICAL'
-                        ? 'text-orange-600 border-orange-200'
-                        : priority === 'URGENT'
-                          ? 'text-yellow-600 border-yellow-200'
-                          : 'text-blue-600 border-blue-200'
-                      }`}
+                    className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
+                      priority === 'BREACH'
+                        ? 'text-red-600 border-red-200'
+                        : priority === 'CRITICAL'
+                          ? 'text-orange-600 border-orange-200'
+                          : priority === 'URGENT'
+                            ? 'text-yellow-600 border-yellow-200'
+                            : 'text-blue-600 border-blue-200'
+                    }`}
                   >
                     {priority}
                   </div>
                 </div>
 
-                { }
+                {}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Confidence %<span className="text-red-500 ml-1">*</span>
@@ -459,10 +460,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     onChange={(e) => {
                       setConfidence(Number(e.target.value));
                     }}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${validationErrors.confidence
-                      ? 'border-red-300 focus:ring-red-500'
-                      : 'border-gray-300 focus:ring-blue-500'
-                      } ${loading ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      validationErrors.confidence
+                        ? 'border-red-300 focus:ring-red-500'
+                        : 'border-gray-300 focus:ring-blue-500'
+                    } ${loading ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     min={0}
                     max={100}
                     disabled={loading}
@@ -482,7 +484,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   )}
                 </div>
 
-                { }
+                {}
                 <div className="mb-4 md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Priority Score
@@ -514,24 +516,26 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                         onChange={(e) => {
                           setPriorityScore(Number(e.target.value));
                         }}
-                        className={`w-24 px-2 py-1 border rounded text-sm ${validationErrors.priorityScore
-                          ? 'border-red-300 focus:ring-red-500'
-                          : 'border-gray-300 focus:ring-blue-500'
-                          } ${loading ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        className={`w-24 px-2 py-1 border rounded text-sm ${
+                          validationErrors.priorityScore
+                            ? 'border-red-300 focus:ring-red-500'
+                            : 'border-gray-300 focus:ring-blue-500'
+                        } ${loading ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                         min={0}
                         max={1}
                         step={0.01}
                         disabled={loading}
                       />
                       <span
-                        className={`text-sm font-medium px-2 py-1 rounded ${priority === 'BREACH'
-                          ? 'text-red-600 bg-red-50'
-                          : priority === 'CRITICAL'
-                            ? 'text-orange-600 bg-orange-50'
-                            : priority === 'URGENT'
-                              ? 'text-yellow-600 bg-yellow-50'
-                              : 'text-blue-600 bg-blue-50'
-                          }`}
+                        className={`text-sm font-medium px-2 py-1 rounded ${
+                          priority === 'BREACH'
+                            ? 'text-red-600 bg-red-50'
+                            : priority === 'CRITICAL'
+                              ? 'text-orange-600 bg-orange-50'
+                              : priority === 'URGENT'
+                                ? 'text-yellow-600 bg-yellow-50'
+                                : 'text-blue-600 bg-blue-50'
+                        }`}
                       >
                         → {priority}
                       </span>
@@ -544,7 +548,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   )}
                 </div>
 
-                { }
+                {}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Alert Type
@@ -554,8 +558,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     onChange={(e) => {
                       setAlertType(e.target.value as AlertType);
                     }}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${loading ? 'bg-gray-50 cursor-not-allowed' : ''
-                      }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      loading ? 'bg-gray-50 cursor-not-allowed' : ''
+                    }`}
                     disabled={loading}
                   >
                     <option value="">Select type</option>
@@ -565,7 +570,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   </select>
                 </div>
 
-                { }
+                {}
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -576,14 +581,15 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     onChange={(e) => {
                       setPredictionOutcome(
                         e.target.value as
-                        | 'FALSE_POSITIVE'
-                        | 'TRUE_POSITIVE'
-                        | 'FALSE_NEGATIVE'
-                        | 'TRUE_NEGATIVE',
+                          | 'FALSE_POSITIVE'
+                          | 'TRUE_POSITIVE'
+                          | 'FALSE_NEGATIVE'
+                          | 'TRUE_NEGATIVE',
                       );
                     }}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${loading ? 'bg-gray-50 cursor-not-allowed' : ''
-                      }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      loading ? 'bg-gray-50 cursor-not-allowed' : ''
+                    }`}
                     disabled={loading}
                   >
                     <option value="FALSE_POSITIVE">False Positive</option>
@@ -593,7 +599,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   </select>
                 </div>
               </div>
-              { }
+              {}
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -604,10 +610,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   onChange={(e) => {
                     setStatus(e.target.value as CaseStatus);
                   }}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${loading || isStatusLocked
-                    ? 'bg-gray-50 cursor-not-allowed'
-                    : ''
-                    }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    loading || isStatusLocked
+                      ? 'bg-gray-50 cursor-not-allowed'
+                      : ''
+                  }`}
                   disabled={loading || isStatusLocked}
                 >
                   <option value="STATUS_02_READY_FOR_ASSIGNMENT">
@@ -624,7 +631,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   </option>
                 </select>
               </div>
-              { }
+              {}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Notes
@@ -638,10 +645,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   onChange={(e) => {
                     setNote(e.target.value);
                   }}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 resize-none ${validationErrors.note
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                    } ${loading ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 resize-none ${
+                    validationErrors.note
+                      ? 'border-red-300 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-blue-500'
+                  } ${loading ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   rows={4}
                   placeholder="Provide detailed reasoning for your triage decision (e.g., why this is suspicious, what patterns were identified, supporting evidence)..."
                   disabled={loading}
@@ -683,7 +691,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   );
                 }}
                 isVisible={true}
-                onAlertsSelected={(_hasAlerts) => { }}
+                onAlertsSelected={(_hasAlerts) => {}}
               />
 
               {/* Transaction Data Display */}
@@ -716,10 +724,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   onChange={(e) => {
                     setAlertType(e.target.value as AlertType);
                   }}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${validationErrors.alertType
-                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-300'
-                    }`}
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                    validationErrors.alertType
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-300'
+                  }`}
                 >
                   <option value="FRAUD">Fraud</option>
                   <option value="AML">AML</option>
@@ -766,23 +775,25 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                       onChange={(e) => {
                         setPriorityScore(Number(e.target.value));
                       }}
-                      className={`w-24 px-2 py-1 border rounded text-sm focus:ring-blue-500 focus:border-blue-500 ${validationErrors.priorityScore
-                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                        : 'border-gray-300'
-                        }`}
+                      className={`w-24 px-2 py-1 border rounded text-sm focus:ring-blue-500 focus:border-blue-500 ${
+                        validationErrors.priorityScore
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                          : 'border-gray-300'
+                      }`}
                       min={0}
                       max={1}
                       step={0.01}
                     />
                     <span
-                      className={`text-sm font-medium px-2 py-1 rounded ${priority === 'BREACH'
-                        ? 'text-red-600 bg-red-50'
-                        : priority === 'CRITICAL'
-                          ? 'text-orange-600 bg-orange-50'
-                          : priority === 'URGENT'
-                            ? 'text-yellow-600 bg-yellow-50'
-                            : 'text-blue-600 bg-blue-50'
-                        }`}
+                      className={`text-sm font-medium px-2 py-1 rounded ${
+                        priority === 'BREACH'
+                          ? 'text-red-600 bg-red-50'
+                          : priority === 'CRITICAL'
+                            ? 'text-orange-600 bg-orange-50'
+                            : priority === 'URGENT'
+                              ? 'text-yellow-600 bg-yellow-50'
+                              : 'text-blue-600 bg-blue-50'
+                      }`}
                     >
                       → {priority}
                     </span>
@@ -804,14 +815,15 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   </span>
                 </label>
                 <div
-                  className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${priority === 'BREACH'
-                    ? 'text-red-600 border-red-200'
-                    : priority === 'CRITICAL'
-                      ? 'text-orange-600 border-orange-200'
-                      : priority === 'URGENT'
-                        ? 'text-yellow-600 border-yellow-200'
-                        : 'text-blue-600 border-blue-200'
-                    }`}
+                  className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
+                    priority === 'BREACH'
+                      ? 'text-red-600 border-red-200'
+                      : priority === 'CRITICAL'
+                        ? 'text-orange-600 border-orange-200'
+                        : priority === 'URGENT'
+                          ? 'text-yellow-600 border-yellow-200'
+                          : 'text-blue-600 border-blue-200'
+                  }`}
                 >
                   {priority}
                 </div>
@@ -820,7 +832,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
           )}
         </div>
 
-        { }
+        {}
         <div className="flex items-center justify-between px-6 py-4">
           {mode === 'create' && (
             <button

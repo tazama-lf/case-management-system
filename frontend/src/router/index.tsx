@@ -162,16 +162,6 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      {
-        path: 'reference_id',
-        element: (
-          <ProtectedRoute requireBackendAccess requiredRoles={['CMS_ADMIN']}>
-            <Suspense fallback={<PageLoadingFallback />}>
-              <ReferenceIdDashboard />
-            </Suspense>
-          </ProtectedRoute>
-        ),
-      },
     ],
   },
   {

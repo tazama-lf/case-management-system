@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- Service handles dynamic API response data */
+/* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
+/* eslint-disable max-lines -- Service requires multiple report data methods */
 import type {
   UploadReportDto,
   UploadReportResponse,
@@ -22,8 +25,9 @@ class ReportsService {
       if (dateRange) params.append('dateRange', dateRange);
       if (filters?.caseType) params.append('caseType', filters.caseType);
       if (filters?.priority) params.append('priority', filters.priority);
-      if (filters?.investigator)
-        {params.append('investigator', filters.investigator);}
+      if (filters?.investigator) {
+        params.append('investigator', filters.investigator);
+      }
 
       const response = await apiClient.get<ReportsData>(
         `/api/v1/reports/case-status?${params.toString()}`,
@@ -32,31 +36,22 @@ class ReportsService {
       const processedResponse: ReportsData = {
         ...response,
         stats: {
-          totalCases: this.safeFallback(response.stats?.totalCases, 0),
-          closedCases: this.safeFallback(response.stats?.closedCases, 0),
-          openCases: this.safeFallback(response.stats?.openCases, 0),
-          avgResolutionTime: this.safeFallback(
-            response.stats?.avgResolutionTime,
+          totalCases: ReportsService.safeFallback(response.stats.totalCases, 0),
+          closedCases: ReportsService.safeFallback(
+            response.stats.closedCases,
+            0,
+          ),
+          openCases: ReportsService.safeFallback(response.stats.openCases, 0),
+          avgResolutionTime: ReportsService.safeFallback(
+            response.stats.avgResolutionTime,
             0,
           ),
         },
-        statusDistribution: response.statusDistribution ?? {
-          assigned: 0,
-          inProgress: 0,
-          draft: 0,
-          suspended: 0,
-          pendingApproval: 0,
-          closed: 0,
-        },
-        caseTypes: response.caseTypes ?? [],
-        outcomes: response.outcomes ?? {
-          resolved: 0,
-          confirmed: 0,
-          inconclusive: 0,
-          pending: 0,
-        },
-        monthlyTrend: response.monthlyTrend ?? [],
-        statusDetails: response.statusDetails ?? [],
+        statusDistribution: response.statusDistribution,
+        caseTypes: response.caseTypes,
+        outcomes: response.outcomes,
+        monthlyTrend: response.monthlyTrend,
+        statusDetails: response.statusDetails,
       };
 
       return processedResponse;
@@ -102,28 +97,28 @@ class ReportsService {
       const processedResponse: InvestigatorWorkloadData = {
         ...response,
         stats: {
-          totalInvestigators: this.safeFallback(
-            response.stats?.totalInvestigators,
+          totalInvestigators: ReportsService.safeFallback(
+            response.stats.totalInvestigators,
             0,
           ),
-          avgCasesPerInvestigator: this.safeFallback(
-            response.stats?.avgCasesPerInvestigator,
+          avgCasesPerInvestigator: ReportsService.safeFallback(
+            response.stats.avgCasesPerInvestigator,
             0,
           ),
-          avgResolutionTime: this.safeFallback(
-            response.stats?.avgResolutionTime,
+          avgResolutionTime: ReportsService.safeFallback(
+            response.stats.avgResolutionTime,
             0,
           ),
-          caseClosureRate: this.safeFallback(
-            response.stats?.caseClosureRate,
+          caseClosureRate: ReportsService.safeFallback(
+            response.stats.caseClosureRate,
             0,
           ),
         },
-        workloadData: response.workloadData ?? [],
-        volumeTrend: response.volumeTrend ?? [],
-        efficiencyData: response.efficiencyData ?? [],
-        outcomeData: response.outcomeData ?? [],
-        performanceData: response.performanceData ?? [],
+        workloadData: response.workloadData,
+        volumeTrend: response.volumeTrend,
+        efficiencyData: response.efficiencyData,
+        outcomeData: response.outcomeData,
+        performanceData: response.performanceData,
       };
 
       return processedResponse;
@@ -155,19 +150,25 @@ class ReportsService {
       const processedResponse: TaskCompletionData = {
         ...response,
         stats: {
-          totalTasks: this.safeFallback(response.stats?.totalTasks, 0),
-          completionRate: this.safeFallback(response.stats?.completionRate, 0),
-          avgCompletionTime: this.safeFallback(
-            response.stats?.avgCompletionTime,
+          totalTasks: ReportsService.safeFallback(response.stats.totalTasks, 0),
+          completionRate: ReportsService.safeFallback(
+            response.stats.completionRate,
             0,
           ),
-          overdueTasks: this.safeFallback(response.stats?.overdueTasks, 0),
+          avgCompletionTime: ReportsService.safeFallback(
+            response.stats.avgCompletionTime,
+            0,
+          ),
+          overdueTasks: ReportsService.safeFallback(
+            response.stats.overdueTasks,
+            0,
+          ),
         },
-        completionByType: response.completionByType ?? [],
-        avgCompletionTime: response.avgCompletionTime ?? [],
-        completionTrend: response.completionTrend ?? [],
-        statusDistribution: response.statusDistribution ?? [],
-        taskDetails: response.taskDetails ?? [],
+        completionByType: response.completionByType,
+        avgCompletionTime: response.avgCompletionTime,
+        completionTrend: response.completionTrend,
+        statusDistribution: response.statusDistribution,
+        taskDetails: response.taskDetails,
       };
 
       return processedResponse;
@@ -210,7 +211,7 @@ class ReportsService {
 
       return response;
     } catch (error) {
-      throw this.handleError(error, 'upload evidence');
+      throw ReportsService.handleError(error, 'upload evidence');
     }
   }
 
@@ -223,12 +224,21 @@ class ReportsService {
       const processedResponse: AuditLogsData = {
         ...response,
         stats: {
-          totalLogs: this.safeFallback(response.stats?.totalLogs, 0),
-          caseActions: this.safeFallback(response.stats?.caseActions, 0),
-          userSessions: this.safeFallback(response.stats?.userSessions, 0),
-          systemWarnings: this.safeFallback(response.stats?.systemWarnings, 0),
+          totalLogs: ReportsService.safeFallback(response.stats.totalLogs, 0),
+          caseActions: ReportsService.safeFallback(
+            response.stats.caseActions,
+            0,
+          ),
+          userSessions: ReportsService.safeFallback(
+            response.stats.userSessions,
+            0,
+          ),
+          systemWarnings: ReportsService.safeFallback(
+            response.stats.systemWarnings,
+            0,
+          ),
         },
-        auditLogs: response.auditLogs ?? [],
+        auditLogs: response.auditLogs,
       };
 
       return processedResponse;
@@ -255,25 +265,25 @@ class ReportsService {
       const processedResponse: CaseAgeingData = {
         ...response,
         stats: {
-          avgCaseAge: this.safeFallback(response.stats?.avgCaseAge, 0),
-          avgResolutionTime: this.safeFallback(
-            response.stats?.avgResolutionTime,
+          avgCaseAge: ReportsService.safeFallback(response.stats.avgCaseAge, 0),
+          avgResolutionTime: ReportsService.safeFallback(
+            response.stats.avgResolutionTime,
             0,
           ),
-          casesOver15Days: this.safeFallback(
-            response.stats?.casesOver15Days,
+          casesOver15Days: ReportsService.safeFallback(
+            response.stats.casesOver15Days,
             0,
           ),
-          casesOver30Days: this.safeFallback(
-            response.stats?.casesOver30Days,
+          casesOver30Days: ReportsService.safeFallback(
+            response.stats.casesOver30Days,
             0,
           ),
         },
-        ageingByStatus: response.ageingByStatus ?? [],
-        resolutionTrend: response.resolutionTrend ?? [],
-        ageingDistribution: response.ageingDistribution ?? [],
-        caseTypeResolution: response.caseTypeResolution ?? [],
-        caseDetails: response.caseDetails ?? [],
+        ageingByStatus: response.ageingByStatus,
+        resolutionTrend: response.resolutionTrend,
+        ageingDistribution: response.ageingDistribution,
+        caseTypeResolution: response.caseTypeResolution,
+        caseDetails: response.caseDetails,
       };
 
       return processedResponse;
@@ -307,13 +317,11 @@ class ReportsService {
 
       const cases = Array.isArray(casesResponse)
         ? casesResponse
-        : casesResponse && typeof casesResponse === 'object'
-          ? (casesResponse.data as Array<Record<string, unknown>>) ||
-            (casesResponse.cases as Array<Record<string, unknown>>) ||
-            []
-          : [];
+        : ((casesResponse.data ?? casesResponse.cases ?? []) as Array<
+          Record<string, unknown>
+        >);
 
-      if (!cases || cases.length === 0) {
+      if (cases.length === 0) {
         console.warn(
           '[Evidence Report] No cases found, returning empty findings',
         );
@@ -358,15 +366,12 @@ class ReportsService {
 
         try {
           // Query evidence for this case
+          // eslint-disable-next-line no-await-in-loop -- Sequential API calls to avoid overloading the server
           const caseEvidenceResponse = await apiClient.get<
             Record<string, unknown>
-          >(`/api/v1/evidence/case/${caseItem.case_id}`);
+          >(`/api/v1/evidence/case/${String(caseItem.case_id)}`);
 
-          if (
-            caseEvidenceResponse &&
-            typeof caseEvidenceResponse === 'object' &&
-            'evidence' in caseEvidenceResponse
-          ) {
+          if ('evidence' in caseEvidenceResponse) {
             const { evidence } = caseEvidenceResponse;
             if (Array.isArray(evidence)) {
               caseEvidence = evidence;
@@ -376,7 +381,7 @@ class ReportsService {
           }
         } catch (caseErr) {
           console.warn(
-            `[Evidence Report] Failed to fetch evidence for case ${caseItem.case_id}:`,
+            `[Evidence Report] Failed to fetch evidence for case ${String(caseItem.case_id)}:`,
             caseErr,
           );
         }
@@ -388,60 +393,17 @@ class ReportsService {
         if (caseEvidence.length > 0) {
           totalEvidenceItems += caseEvidence.length;
 
-          // Map evidence to include full object with all available fields
-          const supportingEvidence = caseEvidence.map(
-            (e: Record<string, unknown>) => {
-              const evidenceId =
-                (e.id as string) ||
-                (e.evidenceId as string) ||
-                (e.evidence_id as string) ||
-                `unknown_${Date.now()}`;
-
-              // Extract fileName from attachments array if it exists there
-              const attachments = e.attachments as
-                | Array<Record<string, unknown>>
-                | undefined;
-              const firstAttachment = attachments?.[0];
-
-              const fileName =
-                (e.fileName as string) ||
-                (e.file_name as string) ||
-                (firstAttachment?.fileName as string) ||
-                'Unknown Document';
-
-              const fileSize =
-                (e.fileSize as number) ||
-                (firstAttachment?.fileSize as number) ||
-                undefined;
-
-              const mimeType =
-                (e.mimeType as string) ||
-                (firstAttachment?.mimeType as string) ||
-                undefined;
-
-              const hash =
-                (e.hash as string) ||
-                (firstAttachment?.hash as string) ||
-                undefined;
-
-              return {
-                id: evidenceId,
-                fileName,
-                fileSize,
-                mimeType,
-                evidenceType: (e.evidenceType as string) || undefined,
-                uploadedBy: (e.uploadedBy as string) || undefined,
-                uploadedByName: (e.uploadedByName as string) || undefined,
-                uploadedAt: (e.uploadedAt as string) || undefined,
-                description: (e.description as string) || undefined,
-                hash,
-              };
-            },
-          );
-
-          const evidenceByTask: Record<string, Array<Record<string, any>>> = {};
+          const evidenceByTask: Record<
+            string,
+            Array<Record<string, unknown>>
+          > = {};
           caseEvidence.forEach((e) => {
-            const taskId = (e.taskId ?? e.task_id ?? 'unknown_task').toString();
+            const rawTaskId = e.taskId ?? e.task_id;
+            const taskId =
+              typeof rawTaskId === 'string' || typeof rawTaskId === 'number'
+                ? String(rawTaskId)
+                : 'unknown_task';
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Dynamic key access may return undefined at runtime
             evidenceByTask[taskId] ||= [];
             evidenceByTask[taskId].push(e);
           });
@@ -450,27 +412,33 @@ class ReportsService {
             ([taskId, evidences]) => ({
               taskId: taskId === 'unknown_task' ? undefined : Number(taskId),
               supportingEvidence: evidences.map((e) => {
-                const attachments = e.attachments as any[] | undefined;
+                const attachments = e.attachments as
+                  | Array<Record<string, unknown>>
+                  | undefined;
                 const firstAttachment = attachments?.[0];
 
                 return {
                   id:
-                    e.id?.toString() ??
-                    e.evidenceId?.toString() ??
-                    `unknown_${Date.now()}`,
-                  fileName:
-                    e.fileName ??
+                    ((e.id as string | undefined) ?? '') ||
+                    ((e.evidenceId as string | undefined) ?? '') ||
+                    ((e.evidence_id as string | undefined) ?? '') ||
+                    `unknown_${String(Date.now())}`,
+                  fileName: (e.fileName ??
                     e.file_name ??
                     firstAttachment?.fileName ??
-                    'Unknown Document',
-                  fileSize: e.fileSize ?? firstAttachment?.fileSize,
-                  mimeType: e.mimeType ?? firstAttachment?.mimeType,
-                  evidenceType: e.evidenceType,
-                  uploadedBy: e.uploadedBy,
-                  uploadedByName: e.uploadedByName,
-                  uploadedAt: e.uploadedAt,
-                  description: e.description,
-                  hash: e.hash ?? firstAttachment?.hash,
+                    'Unknown Document') as string,
+                  fileSize: (e.fileSize ?? firstAttachment?.fileSize) as
+                    | number
+                    | undefined,
+                  mimeType: (e.mimeType ?? firstAttachment?.mimeType) as
+                    | string
+                    | undefined,
+                  evidenceType: e.evidenceType as string | undefined,
+                  uploadedBy: e.uploadedBy as string | undefined,
+                  uploadedByName: e.uploadedByName as string | undefined,
+                  uploadedAt: e.uploadedAt as string | undefined,
+                  description: e.description as string | undefined,
+                  hash: (e.hash ?? firstAttachment?.hash) as string | undefined,
                 };
               }),
             }),
@@ -488,16 +456,16 @@ class ReportsService {
             status === 'STATUS_71_AUTOCLOSED_CONFIRMED'
           ) {
             conclusion = 'Confirmed';
-            confirmedCount++;
+            confirmedCount += 1;
           } else if (
             status === 'STATUS_81_CLOSED_REFUTED' ||
             status === 'STATUS_72_AUTOCLOSED_REFUTED'
           ) {
             conclusion = 'Refuted';
-            refutedCount++;
+            refutedCount += 1;
           } else if (status === 'STATUS_83_CLOSED_INCONCLUSIVE') {
             conclusion = 'Inconclusive';
-            inconclusiveCount++;
+            inconclusiveCount += 1;
           } else {
             conclusion = 'InProgress';
           }
@@ -505,7 +473,7 @@ class ReportsService {
           // Push ONE finding per case
           allFindings.push({
             caseId: Number(caseItem.case_id),
-            finding: `Evidence collected for case ${caseItem.case_id}`,
+            finding: `Evidence collected for case ${String(caseItem.case_id)}`,
             conclusion,
             evidenceCount: caseEvidence.length,
             tasks,
@@ -561,7 +529,7 @@ class ReportsService {
     }
   }
 
-  private safeFallback(
+  private static safeFallback(
     value: number | null | undefined,
     fallback: number,
   ): number {
@@ -580,14 +548,14 @@ class ReportsService {
     value: number | null | undefined,
     unit?: string,
   ): string {
-    const safeValue = this.safeFallback(value, 0);
+    const safeValue = ReportsService.safeFallback(value, 0);
     if (unit) {
       return `${safeValue}${unit}`;
     }
     return safeValue.toString();
   }
 
-  private handleError(error: unknown, operation: string): Error {
+  private static handleError(error: unknown, operation: string): Error {
     console.error(`EvidenceService Error - ${operation}:`, error);
 
     if (error instanceof Error) {
@@ -598,11 +566,11 @@ class ReportsService {
       response?: { data?: { message?: string } };
       message?: string;
     };
-    if (err?.response?.data) {
+    if (err.response?.data) {
       return new Error(err.response.data.message ?? `Failed to ${operation}`);
     }
 
-    if (err?.message) {
+    if (err.message) {
       return new Error(err.message);
     }
 
@@ -610,5 +578,9 @@ class ReportsService {
   }
 }
 
+// Export both named and default export for better IDE support
 export const reportsService = new ReportsService();
 export default reportsService;
+/* eslint-enable max-lines */
+/* eslint-enable @typescript-eslint/class-methods-use-this */
+/* eslint-enable @typescript-eslint/no-unsafe-assignment */

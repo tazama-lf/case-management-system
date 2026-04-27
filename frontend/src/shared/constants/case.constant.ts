@@ -1,5 +1,5 @@
 export const getCaseStatusBadge = (status: string): string => {
-  const statusMap = {
+  const statusMap: Record<string, string> = {
     STATUS_00_DRAFT: '00_DRAFT',
     STATUS_10_ASSIGNED: '10_ASSIGNED',
     STATUS_20_IN_PROGRESS: '20_IN_PROGRESS',
@@ -15,6 +15,6 @@ export const getCaseStatusBadge = (status: string): string => {
     STATUS_02_READY_FOR_ASSIGNMENT: '02_READY_FOR_ASSIGNMENT',
     STATUS_01_PENDING_CASE_CREATION_APPROVAL:
       '01_PENDING_CASE_CREATION_APPROVAL',
-  } as const;
-  return statusMap[status as keyof typeof statusMap] ?? status;
+  };
+  return statusMap[status] ?? status;
 };

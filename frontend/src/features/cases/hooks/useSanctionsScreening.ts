@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type -- React Query hooks have complex inferred return types */
 /**
  * React Query Hooks for Sanctions Screening
  * Manages server state for sanctions screening operations
@@ -197,3 +198,4 @@ export const useSearchSanctionsScreenings = (
     staleTime: 2 * 60 * 1000,
     placeholderData: (previousData) => previousData,
   });
+/* eslint-enable @typescript-eslint/explicit-function-return-type */

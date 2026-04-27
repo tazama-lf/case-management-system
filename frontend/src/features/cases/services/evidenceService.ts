@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- Service handles dynamic API response data */
+/* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '../../../shared/services/apiClient';
 import type {
   Evidence,
@@ -19,17 +21,17 @@ export class EvidenceService {
 
     const totalFileSize =
       evidence.fileSize ??
-      (evidence.attachments?.reduce(
+      evidence.attachments?.reduce(
         (sum: number, att: any) => sum + (att.fileSize ?? 0),
         0,
       ) ??
-        0);
+      0;
 
     return {
       ...evidence,
       fileName: evidence.fileName ?? firstAttachment?.fileName ?? 'unknown',
-      fileSize: evidence.fileSize ? evidence.fileSize : totalFileSize,
-      file_size: evidence.file_size ? evidence.file_size : totalFileSize,
+      fileSize: evidence.fileSize ?? totalFileSize,
+      file_size: evidence.file_size ?? totalFileSize,
       mimeType:
         evidence.mimeType ??
         firstAttachment?.mimeType ??
@@ -102,7 +104,7 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/task/${taskId}`,
       );
-      response.evidence &&= response.evidence.map((e) =>
+      response.evidence = response.evidence.map((e) =>
         this.normalizeEvidenceData(e),
       );
       return response;
@@ -116,7 +118,7 @@ export class EvidenceService {
       const response = await apiClient.get<EvidenceListResponse>(
         `${this.baseUrl}/case/${caseId}`,
       );
-      response.evidence &&= response.evidence.map((e) =>
+      response.evidence = response.evidence.map((e) =>
         this.normalizeEvidenceData(e),
       );
       return response;
@@ -133,7 +135,7 @@ export class EvidenceService {
         `${this.baseUrl}/evidenceType/${evidenceType}`,
       );
 
-      response.evidence &&= response.evidence.map((e) =>
+      response.evidence = response.evidence.map((e) =>
         this.normalizeEvidenceData(e),
       );
       return response;
@@ -170,7 +172,7 @@ export class EvidenceService {
 
   async deleteEvidence(evidenceId: string, fileName: string): Promise<void> {
     try {
-      await apiClient.delete<void>(
+      await apiClient.delete<undefined>(
         `${this.baseUrl}/${evidenceId}/attachments/${encodeURIComponent(fileName)}`,
       );
     } catch (error) {
@@ -278,7 +280,7 @@ export class EvidenceService {
       return hashHex;
     } catch (error) {
       console.error('Error calculating file hash:', error);
-      throw new Error('Failed to calculate file hash');
+      throw new Error('Failed to calculate file hash', { cause: error });
     }
   }
 
@@ -335,12 +337,14 @@ export class EvidenceService {
       params.append('page', page.toString());
       params.append('limit', limit.toString());
 
-      if (filters.evidenceType)
-        {params.append('evidenceType', filters.evidenceType);}
+      if (filters.evidenceType) {
+        params.append('evidenceType', filters.evidenceType);
+      }
       if (filters.taskId) params.append('taskId', filters.taskId.toString());
       if (filters.uploadedBy) params.append('uploadedBy', filters.uploadedBy);
-      if (filters.verified !== undefined)
-        {params.append('verified', filters.verified.toString());}
+      if (filters.verified !== undefined) {
+        params.append('verified', filters.verified.toString());
+      }
       if (filters.search) params.append('search', filters.search);
 
       const queryString = params.toString();
@@ -348,7 +352,7 @@ export class EvidenceService {
         `${this.baseUrl}/search?${queryString}`,
       );
 
-      response.evidence &&= response.evidence.map((e) =>
+      response.evidence = response.evidence.map((e) =>
         this.normalizeEvidenceData(e),
       );
       return response;
@@ -368,11 +372,11 @@ export class EvidenceService {
       response?: { data?: { message?: string } };
       message?: string;
     };
-    if (err?.response?.data) {
+    if (err.response?.data) {
       return new Error(err.response.data.message ?? `Failed to ${operation}`);
     }
 
-    if (err?.message) {
+    if (err.message) {
       return new Error(err.message);
     }
 
@@ -381,3 +385,5 @@ export class EvidenceService {
 }
 
 export const evidenceService = new EvidenceService();
+/* eslint-enable @typescript-eslint/class-methods-use-this */
+/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */

@@ -67,7 +67,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     }
   }, [open]);
 
-  const fetchCurrentUserAsInvestigator = async () => {
+  const fetchCurrentUserAsInvestigator = () => {
     try {
       const user = authService.getUser();
       if (user && user.userId) {
@@ -85,22 +85,6 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
       console.error('Failed to fetch current user:', error);
     }
   };
-
-  // const fetchInvestigators = async () => {
-  //   setLoading(true);
-  //   try {
-  //     const data = await authService.fetchAllInvestigators();
-
-  //     if (data && data.length > 0) {
-  //       setInvestigators(data);
-  //     }
-  //   } catch (error) {
-  //     console.error('Failed to fetch investigators:', error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   const handleAssign = async () => {
     if (!canConfirm) {
       console.warn('Cannot assign task: assignee not selected');

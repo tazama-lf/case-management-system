@@ -86,14 +86,14 @@ const Reports: React.FC = () => {
     }
   };
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     try {
       const data = getCurrentReportData();
       const formattedData = formatDataForExport(data, reportType);
       const filename = `${reportType.toLowerCase().replace('_', '-')}-report-${new Date().toISOString().split('T')[0]}`;
       const columns = getColumnsForReport(reportType);
       const title = getPageTitle();
-      await exportToPDF(formattedData, filename, title, columns);
+      exportToPDF(formattedData, filename, title, columns);
     } catch (error) {
       console.error('Export failed:', error);
       alert('Export failed. Please try again.');

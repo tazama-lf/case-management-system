@@ -297,7 +297,7 @@ const AlertDetailsActions: React.FC<AlertDetailsActionsProps> = ({
             Update Alert
           </button>
         )}
-        { }
+        {}
         {canClose && (
           <button
             onClick={() => {

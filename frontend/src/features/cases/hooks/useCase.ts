@@ -7,7 +7,9 @@ import type {
   UserWorkloadStatsDto,
 } from '../services/caseService';
 
-export const useCase = (caseId: number | undefined): ReturnType<typeof useQuery<Case>> =>
+export const useCase = (
+  caseId: number | undefined,
+): ReturnType<typeof useQuery<Case>> =>
   useQuery<Case>({
     queryKey: ['case', caseId],
     queryFn: async () => {
@@ -21,7 +23,9 @@ export const useCase = (caseId: number | undefined): ReturnType<typeof useQuery<
     retry: 2,
   });
 
-export const useUserCases = (query?: GetUserCasesQueryDto): ReturnType<typeof useQuery<GetUserCasesResponseDto>> =>
+export const useUserCases = (
+  query?: GetUserCasesQueryDto,
+): ReturnType<typeof useQuery<GetUserCasesResponseDto>> =>
   useQuery<GetUserCasesResponseDto>({
     queryKey: ['userCases', query],
     queryFn: async () => await caseService.getUserCases(query),
@@ -29,7 +33,9 @@ export const useUserCases = (query?: GetUserCasesQueryDto): ReturnType<typeof us
     retry: 2,
   });
 
-export const useUserWorkloadStats = (): ReturnType<typeof useQuery<UserWorkloadStatsDto>> =>
+export const useUserWorkloadStats = (): ReturnType<
+  typeof useQuery<UserWorkloadStatsDto>
+> =>
   useQuery<UserWorkloadStatsDto>({
     queryKey: ['userWorkloadStats'],
     queryFn: async () => await caseService.getUserWorkloadStats(),

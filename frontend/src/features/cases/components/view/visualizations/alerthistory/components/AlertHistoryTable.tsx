@@ -13,7 +13,9 @@ interface AlertHistoryTableProps {
   }>;
 }
 
-export const AlertHistoryTable: React.FC<AlertHistoryTableProps> = ({ data }) => {
+export const AlertHistoryTable: React.FC<AlertHistoryTableProps> = ({
+  data,
+}) => {
   const getSeverityColor = (severity: string): string => {
     switch (severity.toLowerCase()) {
       case 'high':
@@ -38,27 +40,49 @@ export const AlertHistoryTable: React.FC<AlertHistoryTableProps> = ({ data }) =>
       <table className="w-full">
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Alert ID</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Date</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Type</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Severity</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Status</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Case ID</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Outcome</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              Alert ID
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              Date
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              Type
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              Severity
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              Status
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              Case ID
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              Outcome
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
           {data.map((row) => (
             <tr key={row.id} className="hover:bg-gray-50">
-              <td className="px-6 py-3 text-sm text-gray-900 font-medium">{row.id}</td>
+              <td className="px-6 py-3 text-sm text-gray-900 font-medium">
+                {row.id}
+              </td>
               <td className="px-6 py-3 text-sm text-gray-600">{row.date}</td>
               <td className="px-6 py-3 text-sm text-gray-600">{row.type}</td>
               <td className="px-6 py-3 text-sm">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(row.severity)}`}>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(row.severity)}`}
+                >
                   {row.severity}
                 </span>
               </td>
-              <td className={`px-6 py-3 text-sm font-medium ${getStatusColor(row.status)}`}>{row.status}</td>
+              <td
+                className={`px-6 py-3 text-sm font-medium ${getStatusColor(row.status)}`}
+              >
+                {row.status}
+              </td>
               <td className="px-6 py-3 text-sm text-gray-600">{row.caseId}</td>
               <td className="px-6 py-3 text-sm text-gray-600">{row.outcome}</td>
             </tr>

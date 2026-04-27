@@ -71,12 +71,12 @@ const AuditLogsReport: React.FC<AuditLogsReportProps> = ({ dateRange }) => {
     }
   };
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     try {
       const formattedData = formatDataForExport(auditLogs, 'AUDIT_LOGS');
       const filename = `audit-logs-report-${new Date().toISOString().split('T')[0]}`;
       const columns = getColumnsForReport('AUDIT_LOGS');
-      await exportToPDF(formattedData, filename, 'Audit Logs Report', columns);
+      exportToPDF(formattedData, filename, 'Audit Logs Report', columns);
     } catch (error) {
       console.error('Export failed:', error);
       alert('Export failed. Please try again.');
