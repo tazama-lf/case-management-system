@@ -643,7 +643,9 @@ describe('EvidenceFindingsReport', () => {
 
   it('handles export PDF error gracefully', async () => {
     const user = userEvent.setup();
-    vi.mocked(exportToPDF).mockRejectedValue(new Error('PDF export failed'));
+    vi.mocked(exportToPDF).mockImplementation(() => {
+      throw new Error('PDF export failed');
+    });
 
     render(<EvidenceFindingsReport dateRange="last30" />, {
       wrapper: createWrapper(),
