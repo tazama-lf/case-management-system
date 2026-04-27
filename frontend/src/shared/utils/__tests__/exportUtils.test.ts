@@ -96,20 +96,20 @@ describe('exportUtils', () => {
   });
 
   describe('exportToPDF', () => {
-    it('exports data to PDF successfully', async () => {
+    it('exports data to PDF successfully', () => {
       const data = [{ id: '1', name: 'Test' }];
       const columns = [
         { key: 'id', label: 'ID', width: 100 },
         { key: 'name', label: 'Name', width: 100 },
       ];
 
-      await exportToPDF(data, 'test-file', 'Test Report', columns);
+      exportToPDF(data, 'test-file', 'Test Report', columns);
 
       expect(pdfMake.createPdf).toHaveBeenCalled();
     });
 
-    it('throws error when data is empty', async () => {
-      await expect(exportToPDF([], 'test-file', 'Test', [])).rejects.toThrow(
+    it('throws error when data is empty', () => {
+      expect(() => exportToPDF([], 'test-file', 'Test', [])).toThrow(
         'Failed to export to PDF',
       );
     });

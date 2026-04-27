@@ -212,9 +212,10 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
                     {loadingUser ? (
                       <span className="text-gray-400">Loading...</span>
                     ) : assignedUser ? (
-                      (`${assignedUser.firstName} ${assignedUser.lastName}`.trim() ??
-                      assignedUser.username ??
-                      'Unknown')
+                      (() => {
+                        const fullName = `${assignedUser.firstName ?? ''} ${assignedUser.lastName ?? ''}`.trim();
+                        return fullName !== '' ? fullName : (assignedUser.username ?? 'Unknown');
+                      })()
                     ) : task.assigned_user_id ? (
                       task.assigned_user_id.substring(0, 8)
                     ) : (

@@ -318,8 +318,8 @@ class ReportsService {
       const cases = Array.isArray(casesResponse)
         ? casesResponse
         : ((casesResponse.data ?? casesResponse.cases ?? []) as Array<
-            Record<string, unknown>
-          >);
+          Record<string, unknown>
+        >);
 
       if (cases.length === 0) {
         console.warn(
@@ -392,55 +392,6 @@ class ReportsService {
 
         if (caseEvidence.length > 0) {
           totalEvidenceItems += caseEvidence.length;
-
-          // Map evidence to include full object with all available fields
-          caseEvidence.map((e: Record<string, unknown>) => {
-            const evidenceId =
-              (e.id as string) ||
-              (e.evidenceId as string) ||
-              (e.evidence_id as string) ||
-              `unknown_${Date.now()}`;
-
-            // Extract fileName from attachments array if it exists there
-            const attachments = e.attachments as
-              | Array<Record<string, unknown>>
-              | undefined;
-            const firstAttachment = attachments?.[0];
-
-            const fileName =
-              (e.fileName as string) ||
-              (e.file_name as string) ||
-              (firstAttachment?.fileName as string) ||
-              'Unknown Document';
-
-            const fileSize =
-              (e.fileSize as number) ||
-              (firstAttachment?.fileSize as number) ||
-              undefined;
-
-            const mimeType =
-              (e.mimeType as string) ||
-              (firstAttachment?.mimeType as string) ||
-              undefined;
-
-            const hash =
-              (e.hash as string) ||
-              (firstAttachment?.hash as string) ||
-              undefined;
-
-            return {
-              id: evidenceId,
-              fileName,
-              fileSize,
-              mimeType,
-              evidenceType: (e.evidenceType as string) || undefined,
-              uploadedBy: (e.uploadedBy as string) || undefined,
-              uploadedByName: (e.uploadedByName as string) || undefined,
-              uploadedAt: (e.uploadedAt as string) || undefined,
-              description: (e.description as string) || undefined,
-              hash,
-            };
-          });
 
           const evidenceByTask: Record<
             string,

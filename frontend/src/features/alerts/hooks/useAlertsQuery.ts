@@ -38,8 +38,8 @@ export const useAlerts = (
   isFetching: boolean;
   isError: boolean;
   error: Error | null;
-  refetch: () => void;
-  refreshAlerts: () => void;
+  refetch: () => Promise<void>;
+  refreshAlerts: () => Promise<void>;
 } => {
   const [debouncedSearch] = useDebounce(filters.search, 300);
 
@@ -73,11 +73,11 @@ export const useAlerts = (
     isFetching,
     isError,
     error,
-    refetch: (): void => {
-      void refetch();
+    refetch: async () => {
+      await refetch();
     },
-    refreshAlerts: (): void => {
-      void refetch();
+    refreshAlerts: async () => {
+      await refetch();
     },
   };
 };

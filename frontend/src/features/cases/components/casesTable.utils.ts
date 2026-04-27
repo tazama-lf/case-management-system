@@ -109,7 +109,7 @@ export const transformBackendCaseToUI = (
   const sarStrTask =
     tasks
       ?.filter((task) => task.name === 'SAR/STR Filing')
-      .sort((a, b) => b.task_id - a.task_id)[SCORE_MIN] ?? null;
+      .sort((a, b) => b.task_id - a.task_id)[0] ?? null;
   const sarStrStatus = sarStrTask?.status ?? 'N/A';
 
   return {
