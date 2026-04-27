@@ -18,8 +18,8 @@ print(json.dumps(settings))
 ")
 
 exec voila /app/notebooks \
-  --config=/app/notebooks/voila.json \
   --Voila.ip=0.0.0.0 \
   --Voila.port=8866 \
+  --Voila.base_url=/voila/ \
   --Voila.tornado_settings="$TORNADO_SETTINGS" \
   --no-browser
