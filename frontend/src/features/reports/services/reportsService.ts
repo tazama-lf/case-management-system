@@ -421,6 +421,7 @@ class ReportsService {
                   id:
                     ((e.id as string | undefined) ?? '') ||
                     ((e.evidenceId as string | undefined) ?? '') ||
+                    ((e.evidence_id as string | undefined) ?? '') ||
                     `unknown_${String(Date.now())}`,
                   fileName: (e.fileName ??
                     e.file_name ??

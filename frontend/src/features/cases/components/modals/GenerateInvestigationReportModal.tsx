@@ -641,7 +641,6 @@ const GenerateInvestigationReportModal: React.FC<
       try {
         const pdfFile = await generatePdfFile(docDefinition);
         try {
-          // @ts-ignore - Method exists, VS Code language server cache issue
           const generateFraudReport = await reportsService.generateFraudReport({
             file: pdfFile,
             caseId,
