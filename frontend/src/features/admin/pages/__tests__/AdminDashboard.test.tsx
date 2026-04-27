@@ -154,7 +154,7 @@ describe('AdminDashboard', () => {
   });
 
   it('calls addReference and clears inputs on submit', async () => {
-    mockAddReference.mockResolvedValue(undefined);
+    mockAddReference.mockResolvedValue(true);
     render(<AdminDashboard />);
 
     const txnInput = screen.getByPlaceholderText('Transaction Type');
