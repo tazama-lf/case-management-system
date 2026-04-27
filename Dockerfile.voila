@@ -17,17 +17,16 @@ RUN pip install --no-cache-dir -r /app/notebooks/requirements.txt
 # expose voila port
 EXPOSE 8866
 
-# backend url (default)
+# Backend URL used by notebooks. Default suits local/host-network dev.
+# In docker-compose, override to the backend service name (e.g. http://backend:3090).
 ENV CASE_MGMT_BACKEND_URL=http://localhost:3090
 ENV VOILA_PORT=8866
-# CMS frontend origins for frame-ancestors CSP (can be overridden at runtime)
+# CMS frontend origins for frame-ancestors CSP (space-separated, can be overridden at runtime)
+# e.g. "http://localhost:5175" or "https://app.example.com https://other.example.com"
 ENV CMS_FRONTEND_ORIGIN="http://localhost:5175"
 
 WORKDIR /app/notebooks
 
-CMD voila /app/notebooks \
---config=/app/notebooks/voila.json \
---Voila.ip=0.0.0.0 \
---Voila.port=8866 \
---Voila.tornado_settings="{\"headers\": {\"Content-Security-Policy\": \"frame-ancestors 'self' ${CMS_FRONTEND_ORIGIN}\"}}" \
---no-browser
+RUN chmod +x /app/notebooks/entrypoint.sh
+
+CMD ["/app/notebooks/entrypoint.sh"]
