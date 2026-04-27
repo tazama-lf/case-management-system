@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { http, HttpResponse } from 'msw';
-import { server } from '../../../../test/mocks/server';
 import FiltersPanel from '../FiltersPanel';
+import { useFilters } from '../../hooks/useFilters';
+
+vi.mock('../../hooks/useFilters');
 
 // Setup MSW handler for filters endpoint
 const mockFiltersData = {
@@ -41,12 +42,11 @@ describe('FiltersPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Setup MSW handler
-    server.use(
-      http.get('/api/v1/reports/filters', () => {
-        return HttpResponse.json(mockFiltersData);
-      }),
-    );
+    (useFilters as vi.Mock).mockReturnValue({
+      data: mockFiltersData,
+      isLoading: false,
+      error: null,
+    });
   });
 
   it('renders filters panel', async () => {
@@ -74,13 +74,11 @@ describe('FiltersPanel', () => {
   });
 
   it('renders loading state', async () => {
-    // Delay the response to show loading state
-    server.use(
-      http.get('/api/v1/reports/filters', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        return HttpResponse.json(mockFiltersData);
-      }),
-    );
+    (useFilters as vi.Mock).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+    });
 
     render(
       <FiltersPanel

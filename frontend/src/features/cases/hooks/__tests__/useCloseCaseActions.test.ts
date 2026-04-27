@@ -61,7 +61,7 @@ describe('useCloseCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Close Case Failed',
-        expect.stringContaining('Investigation task must be completed first'),
+        expect.stringContaining('Complete the investigation task first'),
       );
     });
   });
@@ -83,7 +83,7 @@ describe('useCloseCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Close Case Failed',
-        expect.stringContaining('Unable to close this case right now'),
+        expect.stringContaining('Case not ready for closure'),
       );
     });
   });
@@ -215,7 +215,7 @@ describe('useCloseCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Close Case Failed',
-        expect.stringContaining('Something went wrong'),
+        expect.stringContaining('Could not close the case'),
       );
     });
   });

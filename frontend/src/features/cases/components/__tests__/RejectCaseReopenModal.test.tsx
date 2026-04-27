@@ -17,7 +17,7 @@ describe('RejectCaseReopenModal', () => {
       <RejectCaseReopenModal
         open={false}
         onClose={mockOnClose}
-        caseId="CASE-123"
+        caseId={123}
         onReject={mockOnReject}
       />,
     );
@@ -29,13 +29,13 @@ describe('RejectCaseReopenModal', () => {
       <RejectCaseReopenModal
         open={true}
         onClose={mockOnClose}
-        caseId="CASE-123"
+        caseId={123}
         onReject={mockOnReject}
       />,
     );
 
     expect(screen.getByText('Reject Case Reopening')).toBeInTheDocument();
-    expect(screen.getByText(/Case ID: CASE-123/i)).toBeInTheDocument();
+    expect(screen.getByText(/Case ID: 123/)).toBeInTheDocument();
   });
 
   it('validates reason minimum length', async () => {
@@ -44,7 +44,7 @@ describe('RejectCaseReopenModal', () => {
       <RejectCaseReopenModal
         open={true}
         onClose={mockOnClose}
-        caseId="CASE-123"
+        caseId={123}
         onReject={mockOnReject}
       />,
     );
@@ -56,11 +56,11 @@ describe('RejectCaseReopenModal', () => {
       name: /Reject Reopening/i,
     });
 
-    await user.type(textarea, 'short');
+    await user.type(textarea, 'ab');
     await user.click(submitButton);
 
     expect(
-      await screen.findByText('Reason must be at least 10 characters'),
+      await screen.findByText('Reason must be at least 4 characters'),
     ).toBeInTheDocument();
     expect(mockOnReject).not.toHaveBeenCalled();
   });
@@ -73,7 +73,7 @@ describe('RejectCaseReopenModal', () => {
       <RejectCaseReopenModal
         open={true}
         onClose={mockOnClose}
-        caseId="CASE-123"
+        caseId={123}
         onReject={mockOnReject}
       />,
     );
@@ -90,7 +90,7 @@ describe('RejectCaseReopenModal', () => {
 
     await waitFor(() => {
       expect(mockOnReject).toHaveBeenCalledWith(
-        'CASE-123',
+        123,
         'This is a valid rejection reason',
       );
     });
@@ -107,7 +107,7 @@ describe('RejectCaseReopenModal', () => {
       <RejectCaseReopenModal
         open={true}
         onClose={mockOnClose}
-        caseId="CASE-123"
+        caseId={123}
         onReject={mockOnReject}
       />,
     );
@@ -132,7 +132,7 @@ describe('RejectCaseReopenModal', () => {
       <RejectCaseReopenModal
         open={true}
         onClose={mockOnClose}
-        caseId="CASE-123"
+        caseId={123}
         onReject={mockOnReject}
       />,
     );
@@ -153,7 +153,7 @@ describe('RejectCaseReopenModal', () => {
       <RejectCaseReopenModal
         open={true}
         onClose={mockOnClose}
-        caseId="CASE-123"
+        caseId={123}
         onReject={mockOnReject}
       />,
     );
@@ -178,7 +178,7 @@ describe('RejectCaseReopenModal', () => {
       <RejectCaseReopenModal
         open={true}
         onClose={mockOnClose}
-        caseId="CASE-123"
+        caseId={123}
         onReject={mockOnReject}
       />,
     );

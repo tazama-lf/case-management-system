@@ -3,6 +3,21 @@ import CaseDashboardContainer from '../CaseDashboardContainer';
 import { vi, describe, it, beforeEach, expect } from 'vitest';
 import { useCaseDashboard } from '../../hooks/useCaseDashboard';
 
+vi.mock('@/features/auth/components/AuthContext', () => ({
+  useAuth: () => ({
+    hasComplianceOfficerRole: () => false,
+    user: { id: 1, username: 'test' },
+    isAuthenticated: true,
+  }),
+}));
+
+vi.mock('@/shared/providers/ToastProvider', () => ({
+  useToast: () => ({
+    success: vi.fn(),
+    error: vi.fn(),
+  }),
+}));
+
 vi.mock('../CaseModalsManager', () => ({
   __esModule: true,
   default: () => <div data-testid="case-modals-manager" />,
@@ -13,7 +28,7 @@ vi.mock('../../hooks/useCaseDashboard', () => ({
 }));
 
 const mockCaseRow = {
-  id: 'CASE-1',
+  id: 1,
   type: 'FRAUD',
   typeColor: 'bg-red-100',
   status: 'STATUS_20_IN_PROGRESS',
@@ -27,6 +42,7 @@ const mockCaseRow = {
   priority: 'HIGH',
   userRole: 'owner' as const,
   totalTasks: 3,
+  alertId: 1,
 };
 
 const buildMockReturn = () => ({
@@ -39,6 +55,8 @@ const buildMockReturn = () => ({
       sortBy: 'recent' as const,
       statusFilter: '',
       priorityFilter: '',
+      sarStrStatusFilter: '',
+      caseTypeFilter: 'all',
     },
     pagination: {
       currentPage: 1,
@@ -90,6 +108,8 @@ const buildMockReturn = () => ({
     setSortBy: vi.fn(),
     setStatusFilter: vi.fn(),
     setPriorityFilter: vi.fn(),
+    setSarStrStatusFilter: vi.fn(),
+    setCaseTypeFilter: vi.fn(),
   },
   modalActions: {
     setIsCreateOpen: vi.fn(),

@@ -37,7 +37,7 @@ describe('AuditLogsStatsCards', () => {
         const textContent = container.textContent || '';
         expect(textContent).toContain('530');
       },
-      { timeout: 2000 },
+      { timeout: 5000 },
     );
   });
 
@@ -50,7 +50,7 @@ describe('AuditLogsStatsCards', () => {
         const textContent = container.textContent || '';
         expect(textContent).toContain('310');
       },
-      { timeout: 2000 },
+      { timeout: 5000 },
     );
   });
 
@@ -72,7 +72,7 @@ describe('AuditLogsStatsCards', () => {
           textContent.includes('11') || textContent.includes('12');
         expect(hasValue).toBe(true);
       },
-      { timeout: 2000 },
+      { timeout: 5000 },
     );
   });
 

@@ -185,13 +185,13 @@ describe('CaseService', () => {
         status: 'STATUS_20_IN_PROGRESS',
         priority: 'HIGH',
       };
-      (apiClient.post as vi.Mock).mockResolvedValue(mockCase);
+      (apiClient.put as vi.Mock).mockResolvedValue(mockCase);
 
       const result = await caseService.updateCase('CASE-123', {
         status: 'STATUS_20_IN_PROGRESS',
       });
 
-      expect(apiClient.post).toHaveBeenCalledWith(
+      expect(apiClient.put).toHaveBeenCalledWith(
         '/api/v1/cases/CASE-123',
         expect.objectContaining({ status: 'STATUS_20_IN_PROGRESS' }),
       );
@@ -494,57 +494,6 @@ describe('CaseService', () => {
     });
   });
 
-  describe('getCaseHistory', () => {
-    it('fetches case history and filters by case ID', async () => {
-      const mockAuditLogs = [
-        {
-          id: '1',
-          user_id: 'user-1',
-          operation: 'updateCase',
-          entity_name: 'Case',
-          action_performed: 'Case CASE-123 updated',
-          outcome: 'success',
-          performed_at: new Date(),
-        },
-        {
-          id: '2',
-          user_id: 'user-2',
-          operation: 'updateCase',
-          entity_name: 'Case',
-          action_performed: 'Case CASE-456 updated',
-          outcome: 'success',
-          performed_at: new Date(),
-        },
-      ];
-      const mockTasks = [{ task_id: 'TASK-1' }];
-
-      (apiClient.get as vi.Mock)
-        .mockResolvedValueOnce(mockAuditLogs)
-        .mockResolvedValueOnce(mockTasks);
-
-      const result = await caseService.getCaseHistory('CASE-123');
-
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/reports/audit-logs');
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/task/case/CASE-123');
-      expect(result.length).toBe(1);
-      expect(result[0].action_performed).toContain('CASE-123');
-    });
-
-    it('returns empty array on error', async () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-      (apiClient.get as vi.Mock).mockRejectedValue(new Error('Failed'));
-
-      const result = await caseService.getCaseHistory('CASE-123');
-
-      expect(result).toEqual([]);
-      expect(consoleErrorSpy).toHaveBeenCalled();
-
-      consoleErrorSpy.mockRestore();
-    });
-  });
-
   describe('error handling', () => {
     it('handles API errors with response data', async () => {
       const apiError = {
@@ -554,19 +503,177 @@ describe('CaseService', () => {
           },
         },
       };
-      (apiClient.get as vi.Mock).mockRejectedValue(apiError);
+      (apiClient.get as vi.Mock).mockReset();
+      (apiClient.get as vi.Mock).mockRejectedValueOnce(apiError);
 
-      await expect(caseService.getCaseDetails('CASE-123')).rejects.toThrow(
-        'Custom error message',
-      );
+      await expect(
+        caseService.getCaseDetails('CASE-123' as any),
+      ).rejects.toThrow('Custom error message');
     });
 
     it('handles API errors without response data', async () => {
       const error = new Error('Network error');
-      (apiClient.get as vi.Mock).mockRejectedValue(error);
+      (apiClient.get as vi.Mock).mockReset();
+      (apiClient.get as vi.Mock).mockRejectedValueOnce(error);
 
-      await expect(caseService.getCaseDetails('CASE-123')).rejects.toThrow(
-        'Failed to get case details: Network error',
+      await expect(
+        caseService.getCaseDetails('CASE-123' as any),
+      ).rejects.toThrow('Failed to get case details: Network error');
+    });
+  });
+
+  describe('getSubCasesDetails', () => {
+    it('fetches sub-cases by parent case ID', async () => {
+      const mockResponse = [
+        { case_id: 10, status: 'STATUS_20_IN_PROGRESS' },
+        { case_id: 11, status: 'STATUS_00_DRAFT' },
+      ];
+      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
+
+      const result = await caseService.getSubCasesDetails(5);
+
+      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/cases/parentId/5');
+      expect(result).toHaveLength(2);
+    });
+
+    it('handles response wrapped in cases property', async () => {
+      const mockResponse = {
+        cases: [{ case_id: 10, status: 'STATUS_20_IN_PROGRESS' }],
+      };
+      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
+
+      const result = await caseService.getSubCasesDetails(5);
+      expect(result).toHaveLength(1);
+    });
+
+    it('handles response wrapped in data property', async () => {
+      const mockResponse = {
+        data: [{ case_id: 10, status: 'STATUS_20_IN_PROGRESS' }],
+      };
+      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
+
+      const result = await caseService.getSubCasesDetails(5);
+      expect(result).toHaveLength(1);
+    });
+
+    it('throws on invalid response', async () => {
+      (apiClient.get as vi.Mock).mockResolvedValue('invalid');
+      await expect(caseService.getSubCasesDetails(5)).rejects.toThrow();
+    });
+  });
+
+  describe('SaveCaseAsDraft', () => {
+    it('saves a case as draft', async () => {
+      const mockResponse = { case_id: 99, status: 'STATUS_00_DRAFT' };
+      (apiClient.post as vi.Mock).mockResolvedValue(mockResponse);
+
+      const result = await caseService.SaveCaseAsDraft({
+        alertType: 'FRAUD',
+      });
+
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/api/v1/cases/save-as-draft',
+        { alertType: 'FRAUD' },
+      );
+      expect(result.case_id).toBe(99);
+    });
+  });
+
+  describe('completeCase', () => {
+    it('completes case creation', async () => {
+      const mockResponse = {
+        case_id: 1,
+        status: 'STATUS_02_READY_FOR_ASSIGNMENT',
+      };
+      (apiClient.post as vi.Mock).mockResolvedValue(mockResponse);
+
+      const result = await caseService.completeCase(1, {
+        status: 'STATUS_02_READY_FOR_ASSIGNMENT',
+      });
+
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/api/v1/cases/1/complete-case-creation',
+        { status: 'STATUS_02_READY_FOR_ASSIGNMENT' },
+      );
+      expect(result.case_id).toBe(1);
+    });
+  });
+
+  describe('validateCaseResponse', () => {
+    it('extracts case from nested case property', async () => {
+      const mockResponse = {
+        case: { case_id: 42, status: 'STATUS_20_IN_PROGRESS' },
+        message: 'Success',
+      };
+      (apiClient.put as vi.Mock).mockResolvedValue(mockResponse);
+
+      const result = await caseService.abandonCase(42, { reason: 'test' });
+      expect(result.case_id).toBe(42);
+    });
+
+    it('throws on null response', async () => {
+      (apiClient.get as vi.Mock).mockResolvedValue(null);
+      await expect(caseService.getCaseDetails(1)).rejects.toThrow(
+        'Invalid case data received',
+      );
+    });
+
+    it('throws on response without case_id', async () => {
+      (apiClient.get as vi.Mock).mockResolvedValue({ status: 'OPEN' });
+      await expect(caseService.getCaseDetails(1)).rejects.toThrow(
+        'Case ID is missing from response',
+      );
+    });
+  });
+
+  describe('getAllCases with filters', () => {
+    it('includes sarStrStatus, search, excludeDraft, excludeClosed, closedOnly params', async () => {
+      const mockResponse = { cases: [], pagination: {} };
+      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
+
+      await caseService.getAllCases({
+        sarStrStatus: 'FILED',
+        search: 'test',
+        excludeDraft: true,
+        excludeClosed: true,
+        closedOnly: true,
+      });
+
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('sarStrStatus=FILED'),
+      );
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('search=test'),
+      );
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('excludeDraft=true'),
+      );
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('excludeClosed=true'),
+      );
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('closedOnly=true'),
+      );
+    });
+  });
+
+  describe('handleError edge cases', () => {
+    it('handles non-Error unknown error objects', async () => {
+      (apiClient.get as vi.Mock).mockRejectedValue('string error');
+      await expect(caseService.getCaseDetails(1)).rejects.toThrow(
+        'Failed to get case details: Unknown error',
+      );
+    });
+
+    it('handles error response with no message', async () => {
+      const apiError = {
+        response: {
+          data: {},
+        },
+      };
+      (apiClient.get as vi.Mock).mockRejectedValue(apiError);
+      await expect(caseService.getCaseDetails(1)).rejects.toThrow(
+        'Failed to get case details',
       );
     });
   });

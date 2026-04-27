@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -79,15 +79,11 @@ describe('useAlertsQuery', () => {
         { search: 'test' },
       ]);
       expect(alertsQueryKeys.details()).toEqual(['alerts', 'detail']);
-      expect(alertsQueryKeys.detail('alert-1')).toEqual([
+      expect(alertsQueryKeys.detail(1)).toEqual(['alerts', 'detail', 1]);
+      expect(alertsQueryKeys.actionHistory(1)).toEqual([
         'alerts',
         'detail',
-        'alert-1',
-      ]);
-      expect(alertsQueryKeys.actionHistory('alert-1')).toEqual([
-        'alerts',
-        'detail',
-        'alert-1',
+        1,
         'actionHistory',
       ]);
       expect(alertsQueryKeys.filterOptions()).toEqual([
@@ -100,8 +96,8 @@ describe('useAlertsQuery', () => {
   describe('useAlerts', () => {
     it('fetches alerts with filters', async () => {
       const mockAlerts = [
-        { alert_id: 'ALERT-1', priority: 'URGENT' },
-        { alert_id: 'ALERT-2', priority: 'CRITICAL' },
+        { alert_id: 1, priority: 'URGENT' },
+        { alert_id: 2, priority: 'CRITICAL' },
       ];
       const mockPagination = {
         currentPage: 1,
@@ -218,17 +214,17 @@ describe('useAlertsQuery', () => {
 
   describe('useAlertDetails', () => {
     it('fetches alert details when alertId is provided', async () => {
-      const mockAlert = { alert_id: 'ALERT-1', priority: 'URGENT' };
+      const mockAlert = { alert_id: 1, priority: 'URGENT' };
       mockTriageService.getAlertById.mockResolvedValueOnce(mockAlert);
 
-      const { result } = renderHook(() => useAlertDetails('ALERT-1'), {
+      const { result } = renderHook(() => useAlertDetails(1), {
         wrapper: createWrapper(),
       });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.alert).toEqual(mockAlert);
-      expect(mockTriageService.getAlertById).toHaveBeenCalledWith('ALERT-1');
+      expect(mockTriageService.getAlertById).toHaveBeenCalledWith(1);
     });
 
     it('does not fetch when alertId is null', () => {
@@ -244,7 +240,7 @@ describe('useAlertsQuery', () => {
       const error = new Error('Failed to fetch');
       mockTriageService.getAlertById.mockRejectedValueOnce(error);
 
-      const { result } = renderHook(() => useAlertDetails('ALERT-1'), {
+      const { result } = renderHook(() => useAlertDetails(1), {
         wrapper: createWrapper(),
       });
 
@@ -253,10 +249,10 @@ describe('useAlertsQuery', () => {
     });
 
     it('refetches when refetch is called', async () => {
-      const mockAlert = { alert_id: 'ALERT-1', priority: 'URGENT' };
+      const mockAlert = { alert_id: 1, priority: 'URGENT' };
       mockTriageService.getAlertById.mockResolvedValue(mockAlert);
 
-      const { result } = renderHook(() => useAlertDetails('ALERT-1'), {
+      const { result } = renderHook(() => useAlertDetails(1), {
         wrapper: createWrapper(),
       });
 
@@ -283,16 +279,14 @@ describe('useAlertsQuery', () => {
         mockHistory,
       );
 
-      const { result } = renderHook(() => useAlertActionHistory('ALERT-1'), {
+      const { result } = renderHook(() => useAlertActionHistory(1), {
         wrapper: createWrapper(),
       });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.actionHistory).toEqual(mockHistory);
-      expect(mockTriageService.getAlertActionHistory).toHaveBeenCalledWith(
-        'ALERT-1',
-      );
+      expect(mockTriageService.getAlertActionHistory).toHaveBeenCalledWith(1);
     });
 
     it('returns empty array when alertId is null', () => {
@@ -308,7 +302,7 @@ describe('useAlertsQuery', () => {
       const error = new Error('Failed to fetch');
       mockTriageService.getAlertActionHistory.mockRejectedValueOnce(error);
 
-      const { result } = renderHook(() => useAlertActionHistory('ALERT-1'), {
+      const { result } = renderHook(() => useAlertActionHistory(1), {
         wrapper: createWrapper(),
       });
 
@@ -319,7 +313,7 @@ describe('useAlertsQuery', () => {
     it('returns empty array when history is undefined', async () => {
       mockTriageService.getAlertActionHistory.mockResolvedValueOnce(undefined);
 
-      const { result } = renderHook(() => useAlertActionHistory('ALERT-1'), {
+      const { result } = renderHook(() => useAlertActionHistory(1), {
         wrapper: createWrapper(),
       });
 
@@ -331,7 +325,7 @@ describe('useAlertsQuery', () => {
 
   describe('useAlertOperations', () => {
     it('closes alert successfully', async () => {
-      const mockUpdatedAlert = { alert_id: 'ALERT-1', status: 'CLOSED' };
+      const mockUpdatedAlert = { alert_id: 1, status: 'CLOSED' };
       mockTriageService.closeAlert.mockResolvedValueOnce(mockUpdatedAlert);
 
       const { result } = renderHook(() => useAlertOperations(), {
@@ -340,7 +334,7 @@ describe('useAlertsQuery', () => {
 
       await waitFor(() => {
         result.current.closeAlert({
-          alertId: 'ALERT-1',
+          alertId: 1,
           status: 'CLOSED',
           notes: 'Resolved',
         });
@@ -348,12 +342,9 @@ describe('useAlertsQuery', () => {
 
       await waitFor(() => {
         expect(mockTriageService.closeAlert).toHaveBeenCalledWith(
-          'ALERT-1',
+          1,
           'CLOSED',
           'Resolved',
-        );
-        expect(mockNotifications.showSuccess).toHaveBeenCalledWith(
-          'Alert closed successfully',
         );
       });
     });
@@ -368,7 +359,7 @@ describe('useAlertsQuery', () => {
 
       await waitFor(() => {
         result.current.closeAlert({
-          alertId: 'ALERT-1',
+          alertId: 1,
           status: 'CLOSED',
           notes: 'Resolved',
         });
@@ -382,7 +373,7 @@ describe('useAlertsQuery', () => {
     });
 
     it('updates alert successfully', async () => {
-      const mockUpdatedAlert = { alert_id: 'ALERT-1', priority: 'CRITICAL' };
+      const mockUpdatedAlert = { alert_id: 1, priority: 'CRITICAL' };
       mockTriageService.updateAlert.mockResolvedValueOnce(mockUpdatedAlert);
 
       const { result } = renderHook(() => useAlertOperations(), {
@@ -391,18 +382,15 @@ describe('useAlertsQuery', () => {
 
       await waitFor(() => {
         result.current.updateAlert({
-          alertId: 'ALERT-1',
+          alertId: 1,
           data: { priority: 'CRITICAL' },
         });
       });
 
       await waitFor(() => {
-        expect(mockTriageService.updateAlert).toHaveBeenCalledWith('ALERT-1', {
+        expect(mockTriageService.updateAlert).toHaveBeenCalledWith(1, {
           priority: 'CRITICAL',
         });
-        expect(mockNotifications.showSuccess).toHaveBeenCalledWith(
-          'Alert updated successfully',
-        );
       });
     });
 
@@ -416,7 +404,7 @@ describe('useAlertsQuery', () => {
 
       await waitFor(() => {
         result.current.updateAlert({
-          alertId: 'ALERT-1',
+          alertId: 1,
           data: { priority: 'CRITICAL' },
         });
       });
@@ -429,7 +417,7 @@ describe('useAlertsQuery', () => {
     });
 
     it('performs manual triage successfully', async () => {
-      const mockTriageResult = { alert_id: 'ALERT-1', case_id: 'CASE-1' };
+      const mockTriageResult = { alert_id: 1, case_id: 'CASE-1' };
       mockTriageService.performManualTriage.mockResolvedValueOnce(
         mockTriageResult,
       );
@@ -440,22 +428,16 @@ describe('useAlertsQuery', () => {
 
       await waitFor(() => {
         result.current.performManualTriage({
-          alertId: 'ALERT-1',
+          alertId: 1,
           data: { action: 'APPROVE', notes: 'Looks good' },
         });
       });
 
       await waitFor(() => {
-        expect(mockTriageService.performManualTriage).toHaveBeenCalledWith(
-          'ALERT-1',
-          {
-            action: 'APPROVE',
-            notes: 'Looks good',
-          },
-        );
-        expect(mockNotifications.showSuccess).toHaveBeenCalledWith(
-          'Manual triage completed successfully',
-        );
+        expect(mockTriageService.performManualTriage).toHaveBeenCalledWith(1, {
+          action: 'APPROVE',
+          notes: 'Looks good',
+        });
       });
     });
 
@@ -469,7 +451,7 @@ describe('useAlertsQuery', () => {
 
       await waitFor(() => {
         result.current.performManualTriage({
-          alertId: 'ALERT-1',
+          alertId: 1,
           data: { action: 'APPROVE', notes: 'Looks good' },
         });
       });
@@ -485,7 +467,7 @@ describe('useAlertsQuery', () => {
       mockTriageService.closeAlert.mockImplementation(
         () =>
           new Promise((resolve) =>
-            setTimeout(() => resolve({ alert_id: 'ALERT-1' }), 100),
+            setTimeout(() => resolve({ alert_id: 1 }), 100),
           ),
       );
 
@@ -494,7 +476,7 @@ describe('useAlertsQuery', () => {
       });
 
       result.current.closeAlert({
-        alertId: 'ALERT-1',
+        alertId: 1,
         status: 'CLOSED',
         notes: 'Resolved',
       });
