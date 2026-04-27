@@ -89,7 +89,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   const isInvestigatorOnly =
     hasInvestigatorRole() && !hasSupervisorRole() && !hasCMSAdminRole();
   const { tasks, loading, error, fetchTasks } = useCaseTasks(caseId);
-  
+
   useEffect(() => {
     const fetchData = async (): Promise<void> => {
       await fetchTasks();
@@ -97,7 +97,9 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       const [fetchedCase] = await Promise.all([
         caseService
           .getUserCases({ limit: 1000 })
-          .then((response): CaseWithTasksDto | undefined => response.cases.find((c) => c.case_id === caseId)),
+          .then((response): CaseWithTasksDto | undefined =>
+            response.cases.find((c) => c.case_id === caseId),
+          ),
       ]);
       // Transform backend case data to CaseRow format if found
       if (fetchedCase) {
@@ -161,7 +163,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       priority: 'NEW',
       createdAt: backendTask.created_at,
       dueDate: undefined,
-      caseId: backendTask.case_id
+      caseId: backendTask.case_id,
     };
   };
 
@@ -420,7 +422,10 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     await handleTaskOperation('reassign', { task, assignee, justification });
   };
 
-  const handleUnassignTask = async (_taskId: number, reason: string): Promise<void> => {
+  const handleUnassignTask = async (
+    _taskId: number,
+    reason: string,
+  ): Promise<void> => {
     if (selectedTask) {
       await handleTaskOperation('unassign', { task: selectedTask, reason });
     }

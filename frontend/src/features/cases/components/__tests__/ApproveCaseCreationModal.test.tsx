@@ -5,8 +5,31 @@ import ApproveCaseCreationModal from '../ApproveCaseCreationModal';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import type { CaseRow } from '../casesTable.utils';
 
+vi.mock('@/shared/constants/case.constant', () => ({
+  getCaseStatusBadge: vi.fn((status: string) => status),
+}));
+
+vi.mock('@/features/alerts/services/triageservice', () => ({
+  default: {
+    getAlertById: vi.fn().mockResolvedValue({
+      alert_id: 456,
+      confidence_per: 85,
+      alert_type: 'FRAUD',
+      message: 'Suspicious transaction detected',
+      source: 'System',
+      priority: 'HIGH',
+      created_at: '2023-01-01',
+      transaction: null,
+    }),
+  },
+}));
+
+vi.mock('@/shared/utils/dateUtils', () => ({
+  formatDate: vi.fn((date: string) => date),
+}));
+
 const mockCaseRow: CaseRow = {
-  id: 'CASE-123',
+  id: 123,
   type: 'FRAUD',
   typeColor: 'bg-red-50',
   status: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
@@ -20,11 +43,12 @@ const mockCaseRow: CaseRow = {
   priority: 'HIGH',
   userRole: 'none',
   totalTasks: 0,
+  alertId: 1,
 };
 
 const mockCaseRowWithAlert: CaseRow = {
   ...mockCaseRow,
-  alertId: 'ALERT-456',
+  alertId: 456,
   confidencePercent: 85,
   alertMessage: 'Suspicious transaction detected',
 };
@@ -73,7 +97,7 @@ describe('ApproveCaseCreationModal component', () => {
     expect(
       screen.getByRole('heading', { name: /approve case creation/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/case id: case-123/i)).toBeInTheDocument();
+    expect(screen.getByText(/case id: 123/i)).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /approve case creation/i }),
     ).toBeEnabled();
@@ -97,7 +121,7 @@ describe('ApproveCaseCreationModal component', () => {
     expect(screen.getByText('01/01/2023')).toBeInTheDocument();
   });
 
-  it('displays associated alert when alertId is present', () => {
+  it('displays associated alert when alertId is present', async () => {
     render(
       <ApproveCaseCreationModal
         open={true}
@@ -110,10 +134,9 @@ describe('ApproveCaseCreationModal component', () => {
     // Check for the alert section heading specifically
     const alertHeadings = screen.getAllByText(/associated alert/i);
     expect(alertHeadings.length).toBeGreaterThan(0);
-    expect(screen.getByText('ALERT-456')).toBeInTheDocument();
-    expect(screen.getByText('85%')).toBeInTheDocument();
+    expect(await screen.findByText('85.00%')).toBeInTheDocument();
     expect(
-      screen.getByText('Suspicious transaction detected'),
+      await screen.findByText('Suspicious transaction detected'),
     ).toBeInTheDocument();
   });
 
@@ -131,7 +154,7 @@ describe('ApproveCaseCreationModal component', () => {
     const alertHeadings = screen.queryAllByText(/Associated Alert/i);
     // Should only appear in the approval confirmation section, not as a separate section
     expect(alertHeadings.length).toBeLessThanOrEqual(1);
-    expect(screen.queryByText('ALERT-456')).not.toBeInTheDocument();
+    expect(screen.queryByText('456')).not.toBeInTheDocument();
   });
 
   it('submits form successfully', async () => {
@@ -154,7 +177,7 @@ describe('ApproveCaseCreationModal component', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith('CASE-123');
+      expect(onSubmit).toHaveBeenCalledWith(123);
       expect(onClose).toHaveBeenCalled();
     });
   });
@@ -274,7 +297,7 @@ describe('ApproveCaseCreationModal component', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('displays workflow information', () => {
+  it('displays approval information', () => {
     render(
       <ApproveCaseCreationModal
         open={true}
@@ -285,14 +308,11 @@ describe('ApproveCaseCreationModal component', () => {
     );
 
     expect(
-      screen.getByText(/Supervisor Case Creation Approval Workflow/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Only cases in "PENDING CASE CREATION APPROVAL"/i),
+      screen.getByText(/approve the manual case creation request/i),
     ).toBeInTheDocument();
   });
 
-  it('displays approval confirmation section', () => {
+  it('displays case details section', () => {
     render(
       <ApproveCaseCreationModal
         open={true}
@@ -302,10 +322,9 @@ describe('ApproveCaseCreationModal component', () => {
       />,
     );
 
-    expect(screen.getByText(/Approval Confirmation/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/The case information is complete and accurate/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Case Details')).toBeInTheDocument();
+    expect(screen.getByText('Case Type')).toBeInTheDocument();
+    expect(screen.getByText('Current Status')).toBeInTheDocument();
   });
 
   it('resets errors when closing', async () => {

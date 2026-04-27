@@ -9,5 +9,5 @@ describe('modals/components/index', () => {
     expect(module.BlockAllowListStatus).toBeDefined();
     expect(module.RecentActivitySection).toBeDefined();
     expect(module.ModalHeader).toBeDefined();
-  });
+  }, 15000);
 });

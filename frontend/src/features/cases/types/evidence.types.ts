@@ -85,7 +85,7 @@ export interface Attachment {
   supervisor?: string;
   description?: string;
   submittedAt: string; // ISO string
-  [key: string]: any; // allow extra fields if needed
+  [key: string]: unknown; // allow extra fields if needed
 }
 
 export interface UploadEvidenceDto {

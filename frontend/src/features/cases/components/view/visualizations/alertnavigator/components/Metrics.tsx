@@ -10,15 +10,16 @@ export const Metrics: React.FC<MetricsProps> = ({
   typologiesCount,
   rulesCount,
   averageScore,
-}) => {
-  return (
+}) => (
     <div className="grid grid-cols-3 gap-4">
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="text-xs font-medium text-gray-500 uppercase mb-1">
           Typologies Triggered
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-gray-900">{typologiesCount}</span>
+          <span className="text-2xl font-bold text-gray-900">
+            {typologiesCount}
+          </span>
           {typologiesCount > 0 && (
             <svg
               className="h-4 w-4 text-red-500"
@@ -62,7 +63,9 @@ export const Metrics: React.FC<MetricsProps> = ({
           Avg Score
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-gray-900">{averageScore}</span>
+          <span className="text-2xl font-bold text-gray-900">
+            {averageScore}
+          </span>
           <svg
             className="h-5 w-5 text-blue-500"
             fill="none"
@@ -80,4 +83,3 @@ export const Metrics: React.FC<MetricsProps> = ({
       </div>
     </div>
   );
-};

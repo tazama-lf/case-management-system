@@ -1,11 +1,12 @@
 import React from 'react';
 import { PageContainer } from '../../../shared/components/ui';
-import { ReferenceDashboardContent } from '..';
 
-const AdminDashboard: React.FC = () => (
+const ReferenceIdDashboard: React.FC = () => (
   <PageContainer title="Reference ID Dashboard">
-    <ReferenceDashboardContent />
+    <div className="p-6">
+      <p>Reference ID Dashboard content</p>
+    </div>
   </PageContainer>
 );
 
-export default AdminDashboard;
+export default ReferenceIdDashboard;

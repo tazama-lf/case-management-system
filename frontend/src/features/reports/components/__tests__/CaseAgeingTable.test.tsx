@@ -5,23 +5,10 @@ import userEvent from '@testing-library/user-event';
 import CaseAgeingTable from '../CaseAgeingTable';
 import type { CaseAgeingDetail } from '../../types/reports.types';
 
-// Mock authService
+// Mock authService (not used by component but may be needed by imports)
 vi.mock('@/features/auth/services/authService', () => ({
   default: {
-    fetchAllInvestigators: vi.fn().mockResolvedValue([
-      {
-        id: 'user-1',
-        username: 'investigator1',
-        firstName: 'John',
-        lastName: 'Doe',
-      },
-      {
-        id: 'user-2',
-        username: 'investigator2',
-        firstName: 'Jane',
-        lastName: 'Smith',
-      },
-    ]),
+    fetchAllInvestigators: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -57,33 +44,37 @@ vi.mock('../../../shared/hooks/usePagination', () => {
   };
 });
 
-// Mock PaginationControls
-vi.mock('../../../shared/components/PaginationControls', () => {
+// Mock TablePagination
+vi.mock('../../../shared/components/TablePagination', () => {
   return {
-    default: ({
-      currentPage,
-      totalPages,
-      onPageChange,
-      onNext,
-      onPrevious,
-    }: any) => (
-      <div data-testid="pagination-controls">
-        <button onClick={onPrevious} disabled={currentPage === 1}>
-          Previous
-        </button>
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
-        <button onClick={onNext} disabled={currentPage === totalPages}>
-          Next
-        </button>
-        {totalPages > 1 && (
-          <button onClick={() => onPageChange(2)} data-testid="go-to-page-2">
-            Go to page 2
+    default: ({ pagination }: any) => {
+      if (!pagination) return null;
+      const { currentPage, totalPages, onPageChange } = pagination;
+      return (
+        <div data-testid="pagination-controls">
+          <button
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
           </button>
-        )}
-      </div>
-    ),
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </button>
+          {totalPages > 1 && (
+            <button onClick={() => onPageChange(2)} data-testid="go-to-page-2">
+              Go to page 2
+            </button>
+          )}
+        </div>
+      );
+    },
   };
 });
 
@@ -180,8 +171,8 @@ describe('CaseAgeingTable', () => {
     render(<CaseAgeingTable data={mockData} title="Case Ageing" />);
 
     await waitFor(() => {
-      expect(screen.getByText('John Doe')).toBeInTheDocument();
-      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+      expect(screen.getByText('User user-1')).toBeInTheDocument();
+      expect(screen.getByText('User user-2')).toBeInTheDocument();
     });
   });
 

@@ -4,7 +4,6 @@ import {
   ExclamationTriangleIcon,
   FolderIcon,
   Cog6ToothIcon,
-  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItem } from '../types/navigation.types';
 export const NAVIGATION_ITEMS: NavItem[] = [

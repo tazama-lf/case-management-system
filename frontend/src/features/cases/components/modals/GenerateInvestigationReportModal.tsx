@@ -12,7 +12,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { marked } from 'marked';
 import htmlToPdfmake from 'html-to-pdfmake';
 import type { Evidence } from '../../types/evidence.types';
-import { reportsService } from '../../../reports/services/reportsService';
+import reportsService from '../../../reports/services/reportsService';
 import { evidenceService } from '../../services/evidenceService';
 import type { TaskDTO } from '../../services/caseService';
 import {
@@ -136,7 +136,6 @@ const getUserRole = (): string => {
 const GenerateInvestigationReportModal: React.FC<
   GenerateInvestigationReportModalProps
 > = ({
-  caseStatus,
   open,
   onClose,
   caseId,
@@ -290,13 +289,21 @@ const GenerateInvestigationReportModal: React.FC<
     const [executiveSummary, setExecutiveSummary] = useState(
       buildExecutiveSummary(),
     );
-    const [keyFindings] = useState(investigationNotes ?? '');
+    const [keyFindings, setKeyFindings] = useState(investigationNotes ?? '');
     const [recommendations, setRecommendations] = useState(
-      "Based on the investigation findings and evidence review:\n\n1. Review investigator's recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure.",
+      'Based on the investigation findings and evidence review:\n\n1. Review investigator\'s recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure.',
     );
     const [supervisorFeedback, setSupervisorFeedback] = useState(
       supervisorComments?.[0]?.note ?? '',
     );
+    useEffect(() => {
+      setKeyFindings(investigationNotes ?? '');
+    }, [investigationNotes]);
+
+    useEffect(() => {
+      setSupervisorFeedback(supervisorComments?.[0]?.note ?? '');
+    }, [supervisorComments]);
+
     const [reportOutcome] = useState<string | undefined>('');
     const [monitoringDuration, setMonitoringDuration] = useState<
       30 | 60 | 90 | 180
@@ -1141,8 +1148,8 @@ const GenerateInvestigationReportModal: React.FC<
                       onClick={handleApproveClick}
                       disabled={isFinalizing || isApproved}
                       className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${isApproved
-                        ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                        : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
+                          ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                          : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
                         }`}
                     >
                       {isFinalizing ? (

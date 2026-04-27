@@ -7,7 +7,6 @@ interface CounterpartyNetworkTabProps {
   timeRange: string;
   tenantId: string;
   entityId: string;
-
 }
 
 const CounterpartyNetworkTab: React.FC<CounterpartyNetworkTabProps> = ({
@@ -20,7 +19,7 @@ const CounterpartyNetworkTab: React.FC<CounterpartyNetworkTabProps> = ({
   <VoilaFrame
     notebookPath="counterparty-network.ipynb"
     title="Counterparty Network Analysis"
-    queryParams={{ entityId, tenantId, 'granularity': timeRange }}
+    queryParams={{ entityId, tenantId, granularity: timeRange }}
   />
 );
 

@@ -12,7 +12,7 @@ export const useEntityMetadata = (
   entityMetadata: EntityMetadataResponse | undefined;
   error: unknown;
   isLoading: boolean;
-  refetch: () => void;
+  refetch: () => Promise<unknown>;
 } => {
   const {
     data: entityMetadata,

@@ -183,7 +183,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({
             <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
               {task.assigneeName && task.assignee
                 ? `${getAssigneeFullName(task.assigneeName, task.assignee)} (${task.assignee})`
-                : task.assigneeName ?? task.assignee ?? 'Unassigned'}
+                : (task.assigneeName ?? task.assignee ?? 'Unassigned')}
             </div>
           </div>
 
