@@ -8,6 +8,10 @@ if [ -z "$CMS_FRONTEND_ORIGIN" ]; then
   exit 1
 fi
 
+# VOILA_BASE_URL: base URL path for Voila (default "/" for direct access).
+# Set to "/voila/" when running behind a reverse proxy that strips the prefix.
+VOILA_BASE_URL="${VOILA_BASE_URL:-/}"
+
 # Build valid JSON for Voila.tornado_settings using Python's json module
 TORNADO_SETTINGS=$(python -c "
 import json, os
@@ -20,6 +24,6 @@ print(json.dumps(settings))
 exec voila /app/notebooks \
   --Voila.ip=0.0.0.0 \
   --Voila.port=8866 \
-  --Voila.base_url=/voila/ \
+  --Voila.base_url="$VOILA_BASE_URL" \
   --Voila.tornado_settings="$TORNADO_SETTINGS" \
   --no-browser

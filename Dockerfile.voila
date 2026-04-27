@@ -24,6 +24,9 @@ ENV VOILA_PORT=8866
 # CMS frontend origins for frame-ancestors CSP (space-separated, can be overridden at runtime)
 # e.g. "http://localhost:5175" or "https://app.example.com https://other.example.com"
 ENV CMS_FRONTEND_ORIGIN="http://localhost:5175"
+# Base URL path for Voila. Default "/" for direct access;
+# set to "/voila/" when behind a reverse proxy.
+ENV VOILA_BASE_URL="/"
 
 WORKDIR /app/notebooks
 
