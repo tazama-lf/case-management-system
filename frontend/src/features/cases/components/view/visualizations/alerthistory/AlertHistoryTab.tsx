@@ -10,10 +10,8 @@ interface AlertHistoryTabProps {
 const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
   caseId,
   transactionId,
-  tenantId
-
+  tenantId,
 }) => {
-
   // Build query parameters for Voila
   const queryParams = React.useMemo(() => {
     const params: Record<string, string> = {
@@ -51,8 +49,8 @@ const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
             Transaction Data Unavailable
           </h3>
           <p className="text-sm text-gray-600 max-w-md">
-            Alert history requires transaction information to display relevant data.
-            This case may not have associated transaction details.
+            Alert history requires transaction information to display relevant
+            data. This case may not have associated transaction details.
           </p>
         </div>
       </div>

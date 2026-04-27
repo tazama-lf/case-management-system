@@ -11,7 +11,6 @@ import { formatDate } from '../../../../../shared/utils/dateUtils';
 import { EmptyState } from '../../../../../shared/components/ui';
 import type { UnifiedWorkQueueTask } from '../../../types/task.types';
 
-
 interface TaskLogTableProps {
   tasks: UnifiedWorkQueueTask[];
   onAssign: (task: UnifiedWorkQueueTask) => void;

@@ -2,7 +2,6 @@
 // Components
 export { default as DashboardSection } from './components/DashboardSection';
 export { default as WorkQueueManagement } from './components/WorkQueueManagement';
-export { default as ReferenceDashboardContent } from './components/ReferenceDashboardContent';
 
 // Pages
 export { default as AdminDashboard } from './pages/AdminDashboard';

@@ -66,8 +66,6 @@ export const getTriageModeLabel = (triageType: TriageType): string => {
       return 'Manual Review';
     case 'DISABLED':
       return 'Direct Investigation';
-    default:
-      return 'Unknown';
   }
 };
 
@@ -79,8 +77,6 @@ export const getTriageModeDescription = (triageType: TriageType): string => {
       return 'All alerts require manual review and human decision-making';
     case 'DISABLED':
       return 'Alerts bypass triage and go directly to investigation';
-    default:
-      return 'Unknown triage mode';
   }
 };
 
@@ -91,8 +87,6 @@ export const getTriageModeColor = (triageType: TriageType): string => {
     case 'MANUAL':
       return 'text-yellow-600 bg-yellow-50 border-yellow-200';
     case 'DISABLED':
-      return 'text-gray-600 bg-gray-50 border-gray-200';
-    default:
       return 'text-gray-600 bg-gray-50 border-gray-200';
   }
 };

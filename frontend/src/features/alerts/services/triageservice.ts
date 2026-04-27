@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import apiClient from '../../../shared/services/apiClient';
 import type { Alert } from '../types/alertsdashboard.types';
 import type {
@@ -82,15 +83,15 @@ class TriageService {
       totalPages: number;
     }>(url);
 
-    const alerts = backendResponse.data ?? [];
+    const alerts = backendResponse.data;
 
     return {
       alerts,
       pagination: {
-        currentPage: backendResponse.page ?? 1,
-        totalPages: backendResponse.totalPages ?? 1,
-        totalItems: backendResponse.total ?? 0,
-        pageSize: backendResponse.limit ?? 10,
+        currentPage: backendResponse.page,
+        totalPages: backendResponse.totalPages,
+        totalItems: backendResponse.total,
+        pageSize: backendResponse.limit,
       },
     };
   }
@@ -180,11 +181,13 @@ class TriageService {
     }
   }
 
-  async getAlertTransactionalData(alertId: number) {
+  async getAlertTransactionalData(
+    alertId: number,
+  ): Promise<TransactionDetailRecordDTO[]> {
     try {
-      const response = await apiClient.get<{ transactionData: TransactionDataResponseDTO }>(
-        `${this.alertBaseUrl}/${alertId}/transaction-data`,
-      );
+      const response = await apiClient.get<{
+        transactionData: TransactionDataResponseDTO;
+      }>(`${this.alertBaseUrl}/${alertId}/transaction-data`);
       return response.transactionData.data;
     } catch (error) {
       throw this.handleError(error, 'close alert');
@@ -231,3 +234,4 @@ class TriageService {
 }
 
 export default new TriageService();
+/* eslint-enable @typescript-eslint/class-methods-use-this */

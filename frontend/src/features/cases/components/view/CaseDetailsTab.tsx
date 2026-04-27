@@ -83,8 +83,12 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   onApproveCaseCreation,
   onRejectCaseCreation,
 }) => {
-  const [pacs002Data, setPacs002Data] = React.useState<TransactionDetailDTO[]>([]);
-  const [pacs008Data, setPacs008Data] = React.useState<TransactionDetailDTO[]>([]);
+  const [pacs002Data, setPacs002Data] = React.useState<TransactionDetailDTO[]>(
+    [],
+  );
+  const [pacs008Data, setPacs008Data] = React.useState<TransactionDetailDTO[]>(
+    [],
+  );
   const [openPacs002, setOpenPacs002] = React.useState(false);
   const [openPacs008, setOpenPacs008] = React.useState(false);
   const [, setViewingId] = useState<string | null>(null);
@@ -144,9 +148,19 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     return highlighted.replace(/\n/gu, '<br/>').replace(/ /gu, '&nbsp;');
   };
 
-  const stripHudiMetadata = (record: TransactionDetailDTO): TransactionDetailDTO => {
-    const hudiFields = ['_hoodie_commit_time', '_hoodie_commit_seqno', '_hoodie_record_key', '_hoodie_partition_path', '_hoodie_file_name'];
-    return Object.fromEntries(Object.entries(record).filter(([key]) => !hudiFields.includes(key))) as TransactionDetailDTO;
+  const stripHudiMetadata = (
+    record: TransactionDetailDTO,
+  ): TransactionDetailDTO => {
+    const hudiFields = [
+      '_hoodie_commit_time',
+      '_hoodie_commit_seqno',
+      '_hoodie_record_key',
+      '_hoodie_partition_path',
+      '_hoodie_file_name',
+    ];
+    return Object.fromEntries(
+      Object.entries(record).filter(([key]) => !hudiFields.includes(key)),
+    ) as TransactionDetailDTO;
   };
 
   React.useEffect(() => {
@@ -159,14 +173,16 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         );
 
         // Separate pacs.002 and pacs.008 records from the transaction data
-        const pacs002Records = response.filter((record: TransactionDetailDTO) =>
-          record.tx_type.includes('pacs.002')
-        ).map(stripHudiMetadata);
-        const pacs008Records = response.filter((record: TransactionDetailDTO) =>
-          record.tx_type.includes('pacs.008')
-        ).map(stripHudiMetadata);
-
-
+        const pacs002Records = response
+          .filter((record: TransactionDetailDTO) =>
+            record.tx_type.includes('pacs.002'),
+          )
+          .map(stripHudiMetadata);
+        const pacs008Records = response
+          .filter((record: TransactionDetailDTO) =>
+            record.tx_type.includes('pacs.008'),
+          )
+          .map(stripHudiMetadata);
 
         setPacs002Data(pacs002Records);
         setPacs008Data(pacs008Records);
@@ -538,7 +554,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
           <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <button
               type="button"
-              onClick={() => setOpenPacs002(!openPacs002)}
+              onClick={() => { setOpenPacs002(!openPacs002); }}
               className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
             >
               <div>
@@ -576,7 +592,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
           <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <button
               type="button"
-              onClick={() => setOpenPacs008(!openPacs008)}
+              onClick={() => { setOpenPacs008(!openPacs008); }}
               className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
             >
               <div>

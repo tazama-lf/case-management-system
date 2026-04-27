@@ -67,7 +67,9 @@ export const useCaseDashboard = (): {
     setStatusFilter: React.Dispatch<React.SetStateAction<string>>;
     setPriorityFilter: React.Dispatch<React.SetStateAction<string>>;
     setSarStrStatusFilter: React.Dispatch<React.SetStateAction<string>>;
-    setCaseTypeFilter: React.Dispatch<React.SetStateAction<'all' | 'draft' | 'closed'>>;
+    setCaseTypeFilter: React.Dispatch<
+      React.SetStateAction<'all' | 'draft' | 'closed'>
+    >;
   };
   modalActions: CaseModalActions;
   caseActions: ReturnType<typeof useCaseActions>;
@@ -94,8 +96,11 @@ export const useCaseDashboard = (): {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
   const [sarStrStatusFilter, setSarStrStatusFilter] = useState<string>('');
-  const [caseTypeFilter, setCaseTypeFilter] = useState<'all' | 'draft' | 'closed'>('all');
-  
+  const [caseTypeFilter, setCaseTypeFilter] = useState<
+    'all' | 'draft' | 'closed'
+  >('all');
+
+  // eslint-disable-next-line @typescript-eslint/no-magic-numbers -- 500ms debounce delay is a standard UX pattern
   const debouncedSearch = useDebounce(search, 500);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -137,6 +142,7 @@ export const useCaseDashboard = (): {
           closedOnly = true;
           finalStatusFilter = '';
         }
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Explicit check for 'all' improves code readability
       } else if (caseTypeFilter === 'all') {
         if (!statusFilter) {
           excludeDraft = true;
@@ -164,8 +170,12 @@ export const useCaseDashboard = (): {
 
       // Update pagination state from backend response
       if (response.pagination) {
-        setBackendTotalItems(response.pagination.total);
-        setBackendTotalPages(response.pagination.totalPages);
+        const pagination = response.pagination as {
+          total: number;
+          totalPages: number;
+        };
+        setBackendTotalItems(pagination.total);
+        setBackendTotalPages(pagination.totalPages);
       }
     } catch {
       setErrorState('Failed to load cases. Please try again.');
@@ -192,7 +202,7 @@ export const useCaseDashboard = (): {
   }, [fetchCases]);
 
   useEffect(() => {
-    if (typeof params === 'object' && params && 'caseId' in params) {
+    if (typeof params === 'object' && 'caseId' in params) {
       const caseId = Number(params.caseId);
       if (caseId && cases.length > 0) {
         const caseToView = cases.find((c) => c.id === caseId);
@@ -237,6 +247,7 @@ export const useCaseDashboard = (): {
 
     handleComplete: (row: CaseRow) => {
       setSelectedRow(row);
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Defensive check for runtime data from API
       if (row.type === null) {
         setIsUpdateAlertOpen(true);
       } else {

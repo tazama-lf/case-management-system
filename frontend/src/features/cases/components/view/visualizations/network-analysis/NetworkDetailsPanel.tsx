@@ -24,8 +24,7 @@ const NetworkDetailsPanel: React.FC<NetworkDetailsPanelProps> = ({
   fields,
   summaryTitle,
   summaryFields,
-}) => {
-  return (
+}) => (
     <div className="h-full w-72 border-gray-200 bg-white p-4">
       <h3 className="text-base font-semibold text-gray-900">{title}</h3>
 
@@ -72,6 +71,5 @@ const NetworkDetailsPanel: React.FC<NetworkDetailsPanelProps> = ({
       )}
     </div>
   );
-};
 
 export default NetworkDetailsPanel;

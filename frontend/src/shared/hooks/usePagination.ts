@@ -47,7 +47,7 @@ export const usePagination = <T>({
       startPage = Math.max(1, endPage - maxPagesToShow + 1);
     }
 
-    for (let i = startPage; i <= endPage; i++) {
+    for (let i = startPage; i <= endPage; i += 1) {
       range.push(i);
     }
 
@@ -62,13 +62,13 @@ export const usePagination = <T>({
   const goToFirstPage = (): void => {
     setCurrentPage(1);
   };
-  const goToLastPage = ():void => {
+  const goToLastPage = (): void => {
     setCurrentPage(totalPages);
   };
   const goToNextPage = (): void => {
     setCurrentPage(Math.min(currentPage + 1, totalPages));
   };
-  const goToPreviousPage = () => {
+  const goToPreviousPage = (): void => {
     setCurrentPage(Math.max(currentPage - 1, 1));
   };
 
