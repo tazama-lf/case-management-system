@@ -7,16 +7,12 @@ vi.mock('@/shared/services/apiClient', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
   },
 }));
 
 const mockApi = apiClient as unknown as {
   get: vi.Mock;
   post: vi.Mock;
-  put: vi.Mock;
-  delete: vi.Mock;
 };
 
 describe('workQueueService', () => {
@@ -24,49 +20,85 @@ describe('workQueueService', () => {
     vi.clearAllMocks();
   });
 
-  it('builds a query string when fetching all work queues', async () => {
-    mockApi.get.mockResolvedValueOnce({
-      data: [],
-      page: 1,
-      limit: 10,
-      total: 0,
-      totalPages: 0,
+  describe('getCandidateGroups', () => {
+    it('fetches candidate groups with default params', async () => {
+      const mockGroups = [{ id: '1', name: 'AML Group' }];
+      mockApi.get.mockResolvedValueOnce(mockGroups);
+
+      const result = await workQueueService.getCandidateGroups();
+
+      expect(mockApi.get).toHaveBeenCalledWith(
+        '/api/v1/workqueue/candidate-groups?size=10&start=0',
+      );
+      expect(result).toEqual({ items: mockGroups, totalCount: 1 });
     });
 
-    await workQueueService.getAllWorkQueues({
-      role: 'analyst',
-      isActive: true,
-      page: 2,
-      limit: 25,
-      sortBy: 'name',
-      sortOrder: 'desc',
+    it('fetches candidate groups with custom params', async () => {
+      const mockGroups = [
+        { id: '1', name: 'AML Group' },
+        { id: '2', name: 'FRAUD Group' },
+      ];
+      mockApi.get.mockResolvedValueOnce(mockGroups);
+
+      const result = await workQueueService.getCandidateGroups({
+        size: 25,
+        start: 10,
+      });
+
+      expect(mockApi.get).toHaveBeenCalledWith(
+        '/api/v1/workqueue/candidate-groups?size=25&start=10',
+      );
+      expect(result.totalCount).toBe(2);
     });
 
-    expect(mockApi.get).toHaveBeenCalledWith(
-      '/api/v1/work-queues?role=analyst&isActive=true&page=2&limit=25&sortBy=name&sortOrder=desc',
-    );
+    it('throws a formatted error when the API call fails', async () => {
+      mockApi.get.mockRejectedValueOnce(new Error('Network failure'));
+
+      await expect(workQueueService.getCandidateGroups()).rejects.toThrow(
+        'Network failure',
+      );
+    });
+
+    it('throws with response data message when available', async () => {
+      const apiError = { response: { data: { message: 'Unauthorized' } } };
+      mockApi.get.mockRejectedValueOnce(apiError);
+
+      await expect(workQueueService.getCandidateGroups()).rejects.toThrow(
+        'Unauthorized',
+      );
+    });
+
+    it('throws a generic message when error has no message', async () => {
+      mockApi.get.mockRejectedValueOnce({});
+
+      await expect(workQueueService.getCandidateGroups()).rejects.toThrow(
+        'Failed to get candidate groups',
+      );
+    });
   });
 
-  it('calls delete endpoint for removing a work queue', async () => {
-    mockApi.delete.mockResolvedValueOnce(undefined);
+  describe('createCandidateGroup', () => {
+    it('posts a new candidate group and returns it', async () => {
+      const payload = { name: 'AML Queue', type: 'FRAUD' };
+      mockApi.post.mockResolvedValueOnce(payload);
 
-    await workQueueService.deleteWorkQueue('queue-1');
+      const result = await workQueueService.createCandidateGroup(
+        payload as any,
+      );
 
-    expect(mockApi.delete).toHaveBeenCalledWith('/api/v1/work-queues/queue-1');
-  });
+      expect(mockApi.post).toHaveBeenCalledWith(
+        '/api/v1/workqueue/candidate-group',
+        payload,
+      );
+      expect(result).toEqual(payload);
+    });
 
-  it('supports create and update operations', async () => {
-    const payload = { name: 'AML Queue' };
-    mockApi.post.mockResolvedValueOnce(payload);
-    mockApi.put.mockResolvedValueOnce(payload);
+    it('throws a formatted error when creation fails', async () => {
+      mockApi.post.mockRejectedValueOnce(new Error('Conflict'));
 
-    await workQueueService.createWorkQueue(payload);
-    await workQueueService.updateWorkQueue('queue-1', payload);
-
-    expect(mockApi.post).toHaveBeenCalledWith('/api/v1/work-queues', payload);
-    expect(mockApi.put).toHaveBeenCalledWith(
-      '/api/v1/work-queues/queue-1',
-      payload,
-    );
+      await expect(
+        workQueueService.createCandidateGroup({ name: 'X' } as any),
+      ).rejects.toThrow('Conflict');
+    });
   });
 });
