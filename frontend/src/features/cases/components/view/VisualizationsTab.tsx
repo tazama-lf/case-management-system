@@ -37,19 +37,18 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
 }) => {
   const [activeSubTab, setActiveSubTab] =
     React.useState<VisualizationSubTab>('alert-navigator');
-  const [tenantId, setTenantId] = React.useState<string>('');
-
-  React.useEffect(() => {
-    const user = localStorage.getItem('user');
-    if (user) {
-      try {
+  const [tenantId] = React.useState<string>(() => {
+    try {
+      const user = localStorage.getItem('user');
+      if (user) {
         const userData = JSON.parse(user);
-        setTenantId(userData.tenantId || '');
-      } catch {
-        setTenantId('');
+        return userData.tenantId || '';
       }
+    } catch {
+      // ignore parse errors
     }
-  }, []);
+    return '';
+  });
 
   const subTabs = [
     {
