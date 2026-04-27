@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type -- React Query hooks have complex inferred return types */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { evidenceService }  from '../services/evidenceService';
+import { evidenceService } from '../services/evidenceService';
 import type {
   VerifyEvidenceDto,
   EvidenceSearchFilters,
@@ -91,3 +92,4 @@ export const useSearchEvidence = (
     enabled,
     staleTime: 2 * 60 * 1000,
   });
+/* eslint-enable @typescript-eslint/explicit-function-return-type */

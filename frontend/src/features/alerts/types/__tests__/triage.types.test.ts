@@ -6,6 +6,9 @@ import {
   CaseStatus,
   CaseType,
   CaseCreationType,
+  TransactionDetailDTO,
+  TransactionDetailRecordDTO,
+  TransactionDataResponseDTO,
   type ActionHistory,
   type Alert,
   type Case,
@@ -51,7 +54,6 @@ describe('Triage Types - Constants', () => {
     expect(AlertType.FRAUD).toBe('FRAUD');
     expect(AlertType.AML).toBe('AML');
     expect(AlertType.FRAUD_AND_AML).toBe('FRAUD_AND_AML');
-    expect(AlertType.NONE).toBe('NONE');
   });
 
   it('CaseStatus constants should be defined', () => {
@@ -437,5 +439,127 @@ describe('Triage Types - Interfaces', () => {
     expect(response).toBeDefined();
     expect(response.success).toBe(false);
     expect(response.error?.message).toBe('Failed to fetch');
+  });
+});
+
+describe('Triage Types - DTO Classes', () => {
+  it('TransactionDetailDTO can be instantiated and assigned properties', () => {
+    const dto = new TransactionDetailDTO();
+    dto.pk = 'pk-1';
+    dto.transaction_id = 100;
+    dto.end_to_end_id = 'e2e-1';
+    dto.tenant_id = 'tenant-1';
+    dto.tx_tenant_id = 'tx-tenant-1';
+    dto.tx_type = 'TRANSFER';
+    dto.tx_msg_id = 'msg-1';
+    dto.tx_event_ts = '2024-01-01T00:00:00Z';
+    dto.tx_event_date = '2024-01-01';
+    dto.debtor_name = 'John Doe';
+    dto.debtor_id = 'debtor-1';
+    dto.creditor_name = 'Jane Doe';
+    dto.creditor_id = 'creditor-1';
+    dto.debtor_account_id = 'acc-1';
+    dto.creditor_account_id = 'acc-2';
+    dto.instructed_amount = 5000;
+    dto.instructed_currency = 'USD';
+    dto.interbank_settlement_amount = 4999;
+    dto.interbank_settlement_currency = 'USD';
+    dto.exchange_rate = 1.0;
+    dto.instg_mmb_id = 'instg-1';
+    dto.instd_mmb_id = 'instd-1';
+    dto.charge_count = 1;
+    dto.charge_total_amount = 1;
+    dto.charge_currency = 'USD';
+    dto.source_file_path = '/path/to/file';
+    dto.record_hash = 'hash-abc';
+    dto.ingested_at_ts = '2024-01-01T00:00:00Z';
+
+    expect(dto).toBeInstanceOf(TransactionDetailDTO);
+    expect(dto.pk).toBe('pk-1');
+    expect(dto.transaction_id).toBe(100);
+    expect(dto.debtor_name).toBe('John Doe');
+    expect(dto.instructed_amount).toBe(5000);
+  });
+
+  it('TransactionDetailDTO supports null values', () => {
+    const dto = new TransactionDetailDTO();
+    dto.debtor_name = null;
+    dto.creditor_name = null;
+    dto.debtor_id = null;
+    dto.creditor_id = null;
+    dto.debtor_account_id = null;
+    dto.creditor_account_id = null;
+    dto.instructed_amount = null;
+    dto.instructed_currency = null;
+    dto.interbank_settlement_amount = null;
+    dto.interbank_settlement_currency = null;
+    dto.exchange_rate = null;
+
+    expect(dto.debtor_name).toBeNull();
+    expect(dto.instructed_amount).toBeNull();
+    expect(dto.exchange_rate).toBeNull();
+  });
+
+  it('TransactionDetailRecordDTO can be instantiated and assigned properties', () => {
+    const dto = new TransactionDetailRecordDTO();
+    dto._hoodie_commit_time = '2024-01-01T00:00:00Z';
+    dto._hoodie_commit_seqno = '1';
+    dto._hoodie_record_key = 'key-1';
+    dto._hoodie_partition_path = '/partition/1';
+    dto._hoodie_file_name = 'file-1.parquet';
+    dto.pk = 'pk-1';
+    dto.transaction_id = 200;
+    dto.end_to_end_id = 'e2e-2';
+    dto.tenant_id = 'tenant-1';
+    dto.tx_tenant_id = 'tx-tenant-1';
+    dto.tx_type = 'PAYMENT';
+    dto.tx_msg_id = 'msg-2';
+    dto.tx_event_ts = '2024-01-01T00:00:00Z';
+    dto.tx_event_date = '2024-01-01';
+    dto.debtor_name = 'Alice';
+    dto.debtor_id = 'debtor-2';
+    dto.creditor_name = 'Bob';
+    dto.creditor_id = 'creditor-2';
+    dto.debtor_account_id = 'acc-3';
+    dto.creditor_account_id = 'acc-4';
+    dto.instructed_amount = 3000;
+    dto.instructed_currency = 'EUR';
+    dto.interbank_settlement_amount = 2999;
+    dto.interbank_settlement_currency = 'EUR';
+    dto.exchange_rate = 1.1;
+    dto.instg_mmb_id = 'instg-2';
+    dto.instd_mmb_id = 'instd-2';
+    dto.charge_count = 2;
+    dto.charge_total_amount = 2;
+    dto.charge_currency = 'EUR';
+    dto.source_file_path = '/path/to/file2';
+    dto.record_hash = 'hash-def';
+    dto.ingested_at_ts = '2024-01-01T00:00:00Z';
+
+    expect(dto).toBeInstanceOf(TransactionDetailRecordDTO);
+    expect(dto._hoodie_commit_time).toBe('2024-01-01T00:00:00Z');
+    expect(dto._hoodie_file_name).toBe('file-1.parquet');
+    expect(dto.transaction_id).toBe(200);
+  });
+
+  it('TransactionDataResponseDTO can be instantiated and assigned properties', () => {
+    const record = new TransactionDetailRecordDTO();
+    record.pk = 'pk-1';
+    record.transaction_id = 1;
+
+    const dto = new TransactionDataResponseDTO();
+    dto.status = 'SUCCESS';
+    dto.code = 200;
+    dto.table = 'transactions';
+    dto.row_count = 1;
+    dto.data = [record];
+
+    expect(dto).toBeInstanceOf(TransactionDataResponseDTO);
+    expect(dto.status).toBe('SUCCESS');
+    expect(dto.code).toBe(200);
+    expect(dto.table).toBe('transactions');
+    expect(dto.row_count).toBe(1);
+    expect(dto.data).toHaveLength(1);
+    expect(dto.data[0]).toBeInstanceOf(TransactionDetailRecordDTO);
   });
 });

@@ -94,12 +94,12 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({ dateRange }) => {
     }
   };
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     try {
       const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING');
       const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
       const columns = getColumnsForReport('CASE_AGEING');
-      await exportToPDF(formattedData, filename, 'Case Ageing Report', columns);
+      exportToPDF(formattedData, filename, 'Case Ageing Report', columns);
     } catch (error) {
       console.error('Export failed:', error);
       alert('Export failed. Please try again.');

@@ -117,10 +117,9 @@ describe('transactionUtils', () => {
     });
 
     it('handles errors gracefully and returns empty array', () => {
-      // Create an object that will throw when accessed
-      const transactionData = {};
-      Object.defineProperty(transactionData, 'FIToFIPmtSts', {
-        get() {
+      // Create an object that will throw when property presence is checked
+      const transactionData = new Proxy({} as Record<string, unknown>, {
+        has() {
           throw new Error('Access error');
         },
       });

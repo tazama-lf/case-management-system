@@ -21,191 +21,109 @@ describe('useCaseReopenActions', () => {
   });
 
   describe('handleApproveReopenSubmit', () => {
-    it('approves case reopening with STATUS_10_ASSIGNED', async () => {
-      const mockResponse = {
-        case: { status: 'STATUS_10_ASSIGNED' },
-        investigation_task: { task_id: 'TASK-123', assigned_to: 'user-1' },
-      };
-      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(
-        mockResponse,
-      );
-
+    it('approves case reopening and shows success toast', async () => {
+      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue({});
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
       );
-
-      await result.current.handleApproveReopenSubmit('CASE-123');
-
+      await result.current.handleApproveReopenSubmit('CASE-123' as any);
       await waitFor(() => {
         expect(caseService.approveCaseReopening).toHaveBeenCalledWith(
           'CASE-123',
         );
         expect(mockSuccess).toHaveBeenCalledWith(
           'Case Reopening Approved',
-          expect.stringContaining('STATUS_10_ASSIGNED'),
+          expect.stringContaining('CASE-123'),
         );
         expect(mockRefreshCases).toHaveBeenCalled();
       });
     });
 
-    it('approves case reopening with STATUS_10_ASSIGNED without assigned_to', async () => {
-      const mockResponse = {
+    it('approves case reopening with different caseId', async () => {
+      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue({});
+      const { result } = renderHook(() =>
+        useCaseReopenActions(mockRefreshCases),
+      );
+      await result.current.handleApproveReopenSubmit(456 as any);
+      await waitFor(() => {
+        expect(mockSuccess).toHaveBeenCalledWith(
+          'Case Reopening Approved',
+          expect.stringContaining('456'),
+        );
+      });
+    });
+
+    it('calls refreshCases after successful approval', async () => {
+      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue({});
+      const { result } = renderHook(() =>
+        useCaseReopenActions(mockRefreshCases),
+      );
+      await result.current.handleApproveReopenSubmit('CASE-789' as any);
+      await waitFor(() => {
+        expect(mockRefreshCases).toHaveBeenCalled();
+      });
+    });
+
+    it('handles missing investigation_task in response', async () => {
+      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue({
         case: { status: 'STATUS_10_ASSIGNED' },
-        investigation_task: { task_id: 'TASK-123' },
-      };
-      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(
-        mockResponse,
-      );
-
-      const { result } = renderHook(() =>
-        useCaseReopenActions(mockRefreshCases),
-      );
-
-      await result.current.handleApproveReopenSubmit('CASE-123');
-
-      await waitFor(() => {
-        expect(mockSuccess).toHaveBeenCalledWith(
-          'Case Reopening Approved',
-          expect.stringContaining('STATUS_10_ASSIGNED'),
-        );
       });
-    });
-
-    it('approves case reopening with STATUS_02_READY_FOR_ASSIGNMENT', async () => {
-      const mockResponse = {
-        case: { status: 'STATUS_02_READY_FOR_ASSIGNMENT' },
-        investigation_task: {
-          task_id: 'TASK-123',
-          candidateGroup: 'Investigations',
-        },
-      };
-      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(
-        mockResponse,
-      );
-
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
       );
-
-      await result.current.handleApproveReopenSubmit('CASE-123');
-
-      await waitFor(() => {
-        expect(mockSuccess).toHaveBeenCalledWith(
-          'Case Reopening Approved',
-          expect.stringContaining('STATUS_02_READY_FOR_ASSIGNMENT'),
-        );
-      });
-    });
-
-    it('approves case reopening with STATUS_31_REOPENED', async () => {
-      const mockResponse = {
-        case: { status: 'STATUS_31_REOPENED' },
-        investigation_task: { task_id: 'TASK-123' },
-      };
-      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(
-        mockResponse,
-      );
-
-      const { result } = renderHook(() =>
-        useCaseReopenActions(mockRefreshCases),
-      );
-
-      await result.current.handleApproveReopenSubmit('CASE-123');
-
-      await waitFor(() => {
-        expect(mockSuccess).toHaveBeenCalledWith(
-          'Case Reopening Approved',
-          expect.stringContaining('STATUS_31_REOPENED'),
-        );
-      });
-    });
-
-    it('handles missing investigation_task', async () => {
-      const mockResponse = {
-        case: { status: 'STATUS_10_ASSIGNED' },
-      };
-      (caseService.approveCaseReopening as vi.Mock).mockResolvedValue(
-        mockResponse,
-      );
-
-      const { result } = renderHook(() =>
-        useCaseReopenActions(mockRefreshCases),
-      );
-
-      await result.current.handleApproveReopenSubmit('CASE-123');
-
+      await result.current.handleApproveReopenSubmit('CASE-123' as any);
       await waitFor(() => {
         expect(mockSuccess).toHaveBeenCalled();
       });
     });
 
     it('handles error when approval fails', async () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-      const error = new Error('Approval failed');
-      (caseService.approveCaseReopening as vi.Mock).mockRejectedValue(error);
-
+      (caseService.approveCaseReopening as vi.Mock).mockRejectedValue(
+        new Error('Approval failed'),
+      );
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
       );
-
       await expect(
-        result.current.handleApproveReopenSubmit('CASE-123'),
+        result.current.handleApproveReopenSubmit('CASE-123' as any),
       ).rejects.toThrow();
-
       await waitFor(() => {
-        expect(consoleErrorSpy).toHaveBeenCalled();
         expect(mockError).toHaveBeenCalledWith(
           'Approve Case Reopening Failed',
           'Approval failed',
         );
       });
-      consoleErrorSpy.mockRestore();
     });
 
     it('handles non-Error rejection', async () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
       (caseService.approveCaseReopening as vi.Mock).mockRejectedValue(
         'String error',
       );
-
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
       );
-
       await expect(
-        result.current.handleApproveReopenSubmit('CASE-123'),
+        result.current.handleApproveReopenSubmit('CASE-123' as any),
       ).rejects.toThrow();
-
       await waitFor(() => {
         expect(mockError).toHaveBeenCalledWith(
           'Approve Case Reopening Failed',
           'Failed to approve case reopening',
         );
       });
-      consoleErrorSpy.mockRestore();
     });
   });
 
   describe('handleRejectReopenSubmit', () => {
     it('rejects case reopening successfully', async () => {
-      const mockResponse = {
-        case: { status: 'STATUS_82_CLOSED_CONFIRMED' },
-        rejection_reason: 'Test reason',
-      };
-      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(
-        mockResponse,
-      );
-
+      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue({});
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
       );
-
-      await result.current.handleRejectReopenSubmit('CASE-123', 'Test reason');
-
+      await result.current.handleRejectReopenSubmit(
+        'CASE-123' as any,
+        'Test reason',
+      );
       await waitFor(() => {
         expect(caseService.rejectCaseReopening).toHaveBeenCalledWith(
           'CASE-123',
@@ -216,123 +134,94 @@ describe('useCaseReopenActions', () => {
       });
     });
 
-    it('uses rejection_reason from response if available', async () => {
-      const mockResponse = {
-        case: { status: 'STATUS_82_CLOSED_CONFIRMED' },
-        rejection_reason: 'Response reason',
-      };
-      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(
-        mockResponse,
-      );
-
+    it('includes reason in success toast message', async () => {
+      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue({});
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
       );
-
-      await result.current.handleRejectReopenSubmit('CASE-123', 'Input reason');
-
+      await result.current.handleRejectReopenSubmit(
+        'CASE-123' as any,
+        'Input reason',
+      );
       await waitFor(() => {
         expect(mockSuccess).toHaveBeenCalledWith(
           'Case Reopening Rejected',
-          expect.stringContaining('Response reason'),
+          expect.stringContaining('Input reason'),
         );
       });
     });
 
-    it('handles STATUS_8x closed status', async () => {
-      const mockResponse = {
-        case: { status: 'STATUS_82_CLOSED_CONFIRMED' },
-        rejection_reason: 'Test reason',
-      };
-      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(
-        mockResponse,
-      );
-
+    it('includes caseId in success toast message', async () => {
+      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue({});
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
       );
-
-      await result.current.handleRejectReopenSubmit('CASE-123', 'Test reason');
-
+      await result.current.handleRejectReopenSubmit(
+        'CASE-123' as any,
+        'Test reason',
+      );
       await waitFor(() => {
         expect(mockSuccess).toHaveBeenCalledWith(
           'Case Reopening Rejected',
-          expect.stringContaining('STATUS_82_CLOSED_CONFIRMED'),
+          expect.stringContaining('CASE-123'),
         );
       });
     });
 
-    it('handles STATUS_7x closed status', async () => {
-      const mockResponse = {
-        case: { status: 'STATUS_71_AUTOCLOSED_CONFIRMED' },
-        rejection_reason: 'Test reason',
-      };
-      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue(
-        mockResponse,
-      );
-
+    it('calls refreshCases after successful rejection', async () => {
+      (caseService.rejectCaseReopening as vi.Mock).mockResolvedValue({});
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
       );
-
-      await result.current.handleRejectReopenSubmit('CASE-123', 'Test reason');
-
+      await result.current.handleRejectReopenSubmit(
+        'CASE-123' as any,
+        'Test reason',
+      );
       await waitFor(() => {
-        expect(mockSuccess).toHaveBeenCalledWith(
-          'Case Reopening Rejected',
-          expect.stringContaining('STATUS_71_AUTOCLOSED_CONFIRMED'),
-        );
+        expect(mockRefreshCases).toHaveBeenCalled();
       });
     });
 
     it('handles error when rejection fails', async () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-      const error = new Error('Rejection failed');
-      (caseService.rejectCaseReopening as vi.Mock).mockRejectedValue(error);
-
+      (caseService.rejectCaseReopening as vi.Mock).mockRejectedValue(
+        new Error('Rejection failed'),
+      );
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
       );
-
       await expect(
-        result.current.handleRejectReopenSubmit('CASE-123', 'Test reason'),
+        result.current.handleRejectReopenSubmit(
+          'CASE-123' as any,
+          'Test reason',
+        ),
       ).rejects.toThrow();
-
       await waitFor(() => {
-        expect(consoleErrorSpy).toHaveBeenCalled();
         expect(mockError).toHaveBeenCalledWith(
           'Reject Case Reopening Failed',
           'Rejection failed',
         );
       });
-      consoleErrorSpy.mockRestore();
     });
 
     it('handles non-Error rejection', async () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
       (caseService.rejectCaseReopening as vi.Mock).mockRejectedValue(
         'String error',
       );
-
       const { result } = renderHook(() =>
         useCaseReopenActions(mockRefreshCases),
       );
-
       await expect(
-        result.current.handleRejectReopenSubmit('CASE-123', 'Test reason'),
+        result.current.handleRejectReopenSubmit(
+          'CASE-123' as any,
+          'Test reason',
+        ),
       ).rejects.toThrow();
-
       await waitFor(() => {
         expect(mockError).toHaveBeenCalledWith(
           'Reject Case Reopening Failed',
           'Failed to reject case reopening',
         );
       });
-      consoleErrorSpy.mockRestore();
     });
   });
 });

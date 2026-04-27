@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Service handles dynamic API response data */
+/* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 import { resetData } from '@/shared/utils/storage';
 import type {
   LoginCredentials,
@@ -10,7 +12,7 @@ import type {
 import { ACTIVE_SESSION_KEY } from './sessionLock';
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
+  import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3000';
 
 class AuthService {
   private readonly tokenKey = 'authToken';
@@ -168,7 +170,7 @@ class AuthService {
       return false;
     }
 
-    return user.validatedClaims?.[claim] || false;
+    return user.validatedClaims[claim] || false;
   }
 
   hasCMSTestRole(): boolean {
@@ -318,3 +320,5 @@ class AuthService {
 
 const authService = new AuthService();
 export default authService;
+/* eslint-enable @typescript-eslint/class-methods-use-this */
+/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */

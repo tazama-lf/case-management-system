@@ -27,6 +27,18 @@ const TestMutationComponent: React.FC = () => {
   );
 };
 
+const TestRetryComponent: React.FC<{ error: Error }> = ({ error }) => {
+  const { data, isError, failureCount } = useQuery({
+    queryKey: ['retry-test', error.message],
+    queryFn: async () => {
+      throw error;
+    },
+  });
+
+  if (isError) return <div>Error: {failureCount} failures</div>;
+  return <div>{data ?? 'loading'}</div>;
+};
+
 describe('QueryProvider', () => {
   beforeEach(() => {
     queryClient.clear();
@@ -108,5 +120,121 @@ describe('QueryProvider', () => {
     expect(container).toBeInTheDocument();
 
     process.env.NODE_ENV = originalEnv;
+  });
+
+  it('does not retry on 401 errors', async () => {
+    const error = new Error('Unauthorized 401');
+    render(
+      <QueryProvider>
+        <TestRetryComponent error={error} />
+      </QueryProvider>,
+    );
+
+    await waitFor(
+      () => {
+        expect(screen.getByText(/Error:/)).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+    // failureCount should be 1 (no retries)
+    expect(screen.getByText('Error: 1 failures')).toBeInTheDocument();
+  });
+
+  it('does not retry on 403 errors', async () => {
+    const error = new Error('Forbidden 403');
+    render(
+      <QueryProvider>
+        <TestRetryComponent error={error} />
+      </QueryProvider>,
+    );
+
+    await waitFor(
+      () => {
+        expect(screen.getByText(/Error:/)).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+    expect(screen.getByText('Error: 1 failures')).toBeInTheDocument();
+  });
+
+  it('does not retry on 404 errors', async () => {
+    const error = new Error('Not Found 404');
+    render(
+      <QueryProvider>
+        <TestRetryComponent error={error} />
+      </QueryProvider>,
+    );
+
+    await waitFor(
+      () => {
+        expect(screen.getByText(/Error:/)).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+    expect(screen.getByText('Error: 1 failures')).toBeInTheDocument();
+  });
+
+  it('retries on other errors up to 3 times', async () => {
+    let callCount = 0;
+    const TestRetryCount: React.FC = () => {
+      const { isError } = useQuery({
+        queryKey: ['retry-500-test'],
+        queryFn: async () => {
+          callCount++;
+          throw new Error('Server error 500');
+        },
+        retryDelay: 0,
+      });
+
+      if (isError) return <div>Failed after retries</div>;
+      return <div>loading</div>;
+    };
+
+    render(
+      <QueryProvider>
+        <TestRetryCount />
+      </QueryProvider>,
+    );
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('Failed after retries')).toBeInTheDocument();
+      },
+      { timeout: 15000 },
+    );
+    // Initial attempt + 3 retries = 4 calls
+    expect(callCount).toBe(4);
+  });
+
+  it('handles non-Error objects in retry logic', async () => {
+    let callCount = 0;
+    const TestNonErrorRetry: React.FC = () => {
+      const { isError } = useQuery({
+        queryKey: ['non-error-retry'],
+        queryFn: async () => {
+          callCount++;
+          throw 'string-error';
+        },
+        retryDelay: 0,
+      });
+
+      if (isError) return <div>NonError failed</div>;
+      return <div>loading</div>;
+    };
+
+    render(
+      <QueryProvider>
+        <TestNonErrorRetry />
+      </QueryProvider>,
+    );
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('NonError failed')).toBeInTheDocument();
+      },
+      { timeout: 15000 },
+    );
+    // Non-Error: retry returns failureCount < 3, so 4 total calls
+    expect(callCount).toBe(4);
   });
 });

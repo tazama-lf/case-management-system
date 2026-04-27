@@ -11,6 +11,6 @@ export { default as NetworkGraph } from './NetworkGraph';
 export { default as NetworkLegend } from './NetworkLegend';
 export { default as NetworkDetailsPanel } from './NetworkDetailsPanel';
 
-export * from './types';
+export type * from './types';
 export * from './mockData';
 export * from './legendConfigs';

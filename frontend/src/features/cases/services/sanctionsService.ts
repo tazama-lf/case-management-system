@@ -89,10 +89,10 @@ export const createSanctionsScreening = async (
 export const updateSanctionsScreening = async (
   dto: UpdateSanctionsScreeningDto,
 ): Promise<SanctionsScreeningResponse> => {
-  const { screening_id, ...updateData } = dto;
+  const { screening_id: screeningId, ...updateData } = dto;
 
   return await apiClient.patch<SanctionsScreeningResponse>(
-    `${BASE_URL}/${screening_id}`,
+    `${BASE_URL}/${screeningId}`,
     updateData,
   );
 };

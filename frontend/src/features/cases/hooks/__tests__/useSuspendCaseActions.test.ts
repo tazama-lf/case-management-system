@@ -77,7 +77,7 @@ describe('useSuspendCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Suspend Case Failed',
-        expect.stringContaining('Unable to suspend this case right now'),
+        expect.stringContaining('Cannot suspend case'),
       );
     });
   });
@@ -197,7 +197,7 @@ describe('useSuspendCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Suspend Case Failed',
-        expect.stringContaining('Something went wrong'),
+        expect.stringContaining('Could not suspend case'),
       );
     });
   });

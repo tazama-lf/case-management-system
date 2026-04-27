@@ -6,6 +6,7 @@ import apiClient from '../../../../shared/services/apiClient';
 vi.mock('../../../../shared/services/apiClient', () => ({
   default: {
     get: vi.fn(),
+    upload: vi.fn(),
   },
 }));
 
@@ -330,30 +331,25 @@ describe('ReportsService', () => {
     });
   });
 
-  describe('safeFallback', () => {
+  describe('safeFallback (via formatDisplayValue)', () => {
     it('should return fallback for null values', () => {
-      const result = (reportsService as any).safeFallback(null, 0);
-      expect(result).toBe(0);
+      expect(reportsService.formatDisplayValue(null)).toBe('0');
     });
 
     it('should return fallback for undefined values', () => {
-      const result = (reportsService as any).safeFallback(undefined, 0);
-      expect(result).toBe(0);
+      expect(reportsService.formatDisplayValue(undefined)).toBe('0');
     });
 
     it('should return fallback for NaN values', () => {
-      const result = (reportsService as any).safeFallback(NaN, 0);
-      expect(result).toBe(0);
+      expect(reportsService.formatDisplayValue(NaN)).toBe('0');
     });
 
     it('should return fallback for Infinity values', () => {
-      const result = (reportsService as any).safeFallback(Infinity, 0);
-      expect(result).toBe(0);
+      expect(reportsService.formatDisplayValue(Infinity)).toBe('0');
     });
 
     it('should return value for valid numbers', () => {
-      const result = (reportsService as any).safeFallback(42, 0);
-      expect(result).toBe(42);
+      expect(reportsService.formatDisplayValue(42)).toBe('42');
     });
   });
 
@@ -376,6 +372,508 @@ describe('ReportsService', () => {
     it('should handle undefined values', () => {
       const result = reportsService.formatDisplayValue(undefined);
       expect(result).toBe('0');
+    });
+
+    it('should format zero with unit', () => {
+      const result = reportsService.formatDisplayValue(0, '%');
+      expect(result).toBe('0%');
+    });
+
+    it('should format negative infinity with unit', () => {
+      const result = reportsService.formatDisplayValue(-Infinity, 'days');
+      expect(result).toBe('0days');
+    });
+  });
+
+  describe('generateFraudReport', () => {
+    it('should upload fraud report successfully', async () => {
+      const mockFile = new File(['test'], 'report.pdf', {
+        type: 'application/pdf',
+      });
+      const mockData = {
+        file: mockFile,
+        caseId: 1,
+        reportType: 'FRAUD',
+        investigatorInputs: 'Some notes',
+        supervisorRemarks: 'Approved',
+        outcome: 'Confirmed',
+        description: 'Fraud report',
+      };
+      const mockResponse = {
+        id: 'report-1',
+        caseId: 1,
+        fileName: 'report.pdf',
+        reportType: 'FRAUD',
+        fileSize: 4,
+        mimeType: 'application/pdf',
+        hash: 'abc123',
+        uploadedBy: 'user-1',
+        uploadedAt: new Date(),
+        filePath: '/reports/report.pdf',
+      };
+
+      vi.mocked(apiClient.upload).mockResolvedValue(mockResponse);
+
+      const result = await reportsService.generateFraudReport(mockData);
+
+      expect(apiClient.upload).toHaveBeenCalledWith(
+        '/api/v1/reports/fraud/generate',
+        expect.any(FormData),
+      );
+      expect(result.id).toBe('report-1');
+    });
+
+    it('should upload fraud report with optional fields empty', async () => {
+      const mockFile = new File(['test'], 'report.pdf', {
+        type: 'application/pdf',
+      });
+      const mockData = {
+        file: mockFile,
+        caseId: 2,
+        reportType: 'FRAUD',
+      };
+      const mockResponse = {
+        id: 'report-2',
+        caseId: 2,
+        fileName: 'report.pdf',
+        reportType: 'FRAUD',
+        fileSize: 4,
+        mimeType: 'application/pdf',
+        hash: 'def456',
+        uploadedBy: 'user-1',
+        uploadedAt: new Date(),
+        filePath: '/reports/report.pdf',
+      };
+
+      vi.mocked(apiClient.upload).mockResolvedValue(mockResponse);
+
+      const result = await reportsService.generateFraudReport(mockData);
+
+      expect(result.id).toBe('report-2');
+    });
+
+    it('should throw error on upload failure with Error instance', async () => {
+      const mockFile = new File(['test'], 'report.pdf', {
+        type: 'application/pdf',
+      });
+      const mockData = {
+        file: mockFile,
+        caseId: 1,
+        reportType: 'FRAUD',
+      };
+
+      vi.mocked(apiClient.upload).mockRejectedValue(new Error('Upload failed'));
+
+      await expect(
+        reportsService.generateFraudReport(mockData),
+      ).rejects.toThrow('Upload failed');
+    });
+
+    it('should throw error on upload failure with response data', async () => {
+      const mockFile = new File(['test'], 'report.pdf', {
+        type: 'application/pdf',
+      });
+      const mockData = {
+        file: mockFile,
+        caseId: 1,
+        reportType: 'FRAUD',
+      };
+
+      vi.mocked(apiClient.upload).mockRejectedValue({
+        response: { data: { message: 'File too large' } },
+      });
+
+      await expect(
+        reportsService.generateFraudReport(mockData),
+      ).rejects.toThrow('File too large');
+    });
+
+    it('should throw error on upload failure with message property', async () => {
+      const mockFile = new File(['test'], 'report.pdf', {
+        type: 'application/pdf',
+      });
+      const mockData = {
+        file: mockFile,
+        caseId: 1,
+        reportType: 'FRAUD',
+      };
+
+      vi.mocked(apiClient.upload).mockRejectedValue({
+        message: 'Server error',
+      });
+
+      await expect(
+        reportsService.generateFraudReport(mockData),
+      ).rejects.toThrow('Server error');
+    });
+
+    it('should throw generic error on upload failure with unknown error', async () => {
+      const mockFile = new File(['test'], 'report.pdf', {
+        type: 'application/pdf',
+      });
+      const mockData = {
+        file: mockFile,
+        caseId: 1,
+        reportType: 'FRAUD',
+      };
+
+      vi.mocked(apiClient.upload).mockRejectedValue({});
+
+      await expect(
+        reportsService.generateFraudReport(mockData),
+      ).rejects.toThrow('Failed to upload evidence');
+    });
+
+    it('should throw error on upload failure with response but no message', async () => {
+      const mockFile = new File(['test'], 'report.pdf', {
+        type: 'application/pdf',
+      });
+      const mockData = {
+        file: mockFile,
+        caseId: 1,
+        reportType: 'FRAUD',
+      };
+
+      vi.mocked(apiClient.upload).mockRejectedValue({
+        response: { data: {} },
+      });
+
+      await expect(
+        reportsService.generateFraudReport(mockData),
+      ).rejects.toThrow('Failed to upload evidence');
+    });
+  });
+
+  describe('getEvidenceFindingsData', () => {
+    it('should return empty findings when no cases exist', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue([]);
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.stats.totalFindings).toBe(0);
+      expect(result.findings).toEqual([]);
+    });
+
+    it('should return empty findings when casesResponse has data property', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.stats.totalFindings).toBe(0);
+    });
+
+    it('should return empty findings when casesResponse has cases property', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ cases: [] });
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.stats.totalFindings).toBe(0);
+    });
+
+    it('should skip draft, abandoned, and pending approval cases', async () => {
+      const cases = [
+        { case_id: 1, status: 'STATUS_00_DRAFT' },
+        { case_id: 2, status: 'STATUS_99_ABANDONED' },
+        { case_id: 3, status: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL' },
+      ];
+
+      vi.mocked(apiClient.get).mockResolvedValue(cases);
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.stats.totalFindings).toBe(0);
+      expect(apiClient.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('should aggregate evidence from confirmed cases', async () => {
+      const cases = [
+        {
+          case_id: 10,
+          status: 'STATUS_82_CLOSED_CONFIRMED',
+          created_at: '2024-01-01',
+        },
+      ];
+      const evidence = [{ id: 'ev-1', fileName: 'doc.pdf', taskId: 100 }];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce({ evidence });
+
+      const result = await reportsService.getEvidenceFindingsData('last30');
+
+      expect(result.stats.totalFindings).toBe(1);
+      expect(result.stats.confirmedFindings).toBe(1);
+      expect(result.stats.evidenceItems).toBe(1);
+      expect(result.findings[0].conclusion).toBe('Confirmed');
+    });
+
+    it('should aggregate evidence from autoclosed confirmed cases', async () => {
+      const cases = [
+        {
+          case_id: 11,
+          status: 'STATUS_71_AUTOCLOSED_CONFIRMED',
+          created_at: '2024-01-01',
+        },
+      ];
+      const evidence = [{ id: 'ev-2', fileName: 'doc.pdf', taskId: 200 }];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce({ evidence });
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.findings[0].conclusion).toBe('Confirmed');
+    });
+
+    it('should aggregate evidence from refuted cases', async () => {
+      const cases = [
+        {
+          case_id: 20,
+          status: 'STATUS_81_CLOSED_REFUTED',
+          created_at: '2024-02-01',
+        },
+      ];
+      const evidence = [{ id: 'ev-3', fileName: 'evidence.pdf', taskId: 300 }];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce({ evidence });
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.stats.refutedFindings).toBe(1);
+      expect(result.findings[0].conclusion).toBe('Refuted');
+    });
+
+    it('should aggregate evidence from autoclosed refuted cases', async () => {
+      const cases = [
+        {
+          case_id: 21,
+          status: 'STATUS_72_AUTOCLOSED_REFUTED',
+          created_at: '2024-02-01',
+        },
+      ];
+      const evidence = [{ id: 'ev-4', fileName: 'doc.pdf', taskId: 400 }];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce({ evidence });
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.findings[0].conclusion).toBe('Refuted');
+    });
+
+    it('should aggregate evidence from inconclusive cases', async () => {
+      const cases = [
+        {
+          case_id: 30,
+          status: 'STATUS_83_CLOSED_INCONCLUSIVE',
+          created_at: '2024-03-01',
+        },
+      ];
+      const evidence = [{ id: 'ev-5', fileName: 'doc.pdf', taskId: 500 }];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce({ evidence });
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.stats.inconclusiveFindings).toBe(1);
+      expect(result.findings[0].conclusion).toBe('Inconclusive');
+    });
+
+    it('should mark in-progress cases correctly', async () => {
+      const cases = [
+        {
+          case_id: 40,
+          status: 'STATUS_20_IN_PROGRESS',
+          created_at: '2024-04-01',
+        },
+      ];
+      const evidence = [{ id: 'ev-6', fileName: 'doc.pdf', taskId: 600 }];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce({ evidence });
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.findings[0].conclusion).toBe('InProgress');
+    });
+
+    it('should handle evidence returned as array directly', async () => {
+      const cases = [
+        {
+          case_id: 50,
+          status: 'STATUS_82_CLOSED_CONFIRMED',
+          created_at: '2024-01-01',
+        },
+      ];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce([
+          { id: 'ev-7', fileName: 'file.pdf', taskId: 700 },
+        ]);
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.stats.totalFindings).toBe(1);
+    });
+
+    it('should filter out evidence with reportId', async () => {
+      const cases = [
+        {
+          case_id: 60,
+          status: 'STATUS_82_CLOSED_CONFIRMED',
+          created_at: '2024-01-01',
+        },
+      ];
+      const evidence = [
+        { id: 'ev-8', fileName: 'doc.pdf', taskId: 800 },
+        { id: 'ev-9', fileName: 'report.pdf', taskId: 801, reportId: 'r-1' },
+      ];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce({ evidence });
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.stats.evidenceItems).toBe(1);
+    });
+
+    it('should group evidence by task and handle unknown taskId', async () => {
+      const cases = [
+        {
+          case_id: 70,
+          status: 'STATUS_82_CLOSED_CONFIRMED',
+          created_at: '2024-01-01',
+        },
+      ];
+      const evidence = [
+        { id: 'ev-10', fileName: 'doc.pdf', taskId: 900 },
+        { id: 'ev-11', fileName: 'doc2.pdf' },
+      ];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce({ evidence });
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.findings[0].tasks.length).toBe(2);
+    });
+
+    it('should handle evidence fetch failure for a case gracefully', async () => {
+      const cases = [
+        {
+          case_id: 80,
+          status: 'STATUS_82_CLOSED_CONFIRMED',
+          created_at: '2024-01-01',
+        },
+      ];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockRejectedValueOnce(new Error('Evidence fetch failed'));
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.stats.totalFindings).toBe(0);
+    });
+
+    it('should return empty on top-level error', async () => {
+      vi.mocked(apiClient.get).mockRejectedValue(new Error('Network error'));
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.stats.totalFindings).toBe(0);
+      expect(result.findings).toEqual([]);
+    });
+
+    it('should handle multiple cases with mixed statuses', async () => {
+      const cases = [
+        {
+          case_id: 1,
+          status: 'STATUS_82_CLOSED_CONFIRMED',
+          created_at: '2024-01-01',
+        },
+        {
+          case_id: 2,
+          status: 'STATUS_81_CLOSED_REFUTED',
+          created_at: '2024-01-02',
+        },
+        { case_id: 3, status: 'STATUS_00_DRAFT' },
+      ];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce({
+          evidence: [{ id: 'e1', fileName: 'a.pdf', taskId: 1 }],
+        })
+        .mockResolvedValueOnce({
+          evidence: [{ id: 'e2', fileName: 'b.pdf', taskId: 2 }],
+        });
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.stats.totalFindings).toBe(2);
+      expect(result.stats.confirmedFindings).toBe(1);
+      expect(result.stats.refutedFindings).toBe(1);
+      expect(result.statusDistribution.confirmed).toBe(1);
+      expect(result.statusDistribution.refuted).toBe(1);
+    });
+
+    it('should handle evidence with attachments', async () => {
+      const cases = [
+        {
+          case_id: 90,
+          status: 'STATUS_82_CLOSED_CONFIRMED',
+          created_at: '2024-01-01',
+        },
+      ];
+      const evidence = [
+        {
+          id: 'ev-12',
+          taskId: 1000,
+          attachments: [
+            {
+              fileName: 'attached.pdf',
+              fileSize: 1024,
+              mimeType: 'application/pdf',
+              hash: 'hash1',
+            },
+          ],
+        },
+      ];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce({ evidence });
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.stats.totalFindings).toBe(1);
+      expect(result.findings[0].tasks[0].supportingEvidence[0].fileName).toBe(
+        'attached.pdf',
+      );
+    });
+
+    it('should use created_at as dateIdentified or fallback to current date', async () => {
+      const cases = [{ case_id: 100, status: 'STATUS_82_CLOSED_CONFIRMED' }];
+      const evidence = [{ id: 'ev-13', fileName: 'doc.pdf', taskId: 1100 }];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce({ evidence });
+
+      const result = await reportsService.getEvidenceFindingsData();
+
+      expect(result.findings[0].dateIdentified).toBeDefined();
     });
   });
 });

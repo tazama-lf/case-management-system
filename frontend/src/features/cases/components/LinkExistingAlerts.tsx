@@ -153,7 +153,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
 
   return (
     <div className="space-y-4">
-      { }
+      {}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-medium text-gray-900">
@@ -171,7 +171,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
         )}
       </div>
 
-      { }
+      {}
       <div className="relative">
         <input
           type="text"
@@ -185,7 +185,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
         <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
       </div>
 
-      { }
+      {}
       {selectedAlerts.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
           <div className="flex items-center justify-between">
@@ -234,7 +234,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
           </div>
         </div>
       )}
-      { }
+      {}
       <div className="border border-gray-200 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -280,8 +280,9 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                 filteredAlerts.map((alert) => (
                   <tr
                     key={alert.alert_id}
-                    className={`hover:bg-gray-50 cursor-pointer ${isAlertSelected(alert) ? 'bg-blue-50' : ''
-                      }`}
+                    className={`hover:bg-gray-50 cursor-pointer ${
+                      isAlertSelected(alert) ? 'bg-blue-50' : ''
+                    }`}
                     onClick={() => {
                       handleAlertToggle(alert);
                     }}
@@ -412,10 +413,11 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
                             onClick={() => {
                               handlePageChange(p);
                             }}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${pagination.currentPage === p
-                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                              }`}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                              pagination.currentPage === p
+                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                            }`}
                             aria-current={
                               pagination.currentPage === p ? 'page' : undefined
                             }
@@ -448,7 +450,7 @@ const LinkExistingAlertsTab: React.FC<LinkExistingAlertsTabProps> = ({
         )}
       </div>
 
-      { }
+      {}
       <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
         <div className="flex">
           <div className="ml-3">

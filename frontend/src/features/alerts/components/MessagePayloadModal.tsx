@@ -52,17 +52,17 @@ const MessagePayloadModal: React.FC<MessagePayloadModalProps> = ({
   return (
     <div className="fixed inset-0 z-[80] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen p-4">
-        { }
+        {}
         <div
           className="fixed inset-0 bg-gray-500 opacity-75 transition-opacity"
           onClick={onClose}
           aria-hidden="true"
         ></div>
 
-        { }
+        {}
         <div className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all max-w-4xl w-full max-h-[90vh]">
           <div className="bg-white px-6 pt-6 pb-6 flex flex-col max-h-[90vh]">
-            { }
+            {}
             <div className="flex items-center justify-between mb-6 flex-shrink-0">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">
@@ -114,7 +114,7 @@ const MessagePayloadModal: React.FC<MessagePayloadModalProps> = ({
             </div>
           </div>
 
-          { }
+          {}
           <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex-shrink-0">
             <div className="flex justify-between items-center">
               <p className="text-sm text-gray-500">

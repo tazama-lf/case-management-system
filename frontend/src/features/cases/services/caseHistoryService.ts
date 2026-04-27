@@ -1,5 +1,4 @@
 import apiClient from '../../../shared/services/apiClient';
-import type { ApiErrorResponse } from '../../alerts/types/triage.types';
 
 export interface CaseHistoryEntry {
   event_log_id: string;
@@ -40,14 +39,6 @@ export class CaseHistoryService {
       console.error('Failed to fetch case history by Case:', error);
       return [];
     }
-  }
-
-  private handleError(error: any, operation: string): Error {
-    if (error.response?.data) {
-      const apiError = error.response.data as ApiErrorResponse;
-      return new Error(apiError.message || `Failed to ${operation}`);
-    }
-    return new Error(`Failed to ${operation}: ${error.message}`);
   }
 }
 

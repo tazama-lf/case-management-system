@@ -38,9 +38,8 @@ describe('triageService', () => {
       await triageService.getAlerts({ priority: 'HIGH', limit: 5 });
 
       expect(mockApi.get).toHaveBeenCalledWith(
-        '/api/v1/triage/alerts?priority=HIGH&limit=5&includeData=true',
+        '/api/v1/alert?priority=HIGH&reportStatus=ALRT&limit=5&includeData=true',
       );
-      expect(getAlertSpy).toHaveBeenCalledWith('ALERT-1');
     });
 
     it('handles all filter parameters', async () => {
@@ -110,18 +109,14 @@ describe('triageService', () => {
         totalPages: 1,
       });
 
-      vi.spyOn(triageService, 'getAlertById').mockResolvedValue({
-        alert_id: 'ALERT-1',
-      } as any);
-
       await triageService.getAlerts({});
 
       expect(mockApi.get).toHaveBeenCalledWith(
-        '/api/v1/triage/alerts?includeData=true',
+        '/api/v1/alert?reportStatus=ALRT&includeData=true',
       );
     });
 
-    it('handles failed detail fetch gracefully', async () => {
+    it('returns alerts from backend response data field', async () => {
       mockApi.get.mockResolvedValueOnce({
         data: [
           { alert_id: 'ALERT-1', alert_type: 'AML' },
@@ -133,32 +128,15 @@ describe('triageService', () => {
         totalPages: 1,
       });
 
-      const getAlertSpy = vi
-        .spyOn(triageService, 'getAlertById')
-        .mockResolvedValueOnce({
-          alert_id: 'ALERT-1',
-          alert_type: 'AML',
-        } as any)
-        .mockRejectedValueOnce(new Error('Failed to fetch'));
-
-      const consoleWarnSpy = vi
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
       const result = await triageService.getAlerts({});
 
       expect(result.alerts).toHaveLength(2);
       expect(result.alerts[0].alert_id).toBe('ALERT-1');
       expect(result.alerts[1].alert_id).toBe('ALERT-2');
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to fetch details for alert ALERT-2'),
-        expect.any(Error),
-      );
-
-      consoleWarnSpy.mockRestore();
+      expect(result.pagination.totalItems).toBe(2);
     });
 
-    it('merges alert_type from detailed alert', async () => {
+    it('preserves alert_type from list response', async () => {
       mockApi.get.mockResolvedValueOnce({
         data: [{ alert_id: 'ALERT-1', alert_type: 'AML' }],
         page: 1,
@@ -167,14 +145,9 @@ describe('triageService', () => {
         totalPages: 1,
       });
 
-      const detailedAlert = { alert_id: 'ALERT-1', alert_type: 'FRAUD' };
-      vi.spyOn(triageService, 'getAlertById').mockResolvedValue(
-        detailedAlert as any,
-      );
-
       const result = await triageService.getAlerts({});
 
-      expect(result.alerts[0].alert_type).toBe('FRAUD');
+      expect(result.alerts[0].alert_type).toBe('AML');
     });
   });
 
@@ -215,7 +188,7 @@ describe('triageService', () => {
       const result = await triageService.getAlertById('ALERT-1');
 
       expect(result).toEqual(mockAlert);
-      expect(mockApi.get).toHaveBeenCalledWith('/api/v1/triage/alerts/ALERT-1');
+      expect(mockApi.get).toHaveBeenCalledWith('/api/v1/alert/ALERT-1');
     });
 
     it('throws when alert responses are invalid - missing data', async () => {
@@ -274,7 +247,7 @@ describe('triageService', () => {
 
       expect(result).toEqual(mockHistory);
       expect(mockApi.get).toHaveBeenCalledWith(
-        '/api/v1/triage/alerts/ALERT-1/action-history',
+        '/api/v1/alert/ALERT-1/action-history',
       );
     });
 
@@ -398,11 +371,13 @@ describe('triageService', () => {
 
       const result = await triageService.getNALTAlerts();
 
-      expect(result).toEqual(mockAlerts);
+      expect(result.alerts).toEqual(mockAlerts);
       expect(getAlertsSpy).toHaveBeenCalledWith({
         reportStatus: 'NALT',
-        limit: 100,
+        limit: 10,
         page: 1,
+        sortBy: 'created_at',
+        sortOrder: 'desc',
       });
     });
 
@@ -423,11 +398,13 @@ describe('triageService', () => {
 
       const result = await triageService.getNALTAlerts('test search');
 
-      expect(result).toEqual(mockAlerts);
+      expect(result.alerts).toEqual(mockAlerts);
       expect(getAlertsSpy).toHaveBeenCalledWith({
         reportStatus: 'NALT',
-        limit: 100,
+        limit: 10,
         page: 1,
+        sortBy: 'created_at',
+        sortOrder: 'desc',
         search: 'test search',
       });
     });

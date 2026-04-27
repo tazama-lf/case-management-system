@@ -1,5 +1,8 @@
 import React from 'react';
-import { UserCircleIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
+import {
+  UserCircleIcon,
+  BuildingOfficeIcon,
+} from '@heroicons/react/24/outline';
 
 interface TransactionPartyProps {
   type: 'debtor' | 'creditor';
@@ -34,23 +37,33 @@ export const TransactionParty: React.FC<TransactionPartyProps> = ({
       </div>
       <div className="space-y-2 text-sm">
         <div>
-          <div className="text-xs text-gray-500 uppercase font-medium">Name</div>
+          <div className="text-xs text-gray-500 uppercase font-medium">
+            Name
+          </div>
           <div className="text-gray-900">{name}</div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 uppercase font-medium">Account</div>
+          <div className="text-xs text-gray-500 uppercase font-medium">
+            Account
+          </div>
           <div className="text-gray-900 font-mono">{account}</div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 uppercase font-medium">Address</div>
+          <div className="text-xs text-gray-500 uppercase font-medium">
+            Address
+          </div>
           <div className="text-gray-900">{address}</div>
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xs text-gray-500 uppercase font-medium">Country</div>
+            <div className="text-xs text-gray-500 uppercase font-medium">
+              Country
+            </div>
             <div className="text-gray-900">{country}</div>
           </div>
-          <div className={`px-3 py-1 rounded-full text-xs font-medium ${getRiskColor(riskLevel)}`}>
+          <div
+            className={`px-3 py-1 rounded-full text-xs font-medium ${getRiskColor(riskLevel)}`}
+          >
             {riskLevel} Risk
           </div>
         </div>

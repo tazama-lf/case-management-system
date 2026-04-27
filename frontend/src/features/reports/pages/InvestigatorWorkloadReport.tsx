@@ -106,7 +106,7 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
     }
   };
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     try {
       const formattedData = formatDataForExport(
         performanceData,
@@ -114,7 +114,7 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
       );
       const filename = `investigator-workload-report-${new Date().toISOString().split('T')[0]}`;
       const columns = getColumnsForReport('INVESTIGATOR_WORKLOAD');
-      await exportToPDF(
+      exportToPDF(
         formattedData,
         filename,
         'Investigator Workload Report',

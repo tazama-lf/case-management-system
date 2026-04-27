@@ -82,6 +82,21 @@ describe('FocusTrap', () => {
     expect(document.activeElement).toBe(buttons[0]);
   });
 
+  it('wraps focus from first to last with Shift+Tab', () => {
+    render(
+      <FocusTrap active={true}>
+        <button>First</button>
+        <button>Second</button>
+      </FocusTrap>,
+    );
+
+    const buttons = screen.getAllByRole('button');
+    buttons[0].focus();
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(buttons[1]);
+  });
+
   it('calls onEscape when Escape key is pressed', () => {
     const onEscape = vi.fn();
     render(
@@ -161,6 +176,36 @@ describe('SkipToContent', () => {
       <SkipToContent targetId="main" className="custom-class" />,
     );
     expect(container.firstChild).toHaveClass('custom-class');
+  });
+
+  it('handles Enter keydown on skip button', () => {
+    const target = document.createElement('div');
+    target.id = 'main-enter';
+    target.tabIndex = -1;
+    document.body.appendChild(target);
+
+    render(<SkipToContent targetId="main-enter" />);
+    fireEvent.keyDown(screen.getByText('Skip to main content'), {
+      key: 'Enter',
+    });
+
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    document.body.removeChild(target);
+  });
+
+  it('handles Space keydown on skip button', () => {
+    const target = document.createElement('div');
+    target.id = 'main-space';
+    target.tabIndex = -1;
+    document.body.appendChild(target);
+
+    render(<SkipToContent targetId="main-space" />);
+    fireEvent.keyDown(screen.getByText('Skip to main content'), {
+      key: ' ',
+    });
+
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    document.body.removeChild(target);
   });
 });
 
@@ -256,27 +301,136 @@ describe('AccessibleButton', () => {
     rerender(<AccessibleButton size="lg">Test</AccessibleButton>);
     expect(screen.getByText('Test')).toBeInTheDocument();
   });
+
+  it('is disabled when disabled prop is true', () => {
+    render(<AccessibleButton disabled>Disabled</AccessibleButton>);
+    expect(screen.getByRole('button')).toBeDisabled();
+    expect(screen.getByRole('button')).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('shows custom loading text', () => {
+    render(
+      <AccessibleButton isLoading loadingText="Saving...">
+        Save
+      </AccessibleButton>,
+    );
+    expect(screen.getByText('Saving...')).toBeInTheDocument();
+  });
+
+  it('applies custom className', () => {
+    render(<AccessibleButton className="extra">Btn</AccessibleButton>);
+    expect(screen.getByRole('button').className).toContain('extra');
+  });
 });
 
 describe('useKeyboardNavigation', () => {
+  const TestNav: React.FC<{
+    items: string[];
+    loop?: boolean;
+    onSelect?: (i: number, item: any) => void;
+    onEscape?: () => void;
+    initialIndex?: number;
+  }> = ({ items, loop, onSelect, onEscape, initialIndex }) => {
+    const { selectedIndex, setSelectedIndex } = useKeyboardNavigation(items, {
+      loop,
+      onSelect,
+      onEscape,
+      initialIndex,
+    });
+    return (
+      <div>
+        <div data-testid="index">{selectedIndex}</div>
+        {items.map((item, i) => (
+          <div key={item} className={i === selectedIndex ? 'selected' : ''}>
+            {item}
+          </div>
+        ))}
+        <button onClick={() => setSelectedIndex(1)}>Set to 1</button>
+      </div>
+    );
+  };
+
   it('handles arrow key navigation', () => {
     const items = ['Item 1', 'Item 2', 'Item 3'];
-    const TestComponent = () => {
-      const { selectedIndex, setSelectedIndex } = useKeyboardNavigation(items);
-      return (
-        <div>
-          <div>{items[selectedIndex]}</div>
-          <button onClick={() => setSelectedIndex(1)}>Set to 1</button>
-        </div>
-      );
-    };
+    render(<TestNav items={items} />);
+    expect(screen.getByTestId('index')).toHaveTextContent('0');
 
-    render(<TestComponent />);
-    expect(screen.getByText('Item 1')).toBeInTheDocument();
-
-    // Test manual index change
     const button = screen.getByText('Set to 1');
     fireEvent.click(button);
-    expect(screen.getByText('Item 2')).toBeInTheDocument();
+    expect(screen.getByTestId('index')).toHaveTextContent('1');
+  });
+
+  it('moves down with ArrowDown', () => {
+    render(<TestNav items={['A', 'B', 'C']} />);
+    fireEvent.keyDown(document, { key: 'ArrowDown' });
+    expect(screen.getByTestId('index')).toHaveTextContent('1');
+  });
+
+  it('moves up with ArrowUp', () => {
+    render(<TestNav items={['A', 'B', 'C']} />);
+    fireEvent.keyDown(document, { key: 'ArrowDown' });
+    fireEvent.keyDown(document, { key: 'ArrowUp' });
+    expect(screen.getByTestId('index')).toHaveTextContent('0');
+  });
+
+  it('loops from last to first with ArrowDown when loop=true', () => {
+    render(<TestNav items={['A', 'B']} loop={true} />);
+    fireEvent.keyDown(document, { key: 'ArrowDown' });
+    fireEvent.keyDown(document, { key: 'ArrowDown' });
+    expect(screen.getByTestId('index')).toHaveTextContent('0');
+  });
+
+  it('loops from first to last with ArrowUp when loop=true', () => {
+    render(<TestNav items={['A', 'B']} loop={true} />);
+    fireEvent.keyDown(document, { key: 'ArrowUp' });
+    expect(screen.getByTestId('index')).toHaveTextContent('1');
+  });
+
+  it('does not loop past end when loop=false', () => {
+    render(<TestNav items={['A', 'B']} loop={false} />);
+    fireEvent.keyDown(document, { key: 'ArrowDown' });
+    fireEvent.keyDown(document, { key: 'ArrowDown' });
+    expect(screen.getByTestId('index')).toHaveTextContent('1');
+  });
+
+  it('does not loop past start when loop=false', () => {
+    render(<TestNav items={['A', 'B']} loop={false} />);
+    fireEvent.keyDown(document, { key: 'ArrowUp' });
+    expect(screen.getByTestId('index')).toHaveTextContent('0');
+  });
+
+  it('jumps to start with Home key', () => {
+    render(<TestNav items={['A', 'B', 'C']} />);
+    fireEvent.keyDown(document, { key: 'ArrowDown' });
+    fireEvent.keyDown(document, { key: 'ArrowDown' });
+    fireEvent.keyDown(document, { key: 'Home' });
+    expect(screen.getByTestId('index')).toHaveTextContent('0');
+  });
+
+  it('jumps to end with End key', () => {
+    render(<TestNav items={['A', 'B', 'C']} />);
+    fireEvent.keyDown(document, { key: 'End' });
+    expect(screen.getByTestId('index')).toHaveTextContent('2');
+  });
+
+  it('calls onSelect on Enter', () => {
+    const onSelect = vi.fn();
+    render(<TestNav items={['A', 'B']} onSelect={onSelect} />);
+    fireEvent.keyDown(document, { key: 'Enter' });
+    expect(onSelect).toHaveBeenCalledWith(0, 'A');
+  });
+
+  it('calls onSelect on Space', () => {
+    const onSelect = vi.fn();
+    render(<TestNav items={['A', 'B']} onSelect={onSelect} />);
+    fireEvent.keyDown(document, { key: ' ' });
+    expect(onSelect).toHaveBeenCalledWith(0, 'A');
+  });
+
+  it('calls onEscape on Escape', () => {
+    const onEscape = vi.fn();
+    render(<TestNav items={['A', 'B']} onEscape={onEscape} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onEscape).toHaveBeenCalledTimes(1);
   });
 });

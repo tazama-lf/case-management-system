@@ -63,7 +63,7 @@ describe('useReopenCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Reopen Case Failed',
-        expect.stringContaining('Unable to request reopening for this case'),
+        expect.stringContaining('Cannot reopen case'),
       );
     });
   });
@@ -171,7 +171,7 @@ describe('useReopenCaseActions', () => {
     await waitFor(() => {
       expect(mockError).toHaveBeenCalledWith(
         'Reopen Case Failed',
-        expect.stringContaining('Something went wrong'),
+        expect.stringContaining('Could not submit reopen request'),
       );
     });
   });

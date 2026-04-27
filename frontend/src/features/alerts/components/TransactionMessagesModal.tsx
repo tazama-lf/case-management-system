@@ -67,17 +67,17 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
   return (
     <div className="fixed inset-0 z-[70] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen p-4">
-        { }
+        {}
         <div
           className="fixed inset-0 bg-gray-500 opacity-75 transition-opacity"
           onClick={onClose}
           aria-hidden="true"
         ></div>
 
-        { }
+        {}
         <div className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all max-w-2xl w-full">
           <div className="bg-white px-6 pt-6 pb-6">
-            { }
+            {}
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">
@@ -97,14 +97,14 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
               </button>
             </div>
 
-            { }
+            {}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
                 <p className="text-sm">{error || 'An error occurred'}</p>
               </div>
             )}
 
-            { }
+            {}
             {loading && (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -114,7 +114,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
               </div>
             )}
 
-            { }
+            {}
             {!loading && messages.length > 0 && (
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {messages.map((message) => (
@@ -132,14 +132,15 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
                             {message.type}
                           </h4>
                           <span
-                            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${message.status === 'sent'
+                            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                              message.status === 'sent'
                                 ? 'bg-green-100 text-green-800'
                                 : message.status === 'received'
                                   ? 'bg-blue-100 text-blue-800'
                                   : message.status === 'processing'
                                     ? 'bg-yellow-100 text-yellow-800'
                                     : 'bg-red-100 text-red-800'
-                              }`}
+                            }`}
                           >
                             {message.status.toUpperCase()}
                           </span>
@@ -172,7 +173,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
               </div>
             )}
 
-            { }
+            {}
             {!loading && messages.length === 0 && !error && (
               <div className="text-center py-8">
                 <div className="text-gray-400 text-4xl mb-4">📄</div>
@@ -183,7 +184,7 @@ const TransactionMessagesModal: React.FC<TransactionMessagesModalProps> = ({
             )}
           </div>
 
-          { }
+          {}
           <div className="bg-gray-50 px-6 py-3">
             <div className="flex justify-between items-center">
               <p className="text-sm text-gray-500">

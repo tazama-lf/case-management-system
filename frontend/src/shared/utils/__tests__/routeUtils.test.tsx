@@ -62,8 +62,6 @@ describe('routeUtils', () => {
       expect(ROUTES.CASE_DETAIL).toBe('/cases/:caseId');
       expect(ROUTES.ALERTS).toBe('/alerts');
       expect(ROUTES.ALERT_DETAIL).toBe('/alerts/:alertId');
-      expect(ROUTES.WORK_QUEUE).toBe('/work-queue');
-      expect(ROUTES.WORK_QUEUE_TASK).toBe('/work-queue/:taskId');
       expect(ROUTES.REPORTS).toBe('/reports');
       expect(ROUTES.REPORT_DETAIL).toBe('/reports/:reportType');
       expect(ROUTES.ADMIN).toBe('/admin');

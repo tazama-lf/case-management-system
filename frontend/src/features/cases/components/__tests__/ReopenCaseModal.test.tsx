@@ -5,8 +5,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ReopenCaseModal from '../ReopenCaseModal';
 import type { CaseRow } from '../casesTable.utils';
 
+vi.mock('@/features/auth', () => ({
+  authService: {
+    getUser: vi.fn().mockReturnValue(null),
+  },
+}));
+
 const mockCaseData: CaseRow = {
-  id: 'CASE-123',
+  id: 123,
   type: 'FRAUD',
   typeColor: 'bg-red-50',
   status: 'STATUS_82_CLOSED_CONFIRMED',
@@ -20,6 +26,7 @@ const mockCaseData: CaseRow = {
   priority: 'HIGH',
   userRole: 'owner',
   totalTasks: 1,
+  alertId: 1,
 };
 
 describe('ReopenCaseModal', () => {
@@ -53,10 +60,10 @@ describe('ReopenCaseModal', () => {
     );
 
     expect(screen.getByText('Reopen Case')).toBeInTheDocument();
-    expect(screen.getByText(/Case ID: CASE-123/i)).toBeInTheDocument();
+    expect(screen.getByText(/Case ID: 123/)).toBeInTheDocument();
   });
 
-  it('displays reopening workflow information', () => {
+  it('displays reopening information', () => {
     render(
       <ReopenCaseModal
         open={true}
@@ -66,9 +73,8 @@ describe('ReopenCaseModal', () => {
       />,
     );
 
-    expect(screen.getByText(/Reopening Workflow/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Only closed cases are eligible for reopening/i),
+      screen.getByText(/Request reopening of a previously closed case/i),
     ).toBeInTheDocument();
   });
 
@@ -90,13 +96,12 @@ describe('ReopenCaseModal', () => {
       name: /Request Case Reopening/i,
     });
 
-    await user.type(textarea, 'short');
-    await user.click(submitButton);
+    await user.type(textarea, 'ab');
 
     expect(
-      await screen.findByText(/Reason must be at least 10 characters/i),
+      screen.getByText(/Reason must be at least 4 characters/i),
     ).toBeInTheDocument();
-    expect(mockOnReopen).not.toHaveBeenCalled();
+    expect(submitButton).toBeDisabled();
   });
 
   it('enables submit button when reason is valid', async () => {
@@ -151,7 +156,7 @@ describe('ReopenCaseModal', () => {
 
     await waitFor(() => {
       expect(mockOnReopen).toHaveBeenCalledWith(
-        'CASE-123',
+        123,
         'This is a valid reopening reason',
       );
     });

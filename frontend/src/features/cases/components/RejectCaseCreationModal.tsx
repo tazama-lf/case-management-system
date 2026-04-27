@@ -84,8 +84,8 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
 
   const transactionData =
     alertDetails?.transaction &&
-      typeof alertDetails.transaction === 'object' &&
-      alertDetails.transaction !== null
+    typeof alertDetails.transaction === 'object' &&
+    alertDetails.transaction !== null
       ? alertDetails.transaction
       : null;
 
@@ -239,9 +239,7 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
                               Created At
                             </label>
                             <span className="text-sm">
-                              {formatDate(
-                                alertDetails.created_at,
-                              )}
+                              {formatDate(alertDetails.created_at)}
                             </span>
                           </div>
                           {alertDetails.prediction_outcome && (
@@ -339,7 +337,7 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
               )}
             </div>
 
-            { }
+            {}
             {errors.submit && (
               <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3">
                 <p className="text-sm text-red-600">{errors.submit}</p>
@@ -348,7 +346,7 @@ const RejectCaseCreationModal: React.FC<RejectCaseCreationModalProps> = ({
           </div>
         </form>
 
-        { }
+        {}
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
           <button
             type="button"
