@@ -4,12 +4,6 @@ import { PageContainer } from '@/shared/components/ui';
 import ResultsSummary from '@/shared/components/ui/ResultsSummary';
 import ReferenceResultsTable from '../components/ReferenceResultsTable';
 import { useReferenceLookup } from '../hooks/useReferences';
-import React, { useState } from 'react';
-import { PlusIcon } from '@heroicons/react/24/outline';
-import { PageContainer } from '@/shared/components/ui';
-import ResultsSummary from '@/shared/components/ui/ResultsSummary';
-import ReferenceResultsTable from '../components/ReferenceResultsTable';
-import { useReferenceLookup } from '../hooks/useReferences';
 
 const AdminDashboard: React.FC = () => {
   const [txnType, setTxnType] = useState('');
