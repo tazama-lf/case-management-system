@@ -10,10 +10,6 @@ describe('reports/index', () => {
     expect(Reports.InvestigatorWorkloadReport).toBeDefined();
   });
 
-  it('exports AuditLogsReport', () => {
-    expect(Reports.AuditLogsReport).toBeDefined();
-  });
-
   it('exports CaseAgeingReport', () => {
     expect(Reports.CaseAgeingReport).toBeDefined();
   });
@@ -60,10 +56,6 @@ describe('reports/index', () => {
 
   it('exports useTaskCompletion hook', () => {
     expect(Reports.useTaskCompletion).toBeDefined();
-  });
-
-  it('exports useAuditLogs hook', () => {
-    expect(Reports.useAuditLogs).toBeDefined();
   });
 
   it('exports useCaseAgeing hook', () => {

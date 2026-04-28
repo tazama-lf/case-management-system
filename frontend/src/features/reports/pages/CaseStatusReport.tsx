@@ -27,7 +27,6 @@ const MultiBarChart = lazy(
 const InvestigatorWorkloadReport = lazy(
   async () => await import('./InvestigatorWorkloadReport'),
 );
-const AuditLogsReport = lazy(async () => await import('./AuditLogsReport'));
 const CaseAgeingReport = lazy(async () => await import('./CaseAgeingReport'));
 const EvidenceFindingsReport = lazy(
   async () => await import('./EvidenceFindingsReport'),
@@ -389,12 +388,6 @@ const Reports: React.FC = () => {
             onExportPDF={handleExportPDF}
           />
         </>
-      )}
-
-      {reportType === 'AUDIT_LOGS' && (
-        <Suspense fallback={<div>Loading Audit Logs Report...</div>}>
-          <AuditLogsReport dateRange={dateRange} />
-        </Suspense>
       )}
 
       {reportType === 'CASE_AGEING' && (
