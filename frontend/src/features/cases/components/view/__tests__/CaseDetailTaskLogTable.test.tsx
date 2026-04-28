@@ -581,7 +581,6 @@ describe('CaseDetailTaskLogTable', () => {
       'Task ID',
       'Task',
       'Case',
-      'Queue',
       'Status',
       'Created',
       'Assigned To',

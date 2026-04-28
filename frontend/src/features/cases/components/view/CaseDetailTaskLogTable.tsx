@@ -44,13 +44,11 @@ interface CaseDetailTaskLogTableProps {
 }
 
 const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
-  alertId,
   tasks,
   onAssign,
   onUnassign,
   onReassign,
   onUpdateStatus,
-  onRefreshCases,
   canManageSupervisorActions = false,
   caseData,
   onApproveCase,
@@ -58,15 +56,10 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   onRejectCaseCreation,
   onTaskClick,
 }) => {
-  //const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
-  // const [showManualTriageModal, setShowManualTriageModal] = useState(false);
-  // const [loadingAlertForTask, setLoadingAlertForTask] = useState<number | null>(null);
-  const [currentUser, setCurrentUser] = useState<User>(); // Replace with actual user fetching logic
-  // const { success, error: showError } = useToast();
+  const [currentUser, setCurrentUser] = useState<User>(); 
   useAlertOperations();
   const { hasComplianceOfficerRole, hasSupervisorRole, hasInvestigatorRole } =
     useAuth();
-  // const [isComplianceOfficer, setIsComplianceOfficer] = useState(false);
 
   useEffect(() => {
     const user = authService.getUser();
@@ -90,7 +83,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     { key: 'taskId', label: 'Task ID', width: 'w-72', align: 'left' },
     { key: 'task', label: 'Task', width: 'w-80' },
     { key: 'case', label: 'Case', width: 'w-72' },
-    { key: 'queue', label: 'Queue', width: 'w-32' },
     { key: 'status', label: 'Status', width: 'w-32' },
     { key: 'created', label: 'Created', width: 'w-40' },
     { key: 'assignedTo', label: 'Assigned To', width: 'w-48' },
@@ -119,34 +111,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
       </span>
     );
   };
-
-  // const handleManualTriage = async (alert: Alert, triageData: ManualTriageDto) => {
-  //   try {
-  //     await performManualTriage({
-  //       alertId: alert.alert_id,
-  //       data: triageData,
-  //     });
-
-  //     // Close modal immediately
-  //     setShowManualTriageModal(false);
-  //     setSelectedAlert(null);
-  //     setLoadingAlertForTask(null);
-
-  //     success('Manual Triage Completed', 'The alert has been triaged successfully.');
-
-  //     // Brief delay to ensure backend has processed the triage and created new tasks
-  //     await new Promise(resolve => setTimeout(resolve, 500));
-
-  //     // Refresh tasks to show updated "Complete New Case" status and new "Investigate" task
-  //     if (onRefreshCases) {
-  //       await onRefreshCases();
-  //     }
-  //   } catch (error) {
-  //     const errorMessage = error instanceof Error ? error.message : 'Failed to perform triage. Please try again.';
-  //     showError('Triage Failed', errorMessage);
-  //     throw error;
-  //   }
-  // };
 
   const createActionButton = (
     key: string,
@@ -449,14 +413,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     return assigneeName || assignee;
   };
 
-  const getCandidateGroup = (candidateGroup?: string, taskName?: string) => {
-    const containsInvestigate =
-      taskName?.toLowerCase().includes('investigate') ?? false;
-    if (containsInvestigate) return 'Investigators';
-    if (!candidateGroup) return '-';
-    return candidateGroup.charAt(0).toUpperCase() + candidateGroup.slice(1);
-  };
-
   return (
     <div className="bg-white shadow rounded-lg">
       <div className="overflow-x-auto">
@@ -514,11 +470,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
                     CASE-{task.caseId ?? ''}
                   </div>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="text-sm text-gray-900 break-words">
-                    {getCandidateGroup(task.candidateGroup, task.name)}
-                  </div>
-                </td>
                 <td className="px-4 py-3">{getStatusBadge(task.status)}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center text-sm text-gray-500">
@@ -554,21 +505,6 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
           icon="folder"
         />
       )}
-
-      {/* Manual Triage Modal */}
-      {/* {selectedAlert && (
-        <Suspense fallback={<div>Loading modal...</div>}>
-          <ManualTriageModal
-            isOpen={showManualTriageModal}
-            alert={convertToTriageAlert(selectedAlert)}
-            onClose={() => {
-              setShowManualTriageModal(false);
-              setSelectedAlert(null);
-            }}
-            onSubmit={(triageData: ManualTriageDto) => handleManualTriage(selectedAlert, triageData)}
-          />
-        </Suspense>
-      )} */}
     </div>
   );
 };
