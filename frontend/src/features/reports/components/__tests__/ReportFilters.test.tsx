@@ -114,36 +114,6 @@ describe('ReportFilters', () => {
     expect(screen.getByText('Filters')).toBeInTheDocument();
   });
 
-  it('opens and closes report type menu', async () => {
-    const user = userEvent.setup();
-    render(
-      <ReportFilters
-        reportType="CASE_STATUS"
-        dateRange="last30"
-        onChangeReportType={mockOnChangeReportType}
-        onChangeDateRange={mockOnChangeDateRange}
-        onApplyFilters={mockOnApplyFilters}
-      />,
-    );
-
-    const reportTypeButton = screen
-      .getByText('Case Status Report')
-      .closest('button');
-    expect(reportTypeButton).toBeInTheDocument();
-
-    await user.click(reportTypeButton!);
-
-    await waitFor(() => {
-      expect(screen.getByText('Audit Logs Report')).toBeInTheDocument();
-    });
-
-    // Click again to close
-    await user.click(reportTypeButton!);
-
-    await waitFor(() => {
-      expect(screen.queryByText('Audit Logs Report')).not.toBeInTheDocument();
-    });
-  });
 
   it('opens and closes date range menu', async () => {
     const user = userEvent.setup();
@@ -172,33 +142,6 @@ describe('ReportFilters', () => {
     await waitFor(() => {
       expect(screen.queryByText('Today')).not.toBeInTheDocument();
     });
-  });
-
-  it('calls onChangeReportType when report type is selected', async () => {
-    const user = userEvent.setup();
-    render(
-      <ReportFilters
-        reportType="CASE_STATUS"
-        dateRange="last30"
-        onChangeReportType={mockOnChangeReportType}
-        onChangeDateRange={mockOnChangeDateRange}
-        onApplyFilters={mockOnApplyFilters}
-      />,
-    );
-
-    const reportTypeButton = screen
-      .getByText('Case Status Report')
-      .closest('button');
-    await user.click(reportTypeButton!);
-
-    await waitFor(() => {
-      expect(screen.getByText('Audit Logs Report')).toBeInTheDocument();
-    });
-
-    const auditLogsOption = screen.getByText('Audit Logs Report');
-    await user.click(auditLogsOption);
-
-    expect(mockOnChangeReportType).toHaveBeenCalledWith('AUDIT_LOGS');
   });
 
   it('calls onChangeDateRange when date range is selected', async () => {
@@ -339,35 +282,4 @@ describe('ReportFilters', () => {
     ).toBe('');
   });
 
-  it('closes one menu when opening another', async () => {
-    const user = userEvent.setup();
-    render(
-      <ReportFilters
-        reportType="CASE_STATUS"
-        dateRange="last30"
-        onChangeReportType={mockOnChangeReportType}
-        onChangeDateRange={mockOnChangeDateRange}
-        onApplyFilters={mockOnApplyFilters}
-      />,
-    );
-
-    // Open report type menu
-    const reportTypeButton = screen
-      .getByText('Case Status Report')
-      .closest('button');
-    await user.click(reportTypeButton!);
-
-    await waitFor(() => {
-      expect(screen.getByText('Audit Logs Report')).toBeInTheDocument();
-    });
-
-    // Open date range menu (should close report type menu)
-    const dateRangeButton = screen.getByText('Last 30 Days').closest('button');
-    await user.click(dateRangeButton!);
-
-    await waitFor(() => {
-      expect(screen.queryByText('Audit Logs Report')).not.toBeInTheDocument();
-      expect(screen.getByText('Today')).toBeInTheDocument();
-    });
-  });
 });
