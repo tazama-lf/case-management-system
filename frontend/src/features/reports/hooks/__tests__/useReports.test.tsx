@@ -18,7 +18,6 @@ vi.mock('../../services/reportsService', () => ({
     getReportsData: vi.fn(),
     getInvestigatorWorkloadData: vi.fn(),
     getTaskCompletionData: vi.fn(),
-    getAuditLogsData: vi.fn(),
     getCaseAgeingData: vi.fn(),
     getEvidenceFindingsData: vi.fn(),
   },
@@ -239,31 +238,6 @@ describe('useTaskCompletion', () => {
 
     expect(result.current.data).toEqual(mockData);
     expect(reportsService.getTaskCompletionData).toHaveBeenCalledWith('last30');
-  });
-});
-
-describe('useAuditLogs', () => {
-  it('fetches audit logs data', async () => {
-    const mockData = {
-      totalLogs: 1000,
-      caseActions: 500,
-      userSessions: 300,
-      systemWarnings: 10,
-      logs: [],
-    };
-
-    vi.mocked(reportsService.getAuditLogsData).mockResolvedValue(mockData);
-
-    const { result } = renderHook(() => useAuditLogs('last30'), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    expect(result.current.data).toEqual(mockData);
-    expect(reportsService.getAuditLogsData).toHaveBeenCalledWith('last30');
   });
 });
 

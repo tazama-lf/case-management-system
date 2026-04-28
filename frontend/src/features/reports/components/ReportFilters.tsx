@@ -4,19 +4,18 @@ import FiltersPanel from './FiltersPanel';
 
 interface ReportFiltersProps {
   reportType:
-    | 'CASE_STATUS'
-    | 'AUDIT_LOGS'
-    | 'CASE_AGEING'
-    | 'INVESTIGATOR_WORKLOAD'
-    | 'EVIDENCE_FINDINGS';
+  | 'CASE_STATUS'
+  | 'CASE_AGEING'
+  | 'INVESTIGATOR_WORKLOAD'
+  | 'EVIDENCE_FINDINGS';
   dateRange:
-    | 'today'
-    | 'yesterday'
-    | 'last7'
-    | 'last30'
-    | 'last90'
-    | 'thisMonth'
-    | 'lastYear';
+  | 'today'
+  | 'yesterday'
+  | 'last7'
+  | 'last30'
+  | 'last90'
+  | 'thisMonth'
+  | 'lastYear';
   onChangeReportType: (type: ReportFiltersProps['reportType']) => void;
   onChangeDateRange: (range: ReportFiltersProps['dateRange']) => void;
   onApplyFilters: (filters: {
@@ -43,7 +42,6 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
 
   const reportTypeLabels: Record<ReportFiltersProps['reportType'], string> = {
     CASE_STATUS: 'Case Status Report',
-    AUDIT_LOGS: 'Audit Logs Report',
     CASE_AGEING: 'Case Ageing Report',
     INVESTIGATOR_WORKLOAD: 'Investigator Workload Report',
     EVIDENCE_FINDINGS: 'Evidence Findings Report',

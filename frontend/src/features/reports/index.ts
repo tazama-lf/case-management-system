@@ -1,6 +1,5 @@
 export { default as Reports } from './pages/CaseStatusReport';
 export { default as InvestigatorWorkloadReport } from './pages/InvestigatorWorkloadReport';
-export { default as AuditLogsReport } from './pages/AuditLogsReport';
 export { default as CaseAgeingReport } from './pages/CaseAgeingReport';
 
 export { default as ReportStatsCards } from './components/ReportStatsCards';
@@ -16,7 +15,6 @@ export {
   useCaseStatusStats,
   useInvestigatorWorkload,
   useTaskCompletion,
-  useAuditLogs,
   useCaseAgeing,
 } from './hooks/useReports';
 
@@ -45,9 +43,6 @@ export type {
   TaskStatusDistribution,
   TaskDetail,
   TaskCompletionData,
-  AuditLogsStats,
-  AuditLog,
-  AuditLogsData,
   CaseAgeingStats,
   AgeingByStatus,
   ResolutionTrend,

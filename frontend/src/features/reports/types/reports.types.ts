@@ -175,11 +175,6 @@ export interface AuditLog {
   type: 'Info' | 'Success' | 'Warning' | 'Error';
 }
 
-export interface AuditLogsData {
-  stats: AuditLogsStats;
-  auditLogs: AuditLog[];
-}
-
 export interface CaseAgeingStats {
   avgCaseAge: number;
   avgResolutionTime: number;
