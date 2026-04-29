@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
-import { RequireAnyClaims, RequireAuthenticated } from '../../decorators/auth.decorator';
+import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { RequireAuthenticated } from '../../decorators/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
 import { User } from '../../decorators/user.decorator';
@@ -9,7 +9,6 @@ import type { AuthenticatedUser } from '../../utils/types/auth.types';
 import { AuthMeResponseDto } from 'src/modules/auth/dto/AuthMeResponse.dto';
 import { LoginRequestDto } from 'src/modules/auth/dto/LoginRequest.dto';
 import { LoginResponseDto } from 'src/modules/auth/dto/LoginResponse.dto';
-import { HealthCheckResponseDTO } from '../triage/dto/triage.dto';
 
 @ApiTags('Auth')
 @ApiBearerAuth('jwt')
@@ -19,21 +18,6 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly logger: LoggerService,
   ) {}
-
-  @Get('test')
-  @ApiOperation({
-    summary: 'Health check',
-    description: 'Test endpoint to verify triage service is running',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Service is healthy',
-    type: HealthCheckResponseDTO,
-  })
-  @RequireAnyClaims()
-  getTest(): { status: string } {
-    return { status: 'ok' };
-  }
 
   @Post('login')
   @HttpCode(200)

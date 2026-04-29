@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Param, Patch, Req, UseGuards, BadRequestException, HttpCode, HttpStatus } from '@nestjs/common';
 import { TriageService } from './triage.service';
 import { ManualAlertUpdateDTO } from '../alert/dto';
-import { AlertTriageResponseDTO } from './dto/triage.dto';
+import { HealthCheckResponseDTO, AlertTriageResponseDTO } from './dto/triage.dto';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
-import { RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
+import { RequireAnyClaims, RequireInvestigatorOrSupervisorRole } from 'src/decorators/auth.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
 import { Alert } from '@prisma/client-cms';
@@ -17,6 +17,21 @@ import { TransactionDetailDto } from './dto/transaction-detail.dto';
 @ApiBearerAuth('jwt')
 export class TriageController {
   constructor(private readonly triageService: TriageService) {}
+
+  @Get('test')
+  @ApiOperation({
+    summary: 'Health check',
+    description: 'Test endpoint to verify triage service is running',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Service is healthy',
+    type: HealthCheckResponseDTO,
+  })
+  @RequireAnyClaims()
+  getTest(): { status: string } {
+    return { status: 'ok' };
+  }
 
   @Patch(':alertId')
   @RequireInvestigatorOrSupervisorRole()
