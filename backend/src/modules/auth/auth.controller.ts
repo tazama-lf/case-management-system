@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
-import { RequireAnyClaims, RequireAuthenticated } from '../../decorators/auth.decorator';
+import { RequireAuthenticated } from '../../decorators/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
 import { User } from '../../decorators/user.decorator';
@@ -23,14 +23,13 @@ export class AuthController {
   @Get('test')
   @ApiOperation({
     summary: 'Health check',
-    description: 'Test endpoint to verify triage service is running',
+    description: 'Test endpoint to verify Health check',
   })
   @ApiResponse({
     status: 200,
     description: 'Service is healthy',
     type: HealthCheckResponseDTO,
   })
-  @RequireAnyClaims()
   getTest(): { status: string } {
     return { status: 'ok' };
   }

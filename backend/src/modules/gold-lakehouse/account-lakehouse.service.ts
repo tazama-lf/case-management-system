@@ -160,13 +160,6 @@ export class AccountLakehouseService extends GoldLakehouseService {
       this.upsertNode(nodesMap, fromId, nodeType, r);
       this.upsertNode(nodesMap, toId, nodeType, r);
 
-      // Propagate alert flags to root entity node
-      const root = nodesMap.get(entityId);
-      if (root) {
-        root.flags.alerted ||= r.is_alerted_edge === 1;
-        root.flags.investigated ||= r.is_investigated_edge === 1;
-      }
-
       edges.push({
         source: fromId,
         target: toId,
@@ -266,6 +259,15 @@ export class AccountLakehouseService extends GoldLakehouseService {
           }
         });
         edges.push(...result.edges);
+        const root = nodesMap.get(entityId);
+        if (root) {
+          if (result.edges.some((edge) => edge.flags.alerted)) {
+            root.flags.alerted = true;
+          }
+          if (result.edges.some((edge) => edge.flags.investigated)) {
+            root.flags.investigated = true;
+          }
+        }
       }
 
       // Calculate aggregate metrics
@@ -361,8 +363,12 @@ export class AccountLakehouseService extends GoldLakehouseService {
       processedNodes.forEach((value, key) => {
         if (nodesMap.has(key)) {
           const existingNode = nodesMap.get(key)!;
-          existingNode.flags.alerted ??= value.flags.alerted;
-          existingNode.flags.investigated ??= value.flags.investigated;
+          if (value.flags.alerted) {
+            existingNode.flags.alerted = true;
+          }
+          if (value.flags.investigated) {
+            existingNode.flags.investigated = true;
+          }
         } else {
           nodesMap.set(key, value);
         }
