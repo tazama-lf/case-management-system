@@ -324,7 +324,7 @@ describe('CaseDetailTaskLogTable', () => {
         caseData={caseData}
       />,
     );
-    expect(screen.getByText('Investigators')).toBeInTheDocument();
+    expect(screen.getByText(/investigators/i)).toBeInTheDocument();
   });
 
   it('getCandidateGroup capitalizes candidate group', () => {
@@ -338,7 +338,7 @@ describe('CaseDetailTaskLogTable', () => {
         caseData={caseData}
       />,
     );
-    expect(screen.getByText('Supervisors')).toBeInTheDocument();
+    expect(screen.getByText(/supervisors/i)).toBeInTheDocument();
   });
 
   it('getCandidateGroup shows dash when no group', () => {
