@@ -119,6 +119,10 @@ describe('Reports', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('renders loading state', () => {
     vi.mocked(useReports).mockReturnValue({
       data: null,
