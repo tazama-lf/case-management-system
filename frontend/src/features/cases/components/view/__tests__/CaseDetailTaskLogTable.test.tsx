@@ -313,48 +313,6 @@ describe('CaseDetailTaskLogTable', () => {
     expect(unassignedElements.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('getCandidateGroup returns Investigators for investigate tasks', () => {
-    const tasks = [
-      { ...baseTasks[0], candidateGroup: 'random', name: 'Investigate Alert' },
-    ];
-    render(
-      <CaseDetailTaskLogTable
-        tasks={tasks}
-        onAssign={vi.fn()}
-        caseData={caseData}
-      />,
-    );
-    expect(screen.getByText('Investigators')).toBeInTheDocument();
-  });
-
-  it('getCandidateGroup capitalizes candidate group', () => {
-    const tasks = [
-      { ...baseTasks[0], candidateGroup: 'supervisors', name: 'Approve Case' },
-    ];
-    render(
-      <CaseDetailTaskLogTable
-        tasks={tasks}
-        onAssign={vi.fn()}
-        caseData={caseData}
-      />,
-    );
-    expect(screen.getByText('Supervisors')).toBeInTheDocument();
-  });
-
-  it('getCandidateGroup shows dash when no group', () => {
-    const tasks = [
-      { ...baseTasks[0], candidateGroup: undefined, name: 'Some Task' },
-    ];
-    render(
-      <CaseDetailTaskLogTable
-        tasks={tasks}
-        onAssign={vi.fn()}
-        caseData={caseData}
-      />,
-    );
-    expect(screen.getByText('-')).toBeInTheDocument();
-  });
-
   it('completed tasks have no action buttons except view for SAR tasks', () => {
     const tasks = [
       { ...baseTasks[0], status: 'COMPLETED', name: 'SAR/STR Filing' },
@@ -581,7 +539,6 @@ describe('CaseDetailTaskLogTable', () => {
       'Task ID',
       'Task',
       'Case',
-      'Queue',
       'Status',
       'Created',
       'Assigned To',

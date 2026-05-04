@@ -330,60 +330,6 @@ export class ReportsController {
     return await this.reportsService.getInvestigatorWorkload(dateRange);
   }
 
-  @Get('audit-logs')
-  @RequireInvestigatorOrSupervisorRole()
-  @ApiOperation({
-    summary: 'Get audit logs report',
-    description: 'Retrieve audit trail data including user actions, system events, and compliance information',
-  })
-  @ApiQuery({
-    name: 'dateRange',
-    required: false,
-    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
-    description: 'Time period for the report data',
-    example: 'last30',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Audit logs report data retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        stats: {
-          type: 'object',
-          properties: {
-            totalLogs: { type: 'number', example: 500 },
-            caseActions: { type: 'number', example: 150 },
-            userSessions: { type: 'number', example: 75 },
-            systemWarnings: { type: 'number', example: 12 },
-          },
-        },
-        auditLogs: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              audit_log_id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
-              user_id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174001' },
-              operation: { type: 'string', example: 'UPDATE' },
-              entity_name: { type: 'string', example: 'Case' },
-              action_performed: { type: 'string', example: 'Case status updated' },
-              outcome: { type: 'string', example: 'SUCCESS' },
-              performed_at: { type: 'string', example: '10/22/2025, 02:30:45 PM' },
-              type: { type: 'string', example: 'Success' },
-            },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-  @ApiResponse({ status: 500, description: 'Internal server error' })
-  async getAuditLogs(@Query('dateRange') dateRange?: string): Promise<unknown> {
-    return await this.reportsService.getEventLogs(dateRange);
-  }
-
   @Get('event-logs')
   @RequireInvestigatorOrSupervisorRole()
   @ApiOperation({

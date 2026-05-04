@@ -2,7 +2,12 @@ import { Injectable, HttpException, HttpStatus, InternalServerErrorException } f
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from './gold-lakehouse.service';
-import { AccountNodeFullDataResponse, CounterpartyNodeFullDataResponse } from './types/gold-lakehouse-responses.types';
+import {
+  AccountNodeFullDataResponse,
+  CounterpartyNodeFullDataResponse,
+  NetworkNode,
+  NetworkEdge,
+} from './types/gold-lakehouse-responses.types';
 import { AlertRepository } from '../repository/alert.repository';
 import { extractReferenceId } from '../repository/utils/extractReferenceId';
 import { JsonValue } from '../repository/utils/types/JsonValue';
@@ -117,53 +122,43 @@ export class AccountLakehouseService extends GoldLakehouseService {
     };
   }
 
-  //  Process network rows and build nodes/edges
+  /**
+   * Helper function to add or update a node in the nodes map
+   */
+  private upsertNode(nodesMap: Map<string, NetworkNode>, id: string, nodeType: string, row: any): void {
+    if (nodesMap.has(id)) {
+      const node = nodesMap.get(id)!;
+      node.flags.alerted ||= row.is_alerted_edge === 1;
+      node.flags.investigated ||= row.is_investigated_edge === 1;
+    } else {
+      nodesMap.set(id, {
+        id,
+        type: nodeType,
+        label: id,
+        flags: {
+          alerted: row.is_alerted_edge === 1,
+          investigated: row.is_investigated_edge === 1,
+        },
+      });
+    }
+  }
 
-  private processNetworkRows(networkRows: any[], nodesMap: Map<string, any>, edges: any[], entityId: string): void {
+  private processNetworkRows(
+    networkRows: any[],
+    entityId: string,
+    nodeType = 'ACCOUNT',
+    fromField = 'from_account_id',
+    toField = 'to_account_id',
+  ): { nodesMap: Map<string, NetworkNode>; edges: NetworkEdge[] } {
+    const nodesMap = new Map<string, NetworkNode>();
+    const edges: NetworkEdge[] = [];
+
     for (const r of networkRows) {
-      const fromId = r.from_account_id;
-      const toId = r.to_account_id;
+      const fromId = r[fromField];
+      const toId = r[toField];
 
-      // Add or update fromId node
-      if (nodesMap.has(fromId)) {
-        const node = nodesMap.get(fromId);
-        node.flags.alerted ??= r.is_alerted_edge === 1;
-        node.flags.investigated ??= r.is_investigated_edge === 1;
-      } else {
-        nodesMap.set(fromId, {
-          id: fromId,
-          type: 'ACCOUNT',
-          label: fromId,
-          flags: {
-            alerted: r.is_alerted_edge === 1,
-            investigated: r.is_investigated_edge === 1,
-          },
-        });
-      }
-
-      // Add or update toId node
-      if (nodesMap.has(toId)) {
-        const node = nodesMap.get(toId);
-        node.flags.alerted ??= r.is_alerted_edge === 1;
-        node.flags.investigated ??= r.is_investigated_edge === 1;
-      } else {
-        nodesMap.set(toId, {
-          id: toId,
-          type: 'ACCOUNT',
-          label: toId,
-          flags: {
-            alerted: r.is_alerted_edge === 1,
-            investigated: r.is_investigated_edge === 1,
-          },
-        });
-      }
-
-      // Propagate alert flags to root entity node
-      const root = nodesMap.get(entityId);
-      if (root) {
-        root.flags.alerted ??= r.is_alerted_edge === 1;
-        root.flags.investigated ??= r.is_investigated_edge === 1;
-      }
+      this.upsertNode(nodesMap, fromId, nodeType, r);
+      this.upsertNode(nodesMap, toId, nodeType, r);
 
       edges.push({
         source: fromId,
@@ -177,6 +172,8 @@ export class AccountLakehouseService extends GoldLakehouseService {
         },
       });
     }
+
+    return { nodesMap, edges };
   }
 
   async getAccountNodeFullData(
@@ -210,8 +207,8 @@ export class AccountLakehouseService extends GoldLakehouseService {
       }
 
       //Fetch transactions for each account (parallel queries)
-      const nodesMap = new Map<string, any>();
-      const edges: any[] = [];
+      const nodesMap = new Map<string, NetworkNode>();
+      const edges: NetworkEdge[] = [];
 
       // Add entity as root node
       nodesMap.set(entityId, {
@@ -250,7 +247,27 @@ export class AccountLakehouseService extends GoldLakehouseService {
       // Process all network responses
       for (const networkResp of networkResponses) {
         const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
-        this.processNetworkRows(networkRows, nodesMap, edges, entityId);
+        const result = this.processNetworkRows(networkRows, entityId, 'ACCOUNT', 'from_account_id', 'to_account_id');
+        // Merge results from each account query
+        result.nodesMap.forEach((value, key) => {
+          if (nodesMap.has(key)) {
+            const existingNode = nodesMap.get(key)!;
+            existingNode.flags.alerted ||= value.flags.alerted;
+            existingNode.flags.investigated ||= value.flags.investigated;
+          } else {
+            nodesMap.set(key, value);
+          }
+        });
+        edges.push(...result.edges);
+        const root = nodesMap.get(entityId);
+        if (root) {
+          if (result.edges.some((edge) => edge.flags.alerted)) {
+            root.flags.alerted = true;
+          }
+          if (result.edges.some((edge) => edge.flags.investigated)) {
+            root.flags.investigated = true;
+          }
+        }
       }
 
       // Calculate aggregate metrics
@@ -323,60 +340,39 @@ export class AccountLakehouseService extends GoldLakehouseService {
       const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, counterpartyId]);
       const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
 
-      const nodesMap = new Map<string, any>();
-      const edges: any[] = [];
-
-      nodesMap.set(counterpartyId, {
+      // Add root counterparty node first
+      const initialNodesMap = new Map<string, any>();
+      initialNodesMap.set(counterpartyId, {
         id: counterpartyId,
         type: 'COUNTERPARTY',
         label: counterpartyId,
         flags: { alerted: false, investigated: false },
       });
 
-      for (const r of networkRows) {
-        const fromId = r.from_counterparty_id;
-        const toId = r.to_counterparty_id;
+      // Process network rows using refactored function
+      const { nodesMap: processedNodes, edges } = this.processNetworkRows(
+        networkRows,
+        counterpartyId,
+        'COUNTERPARTY',
+        'from_counterparty_id',
+        'to_counterparty_id',
+      );
 
-        if (!nodesMap.has(fromId)) {
-          nodesMap.set(fromId, {
-            id: fromId,
-            type: 'COUNTERPARTY',
-            label: fromId,
-            flags: {
-              alerted: r.is_alerted_edge === 1,
-              investigated: r.is_investigated_edge === 1,
-            },
-          });
+      // Merge initial root node with processed nodes
+      const nodesMap = new Map(initialNodesMap);
+      processedNodes.forEach((value, key) => {
+        if (nodesMap.has(key)) {
+          const existingNode = nodesMap.get(key)!;
+          if (value.flags.alerted) {
+            existingNode.flags.alerted = true;
+          }
+          if (value.flags.investigated) {
+            existingNode.flags.investigated = true;
+          }
+        } else {
+          nodesMap.set(key, value);
         }
-
-        if (!nodesMap.has(toId)) {
-          nodesMap.set(toId, {
-            id: toId,
-            type: 'COUNTERPARTY',
-            label: toId,
-            flags: {
-              alerted: r.is_alerted_edge === 1,
-              investigated: r.is_investigated_edge === 1,
-            },
-          });
-        }
-
-        const root = nodesMap.get(counterpartyId);
-        root.flags.alerted ??= r.is_alerted_edge === 1;
-        root.flags.investigated ??= r.is_investigated_edge === 1;
-
-        edges.push({
-          source: fromId,
-          target: toId,
-          txCount: Number(r.tx_count ?? 0),
-          totalAmount: Number(r.total_amount ?? 0),
-          currency: r.currency_hint,
-          flags: {
-            alerted: r.is_alerted_edge === 1,
-            investigated: r.is_investigated_edge === 1,
-          },
-        });
-      }
+      });
 
       const metricsSql = `
       SELECT
