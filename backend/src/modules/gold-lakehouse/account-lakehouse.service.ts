@@ -225,48 +225,36 @@ export class AccountLakehouseService extends GoldLakehouseService {
         flags: { alerted: false, investigated: false },
       });
 
-      // Fetch all network data in parallel
-      const networkQueries = cleanedAccountIds.map(async (accountId) => {
-        const networkSql = `
-          SELECT
-            from_account_id,
-            to_account_id,
-            tx_count,
-            total_amount,
-            currency_hint,
-            first_event_ts,
-            last_event_ts,
-            is_alerted_edge,
-            is_investigated_edge
-          FROM tx_network_accounts_edges
-          WHERE tenant_id = $1
-            AND bucket_granularity = $2
-            AND (
-              from_account_id = $3
-              OR to_account_id = $3
-            )
-        `;
-        return await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, accountId]);
+      // Fetch network data using a single query for all accounts
+      const networkSql = `
+        SELECT
+          from_account_id,
+          to_account_id,
+          tx_count,
+          total_amount,
+          currency_hint,
+          first_event_ts,
+          last_event_ts,
+          is_alerted_edge,
+          is_investigated_edge
+        FROM tx_network_accounts_edges
+        WHERE tenant_id = $1
+          AND bucket_granularity = $2
+          AND (
+            from_account_id = ANY($3::text[])
+            OR to_account_id = ANY($3::text[])
+          )
+      `;
+
+      const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, cleanedAccountIds]);
+      const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
+      const result = this.processNetworkRows(networkRows, entityId, 'ACCOUNT', 'from_account_id', 'to_account_id');
+
+      // Add processed nodes and edges
+      result.nodesMap.forEach((value, key) => {
+        nodesMap.set(key, value);
       });
-
-      const networkResponses = await Promise.all(networkQueries);
-
-      // Process all network responses
-      for (const networkResp of networkResponses) {
-        const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
-        const result = this.processNetworkRows(networkRows, entityId, 'ACCOUNT', 'from_account_id', 'to_account_id');
-        // Merge results from each account query
-        result.nodesMap.forEach((value, key) => {
-          if (nodesMap.has(key)) {
-            const existingNode = nodesMap.get(key)!;
-            existingNode.flags.alerted ||= value.flags.alerted;
-            existingNode.flags.investigated ||= value.flags.investigated;
-          } else {
-            nodesMap.set(key, value);
-          }
-        });
-        edges.push(...result.edges);
-      }
+      edges.push(...result.edges);
 
       // Calculate aggregate metrics
       const totalTransactions = edges.reduce((sum, edge) => sum + edge.txCount, 0);
