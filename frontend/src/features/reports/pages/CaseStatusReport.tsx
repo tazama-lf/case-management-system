@@ -34,7 +34,6 @@ const EvidenceFindingsReport = lazy(
 
 type ReportType =
   | 'CASE_STATUS'
-  | 'AUDIT_LOGS'
   | 'CASE_AGEING'
   | 'INVESTIGATOR_WORKLOAD'
   | 'EVIDENCE_FINDINGS';
@@ -111,8 +110,6 @@ const Reports: React.FC = () => {
     switch (reportType) {
       case 'CASE_STATUS':
         return statusDetails;
-      case 'AUDIT_LOGS':
-        return [];
       case 'CASE_AGEING':
         return [];
       case 'INVESTIGATOR_WORKLOAD':
@@ -274,8 +271,6 @@ const Reports: React.FC = () => {
     switch (reportType) {
       case 'CASE_STATUS':
         return 'Case Status Report';
-      case 'AUDIT_LOGS':
-        return 'Audit Logs';
       case 'CASE_AGEING':
         return 'Case Ageing Report';
       case 'INVESTIGATOR_WORKLOAD':
@@ -291,8 +286,6 @@ const Reports: React.FC = () => {
     switch (reportType) {
       case 'CASE_STATUS':
         return 'Overview of cases by status, type, and outcome';
-      case 'AUDIT_LOGS':
-        return 'Detailed log of all system activities for compliance and audit purposes';
       case 'CASE_AGEING':
         return 'Analysis of case duration from creation to closure';
       case 'INVESTIGATOR_WORKLOAD':
