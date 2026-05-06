@@ -53,8 +53,19 @@ export default [
     rules: {
       ...eslintStandard.rules,
       ...eslintPluginEslintComments.configs.recommended.rules,
-      'max-lines': ['error', { max: 500, skipBlankLines: true, skipComments: true }],
-      'max-len': ['error', { code: 500, ignoreUrls: true, ignoreComments: true, ignoreStrings: true }],
+      'max-lines': [
+        'error',
+        { max: 500, skipBlankLines: true, skipComments: true },
+      ],
+      'max-len': [
+        'error',
+        {
+          code: 500,
+          ignoreUrls: true,
+          ignoreComments: true,
+          ignoreStrings: true,
+        },
+      ],
       'react/react-in-jsx-scope': 'off',
       'react/jsx-uses-react': 'off',
       'react/prop-types': 'off',

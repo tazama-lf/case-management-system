@@ -299,7 +299,7 @@ The case may have been deleted or moved.`;
       ) {
         errorMessage =
           'Access Denied.\n\n' +
-          'You don\'t have permission to abandon this case.\n' +
+          "You don't have permission to abandon this case.\n" +
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage =
@@ -358,7 +358,7 @@ The case has been suspended and all associated tasks have been blocked. Supervis
       ) {
         errorMessage =
           'Access Denied.\n\n' +
-          'You don\'t have permission to suspend this case.\n' +
+          "You don't have permission to suspend this case.\n" +
           'Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage = `Case Not Found.

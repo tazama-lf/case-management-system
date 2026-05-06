@@ -224,7 +224,9 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                 className="rounded-lg border border-gray-200 bg-gray-50"
               >
                 <button
-                  onClick={() => { toggleTypology(typology.typologyId.toString()); }}
+                  onClick={() => {
+                    toggleTypology(typology.typologyId.toString());
+                  }}
                   className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1">

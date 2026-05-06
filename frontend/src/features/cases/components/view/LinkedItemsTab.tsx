@@ -60,18 +60,18 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
             }
           }
         } else if (currentCase?.alert.alert_id) {
-            const alert = await triageService.getAlertById(
-              currentCase.alert.alert_id,
-            );
+          const alert = await triageService.getAlertById(
+            currentCase.alert.alert_id,
+          );
 
-            const mappedAlerts: LinkedAlert[] = [alert].map((alert) => ({
-              id: alert.alert_id,
-              label: alert.message || 'Alert',
-              type: alert.alert_type || 'N/A',
-            }));
+          const mappedAlerts: LinkedAlert[] = [alert].map((alert) => ({
+            id: alert.alert_id,
+            label: alert.message || 'Alert',
+            type: alert.alert_type || 'N/A',
+          }));
 
-            setLinkedAlerts(mappedAlerts);
-          }
+          setLinkedAlerts(mappedAlerts);
+        }
 
         setLoading(false);
       } catch (error) {
