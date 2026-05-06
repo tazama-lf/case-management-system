@@ -9,7 +9,6 @@ import type { AuthenticatedUser } from '../../utils/types/auth.types';
 import { AuthMeResponseDto } from 'src/modules/auth/dto/AuthMeResponse.dto';
 import { LoginRequestDto } from 'src/modules/auth/dto/LoginRequest.dto';
 import { LoginResponseDto } from 'src/modules/auth/dto/LoginResponse.dto';
-import { HealthCheckResponseDTO } from '../triage/dto/triage.dto';
 
 @ApiTags('Auth')
 @ApiBearerAuth('jwt')
@@ -19,20 +18,6 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly logger: LoggerService,
   ) {}
-
-  @Get('test')
-  @ApiOperation({
-    summary: 'Health check',
-    description: 'Test endpoint to verify Health check',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Service is healthy',
-    type: HealthCheckResponseDTO,
-  })
-  getTest(): { status: string } {
-    return { status: 'ok' };
-  }
 
   @Post('login')
   @HttpCode(200)
