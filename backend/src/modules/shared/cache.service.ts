@@ -124,13 +124,21 @@ export class CacheService {
 
   async getUsersByRole(token: string, role: string, tenantName: string): Promise<UserGroupDetails[]> {
     this.logger.log(`Fetching users with role: ${role}`);
-    const users = await axios.get<UserGroupDetails[]>(`${this.AuthBaseUrl}/user/${role}?groupName=${tenantName}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-    return users.data;
+    try {
+      const users = await axios.get<UserGroupDetails[]>(`${this.AuthBaseUrl}/user/${role}?groupName=${tenantName}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      return users.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        this.logger.error(`Auth service error fetching users by role: ${error.response?.status} ${JSON.stringify(error.response?.data)}`);
+        throw new Error(`Failed to fetch users with role ${role}: upstream returned ${error.response?.status}`);
+      }
+      throw error;
+    }
   }
 
   private getCacheKey(userId: string): string {
