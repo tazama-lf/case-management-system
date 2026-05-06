@@ -206,7 +206,16 @@ describe('Login', () => {
     renderLogin();
 
     expect(
-      screen.getByText(/© 2026 Tazama. Powered by Paysys Labs./i),
+      screen.getByText(/Copyright LF Charities, Inc. and contributors to the Tazama project/i),
     ).toBeInTheDocument();
+    
+    expect(screen.getByText(/Licensed under/i)).toBeInTheDocument();
+    
+    const licenseLink = screen.getByRole('link', { name: /Apache-2.0/i });
+    expect(licenseLink).toBeInTheDocument();
+    expect(licenseLink).toHaveAttribute(
+      'href',
+      'https://github.com/tazama-lf/case-management-system/blob/main/LICENSE',
+    );
   });
 });
