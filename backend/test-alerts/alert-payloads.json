@@ -22,7 +22,7 @@
             "TxSts": "ACCC",
             "ChrgsInf": [
               {
-                "Amt": { "Amt": 500.00, "Ccy": "USD" },
+                "Amt": { "Amt": 500.0, "Ccy": "USD" },
                 "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp001" } } }
               }
             ],
@@ -107,7 +107,7 @@
             "TxSts": "ACCC",
             "ChrgsInf": [
               {
-                "Amt": { "Amt": 2500.00, "Ccy": "USD" },
+                "Amt": { "Amt": 2500.0, "Ccy": "USD" },
                 "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp002" } } }
               }
             ],
@@ -192,7 +192,7 @@
             "TxSts": "ACCC",
             "ChrgsInf": [
               {
-                "Amt": { "Amt": 15000.00, "Ccy": "USD" },
+                "Amt": { "Amt": 15000.0, "Ccy": "USD" },
                 "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp003" } } }
               }
             ],
@@ -277,7 +277,7 @@
             "TxSts": "ACCC",
             "ChrgsInf": [
               {
-                "Amt": { "Amt": 1800.00, "Ccy": "USD" },
+                "Amt": { "Amt": 1800.0, "Ccy": "USD" },
                 "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp004" } } }
               }
             ],
@@ -362,7 +362,7 @@
             "TxSts": "ACCC",
             "ChrgsInf": [
               {
-                "Amt": { "Amt": 4500.00, "Ccy": "USD" },
+                "Amt": { "Amt": 4500.0, "Ccy": "USD" },
                 "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp005" } } }
               }
             ],
@@ -447,7 +447,7 @@
             "TxSts": "ACCC",
             "ChrgsInf": [
               {
-                "Amt": { "Amt": 1200.00, "Ccy": "USD" },
+                "Amt": { "Amt": 1200.0, "Ccy": "USD" },
                 "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp001" } } }
               }
             ],
@@ -532,7 +532,7 @@
             "TxSts": "ACCC",
             "ChrgsInf": [
               {
-                "Amt": { "Amt": 800.00, "Ccy": "USD" },
+                "Amt": { "Amt": 800.0, "Ccy": "USD" },
                 "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp002" } } }
               }
             ],
@@ -617,7 +617,7 @@
             "TxSts": "ACCC",
             "ChrgsInf": [
               {
-                "Amt": { "Amt": 3200.00, "Ccy": "USD" },
+                "Amt": { "Amt": 3200.0, "Ccy": "USD" },
                 "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp003" } } }
               }
             ],
@@ -702,7 +702,7 @@
             "TxSts": "ACCC",
             "ChrgsInf": [
               {
-                "Amt": { "Amt": 950.00, "Ccy": "USD" },
+                "Amt": { "Amt": 950.0, "Ccy": "USD" },
                 "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp004" } } }
               }
             ],
@@ -787,7 +787,7 @@
             "TxSts": "ACCC",
             "ChrgsInf": [
               {
-                "Amt": { "Amt": 25000.00, "Ccy": "USD" },
+                "Amt": { "Amt": 25000.0, "Ccy": "USD" },
                 "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp005" } } }
               }
             ],

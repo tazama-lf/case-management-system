@@ -431,7 +431,9 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       const outboundData = (outboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
       const inboundData = (inboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
       const centerAccountFlags = alertFlagsResponse?.data?.[0] ? this.stripHudiMetadata(alertFlagsResponse.data[0]) : null;
-      const centerAccountHasAlerts = centerAccountFlags ? (centerAccountFlags.is_alerted === 1 || centerAccountFlags.is_investigated === 1) : false;
+      const centerAccountHasAlerts = centerAccountFlags
+        ? centerAccountFlags.is_alerted === 1 || centerAccountFlags.is_investigated === 1
+        : false;
 
       const allConnections = [...outboundData, ...inboundData];
 
