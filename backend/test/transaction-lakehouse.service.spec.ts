@@ -178,7 +178,7 @@ describe('TransactionLakehouseService', () => {
           ]),
         )
         .mockReturnValueOnce(okHttp([]))
-        .mockReturnValueOnce(okHttp([]));
+        .mockReturnValueOnce(okHttp([{ is_alerted: 0, is_investigated: 0 }]));
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
       expect(result.centerAccount.accountId).toBe('acc1');
       expect(result.connectedAccounts).toHaveLength(1);
@@ -200,7 +200,7 @@ describe('TransactionLakehouseService', () => {
           ]),
         )
         .mockReturnValueOnce(okHttp([]))
-        .mockReturnValueOnce(okHttp([]));
+        .mockReturnValueOnce(okHttp([{ is_alerted: 0, is_investigated: 0 }]));
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day');
       expect(result.connectedAccounts[0].transactionStats.velocity).toBe('HIGH');
     });
@@ -221,9 +221,32 @@ describe('TransactionLakehouseService', () => {
           ]),
         )
         .mockReturnValueOnce(okHttp([]))
-        .mockReturnValueOnce(okHttp([]));
+        .mockReturnValueOnce(okHttp([{ is_alerted: 0, is_investigated: 0 }]));
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day');
       expect(result.connectedAccounts[0].transactionStats.velocity).toBe('MEDIUM');
+    });
+
+    it('marks connected accounts with alerts when center account has alerts in transaction history', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ account_id: 'acc1', account_name: 'Center' }]))
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              connected_account_id: 'acc2',
+              connected_account_name: 'Other',
+              flow_direction: 'OUTBOUND',
+              total_transactions: 5,
+              total_value: 2500,
+              avg_value: 500,
+              duration_days: 30,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([{ is_alerted: 1, is_investigated: 0 }]));
+      const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
+      expect(result.connectedAccounts[0].hasAlert).toBe(true);
+      expect(result.centerAccount.networkSummary.accountsWithAlerts).toBe(1);
     });
 
     it('throws when account not found', async () => {
