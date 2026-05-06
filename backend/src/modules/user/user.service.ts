@@ -27,7 +27,7 @@ export class UserService {
     } catch (error) {
       if (axios.isAxiosError(error)) {
         this.logger.error(`Auth service error fetching users by role: ${error.response?.status} ${JSON.stringify(error.response?.data)}`);
-        throw new Error(`Failed to fetch users with role ${role}: upstream returned ${error.response?.status}`, { cause: error });
+        throw new Error(`Failed to fetch users with role ${role}: upstream returned ${error.response?.status}`);
       }
       throw error;
     }
