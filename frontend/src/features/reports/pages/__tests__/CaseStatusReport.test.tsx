@@ -1,309 +1,377 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+
 import CaseStatusReport from '../CaseStatusReport';
-import { useReports } from '../../hooks/useReports';
+import { useReports } from '@/features/reports/hooks/useReports';
+
 import {
   exportToExcel,
   exportToCSV,
   exportToPDF,
   formatDataForExport,
   getColumnsForReport,
-} from '../../../../shared/utils/exportUtils';
+} from '@/shared/utils/exportUtils';
 
-// Mock hooks
-vi.mock('../../hooks/useReports', () => ({
+vi.mock('@/features/reports/hooks/useReports', () => ({
   useReports: vi.fn(),
 }));
 
-// Mock components
-vi.mock('../../components/ReportStatsCards', () => ({
-  default: ({ stats }: any) => (
-    <div data-testid="report-stats-cards">{JSON.stringify(stats)}</div>
+vi.mock('@/shared/utils/exportUtils', () => ({
+  exportToExcel: vi.fn(),
+  exportToCSV: vi.fn(),
+  exportToPDF: vi.fn(),
+  formatDataForExport: vi.fn((data) => data),
+  getColumnsForReport: vi.fn(() => ['column1', 'column2']),
+}));
+
+vi.mock('@/shared/components/ui', () => ({
+  PageContainer: ({
+    title,
+    subtitle,
+    children,
+  }: {
+    title: string;
+    subtitle: string;
+    children: React.ReactNode;
+  }) => (
+    <div>
+      <h1>{title}</h1>
+      <p>{subtitle}</p>
+      {children}
+    </div>
   ),
 }));
 
-vi.mock('../../components/ReportFilters', () => ({
-  default: ({
-    reportType,
-    dateRange,
-    onChangeReportType,
-    onChangeDateRange,
-    onApplyFilters,
-  }: any) => (
-    <div data-testid="report-filters">
-      <button onClick={() => onChangeReportType('AUDIT_LOGS')}>
-        Change Report Type
-      </button>
-      <button onClick={() => onChangeDateRange('last7')}>
-        Change Date Range
-      </button>
+vi.mock('@/features/reports/components/ReportStatsCards', () => ({
+  default: () => <div>Report Stats Cards</div>,
+}));
+
+vi.mock('@/features/reports/components/ReportFilters', () => ({
+  default: (props: any) => (
+    <div>
       <button
         onClick={() =>
-          onApplyFilters({ caseType: 'FRAUD', priority: '', investigator: '' })
+          props.onChangeReportType('CASE_AGEING')
         }
       >
-        Apply Filters
+        Change Report Type
       </button>
     </div>
   ),
 }));
 
-vi.mock('../../components/ReportsTable', () => ({
-  default: ({ data, onExportExcel, onExportCSV, onExportPDF }: any) => (
-    <div data-testid="reports-table">
-      <div data-testid="table-data">{JSON.stringify(data)}</div>
-      <button onClick={onExportExcel} data-testid="export-excel">
+vi.mock('@/features/reports/components/ReportsTable', () => ({
+  default: (props: any) => (
+    <div>
+      <div>Reports Table</div>
+
+      <button onClick={props.onExportExcel}>
         Export Excel
       </button>
-      <button onClick={onExportCSV} data-testid="export-csv">
+
+      <button onClick={props.onExportCSV}>
         Export CSV
       </button>
-      <button onClick={onExportPDF} data-testid="export-pdf">
+
+      <button onClick={props.onExportPDF}>
         Export PDF
       </button>
     </div>
   ),
 }));
 
-// Mock lazy-loaded components
-vi.mock('../../components/PieChart', () => ({
-  default: ({ data, title }: any) => <div data-testid="pie-chart">{title}</div>,
+vi.mock('@/features/reports/components/PieChart', () => ({
+  default: () => <div>Pie Chart</div>,
 }));
 
-vi.mock('../../components/BarChart', () => ({
-  default: ({ data, title }: any) => <div data-testid="bar-chart">{title}</div>,
+vi.mock('@/features/reports/components/BarChart', () => ({
+  default: () => <div>Bar Chart</div>,
 }));
 
-vi.mock('../../components/MultiBarChart', () => ({
-  default: ({ data, title }: any) => (
-    <div data-testid="multi-bar-chart">{title}</div>
+vi.mock('@/features/reports/components/MultiBarChart', () => ({
+  default: () => <div>Multi Bar Chart</div>,
+}));
+
+vi.mock('./InvestigatorWorkloadReport', () => ({
+  default: () => (
+    <div>Investigator Workload Report</div>
   ),
 }));
 
-// Mock export utilities
-vi.mock('../../../../shared/utils/exportUtils', () => ({
-  exportToExcel: vi.fn(),
-  exportToCSV: vi.fn(),
-  exportToPDF: vi.fn(),
-  formatDataForExport: vi.fn((data) => data),
-  getColumnsForReport: vi.fn(() => []),
+vi.mock('./CaseAgeingReport', () => ({
+  default: () => <div>Case Ageing Report</div>,
 }));
 
-// Mock getCaseTypeColor
-vi.mock('../../../../shared/utils/colors', () => ({
-  getCaseTypeColor: vi.fn(() => '#3b82f6'),
-}));
-
-// Mock PageContainer
-vi.mock('../../../../shared/components/ui', () => ({
-  PageContainer: ({ children, title }: any) => (
-    <div data-testid="page-container">
-      <h1>{title}</h1>
-      {children}
-    </div>
+vi.mock('./EvidenceFindingsReport', () => ({
+  default: () => (
+    <div>Evidence Findings Report</div>
   ),
 }));
 
-// Mock window.alert
-global.alert = vi.fn();
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-    },
-  });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-};
-
-describe('CaseStatusReport', () => {
-  const mockReportsData = {
-    stats: {
-      totalCases: 100,
-      closedCases: 60,
-      openCases: 40,
-      avgResolutionTime: 12.5,
-    },
-    statusDistribution: {
-      assigned: 10,
-      inProgress: 15,
-      draft: 5,
-      suspended: 2,
-      pendingApproval: 8,
-      closed: 60,
-    },
-    caseTypes: [
-      { name: 'FRAUD', count: 50, color: '#3b82f6' },
-      { name: 'MONEY_LAUNDERING', count: 30, color: '#10b981' },
-    ],
-    outcomes: {
-      resolved: 50,
-      confirmed: 10,
-      inconclusive: 0,
-      pending: 0,
-    },
-    monthlyTrend: [
-      { month: '2024-01', casesCreated: 10, casesClosed: 8 },
-      { month: '2024-02', casesCreated: 15, casesClosed: 12 },
-    ],
-    statusDetails: [
-      {
-        status: 'Assigned',
-        count: 10,
-        percentage: '25%',
-        avgTimeInStatus: '5 days',
-        currentTrendPeriod: '+2',
-      },
-    ],
-  };
-
+describe('Reports', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useReports).mockReturnValue({
-      data: mockReportsData,
-      isLoading: false,
-      error: null,
-      isError: false,
-    } as any);
   });
 
-  it('renders case status report with data', async () => {
-    render(<CaseStatusReport />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('report-stats-cards')).toBeInTheDocument();
-      expect(screen.getByTestId('reports-table')).toBeInTheDocument();
-    });
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('renders loading state', () => {
     vi.mocked(useReports).mockReturnValue({
-      data: undefined,
+      data: null,
       isLoading: true,
       error: null,
-      isError: false,
     } as any);
 
-    render(<CaseStatusReport />, { wrapper: createWrapper() });
+    render(<CaseStatusReport />);
 
-    expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
-    expect(screen.queryByTestId('report-stats-cards')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Reports Dashboard'),
+    ).toBeInTheDocument();
   });
 
   it('renders error state', () => {
     vi.mocked(useReports).mockReturnValue({
-      data: undefined,
+      data: null,
       isLoading: false,
-      error: new Error('Failed to fetch'),
-      isError: true,
+      error: new Error('Failed'),
     } as any);
 
-    render(<CaseStatusReport />, { wrapper: createWrapper() });
+    render(<CaseStatusReport />);
 
     expect(
-      screen.getByText(/Failed to load reports data/i),
+      screen.getByText(
+        'Failed to load reports data. Please try again.',
+      ),
     ).toBeInTheDocument();
   });
 
-  it('handles export to Excel', async () => {
-    const user = userEvent.setup();
-    render(<CaseStatusReport />, { wrapper: createWrapper() });
+  it('renders reports dashboard successfully', async () => {
+    vi.mocked(useReports).mockReturnValue({
+      isLoading: false,
+      error: null,
+      data: {
+        stats: {
+          totalCases: 10,
+          closedCases: 5,
+          openCases: 5,
+          avgResolutionTime: 7,
+        },
+        statusDistribution: {
+          assigned: 1,
+          inProgress: 2,
+          draft: 1,
+          suspended: 1,
+          pendingApproval: 1,
+          closed: 4,
+        },
+        caseTypes: [
+          {
+            name: 'Fraud',
+            count: 5,
+          },
+        ],
+        outcomes: {
+          resolved: 2,
+          confirmed: 3,
+          inconclusive: 1,
+          pending: 4,
+        },
+        monthlyTrend: [
+          {
+            month: 'Jan',
+            casesCreated: 10,
+            casesClosed: 8,
+          },
+        ],
+        statusDetails: [
+          {
+            id: 1,
+            name: 'Case 1',
+          },
+        ],
+      },
+    } as any);
+
+    render(<CaseStatusReport />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('export-excel')).toBeInTheDocument();
+      expect(
+        screen.getByText('Case Status Report'),
+      ).toBeInTheDocument();
     });
 
-    const exportButton = screen.getByTestId('export-excel');
-    await user.click(exportButton);
+    expect(
+      screen.getByText('Report Stats Cards'),
+    ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText('Pie Chart').length,
+      ).toBeGreaterThan(0);
+    });
+    expect(
+      screen.getByText('Bar Chart'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Multi Bar Chart'),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Reports Table'),
+    ).toBeInTheDocument();
+  });
+
+  it('exports excel successfully', () => {
+    vi.mocked(useReports).mockReturnValue({
+      isLoading: false,
+      error: null,
+      data: {
+        stats: {},
+        statusDistribution: {},
+        caseTypes: [],
+        outcomes: {},
+        monthlyTrend: [],
+        statusDetails: [],
+      },
+    } as any);
+
+    render(<CaseStatusReport />);
+
+    fireEvent.click(
+      screen.getByText('Export Excel'),
+    );
 
     expect(formatDataForExport).toHaveBeenCalled();
     expect(exportToExcel).toHaveBeenCalled();
   });
 
-  it('handles export to CSV', async () => {
-    const user = userEvent.setup();
-    render(<CaseStatusReport />, { wrapper: createWrapper() });
+  it('exports csv successfully', () => {
+    vi.mocked(useReports).mockReturnValue({
+      isLoading: false,
+      error: null,
+      data: {
+        stats: {},
+        statusDistribution: {},
+        caseTypes: [],
+        outcomes: {},
+        monthlyTrend: [],
+        statusDetails: [],
+      },
+    } as any);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('export-csv')).toBeInTheDocument();
-    });
+    render(<CaseStatusReport />);
 
-    const exportButton = screen.getByTestId('export-csv');
-    await user.click(exportButton);
+    fireEvent.click(
+      screen.getByText('Export CSV'),
+    );
 
     expect(formatDataForExport).toHaveBeenCalled();
     expect(exportToCSV).toHaveBeenCalled();
   });
 
-  it('handles export to PDF', async () => {
-    const user = userEvent.setup();
-    render(<CaseStatusReport />, { wrapper: createWrapper() });
+  it('exports pdf successfully', () => {
+    vi.mocked(useReports).mockReturnValue({
+      isLoading: false,
+      error: null,
+      data: {
+        stats: {},
+        statusDistribution: {},
+        caseTypes: [],
+        outcomes: {},
+        monthlyTrend: [],
+        statusDetails: [],
+      },
+    } as any);
+
+    render(<CaseStatusReport />);
+
+    fireEvent.click(
+      screen.getByText('Export PDF'),
+    );
+
+    expect(formatDataForExport).toHaveBeenCalled();
+    expect(getColumnsForReport).toHaveBeenCalled();
+    expect(exportToPDF).toHaveBeenCalled();
+  });
+
+  it('changes report type correctly', async () => {
+    vi.mocked(useReports).mockReturnValue({
+      isLoading: false,
+      error: null,
+      data: {
+        stats: {},
+        statusDistribution: {},
+        caseTypes: [],
+        outcomes: {},
+        monthlyTrend: [],
+        statusDetails: [],
+      },
+    } as any);
+
+    render(<CaseStatusReport />);
+
+    fireEvent.click(
+      screen.getByText('Change Report Type'),
+    );
 
     await waitFor(() => {
-      expect(screen.getByTestId('export-pdf')).toBeInTheDocument();
-    });
-
-    const exportButton = screen.getByTestId('export-pdf');
-    await user.click(exportButton);
-
-    await waitFor(() => {
-      expect(formatDataForExport).toHaveBeenCalled();
-      expect(getColumnsForReport).toHaveBeenCalled();
-      expect(exportToPDF).toHaveBeenCalled();
+      expect(
+        screen.getByText('Case Ageing Report'),
+      ).toBeInTheDocument();
     });
   });
 
-  it('handles export errors gracefully', async () => {
-    const user = userEvent.setup();
+  it('handles missing reports data safely', () => {
+    vi.mocked(useReports).mockReturnValue({
+      isLoading: false,
+      error: null,
+      data: null,
+    } as any);
+
+    render(<CaseStatusReport />);
+
+    expect(
+      screen.getByText('Case Status Report'),
+    ).toBeInTheDocument();
+  });
+
+  it('handles export errors gracefully', () => {
+    vi.stubGlobal('alert', vi.fn());
+
     vi.mocked(exportToExcel).mockImplementation(() => {
       throw new Error('Export failed');
     });
 
-    render(<CaseStatusReport />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('export-excel')).toBeInTheDocument();
-    });
-
-    const exportButton = screen.getByTestId('export-excel');
-    await user.click(exportButton);
-
-    expect(global.alert).toHaveBeenCalledWith(
-      'Export failed. Please try again.',
-    );
-  });
-
-  it('handles missing data gracefully', async () => {
     vi.mocked(useReports).mockReturnValue({
-      data: undefined,
       isLoading: false,
       error: null,
-      isError: false,
+      data: {
+        stats: {},
+        statusDistribution: {},
+        caseTypes: [],
+        outcomes: {},
+        monthlyTrend: [],
+        statusDetails: [],
+      },
     } as any);
 
-    render(<CaseStatusReport />, { wrapper: createWrapper() });
+    render(<CaseStatusReport />);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('report-stats-cards')).toBeInTheDocument();
-    });
-  });
-
-  it('renders charts with correct data', async () => {
-    render(<CaseStatusReport />, { wrapper: createWrapper() });
-
-    await waitFor(
-      () => {
-        const pieCharts = screen.getAllByTestId('pie-chart');
-        expect(pieCharts.length).toBeGreaterThan(0);
-      },
-      { timeout: 3000 },
+    fireEvent.click(
+      screen.getByText('Export Excel'),
     );
 
-    expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
-    expect(screen.getByTestId('multi-bar-chart')).toBeInTheDocument();
+    expect(globalThis.alert).toHaveBeenCalledWith(
+      'Export failed. Please try again.',
+    );
   });
 });

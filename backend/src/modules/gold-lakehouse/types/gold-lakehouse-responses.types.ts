@@ -142,12 +142,15 @@ export interface NetworkNode {
 
 // Network Edge
 export interface NetworkEdge {
-  id: string;
   source: string;
   target: string;
-  transactionCount: number;
-  totalValue: number;
+  txCount: number;
+  totalAmount: number;
   currency?: string;
+  flags: {
+    alerted: boolean;
+    investigated: boolean;
+  };
 }
 
 // Account Node Full Data Response

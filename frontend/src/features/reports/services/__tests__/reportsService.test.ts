@@ -231,52 +231,6 @@ describe('ReportsService', () => {
     });
   });
 
-  describe('getAuditLogsData', () => {
-    it('should fetch and process audit logs data successfully', async () => {
-      const mockResponse = {
-        stats: {
-          totalLogs: 1000,
-          caseActions: 500,
-          userSessions: 300,
-          systemWarnings: 10,
-        },
-        auditLogs: [],
-      };
-
-      vi.mocked(apiClient.get).mockResolvedValue(mockResponse);
-
-      const result = await reportsService.getAuditLogsData('last30');
-
-      expect(apiClient.get).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/reports/audit-logs'),
-      );
-      expect(result.stats.totalLogs).toBe(1000);
-    });
-
-    it('should handle missing stats with safe fallbacks', async () => {
-      const mockResponse = {
-        stats: null,
-        auditLogs: undefined,
-      };
-
-      vi.mocked(apiClient.get).mockResolvedValue(mockResponse as any);
-
-      const result = await reportsService.getAuditLogsData();
-
-      expect(result.stats.totalLogs).toBe(0);
-      expect(result.auditLogs).toEqual([]);
-    });
-
-    it('should handle errors gracefully', async () => {
-      vi.mocked(apiClient.get).mockRejectedValue(new Error('Network error'));
-
-      const result = await reportsService.getAuditLogsData();
-
-      expect(result.stats.totalLogs).toBe(0);
-      expect(result.auditLogs).toEqual([]);
-    });
-  });
-
   describe('getCaseAgeingData', () => {
     it('should fetch and process case ageing data successfully', async () => {
       const mockResponse = {

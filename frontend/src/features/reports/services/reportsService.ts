@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- Service handles dynamic API response data */
 /* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
-/* eslint-disable max-lines -- Service requires multiple report data methods */
+
 import type {
   UploadReportDto,
   UploadReportResponse,
@@ -10,7 +10,6 @@ import type {
   ReportsData,
   InvestigatorWorkloadData,
   TaskCompletionData,
-  AuditLogsData,
   CaseAgeingData,
   EvidenceFindingsData,
 } from '../types/reports.types';
@@ -215,47 +214,6 @@ class ReportsService {
     }
   }
 
-  async getAuditLogsData(dateRange?: string): Promise<AuditLogsData> {
-    try {
-      const response = await apiClient.get<AuditLogsData>(
-        `/api/v1/reports/audit-logs?dateRange=${dateRange ?? 'last30'}`,
-      );
-
-      const processedResponse: AuditLogsData = {
-        ...response,
-        stats: {
-          totalLogs: ReportsService.safeFallback(response.stats.totalLogs, 0),
-          caseActions: ReportsService.safeFallback(
-            response.stats.caseActions,
-            0,
-          ),
-          userSessions: ReportsService.safeFallback(
-            response.stats.userSessions,
-            0,
-          ),
-          systemWarnings: ReportsService.safeFallback(
-            response.stats.systemWarnings,
-            0,
-          ),
-        },
-        auditLogs: response.auditLogs,
-      };
-
-      return processedResponse;
-    } catch (error) {
-      console.error('Failed to fetch audit logs data:', error);
-      return {
-        stats: {
-          totalLogs: 0,
-          caseActions: 0,
-          userSessions: 0,
-          systemWarnings: 0,
-        },
-        auditLogs: [],
-      };
-    }
-  }
-
   async getCaseAgeingData(dateRange?: string): Promise<CaseAgeingData> {
     try {
       const response = await apiClient.get<CaseAgeingData>(
@@ -318,8 +276,8 @@ class ReportsService {
       const cases = Array.isArray(casesResponse)
         ? casesResponse
         : ((casesResponse.data ?? casesResponse.cases ?? []) as Array<
-          Record<string, unknown>
-        >);
+            Record<string, unknown>
+          >);
 
       if (cases.length === 0) {
         console.warn(
@@ -581,6 +539,6 @@ class ReportsService {
 // Export both named and default export for better IDE support
 export const reportsService = new ReportsService();
 export default reportsService;
-/* eslint-enable max-lines */
+
 /* eslint-enable @typescript-eslint/class-methods-use-this */
 /* eslint-enable @typescript-eslint/no-unsafe-assignment */

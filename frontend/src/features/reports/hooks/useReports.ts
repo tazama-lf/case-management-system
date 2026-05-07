@@ -4,7 +4,6 @@ import type {
   ReportsData,
   InvestigatorWorkloadData,
   TaskCompletionData,
-  AuditLogsData,
   CaseAgeingData,
   EvidenceFindingsData,
 } from '../types/reports.types';
@@ -51,18 +50,6 @@ export const useTaskCompletion = (
     staleTime: 1000 * 60 * 10,
     refetchInterval: 1000 * 60 * 10,
     refetchOnWindowFocus: true,
-  });
-
-export const useAuditLogs = (
-  dateRange?: string,
-): ReturnType<typeof useQuery<AuditLogsData>> =>
-  useQuery<AuditLogsData>({
-    queryKey: ['reports', 'audit-logs', dateRange],
-    queryFn: async () => await reportsService.getAuditLogsData(dateRange),
-    staleTime: 1000 * 60 * 5,
-    refetchInterval: 1000 * 60 * 5,
-    refetchOnWindowFocus: true,
-    retry: 1,
   });
 
 export const useCaseAgeing = (
