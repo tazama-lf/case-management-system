@@ -44,7 +44,7 @@
     "@tazama-lf/audit-lib": "^1.0.8",
     "@tazama-lf/auth-lib": "^4.0.0-rc.4",
     "@tazama-lf/auth-lib-provider-keycloak": "^4.0.0-rc.7",
-    "@tazama-lf/frms-coe-lib": "0.0.1-psl.6",
+    "@tazama-lf/frms-coe-lib": "8.0.0-rc.1",
     "@tazama-lf/frms-coe-startup-lib": "0.0.1-psl.5",
     "@tazama-lf/nats-relay-plugin": "^2.1.1-rc",
     "axios": "^1.13.2",
