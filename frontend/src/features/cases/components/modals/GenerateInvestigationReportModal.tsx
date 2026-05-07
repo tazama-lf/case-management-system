@@ -10,6 +10,7 @@ import { taskService } from '../../services/taskService';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import htmlToPdfmake from 'html-to-pdfmake';
 import type { Evidence } from '../../types/evidence.types';
 import reportsService from '../../../reports/services/reportsService';
@@ -304,10 +305,6 @@ const GenerateInvestigationReportModal: React.FC<
     setSupervisorFeedback(supervisorComments?.[0]?.note ?? '');
   }, [supervisorComments]);
 
-  const [reportOutcome] = useState<string | undefined>('');
-  const [monitoringDuration, setMonitoringDuration] = useState<
-    30 | 60 | 90 | 180
-  >(30);
   const [showApprovalConfirm, setShowApprovalConfirm] = useState(false);
   const [userRole] = useState<string>(getUserRole());
 
@@ -640,49 +637,43 @@ const GenerateInvestigationReportModal: React.FC<
 
     try {
       const pdfFile = await generatePdfFile(docDefinition);
-      try {
-        const generateFraudReport = await reportsService.generateFraudReport({
-          file: pdfFile,
-          caseId,
-          investigatorInputs: keyFindings,
-          supervisorRemarks: supervisorFeedback,
-          outcome: finalOutcome,
-          reportType: 'INVESTIGATION_REPORT',
-          description: 'Investigation Report',
-        });
+      const generateFraudReport = await reportsService.generateFraudReport({
+        file: pdfFile,
+        caseId,
+        investigatorInputs: keyFindings,
+        supervisorRemarks: supervisorFeedback,
+        outcome: finalOutcome,
+        reportType: 'INVESTIGATION_REPORT',
+        description: 'Investigation Report',
+      });
 
-        if (!generateFraudReport) {
-          throw new Error('Failed to generate report');
-        }
-        setStep('generated');
-
-        if (latestInvestigateTask && investigationNotes) {
-          try {
-            await taskService.updateTaskForSupervisor(
-              latestInvestigateTask.task_id,
-              {
-                investigationNotes,
-              },
-            );
-          } catch {
-            // Ignore task update errors
-          }
-        }
-
-        const outcomeKey = `fraud-report-outcome-${caseId}`;
-        localStorage.setItem(
-          outcomeKey,
-          JSON.stringify({
-            outcome: reportOutcome,
-            approvedAt: new Date().toISOString(),
-            reportId: generateFraudReport.fileName || `${caseId}-v1`,
-          }),
-        );
-      } catch {
-        showError('Failed to generate report. Please try again.');
-      } finally {
-        setIsFinalizing(false);
+      if (!generateFraudReport) {
+        throw new Error('Failed to generate report');
       }
+      setStep('generated');
+
+      if (latestInvestigateTask && investigationNotes) {
+        try {
+          await taskService.updateTaskForSupervisor(
+            latestInvestigateTask.task_id,
+            {
+              investigationNotes,
+            },
+          );
+        } catch {
+          // Ignore task update errors
+        }
+      }
+
+      const outcomeKey = `fraud-report-outcome-${caseId}`;
+      localStorage.setItem(
+        outcomeKey,
+        JSON.stringify({
+          outcome: finalOutcome,
+          approvedAt: new Date().toISOString(),
+          reportId: generateFraudReport.fileName || `${caseId}-v1`,
+        }),
+      );
 
       setIsApproved(true);
       showSuccess('Report has been finalized and approved successfully!');
@@ -953,7 +944,7 @@ const GenerateInvestigationReportModal: React.FC<
                   <div
                     className="markdown-content text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded border border-gray-200"
                     dangerouslySetInnerHTML={{
-                      __html: marked(investigationNotes) as string,
+                      __html: DOMPurify.sanitize(marked(investigationNotes) as string),
                     }}
                   />
                 ) : (
@@ -1084,34 +1075,6 @@ const GenerateInvestigationReportModal: React.FC<
                 </div>
               </div>
 
-              {/* Monitoring Duration - only shown when Under Monitoring is selected */}
-              {reportOutcome === 'Under Monitoring' && (
-                <div className="space-y-3">
-                  <h5 className="text-sm font-semibold text-gray-900">
-                    Monitoring Duration
-                  </h5>
-                  <select
-                    value={monitoringDuration}
-                    onChange={(e) => {
-                      setMonitoringDuration(
-                        Number(e.target.value) as 30 | 60 | 90 | 180,
-                      );
-                      setIsApproved(false);
-                    }}
-                    disabled={userRole !== 'CMS_SUPERVISOR'}
-                    className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
-                  >
-                    <option value={30}>30 Days</option>
-                    <option value={60}>60 Days</option>
-                    <option value={90}>90 Days</option>
-                    <option value={180}>180 Days</option>
-                  </select>
-                  <p className="text-xs text-gray-500">
-                    Select the duration for continued monitoring of this case.
-                  </p>
-                </div>
-              )}
-
               {/* Recommendations */}
               <div className="space-y-3">
                 <h5 className="text-sm font-semibold text-gray-900">
@@ -1200,12 +1163,6 @@ const GenerateInvestigationReportModal: React.FC<
                 <li>
                   Set the case outcome to: <strong>{finalOutcome}</strong>
                 </li>
-                {reportOutcome === 'Under Monitoring' && (
-                  <li>
-                    Set monitoring duration to:{' '}
-                    <strong>{monitoringDuration} days</strong>
-                  </li>
-                )}
                 <li>Archive the report for compliance</li>
                 <li>Notify relevant stakeholders</li>
               </ul>

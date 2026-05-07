@@ -431,15 +431,16 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       const outboundData = (outboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
       const inboundData = (inboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
       const centerAccountFlags = alertFlagsResponse?.data?.[0] ? this.stripHudiMetadata(alertFlagsResponse.data[0]) : null;
-      const centerAccountHasAlerts = centerAccountFlags ? (centerAccountFlags.is_alerted === 1 || centerAccountFlags.is_investigated === 1) : false;
+      const centerAccountIsAlerted = centerAccountFlags ? centerAccountFlags.is_alerted === 1 : false;
+      const centerAccountIsInvestigated = centerAccountFlags ? centerAccountFlags.is_investigated === 1 : false;
 
       const allConnections = [...outboundData, ...inboundData];
 
       const connectedAccounts: ConnectedAccountDto[] = allConnections.map((conn) => {
         const velocity = this.calculateVelocity(Number(conn.total_transactions), Math.max(Number(conn.duration_days), 1));
 
-        // Mark as having alert if center account has alerts (transactions with this connected account may be flagged)
-        const hasAlert = centerAccountHasAlerts;
+        // Note: Per-connection alert data is not available; this would require querying transaction_history per connection pair
+        const hasAlert = false;
 
         const stats: TransactionStatsDto = {
           totalTransactions: Number(conn.total_transactions),
@@ -454,7 +455,9 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           flowDirection: conn.flow_direction === 'OUTBOUND' ? 'Outbound (Payments To)' : 'Inbound (Payments From)',
           transactionStats: stats,
           hasAlert,
-          alertMessage: hasAlert ? 'Alert triggered on this account' : undefined,
+          alertMessage: (centerAccountIsAlerted || centerAccountIsInvestigated) 
+            ? 'Center account has alerts — check transaction history' 
+            : undefined,
           firstTransactionDate: conn.first_tx_date,
           lastTransactionDate: conn.last_tx_date,
         };
