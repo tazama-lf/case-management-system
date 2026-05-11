@@ -115,8 +115,10 @@ export class CacheService {
     } catch (error) {
       if (axios.isAxiosError(error)) {
         this.logger.error(`Auth service error fetching users by role: ${error.response?.status} ${error.response?.statusText ?? ''}`);
-        const cause = error.response?.data ? new Error('Upstream error details redacted') : error;
-        throw new Error(`Failed to fetch users with role ${role}: upstream returned ${error.response?.status}`, { cause });
+
+        throw new Error(`Failed to fetch users with role ${role}: upstream returned ${error.response?.status}`, {
+          cause: error,
+        });
       }
       throw error;
     }

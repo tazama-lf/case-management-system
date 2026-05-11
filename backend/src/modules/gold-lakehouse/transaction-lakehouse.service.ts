@@ -439,8 +439,8 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       const connectedAccounts: ConnectedAccountDto[] = allConnections.map((conn) => {
         const velocity = this.calculateVelocity(Number(conn.total_transactions), Math.max(Number(conn.duration_days), 1));
 
-        // Note: Per-connection alert data is not available; this would require querying transaction_history per connection pair
-        const hasAlert = false;
+        // Mark connected accounts with hasAlert when the center account has alerts
+        const hasAlert = centerAccountIsAlerted || centerAccountIsInvestigated;
 
         const stats: TransactionStatsDto = {
           totalTransactions: Number(conn.total_transactions),
@@ -455,9 +455,8 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           flowDirection: conn.flow_direction === 'OUTBOUND' ? 'Outbound (Payments To)' : 'Inbound (Payments From)',
           transactionStats: stats,
           hasAlert,
-          alertMessage: (centerAccountIsAlerted || centerAccountIsInvestigated) 
-            ? 'Center account has alerts — check transaction history' 
-            : undefined,
+          alertMessage:
+            centerAccountIsAlerted || centerAccountIsInvestigated ? 'Center account has alerts — check transaction history' : undefined,
           firstTransactionDate: conn.first_tx_date,
           lastTransactionDate: conn.last_tx_date,
         };
