@@ -46,7 +46,7 @@ export const TransactionHistoryCharts: React.FC<
             strokeWidth={2}
             dot={(props) => {
               const { cx, cy, payload } = props;
-              const isAlert = data[payload.index]?.alert;
+              const isAlert = payload.alert;
               return (
                 <circle
                   cx={cx}

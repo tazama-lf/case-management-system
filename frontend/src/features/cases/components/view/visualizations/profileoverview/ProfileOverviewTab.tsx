@@ -17,6 +17,14 @@ interface ProfileOverviewTabProps {
   transactionId?: string;
 }
 
+interface Transaction {
+  event_date: string;
+  tx_amount: number | string;
+  tx_ccy: string;
+  tx_type: string;
+  [key: string]: unknown;
+}
+
 const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
   alertId,
   transactionId,
@@ -92,7 +100,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
     const sortable = [...selectedList];
 
     if (sortConfig !== null) {
-      sortable.sort((a: any, b: any) => {
+      sortable.sort((a: Transaction, b: Transaction) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
 
@@ -133,7 +141,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
   };
 
   const totalAmount = selectedList.reduce(
-    (sum: number, tx: any) => sum + (Number(tx.tx_amount) || 0),
+    (sum: number, tx: Transaction) => sum + (Number(tx.tx_amount) || 0),
     0,
   );
 
@@ -141,7 +149,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
   const volumeTrendData = React.useMemo(() => {
     const grouped: Record<string, number> = {};
 
-    selectedList.forEach((tx: any) => {
+    selectedList.forEach((tx: Transaction) => {
       const date = tx.event_date;
 
       if (!date) return;
@@ -158,7 +166,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
   const transactionCountData = React.useMemo(() => {
     const grouped: Record<string, number> = {};
 
-    selectedList.forEach((tx: any) => {
+    selectedList.forEach((tx: Transaction) => {
       const date = tx.event_date;
 
       if (!date) return;
@@ -459,7 +467,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
                   </thead>
 
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {sortedTransactions.map((tx: any, index: number) => (
+                    {sortedTransactions.map((tx: Transaction, index: number) => (
                       <tr key={index} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm text-gray-900">
                           {new Date(tx.event_date).toLocaleDateString()}

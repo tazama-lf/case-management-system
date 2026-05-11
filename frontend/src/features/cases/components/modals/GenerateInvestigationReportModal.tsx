@@ -84,8 +84,8 @@ const convertMarkdownToPdfMake = (markdownText: string): any => {
     });
 
     return pdfContent;
-  } catch (error) {
-    console.error('Error converting markdown to pdfMake:', error);
+  } catch (err) {
+    console.error('Error converting markdown to pdfMake:', err);
     return markdownText;
   }
 };
@@ -174,6 +174,12 @@ const GenerateInvestigationReportModal: React.FC<
 
   useEffect(() => {
     hasFetchedRef.current = false;
+    setEvidenceLoaded(false);
+    setCommentsLoaded(false);
+    setNotesLoaded(false);
+    setEvidenceCategories([]);
+    setSupervisorComments([]);
+    setInvestigationNotes('');
   }, [caseId]);
 
   const latestInvestigateTask = React.useMemo(() => {
@@ -262,7 +268,7 @@ const GenerateInvestigationReportModal: React.FC<
 
         setIncompleteTasks(incomplete.map((t) => t.name ?? 'Unknown Task'));
         setTasksCompleted(incomplete.length === 0);
-      } catch (error) {
+      } catch {
         showError('Failed to check task status');
         setTasksCompleted(false);
       } finally {
@@ -292,7 +298,7 @@ const GenerateInvestigationReportModal: React.FC<
   );
   const [keyFindings, setKeyFindings] = useState(investigationNotes ?? '');
   const [recommendations, setRecommendations] = useState(
-    "Based on the investigation findings and evidence review:\n\n1. Review investigator's recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure.",
+    'Based on the investigation findings and evidence review:\n\n1. Review investigator\'s recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure.',
   );
   const [supervisorFeedback, setSupervisorFeedback] = useState(
     supervisorComments?.[0]?.note ?? '',
@@ -335,7 +341,7 @@ const GenerateInvestigationReportModal: React.FC<
     ],
   }));
 
-  const docDefinition: any = {
+  const docDefinition: Record<string, unknown> = {
     pageSize: 'A4',
     pageOrientation: 'portrait',
     pageMargins: [40, 60, 40, 60],
@@ -604,9 +610,10 @@ const GenerateInvestigationReportModal: React.FC<
     setShowApprovalConfirm(true);
   };
 
-  const generatePdfFile = async (docDefinition: any): Promise<File> =>
+  const generatePdfFile = async (docDefinition: Record<string, unknown>): Promise<File> =>
     await new Promise((resolve, reject) => {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pdfDoc = (pdfMake as any).createPdf(docDefinition);
 
         pdfDoc.getBlob((blob: Blob) => {
@@ -712,6 +719,7 @@ const GenerateInvestigationReportModal: React.FC<
             </div>
           </div>
           <button
+            type="button"
             onClick={handleClose}
             className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
             aria-label="Close"
@@ -835,6 +843,7 @@ const GenerateInvestigationReportModal: React.FC<
                 )}
 
               <button
+                type="button"
                 onClick={handleGenerateReport}
                 disabled={
                   !isReportReady ||
@@ -992,67 +1001,65 @@ const GenerateInvestigationReportModal: React.FC<
 
                 <div className="bg-gray-50 rounded-lg p-4">
                   {evidenceCategories && evidenceCategories.length > 0 ? (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {evidenceCategories.map((category) => (
-                          <div
-                            key={category.type}
-                            className="border border-gray-200 rounded-lg bg-white p-4"
-                          >
-                            {/* Header */}
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <DocumentTextIcon className="h-5 w-5 text-blue-600" />
-                                <h4 className="text-sm font-semibold text-gray-900">
-                                  {category.type}
-                                </h4>
-                              </div>
-                              <span className="text-xs text-gray-500">
-                                {category.count} {category.description}
-                              </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {evidenceCategories.map((category) => (
+                        <div
+                          key={category.type}
+                          className="border border-gray-200 rounded-lg bg-white p-4"
+                        >
+                          {/* Header */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <DocumentTextIcon className="h-5 w-5 text-blue-600" />
+                              <h4 className="text-sm font-semibold text-gray-900">
+                                {category.type}
+                              </h4>
                             </div>
+                            <span className="text-xs text-gray-500">
+                              {category.count} {category.description}
+                            </span>
+                          </div>
 
-                            {/* Evidence list */}
-                            <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {category.evidence.map((doc) => (
-                                <div
-                                  key={doc.id}
-                                  className="flex items-start gap-2 bg-gray-50 border border-gray-200 rounded p-2"
-                                >
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">
-                                      {doc.fileName ?? 'Untitled Document'}
-                                    </p>
-                                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                                      <span>
-                                        {evidenceService.formatFileSize(
-                                          doc.fileSize ?? 0,
-                                        )}
-                                      </span>
-                                      <span>•</span>
-                                      <span>{doc.evidenceType}</span>
-                                      {doc.uploadedAt && (
-                                        <>
-                                          <span>•</span>
-                                          <span>
-                                            {formatDate(doc.uploadedAt)}
-                                          </span>
-                                        </>
+                          {/* Evidence list */}
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {category.evidence.map((doc) => (
+                              <div
+                                key={doc.id}
+                                className="flex items-start gap-2 bg-gray-50 border border-gray-200 rounded p-2"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {doc.fileName ?? 'Untitled Document'}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
+                                    <span>
+                                      {evidenceService.formatFileSize(
+                                        doc.fileSize ?? 0,
                                       )}
-                                    </div>
-                                    {doc.description && (
-                                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                                        {doc.description}
-                                      </p>
+                                    </span>
+                                    <span>•</span>
+                                    <span>{doc.evidenceType}</span>
+                                    {doc.uploadedAt && (
+                                      <>
+                                        <span>•</span>
+                                        <span>
+                                          {formatDate(doc.uploadedAt)}
+                                        </span>
+                                      </>
                                     )}
                                   </div>
+                                  {doc.description && (
+                                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                      {doc.description}
+                                    </p>
+                                  )}
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <p className="text-sm text-gray-500 italic">
                       <em>No evidence summary attached.</em>
@@ -1097,6 +1104,7 @@ const GenerateInvestigationReportModal: React.FC<
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
           <button
+            type="button"
             onClick={handleClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
           >
@@ -1106,8 +1114,8 @@ const GenerateInvestigationReportModal: React.FC<
           {step === 'generated' && (
             <div className="flex items-center gap-3">
               {userRole === 'CMS_SUPERVISOR' && (
-                <>
-                  <button
+                <button
+                    type="button"
                     onClick={handleApproveClick}
                     disabled={isFinalizing || isApproved}
                     className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${
@@ -1133,8 +1141,7 @@ const GenerateInvestigationReportModal: React.FC<
                       </>
                     )}
                   </button>
-                </>
-              )}
+                )}
             </div>
           )}
         </div>
@@ -1173,6 +1180,7 @@ const GenerateInvestigationReportModal: React.FC<
 
             <div className="flex justify-end gap-3">
               <button
+                type="button"
                 onClick={() => {
                   setShowApprovalConfirm(false);
                 }}
@@ -1181,6 +1189,7 @@ const GenerateInvestigationReportModal: React.FC<
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleFinalize}
                 disabled={isFinalizing}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-green-400"
