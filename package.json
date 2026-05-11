@@ -8,7 +8,7 @@
     "backend:test": "cd backend && npm ci && npx prisma generate && npm run test",
     "frontend:test": "cd frontend && npm ci && npm run test",
     "build": "npm run backend:build",
-    "backend:build": "cd backend && npm run build"
+    "backend:build": "cd backend && npm ci && npx prisma generate && npm run build"
   },
   "devDependencies": {
     "husky": "^9.1.7"
