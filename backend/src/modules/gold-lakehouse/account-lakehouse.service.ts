@@ -218,7 +218,6 @@ export class AccountLakehouseService extends GoldLakehouseService {
         flags: { alerted: false, investigated: false },
       });
 
-      // Fetch network data using a single query for all accounts
       const networkSql =
         'SELECT from_account_id, to_account_id, tx_count, total_amount, currency_hint, first_event_ts, last_event_ts, is_alerted_edge, is_investigated_edge FROM tx_network_accounts_edges WHERE tenant_id = $1 AND bucket_granularity = $2 AND ( from_account_id IN ($3) OR to_account_id IN ($3) )';
 
@@ -231,7 +230,6 @@ export class AccountLakehouseService extends GoldLakehouseService {
         nodesMap.set(key, value);
       });
       edges.push(...result.edges);
-
       // Calculate aggregate metrics
       const totalTransactions = edges.reduce((sum, edge) => sum + edge.txCount, 0);
       const totalValue = edges.reduce((sum, edge) => sum + edge.totalAmount, 0);
