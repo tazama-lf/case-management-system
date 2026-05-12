@@ -114,7 +114,6 @@ describe('ReportFilters', () => {
     expect(screen.getByText('Filters')).toBeInTheDocument();
   });
 
-
   it('opens and closes date range menu', async () => {
     const user = userEvent.setup();
     render(
@@ -281,5 +280,4 @@ describe('ReportFilters', () => {
       (screen.getByTestId('case-type-select') as HTMLSelectElement).value,
     ).toBe('');
   });
-
 });

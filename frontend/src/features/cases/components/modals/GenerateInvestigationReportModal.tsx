@@ -10,6 +10,7 @@ import { taskService } from '../../services/taskService';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import htmlToPdfmake from 'html-to-pdfmake';
 import type { Evidence } from '../../types/evidence.types';
 import reportsService from '../../../reports/services/reportsService';
@@ -21,6 +22,7 @@ import {
 } from '../../utils/investigationUtils';
 import type { TaskComment } from '../../services/commentService';
 import { formatDate } from '@/shared/utils/dateUtils';
+import type { TDocumentDefinitions } from 'pdfmake/interfaces';
 
 interface EvidenceCategory {
   type: string;
@@ -83,8 +85,8 @@ const convertMarkdownToPdfMake = (markdownText: string): any => {
     });
 
     return pdfContent;
-  } catch (error) {
-    console.error('Error converting markdown to pdfMake:', error);
+  } catch (err) {
+    console.error('Error converting markdown to pdfMake:', err);
     return markdownText;
   }
 };
@@ -173,6 +175,12 @@ const GenerateInvestigationReportModal: React.FC<
 
     useEffect(() => {
       hasFetchedRef.current = false;
+      setEvidenceLoaded(false);
+      setCommentsLoaded(false);
+      setNotesLoaded(false);
+      setEvidenceCategories([]);
+      setSupervisorComments([]);
+      setInvestigationNotes('');
     }, [caseId]);
 
     const latestInvestigateTask = React.useMemo(() => {
@@ -261,7 +269,7 @@ const GenerateInvestigationReportModal: React.FC<
 
           setIncompleteTasks(incomplete.map((t) => t.name ?? 'Unknown Task'));
           setTasksCompleted(incomplete.length === 0);
-        } catch (error) {
+        } catch {
           showError('Failed to check task status');
           setTasksCompleted(false);
         } finally {
@@ -304,10 +312,6 @@ const GenerateInvestigationReportModal: React.FC<
       setSupervisorFeedback(supervisorComments?.[0]?.note ?? '');
     }, [supervisorComments]);
 
-    const [reportOutcome] = useState<string | undefined>('');
-    const [monitoringDuration, setMonitoringDuration] = useState<
-      30 | 60 | 90 | 180
-    >(30);
     const [showApprovalConfirm, setShowApprovalConfirm] = useState(false);
     const [userRole] = useState<string>(getUserRole());
 
@@ -338,7 +342,7 @@ const GenerateInvestigationReportModal: React.FC<
       ],
     }));
 
-    const docDefinition: any = {
+    const docDefinition: TDocumentDefinitions = {
       pageSize: 'A4',
       pageOrientation: 'portrait',
       pageMargins: [40, 60, 40, 60],
@@ -607,10 +611,11 @@ const GenerateInvestigationReportModal: React.FC<
       setShowApprovalConfirm(true);
     };
 
-    const generatePdfFile = async (docDefinition: any): Promise<File> =>
+    const generatePdfFile = async (docDefinition: TDocumentDefinitions): Promise<File> =>
       await new Promise((resolve, reject) => {
         try {
-          const pdfDoc = (pdfMake as any).createPdf(docDefinition);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const pdfDoc = pdfMake.createPdf(docDefinition);
 
           pdfDoc.getBlob((blob: Blob) => {
             const file = new File([blob], 'report.pdf', {
@@ -640,49 +645,43 @@ const GenerateInvestigationReportModal: React.FC<
 
       try {
         const pdfFile = await generatePdfFile(docDefinition);
-        try {
-          const generateFraudReport = await reportsService.generateFraudReport({
-            file: pdfFile,
-            caseId,
-            investigatorInputs: keyFindings,
-            supervisorRemarks: supervisorFeedback,
-            outcome: finalOutcome,
-            reportType: 'INVESTIGATION_REPORT',
-            description: 'Investigation Report',
-          });
+        const generateFraudReport = await reportsService.generateFraudReport({
+          file: pdfFile,
+          caseId,
+          investigatorInputs: keyFindings,
+          supervisorRemarks: supervisorFeedback,
+          outcome: finalOutcome,
+          reportType: 'INVESTIGATION_REPORT',
+          description: 'Investigation Report',
+        });
 
-          if (!generateFraudReport) {
-            throw new Error('Failed to generate report');
-          }
-          setStep('generated');
-
-          if (latestInvestigateTask && investigationNotes) {
-            try {
-              await taskService.updateTaskForSupervisor(
-                latestInvestigateTask.task_id,
-                {
-                  investigationNotes,
-                },
-              );
-            } catch {
-              // Ignore task update errors
-            }
-          }
-
-          const outcomeKey = `fraud-report-outcome-${caseId}`;
-          localStorage.setItem(
-            outcomeKey,
-            JSON.stringify({
-              outcome: reportOutcome,
-              approvedAt: new Date().toISOString(),
-              reportId: generateFraudReport.fileName || `${caseId}-v1`,
-            }),
-          );
-        } catch {
-          showError('Failed to generate report. Please try again.');
-        } finally {
-          setIsFinalizing(false);
+        if (!generateFraudReport) {
+          throw new Error('Failed to generate report');
         }
+        setStep('generated');
+
+        if (latestInvestigateTask && investigationNotes) {
+          try {
+            await taskService.updateTaskForSupervisor(
+              latestInvestigateTask.task_id,
+              {
+                investigationNotes,
+              },
+            );
+          } catch {
+            // Ignore task update errors
+          }
+        }
+
+        const outcomeKey = `fraud-report-outcome-${caseId}`;
+        localStorage.setItem(
+          outcomeKey,
+          JSON.stringify({
+            outcome: finalOutcome,
+            approvedAt: new Date().toISOString(),
+            reportId: generateFraudReport.fileName || `${caseId}-v1`,
+          }),
+        );
 
         setIsApproved(true);
         showSuccess('Report has been finalized and approved successfully!');
@@ -721,6 +720,7 @@ const GenerateInvestigationReportModal: React.FC<
               </div>
             </div>
             <button
+              type="button"
               onClick={handleClose}
               className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
               aria-label="Close"
@@ -844,6 +844,7 @@ const GenerateInvestigationReportModal: React.FC<
                   )}
 
                 <button
+                  type="button"
                   onClick={handleGenerateReport}
                   disabled={
                     !isReportReady ||
@@ -953,7 +954,7 @@ const GenerateInvestigationReportModal: React.FC<
                     <div
                       className="markdown-content text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded border border-gray-200"
                       dangerouslySetInnerHTML={{
-                        __html: marked(investigationNotes) as string,
+                        __html: DOMPurify.sanitize(marked(investigationNotes) as string),
                       }}
                     />
                   ) : (
@@ -1001,67 +1002,65 @@ const GenerateInvestigationReportModal: React.FC<
 
                   <div className="bg-gray-50 rounded-lg p-4">
                     {evidenceCategories && evidenceCategories.length > 0 ? (
-                      <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {evidenceCategories.map((category) => (
-                            <div
-                              key={category.type}
-                              className="border border-gray-200 rounded-lg bg-white p-4"
-                            >
-                              {/* Header */}
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                  <DocumentTextIcon className="h-5 w-5 text-blue-600" />
-                                  <h4 className="text-sm font-semibold text-gray-900">
-                                    {category.type}
-                                  </h4>
-                                </div>
-                                <span className="text-xs text-gray-500">
-                                  {category.count} {category.description}
-                                </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {evidenceCategories.map((category) => (
+                          <div
+                            key={category.type}
+                            className="border border-gray-200 rounded-lg bg-white p-4"
+                          >
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <DocumentTextIcon className="h-5 w-5 text-blue-600" />
+                                <h4 className="text-sm font-semibold text-gray-900">
+                                  {category.type}
+                                </h4>
                               </div>
+                              <span className="text-xs text-gray-500">
+                                {category.count} {category.description}
+                              </span>
+                            </div>
 
-                              {/* Evidence list */}
-                              <div className="space-y-2 max-h-48 overflow-y-auto">
-                                {category.evidence.map((doc) => (
-                                  <div
-                                    key={doc.id}
-                                    className="flex items-start gap-2 bg-gray-50 border border-gray-200 rounded p-2"
-                                  >
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-gray-900 truncate">
-                                        {doc.fileName ?? 'Untitled Document'}
-                                      </p>
-                                      <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                                        <span>
-                                          {evidenceService.formatFileSize(
-                                            doc.fileSize ?? 0,
-                                          )}
-                                        </span>
-                                        <span>•</span>
-                                        <span>{doc.evidenceType}</span>
-                                        {doc.uploadedAt && (
-                                          <>
-                                            <span>•</span>
-                                            <span>
-                                              {formatDate(doc.uploadedAt)}
-                                            </span>
-                                          </>
+                            {/* Evidence list */}
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {category.evidence.map((doc) => (
+                                <div
+                                  key={doc.id}
+                                  className="flex items-start gap-2 bg-gray-50 border border-gray-200 rounded p-2"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                      {doc.fileName ?? 'Untitled Document'}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
+                                      <span>
+                                        {evidenceService.formatFileSize(
+                                          doc.fileSize ?? 0,
                                         )}
-                                      </div>
-                                      {doc.description && (
-                                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                                          {doc.description}
-                                        </p>
+                                      </span>
+                                      <span>•</span>
+                                      <span>{doc.evidenceType}</span>
+                                      {doc.uploadedAt && (
+                                        <>
+                                          <span>•</span>
+                                          <span>
+                                            {formatDate(doc.uploadedAt)}
+                                          </span>
+                                        </>
                                       )}
                                     </div>
+                                    {doc.description && (
+                                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                        {doc.description}
+                                      </p>
+                                    )}
                                   </div>
-                                ))}
-                              </div>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      </>
+                          </div>
+                        ))}
+                      </div>
                     ) : (
                       <p className="text-sm text-gray-500 italic">
                         <em>No evidence summary attached.</em>
@@ -1083,34 +1082,6 @@ const GenerateInvestigationReportModal: React.FC<
                       : 'Not specified'}
                   </div>
                 </div>
-
-                {/* Monitoring Duration - only shown when Under Monitoring is selected */}
-                {reportOutcome === 'Under Monitoring' && (
-                  <div className="space-y-3">
-                    <h5 className="text-sm font-semibold text-gray-900">
-                      Monitoring Duration
-                    </h5>
-                    <select
-                      value={monitoringDuration}
-                      onChange={(e) => {
-                        setMonitoringDuration(
-                          Number(e.target.value) as 30 | 60 | 90 | 180,
-                        );
-                        setIsApproved(false);
-                      }}
-                      disabled={userRole !== 'CMS_SUPERVISOR'}
-                      className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
-                    >
-                      <option value={30}>30 Days</option>
-                      <option value={60}>60 Days</option>
-                      <option value={90}>90 Days</option>
-                      <option value={180}>180 Days</option>
-                    </select>
-                    <p className="text-xs text-gray-500">
-                      Select the duration for continued monitoring of this case.
-                    </p>
-                  </div>
-                )}
 
                 {/* Recommendations */}
                 <div className="space-y-3">
@@ -1134,6 +1105,7 @@ const GenerateInvestigationReportModal: React.FC<
           {/* Footer */}
           <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
             <button
+              type="button"
               onClick={handleClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
@@ -1143,33 +1115,32 @@ const GenerateInvestigationReportModal: React.FC<
             {step === 'generated' && (
               <div className="flex items-center gap-3">
                 {userRole === 'CMS_SUPERVISOR' && (
-                  <>
-                    <button
-                      onClick={handleApproveClick}
-                      disabled={isFinalizing || isApproved}
-                      className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${isApproved
-                          ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                          : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
-                        }`}
-                    >
-                      {isFinalizing ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                          Finalizing...
-                        </>
-                      ) : isApproved ? (
-                        <>
-                          <CheckCircleIcon className="h-5 w-5" />
-                          Approved
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircleIcon className="h-5 w-5" />
-                          Finalize & Approve Report
-                        </>
-                      )}
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={handleApproveClick}
+                    disabled={isFinalizing || isApproved}
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${isApproved
+                        ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                        : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
+                      }`}
+                  >
+                    {isFinalizing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        Finalizing...
+                      </>
+                    ) : isApproved ? (
+                      <>
+                        <CheckCircleIcon className="h-5 w-5" />
+                        Approved
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircleIcon className="h-5 w-5" />
+                        Finalize & Approve Report
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
             )}
@@ -1199,12 +1170,6 @@ const GenerateInvestigationReportModal: React.FC<
                   <li>
                     Set the case outcome to: <strong>{finalOutcome}</strong>
                   </li>
-                  {reportOutcome === 'Under Monitoring' && (
-                    <li>
-                      Set monitoring duration to:{' '}
-                      <strong>{monitoringDuration} days</strong>
-                    </li>
-                  )}
                   <li>Archive the report for compliance</li>
                   <li>Notify relevant stakeholders</li>
                 </ul>
@@ -1215,6 +1180,7 @@ const GenerateInvestigationReportModal: React.FC<
 
               <div className="flex justify-end gap-3">
                 <button
+                  type="button"
                   onClick={() => {
                     setShowApprovalConfirm(false);
                   }}
@@ -1223,6 +1189,7 @@ const GenerateInvestigationReportModal: React.FC<
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleFinalize}
                   disabled={isFinalizing}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-green-400"

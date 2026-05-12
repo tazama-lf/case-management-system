@@ -57,8 +57,8 @@ describe('TransactionHistoryCharts', () => {
   it('dot function returns larger red circle for alert points', () => {
     render(<TransactionHistoryCharts data={sampleData} />);
     expect(capturedDotFn).toBeDefined();
-    // Alert point (index 1 has alert: true)
-    const alertDot = capturedDotFn({ cx: 100, cy: 50, payload: { index: 1 } });
+    // Alert point (sampleData[1] has alert: true)
+    const alertDot = capturedDotFn({ cx: 100, cy: 50, payload: sampleData[1] });
     expect(alertDot.props.r).toBe(6);
     expect(alertDot.props.fill).toBe('#ef4444');
   });
@@ -66,8 +66,8 @@ describe('TransactionHistoryCharts', () => {
   it('dot function returns smaller blue circle for non-alert points', () => {
     render(<TransactionHistoryCharts data={sampleData} />);
     expect(capturedDotFn).toBeDefined();
-    // Non-alert point (index 0 has alert: false)
-    const normalDot = capturedDotFn({ cx: 50, cy: 30, payload: { index: 0 } });
+    // Non-alert point (sampleData[0] has alert: false)
+    const normalDot = capturedDotFn({ cx: 50, cy: 30, payload: sampleData[0] });
     expect(normalDot.props.r).toBe(4);
     expect(normalDot.props.fill).toBe('#3b82f6');
   });

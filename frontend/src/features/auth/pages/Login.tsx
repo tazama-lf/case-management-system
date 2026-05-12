@@ -170,7 +170,18 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         {}
         <div className="mt-8 text-center">
           <p className="text-gray-500 text-sm">
-            © {new Date().getFullYear()} Tazama. Powered by Paysys Labs.
+            Copyright LF Charities, Inc. and contributors to the Tazama project
+          </p>
+          <p className="text-gray-500 text-sm mt-1">
+            Licensed under{' '}
+            <a
+              href="https://github.com/tazama-lf/case-management-system/blob/dev/LICENSE"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 underline"
+            >
+              Apache-2.0
+            </a>
           </p>
         </div>
       </div>

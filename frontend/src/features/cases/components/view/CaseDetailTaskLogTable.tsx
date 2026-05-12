@@ -56,7 +56,7 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
   onRejectCaseCreation,
   onTaskClick,
 }) => {
-  const [currentUser, setCurrentUser] = useState<User>(); 
+  const [currentUser, setCurrentUser] = useState<User>();
   useAlertOperations();
   const { hasComplianceOfficerRole, hasSupervisorRole, hasInvestigatorRole } =
     useAuth();

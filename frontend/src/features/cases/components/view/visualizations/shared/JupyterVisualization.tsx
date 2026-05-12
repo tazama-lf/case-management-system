@@ -122,7 +122,9 @@ const JupyterVisualization: React.FC<JupyterVisualizationProps> = ({
             className="border-0"
             title={title}
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            onError={() => { setError('Failed to load iframe content'); }}
+            onError={() => {
+              setError('Failed to load iframe content');
+            }}
           />
         )}
       </div>

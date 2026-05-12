@@ -83,33 +83,6 @@ export class CacheService {
       await Promise.all(rolePromises);
 
       this.logger.log(`User cache initialized in Redis with ${totalUsers} total users`, CacheService.name);
-
-      // for (const role of this.CACHE_ROLES) {
-      //   try {
-      //     this.logger.log(`Fetching users with role: ${role}`, CacheService.name);
-
-      //     const users = await this.getUsersByRole(token, role, this.configService.get<string>('KEYCLOAK_GROUP_NAME') ?? '');
-
-      //     for (const user of users) {
-      //       const userDetails: UserDetails = {
-      //         id: user.id,
-      //         username: user.username,
-      //         firstName: user.firstName,
-      //         lastName: user.lastName,
-      //         fullName: `${user.firstName} ${user.lastName}`.trim(),
-      //         email: user.email,
-      //       };
-
-      //       cacheData[this.getCacheKey(user.id)] = userDetails;
-      //       totalUsers += 1;
-      //     }
-
-      //     this.logger.log(`Cached ${users.length} users with role: ${role}`, CacheService.name);
-      //   } catch (error) {
-      //     this.logger.error(`Failed to fetch users with role ${role}: ${error.message}`, CacheService.name);
-      //   }
-      // }
-
       if (Object.keys(cacheData).length > 0) {
         await this.redisService.mset(cacheData, this.CACHE_TTL_HOURS * 3600);
         this.logger.log(`User cache initialized in Redis with ${totalUsers} total users`, CacheService.name);
@@ -121,16 +94,34 @@ export class CacheService {
       this.logger.warn(`Failed to initialize user cache (will fall back to API): ${errorMessage}`, CacheService.name);
     }
   }
-
   async getUsersByRole(token: string, role: string, tenantName: string): Promise<UserGroupDetails[]> {
+    // Validate role against allowlist
+    if (!this.CACHE_ROLES.includes(role)) {
+      throw new Error(`Invalid role: ${role} is not in the allowed roles list`);
+    }
+
     this.logger.log(`Fetching users with role: ${role}`);
-    const users = await axios.get<UserGroupDetails[]>(`${this.AuthBaseUrl}/user/${role}?groupName=${tenantName}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-    return users.data;
+    try {
+      const users = await axios.get<UserGroupDetails[]>(`${this.AuthBaseUrl}/user/${role}`, {
+        params: {
+          groupName: tenantName,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      return users.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        this.logger.error(`Auth service error fetching users by role: ${error.response?.status} ${error.response?.statusText ?? ''}`);
+
+        throw new Error(`Failed to fetch users with role ${role}: upstream returned ${error.response?.status}`, {
+          cause: error,
+        });
+      }
+      throw error;
+    }
   }
 
   private getCacheKey(userId: string): string {

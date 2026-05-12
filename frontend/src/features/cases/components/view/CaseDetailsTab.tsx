@@ -554,7 +554,9 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
           <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <button
               type="button"
-              onClick={() => { setOpenPacs002(!openPacs002); }}
+              onClick={() => {
+                setOpenPacs002(!openPacs002);
+              }}
               className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
             >
               <div>
@@ -592,7 +594,9 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
           <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <button
               type="button"
-              onClick={() => { setOpenPacs008(!openPacs008); }}
+              onClick={() => {
+                setOpenPacs008(!openPacs008);
+              }}
               className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
             >
               <div>

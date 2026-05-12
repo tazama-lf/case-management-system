@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AppController } from './app.controller';
 import { AuditLogModule } from './modules/audit/auditLog.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -35,6 +36,7 @@ import { GoldLakehouseModule } from './modules/gold-lakehouse/gold-lakehouse.mod
 import { JupyterModule } from './modules/jupyter/jupyter.module';
 
 @Module({
+  controllers: [AppController],
   imports: [
     ConfigModule.forRoot({
       envFilePath: '.env',

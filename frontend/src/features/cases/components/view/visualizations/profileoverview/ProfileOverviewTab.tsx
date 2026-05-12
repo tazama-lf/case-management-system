@@ -17,6 +17,14 @@ interface ProfileOverviewTabProps {
   transactionId?: string;
 }
 
+interface Transaction {
+  event_date: string;
+  tx_amount: number | string;
+  tx_ccy: string;
+  tx_type: string;
+  [key: string]: unknown;
+}
+
 const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
   alertId,
   transactionId,
@@ -55,8 +63,8 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
 
         setError(
           err?.response?.data?.message ||
-          err?.message ||
-          'Something went wrong while fetching profile',
+            err?.message ||
+            'Something went wrong while fetching profile',
         );
       } finally {
         setLoading(false);
@@ -92,7 +100,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
     const sortable = [...selectedList];
 
     if (sortConfig !== null) {
-      sortable.sort((a: any, b: any) => {
+      sortable.sort((a: Transaction, b: Transaction) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
 
@@ -125,23 +133,23 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
   ) => {
     let direction: 'asc' | 'desc' = 'asc';
 
-    if (
-      sortConfig?.key === key &&
-      sortConfig.direction === 'asc'
-    ) {
+    if (sortConfig?.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
     }
 
     setSortConfig({ key, direction });
   };
 
-  const totalAmount = selectedList.reduce((sum: number, tx: any) => sum + (Number(tx.tx_amount) || 0), 0);
+  const totalAmount = selectedList.reduce(
+    (sum: number, tx: Transaction) => sum + (Number(tx.tx_amount) || 0),
+    0,
+  );
 
   //Volume Trend Data for last 90 days
   const volumeTrendData = React.useMemo(() => {
     const grouped: Record<string, number> = {};
 
-    selectedList.forEach((tx: any) => {
+    selectedList.forEach((tx: Transaction) => {
       const date = tx.event_date;
 
       if (!date) return;
@@ -158,7 +166,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
   const transactionCountData = React.useMemo(() => {
     const grouped: Record<string, number> = {};
 
-    selectedList.forEach((tx: any) => {
+    selectedList.forEach((tx: Transaction) => {
       const date = tx.event_date;
 
       if (!date) return;
@@ -218,21 +226,27 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
 
         <div className="flex bg-gray-100 p-1 rounded-md">
           <button
-            onClick={() => { setActiveTab('creditor'); }}
-            className={`px-4 py-1.5 text-sm rounded-md transition ${activeTab === 'creditor'
+            onClick={() => {
+              setActiveTab('creditor');
+            }}
+            className={`px-4 py-1.5 text-sm rounded-md transition ${
+              activeTab === 'creditor'
                 ? 'bg-white shadow text-blue-600 font-medium'
                 : 'text-gray-600 hover:text-gray-800'
-              }`}
+            }`}
           >
             Creditor
           </button>
 
           <button
-            onClick={() => { setActiveTab('debtor'); }}
-            className={`px-4 py-1.5 text-sm rounded-md transition ${activeTab === 'debtor'
+            onClick={() => {
+              setActiveTab('debtor');
+            }}
+            className={`px-4 py-1.5 text-sm rounded-md transition ${
+              activeTab === 'debtor'
                 ? 'bg-white shadow text-blue-600 font-medium'
                 : 'text-gray-600 hover:text-gray-800'
-              }`}
+            }`}
           >
             Debtor
           </button>
@@ -370,34 +384,82 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
                   <thead className="bg-gray-50">
                     <tr>
                       <th
-                        aria-sort={sortConfig?.key === 'event_date' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        aria-sort={
+                          sortConfig?.key === 'event_date'
+                            ? sortConfig.direction === 'asc'
+                              ? 'ascending'
+                              : 'descending'
+                            : 'none'
+                        }
                         className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
                       >
-                        <button type="button" onClick={() => { handleSort('event_date'); }} className="cursor-pointer inline-flex items-center gap-1 uppercase text-xs font-medium text-gray-500">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleSort('event_date');
+                          }}
+                          className="cursor-pointer inline-flex items-center gap-1 uppercase text-xs font-medium text-gray-500"
+                        >
                           Date {getSortIcon('event_date')}
                         </button>
                       </th>
                       <th
-                        aria-sort={sortConfig?.key === 'tx_amount' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        aria-sort={
+                          sortConfig?.key === 'tx_amount'
+                            ? sortConfig.direction === 'asc'
+                              ? 'ascending'
+                              : 'descending'
+                            : 'none'
+                        }
                         className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
                       >
-                        <button type="button" onClick={() => { handleSort('tx_amount'); }} className="cursor-pointer inline-flex items-center gap-1 uppercase text-xs font-medium text-gray-500">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleSort('tx_amount');
+                          }}
+                          className="cursor-pointer inline-flex items-center gap-1 uppercase text-xs font-medium text-gray-500"
+                        >
                           Transaction Amount {getSortIcon('tx_amount')}
                         </button>
                       </th>
                       <th
-                        aria-sort={sortConfig?.key === 'tx_ccy' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        aria-sort={
+                          sortConfig?.key === 'tx_ccy'
+                            ? sortConfig.direction === 'asc'
+                              ? 'ascending'
+                              : 'descending'
+                            : 'none'
+                        }
                         className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
                       >
-                        <button type="button" onClick={() => { handleSort('tx_ccy'); }} className="cursor-pointer inline-flex items-center gap-1 uppercase text-xs font-medium text-gray-500">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleSort('tx_ccy');
+                          }}
+                          className="cursor-pointer inline-flex items-center gap-1 uppercase text-xs font-medium text-gray-500"
+                        >
                           Transaction Currency {getSortIcon('tx_ccy')}
                         </button>
                       </th>
                       <th
-                        aria-sort={sortConfig?.key === 'tx_type' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        aria-sort={
+                          sortConfig?.key === 'tx_type'
+                            ? sortConfig.direction === 'asc'
+                              ? 'ascending'
+                              : 'descending'
+                            : 'none'
+                        }
                         className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
                       >
-                        <button type="button" onClick={() => { handleSort('tx_type'); }} className="cursor-pointer inline-flex items-center gap-1 uppercase text-xs font-medium text-gray-500">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleSort('tx_type');
+                          }}
+                          className="cursor-pointer inline-flex items-center gap-1 uppercase text-xs font-medium text-gray-500"
+                        >
                           Transaction Type {getSortIcon('tx_type')}
                         </button>
                       </th>
@@ -405,7 +467,7 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
                   </thead>
 
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {sortedTransactions.map((tx: any, index: number) => (
+                    {sortedTransactions.map((tx: Transaction, index: number) => (
                       <tr key={index} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm text-gray-900">
                           {new Date(tx.event_date).toLocaleDateString()}
