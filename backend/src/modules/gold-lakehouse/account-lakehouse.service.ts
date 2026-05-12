@@ -218,8 +218,9 @@ export class AccountLakehouseService extends GoldLakehouseService {
         flags: { alerted: false, investigated: false },
       });
 
-      const networkSql =
-        'SELECT from_account_id, to_account_id, tx_count, total_amount, currency_hint, first_event_ts, last_event_ts, is_alerted_edge, is_investigated_edge FROM tx_network_accounts_edges WHERE tenant_id = $1 AND bucket_granularity = $2 AND ( from_account_id IN ($3) OR to_account_id IN ($3) )';
+      const accountPlaceholders = cleanedAccountIds.map((_, i) => `$${i + 3}`).join(', ');
+
+      const networkSql = `SELECT from_account_id, to_account_id, tx_count, total_amount, currency_hint, first_event_ts, last_event_ts, is_alerted_edge, is_investigated_edge FROM tx_network_accounts_edges WHERE tenant_id = $1 AND bucket_granularity = $2 AND ( from_account_id IN (${accountPlaceholders}) OR to_account_id IN (${accountPlaceholders}) )`;
 
       const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, cleanedAccountIds]);
       const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
