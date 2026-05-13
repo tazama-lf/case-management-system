@@ -48,7 +48,9 @@ export class AlertRepository extends BaseRepository {
     if (!transactionData.TxTp) {
       throw new Error('Invalid transaction data');
     }
+    console.log(transactionData, "transactionData")
     const referenceIdData = await this.getReferenceId(transactionData.TxTp);
+    console.log(referenceIdData, "referenceIdData")
     const referenceId = extractReferenceId(transactionData as unknown as JsonValue, 10, 0, referenceIdData.referenceIdName);
     if (!referenceId) {
       throw new Error('ReferenceId not found in transaction data');
