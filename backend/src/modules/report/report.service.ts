@@ -19,7 +19,7 @@ export class ReportsService {
     private readonly couchdbService: CouchdbService,
     private readonly notificationService: NotificationService,
     private readonly eventLogService: EventLogService,
-  ) {}
+  ) { }
 
   private static readonly CLOSED_STATUSES: CaseStatus[] = [
     CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
@@ -186,29 +186,46 @@ export class ReportsService {
     const now = new Date();
     const trendStartDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-    const base: any = {
-      created_at: { gte: trendStartDate },
-      ...this.buildCommonCaseFilters(filters),
+    const recentCasesBaseFilters: any = {
+      created_at: {
+        gte: trendStartDate,
+      },
     };
-    const where = filters?.requestingUserId
-      ? {
-          AND: [
-            base,
-            {
-              OR: [
-                { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
-                {
-                  tasks: {
-                    some: {
-                      assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
-                    },
-                  },
-                },
-              ],
-            },
-          ],
-        }
-      : base;
+
+    if (filters?.caseType) {
+      recentCasesBaseFilters.case_type = filters.caseType;
+    }
+    if (filters?.priority) {
+      recentCasesBaseFilters.priority = filters.priority;
+    }
+    if (filters?.investigator) {
+      recentCasesBaseFilters.case_owner_user_id = filters.investigator;
+    }
+    if (filters?.tenantId) {
+      recentCasesBaseFilters.alert = {
+        tenant_id: filters.tenantId,
+      };
+    }
+
+    let recentCasesWhere: any;
+
+    // Apply the same user filtering logic as the main query
+    if (filters?.requestingUserId) {
+      recentCasesWhere = {
+        AND: [
+          recentCasesBaseFilters,
+          {
+            OR: [
+              { case_owner_user_id: null }, // Unassigned cases
+              { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
+              { case_owner_user_id: filters.requestingUserId }, // Cases assigned to this investigator
+            ],
+          },
+        ],
+      };
+    } else {
+      recentCasesWhere = recentCasesBaseFilters;
+    }
 
     const recentCases = await this.prisma.case.findMany({
       where,
@@ -292,28 +309,58 @@ export class ReportsService {
       return { monthStart, monthEnd };
     });
 
-    const commonFilters = this.buildCommonCaseFilters(filters);
+    const monthPromises = months.map(async ({ monthStart, monthEnd }) => {
+      const monthClosedCasesBaseFilters: any = {
+        updated_at: { gte: monthStart, lte: monthEnd },
+        status: { in: closedStatuses },
+      };
 
-    return await Promise.all(
-      months.map(async ({ monthStart, monthEnd }) => {
-        const base = {
-          updated_at: { gte: monthStart, lte: monthEnd },
-          status: { in: ReportsService.CLOSED_STATUSES },
-          ...commonFilters,
+      if (filters?.caseType) {
+        monthClosedCasesBaseFilters.case_type = filters.caseType;
+      }
+      if (filters?.priority) {
+        monthClosedCasesBaseFilters.priority = filters.priority;
+      }
+      if (filters?.investigator) {
+        monthClosedCasesBaseFilters.case_owner_user_id = filters.investigator;
+      }
+      if (filters?.tenantId) {
+        monthClosedCasesBaseFilters.alert = {
+          tenant_id: filters.tenantId,
         };
-        const where = this.applyInvestigatorScope(base, filters?.requestingUserId);
+      }
 
-        const monthClosedCases = await this.prisma.case.findMany({
-          where,
-          select: { created_at: true, updated_at: true },
-        });
+      let monthClosedCasesWhere: any;
 
-        return {
-          month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
-          avgResolutionTime: Math.round(this.avgResolutionDays(monthClosedCases)),
-          casesResolved: monthClosedCases.length,
+      // Apply the same user filtering logic as the main query
+      if (filters?.requestingUserId) {
+        monthClosedCasesWhere = {
+          AND: [
+            monthClosedCasesBaseFilters,
+            {
+              OR: [
+                { case_owner_user_id: null }, // Unassigned cases
+                { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
+                { case_owner_user_id: filters.requestingUserId }, // Cases assigned to this investigator
+              ],
+            },
+          ],
         };
-      }),
+      } else {
+        monthClosedCasesWhere = monthClosedCasesBaseFilters;
+      }
+
+      const monthClosedCases = await this.prisma.case.findMany({
+        where: monthClosedCasesWhere,
+        select: { created_at: true, updated_at: true },
+      });
+
+      return {
+        month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
+        avgResolutionTime: Math.round(this.avgResolutionDays(monthClosedCases)),
+        casesResolved: monthClosedCases.length,
+      };
+    }),
     );
   }
 
@@ -553,9 +600,9 @@ export class ReportsService {
         const avgResolutionDays =
           cases.length > 0
             ? cases.reduce((sum, case_) => {
-                const resolutionTime = Math.floor((case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24));
-                return sum + resolutionTime;
-              }, 0) / cases.length
+              const resolutionTime = Math.floor((case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24));
+              return sum + resolutionTime;
+            }, 0) / cases.length
             : 0;
 
         return {
@@ -687,9 +734,9 @@ export class ReportsService {
         const avgResolutionTime =
           closedCasesWithTimes.length > 0
             ? closedCasesWithTimes.reduce((sum, case_) => {
-                const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-                return sum + resolutionTime;
-              }, 0) / closedCasesWithTimes.length
+              const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+              return sum + resolutionTime;
+            }, 0) / closedCasesWithTimes.length
             : 0;
 
         const completionRate = totalCases > 0 ? Math.round((closedCases / totalCases) * 100) : 0;
@@ -932,9 +979,9 @@ export class ReportsService {
     const avgResolutionTime =
       closedCasesWithTimes.length > 0
         ? closedCasesWithTimes.reduce((sum, case_) => {
-            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-            return sum + resolutionTime;
-          }, 0) / closedCasesWithTimes.length
+          const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+          return sum + resolutionTime;
+        }, 0) / closedCasesWithTimes.length
         : 0;
 
     const casesOver15Days = casesWithAge.filter((c) => c.ageDays > 15).length;
