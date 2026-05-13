@@ -340,7 +340,6 @@ export class ReportsService {
             {
               OR: [
                 { case_owner_user_id: null }, // Unassigned cases
-                { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
                 { case_owner_user_id: filters.requestingUserId }, // Cases assigned to this investigator
               ],
             },
