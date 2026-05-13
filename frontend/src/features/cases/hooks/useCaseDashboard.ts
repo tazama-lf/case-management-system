@@ -261,6 +261,17 @@ export const useCaseDashboard = (): {
     setCurrentPage(DEFAULT_PAGE);
   }, [debouncedSearch, search]);
 
+  // Reset to page 1 when any filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    caseTypeFilter,
+    statusFilter,
+    priorityFilter,
+    sarStrStatusFilter,
+    sortBy,
+  ]);
+
   const paginatedCases = cases;
 
   const pagination: PaginationState = {
