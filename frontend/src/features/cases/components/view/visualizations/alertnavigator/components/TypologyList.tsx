@@ -33,7 +33,9 @@ export const TypologyList: React.FC<TypologyListProps> = ({
         <div
           key={index}
           className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer"
-          onClick={() => { onToggle(index); }}
+          onClick={() => {
+            onToggle(index);
+          }}
         >
           <div className="flex items-center gap-2">
             <div

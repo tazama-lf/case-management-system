@@ -413,25 +413,34 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       `;
 
       const alertFlagsSql = `
-        SELECT DISTINCT $1 as account_id WHERE 1=0
+        SELECT
+          MAX(COALESCE(is_alerted, 0))      as is_alerted,
+          MAX(COALESCE(is_investigated, 0)) as is_investigated
+        FROM transaction_history
+        WHERE entity_id = $1
+          AND tenant_id = $2
+          AND row_type = 'AGG'
       `;
 
       const [outboundResponse, inboundResponse, alertFlagsResponse] = await Promise.all([
         this.runSqlQuery(outboundSql, 1000, [accountId, tenantId]),
         this.runSqlQuery(inboundSql, 1000, [accountId, tenantId]),
-        this.runSqlQuery(alertFlagsSql, 10, [accountId]),
+        this.runSqlQuery(alertFlagsSql, 10, [accountId, tenantId]),
       ]);
 
       const outboundData = (outboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
       const inboundData = (inboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
-      const alertFlags = new Set((alertFlagsResponse?.data ?? []).map((row) => this.stripHudiMetadata(row).account_id));
+      const centerAccountFlags = alertFlagsResponse?.data?.[0] ? this.stripHudiMetadata(alertFlagsResponse.data[0]) : null;
+      const centerAccountIsAlerted = centerAccountFlags ? centerAccountFlags.is_alerted === 1 : false;
+      const centerAccountIsInvestigated = centerAccountFlags ? centerAccountFlags.is_investigated === 1 : false;
 
       const allConnections = [...outboundData, ...inboundData];
 
       const connectedAccounts: ConnectedAccountDto[] = allConnections.map((conn) => {
         const velocity = this.calculateVelocity(Number(conn.total_transactions), Math.max(Number(conn.duration_days), 1));
 
-        const hasAlert = alertFlags.has(conn.connected_account_id);
+        // Mark connected accounts with hasAlert when the center account has alerts
+        const hasAlert = centerAccountIsAlerted || centerAccountIsInvestigated;
 
         const stats: TransactionStatsDto = {
           totalTransactions: Number(conn.total_transactions),
@@ -446,7 +455,8 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           flowDirection: conn.flow_direction === 'OUTBOUND' ? 'Outbound (Payments To)' : 'Inbound (Payments From)',
           transactionStats: stats,
           hasAlert,
-          alertMessage: hasAlert ? 'Alert triggered on this account' : undefined,
+          alertMessage:
+            centerAccountIsAlerted || centerAccountIsInvestigated ? 'Center account has alerts — check transaction history' : undefined,
           firstTransactionDate: conn.first_tx_date,
           lastTransactionDate: conn.last_tx_date,
         };

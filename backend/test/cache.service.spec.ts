@@ -125,8 +125,11 @@ describe('CacheService', () => {
       await service.initializeUserCache(0, 'test-token');
 
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        'http://auth.example.com/user/CMS_INVESTIGATOR?groupName=test-group',
+        'http://auth.example.com/user/CMS_INVESTIGATOR',
         expect.objectContaining({
+          params: expect.objectContaining({
+            groupName: 'test-group',
+          }),
           headers: expect.objectContaining({
             Authorization: 'Bearer test-token',
           }),
@@ -282,7 +285,10 @@ describe('CacheService', () => {
       const users = await service.getUsersByRole('test-token', 'CMS_INVESTIGATOR', 'tenant-1');
 
       expect(users).toEqual(mockUserGroupDetails);
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://auth.example.com/user/CMS_INVESTIGATOR?groupName=tenant-1', {
+      expect(mockedAxios.get).toHaveBeenCalledWith('http://auth.example.com/user/CMS_INVESTIGATOR', {
+        params: {
+          groupName: 'tenant-1',
+        },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer test-token',
@@ -340,9 +346,11 @@ describe('CacheService', () => {
       const customService = customModule.get<CacheService>(CacheService);
       mockedAxios.get.mockResolvedValue({ data: [] });
 
-      await customService.getUsersByRole('token', 'ROLE', 'tenant');
+      await customService.getUsersByRole('token', 'CMS_INVESTIGATOR', 'tenant');
 
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://custom-auth.com/user/ROLE?groupName=tenant', expect.any(Object));
+      expect(mockedAxios.get).toHaveBeenCalledWith('http://custom-auth.com/user/CMS_INVESTIGATOR', expect.objectContaining({
+        params: { groupName: 'tenant' },
+      }));
     });
   });
 

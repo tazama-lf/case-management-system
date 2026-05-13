@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -28,7 +27,6 @@ const renderLogin = () => {
 describe('Login', () => {
   const mockLogin = vi.fn();
   const mockClearError = vi.fn();
-  const mockNavigate = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -168,7 +166,6 @@ describe('Login', () => {
   });
 
   it('shows loading state during login', async () => {
-    const user = userEvent.setup();
     mockUseAuth.mockReturnValue({
       login: mockLogin,
       loading: true,
@@ -206,7 +203,18 @@ describe('Login', () => {
     renderLogin();
 
     expect(
-      screen.getByText(/© 2026 Tazama. Powered by Paysys Labs./i),
+      screen.getByText(
+        /Copyright LF Charities, Inc. and contributors to the Tazama project/i,
+      ),
     ).toBeInTheDocument();
+
+    expect(screen.getByText(/Licensed under/i)).toBeInTheDocument();
+
+    const licenseLink = screen.getByRole('link', { name: /Apache-2.0/i });
+    expect(licenseLink).toBeInTheDocument();
+    expect(licenseLink).toHaveAttribute(
+      'href',
+      'https://github.com/tazama-lf/case-management-system/blob/dev/LICENSE',
+    );
   });
 });

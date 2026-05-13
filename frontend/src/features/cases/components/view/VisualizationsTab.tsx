@@ -99,7 +99,9 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
           return (
             <button
               key={tab.key}
-              onClick={() => { setActiveSubTab(tab.key as VisualizationSubTab); }}
+              onClick={() => {
+                setActiveSubTab(tab.key as VisualizationSubTab);
+              }}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all
                 ${
                   isActive

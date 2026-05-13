@@ -421,3 +421,11 @@ The documentation is automatically generated from the source code and reflects t
 - Review existing issues, discussions and pull requests
 - Start a discussion in the **Discussions** tab or create an issue in the **Issues** tab in this repository
 - Join the Tazama Slack workspace and post your question in the **#get-help** channel - :point_right: Join here: https://slack.tazama.org
+
+---
+
+## License
+
+Copyright LF Charities, Inc. and contributors to the Tazama project
+
+Licensed under [Apache-2.0](LICENSE)

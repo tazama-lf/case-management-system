@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-} from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 import CaseStatusReport from '../CaseStatusReport';
@@ -55,11 +50,7 @@ vi.mock('@/features/reports/components/ReportStatsCards', () => ({
 vi.mock('@/features/reports/components/ReportFilters', () => ({
   default: (props: any) => (
     <div>
-      <button
-        onClick={() =>
-          props.onChangeReportType('CASE_AGEING')
-        }
-      >
+      <button onClick={() => props.onChangeReportType('CASE_AGEING')}>
         Change Report Type
       </button>
     </div>
@@ -71,17 +62,11 @@ vi.mock('@/features/reports/components/ReportsTable', () => ({
     <div>
       <div>Reports Table</div>
 
-      <button onClick={props.onExportExcel}>
-        Export Excel
-      </button>
+      <button onClick={props.onExportExcel}>Export Excel</button>
 
-      <button onClick={props.onExportCSV}>
-        Export CSV
-      </button>
+      <button onClick={props.onExportCSV}>Export CSV</button>
 
-      <button onClick={props.onExportPDF}>
-        Export PDF
-      </button>
+      <button onClick={props.onExportPDF}>Export PDF</button>
     </div>
   ),
 }));
@@ -99,9 +84,7 @@ vi.mock('@/features/reports/components/MultiBarChart', () => ({
 }));
 
 vi.mock('./InvestigatorWorkloadReport', () => ({
-  default: () => (
-    <div>Investigator Workload Report</div>
-  ),
+  default: () => <div>Investigator Workload Report</div>,
 }));
 
 vi.mock('./CaseAgeingReport', () => ({
@@ -109,9 +92,7 @@ vi.mock('./CaseAgeingReport', () => ({
 }));
 
 vi.mock('./EvidenceFindingsReport', () => ({
-  default: () => (
-    <div>Evidence Findings Report</div>
-  ),
+  default: () => <div>Evidence Findings Report</div>,
 }));
 
 describe('Reports', () => {
@@ -132,9 +113,7 @@ describe('Reports', () => {
 
     render(<CaseStatusReport />);
 
-    expect(
-      screen.getByText('Reports Dashboard'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Reports Dashboard')).toBeInTheDocument();
   });
 
   it('renders error state', () => {
@@ -147,9 +126,7 @@ describe('Reports', () => {
     render(<CaseStatusReport />);
 
     expect(
-      screen.getByText(
-        'Failed to load reports data. Please try again.',
-      ),
+      screen.getByText('Failed to load reports data. Please try again.'),
     ).toBeInTheDocument();
   });
 
@@ -203,31 +180,19 @@ describe('Reports', () => {
     render(<CaseStatusReport />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Case Status Report'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Case Status Report')).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText('Report Stats Cards'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Report Stats Cards')).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(
-        screen.getAllByText('Pie Chart').length,
-      ).toBeGreaterThan(0);
+      expect(screen.getAllByText('Pie Chart').length).toBeGreaterThan(0);
     });
-    expect(
-      screen.getByText('Bar Chart'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Bar Chart')).toBeInTheDocument();
 
-    expect(
-      screen.getByText('Multi Bar Chart'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Multi Bar Chart')).toBeInTheDocument();
 
-    expect(
-      screen.getByText('Reports Table'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Reports Table')).toBeInTheDocument();
   });
 
   it('exports excel successfully', () => {
@@ -246,9 +211,7 @@ describe('Reports', () => {
 
     render(<CaseStatusReport />);
 
-    fireEvent.click(
-      screen.getByText('Export Excel'),
-    );
+    fireEvent.click(screen.getByText('Export Excel'));
 
     expect(formatDataForExport).toHaveBeenCalled();
     expect(exportToExcel).toHaveBeenCalled();
@@ -270,9 +233,7 @@ describe('Reports', () => {
 
     render(<CaseStatusReport />);
 
-    fireEvent.click(
-      screen.getByText('Export CSV'),
-    );
+    fireEvent.click(screen.getByText('Export CSV'));
 
     expect(formatDataForExport).toHaveBeenCalled();
     expect(exportToCSV).toHaveBeenCalled();
@@ -294,9 +255,7 @@ describe('Reports', () => {
 
     render(<CaseStatusReport />);
 
-    fireEvent.click(
-      screen.getByText('Export PDF'),
-    );
+    fireEvent.click(screen.getByText('Export PDF'));
 
     expect(formatDataForExport).toHaveBeenCalled();
     expect(getColumnsForReport).toHaveBeenCalled();
@@ -319,14 +278,10 @@ describe('Reports', () => {
 
     render(<CaseStatusReport />);
 
-    fireEvent.click(
-      screen.getByText('Change Report Type'),
-    );
+    fireEvent.click(screen.getByText('Change Report Type'));
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Case Ageing Report'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Case Ageing Report')).toBeInTheDocument();
     });
   });
 
@@ -339,9 +294,7 @@ describe('Reports', () => {
 
     render(<CaseStatusReport />);
 
-    expect(
-      screen.getByText('Case Status Report'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Case Status Report')).toBeInTheDocument();
   });
 
   it('handles export errors gracefully', () => {
@@ -366,9 +319,7 @@ describe('Reports', () => {
 
     render(<CaseStatusReport />);
 
-    fireEvent.click(
-      screen.getByText('Export Excel'),
-    );
+    fireEvent.click(screen.getByText('Export Excel'));
 
     expect(globalThis.alert).toHaveBeenCalledWith(
       'Export failed. Please try again.',

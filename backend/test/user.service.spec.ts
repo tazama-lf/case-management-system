@@ -1,4 +1,4 @@
-﻿import { Test, TestingModule } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../src/modules/user/user.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
@@ -105,13 +105,18 @@ describe('UserService', () => {
       it('should build the correct request URL from config + params', async () => {
         await service.getUsersByRole(TOKEN, ROLE, TENANT);
 
-        expect(mockedAxios.get).toHaveBeenCalledWith(`${AUTH_BASE}/user/${ROLE}?groupName=${TENANT}`, expect.any(Object));
+        expect(mockedAxios.get).toHaveBeenCalledWith(`${AUTH_BASE}/user/${ROLE}`, expect.objectContaining({
+          params: { groupName: TENANT },
+        }));
       });
 
       it('should pass Content-Type and Bearer token headers', async () => {
         await service.getUsersByRole(TOKEN, ROLE, TENANT);
 
         expect(mockedAxios.get).toHaveBeenCalledWith(expect.any(String), {
+          params: {
+            groupName: TENANT,
+          },
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${TOKEN}`,
@@ -142,7 +147,9 @@ describe('UserService', () => {
 
         await altService.getUsersByRole(TOKEN, ROLE, TENANT);
 
-        expect(mockedAxios.get).toHaveBeenCalledWith(`${altBase}/user/${ROLE}?groupName=${TENANT}`, expect.any(Object));
+        expect(mockedAxios.get).toHaveBeenCalledWith(`${altBase}/user/${ROLE}`, expect.objectContaining({
+          params: { groupName: TENANT },
+        }));
       });
     });
 

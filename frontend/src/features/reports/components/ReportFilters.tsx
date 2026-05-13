@@ -4,18 +4,18 @@ import FiltersPanel from './FiltersPanel';
 
 interface ReportFiltersProps {
   reportType:
-  | 'CASE_STATUS'
-  | 'CASE_AGEING'
-  | 'INVESTIGATOR_WORKLOAD'
-  | 'EVIDENCE_FINDINGS';
+    | 'CASE_STATUS'
+    | 'CASE_AGEING'
+    | 'INVESTIGATOR_WORKLOAD'
+    | 'EVIDENCE_FINDINGS';
   dateRange:
-  | 'today'
-  | 'yesterday'
-  | 'last7'
-  | 'last30'
-  | 'last90'
-  | 'thisMonth'
-  | 'lastYear';
+    | 'today'
+    | 'yesterday'
+    | 'last7'
+    | 'last30'
+    | 'last90'
+    | 'thisMonth'
+    | 'lastYear';
   onChangeReportType: (type: ReportFiltersProps['reportType']) => void;
   onChangeDateRange: (range: ReportFiltersProps['dateRange']) => void;
   onApplyFilters: (filters: {

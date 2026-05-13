@@ -68,7 +68,7 @@ describe('AccountLakehouseService', () => {
           },
         ]),
       );
-      // Mock network edges query for acc1
+      // Mock single network edges query for all accounts
       http.mockReturnValueOnce(
         okHttp([
           {
@@ -101,7 +101,7 @@ describe('AccountLakehouseService', () => {
           },
         ]),
       );
-      // Mock network edges query with 60 edges (total txCount = 60)
+      // Mock single network edges query with 60 edges (total txCount = 60)
       http.mockReturnValueOnce(
         okHttp(
           Array(60).fill({
@@ -134,7 +134,7 @@ describe('AccountLakehouseService', () => {
           },
         ]),
       );
-      // Mock network edges query with 25 edges (total txCount = 25)
+      // Mock single network edges query with 25 edges (total txCount = 25)
       http.mockReturnValueOnce(
         okHttp(
           Array(25).fill({
@@ -162,7 +162,7 @@ describe('AccountLakehouseService', () => {
           },
         ]),
       );
-      // Mock network edges query with edge from acc2 to acc1
+      // Mock single network edges query with edge from acc2 to acc1
       http.mockReturnValueOnce(
         okHttp([
           { from_account_id: 'acc2', to_account_id: 'acc1', tx_count: 2, total_amount: 200, is_alerted_edge: 0, is_investigated_edge: 0 },
@@ -171,6 +171,39 @@ describe('AccountLakehouseService', () => {
       const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'year');
       // Should have entity node + acc1 + acc2 = 3 nodes minimum
       expect(result.network.nodes.length).toBeGreaterThanOrEqual(3);
+    });
+
+    it('does not duplicate edges when entity owns multiple accounts that transact with each other', async () => {
+      // Mock account_holder query with 2 accounts
+      http.mockReturnValueOnce(
+        okHttp([
+          {
+            source: 'entity1TAZAMA_EID',
+            destination: 'acc1MSISDNfsp001',
+            tenant_id: 'DEFAULT',
+          },
+          {
+            source: 'entity1TAZAMA_EID',
+            destination: 'acc2MSISDNfsp001',
+            tenant_id: 'DEFAULT',
+          },
+        ]),
+      );
+      // Mock single network edges query that returns edges between acc1 and acc2
+      http.mockReturnValueOnce(
+        okHttp([
+          { from_account_id: 'acc1', to_account_id: 'acc2', tx_count: 5, total_amount: 500, is_alerted_edge: 0, is_investigated_edge: 0 },
+          { from_account_id: 'acc2', to_account_id: 'acc3', tx_count: 3, total_amount: 300, is_alerted_edge: 0, is_investigated_edge: 0 },
+        ]),
+      );
+      const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'month');
+      
+      // Should have exactly 2 edges (not duplicated)
+      expect(result.network.edges.length).toBe(2);
+      // Total transactions should be 8 (5 + 3)
+      expect(result.accountDetails.transactions).toBe(8);
+      // Total value should be 800 (500 + 300)
+      expect(result.accountDetails.totalValue).toBe(800);
     });
   });
 

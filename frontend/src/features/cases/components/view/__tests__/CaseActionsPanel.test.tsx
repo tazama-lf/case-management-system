@@ -18,12 +18,10 @@ vi.mock('@/features/auth/components/AuthContext', () => ({
   }),
 }));
 
-const mockGetCaseDetails = vi
-  .fn()
-  .mockResolvedValue({
-    case_owner_user_id: 'user-1',
-    status: 'STATUS_20_IN_PROGRESS',
-  });
+const mockGetCaseDetails = vi.fn().mockResolvedValue({
+  case_owner_user_id: 'user-1',
+  status: 'STATUS_20_IN_PROGRESS',
+});
 vi.mock('../../../services/caseService', () => ({
   caseService: {
     getCaseDetails: (...args: any[]) => mockGetCaseDetails(...args),

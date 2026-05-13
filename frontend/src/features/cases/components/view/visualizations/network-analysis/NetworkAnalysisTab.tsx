@@ -107,7 +107,9 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
           {/* Creditor/Debtor toggle */}
           <div className="flex bg-gray-100 p-1 rounded-md">
             <button
-              onClick={() => { setActiveEntityRole('creditor'); }}
+              onClick={() => {
+                setActiveEntityRole('creditor');
+              }}
               className={`px-4 py-1.5 text-sm rounded-md transition ${
                 activeEntityRole === 'creditor'
                   ? 'bg-white shadow text-blue-600 font-medium'
@@ -118,7 +120,9 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
             </button>
 
             <button
-              onClick={() => { setActiveEntityRole('debtor'); }}
+              onClick={() => {
+                setActiveEntityRole('debtor');
+              }}
               className={`px-4 py-1.5 text-sm rounded-md transition ${
                 activeEntityRole === 'debtor'
                   ? 'bg-white shadow text-blue-600 font-medium'
@@ -132,7 +136,9 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
           {/* Time Range Dropdown (moved here) */}
           <div className="relative">
             <button
-              onClick={() => { setShowTimeDropdown(!showTimeDropdown); }}
+              onClick={() => {
+                setShowTimeDropdown(!showTimeDropdown);
+              }}
               className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               {selectedTimeLabel}
@@ -171,7 +177,9 @@ const NetworkAnalysisTab: React.FC<NetworkAnalysisTabProps> = ({
           return (
             <button
               key={subTab.key}
-              onClick={() => { setActiveSubTab(subTab.key); }}
+              onClick={() => {
+                setActiveSubTab(subTab.key);
+              }}
               className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-indigo-600 text-white'
