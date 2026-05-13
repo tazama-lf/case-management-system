@@ -32,7 +32,6 @@ export class AlertService {
     const txtp = alert.transaction.TxTp;
     const message = alert.message || 'Suspicious activity detected';
     try {
-      console.log(tenantId, alert,"<=====")
       await this.alertRepository.createTransaction(tenantId, alert.transaction);
       const newAlert = await this.alertRepository.createAlert({
         tenantId,
