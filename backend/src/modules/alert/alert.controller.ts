@@ -84,6 +84,13 @@ export class AlertController {
     example: 'created_at',
   })
   @ApiQuery({
+    name: 'nullAlertType',
+    required: false,
+    type: 'string',
+    description: 'Filter for alerts with no alert type (pass "true")',
+    example: 'true',
+  })
+  @ApiQuery({
     name: 'sortOrder',
     required: false,
     enum: ['asc', 'desc'],
