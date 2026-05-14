@@ -19,6 +19,17 @@ export class AlertController {
     private readonly alertService: AlertService,
   ) {}
 
+  /**
+   * Extract JWT token from request headers
+   */
+  private extractJwt(req: AuthenticatedRequest): string | undefined {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      return authHeader.substring(7);
+    }
+    return undefined;
+  }
+
   @Get()
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
@@ -174,7 +185,9 @@ export class AlertController {
     const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
     if (!userId) throw new BadRequestException('Missing clientId');
-    return await this.alertService.getAlertTransactionalData(alertId, tenantId);
+    const userJwt = req ? this.extractJwt(req) : undefined;
+
+    return await this.alertService.getAlertTransactionalData(alertId, tenantId, userJwt);
   }
 
   @Get(':alertId')

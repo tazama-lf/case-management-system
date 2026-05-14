@@ -48,6 +48,9 @@ services:
       - flowable
     env_file:
       - ./backend/.env
+    environment:
+      # Override VOILA_BASE_URL to use Docker service name instead of IP
+      - VOILA_BASE_URL=http://voila:8866
     volumes:
       - ./backend/public.pem:/home/app/public.pem:ro
     ports:
@@ -63,6 +66,25 @@ services:
     restart: unless-stopped
     ports:
       - "5173:5173"
+    networks:
+      - tazama_default
+
+  voila:
+    build:
+      context: .
+      dockerfile: Dockerfile.voila
+    container_name: tazama-cms-voila
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "8866"  # Internal port for backend proxy only
+    env_file:
+      - ./backend/.env
+    environment:
+      # Backend service name and port (from .env PORT variable)
+      - CASE_MGMT_BACKEND_URL=http://backend:${PORT:-3090}
+      - VOILA_PORT=8866
     networks:
       - tazama_default
 

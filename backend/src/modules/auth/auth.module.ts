@@ -6,9 +6,10 @@ import { PrismaModule } from '../../../prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import { LoggerModule } from 'src/logger/logger.module';
+import { SharedModule } from '../shared/shared.module';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, HttpModule, LoggerModule],
+  imports: [ConfigModule, PrismaModule, HttpModule, LoggerModule, SharedModule],
   providers: [TazamaAuthGuard, AuthService],
   exports: [TazamaAuthGuard, AuthService],
   controllers: [AuthController],

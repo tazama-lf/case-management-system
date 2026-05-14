@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../shared/redis.service';
 import axios from 'axios';
+import * as jwt from 'jsonwebtoken';
 import { UserGroupDetails } from '../../utils/types/UserList';
 
 export interface UserDetails {
@@ -19,6 +20,7 @@ export class CacheService {
   private readonly logger = new Logger(CacheService.name);
   private readonly CACHE_ROLES = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'];
   private readonly CACHE_KEY_PREFIX = 'cms:users:';
+  private readonly TOKEN_CACHE_KEY_PREFIX = 'cms:tokens:';
   private readonly CACHE_TTL_HOURS = 720; // 720 hours == 30 days TTL
   private readonly AuthBaseUrl: string;
 
@@ -153,5 +155,98 @@ export class CacheService {
   async getUserEmailFromCache(userId: string): Promise<string | null> {
     const user = await this.getUserFromCache(userId);
     return user?.email ?? null;
+  }
+
+  /**
+   * Store user JWT token in Redis cache with TTL matching the token's expiration
+   * @param userId - The user ID
+   * @param token - The JWT token
+   */
+  async setUserToken(userId: string, token: string): Promise<void> {
+    if (!this.redisService.isConnected()) {
+      this.logger.warn('Redis not connected, cannot cache user token', CacheService.name);
+      return;
+    }
+
+    try {
+      // Decode JWT to get expiration time (without verification since it's already verified)
+      const decoded = jwt.decode(token) as { exp?: number };
+
+      if (!decoded?.exp) {
+        this.logger.warn(`Token for user ${userId} has no expiration, using default 1 hour TTL`, CacheService.name);
+        const defaultTtl = 3600; // 1 hour fallback
+        const tokenKey = `${this.TOKEN_CACHE_KEY_PREFIX}${userId}`;
+        await this.redisService.set(tokenKey, token, defaultTtl);
+        return;
+      }
+
+      // Calculate remaining lifetime in seconds
+      const now = Math.floor(Date.now() / 1000);
+      const ttl = decoded.exp - now;
+
+      if (ttl <= 0) {
+        this.logger.warn(`Token for user ${userId} is already expired`, CacheService.name);
+        return;
+      }
+
+      const tokenKey = `${this.TOKEN_CACHE_KEY_PREFIX}${userId}`;
+      await this.redisService.set(tokenKey, token, ttl);
+      this.logger.debug(
+        `Token cached for user ${userId} with TTL ${ttl}s (expires at ${new Date(decoded.exp * 1000).toISOString()})`,
+        CacheService.name,
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error caching token for user ${userId}: ${errorMessage}`, CacheService.name);
+    }
+  }
+
+  /**
+   * Retrieve user JWT token from Redis cache
+   * @param userId - The user ID
+   * @returns The JWT token or null if not found
+   */
+  async getUserToken(userId: string): Promise<string | null> {
+    if (!this.redisService.isConnected()) {
+      this.logger.warn('Redis not connected, cannot retrieve user token', CacheService.name);
+      return null;
+    }
+
+    try {
+      const tokenKey = `${this.TOKEN_CACHE_KEY_PREFIX}${userId}`;
+      const token = await this.redisService.get(tokenKey, false);
+
+      if (token) {
+        this.logger.debug(`Token retrieved for user ${userId}`, CacheService.name);
+        return token;
+      }
+
+      this.logger.debug(`Token not found in cache for user ${userId}`, CacheService.name);
+      return null;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error retrieving token for user ${userId}: ${errorMessage}`, CacheService.name);
+      return null;
+    }
+  }
+
+  /**
+   * Delete user JWT token from Redis cache (called during logout)
+   * @param userId - The user ID
+   */
+  async deleteUserToken(userId: string): Promise<void> {
+    if (!this.redisService.isConnected()) {
+      this.logger.warn('Redis not connected, cannot delete user token', CacheService.name);
+      return;
+    }
+
+    try {
+      const tokenKey = `${this.TOKEN_CACHE_KEY_PREFIX}${userId}`;
+      await this.redisService.del(tokenKey);
+      this.logger.log(`Token deleted from cache for user ${userId}`, CacheService.name);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error deleting token for user ${userId}: ${errorMessage}`, CacheService.name);
+    }
   }
 }

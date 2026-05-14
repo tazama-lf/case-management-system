@@ -5,12 +5,16 @@ import { AppModule } from './app.module';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser = require('cookie-parser');
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const logger = app.get(LoggerService);
   const configService = app.get(ConfigService);
   app.useLogger(logger);
+
+  // Enable cookie parser to read HttpOnly cookies
+  app.use(cookieParser());
 
   app.useGlobalPipes(
     new ValidationPipe({

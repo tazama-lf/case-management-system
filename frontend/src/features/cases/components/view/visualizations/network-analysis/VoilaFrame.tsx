@@ -27,13 +27,24 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
   const [retryCount, setRetryCount] = React.useState(0);
 
   const voilaUrl = React.useMemo(() => {
-    const base = import.meta.env.VITE_VOILA_BASE_URL;
-    // Must be an absolute HTTP(S) URL. Any other value (undefined, empty, a
-    // relative path) would silently resolve to the CMS origin.
-    if (!base || typeof base !== 'string' || !/^https?:\/\//i.test(base)) {
+    // Use NestJS proxy instead of direct Voila URL for security
+    // The proxy validates user JWT from cookie, mints service token, and forwards to Voila
+    const backendUrl = import.meta.env.VITE_API_BASE_URL;
+
+    // Validate backend URL is configured
+    if (!backendUrl || typeof backendUrl !== 'string') {
       return null;
     }
-    const url = new URL(`/voila/render/${notebookPath}`, base);
+
+    // Remove any trailing slashes from backend URL
+    const cleanBackendUrl = backendUrl.replace(/\/+$/, '');
+
+    // Construct proxy URL: /voila-proxy/voila/render/{notebook}
+    const url = new URL(
+      `/voila-proxy/voila/render/${notebookPath}`,
+      cleanBackendUrl,
+    );
+
     if (queryParams) {
       Object.entries(queryParams).forEach(([k, v]) => {
         url.searchParams.set(k, v);
@@ -58,7 +69,7 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
           <ErrorState
             severity="warning"
             title="Visualization Unavailable"
-            message="The network visualization service is not configured. Please set VITE_VOILA_BASE_URL to a valid absolute URL and restart the application."
+            message="The network visualization service is not configured. Please set VITE_API_BASE_URL in your environment configuration and restart the application."
             showRetry={false}
             size="large"
           />

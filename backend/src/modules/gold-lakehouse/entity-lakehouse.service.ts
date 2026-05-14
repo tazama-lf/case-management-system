@@ -10,13 +10,16 @@ export class EntityLakehouseService extends GoldLakehouseService {
     super(httpService, configService);
   }
 
-  async getEntityAccounts(entityId: string, tenantId: string): Promise<EntityAccountsResponse> {
+  async getEntityAccounts(entityId: string, tenantId: string, userJwt?: string): Promise<EntityAccountsResponse> {
     try {
-      const resp = await this.query({
-        table_name: 'account_holder',
-        filters: { source: entityId, tenant_id: tenantId },
-        columns: ['destination', 'account_id'],
-      });
+      const resp = await this.query(
+        {
+          table_name: 'account_holder',
+          filters: { source: entityId, tenant_id: tenantId },
+          columns: ['destination', 'account_id'],
+        },
+        userJwt,
+      );
 
       const accounts = resp.data.map((r) => r.destination ?? r.account_id).filter(Boolean);
       const uniqueAccounts = Array.from(new Set(accounts));
