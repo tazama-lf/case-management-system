@@ -443,8 +443,19 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async getCaseAgeing(@Query('dateRange') dateRange?: string): Promise<unknown> {
-    return await this.reportsService.getCaseAgeing(dateRange);
+  async getCaseAgeing(@Req() req: AuthenticatedRequest, @Query('dateRange') dateRange?: string): Promise<unknown> {
+    const { tenantId } = req.user.token;
+    const userId = req.user.token.clientId;
+    const userClaims = req.user.token.claims;
+
+    // Check if user is investigator (not supervisor/admin)
+    const isInvestigator =
+      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+
+    return await this.reportsService.getCaseAgeing(dateRange, {
+      tenantId,
+      requestingUserId: isInvestigator ? userId : undefined,
+    });
   }
 
   @Get('filters')

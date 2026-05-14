@@ -135,9 +135,16 @@ export class ReportsService {
           baseFilters,
           {
             OR: [
+              { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
+              {
+                tasks: {
+                  some: {
+                    assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
+                  },
+                },
+              },
               { case_owner_user_id: null }, // Unassigned cases
               { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
-              { case_owner_user_id: filters.requestingUserId }, // Cases assigned to this investigator
             ],
           },
         ],
@@ -179,7 +186,11 @@ export class ReportsService {
       where: closedCasesWhere,
     });
 
-    const allClosedCasesWithTimesWhere: any = {
+    const allClosedCasesWithTimesBaseFilters: any = {
+      created_at: {
+        gte: startDate,
+        lte: endDate,
+      },
       status: {
         in: [
           CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
@@ -191,10 +202,46 @@ export class ReportsService {
       },
     };
 
+    if (filters?.caseType) {
+      allClosedCasesWithTimesBaseFilters.case_type = filters.caseType;
+    }
+    if (filters?.priority) {
+      allClosedCasesWithTimesBaseFilters.priority = filters.priority;
+    }
+    if (filters?.investigator) {
+      allClosedCasesWithTimesBaseFilters.case_owner_user_id = filters.investigator;
+    }
     if (filters?.tenantId) {
-      allClosedCasesWithTimesWhere.alert = {
+      allClosedCasesWithTimesBaseFilters.alert = {
         tenant_id: filters.tenantId,
       };
+    }
+
+    let allClosedCasesWithTimesWhere: any;
+
+    // Apply the same user filtering logic as the main query
+    if (filters?.requestingUserId) {
+      allClosedCasesWithTimesWhere = {
+        AND: [
+          allClosedCasesWithTimesBaseFilters,
+          {
+            OR: [
+              { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
+              {
+                tasks: {
+                  some: {
+                    assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
+                  },
+                },
+              },
+              { case_owner_user_id: null }, // Unassigned cases
+              { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
+            ],
+          },
+        ],
+      };
+    } else {
+      allClosedCasesWithTimesWhere = allClosedCasesWithTimesBaseFilters;
     }
 
     const allClosedCasesWithTimes = await this.prisma.case.findMany({
@@ -264,7 +311,7 @@ export class ReportsService {
       color: this.getCaseTypeColor(caseType),
     }));
 
-    const outcomeCountsWhere: any = {
+    const outcomeCountsBaseFilters: any = {
       created_at: {
         gte: startDate,
         lte: endDate,
@@ -274,10 +321,46 @@ export class ReportsService {
       },
     };
 
+    if (filters?.caseType) {
+      outcomeCountsBaseFilters.case_type = filters.caseType;
+    }
+    if (filters?.priority) {
+      outcomeCountsBaseFilters.priority = filters.priority;
+    }
+    if (filters?.investigator) {
+      outcomeCountsBaseFilters.case_owner_user_id = filters.investigator;
+    }
     if (filters?.tenantId) {
-      outcomeCountsWhere.alert = {
+      outcomeCountsBaseFilters.alert = {
         tenant_id: filters.tenantId,
       };
+    }
+
+    let outcomeCountsWhere: any;
+
+    // Apply the same user filtering logic as the main query
+    if (filters?.requestingUserId) {
+      outcomeCountsWhere = {
+        AND: [
+          outcomeCountsBaseFilters,
+          {
+            OR: [
+              { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
+              {
+                tasks: {
+                  some: {
+                    assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
+                  },
+                },
+              },
+              { case_owner_user_id: null }, // Unassigned cases
+              { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
+            ],
+          },
+        ],
+      };
+    } else {
+      outcomeCountsWhere = outcomeCountsBaseFilters;
     }
 
     const outcomeCounts = await this.prisma.case.groupBy({
@@ -337,9 +420,16 @@ export class ReportsService {
           recentCasesBaseFilters,
           {
             OR: [
+              { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
+              {
+                tasks: {
+                  some: {
+                    assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
+                  },
+                },
+              },
               { case_owner_user_id: null }, // Unassigned cases
               { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
-              { case_owner_user_id: filters.requestingUserId }, // Cases assigned to this investigator
             ],
           },
         ],
@@ -462,8 +552,16 @@ export class ReportsService {
             monthClosedCasesBaseFilters,
             {
               OR: [
+                { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
+                {
+                  tasks: {
+                    some: {
+                      assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
+                    },
+                  },
+                },
                 { case_owner_user_id: null }, // Unassigned cases
-                { case_owner_user_id: filters.requestingUserId }, // Cases assigned to this investigator
+                { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
               ],
             },
           ],
@@ -907,7 +1005,13 @@ export class ReportsService {
     };
   }
 
-  async getCaseAgeing(dateRange?: string): Promise<{
+  async getCaseAgeing(
+    dateRange?: string,
+    filters?: {
+      tenantId: string;
+      requestingUserId?: string;
+    },
+  ): Promise<{
     stats: {
       avgCaseAge: number;
       avgResolutionTime: number;
@@ -937,7 +1041,43 @@ export class ReportsService {
       investigator: string;
     }>;
   }> {
+    const baseFilters: any = {};
+
+    if (filters?.tenantId) {
+      baseFilters.alert = {
+        tenant_id: filters.tenantId,
+      };
+    }
+
+    let whereClause: any;
+
+    // If requestingUserId is provided (investigator), filter to show only unassigned, ready for assignment, or assigned to them
+    if (filters?.requestingUserId) {
+      whereClause = {
+        AND: [
+          baseFilters,
+          {
+            OR: [
+              { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
+              {
+                tasks: {
+                  some: {
+                    assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
+                  },
+                },
+              },
+              { case_owner_user_id: null }, // Unassigned cases
+              { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
+            ],
+          },
+        ],
+      };
+    } else {
+      whereClause = baseFilters;
+    }
+
     const cases = await this.prisma.case.findMany({
+      where: whereClause,
       select: {
         case_id: true,
         status: true,
@@ -1023,15 +1163,48 @@ export class ReportsService {
 
     const caseTypeResolution = await Promise.all(
       Object.values(CaseType).map(async (type) => {
-        const whereClause = {
+        const caseTypeBaseFilters: any = {
           status: {
             in: closedStatuses,
           },
           case_type: type,
         };
 
+        if (filters?.tenantId) {
+          caseTypeBaseFilters.alert = {
+            tenant_id: filters.tenantId,
+          };
+        }
+
+        let caseTypeWhereClause: any;
+
+        // Apply the same user filtering logic
+        if (filters?.requestingUserId) {
+          caseTypeWhereClause = {
+            AND: [
+              caseTypeBaseFilters,
+              {
+                OR: [
+                  { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
+                  {
+                    tasks: {
+                      some: {
+                        assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
+                      },
+                    },
+                  },
+                  { case_owner_user_id: null }, // Unassigned cases
+                  { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
+                ],
+              },
+            ],
+          };
+        } else {
+          caseTypeWhereClause = caseTypeBaseFilters;
+        }
+
         const closedCasesOfType = await this.prisma.case.findMany({
-          where: whereClause,
+          where: caseTypeWhereClause,
           select: {
             created_at: true,
             updated_at: true,
@@ -1059,21 +1232,56 @@ export class ReportsService {
     const currentDate = new Date();
     const trendStartDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1);
 
-    const recentClosedCases = await this.prisma.case.findMany({
-      where: {
-        updated_at: {
-          gte: trendStartDate,
-        },
-        status: {
-          in: [
-            CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
-            CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
-            CaseStatus.STATUS_81_CLOSED_REFUTED,
-            CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-            CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-          ],
-        },
+    const recentClosedBaseFilters: any = {
+      updated_at: {
+        gte: trendStartDate,
       },
+      status: {
+        in: [
+          CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
+          CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
+          CaseStatus.STATUS_81_CLOSED_REFUTED,
+          CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+          CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+        ],
+      },
+    };
+
+    if (filters?.tenantId) {
+      recentClosedBaseFilters.alert = {
+        tenant_id: filters.tenantId,
+      };
+    }
+
+    let recentClosedWhereClause: any;
+
+    // Apply the same user filtering logic
+    if (filters?.requestingUserId) {
+      recentClosedWhereClause = {
+        AND: [
+          recentClosedBaseFilters,
+          {
+            OR: [
+              { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
+              {
+                tasks: {
+                  some: {
+                    assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
+                  },
+                },
+              },
+              { case_owner_user_id: null }, // Unassigned cases
+              { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
+            ],
+          },
+        ],
+      };
+    } else {
+      recentClosedWhereClause = recentClosedBaseFilters;
+    }
+
+    const recentClosedCases = await this.prisma.case.findMany({
+      where: recentClosedWhereClause,
       select: {
         created_at: true,
         updated_at: true,
