@@ -106,6 +106,7 @@ export class AlertController {
     @Query('priority') priority?: string,
     @Query('type') type?: string,
     @Query('alertType') alertType?: string,
+    @Query('nullAlertType') nullAlertType?: string,
     @Query('search') search?: string,
     @Query('source') source?: string,
   ): Promise<{
@@ -132,6 +133,7 @@ export class AlertController {
       priority,
       type,
       alertType,
+      nullAlertType: nullAlertType === 'true',
       search,
       source,
       reportStatus,

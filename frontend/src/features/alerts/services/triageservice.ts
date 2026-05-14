@@ -9,6 +9,7 @@ import type {
   AlertsFilter,
   ActionHistory,
   TransactionDataResponseDTO,
+  TransactionDetailRecordDTO,
 } from '../types/triage.types';
 
 class TriageService {
@@ -59,7 +60,14 @@ class TriageService {
 
     if (filters.priority) params.append('priority', filters.priority);
     if (filters.type) params.append('type', filters.type);
-    if (filters.alertType) params.append('alertType', filters.alertType);
+    // Handle N/A - indicates alerts with no alert type
+    if (filters.alertType) {
+      if (filters.alertType === 'N/A') {
+        params.append('nullAlertType', 'true');
+      } else {
+        params.append('alertType', filters.alertType);
+      }
+    }
     if (filters.source) params.append('source', filters.source);
     if (filters.search) params.append('search', filters.search);
     params.append('reportStatus', filters.reportStatus ?? 'ALRT');
