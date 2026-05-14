@@ -9,8 +9,16 @@ import { CacheService } from '../shared/cache.service';
 
 /**
  * VoilaProxyController handles proxying requests to Voila notebooks.
+ *
+ * Flow:
+ * 1. Browser sends request to /voila-proxy/* with JWT cookie
+ * 2. Extract and validate user JWT from HttpOnly cookie
+ * 3. Store user JWT in cache for later retrieval
+ * 4. Mint short-lived service token (2min) with userId
+ * 5. Append service_token to query params
+ * 6. Proxy request to Voila server (internal-only)
  */
-@Controller(['voila-proxy', 'voila'])
+@Controller('voila-proxy')
 export class VoilaProxyController {
   private readonly logger = new Logger(VoilaProxyController.name);
   private readonly publicKey: string;
@@ -31,21 +39,65 @@ export class VoilaProxyController {
     // this.logger.log(`[VoilaProxy] Request headers: ${JSON.stringify(req.headers)}`);
 
     try {
-      // Check if this is a static file request that should bypass authentication
-      if (this.isStaticFileRequest(req)) {
-        this.logger.log('[VoilaProxy] Static file request - bypassing authentication');
-        await this.voilaProxyService.proxyRequest(req, res, '');
-        return;
+      // Extract JWT from HttpOnly cookie (format: access_token_${userId})
+      // Find any cookie that starts with 'access_token_'
+      let accessToken: string | undefined;
+      const cookies = req.cookies || {};
+
+      for (const [cookieName, cookieValue] of Object.entries(cookies)) {
+        if (cookieName.startsWith('access_token_')) {
+          accessToken = cookieValue as string;
+          this.logger.log(`[VoilaProxy] Found access token in cookie: ${cookieName}`);
+          break;
+        }
       }
 
-      // Extract and validate access token
-      const accessToken = this.extractAccessToken(req);
+      if (!accessToken) {
+        this.logger.warn('[VoilaProxy] No access_token_* cookie found in request');
+        this.logger.log(`[VoilaProxy] Available cookies: ${Object.keys(cookies).join(', ')}`);
+        throw new UnauthorizedException('Authentication required');
+      }
 
-      // Verify JWT and get userId
-      const userId = this.verifyAndExtractUserId(accessToken);
+      // Verify and decode the user's JWT using Tazama's RSA public key
+      let userId: string;
+      try {
+        this.logger.log('[VoilaProxy] Verifying JWT with RSA public key...');
+        const decoded = jwt.verify(accessToken, this.publicKey, { algorithms: ['RS256'] }) as {
+          clientId?: string;
+          sub?: string;
+        };
 
-      // Store user token in cache
-      await this.storeUserToken(userId, accessToken);
+        // Extract userId from token (could be in clientId or sub)
+        userId = decoded.clientId || decoded.sub || '';
+
+        if (!userId) {
+          this.logger.warn('[VoilaProxy] JWT token missing userId (clientId/sub)');
+          throw new UnauthorizedException('Invalid token: missing user identifier');
+        }
+
+        this.logger.log(`[VoilaProxy] JWT verified successfully for user: ${userId}`);
+
+        // Store the user's JWT in cache for later retrieval by notebooks
+        this.logger.log(`[VoilaProxy] Storing user JWT in cache for userId: ${userId}`);
+        await this.cacheService.setUserToken(userId, accessToken);
+        this.logger.log('[VoilaProxy] User JWT cached successfully');
+      } catch (error) {
+        if (error instanceof Error) {
+          if (error.name === 'TokenExpiredError') {
+            this.logger.warn('[VoilaProxy] User JWT expired');
+            throw new UnauthorizedException('Token expired');
+          }
+          if (error.name === 'JsonWebTokenError') {
+            this.logger.warn(`[VoilaProxy] Invalid JWT: ${error.message}`);
+            throw new UnauthorizedException('Invalid token');
+          }
+        }
+        this.logger.error(`[VoilaProxy] Token validation failed: ${error}`);
+        throw new UnauthorizedException('Token validation failed');
+      }
+
+      // Use the user's JWT token directly (no need to mint a separate service token)
+      this.logger.log(`[VoilaProxy] Using user JWT as service token for userId: ${userId}`);
 
       // Proxy the request to Voila with the user's JWT
       this.logger.log('[VoilaProxy] Proxying request to Voila server...');
@@ -71,86 +123,5 @@ export class VoilaProxyController {
         error: 'Internal Server Error',
       });
     }
-  }
-
-  /**
-   * Check if the request is for a static file that should bypass authentication.
-   */
-  private isStaticFileRequest(req: Request): boolean {
-    return (
-      req.url.startsWith('/voila/static') ||
-      req.url.startsWith('/voila/templates') ||
-      req.url.startsWith('/voila/files') ||
-      req.url.startsWith('/voila/api/themes')
-    );
-  }
-
-  /**
-   * Extract access token from cookies.
-   */
-  private extractAccessToken(req: Request): string {
-    const cookies = req.cookies as Record<string, unknown> | undefined;
-
-    if (!cookies) {
-      this.logger.warn('[VoilaProxy] No cookies found in request');
-      throw new UnauthorizedException('Authentication required');
-    }
-
-    for (const [cookieName, cookieValue] of Object.entries(cookies)) {
-      if (cookieName.startsWith('access_token_')) {
-        this.logger.log(`[VoilaProxy] Found access token in cookie: ${cookieName}`);
-        return cookieValue as string;
-      }
-    }
-
-    this.logger.warn('[VoilaProxy] No access_token_* cookie found in request');
-    this.logger.log(`[VoilaProxy] Available cookies: ${Object.keys(cookies).join(', ')}`);
-    throw new UnauthorizedException('Authentication required');
-  }
-
-  /**
-   * Verify JWT and extract userId.
-   */
-  private verifyAndExtractUserId(accessToken: string): string {
-    try {
-      this.logger.log('[VoilaProxy] Verifying JWT with RSA public key...');
-      const decoded = jwt.verify(accessToken, this.publicKey, { algorithms: ['RS256'] }) as {
-        clientId?: string;
-        sub?: string;
-      };
-
-      // Extract userId from token (could be in clientId or sub)
-      const userId = decoded.clientId ?? decoded.sub ?? '';
-
-      if (!userId) {
-        this.logger.warn('[VoilaProxy] JWT token missing userId (clientId/sub)');
-        throw new UnauthorizedException('Invalid token: missing user identifier');
-      }
-
-      this.logger.log(`[VoilaProxy] JWT verified successfully for user: ${userId}`);
-      return userId;
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.name === 'TokenExpiredError') {
-          this.logger.warn('[VoilaProxy] User JWT expired');
-          throw new UnauthorizedException('Token expired');
-        }
-        if (error.name === 'JsonWebTokenError') {
-          this.logger.warn(`[VoilaProxy] Invalid JWT: ${error.message}`);
-          throw new UnauthorizedException('Invalid token');
-        }
-      }
-      this.logger.error(`[VoilaProxy] Token validation failed: ${error}`);
-      throw new UnauthorizedException('Token validation failed');
-    }
-  }
-
-  /**
-   * Store user token in cache.
-   */
-  private async storeUserToken(userId: string, accessToken: string): Promise<void> {
-    this.logger.log(`[VoilaProxy] Storing user JWT in cache for userId: ${userId}`);
-    await this.cacheService.setUserToken(userId, accessToken);
-    this.logger.log('[VoilaProxy] User JWT cached successfully');
   }
 }

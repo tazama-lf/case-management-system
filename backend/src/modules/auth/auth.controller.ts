@@ -1,5 +1,8 @@
 import { Body, Controller, Get, HttpCode, Post, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { Response } from 'express';
+import * as jwt from 'jsonwebtoken';
 import { Response } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { RequireAuthenticated } from '../../decorators/auth.decorator';
@@ -12,6 +15,7 @@ import { AuthMeResponseDto } from 'src/modules/auth/dto/AuthMeResponse.dto';
 import { LoginRequestDto } from 'src/modules/auth/dto/LoginRequest.dto';
 import { LoginResponseDto } from 'src/modules/auth/dto/LoginResponse.dto';
 import { CacheService } from '../shared/cache.service';
+import { CacheService } from '../shared/cache.service';
 
 @ApiTags('Auth')
 @ApiBearerAuth('jwt')
@@ -20,6 +24,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly logger: LoggerService,
+    private readonly cacheService: CacheService,
     private readonly cacheService: CacheService,
   ) {}
 
@@ -30,18 +35,22 @@ export class AuthController {
   @ApiOkResponse({ description: 'Login successful. JWT token returned.', type: LoginResponseDto })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials supplied.' })
   async login(@Body() body: LoginRequestDto, @Res({ passthrough: true }) res: Response): Promise<LoginResponseDto> {
+  async login(@Body() body: LoginRequestDto, @Res({ passthrough: true }) res: Response): Promise<LoginResponseDto> {
     try {
       const result = await this.authService.login(body.username, body.password);
 
       // Decode JWT to extract userId (no verification needed, just reading the payload)
       const decoded = jwt.decode(result.token) as { clientId?: string; sub?: string } | null;
-      const userId = decoded?.clientId ?? decoded?.sub ?? 'unknown';
+      this.logger.log(`Decoded JWT payload: ${JSON.stringify(decoded)}`);
+      const userId = decoded?.clientId || decoded?.sub || 'unknown';
+
+      this.logger.log(`User logged in: ${userId}`);
 
       // Set JWT as HttpOnly cookie for iframe authentication (Voila proxy)
       // This allows iframes to send the token automatically via cookies
       res.cookie(`access_token_${userId}`, result.token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
+        secure: false, // Set to true in production with HTTPS
         sameSite: 'lax', // Allows cookie with same-site iframe requests
         maxAge: result.expiresIn ? result.expiresIn * 1000 : 24 * 60 * 60 * 1000, // Convert to ms
         path: '/',
@@ -92,12 +101,12 @@ export class AuthController {
   @ApiOkResponse({ description: 'Logout successful.' })
   @ApiBearerAuth('jwt')
   async logout(@Res({ passthrough: true }) res: Response, @User() user: AuthenticatedUser): Promise<{ message: string }> {
-    const { userId } = user;
+    const userId = user.userId || 'unknown';
 
     // Clear the HttpOnly cookie
     res.clearCookie(`access_token_${userId}`, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,
       sameSite: 'lax',
       path: '/',
     });
