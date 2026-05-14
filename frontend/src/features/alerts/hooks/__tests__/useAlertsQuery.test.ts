@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -500,7 +500,7 @@ describe('useAlertsQuery', () => {
 
       expect(result.current.filterOptions).toEqual({
         priorities: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
-        alertTypes: ['FRAUD', 'AML', 'FRAUD_AND_AML'],
+        alertTypes: ['FRAUD', 'AML', 'FRAUD_AND_AML', 'N/A'],
         sources: ['REST API', 'NATS'],
       });
       expect(result.current.isLoading).toBe(false);
