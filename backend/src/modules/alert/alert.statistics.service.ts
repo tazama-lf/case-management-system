@@ -15,6 +15,7 @@ export class AlertStatisticsService {
     priority?: string;
     type?: string;
     alertType?: string;
+    nullAlertType?: boolean;
     search?: unknown;
     source?: string;
     reportStatus?: string;
@@ -39,7 +40,7 @@ export class AlertStatisticsService {
     total: number;
     totalPages: number;
   }> {
-    const { tenantId, priority, type, alertType, search, source, reportStatus, page, limit, sortBy, sortOrder } = params;
+    const { tenantId, priority, type, alertType, nullAlertType, search, source, reportStatus, page, limit, sortBy, sortOrder } = params;
 
     if (!Number.isInteger(page) || page < 1) {
       throw new BadRequestException('Page must be a positive integer');
@@ -77,7 +78,10 @@ export class AlertStatisticsService {
       whereClause.priority = priority.toUpperCase() as Priority;
     }
 
-    if (alertType) {
+    if (nullAlertType) {
+      // Filter for alerts with no alert_type (NULL)
+      whereClause.alert_type = null;
+    } else if (alertType) {
       if (!Object.values(CaseType).includes(alertType.toUpperCase() as CaseType)) {
         throw new BadRequestException(`Invalid alertType: ${alertType}`);
       }
