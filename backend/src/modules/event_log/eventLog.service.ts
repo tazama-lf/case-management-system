@@ -46,14 +46,14 @@ export class EventLogService {
     });
   }
 
-  async getActionHistoryForAlert(alertId: number): Promise<EventLog | null> {
-    return await this.prisma.eventLog.findFirst({
+  async getActionHistoryForAlert(alertId: number): Promise<EventLog[]> {
+    return await this.prisma.eventLog.findMany({
       where: {
         operation: 'ALERT_UPDATED',
         action_performed: { startsWith: `${alertId} -` },
         entity_name: 'AlertService',
       },
-      orderBy: { performed_at: 'asc' },
+      orderBy: { performed_at: 'desc' },
     });
   }
 

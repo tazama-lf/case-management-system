@@ -136,6 +136,51 @@ export class AlertService {
     return { transactionData };
   }
 
+  private extractAlertedTypologies(alertData: Prisma.JsonValue): Array<{
+    id: string;
+    label: string;
+    result: number;
+    alertThreshold: number;
+  }> {
+    try {
+      if (!alertData || typeof alertData !== 'object') {
+        return [];
+      }
+
+      const data = alertData as Record<string, any>;
+      const tadpResult = data.tadpResult;
+
+      if (!tadpResult || typeof tadpResult !== 'object') {
+        return [];
+      }
+
+      const typologyResult = (tadpResult as Record<string, any>).typologyResult;
+
+      if (!Array.isArray(typologyResult)) {
+        return [];
+      }
+
+      const alertedTypologies = typologyResult
+        .filter((typ) => {
+          if (!typ || typeof typ !== 'object') return false;
+          const result = typeof typ.result === 'number' ? typ.result : 0;
+          const alertThreshold = typ.workflow?.alertThreshold ?? 0;
+          return result >= alertThreshold;
+        })
+        .map((typ) => ({
+          id: typ.cfg ?? typ.id ?? 'unknown',
+          label: typ.label ?? typ.name ?? typ.cfg ?? typ.id ?? 'Unknown',
+          result: typeof typ.result === 'number' ? typ.result : 0,
+          alertThreshold: typ.workflow?.alertThreshold ?? 0,
+        }));
+
+      return alertedTypologies;
+    } catch (error) {
+      this.loggerService.error('Error extracting alerted typologies:', error, AlertService.name);
+      return [];
+    }
+  }
+
   async getAlertDetails(
     alertId: number,
     tenantId: string,
@@ -157,6 +202,12 @@ export class AlertService {
     block_status: string | null;
     block_reason: string | null;
     case_id: number | null;
+    alerted_typologies: Array<{
+      id: string;
+      label: string;
+      result: number;
+      alertThreshold: number;
+    }>;
   } | null> {
     try {
       const alert = await this.alertRepository.getAlertById(alertId);
@@ -171,8 +222,13 @@ export class AlertService {
 
       this.loggerService.log(`Alert ${alertId} opened by user ${userId} for review at ${new Date().toISOString()}`, AlertService.name);
 
+      const alertedTypologies = this.extractAlertedTypologies(alert.alert_data);
+
       const { tenant_id: tenantIdDb, ...sanitizedAlert } = alert;
-      return sanitizedAlert;
+      return {
+        ...sanitizedAlert,
+        alerted_typologies: alertedTypologies,
+      };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -190,7 +246,7 @@ export class AlertService {
     alertId: number;
     tenantId: string;
     userId: string;
-    history: {
+    history: Array<{
       event_log_id: number;
       user_id: string;
       operation: string;
@@ -198,7 +254,7 @@ export class AlertService {
       action_performed: string;
       outcome: string;
       performed_at: Date;
-    } | null;
+    }>;
   }> {
     const alert = await this.alertRepository.getAlertById(alertId);
 

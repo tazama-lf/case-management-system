@@ -8,6 +8,16 @@ import triageService from '../../services/triageservice';
 import { useSystemConfig } from '@/shared/hooks/useSystemConfig';
 import { useCase, canActOnCase } from '../../../cases/hooks/useCase';
 
+const mockNavigate = vi.fn();
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 vi.mock('../../services/triageservice');
 vi.mock('@/shared/hooks/useSystemConfig');
 vi.mock('../../../cases/hooks/useCase');
@@ -285,7 +295,7 @@ describe('AlertsDetailModal', () => {
     (triageService.getAlertById as vi.Mock).mockResolvedValue(alertWithCase);
     (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
     (useCase as vi.Mock).mockReturnValue({
-      data: { status: 'IN_PROGRESS' },
+      data: { case_id: 456, status: 'IN_PROGRESS' },
       loading: false,
     });
 
@@ -299,6 +309,35 @@ describe('AlertsDetailModal', () => {
 
     // Case status is displayed in the Alert Summary section
     expect(screen.getByText('IN_PROGRESS')).toBeInTheDocument();
+    
+    // Case ID is displayed
+    expect(screen.getByText('456')).toBeInTheDocument();
+  });
+
+  it('navigates to case details when case ID is clicked', async () => {
+    const user = userEvent.setup();
+    const alertWithCase = { ...mockAlert, case_id: 'case-123' };
+    (triageService.getAlertById as vi.Mock).mockResolvedValue(alertWithCase);
+    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
+    (useCase as vi.Mock).mockReturnValue({
+      data: { case_id: 456, status: 'IN_PROGRESS' },
+      loading: false,
+    });
+
+    renderModal(
+      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Alert Summary')).toBeInTheDocument();
+    });
+
+    // Click on the case ID link
+    const caseIdButton = screen.getByRole('button', { name: /456/i });
+    await user.click(caseIdButton);
+
+    // Verify navigation was called with correct case ID
+    expect(mockNavigate).toHaveBeenCalledWith('/cases/456');
   });
 
   it('fetches alert details when alertId changes', async () => {
@@ -475,6 +514,77 @@ describe('AlertsDetailModal', () => {
       screen.getByRole('button', { name: /show risk breakdown/i }),
     );
     expect(screen.getByText('High Value')).toBeInTheDocument();
+  });
+
+  it('displays all typologies that exceed alert threshold', async () => {
+    const alertWithMultipleTypologies = {
+      ...mockAlert,
+      alerted_typologies: [
+        {
+          id: 'TYP-001',
+          label: 'Money Laundering',
+          result: 95,
+          alertThreshold: 50,
+        },
+        {
+          id: 'TYP-002',
+          label: 'Structuring',
+          result: 75,
+          alertThreshold: 60,
+        },
+      ],
+      alert_data: {
+        tadpResult: {
+          typologyResult: [
+            {
+              cfg: 'TYP-001',
+              label: 'Money Laundering',
+              result: 95,
+              workflow: {
+                alertThreshold: 50,
+                interdictionThreshold: 80,
+              },
+              ruleResults: [],
+            },
+            {
+              cfg: 'TYP-002',
+              label: 'Structuring',
+              result: 75,
+              workflow: {
+                alertThreshold: 60,
+                interdictionThreshold: 80,
+              },
+              ruleResults: [],
+            },
+            {
+              cfg: 'TYP-003',
+              label: 'Smurfing',
+              result: 45,
+              workflow: {
+                alertThreshold: 60,
+                interdictionThreshold: 80,
+              },
+              ruleResults: [],
+            },
+          ],
+        },
+      },
+    };
+    (triageService.getAlertById as vi.Mock).mockResolvedValue(
+      alertWithMultipleTypologies,
+    );
+    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
+
+    renderModal(
+      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Alerted Typologies (2):')).toBeInTheDocument();
+      expect(screen.getByText('Money Laundering')).toBeInTheDocument();
+      expect(screen.getByText('Structuring')).toBeInTheDocument();
+      expect(screen.queryByText('Smurfing')).not.toBeInTheDocument();
+    });
   });
 
   it('hides update button when canActOnCase is false', async () => {

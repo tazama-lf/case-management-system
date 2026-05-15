@@ -35,6 +35,7 @@ vi.mock('@/features/cases/services/caseService', () => ({
   caseService: {
     getUserAssignedCases: vi.fn(),
     getAllCases: vi.fn(),
+    getCaseDetails: vi.fn(),
   },
 }));
 
@@ -158,20 +159,32 @@ describe('useCaseDashboard', () => {
       pagination: { total: 1, totalPages: 1 },
     });
 
+    (caseService.getCaseDetails as unknown as vi.Mock).mockResolvedValueOnce({
+      case_id: 777,
+      status: 'STATUS_20_IN_PROGRESS',
+      priority: 'HIGH',
+      case_type: 'FRAUD',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-02T00:00:00Z',
+      case_owner_user_id: 'user-1',
+      alert: {
+        alert_id: 123,
+        message: 'Test alert',
+        confidence_per: 85,
+        transaction: {},
+      },
+    });
+
     const { result } = renderHook(() => useCaseDashboard());
 
     await waitFor(() =>
       expect(result.current.dashboardState.loading).toBe(false),
     );
 
-    expect(caseService.getAllCases).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sortBy: 'updated_at',
-        sortOrder: 'desc',
-      }),
+    await waitFor(() => 
+      expect(result.current.modalState.isViewOpen).toBe(true)
     );
 
-    expect(result.current.modalState.isViewOpen).toBe(true);
     expect(result.current.modalState.selectedRow?.id).toBe(777);
 
     act(() => {
@@ -498,13 +511,20 @@ describe('useCaseDashboard', () => {
       cases: [createBackendCase({ case_id: 1 })],
       pagination: { total: 1, totalPages: 1 },
     });
+    (caseService.getCaseDetails as unknown as vi.Mock).mockRejectedValue(
+      new Error('Case not found')
+    );
 
     const { result } = renderHook(() => useCaseDashboard());
     await waitFor(() =>
       expect(result.current.dashboardState.loading).toBe(false),
     );
 
-    expect(routeMock.navigate).toHaveBeenCalledWith('/cases');
+    await waitFor(() => 
+      expect(routeMock.navigate).toHaveBeenCalledWith('/cases')
+    );
+    
+    expect(toastMock.error).toHaveBeenCalledWith('Failed to load case details');
   });
 
   it('applies sortBy filter', async () => {
