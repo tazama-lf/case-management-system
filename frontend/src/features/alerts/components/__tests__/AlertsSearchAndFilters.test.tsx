@@ -194,9 +194,12 @@ describe('AlertsSearchAndFilters', () => {
       .closest('select') as HTMLSelectElement;
     fireEvent.change(savedSelect, { target: { value: '1' } });
 
-    expect(onFilterChange).toHaveBeenCalledWith('type', 'FRAUD');
-    expect(onFilterChange).toHaveBeenCalledWith('priority', 'URGENT');
-    expect(onFilterChange).toHaveBeenCalledWith('source', 'System A');
+    // Wait for async setTimeout calls to complete
+    await waitFor(() => {
+      expect(onFilterChange).toHaveBeenCalledWith('type', 'FRAUD');
+      expect(onFilterChange).toHaveBeenCalledWith('priority', 'URGENT');
+      expect(onFilterChange).toHaveBeenCalledWith('source', 'System A');
+    }, { timeout: 100 });
   });
 
   it('renders filter dropdowns with provided options', async () => {
