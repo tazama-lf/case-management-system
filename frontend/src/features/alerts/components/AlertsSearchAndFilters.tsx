@@ -181,9 +181,26 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     const filter = savedFilters.find((f) => f.id === filterId);
     if (!filter) return;
 
-    onFilterChange('type', filter.alertType);
-    onFilterChange('priority', filter.priority);
-    onFilterChange('source', filter.source);
+    onFilterChange('type', filter.alertType || '');
+    onFilterChange('priority', filter.priority || '');
+    onFilterChange('source', filter.source || '');
+    onFilterChange('timeRange', filter.timeRange || '');
+    onFilterChange('query', ''); // Clear search query
+
+    // Apply custom date range if present
+    if (filter.timeRange === 'custom' && (filter.startDate || filter.endDate)) {
+      onCustomDateRangeChange({
+        startDate: filter.startDate || '',
+        endDate: filter.endDate || '',
+      });
+      setShowCustomDatePicker(true);
+    } else {
+      onCustomDateRangeChange({
+        startDate: '',
+        endDate: '',
+      });
+      setShowCustomDatePicker(false);
+    }
   };
 
   const handleSaveCurrentFilters = async () => {
