@@ -39,6 +39,13 @@ export class AlertController {
     description: 'Filter by type',
   })
   @ApiQuery({
+    name: 'nullAlertType',
+    required: false,
+    type: 'string',
+    description: 'Filter for alerts with no alert type (pass "true")',
+    example: 'true',
+  })
+  @ApiQuery({
     name: 'alertType',
     required: false,
     type: 'string',
@@ -106,6 +113,7 @@ export class AlertController {
     @Query('priority') priority?: string,
     @Query('type') type?: string,
     @Query('alertType') alertType?: string,
+    @Query('nullAlertType') nullAlertType?: string,
     @Query('search') search?: string,
     @Query('source') source?: string,
   ): Promise<{
@@ -132,6 +140,7 @@ export class AlertController {
       priority,
       type,
       alertType,
+      nullAlertType: nullAlertType === 'true',
       search,
       source,
       reportStatus,
