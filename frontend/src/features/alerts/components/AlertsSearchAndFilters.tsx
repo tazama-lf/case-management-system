@@ -181,26 +181,42 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     const filter = savedFilters.find((f) => f.id === filterId);
     if (!filter) return;
 
-    onFilterChange('type', filter.alertType || '');
-    onFilterChange('priority', filter.priority || '');
-    onFilterChange('source', filter.source || '');
-    onFilterChange('timeRange', filter.timeRange || '');
-    onFilterChange('query', ''); // Clear search query
+    // Build all filter changes locally first, then apply them in sequence
+    // Using setTimeout to break React's batching and ensure each update sees the previous state
+    onFilterChange('query', ''); // Clear search first
+
+    setTimeout(() => {
+      onFilterChange('type', filter.alertType || '');
+    }, 0);
+
+    setTimeout(() => {
+      onFilterChange('priority', filter.priority || '');
+    }, 10);
+
+    setTimeout(() => {
+      onFilterChange('source', filter.source || '');
+    }, 20);
+
+    setTimeout(() => {
+      onFilterChange('timeRange', filter.timeRange || '');
+    }, 30);
 
     // Apply custom date range if present
-    if (filter.timeRange === 'custom' && (filter.startDate || filter.endDate)) {
-      onCustomDateRangeChange({
-        startDate: filter.startDate || '',
-        endDate: filter.endDate || '',
-      });
-      setShowCustomDatePicker(true);
-    } else {
-      onCustomDateRangeChange({
-        startDate: '',
-        endDate: '',
-      });
-      setShowCustomDatePicker(false);
-    }
+    setTimeout(() => {
+      if (filter.timeRange === 'custom' && (filter.startDate || filter.endDate)) {
+        onCustomDateRangeChange({
+          startDate: filter.startDate || '',
+          endDate: filter.endDate || '',
+        });
+        setShowCustomDatePicker(true);
+      } else {
+        onCustomDateRangeChange({
+          startDate: '',
+          endDate: '',
+        });
+        setShowCustomDatePicker(false);
+      }
+    }, 40);
   };
 
   const handleSaveCurrentFilters = async () => {
