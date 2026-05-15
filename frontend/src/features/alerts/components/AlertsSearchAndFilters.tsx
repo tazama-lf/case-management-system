@@ -203,7 +203,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           endDate: customDateRange.endDate || '',
         }),
       };
-      const savedFilter = await filterService.createFilter(payload);
+      await filterService.createFilter(payload);
 
       success(
         'Filter Created',
