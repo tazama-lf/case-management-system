@@ -60,16 +60,25 @@ export class AlertService {
     }
   }
 
-  async updateAlert(alertId: number, userId: string, updateData: UpdateAlertDTO, tx?: Prisma.TransactionClient): Promise<Alert> {
+  async updateAlert(
+    alertId: number,
+    userId: string,
+    updateData: UpdateAlertDTO,
+    tx?: Prisma.TransactionClient,
+    userName?: string,
+  ): Promise<Alert> {
     this.loggerService.log(`Start - Alert Update - ${alertId}`, AlertService.name);
     try {
       const updatedAlert = await this.alertRepository.updateAlert(alertId, updateData, tx);
+
+      // Only include user name in message if it's available
+      const actionMessage = userName ? `${alertId} - Triaged by user ${userName}` : `${alertId} - Triaged`;
 
       await this.loggingOrchestrationService.logActions({
         userId,
         operation: 'ALERT_UPDATED',
         entityName: AlertService.name,
-        actionPerformed: `${alertId} - Triaged by user ${userId}`,
+        actionPerformed: actionMessage,
         outcome: Outcome.SUCCESS,
       });
 
@@ -148,13 +157,13 @@ export class AlertService {
       }
 
       const data = alertData as Record<string, any>;
-      const tadpResult = data.tadpResult;
+      const { tadpResult } = data;
 
       if (!tadpResult || typeof tadpResult !== 'object') {
         return [];
       }
 
-      const typologyResult = (tadpResult as Record<string, any>).typologyResult;
+      const { typologyResult } = tadpResult as Record<string, any>;
 
       if (!Array.isArray(typologyResult)) {
         return [];

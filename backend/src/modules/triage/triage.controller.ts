@@ -47,10 +47,10 @@ export class TriageController {
     @Req() req: AuthenticatedRequest,
   ): Promise<Alert> {
     const userId = req.user.token.clientId;
-    const { tenantId } = req.user.token;
+    const { tenantId, fullName } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
     if (!userId) throw new BadRequestException('Missing userId');
-    return await this.triageService.handleManualTriage(alertId, dto, userId, tenantId);
+    return await this.triageService.handleManualTriage(alertId, dto, userId, tenantId, fullName);
   }
 
   @Get(':alertId/navigator')

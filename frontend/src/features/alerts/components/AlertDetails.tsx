@@ -358,37 +358,46 @@ const AlertDetailsHistory: React.FC<AlertDetailsHistoryProps> = ({
 
   const displayedHistory = actionHistory.slice(0, maxItems);
 
+  // Helper function to extract username from action_performed string
+  const extractUsername = (actionPerformed: string): string | null => {
+    const match = actionPerformed.match(/Triaged by user (.+)$/);
+    return match ? match[1] : null;
+  };
+
   return (
     <div className={`p-6 border-t border-gray-200 ${className}`}>
       <h4 className="text-sm font-medium text-gray-900 mb-4">Action History</h4>
       <div className="space-y-3">
-        {displayedHistory.map((action) => (
-          <div key={action.audit_log_id} className="flex space-x-3">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <ClockIcon className="w-4 h-4 text-blue-600" />
+        {displayedHistory.map((action) => {
+          const username = extractUsername(action.action_performed);
+          return (
+            <div key={action.audit_log_id} className="flex space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <ClockIcon className="w-4 h-4 text-blue-600" />
+                </div>
               </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-900">
-                <span className="font-medium">{action.operation}</span>
-                {action.action_performed && ` - ${action.action_performed}`}
-              </p>
-              <div className="flex items-center space-x-2 text-xs text-gray-500">
-                <span>{new Date(action.performed_at).toLocaleString()}</span>
-                {action.user_id && (
-                  <>
-                    <span>•</span>
-                    <span className="font-medium">User: {action.user_id}</span>
-                  </>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-900">
+                  <span className="font-medium">{action.operation}</span>
+                  {action.action_performed && ` - ${action.action_performed}`}
+                </p>
+                <div className="flex items-center space-x-2 text-xs text-gray-500">
+                  <span>{new Date(action.performed_at).toLocaleString()}</span>
+                  {username && (
+                    <>
+                      <span>•</span>
+                      <span className="font-medium">User: {username}</span>
+                    </>
+                  )}
+                </div>
+                {action.outcome && (
+                  <p className="text-xs text-gray-600 mt-1">{action.outcome}</p>
                 )}
               </div>
-              {action.outcome && (
-                <p className="text-xs text-gray-600 mt-1">{action.outcome}</p>
-              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {actionHistory.length > maxItems && (
         <div className="mt-4">

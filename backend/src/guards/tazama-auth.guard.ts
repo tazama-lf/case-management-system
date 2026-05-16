@@ -83,7 +83,12 @@ export class TazamaAuthGuard implements CanActivate {
     }
 
     const authenticatedUser: AuthenticatedUser = {
-      token: { ...decoded, tokenString: token },
+      token: {
+        ...decoded,
+        tokenString: token,
+        fullName: actorName, // Add extracted name to token object
+        email: actorEmail ?? decoded.email,
+      },
       validated,
       validClaims: valid,
       tenantId: decoded.tenantId,
