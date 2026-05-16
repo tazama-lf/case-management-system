@@ -1,4 +1,4 @@
-﻿import { Test, TestingModule } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { AlertService } from '../src/modules/alert/alert.service';
 import { AlertRepository } from '../src/modules/repository/alert.repository';
 import { CaseCreationService } from '../src/modules/case/services/case-creation.service';
