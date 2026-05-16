@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import CaseAgeingStatsCards from '../CaseAgeingStatsCards';
 import type { CaseAgeingStats } from '../../types/reports.types';
 
@@ -35,15 +35,15 @@ describe('CaseAgeingStatsCards', () => {
   it('displays cases over 15 days', async () => {
     render(<CaseAgeingStatsCards stats={mockStats} />);
 
-    // Check that the section exists
-    expect(screen.getByText('Cases > 15 Days')).toBeInTheDocument();
+    // Find the specific card container by its title
+    const card = screen.getByText('Cases > 15 Days').closest('div[class*="bg-white"]');
+    expect(card).toBeInTheDocument();
     
-    // Wait for animation to complete and verify a number is displayed
+    // Wait for animation to complete and verify the correct number is displayed in this card
     await waitFor(
       () => {
-        const cards = screen.getAllByText(/^\d+$/);
-        // Should have at least one numeric value displayed
-        expect(cards.length).toBeGreaterThan(0);
+        const cardElement = card as HTMLElement;
+        expect(within(cardElement).getByText('25')).toBeInTheDocument();
       },
       { timeout: 2000 },
     );
@@ -52,15 +52,15 @@ describe('CaseAgeingStatsCards', () => {
   it('displays cases over 30 days', async () => {
     render(<CaseAgeingStatsCards stats={mockStats} />);
 
-    // Check that the section exists
-    expect(screen.getByText('Cases > 30 Days')).toBeInTheDocument();
+    // Find the specific card container by its title
+    const card = screen.getByText('Cases > 30 Days').closest('div[class*="bg-white"]');
+    expect(card).toBeInTheDocument();
     
-    // Wait for animation to complete and verify a number is displayed
+    // Wait for animation to complete and verify the correct number is displayed in this card
     await waitFor(
       () => {
-        const cards = screen.getAllByText(/^\d+$/);
-        // Should have at least one numeric value displayed
-        expect(cards.length).toBeGreaterThan(0);
+        const cardElement = card as HTMLElement;
+        expect(within(cardElement).getByText('10')).toBeInTheDocument();
       },
       { timeout: 2000 },
     );

@@ -133,8 +133,8 @@ export const transformBackendCaseToUI = (
     assignee:
       backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User',
     priority: backendCase.priority,
-    userRole: backendCase.user_role,
-    totalTasks: backendCase.total_tasks,
+    userRole: backendCase.user_role ?? 'none',
+    totalTasks: backendCase.total_tasks ?? 0,
     alertId: alert?.alert_id ?? SCORE_MIN,
     alertMessage: alert?.message,
     confidencePercent: alert?.confidence_per,

@@ -94,8 +94,10 @@ export const useCaseDashboard = (): {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [backendTotalItems, setBackendTotalItems] = useState(DEFAULT_TOTAL_ITEMS);
-  const [backendTotalPages, setBackendTotalPages] = useState(DEFAULT_TOTAL_PAGES);
+  const [backendTotalItems, setBackendTotalItems] =
+    useState(DEFAULT_TOTAL_ITEMS);
+  const [backendTotalPages, setBackendTotalPages] =
+    useState(DEFAULT_TOTAL_PAGES);
 
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
@@ -222,17 +224,12 @@ export const useCaseDashboard = (): {
               case_type: caseData.case_type,
               created_at: new Date(caseData.created_at),
               updated_at: new Date(caseData.updated_at),
-              user_role: 'owner',
-              user_tasks: [],
-              total_tasks: 0,
-              alert: caseData.alert
-                ? {
-                    alert_id: caseData.alert.alert_id,
-                    message: caseData.alert.message,
-                    confidence_per: caseData.alert.confidence_per,
-                    transaction: caseData.alert.transaction,
-                  }
-                : null,
+              alert: {
+                alert_id: caseData.alert.alert_id,
+                message: caseData.alert.message,
+                confidence_per: caseData.alert.confidence_per,
+                transaction: caseData.alert.transaction,
+              },
               parent_id: caseData.parent_id,
               case_owner_user_id: caseData.case_owner_user_id,
             });

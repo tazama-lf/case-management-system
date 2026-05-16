@@ -49,9 +49,9 @@ export interface CaseWithTasksDto {
   case_type: string;
   created_at: Date;
   updated_at: Date;
-  user_role: 'owner' | 'task_assignee' | 'both';
-  user_tasks: UserTaskDto[];
-  total_tasks: number;
+  user_role?: 'owner' | 'task_assignee' | 'both';
+  user_tasks?: UserTaskDto[];
+  total_tasks?: number;
   alert: AlertInfoDto | null;
   assigned_to?: {
     user_id: string;
