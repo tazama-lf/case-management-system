@@ -342,6 +342,7 @@ describe('AlertService', () => {
         expect.stringContaining("SELECT * from transaction_detail where end_to_end_id = $1"),
         1000,
         ['tx-123'],
+        undefined,
       );
     });
 
