@@ -24,7 +24,7 @@ export interface CaseRow {
   priority: string;
   userRole: 'owner' | 'task_assignee' | 'both' | 'none';
   totalTasks: number;
-  alertId: number;
+  alertId?: number;
   alertMessage?: string;
   confidencePercent?: number;
   transaction?: unknown;
@@ -135,7 +135,7 @@ export const transformBackendCaseToUI = (
     priority: backendCase.priority,
     userRole: backendCase.user_role ?? 'none',
     totalTasks: backendCase.total_tasks ?? 0,
-    alertId: alert?.alert_id ?? SCORE_MIN,
+    alertId: alert?.alert_id ?? undefined,
     alertMessage: alert?.message,
     confidencePercent: alert?.confidence_per,
     transaction: alert?.transaction,

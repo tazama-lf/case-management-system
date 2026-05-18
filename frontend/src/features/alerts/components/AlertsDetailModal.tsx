@@ -222,7 +222,7 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
       ? action.action_performed.replace(action.user_id, username)
       : action.action_performed;
 
-  const userDisplayName = username;
+  // const userDisplayName = username;
 
   return (
     <>
@@ -234,7 +234,7 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
         {action.user_id && (
           <>
             <span>•</span>
-            <span className="font-medium">User: {userDisplayName}</span>
+            <span className="font-medium">User ID: {action.user_id}</span>
           </>
         )}
       </div>
