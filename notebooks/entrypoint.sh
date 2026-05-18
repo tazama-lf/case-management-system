@@ -18,12 +18,13 @@ print(json.dumps(settings))
 ")
 
 # Enable the custom Voila extension for service_token support
-export PYTHONPATH="/app/notebooks:${PYTHONPATH:-}"
+export PYTHONPATH=/app/notebooks:$PYTHONPATH
 
 exec voila /app/notebooks \
   --config=/app/notebooks/voila.json \
   --Voila.ip=0.0.0.0 \
   --Voila.port=8866 \
   --Voila.tornado_settings="$TORNADO_SETTINGS" \
+  --VoilaConfiguration.extension_language_mapping='{".py": "python"}' \
   --VoilaConfiguration.extension_language_mapping='{".py": "python"}' \
   --no-browser

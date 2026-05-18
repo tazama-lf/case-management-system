@@ -172,7 +172,7 @@ export class CacheService {
 
     try {
       // Decode JWT to get expiration time (without verification since it's already verified)
-      const decoded = jwt.decode(token) as { exp?: number };
+      const decoded = jwt.decode(token) as { exp?: number } | null;
 
       if (!decoded?.exp) {
         this.logger.warn(`Token for user ${userId} has no expiration, using default 1 hour TTL`, CacheService.name);

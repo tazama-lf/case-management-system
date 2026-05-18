@@ -871,7 +871,7 @@ export class GoldLakehouseController {
   ): Promise<GenerateProfileResponseDto> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user;
-    const userJwt = req ? this.extractJwt(req) : undefined;
+    const userJwt = this.extractJwt(req);
     return await this.transactionLakehouseService.generateProfile(alertId, dto, userId, tenantId, userJwt);
   }
 }

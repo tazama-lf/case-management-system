@@ -10,7 +10,7 @@ import { SharedModule } from '../shared/shared.module';
 import { SharedModule } from '../shared/shared.module';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, HttpModule, LoggerModule, SharedModule],
+  imports: [ConfigModule, PrismaModule, HttpModule, LoggerModule, forwardRef(() => SharedModule)],
   providers: [TazamaAuthGuard, AuthService],
   exports: [TazamaAuthGuard, AuthService],
   controllers: [AuthController],

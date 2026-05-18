@@ -5,7 +5,8 @@ import { AppModule } from './app.module';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import cookieParser = require('cookie-parser');
+import cookieParser from 'cookie-parser';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -15,6 +16,23 @@ async function bootstrap(): Promise<void> {
 
   // Enable cookie parser to read HttpOnly cookies
   app.use(cookieParser());
+
+  // Configure WebSocket proxy for Voila kernel connections
+  const voilaBaseUrl = configService.getOrThrow<string>('VOILA_BASE_URL');
+  const wsProxy = createProxyMiddleware({
+    target: voilaBaseUrl,
+    changeOrigin: true,
+    // Do NOT set ws:true — we manually handle upgrades below
+    pathFilter: '/api/kernels/**',
+    on: {
+      error: (err, req, res) => {
+        logger.error(`[WS] Proxy error: ${err.message}`);
+      },
+    },
+  });
+
+  // Apply HTTP proxy middleware for /api/kernels/* requests
+  app.use(wsProxy);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -44,47 +62,19 @@ async function bootstrap(): Promise<void> {
 
   // Manually handle WebSocket upgrades AFTER server is listening
   const server = app.getHttpServer();
-  server.on('upgrade', (req: IncomingMessage, socket: Socket, head: Buffer) => {
+  server.on('upgrade', (req, socket, head) => {
     if (req.url?.startsWith('/api/kernels/')) {
-      // Enforce authentication for WebSocket connections
-      const accessToken = extractAccessToken(req);
-      if (!accessToken || !verifyToken(accessToken)) {
-        logger.warn(`[Kernels WS] Unauthorized WebSocket upgrade attempt to ${req.url}`);
-        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-        socket.destroy();
-        return;
-      }
-
-      logger.log(`[Kernels WS] Upgrading authenticated WebSocket: ${req.url} → ${voilaBaseUrl}${req.url}`);
       // Rewrite Origin header to match Voila's host — Tornado rejects mismatched origins with 403
-      // Create a shallow clone of req with modified headers
-      const modifiedReq = Object.create(Object.getPrototypeOf(req), Object.getOwnPropertyDescriptors(req));
+      const modifiedReq = req;
       modifiedReq.headers = { ...req.headers, origin: voilaBaseUrl };
-
-      // Handle WebSocket proxy errors
-      const errorHandler = (err: Error): void => {
-        logger.error(`[Kernels WS] WebSocket proxy error: ${err.message}`);
-        if (!socket.destroyed) {
-          socket.destroy();
-        }
-      };
-
-      // Attach one-time error handler for this specific upgrade
-      proxy.once('error', errorHandler);
-
-      try {
-        proxy.ws(modifiedReq, socket, head);
-      } catch (err) {
-        logger.error(`[Kernels WS] WebSocket upgrade failed: ${err instanceof Error ? err.message : err}`);
-        if (!socket.destroyed) {
-          socket.destroy();
-        }
-      }
+      logger.log(`[WS] Upgrading ${req.url} → ${voilaBaseUrl}${req.url}`);
+      wsProxy.upgrade(modifiedReq, socket, head);
     }
   });
 
   logger.log(`Application started on port ${port}`);
   logger.log(`Swagger docs available at http://localhost:${port}/api/docs`);
+  logger.log(`WebSocket proxy enabled for /api/kernels/* → ${voilaBaseUrl}`);
   logger.log(`WebSocket proxy enabled for /api/kernels/* → ${voilaBaseUrl}`);
 }
 
