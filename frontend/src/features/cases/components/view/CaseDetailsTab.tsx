@@ -513,7 +513,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         )}
 
         {/* Alert Information */}
-        {row.alertId && (
+        {row.alertId && !row.parentId && (
           <div className="space-y-3">
             <div className="text-sm font-semibold text-gray-700">
               Alert Information
