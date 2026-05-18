@@ -7,6 +7,7 @@ import AlertsDetailModal from '../AlertsDetailModal';
 import triageService from '../../services/triageservice';
 import { useSystemConfig } from '@/shared/hooks/useSystemConfig';
 import { useCase, canActOnCase } from '../../../cases/hooks/useCase';
+import { caseService } from '../../../cases/services/caseService';
 
 const mockNavigate = vi.fn();
 
@@ -21,6 +22,11 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../../services/triageservice');
 vi.mock('@/shared/hooks/useSystemConfig');
 vi.mock('../../../cases/hooks/useCase');
+vi.mock('../../../cases/services/caseService', () => ({
+  caseService: {
+    checkCaseAccess: vi.fn(),
+  },
+}));
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -80,6 +86,7 @@ describe('AlertsDetailModal', () => {
       loading: false,
     });
     (canActOnCase as vi.Mock).mockReturnValue(true);
+    (caseService.checkCaseAccess as vi.Mock).mockResolvedValue(true);
   });
 
   it('does not render when isOpen is false', () => {
@@ -298,6 +305,7 @@ describe('AlertsDetailModal', () => {
       data: { case_id: 456, status: 'IN_PROGRESS' },
       loading: false,
     });
+    (caseService.checkCaseAccess as vi.Mock).mockResolvedValue(true);
 
     renderModal(
       <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
@@ -323,6 +331,7 @@ describe('AlertsDetailModal', () => {
       data: { case_id: 456, status: 'IN_PROGRESS' },
       loading: false,
     });
+    (caseService.checkCaseAccess as vi.Mock).mockResolvedValue(true);
 
     renderModal(
       <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
