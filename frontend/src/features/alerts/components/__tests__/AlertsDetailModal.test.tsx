@@ -310,8 +310,8 @@ describe('AlertsDetailModal', () => {
     // Case status is displayed in the Alert Summary section
     expect(screen.getByText('IN_PROGRESS')).toBeInTheDocument();
     
-    // Case ID is displayed
-    expect(screen.getByText('456')).toBeInTheDocument();
+    // Case ID is displayed (from alert.case_id)
+    expect(screen.getByText('case-123')).toBeInTheDocument();
   });
 
   it('navigates to case details when case ID is clicked', async () => {
@@ -333,11 +333,11 @@ describe('AlertsDetailModal', () => {
     });
 
     // Click on the case ID link
-    const caseIdButton = screen.getByRole('button', { name: /456/i });
+    const caseIdButton = screen.getByRole('button', { name: /case-123/i });
     await user.click(caseIdButton);
 
     // Verify navigation was called with correct case ID
-    expect(mockNavigate).toHaveBeenCalledWith('/cases/456');
+    expect(mockNavigate).toHaveBeenCalledWith('/cases/case-123');
   });
 
   it('fetches alert details when alertId changes', async () => {

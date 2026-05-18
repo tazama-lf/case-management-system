@@ -224,12 +224,15 @@ export const useCaseDashboard = (): {
               case_type: caseData.case_type,
               created_at: new Date(caseData.created_at),
               updated_at: new Date(caseData.updated_at),
-              alert: {
-                alert_id: caseData.alert.alert_id,
-                message: caseData.alert.message,
-                confidence_per: caseData.alert.confidence_per,
-                transaction: caseData.alert.transaction,
-              },
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Backend API may return null for alert field
+              alert: caseData.alert
+                ? {
+                    alert_id: caseData.alert.alert_id,
+                    message: caseData.alert.message,
+                    confidence_per: caseData.alert.confidence_per,
+                    transaction: caseData.alert.transaction,
+                  }
+                : null,
               parent_id: caseData.parent_id,
               case_owner_user_id: caseData.case_owner_user_id,
             });
