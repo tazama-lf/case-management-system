@@ -29,6 +29,7 @@ interface TaskDetailsModalProps {
   row?: CaseRow | null;
   onRefreshCases?: () => Promise<void>;
   onTaskUpdate?: () => void;
+  onSwitchToCaseDetails?: () => void;
 }
 
 const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
@@ -38,6 +39,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   row,
   onRefreshCases: _onRefreshCases,
   onTaskUpdate,
+  onSwitchToCaseDetails,
 }) => {
   const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
@@ -51,6 +53,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   >(undefined);
 
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
+  const initialCaseIdRef = React.useRef<number | undefined>(undefined);
 
   React.useEffect(() => {
     if (row?.parentId) {
@@ -91,6 +94,17 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       }
     }
   }, [open, row?.id]);
+
+  // Close modal when navigating to a different case
+  React.useEffect(() => {
+    if (open && initialCaseIdRef.current && row?.id !== initialCaseIdRef.current) {
+      onClose();
+    }
+    
+    if (open) {
+      initialCaseIdRef.current = row?.id;
+    }
+  }, [row?.id, open, onClose]);
 
   //Extract transaction ID from transaction data
   const transactionId = React.useMemo(() => {
@@ -221,7 +235,15 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 />
               </div>
               <div style={{ display: tab === 'linked' ? 'block' : 'none' }}>
-                {row?.id && <LinkedItemsTab caseId={row.id} />}
+                {row?.id && (
+                  <LinkedItemsTab
+                    caseId={row.id}
+                    onNavigateToCase={() => {
+                      onClose();
+                      onSwitchToCaseDetails?.();
+                    }}
+                  />
+                )}
               </div>
               <div style={{ display: tab === 'notes' ? 'block' : 'none' }}>
                 <InvestigationNotesTab

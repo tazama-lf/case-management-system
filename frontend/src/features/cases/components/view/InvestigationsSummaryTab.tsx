@@ -34,7 +34,7 @@ interface InvestigationSummaryTabProps {
   row?: CaseRow;
   onTaskUpdate?: () => void;
   refreshKey?: number;
-  task: TaskForSupervisor;
+  task?: TaskForSupervisor;
 }
 
 interface EvidenceCategory {
@@ -405,7 +405,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
               investigationTask.status !== 'STATUS_30_COMPLETED' &&
               investigationTask.assigned_user_id === currentUserId && (
                 <button
-                  hidden={task.status === 'STATUS_21_BLOCKED'}
+                  hidden={task?.status === 'STATUS_21_BLOCKED'}
                   onClick={() => {
                     setShowCompleteModal(true);
                   }}

@@ -230,6 +230,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                   onApproveCaseCreation={onApproveCaseCreation}
                   onRejectCaseCreation={onRejectCaseCreation}
                   onAbandonCase={onAbandonCase}
+                  onSwitchToCaseDetails={() => setTab('details')}
                 />
               )}
               {tab === 'comments' && (

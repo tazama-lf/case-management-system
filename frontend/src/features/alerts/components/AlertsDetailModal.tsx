@@ -35,6 +35,7 @@ interface AlertsDetailModalProps {
   ) => void;
   onAlertUpdated?: () => void;
   onManualTriage?: (alert: LegacyAlert) => void;
+  onNavigateToCase?: () => void;
 }
 
 const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
@@ -248,6 +249,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   onClose,
   onAlertUpdated,
   onManualTriage,
+  onNavigateToCase,
 }) => {
   const { isManualMode, isDisabledMode, isAIMode } = useSystemConfig();
   const queryClient = useQueryClient();
@@ -593,7 +595,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           </span>
                           {hasCaseAccess ? (
                             <button
-                              onClick={() => navigate(`/cases/${alert.case_id}`)}
+                              onClick={() => {
+                                navigate(`/cases/${alert.case_id}`);
+                                onClose();
+                                onNavigateToCase?.();
+                              }}
                               className="flex items-center gap-1 text-sm text-gray-900 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
                               title="View case details"
                             >
