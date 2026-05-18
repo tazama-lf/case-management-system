@@ -20,19 +20,8 @@ import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 export class JupyterProxyController {
   constructor(private readonly proxyService: JupyterProxyService) {}
 
-  /**
-   * Extract JWT token from request headers
-   */
-  private extractJwt(req: AuthenticatedRequest): string | undefined {
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith('Bearer ')) {
-      return authHeader.substring(7);
-    }
-    return undefined;
-  }
-
   private getUserId(req: AuthenticatedRequest): string {
-    const userId = req.user?.userId;
+    const { userId } = req.user;
     if (!userId) {
       throw new BadRequestException('User ID not found in authenticated request');
     }

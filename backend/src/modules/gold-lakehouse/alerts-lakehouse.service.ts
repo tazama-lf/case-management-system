@@ -290,7 +290,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         ${dateFilter}
       `;
 
-      const response = await this.runSqlQuery(sql, 1);
+      const response = await this.runSqlQuery(sql, 1, undefined, userJwt);
       const row = response.data?.[0] ?? {};
 
       return {

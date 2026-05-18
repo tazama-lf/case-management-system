@@ -36,7 +36,7 @@ export class AuthController {
       // Decode JWT to extract userId (no verification needed, just reading the payload)
       const decoded = jwt.decode(result.token) as { clientId?: string; sub?: string } | null;
       this.logger.log(`Decoded JWT payload: ${JSON.stringify(decoded)}`);
-      const userId = decoded?.clientId || decoded?.sub || 'unknown';
+      const userId = decoded?.clientId ?? decoded?.sub ?? 'unknown';
 
       this.logger.log(`User logged in: ${userId}`);
 

@@ -185,7 +185,7 @@ export class AlertController {
     const { tenantId } = req.user.token;
     if (!tenantId) throw new BadRequestException('Missing tenantId');
     if (!userId) throw new BadRequestException('Missing clientId');
-    const userJwt = req ? this.extractJwt(req) : undefined;
+    const userJwt = this.extractJwt(req);
 
     return await this.alertService.getAlertTransactionalData(alertId, tenantId, userJwt);
   }

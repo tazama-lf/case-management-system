@@ -5,7 +5,8 @@ import { AppModule } from './app.module';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import cookieParser = require('cookie-parser');
+import cookieParser from 'cookie-parser';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -15,6 +16,23 @@ async function bootstrap(): Promise<void> {
 
   // Enable cookie parser to read HttpOnly cookies
   app.use(cookieParser());
+
+  // Configure WebSocket proxy for Voila kernel connections
+  const voilaBaseUrl = configService.getOrThrow<string>('VOILA_BASE_URL');
+  const wsProxy = createProxyMiddleware({
+    target: voilaBaseUrl,
+    changeOrigin: true,
+    // Do NOT set ws:true — we manually handle upgrades below
+    pathFilter: '/api/kernels/**',
+    on: {
+      error: (err, req, res) => {
+        logger.error(`[WS] Proxy error: ${err.message}`);
+      },
+    },
+  });
+
+  // Apply HTTP proxy middleware for /api/kernels/* requests
+  app.use(wsProxy);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -42,8 +60,21 @@ async function bootstrap(): Promise<void> {
   const port = configService.get<number>('PORT', 3090);
   await app.listen(port);
 
+  // Manually handle WebSocket upgrades AFTER server is listening
+  const server = app.getHttpServer();
+  server.on('upgrade', (req, socket, head) => {
+    if (req.url?.startsWith('/api/kernels/')) {
+      // Rewrite Origin header to match Voila's host — Tornado rejects mismatched origins with 403
+      const modifiedReq = req;
+      modifiedReq.headers = { ...req.headers, origin: voilaBaseUrl };
+      logger.log(`[WS] Upgrading ${req.url} → ${voilaBaseUrl}${req.url}`);
+      wsProxy.upgrade(modifiedReq, socket, head);
+    }
+  });
+
   logger.log(`Application started on port ${port}`);
   logger.log(`Swagger docs available at http://localhost:${port}/api/docs`);
+  logger.log(`WebSocket proxy enabled for /api/kernels/* → ${voilaBaseUrl}`);
 }
 
 void bootstrap();
