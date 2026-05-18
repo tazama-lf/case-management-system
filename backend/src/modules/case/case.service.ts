@@ -1093,4 +1093,8 @@ export class CaseService {
   async getSubCasesDetails(caseId: number): Promise<Case[]> {
     return await this.caseQueryService.getSubCasesDetails(caseId);
   }
+
+  async checkUserCaseAccess(caseId: number, investigatorUserId: string | undefined, tenantId: string): Promise<boolean> {
+    return await this.caseQueryService.checkUserCaseAccess(caseId, investigatorUserId, tenantId);
+  }
 }

@@ -22,6 +22,7 @@ import { useCase, canActOnCase } from '../../cases/hooks/useCase';
 import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
 import { formatDate } from '@/shared/utils/dateUtils';
 import { useQueryClient } from '@tanstack/react-query';
+import { caseService } from '../../cases/services/caseService';
 
 interface AlertsDetailModalProps {
   alertId: number | null;
@@ -221,7 +222,7 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
       ? action.action_performed.replace(action.user_id, username)
       : action.action_performed;
 
-  const userDisplayName = username ?? action.user_id;
+  const userDisplayName = username;
 
   return (
     <>
@@ -261,6 +262,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isCompleteNewCaseCompleted, setIsCompleteNewCaseCompleted] =
     useState(false);
+  const [hasCaseAccess, setHasCaseAccess] = useState<boolean>(true); // Default true for better UX
 
   const { data: caseDetails } = useCase(alert?.case_id);
 
@@ -338,6 +340,26 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
     checkCompleteNewCaseStatus();
   }, [alert?.case_id, isOpen]);
+
+  // Check if user has access to view the case using SAME logic as dashboard
+  useEffect(() => {
+    const checkCaseAccess = async () => {
+      if (!alert?.case_id) {
+        setHasCaseAccess(true); // No case to check
+        return;
+      }
+
+      try {
+        const hasAccess = await caseService.checkCaseAccess(alert.case_id);
+        setHasCaseAccess(hasAccess);
+      } catch (error) {
+        console.error('Failed to check case access:', error);
+        setHasCaseAccess(false); // Deny access on error
+      }
+    };
+
+    checkCaseAccess();
+  }, [alert?.case_id]);
 
   if (!isOpen) {
     return null;
@@ -569,14 +591,24 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           <span className="text-sm font-medium text-gray-500">
                             Case ID:
                           </span>
-                          <button
-                            onClick={() => navigate(`/cases/${caseDetails.case_id}`)}
-                            className="flex items-center gap-1 text-sm text-gray-900 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
-                            title="View case details"
-                          >
-                            <span>{caseDetails.case_id}</span>
-                            <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                          </button>
+                          {hasCaseAccess ? (
+                            <button
+                              onClick={() => navigate(`/cases/${alert.case_id}`)}
+                              className="flex items-center gap-1 text-sm text-gray-900 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                              title="View case details"
+                            >
+                              <span>{alert.case_id}</span>
+                              <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <div 
+                              className="flex items-center gap-1 text-sm text-gray-500 cursor-not-allowed" 
+                              title="You don't have permission to view this case"
+                            >
+                              <span>{alert.case_id}</span>
+                              <ArrowTopRightOnSquareIcon className="w-4 h-4 opacity-50" />
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
