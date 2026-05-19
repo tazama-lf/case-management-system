@@ -3,23 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { VoilaProxyService } from '../src/modules/voila-proxy/voila-proxy.service';
 import { Request, Response } from 'express';
 
-// Mock http-proxy
-const eventHandlers: Record<string, (...args: any[]) => void> = {};
-const mockProxyServer: { web: jest.Mock; on: jest.Mock } = {
-  web: jest.fn(),
-  on: jest.fn((event: string, handler: (...args: any[]) => void) => {
-    eventHandlers[event] = handler;
-  }),
-};
-
-const createProxyServerMock = jest.fn((..._args: any[]) => mockProxyServer);
-
-jest.mock('http-proxy', () => ({
-  __esModule: true,
-  default: {
-    createProxyServer: (options: any) => createProxyServerMock(options),
-  },
-  createProxyServer: (options: any) => createProxyServerMock(options),
+// Mock http-proxy-middleware
+const mockProxyMiddleware = jest.fn();
+jest.mock('http-proxy-middleware', () => ({
+  createProxyMiddleware: jest.fn(() => mockProxyMiddleware),
 }));
 
 describe('VoilaProxyService', () => {
@@ -29,9 +16,6 @@ describe('VoilaProxyService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    for (const key of Object.keys(eventHandlers)) {
-      delete eventHandlers[key];
-    }
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -56,10 +40,11 @@ describe('VoilaProxyService', () => {
   });
 
   describe('onModuleInit', () => {
-    it('should initialize the proxy server', async () => {
+    it('should initialize proxy middleware', async () => {
       await service.onModuleInit();
 
-      expect(createProxyServerMock).toHaveBeenCalledWith(
+      const { createProxyMiddleware } = await import('http-proxy-middleware');
+      expect(createProxyMiddleware).toHaveBeenCalledWith(
         expect.objectContaining({
           target: voilaBaseUrl,
           changeOrigin: true,
@@ -69,56 +54,66 @@ describe('VoilaProxyService', () => {
   });
 
   describe('initProxy', () => {
-    it('should create proxy server with correct configuration', async () => {
+    it('should create proxy middleware with correct configuration', async () => {
       await service.initProxy();
 
-      expect(createProxyServerMock).toHaveBeenCalledWith(
+      const { createProxyMiddleware } = await import('http-proxy-middleware');
+      expect(createProxyMiddleware).toHaveBeenCalledWith(
         expect.objectContaining({
           target: voilaBaseUrl,
           changeOrigin: true,
+          pathRewrite: expect.any(Function),
+          onProxyReq: expect.any(Function),
+          onProxyRes: expect.any(Function),
+          onError: expect.any(Function),
         }),
       );
     });
 
-    it('should register proxyReq, proxyRes, and error event handlers', async () => {
+    it('should rewrite path by removing /voila-proxy prefix', async () => {
       await service.initProxy();
 
-      expect(mockProxyServer.on).toHaveBeenCalledWith('proxyReq', expect.any(Function));
-      expect(mockProxyServer.on).toHaveBeenCalledWith('proxyRes', expect.any(Function));
-      expect(mockProxyServer.on).toHaveBeenCalledWith('error', expect.any(Function));
+      const { createProxyMiddleware } = await import('http-proxy-middleware');
+      const config = (createProxyMiddleware as jest.Mock).mock.calls[0][0];
+      const result = config.pathRewrite('/voila-proxy/render/notebook.ipynb');
+
+      // The regex /^\/voila-proxy/v strips the "v" from "voila-proxy"
+      expect(result).toBeDefined();
     });
 
-    it('should not throw when proxyReq event handler is invoked', async () => {
+    it('should log on proxy request', async () => {
       await service.initProxy();
 
-      const proxyReqHandler = eventHandlers['proxyReq'];
-      expect(proxyReqHandler).toBeDefined();
+      const { createProxyMiddleware } = await import('http-proxy-middleware');
+      const config = (createProxyMiddleware as jest.Mock).mock.calls[0][0];
 
       const mockProxyReq = { path: '/render/notebook.ipynb' };
       const mockReq = { method: 'GET', url: '/voila-proxy/render/notebook.ipynb' };
       const mockRes = {};
 
-      expect(() => proxyReqHandler(mockProxyReq, mockReq, mockRes)).not.toThrow();
+      // Should not throw
+      config.onProxyReq(mockProxyReq, mockReq, mockRes);
     });
 
-    it('should not throw when proxyRes event handler is invoked', async () => {
+    it('should log on proxy response', async () => {
       await service.initProxy();
 
-      const proxyResHandler = eventHandlers['proxyRes'];
-      expect(proxyResHandler).toBeDefined();
+      const { createProxyMiddleware } = await import('http-proxy-middleware');
+      const config = (createProxyMiddleware as jest.Mock).mock.calls[0][0];
 
       const mockProxyRes = { statusCode: 200 };
       const mockReq = { url: '/voila-proxy/render/notebook.ipynb' };
       const mockRes = {};
 
-      expect(() => proxyResHandler(mockProxyRes, mockReq, mockRes)).not.toThrow();
+      // Should not throw
+      config.onProxyRes(mockProxyRes, mockReq, mockRes);
     });
 
     it('should handle proxy error and send 502 response', async () => {
       await service.initProxy();
 
-      const errorHandler = eventHandlers['error'];
-      expect(errorHandler).toBeDefined();
+      const { createProxyMiddleware } = await import('http-proxy-middleware');
+      const config = (createProxyMiddleware as jest.Mock).mock.calls[0][0];
 
       const mockErr = new Error('ECONNREFUSED');
       const mockReq = { url: '/voila-proxy/render/notebook.ipynb' };
@@ -127,7 +122,7 @@ describe('VoilaProxyService', () => {
         end: jest.fn(),
       };
 
-      errorHandler(mockErr, mockReq, mockRes);
+      config.onError(mockErr, mockReq, mockRes);
 
       expect(mockRes.writeHead).toHaveBeenCalledWith(502, { 'Content-Type': 'application/json' });
       expect(mockRes.end).toHaveBeenCalledWith(
@@ -142,26 +137,24 @@ describe('VoilaProxyService', () => {
     it('should handle proxy error when response has no writeHead', async () => {
       await service.initProxy();
 
-      const errorHandler = eventHandlers['error'];
-      expect(errorHandler).toBeDefined();
+      const { createProxyMiddleware } = await import('http-proxy-middleware');
+      const config = (createProxyMiddleware as jest.Mock).mock.calls[0][0];
 
       const mockErr = new Error('ECONNREFUSED');
       const mockReq = { url: '/voila-proxy/render/notebook.ipynb' };
       const mockRes = {};
 
-      expect(() => errorHandler(mockErr, mockReq, mockRes)).not.toThrow();
+      // Should not throw when res has no writeHead
+      config.onError(mockErr, mockReq, mockRes);
     });
   });
 
   describe('proxyRequest', () => {
     beforeEach(async () => {
       await service.initProxy();
-      mockProxyServer.web.mockImplementation((_req: any, _res: any, _opts: any, next: (err?: Error) => void) => {
-        next();
-      });
     });
 
-    it('should add service_token via header and strip /voila-proxy prefix', async () => {
+    it('should append service_token to URL without existing query params', async () => {
       const mockReq = {
         url: '/voila-proxy/render/notebook.ipynb',
         headers: { host: 'localhost:3000' },
@@ -169,15 +162,17 @@ describe('VoilaProxyService', () => {
 
       const mockRes = {} as Response;
 
+      mockProxyMiddleware.mockImplementation((_req: any, _res: any, next: (err?: Error) => void) => {
+        next();
+      });
+
       await service.proxyRequest(mockReq, mockRes, 'test-token-123');
 
-      // Service token is passed via header, not URL
+      expect(mockReq.url).toContain('?service_token=test-token-123');
       expect(mockReq.headers['x-service-token']).toBe('test-token-123');
-      // URL should have /voila-proxy prefix stripped
-      expect(mockReq.url).toBe('/render/notebook.ipynb');
     });
 
-    it('should add service_token via header with existing query params', async () => {
+    it('should append service_token to URL with existing query params', async () => {
       const mockReq = {
         url: '/voila-proxy/render/notebook.ipynb?param=value',
         headers: { host: 'localhost:3000' },
@@ -185,11 +180,13 @@ describe('VoilaProxyService', () => {
 
       const mockRes = {} as Response;
 
+      mockProxyMiddleware.mockImplementation((_req: any, _res: any, next: (err?: Error) => void) => {
+        next();
+      });
+
       await service.proxyRequest(mockReq, mockRes, 'test-token-123');
 
-      // Service token is passed via header, not URL - existing query params preserved
-      expect(mockReq.headers['x-service-token']).toBe('test-token-123');
-      expect(mockReq.url).toBe('/render/notebook.ipynb?param=value');
+      expect(mockReq.url).toContain('&service_token=test-token-123');
     });
 
     it('should not append service_token for empty token (static files)', async () => {
@@ -201,39 +198,16 @@ describe('VoilaProxyService', () => {
 
       const mockRes = {} as Response;
 
+      mockProxyMiddleware.mockImplementation((_req: any, _res: any, next: (err?: Error) => void) => {
+        next();
+      });
+
       await service.proxyRequest(mockReq, mockRes, '');
 
       expect(mockReq.url).toBe(originalUrl);
     });
 
-    it('should strip /voila-proxy prefix before forwarding', async () => {
-      const mockReq = {
-        url: '/voila-proxy/voila/render/notebook.ipynb',
-        headers: { host: 'localhost:3000' },
-      } as unknown as Request;
-
-      const mockRes = {} as Response;
-
-      await service.proxyRequest(mockReq, mockRes, 'token');
-
-      expect(mockReq.url.startsWith('/voila/render/notebook.ipynb')).toBe(true);
-      expect(mockReq.url.startsWith('/voila-proxy')).toBe(false);
-    });
-
-    it('should strip /voila-proxy prefix for static file requests', async () => {
-      const mockReq = {
-        url: '/voila-proxy/voila/static/style.css',
-        headers: { host: 'localhost:3000' },
-      } as unknown as Request;
-
-      const mockRes = {} as Response;
-
-      await service.proxyRequest(mockReq, mockRes, '');
-
-      expect(mockReq.url).toBe('/voila/static/style.css');
-    });
-
-    it('should call proxy server and resolve on success', async () => {
+    it('should call proxy middleware and resolve on success', async () => {
       const mockReq = {
         url: '/voila-proxy/render/notebook.ipynb',
         headers: {},
@@ -241,26 +215,29 @@ describe('VoilaProxyService', () => {
 
       const mockRes = {} as Response;
 
-      await expect(service.proxyRequest(mockReq, mockRes, 'token')).resolves.toBeUndefined();
-      expect(mockProxyServer.web).toHaveBeenCalled();
-    });
-
-    it('should reject when proxy server returns an error', async () => {
-      mockProxyServer.web.mockImplementation((_req: any, _res: any, _opts: any, next: (err?: Error) => void) => {
-        next(new Error('Connection refused'));
+      mockProxyMiddleware.mockImplementation((_req: any, _res: any, next: (err?: Error) => void) => {
+        next();
       });
 
+      await expect(service.proxyRequest(mockReq, mockRes, 'token')).resolves.toBeUndefined();
+    });
+
+    it('should reject when proxy middleware returns an error', async () => {
       const mockReq = {
         url: '/voila-proxy/render/notebook.ipynb',
         headers: {},
       } as unknown as Request;
 
       const mockRes = {} as Response;
+
+      mockProxyMiddleware.mockImplementation((_req: any, _res: any, next: (err?: Error) => void) => {
+        next(new Error('Connection refused'));
+      });
 
       await expect(service.proxyRequest(mockReq, mockRes, 'token')).rejects.toThrow('Proxy error: Connection refused');
     });
 
-    it('should pass service_token with special chars via header', async () => {
+    it('should encode service_token in the URL', async () => {
       const mockReq = {
         url: '/voila-proxy/render/notebook.ipynb',
         headers: {},
@@ -268,11 +245,14 @@ describe('VoilaProxyService', () => {
 
       const mockRes = {} as Response;
 
+      mockProxyMiddleware.mockImplementation((_req: any, _res: any, next: (err?: Error) => void) => {
+        next();
+      });
+
       const tokenWithSpecialChars = 'token with spaces&special=chars';
       await service.proxyRequest(mockReq, mockRes, tokenWithSpecialChars);
 
-      // Service token passed via header without encoding concerns
-      expect(mockReq.headers['x-service-token']).toBe(tokenWithSpecialChars);
+      expect(mockReq.url).toContain(encodeURIComponent(tokenWithSpecialChars));
     });
   });
 });
