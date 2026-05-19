@@ -6,6 +6,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -15,8 +16,7 @@ async function bootstrap(): Promise<void> {
 
   app.use(cookieParser());
 
-  // Configure WebSocket proxy for Voila kernel connections
-  const { createProxyMiddleware } = await import('http-proxy-middleware');
+  // Configure WebSocket proxy for Voila kernel connection
   const voilaBaseUrl = configService.getOrThrow<string>('VOILA_BASE_URL');
   const wsProxy = createProxyMiddleware({
     target: voilaBaseUrl,
