@@ -19,7 +19,7 @@ COPY ./migrate.sh ./migrate.sh
 # Ensure shell script is Linux-compatible even when checked out with CRLF on Windows.
 RUN sed -i 's/\r$//' /home/app/migrate.sh && chmod +x /home/app/migrate.sh
 
-RUN --mount=type=secret,id=GH_TOKEN,env=GH_TOKEN npm ci --ignore-scripts
+RUN --mount=type=secret,id=GH_TOKEN,env=GH_TOKEN npm ci --legacy-peer-deps --ignore-scripts
 
 RUN npx prisma generate
 
