@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 
 /**
  * VoilaProxyService handles request proxying to Voila.
@@ -10,43 +9,38 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 export class VoilaProxyService {
   private readonly logger = new Logger(VoilaProxyService.name);
   private readonly voilaBaseUrl: string;
-  private readonly proxyMiddleware: ReturnType<typeof createProxyMiddleware>;
-  private readonly logger = new Logger(VoilaProxyService.name);
-  private readonly voilaBaseUrl: string;
-  private readonly proxyMiddleware: ReturnType<typeof createProxyMiddleware>;
+  private proxyMiddleware: any;
 
   constructor(private readonly configService: ConfigService) {
     // Get configuration from environment
     this.voilaBaseUrl = this.configService.getOrThrow<string>('VOILA_BASE_URL');
-  constructor(private readonly configService: ConfigService) {
-    // Get configuration from environment
-    this.voilaBaseUrl = this.configService.getOrThrow<string>('VOILA_BASE_URL');
+    // Proxy middleware will be initialized asynchronously
+  }
 
-    // Create proxy middleware instance (HTTP only; WebSocket upgrades are handled by main.ts middleware)
+  /**
+   * Call this method after instantiating the service to initialize the proxy middleware.
+   * Example: await voilaProxyService.initProxy();
+   */
+  async initProxy(): Promise<void> {
+    const { createProxyMiddleware } = await import('http-proxy-middleware');
     this.proxyMiddleware = createProxyMiddleware({
       target: this.voilaBaseUrl,
       changeOrigin: true,
-      pathRewrite: (path) => {
-        // Remove /voila-proxy prefix but keep /voila and /api prefixes for Voila server
-        // Examples:
-        // /voila-proxy/voila/render/notebook.ipynb -> /voila/render/notebook.ipynb
-        // /voila/static/voila.js -> /voila/static/voila.js (no change)
-        // /api/kernels/xxx -> /api/kernels/xxx (no change)
+      pathRewrite: (path: string) => {
         const rewritten = path.replace(/^\/voila-proxy/v, '');
         this.logger.log(`[PathRewrite] ${path} → ${rewritten}`);
         return rewritten;
       },
       on: {
-        proxyReq: (proxyReq, req, res) => {
+        proxyReq: (proxyReq: any, req: any, res: any) => {
           this.logger.log(`[ProxyMiddleware] Forwarding ${req.method} ${req.url} → ${this.voilaBaseUrl}${proxyReq.path}`);
         },
-        proxyRes: (proxyRes, req, res) => {
+        proxyRes: (proxyRes: any, req: any, res: any) => {
           this.logger.log(`[ProxyMiddleware] Response received: ${proxyRes.statusCode} for ${req.url}`);
         },
-        error: (err, req, res) => {
+        error: (err: any, req: any, res: any) => {
           this.logger.error(`[ProxyMiddleware] Connection error for ${req.url}: ${err.message}`);
           this.logger.error(`[ProxyMiddleware] Stack: ${err.stack}`);
-          // Check if res is a ServerResponse (has writeHead method)
           if ('writeHead' in res && typeof res.writeHead === 'function') {
             res.writeHead(502, { 'Content-Type': 'application/json' });
             res.end(
@@ -60,9 +54,6 @@ export class VoilaProxyService {
         },
       },
     });
-
-    this.logger.log(`VoilaProxyService initialized with target: ${this.voilaBaseUrl}`);
-  }
     this.logger.log(`VoilaProxyService initialized with target: ${this.voilaBaseUrl}`);
   }
 
