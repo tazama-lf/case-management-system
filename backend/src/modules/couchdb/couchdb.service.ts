@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import * as nano from 'nano';
+import nano from 'nano';
 
 @Injectable()
 export class CouchdbService implements OnModuleInit {
