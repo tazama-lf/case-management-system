@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 
@@ -6,7 +6,7 @@ import { Request, Response } from 'express';
  * VoilaProxyService handles request proxying to Voila.
  */
 @Injectable()
-export class VoilaProxyService {
+export class VoilaProxyService implements OnModuleInit {
   private readonly logger = new Logger(VoilaProxyService.name);
   private readonly voilaBaseUrl: string;
   private proxyMiddleware: any;
@@ -18,8 +18,15 @@ export class VoilaProxyService {
   }
 
   /**
-   * Call this method after instantiating the service to initialize the proxy middleware.
-   * Example: await voilaProxyService.initProxy();
+   * Lifecycle hook: Initialize proxy middleware when module is ready.
+   */
+  async onModuleInit(): Promise<void> {
+    await this.initProxy();
+  }
+
+  /**
+   * Initialize the proxy middleware using dynamic import.
+   * Called automatically by onModuleInit lifecycle hook.
    */
   async initProxy(): Promise<void> {
     const { createProxyMiddleware } = await import('http-proxy-middleware');
