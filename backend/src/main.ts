@@ -13,8 +13,9 @@ async function bootstrap(): Promise<void> {
   app.useLogger(logger);
 
   // Enable cookie parser to read HttpOnly cookies
+  const cookieParserModule = await import('cookie-parser');
 
-  const cookieParser = (await import('cookie-parser')).default;
+  const cookieParser = cookieParserModule.default;
   app.use(cookieParser());
 
   // Configure WebSocket proxy for Voila kernel connections
