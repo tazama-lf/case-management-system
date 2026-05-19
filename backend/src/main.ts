@@ -13,8 +13,8 @@ async function bootstrap(): Promise<void> {
   app.useLogger(logger);
 
   // Enable cookie parser to read HttpOnly cookies
-  // eslint-disable-next-line @typescript-eslint/no-require-imports -- CommonJS module requires dynamic require() for proper default export handling
-  const cookieParser = require('cookie-parser');
+
+  const cookieParser = (await import('cookie-parser')).default;
   app.use(cookieParser());
 
   // Configure WebSocket proxy for Voila kernel connections
