@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import CaseAgeingStatsCards from '../CaseAgeingStatsCards';
 import type { CaseAgeingStats } from '../../types/reports.types';
 
@@ -33,39 +33,34 @@ describe('CaseAgeingStatsCards', () => {
   });
 
   it('displays cases over 15 days', async () => {
-    const { container } = render(<CaseAgeingStatsCards stats={mockStats} />);
+    render(<CaseAgeingStatsCards stats={mockStats} />);
 
-    // Wait for StatsCard animation to complete - StatsCard animates numeric values using Math.floor
-    // The animation increments in steps, so it might show 24 before reaching 25
+    // Find the specific card container by its title
+    const card = screen.getByText('Cases > 15 Days').closest('div[class*="bg-white"]');
+    expect(card).toBeInTheDocument();
+    
+    // Wait for animation to complete and verify the correct number is displayed in this card
     await waitFor(
       () => {
-        const textContent = container.textContent || '';
-        // Check that we have the cases over 15 days section
-        expect(textContent).toContain('Cases > 15 Days');
-        // The value should be 25, but due to Math.floor during animation it might show 24
-        // We accept either 24 or 25 to account for animation timing
-        const hasValue =
-          textContent.includes('24') || textContent.includes('25');
-        expect(hasValue).toBe(true);
+        const cardElement = card as HTMLElement;
+        expect(within(cardElement).getByText('25')).toBeInTheDocument();
       },
       { timeout: 2000 },
     );
   });
 
   it('displays cases over 30 days', async () => {
-    const { container } = render(<CaseAgeingStatsCards stats={mockStats} />);
+    render(<CaseAgeingStatsCards stats={mockStats} />);
 
-    // Wait for StatsCard animation to complete - StatsCard animates numeric values using Math.floor
+    // Find the specific card container by its title
+    const card = screen.getByText('Cases > 30 Days').closest('div[class*="bg-white"]');
+    expect(card).toBeInTheDocument();
+    
+    // Wait for animation to complete and verify the correct number is displayed in this card
     await waitFor(
       () => {
-        const textContent = container.textContent || '';
-        // Check that we have the cases over 30 days section
-        expect(textContent).toContain('Cases > 30 Days');
-        // The value should be 10, but due to Math.floor during animation it might show 9
-        // We accept either 9 or 10 to account for animation timing
-        const hasValue =
-          textContent.includes('9') || textContent.includes('10');
-        expect(hasValue).toBe(true);
+        const cardElement = card as HTMLElement;
+        expect(within(cardElement).getByText('10')).toBeInTheDocument();
       },
       { timeout: 2000 },
     );

@@ -288,7 +288,13 @@ export class TriageService {
     };
   }
 
-  async handleManualTriage(alertId: number, updateAlertDto: ManualAlertUpdateDTO, userId: string, tenantId: string): Promise<Alert> {
+  async handleManualTriage(
+    alertId: number,
+    updateAlertDto: ManualAlertUpdateDTO,
+    userId: string,
+    tenantId: string,
+    userName?: string,
+  ): Promise<Alert> {
     this.logger.log('Start - handleManualTriage', TriageService.name);
     const triageType = this.configService.get<string>('TRIAGE_TYPE', 'DISABLED').toUpperCase();
     if (triageType !== 'MANUAL') {
@@ -324,6 +330,7 @@ export class TriageService {
             ...JSON.parse(JSON.stringify(updateAlertData)),
           },
           tx,
+          userName,
         );
         if (!alert.case_id) {
           throw new InternalServerErrorException('Alert case_id is missing.');
@@ -828,7 +835,7 @@ export class TriageService {
       updateDto.confidencePer = predictedConfidence;
       updateDto.priority_score = predictedPriorityScore;
 
-      await this.alertService.updateAlert(alertId, userId, updateDto);
+      await this.alertService.updateAlert(alertId, userId, updateDto, undefined, undefined);
       // this.commentService.addComment({ note: updateDto.note } as CreateCommentDto, userId);
 
       const task = await this.taskService.updateTask(

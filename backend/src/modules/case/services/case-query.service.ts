@@ -730,7 +730,7 @@ export class CaseQueryService {
       let oldestCase: { case_id: number; created_at: Date; days_old: number } | null = null;
       let totalAge = 0;
       if (allUserCases.length > 0) {
-        const oldest = allUserCases[0];
+        const [oldest] = allUserCases;
         const daysOld = Math.floor((now.getTime() - oldest.created_at.getTime()) / (1000 * 60 * 60 * 24));
         oldestCase = { case_id: oldest.case_id, created_at: oldest.created_at, days_old: daysOld };
         allUserCases.forEach((c) => {
@@ -776,6 +776,57 @@ export class CaseQueryService {
     const retrievedCase = await this.caseRepository.findCaseById(caseId, tenantId);
 
     return retrievedCase;
+  }
+
+  /**
+   * Check if user has access to a case using the EXACT SAME logic as the dashboard (getAllCases)
+   * This ensures links from alerts use identical permission checks as the dashboard listing
+   *
+   * @param caseId - The case ID to check
+   * @param investigatorUserId - User ID if investigator, undefined if supervisor/admin
+   * @param tenantId - Tenant ID
+   */
+  async checkUserCaseAccess(caseId: number, investigatorUserId: string | undefined, tenantId: string): Promise<boolean> {
+    try {
+      // If no investigatorUserId (supervisor/admin), they can see ALL cases
+      if (!investigatorUserId) {
+        const caseExists = await this.prismaService.case.findFirst({
+          where: { case_id: caseId, tenant_id: tenantId },
+          select: { case_id: true },
+        });
+        return caseExists !== null;
+      }
+
+      // For investigators: use the EXACT SAME permission logic as getAllCases
+      // Check if userId is a valid UUID (same validation as getAllCases)
+      const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iv.test(investigatorUserId);
+
+      if (!isValidUuid) {
+        this.logger.log(`[checkUserCaseAccess] Invalid UUID: ${investigatorUserId}`, CaseQueryService.name);
+        return false;
+      }
+
+      const whereCondition = {
+        case_id: caseId,
+        tenant_id: tenantId,
+        OR: [
+          { case_owner_user_id: investigatorUserId }, // 1. User owns the case
+          { tasks: { some: { assigned_user_id: investigatorUserId } } }, // 2. User has ANY task assigned
+          { case_owner_user_id: null }, // 3. Unassigned cases
+          { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, // 4. Ready for assignment
+        ],
+      };
+
+      const caseExists = await this.prismaService.case.findFirst({
+        where: whereCondition,
+        select: { case_id: true },
+      });
+
+      return caseExists !== null;
+    } catch (error) {
+      this.logger.error('Error checking case access', { error, caseId, investigatorUserId, tenantId });
+      return false;
+    }
   }
 
   async getSubCasesDetails(caseId: number): Promise<Case[]> {
