@@ -38,27 +38,25 @@ export class VoilaProxyService implements OnModuleInit {
         this.logger.log(`[PathRewrite] ${path} → ${rewritten}`);
         return rewritten;
       },
-      on: {
-        proxyReq: (proxyReq: any, req: any, res: any) => {
-          this.logger.log(`[ProxyMiddleware] Forwarding ${req.method} ${req.url} → ${this.voilaBaseUrl}${proxyReq.path}`);
-        },
-        proxyRes: (proxyRes: any, req: any, res: any) => {
-          this.logger.log(`[ProxyMiddleware] Response received: ${proxyRes.statusCode} for ${req.url}`);
-        },
-        error: (err: any, req: any, res: any) => {
-          this.logger.error(`[ProxyMiddleware] Connection error for ${req.url}: ${err.message}`);
-          this.logger.error(`[ProxyMiddleware] Stack: ${err.stack}`);
-          if ('writeHead' in res && typeof res.writeHead === 'function') {
-            res.writeHead(502, { 'Content-Type': 'application/json' });
-            res.end(
-              JSON.stringify({
-                statusCode: 502,
-                message: 'Voila server is unavailable',
-                error: 'Bad Gateway',
-              }),
-            );
-          }
-        },
+      onProxyReq: (proxyReq: any, req: any, res: any) => {
+        this.logger.log(`[ProxyMiddleware] Forwarding ${req.method} ${req.url} → ${this.voilaBaseUrl}${proxyReq.path}`);
+      },
+      onProxyRes: (proxyRes: any, req: any, res: any) => {
+        this.logger.log(`[ProxyMiddleware] Response received: ${proxyRes.statusCode} for ${req.url}`);
+      },
+      onError: (err: any, req: any, res: any) => {
+        this.logger.error(`[ProxyMiddleware] Connection error for ${req.url}: ${err.message}`);
+        this.logger.error(`[ProxyMiddleware] Stack: ${err.stack}`);
+        if ('writeHead' in res && typeof res.writeHead === 'function') {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              statusCode: 502,
+              message: 'Voila server is unavailable',
+              error: 'Bad Gateway',
+            }),
+          );
+        }
       },
     });
     this.logger.log(`VoilaProxyService initialized with target: ${this.voilaBaseUrl}`);
