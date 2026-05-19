@@ -54,7 +54,7 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",
     "eslint-config-love": "^151.0.0",
-    "http-proxy-middleware": "^4.0.0",
+    "http-proxy-middleware": "^2.0.9",
     "jsonwebtoken": "^9.0.2",
     "lint-staged": "^16.3.2",
     "nano": "^10.1.4",
