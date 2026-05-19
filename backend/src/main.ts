@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -12,10 +13,6 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
   app.useLogger(logger);
 
-  // Enable cookie parser to read HttpOnly cookies
-  const cookieParserModule = await import('cookie-parser');
-
-  const cookieParser = cookieParserModule.default;
   app.use(cookieParser());
 
   // Configure WebSocket proxy for Voila kernel connections
