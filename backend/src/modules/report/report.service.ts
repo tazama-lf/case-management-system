@@ -406,32 +406,17 @@ export class ReportsService {
       recentCasesBaseFilters.case_owner_user_id = filters.investigator;
     }
     if (filters?.tenantId) {
-      recentCasesBaseFilters.alert = {
-        tenant_id: filters.tenantId,
-      };
+      recentCasesBaseFilters.tenant_id = filters.tenantId;
     }
 
     let recentCasesWhere: any;
-
-    // Apply the same user filtering logic as the main query
     if (filters?.requestingUserId) {
+      // Investigators: show cases with tasks assigned to them OR cases they own (including subcases)
       recentCasesWhere = {
         AND: [
-          recentCasesBaseFilters,
-          {
-            OR: [
-              { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
-              {
-                tasks: {
-                  some: {
-                    assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
-                  },
-                },
-              },
-              { case_owner_user_id: null }, // Unassigned cases
-              { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
-            ],
-          },
+              recentCasesBaseFilters,
+              { case_owner_user_id: filters.requestingUserId }, // Cases/subcases owned by this investigator
+          
         ],
       };
     } else {
