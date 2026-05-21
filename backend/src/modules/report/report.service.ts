@@ -414,9 +414,8 @@ export class ReportsService {
       // Investigators: show cases with tasks assigned to them OR cases they own (including subcases)
       recentCasesWhere = {
         AND: [
-              recentCasesBaseFilters,
-              { case_owner_user_id: filters.requestingUserId }, // Cases/subcases owned by this investigator
-          
+          recentCasesBaseFilters,
+          { case_owner_user_id: filters.requestingUserId }, // Cases/subcases owned by this investigator
         ],
       };
     } else {
