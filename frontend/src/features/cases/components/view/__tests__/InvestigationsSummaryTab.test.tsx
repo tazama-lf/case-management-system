@@ -80,6 +80,7 @@ describe('InvestigationSummaryTab', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    global.alert = vi.fn();
     (authService.getUser as vi.Mock).mockReturnValue({
       userId: 'user-1',
       validatedClaims: {},
