@@ -206,7 +206,7 @@ export class ReportsController {
   @ApiQuery({
     name: 'priority',
     required: false,
-    enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
+    enum: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
     description: 'Filter by case priority',
   })
   @ApiQuery({
@@ -268,7 +268,6 @@ export class ReportsController {
     const userId = req.user.token.clientId;
     const userClaims = req.user.token.claims;
 
-    // Check if user is investigator (not supervisor/admin)
     const isInvestigator =
       userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
 
