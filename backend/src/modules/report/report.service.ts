@@ -417,7 +417,10 @@ export class ReportsService {
     };
   }
 
-  async getInvestigatorWorkload(dateRange?: string): Promise<{
+  async getInvestigatorWorkload(
+    dateRange?: string,
+    tenantId?: string,
+  ): Promise<{
     stats: {
       totalInvestigators: number;
       avgCasesPerInvestigator: number;
@@ -467,6 +470,7 @@ export class ReportsService {
           lte: endDate,
         },
         case_owner_user_id: { not: null },
+        tenant_id: tenantId,
       },
       select: {
         case_owner_user_id: true,
@@ -529,6 +533,7 @@ export class ReportsService {
               gte: startDate,
               lte: endDate,
             },
+            tenant_id: tenantId,
             status: {
               in: [
                 CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
@@ -569,6 +574,7 @@ export class ReportsService {
             where: {
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
+              tenant_id: tenantId,
               status: {
                 in: [CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED, CaseStatus.STATUS_82_CLOSED_CONFIRMED],
               },
@@ -578,6 +584,7 @@ export class ReportsService {
             where: {
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
+              tenant_id: tenantId,
               status: {
                 in: [CaseStatus.STATUS_72_AUTOCLOSED_REFUTED, CaseStatus.STATUS_81_CLOSED_REFUTED],
               },
@@ -588,6 +595,7 @@ export class ReportsService {
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
               status: CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+              tenant_id: tenantId,
             },
           }),
         ]);
@@ -610,12 +618,14 @@ export class ReportsService {
             where: {
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
+              tenant_id: tenantId,
             },
           }),
           this.prisma.case.count({
             where: {
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
+              tenant_id: tenantId,
               status: {
                 notIn: [
                   CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
@@ -631,6 +641,7 @@ export class ReportsService {
             where: {
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
+              tenant_id: tenantId,
               status: {
                 in: [
                   CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
@@ -645,6 +656,7 @@ export class ReportsService {
           this.prisma.task.count({
             where: {
               assigned_user_id: caseOwnerUserId,
+              tenant_id: tenantId,
               status: {
                 in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
               },
@@ -654,6 +666,7 @@ export class ReportsService {
             where: {
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
+              tenant_id: tenantId,
               status: {
                 in: [
                   CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
@@ -716,6 +729,7 @@ export class ReportsService {
                   gte: monthStart,
                   lte: monthEnd,
                 },
+                tenant_id: tenantId,
               },
             });
 

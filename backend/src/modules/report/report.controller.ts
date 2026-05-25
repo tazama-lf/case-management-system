@@ -325,8 +325,9 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async getInvestigatorWorkload(@Query('dateRange') dateRange?: string): Promise<unknown> {
-    return await this.reportsService.getInvestigatorWorkload(dateRange);
+  async getInvestigatorWorkload(@Req() req: AuthenticatedRequest, @Query('dateRange') dateRange?: string): Promise<unknown> {
+    const { tenantId } = req.user.token;
+    return await this.reportsService.getInvestigatorWorkload(dateRange, tenantId);
   }
 
   @Get('event-logs')
