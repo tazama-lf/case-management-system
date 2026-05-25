@@ -30,35 +30,9 @@ export class VoilaProxyService implements OnModuleInit {
    * Called automatically by onModuleInit lifecycle hook.
    */
   initProxy(): void {
-    // const { createProxyMiddleware } = await import('http-proxy-middleware');
     this.proxyMiddleware = httpProxy.default.createProxyServer({
       target: this.voilaBaseUrl,
       changeOrigin: true,
-      // pathRewrite: (path: string) => {
-      //   const rewritten = path.replace(/^\/voila-proxy/v, '');
-      //   this.logger.log(`[PathRewrite] ${path} → ${rewritten}`);
-      //   return rewritten;
-      // },
-      // onProxyReq: (proxyReq: any, req: any, res: any) => {
-      //   this.logger.log(`[ProxyMiddleware] Forwarding ${req.method} ${req.url} → ${this.voilaBaseUrl}${proxyReq.path}`);
-      // },
-      // onProxyRes: (proxyRes: any, req: any, res: any) => {
-      //   this.logger.log(`[ProxyMiddleware] Response received: ${proxyRes.statusCode} for ${req.url}`);
-      // },
-      // onError: (err: any, req: any, res: any) => {
-      //   this.logger.error(`[ProxyMiddleware] Connection error for ${req.url}: ${err.message}`);
-      //   this.logger.error(`[ProxyMiddleware] Stack: ${err.stack}`);
-      //   if ('writeHead' in res && typeof res.writeHead === 'function') {
-      //     res.writeHead(502, { 'Content-Type': 'application/json' });
-      //     res.end(
-      //       JSON.stringify({
-      //         statusCode: 502,
-      //         message: 'Voila server is unavailable',
-      //         error: 'Bad Gateway',
-      //       }),
-      //     );
-      //   }
-      // },
     });
     this.proxyMiddleware.on('proxyReq', (proxyReq: any, req: any, res: any) => {
       this.logger.log(`[ProxyMiddleware] Forwarding ${req.method} ${req.url} → ${this.voilaBaseUrl}${proxyReq.path}`);
@@ -96,9 +70,6 @@ export class VoilaProxyService implements OnModuleInit {
     // Create a modified request object to avoid mutating the parameter
     const modifiedReq = req;
 
-    // Strip the /voila-proxy prefix so Voila receives the expected path.
-    // The controller is mounted on both /voila-proxy and /voila; Voila itself only
-    // knows about /voila/*, so /voila-proxy/voila/render/... must become /voila/render/...
     const strippedUrl = req.url.replace(/^\/voila-proxy/v, '');
     if (strippedUrl !== req.url) {
       this.logger.log(`[ProxyRequest] Rewriting path: ${req.url} → ${strippedUrl}`);
@@ -123,8 +94,6 @@ export class VoilaProxyService implements OnModuleInit {
 
     this.logger.log(`[ProxyRequest] Forwarding to Voila at: ${this.voilaBaseUrl}`);
 
-    // Use the proxy server to forward the request.
-    // http-proxy's ProxyServer exposes `.web(req, res, options, callback)`.
     // eslint-disable-next-line promise/avoid-new -- Wrapping callback-based API in a Promise
     await new Promise<void>((resolve, reject) => {
       this.proxyMiddleware.web(modifiedReq as any, res as any, undefined, (error?: Error) => {
