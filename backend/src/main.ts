@@ -16,12 +16,7 @@ async function bootstrap(): Promise<void> {
 
   app.use(cookieParser());
 
-  // Configure WebSocket proxy for Voila kernel connection
   const voilaBaseUrl = configService.getOrThrow<string>('VOILA_BASE_URL');
-  // const wsProxy = httpProxy.default.createProxyServer({
-  //   target: `${voilaBaseUrl}/api/kernels/*`,
-  //   changeOrigin: true,
-  // });
 
   const proxy = httpProxy.default.createProxyServer({
     target: voilaBaseUrl,
