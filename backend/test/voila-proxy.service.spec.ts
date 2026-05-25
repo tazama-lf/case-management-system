@@ -202,6 +202,33 @@ describe('VoilaProxyService', () => {
       expect(mockReq.url).toBe(originalUrl);
     });
 
+    it('should strip /voila-proxy prefix before forwarding', async () => {
+      const mockReq = {
+        url: '/voila-proxy/voila/render/notebook.ipynb',
+        headers: { host: 'localhost:3000' },
+      } as unknown as Request;
+
+      const mockRes = {} as Response;
+
+      await service.proxyRequest(mockReq, mockRes, 'token');
+
+      expect(mockReq.url.startsWith('/voila/render/notebook.ipynb')).toBe(true);
+      expect(mockReq.url.startsWith('/voila-proxy')).toBe(false);
+    });
+
+    it('should strip /voila-proxy prefix for static file requests', async () => {
+      const mockReq = {
+        url: '/voila-proxy/voila/static/style.css',
+        headers: { host: 'localhost:3000' },
+      } as unknown as Request;
+
+      const mockRes = {} as Response;
+
+      await service.proxyRequest(mockReq, mockRes, '');
+
+      expect(mockReq.url).toBe('/voila/static/style.css');
+    });
+
     it('should call proxy server and resolve on success', async () => {
       const mockReq = {
         url: '/voila-proxy/render/notebook.ipynb',
