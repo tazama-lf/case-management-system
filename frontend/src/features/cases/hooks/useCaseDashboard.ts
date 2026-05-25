@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { caseService } from '@/features/cases/services/caseService';
+import {
+  caseService,
+  type CaseWithTasksDto,
+} from '@/features/cases/services/caseService';
 import type { CaseRow } from '@/features/cases/components/casesTable.utils';
 import { transformBackendCaseToUI } from '@/features/cases/components/casesTable.utils';
 import { useAuth } from '@/features/auth/components/AuthContext';
@@ -217,26 +220,10 @@ export const useCaseDashboard = (): {
           try {
             // Fetch case directly from API to bypass filters
             const caseData = await caseService.getCaseDetails(caseId);
-            const caseRow = transformBackendCaseToUI({
-              case_id: caseData.case_id,
-              status: caseData.status,
-              priority: caseData.priority,
-              case_type: caseData.case_type,
-              created_at: new Date(caseData.created_at),
-              updated_at: new Date(caseData.updated_at),
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Backend API may return null for alert field
-              alert: caseData.alert
-                ? {
-                    alert_id: caseData.alert.alert_id,
-                    message: caseData.alert.message,
-                    confidence_per: caseData.alert.confidence_per,
-                    transaction: caseData.alert.transaction,
-                  }
-                : null,
-              parent_id: caseData.parent_id,
-              case_owner_user_id: caseData.case_owner_user_id,
-            });
-            setSelectedRow(caseRow);
+            const transformedCase = transformBackendCaseToUI(
+              caseData as unknown as CaseWithTasksDto,
+            );
+            setSelectedRow(transformedCase);
             setIsViewOpen(true);
           } catch (err) {
             error('Failed to load case details');
