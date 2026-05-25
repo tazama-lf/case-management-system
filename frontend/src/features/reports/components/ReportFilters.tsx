@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
 import { FunnelIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 import FiltersPanel from './FiltersPanel';
+import authService from '@/features/auth/services/authService';
 
 interface ReportFiltersProps {
   reportType:
-    | 'CASE_STATUS'
-    | 'CASE_AGEING'
-    | 'INVESTIGATOR_WORKLOAD'
-    | 'EVIDENCE_FINDINGS';
+  | 'CASE_STATUS'
+  | 'CASE_AGEING'
+  | 'INVESTIGATOR_WORKLOAD'
+  | 'EVIDENCE_FINDINGS';
   dateRange:
-    | 'today'
-    | 'yesterday'
-    | 'last7'
-    | 'last30'
-    | 'last90'
-    | 'thisMonth'
-    | 'lastYear';
+  | 'today'
+  | 'yesterday'
+  | 'last7'
+  | 'last30'
+  | 'last90'
+  | 'thisMonth'
+  | 'lastYear';
   onChangeReportType: (type: ReportFiltersProps['reportType']) => void;
   onChangeDateRange: (range: ReportFiltersProps['dateRange']) => void;
   onApplyFilters: (filters: {
@@ -23,6 +24,7 @@ interface ReportFiltersProps {
     priority: string;
     investigator: string;
   }) => void;
+  isSupervisor: boolean;
 }
 
 const ReportFilters: React.FC<ReportFiltersProps> = ({
@@ -31,6 +33,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
   onChangeReportType,
   onChangeDateRange,
   onApplyFilters,
+  isSupervisor,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
@@ -111,20 +114,30 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
             {openMenu === 'report' && (
               <div className="absolute z-10 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg">
                 <ul className="py-1 text-sm text-gray-700">
-                  {Object.entries(reportTypeLabels).map(([type, label]) => (
-                    <li key={type}>
-                      <button
-                        onClick={() => {
-                          handleSelectReportType(
-                            type as ReportFiltersProps['reportType'],
-                          );
-                        }}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-50"
-                      >
-                        {label}
-                      </button>
-                    </li>
-                  ))}
+                  {Object.entries(reportTypeLabels).filter(([type]) => {
+                    if (
+                      type === 'INVESTIGATOR_WORKLOAD' &&
+                      !isSupervisor
+                    ) {
+                      return false;
+                    }
+
+                    return true;
+                  })
+                    .map(([type, label]) => (
+                      <li key={type}>
+                        <button
+                          onClick={() => {
+                            handleSelectReportType(
+                              type as ReportFiltersProps['reportType'],
+                            );
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-50"
+                        >
+                          {label}
+                        </button>
+                      </li>
+                    ))}
                 </ul>
               </div>
             )}

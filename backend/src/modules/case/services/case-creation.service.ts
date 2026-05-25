@@ -75,7 +75,7 @@ export class CaseCreationService {
     try {
       const newCase = await this.caseRepository.createCase({
         caseCreatorUserId: userId,
-        caseOwnerUserId: userId,
+        caseOwnerUserId: null, // Owner assigned when investigation task is assigned
         tenantId,
         priority,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,

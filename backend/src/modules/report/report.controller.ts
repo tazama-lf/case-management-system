@@ -206,7 +206,7 @@ export class ReportsController {
   @ApiQuery({
     name: 'priority',
     required: false,
-    enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
+    enum: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
     description: 'Filter by case priority',
   })
   @ApiQuery({
@@ -268,7 +268,6 @@ export class ReportsController {
     const userId = req.user.token.clientId;
     const userClaims = req.user.token.claims;
 
-    // Check if user is investigator (not supervisor/admin)
     const isInvestigator =
       userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
 
@@ -282,7 +281,7 @@ export class ReportsController {
   }
 
   @Get('investigator-workload')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireSupervisorRole()
   @ApiOperation({
     summary: 'Get investigator workload report',
     description: 'Retrieve investigator performance metrics including case loads, completion rates, and efficiency data',
@@ -326,8 +325,9 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async getInvestigatorWorkload(@Query('dateRange') dateRange?: string): Promise<unknown> {
-    return await this.reportsService.getInvestigatorWorkload(dateRange);
+  async getInvestigatorWorkload(@Req() req: AuthenticatedRequest, @Query('dateRange') dateRange?: string): Promise<unknown> {
+    const { tenantId } = req.user.token;
+    return await this.reportsService.getInvestigatorWorkload(dateRange, tenantId);
   }
 
   @Get('event-logs')
@@ -443,8 +443,19 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async getCaseAgeing(@Query('dateRange') dateRange?: string): Promise<unknown> {
-    return await this.reportsService.getCaseAgeing(dateRange);
+  async getCaseAgeing(@Req() req: AuthenticatedRequest, @Query('dateRange') dateRange?: string): Promise<unknown> {
+    const { tenantId } = req.user.token;
+    const userId = req.user.token.clientId;
+    const userClaims = req.user.token.claims;
+
+    // Check if user is investigator (not supervisor/admin)
+    const isInvestigator =
+      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+
+    return await this.reportsService.getCaseAgeing(dateRange, {
+      tenantId,
+      requestingUserId: isInvestigator ? userId : undefined,
+    });
   }
 
   @Get('filters')

@@ -241,7 +241,7 @@ describe('CaseCreationService', () => {
       });
       expect(caseRepository.createCase).toHaveBeenCalledWith({
         caseCreatorUserId: userId,
-        caseOwnerUserId: userId,
+        caseOwnerUserId: null,
         tenantId,
         priority: Priority.CRITICAL,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
