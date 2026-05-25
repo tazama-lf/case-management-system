@@ -4,11 +4,13 @@ import { VoilaProxyService } from '../src/modules/voila-proxy/voila-proxy.servic
 import { Request, Response } from 'express';
 
 // Mock http-proxy
-const mockProxyServer: any = jest.fn();
 const eventHandlers: Record<string, (...args: any[]) => void> = {};
-mockProxyServer.on = jest.fn((event: string, handler: (...args: any[]) => void) => {
-  eventHandlers[event] = handler;
-});
+const mockProxyServer: { web: jest.Mock; on: jest.Mock } = {
+  web: jest.fn(),
+  on: jest.fn((event: string, handler: (...args: any[]) => void) => {
+    eventHandlers[event] = handler;
+  }),
+};
 
 const createProxyServerMock = jest.fn((..._args: any[]) => mockProxyServer);
 
@@ -204,7 +206,7 @@ describe('VoilaProxyService', () => {
   describe('proxyRequest', () => {
     beforeEach(async () => {
       await service.initProxy();
-      mockProxyServer.mockImplementation((_req: any, _res: any, next: (err?: Error) => void) => {
+      mockProxyServer.web.mockImplementation((_req: any, _res: any, _opts: any, next: (err?: Error) => void) => {
         next();
       });
     });
@@ -286,11 +288,11 @@ describe('VoilaProxyService', () => {
       const mockRes = {} as Response;
 
       await expect(service.proxyRequest(mockReq, mockRes, 'token')).resolves.toBeUndefined();
-      expect(mockProxyServer).toHaveBeenCalled();
+      expect(mockProxyServer.web).toHaveBeenCalled();
     });
 
     it('should reject when proxy server returns an error', async () => {
-      mockProxyServer.mockImplementation((_req: any, _res: any, next: (err?: Error) => void) => {
+      mockProxyServer.web.mockImplementation((_req: any, _res: any, _opts: any, next: (err?: Error) => void) => {
         next(new Error('Connection refused'));
       });
 
