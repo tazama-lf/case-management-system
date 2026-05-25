@@ -96,13 +96,22 @@ export class VoilaProxyService implements OnModuleInit {
     // Create a modified request object to avoid mutating the parameter
     const modifiedReq = req;
 
+    // Strip the /voila-proxy prefix so Voila receives the expected path.
+    // The controller is mounted on both /voila-proxy and /voila; Voila itself only
+    // knows about /voila/*, so /voila-proxy/voila/render/... must become /voila/render/...
+    const strippedUrl = req.url.replace(/^\/voila-proxy/v, '');
+    if (strippedUrl !== req.url) {
+      this.logger.log(`[ProxyRequest] Rewriting path: ${req.url} → ${strippedUrl}`);
+      modifiedReq.url = strippedUrl;
+    }
+
     // Only append service_token for authenticated requests (not static files)
     if (serviceToken) {
       this.logger.log('[ProxyRequest] Adding service_token to request');
       // Add as both query parameter and header for maximum compatibility
-      const separator = req.url.includes('?') ? '&' : '?';
-      const originalUrl = req.url;
-      modifiedReq.url = `${originalUrl}${separator}service_token=${encodeURIComponent(serviceToken)}`;
+      const separator = modifiedReq.url.includes('?') ? '&' : '?';
+      const currentUrl = modifiedReq.url;
+      modifiedReq.url = `${currentUrl}${separator}service_token=${encodeURIComponent(serviceToken)}`;
 
       // Also add as a custom header that Voila can read
       modifiedReq.headers = { ...req.headers, 'x-service-token': serviceToken };
