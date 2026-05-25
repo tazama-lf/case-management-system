@@ -114,10 +114,11 @@ export class VoilaProxyService implements OnModuleInit {
 
     this.logger.log(`[ProxyRequest] Forwarding to Voila at: ${this.voilaBaseUrl}`);
 
-    // Use the proxy middleware to forward the request
-    // eslint-disable-next-line promise/avoid-new -- Wrapping callback-based middleware in a Promise
+    // Use the proxy server to forward the request.
+    // http-proxy's ProxyServer exposes `.web(req, res, options, callback)`.
+    // eslint-disable-next-line promise/avoid-new -- Wrapping callback-based API in a Promise
     await new Promise<void>((resolve, reject) => {
-      this.proxyMiddleware(modifiedReq as any, res as any, (error?: Error) => {
+      this.proxyMiddleware.web(modifiedReq as any, res as any, undefined, (error?: Error) => {
         if (error) {
           this.logger.error(`[ProxyRequest] Proxy middleware error: ${error.message}`);
           reject(new Error(`Proxy error: ${error.message}`));
