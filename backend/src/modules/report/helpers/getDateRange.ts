@@ -28,7 +28,7 @@ export default function getDateRange(dateRange?: string): { startDate: Date; end
       break;
     case 'lastYear':
       startDate = new Date(now.getFullYear() - 1, 0, 1);
-      endDate = new Date(now.getFullYear() - 1, 11, 31);
+      endDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
       break;
     default:
       startDate.setDate(now.getDate() - 30);
