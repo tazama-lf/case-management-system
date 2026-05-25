@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
+import * as httpProxy from 'http-proxy';
 
 /**
  * VoilaProxyService handles request proxying to Voila.
@@ -20,44 +21,66 @@ export class VoilaProxyService implements OnModuleInit {
   /**
    * Lifecycle hook: Initialize proxy middleware when module is ready.
    */
-  async onModuleInit(): Promise<void> {
-    await this.initProxy();
+  onModuleInit(): void {
+    this.initProxy();
   }
 
   /**
    * Initialize the proxy middleware using dynamic import.
    * Called automatically by onModuleInit lifecycle hook.
    */
-  async initProxy(): Promise<void> {
-    const { createProxyMiddleware } = await import('http-proxy-middleware');
-    this.proxyMiddleware = createProxyMiddleware({
+  initProxy(): void {
+    // const { createProxyMiddleware } = await import('http-proxy-middleware');
+    this.proxyMiddleware = httpProxy.default.createProxyServer({
       target: this.voilaBaseUrl,
       changeOrigin: true,
-      pathRewrite: (path: string) => {
-        const rewritten = path.replace(/^\/voila-proxy/v, '');
-        this.logger.log(`[PathRewrite] ${path} → ${rewritten}`);
-        return rewritten;
-      },
-      onProxyReq: (proxyReq: any, req: any, res: any) => {
-        this.logger.log(`[ProxyMiddleware] Forwarding ${req.method} ${req.url} → ${this.voilaBaseUrl}${proxyReq.path}`);
-      },
-      onProxyRes: (proxyRes: any, req: any, res: any) => {
-        this.logger.log(`[ProxyMiddleware] Response received: ${proxyRes.statusCode} for ${req.url}`);
-      },
-      onError: (err: any, req: any, res: any) => {
-        this.logger.error(`[ProxyMiddleware] Connection error for ${req.url}: ${err.message}`);
-        this.logger.error(`[ProxyMiddleware] Stack: ${err.stack}`);
-        if ('writeHead' in res && typeof res.writeHead === 'function') {
-          res.writeHead(502, { 'Content-Type': 'application/json' });
-          res.end(
-            JSON.stringify({
-              statusCode: 502,
-              message: 'Voila server is unavailable',
-              error: 'Bad Gateway',
-            }),
-          );
-        }
-      },
+      // pathRewrite: (path: string) => {
+      //   const rewritten = path.replace(/^\/voila-proxy/v, '');
+      //   this.logger.log(`[PathRewrite] ${path} → ${rewritten}`);
+      //   return rewritten;
+      // },
+      // onProxyReq: (proxyReq: any, req: any, res: any) => {
+      //   this.logger.log(`[ProxyMiddleware] Forwarding ${req.method} ${req.url} → ${this.voilaBaseUrl}${proxyReq.path}`);
+      // },
+      // onProxyRes: (proxyRes: any, req: any, res: any) => {
+      //   this.logger.log(`[ProxyMiddleware] Response received: ${proxyRes.statusCode} for ${req.url}`);
+      // },
+      // onError: (err: any, req: any, res: any) => {
+      //   this.logger.error(`[ProxyMiddleware] Connection error for ${req.url}: ${err.message}`);
+      //   this.logger.error(`[ProxyMiddleware] Stack: ${err.stack}`);
+      //   if ('writeHead' in res && typeof res.writeHead === 'function') {
+      //     res.writeHead(502, { 'Content-Type': 'application/json' });
+      //     res.end(
+      //       JSON.stringify({
+      //         statusCode: 502,
+      //         message: 'Voila server is unavailable',
+      //         error: 'Bad Gateway',
+      //       }),
+      //     );
+      //   }
+      // },
+    });
+    this.proxyMiddleware.on('proxyReq', (proxyReq: any, req: any, res: any) => {
+      this.logger.log(`[ProxyMiddleware] Forwarding ${req.method} ${req.url} → ${this.voilaBaseUrl}${proxyReq.path}`);
+    });
+
+    this.proxyMiddleware.on('proxyRes', (proxyRes: any, req: any, res: any) => {
+      this.logger.log(`[ProxyMiddleware] Response received: ${proxyRes.statusCode} for ${req.url}`);
+    });
+
+    this.proxyMiddleware.on('error', (err: any, req: any, res: any) => {
+      this.logger.error(`[ProxyMiddleware] Connection error for ${req.url}: ${err.message}`);
+      this.logger.error(`[ProxyMiddleware] Stack: ${err.stack}`);
+      if ('writeHead' in res && typeof res.writeHead === 'function') {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            statusCode: 502,
+            message: 'Voila server is unavailable',
+            error: 'Bad Gateway',
+          }),
+        );
+      }
     });
     this.logger.log(`VoilaProxyService initialized with target: ${this.voilaBaseUrl}`);
   }
