@@ -13,6 +13,7 @@ import {
   getColumnsForReport,
 } from '@/shared/utils/exportUtils';
 import { getCaseTypeColor } from '@/shared/utils/colors';
+import authService from '@/features/auth/services/authService';
 
 const PieChart = lazy(
   async () => await import('@/features/reports/components/PieChart'),
@@ -120,6 +121,8 @@ const Reports: React.FC = () => {
         return [];
     }
   };
+
+  const isSupervisor = authService.getUser()?.validatedClaims?.CMS_SUPERVISOR === true;
 
   if (isLoading) {
     return (
@@ -305,6 +308,7 @@ const Reports: React.FC = () => {
         onChangeReportType={setReportType}
         onChangeDateRange={setDateRange}
         onApplyFilters={handleApplyFilters}
+        isSupervisor={isSupervisor}
       />
       {reportType === 'CASE_STATUS' && (
         <>
@@ -389,7 +393,7 @@ const Reports: React.FC = () => {
         </Suspense>
       )}
 
-      {reportType === 'INVESTIGATOR_WORKLOAD' && (
+      {isSupervisor && reportType === 'INVESTIGATOR_WORKLOAD' && (
         <Suspense fallback={<div>Loading Investigator Workload Report...</div>}>
           <InvestigatorWorkloadReport dateRange={dateRange} />
         </Suspense>

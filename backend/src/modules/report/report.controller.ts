@@ -281,7 +281,7 @@ export class ReportsController {
   }
 
   @Get('investigator-workload')
-  @RequireInvestigatorOrSupervisorRole()
+  @RequireSupervisorRole()
   @ApiOperation({
     summary: 'Get investigator workload report',
     description: 'Retrieve investigator performance metrics including case loads, completion rates, and efficiency data',
