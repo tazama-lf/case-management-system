@@ -28,7 +28,7 @@ export class FlowableUtilitiesService {
       if (Array.isArray(response.data)) {
         response.data.forEach((variable: unknown) => {
           const varObj = variable as Record<string, unknown>;
-          variables[varObj.name as string] = varObj.value as string;
+          variables[varObj.name as string] = varObj.value;
         });
       }
 

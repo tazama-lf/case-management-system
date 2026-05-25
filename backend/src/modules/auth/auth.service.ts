@@ -117,7 +117,7 @@ export class AuthService {
   }
 
   private hasExpiry(payload: unknown): payload is jwt.JwtPayload & { exp: number } {
-    return typeof payload === 'object' && payload !== null && 'exp' in payload && typeof (payload as { exp: unknown }).exp === 'number';
+    return typeof payload === 'object' && payload !== null && 'exp' in payload && typeof payload.exp === 'number';
   }
 
   async getUserRolesFromAuthService(userId: string): Promise<string[]> {

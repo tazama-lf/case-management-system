@@ -30,7 +30,6 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, 
 import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { Task } from '@prisma/client-cms';
 import { Audit } from '../audit/decorators/audit-log.decorator';
-import { EndpointKey } from '../../utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from '../../utils/types/auth.types';
 
 interface AuthenticatedRequest extends Request {
@@ -210,7 +209,7 @@ export class TaskController {
       reassignTaskDto.assignedUserId,
       reassignTaskDto.note,
       req.user as unknown as AuthenticatedUser,
-      'PATCH /api/v1/task/:taskId/reassign' as EndpointKey,
+      'PATCH /api/v1/task/:taskId/reassign',
     );
   }
 
@@ -317,7 +316,7 @@ export class TaskController {
       tenantId,
       unassignDto.reason,
       req.user as unknown as AuthenticatedUser,
-      'PATCH /api/v1/task/:taskId/unassign' as EndpointKey,
+      'PATCH /api/v1/task/:taskId/unassign',
     );
   }
 
@@ -407,7 +406,7 @@ export class TaskController {
       userId,
       tenantId,
       req.user as unknown as AuthenticatedUser,
-      'PATCH /api/v1/task/:taskId/assign' as EndpointKey,
+      'PATCH /api/v1/task/:taskId/assign',
       assignTaskDto.note,
     );
 
@@ -710,7 +709,7 @@ export class TaskController {
       userId,
       tenantId,
       req.user as unknown as AuthenticatedUser,
-      'POST /api/v1/task/:taskId/complete' as EndpointKey,
+      'POST /api/v1/task/:taskId/complete',
     );
   }
 }

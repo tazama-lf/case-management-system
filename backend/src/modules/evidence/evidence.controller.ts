@@ -24,7 +24,6 @@ import { RequireInvestigatorOrSupervisorRoleOrComplianceRole, TazamaClaims } fro
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { Audit } from '../audit/decorators/audit-log.decorator';
-import { EndpointKey } from '../../utils/rbac/rbacHelper';
 
 @ApiTags('Evidence')
 @Controller('api/v1/evidence')
@@ -85,14 +84,7 @@ export class EvidenceController {
     @Req() req: AuthenticatedRequest,
   ): Promise<EvidenceResponseDto> {
     const { clientId, tenantId } = req.user.token;
-    return await this.evidenceService.uploadEvidence(
-      files,
-      dto,
-      clientId,
-      tenantId,
-      req.user,
-      'POST /api/v1/evidence/upload' as EndpointKey,
-    );
+    return await this.evidenceService.uploadEvidence(files, dto, clientId, tenantId, req.user, 'POST /api/v1/evidence/upload');
   }
 
   @Get('task/:taskId')
@@ -215,7 +207,7 @@ export class EvidenceController {
       clientId,
       tenantId,
       req.user,
-      'DELETE /api/v1/evidence/:id/attachments/:attachmentName' as EndpointKey,
+      'DELETE /api/v1/evidence/:id/attachments/:attachmentName',
     );
   }
 

@@ -6,7 +6,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
-import { createProxyMiddleware } from 'http-proxy-middleware';
+import * as httpProxy from 'http-proxy';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -18,17 +18,25 @@ async function bootstrap(): Promise<void> {
 
   // Configure WebSocket proxy for Voila kernel connection
   const voilaBaseUrl = configService.getOrThrow<string>('VOILA_BASE_URL');
-  const wsProxy = createProxyMiddleware('/api/kernels/**', {
+  // const wsProxy = httpProxy.default.createProxyServer({
+  //   target: `${voilaBaseUrl}/api/kernels/*`,
+  //   changeOrigin: true,
+  // });
+
+  const proxy = httpProxy.default.createProxyServer({
     target: voilaBaseUrl,
     changeOrigin: true,
-    // Do NOT set ws:true — we manually handle upgrades below
-    onError: (err, req, res) => {
-      logger.error(`[WS] Proxy error: ${err.message}`);
-    },
   });
 
-  // Apply HTTP proxy middleware for /api/kernels/* requests
-  app.use(wsProxy);
+  proxy.on('error', (err, req, res) => {
+    logger.error(`[WS] Proxy error: ${err.message}`);
+  });
+
+  app.use('/api/kernels', (req, res, next) => {
+    proxy.web(req, res, {}, (err) => {
+      logger.error(`[WS] Proxy error: ${err.message}`);
+    });
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -64,7 +72,7 @@ async function bootstrap(): Promise<void> {
       const modifiedReq = req;
       modifiedReq.headers = { ...req.headers, origin: voilaBaseUrl };
       logger.log(`[WS] Upgrading ${req.url} → ${voilaBaseUrl}${req.url}`);
-      (wsProxy as any).upgrade(modifiedReq, socket, head);
+      (proxy as any).upgrade(modifiedReq, socket, head);
     }
   });
 
