@@ -148,8 +148,12 @@ describe('ResumeCaseModal', () => {
 
   it('shows loading state during submission', async () => {
     const user = userEvent.setup();
+    let resolveResume: (() => void) | undefined;
     mockOnResume.mockImplementation(
-      () => new Promise((resolve) => setTimeout(resolve, 100)),
+      () =>
+        new Promise<void>((resolve) => {
+          resolveResume = resolve;
+        }),
     );
 
     render(
@@ -171,5 +175,14 @@ describe('ResumeCaseModal', () => {
 
     expect(screen.getByText('Resuming...')).toBeInTheDocument();
     expect(submitButton).toBeDisabled();
+
+    // Resolve the pending promise and wait for the resulting state updates
+    // to flush before the test tears down the environment. Otherwise the
+    // component's setIsSubmitting(false) runs after teardown and produces
+    // an unhandled ReferenceError: window is not defined.
+    resolveResume?.();
+    await waitFor(() => {
+      expect(mockOnClose).toHaveBeenCalled();
+    });
   });
 });

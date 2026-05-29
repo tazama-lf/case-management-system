@@ -1,7 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import ReportStatsCards from '../ReportStatsCards';
 import type { CaseStatusStats } from '../../types/reports.types';
+
+// Replace the lazy-loaded StatsCard with a synchronous stub so the
+// component renders immediately under the test environment instead of
+// remaining stuck on the Suspense fallback skeletons.
+vi.mock('../../../dashboard/components/StatsCard', () => ({
+  __esModule: true,
+  default: ({ title, value }: { title: string; value: number | string }) => (
+    <div data-testid="stats-card">
+      <div>{title}</div>
+      <div>{value}</div>
+    </div>
+  ),
+}));
 
 describe('ReportStatsCards', () => {
   const mockStats: CaseStatusStats = {
