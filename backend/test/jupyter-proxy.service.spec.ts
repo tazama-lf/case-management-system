@@ -1,4 +1,4 @@
-﻿import { Test, TestingModule } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { JupyterProxyService } from '../src/modules/jupyter/jupyter-proxy.service';
 import { TransactionLakehouseService } from '../src/modules/gold-lakehouse/transaction-lakehouse.service';
 import { AccountLakehouseService } from '../src/modules/gold-lakehouse/account-lakehouse.service';
@@ -124,12 +124,26 @@ describe('JupyterProxyService', () => {
   describe('getTransactionHistoryData', () => {
     it('delegates with all parameters', async () => {
       await service.getTransactionHistoryData(MOCK_USER_ID, 'ent1', 'TENANT_A', '2024-01-01', '2024-12-31', 'day');
-      expect(transactionSvc.getTransactionHistoryByAccountId).toHaveBeenCalledWith('ent1', 'TENANT_A', '2024-01-01', '2024-12-31', 'day', MOCK_JWT);
+      expect(transactionSvc.getTransactionHistoryByAccountId).toHaveBeenCalledWith(
+        'ent1',
+        'TENANT_A',
+        '2024-01-01',
+        '2024-12-31',
+        'day',
+        MOCK_JWT,
+      );
     });
 
     it('defaults tenantId to "DEFAULT" when omitted', async () => {
       await service.getTransactionHistoryData(MOCK_USER_ID, 'ent1');
-      expect(transactionSvc.getTransactionHistoryByAccountId).toHaveBeenCalledWith('ent1', 'DEFAULT', undefined, undefined, undefined, MOCK_JWT);
+      expect(transactionSvc.getTransactionHistoryByAccountId).toHaveBeenCalledWith(
+        'ent1',
+        'DEFAULT',
+        undefined,
+        undefined,
+        undefined,
+        MOCK_JWT,
+      );
     });
   });
 
@@ -193,12 +207,22 @@ describe('JupyterProxyService', () => {
   describe('getConditionsContextByTransaction', () => {
     it('delegates with explicit tenantId', async () => {
       await service.getConditionsContextByTransaction(MOCK_USER_ID, 'TMICFBPK2801321903297120', 'TENANT_A', '2024-01-01');
-      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith('TMICFBPK2801321903297120', 'TENANT_A', '2024-01-01', MOCK_JWT);
+      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith(
+        'TMICFBPK2801321903297120',
+        'TENANT_A',
+        '2024-01-01',
+        MOCK_JWT,
+      );
     });
 
     it('omits asOfDate when not provided', async () => {
       await service.getConditionsContextByTransaction(MOCK_USER_ID, 'TMICFBPK2801321903297120', 'DEFAULT');
-      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith('TMICFBPK2801321903297120', 'DEFAULT', undefined, MOCK_JWT);
+      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith(
+        'TMICFBPK2801321903297120',
+        'DEFAULT',
+        undefined,
+        MOCK_JWT,
+      );
     });
   });
 
