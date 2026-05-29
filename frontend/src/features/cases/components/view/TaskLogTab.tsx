@@ -47,6 +47,7 @@ interface TaskLogTabProps {
   onRejectCaseCreation?: (caseData: any) => void;
   onAbandonCase?: (caseData: any) => void;
   onAfterTaskReassign?: () => void;
+  onSwitchToCaseDetails?: () => void;
 }
 
 const TaskLogTab: React.FC<TaskLogTabProps> = ({
@@ -61,6 +62,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   onApproveCaseCreation,
   onRejectCaseCreation,
   onAbandonCase,
+  onSwitchToCaseDetails,
 }) => {
   const { success, error: toastError } = useToast();
   const {
@@ -656,6 +658,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
             }}
             row={caseDetails || undefined}
             onRefreshCases={onRefreshCases}
+            onSwitchToCaseDetails={onSwitchToCaseDetails}
             onTaskUpdate={async () => {
               // Refresh tasks in TaskLogTab when investigation task is completed
               if (caseId) {

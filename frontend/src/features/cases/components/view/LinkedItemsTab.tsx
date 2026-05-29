@@ -6,6 +6,7 @@ import AlertsDetailModal from '@/features/alerts/components/AlertsDetailModal';
 
 interface LinkedItemsTabProps {
   caseId: number;
+  onNavigateToCase?: () => void;
 }
 interface LinkedAlert {
   id: number;
@@ -13,7 +14,7 @@ interface LinkedAlert {
   type: string;
 }
 
-const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
+const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId, onNavigateToCase }) => {
   const [loading, setLoading] = useState(true);
   const [linkedAlerts, setLinkedAlerts] = useState<LinkedAlert[]>([]);
   const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null);
@@ -127,6 +128,7 @@ const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId }) => {
         alertId={selectedAlertId}
         isOpen={isAlertModalOpen}
         onClose={handleCloseAlertModal}
+        onNavigateToCase={onNavigateToCase}
       />
     </div>
   );

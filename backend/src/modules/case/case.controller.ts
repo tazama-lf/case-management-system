@@ -567,6 +567,48 @@ export class CaseController {
     return await this.caseService.getUserWorkloadStats(userId, isComplianceOfficer);
   }
 
+  @Get('check-access/:caseId')
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @ApiOperation({
+    summary: 'Check if user has access to view a case',
+    description: 'Checks if case would appear in user filtered view',
+  })
+  @ApiParam({
+    name: 'caseId',
+    type: 'number',
+    description: 'Case ID to check access for',
+    example: 123,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Access check completed',
+    schema: {
+      type: 'object',
+      properties: {
+        hasAccess: { type: 'boolean', description: 'Whether the user has access to view this case' },
+        caseId: { type: 'number', description: 'The case ID that was checked' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Case not found' })
+  async checkCaseAccess(
+    @Param('caseId') caseId: number,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ hasAccess: boolean; caseId: number }> {
+    const { userId, tenantId, claims } = extractUserData(req);
+
+    // Use the SAME role determination logic as getAllCases
+    const isInvestigator =
+      claims.includes('CMS_INVESTIGATOR') &&
+      !claims.includes('CMS_SUPERVISOR') &&
+      !claims.includes('CMS_ADMIN') &&
+      !claims.includes('CMS_COMPLIANCE_OFFICER');
+
+    // Pass userId only if investigator (same as getAllCases)
+    const hasAccess = await this.caseService.checkUserCaseAccess(caseId, isInvestigator ? userId : undefined, tenantId);
+    return { hasAccess, caseId };
+  }
+
   @Get(':caseId')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Retrieve case by ID', description: 'Get detailed information about a specific case' })

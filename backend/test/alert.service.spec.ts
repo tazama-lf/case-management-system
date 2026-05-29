@@ -1,4 +1,4 @@
-﻿import { Test, TestingModule } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { AlertService } from '../src/modules/alert/alert.service';
 import { AlertRepository } from '../src/modules/repository/alert.repository';
 import { CaseCreationService } from '../src/modules/case/services/case-creation.service';
@@ -194,7 +194,7 @@ describe('AlertService', () => {
       alertRepository.updateAlert.mockResolvedValue(updated as any);
       loggingOrchestrationService.logActions.mockResolvedValue(undefined as any);
 
-      const result = await service.updateAlert(1, 'user-123', updateData);
+      const result = await service.updateAlert(1, 'user-123', updateData, undefined, 'Test User');
 
       expect(result).toEqual(updated);
       expect(alertRepository.updateAlert).toHaveBeenCalledWith(1, updateData, undefined);
@@ -202,7 +202,7 @@ describe('AlertService', () => {
         userId: 'user-123',
         operation: 'ALERT_UPDATED',
         entityName: AlertService.name,
-        actionPerformed: '1 - Triaged by user user-123',
+        actionPerformed: '1 - Triaged by user Test User',
         outcome: Outcome.SUCCESS,
       });
     });

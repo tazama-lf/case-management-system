@@ -271,43 +271,43 @@ describe('EventLogService', () => {
     };
 
     beforeEach(() => {
-      prismaService.eventLog.findFirst.mockResolvedValue(mockAlertHistory);
+      prismaService.eventLog.findMany.mockResolvedValue([mockAlertHistory]);
     });
 
     it('should retrieve action history for an alert', async () => {
       const result = await service.getActionHistoryForAlert(123);
 
-      expect(result).toEqual(mockAlertHistory);
-      expect(prismaService.eventLog.findFirst).toHaveBeenCalledWith({
+      expect(result).toEqual([mockAlertHistory]);
+      expect(prismaService.eventLog.findMany).toHaveBeenCalledWith({
         where: {
           operation: 'ALERT_UPDATED',
           action_performed: { startsWith: '123 -' },
           entity_name: 'AlertService',
         },
-        orderBy: { performed_at: 'asc' },
+        orderBy: { performed_at: 'desc' },
       });
     });
 
     it.each([[1], [100], [456], [999], [12345], [0]])('should handle alert ID %i', async (alertId) => {
       await service.getActionHistoryForAlert(alertId);
 
-      const callArgs = prismaService.eventLog.findFirst.mock.calls[0][0];
+      const callArgs = prismaService.eventLog.findMany.mock.calls[0][0];
       expect(callArgs.where.action_performed).toEqual({ startsWith: `${alertId} -` });
       expect(callArgs.where.operation).toBe('ALERT_UPDATED');
       expect(callArgs.where.entity_name).toBe('AlertService');
-      expect(callArgs.orderBy).toEqual({ performed_at: 'asc' });
+      expect(callArgs.orderBy).toEqual({ performed_at: 'desc' });
     });
 
-    it('should return null when no history found', async () => {
-      prismaService.eventLog.findFirst.mockResolvedValue(null);
+    it('should return empty array when no history found', async () => {
+      prismaService.eventLog.findMany.mockResolvedValue([]);
 
       const result = await service.getActionHistoryForAlert(999);
 
-      expect(result).toBeNull();
+      expect(result).toEqual([]);
     });
 
     it('should handle database error and throw', async () => {
-      prismaService.eventLog.findFirst.mockRejectedValue(new Error('Database query failed'));
+      prismaService.eventLog.findMany.mockRejectedValue(new Error('Database query failed'));
 
       await expect(service.getActionHistoryForAlert(123)).rejects.toThrow('Database query failed');
     });

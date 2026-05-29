@@ -250,7 +250,7 @@ export class AlertController {
     alertId: number;
     tenantId: string;
     userId: string;
-    history: {
+    history: Array<{
       event_log_id: number;
       user_id: string;
       operation: string;
@@ -258,7 +258,7 @@ export class AlertController {
       action_performed: string;
       outcome: string;
       performed_at: Date;
-    } | null;
+    }>;
   }> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;

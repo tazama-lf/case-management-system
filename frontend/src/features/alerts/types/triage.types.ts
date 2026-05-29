@@ -163,6 +163,13 @@ export interface AlertData {
   [key: string]: unknown;
 }
 
+export interface AlertedTypology {
+  id: string;
+  label: string;
+  result: number;
+  alertThreshold: number;
+}
+
 export interface Alert extends Record<string, unknown> {
   alert_id: number;
   tenant_id: string;
@@ -178,6 +185,7 @@ export interface Alert extends Record<string, unknown> {
   created_at: string;
   case_id?: number;
   prediction_outcome?: string;
+  alerted_typologies?: AlertedTypology[];
 }
 
 export interface Case {

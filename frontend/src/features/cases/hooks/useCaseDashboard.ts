@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { caseService } from '@/features/cases/services/caseService';
+import {
+  caseService,
+  type CaseWithTasksDto,
+} from '@/features/cases/services/caseService';
 import type { CaseRow } from '@/features/cases/components/casesTable.utils';
 import { transformBackendCaseToUI } from '@/features/cases/components/casesTable.utils';
 import { useAuth } from '@/features/auth/components/AuthContext';
@@ -11,6 +14,12 @@ import type {
   CaseModalActions,
 } from '../components/CaseModalsManager';
 import useDebounce from '@/shared/hooks/useDebounce';
+
+// Pagination constants
+const DEFAULT_PAGE = 1;
+const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_TOTAL_ITEMS = 0;
+const DEFAULT_TOTAL_PAGES = 1;
 
 export interface CaseDashboardFilters {
   search: string;
@@ -86,10 +95,12 @@ export const useCaseDashboard = (): {
   const [errorState, setErrorState] = useState<string | null>(null);
 
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [backendTotalItems, setBackendTotalItems] = useState(0);
-  const [backendTotalPages, setBackendTotalPages] = useState(1);
+  const [currentPage, setCurrentPage] = useState(DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [backendTotalItems, setBackendTotalItems] =
+    useState(DEFAULT_TOTAL_ITEMS);
+  const [backendTotalPages, setBackendTotalPages] =
+    useState(DEFAULT_TOTAL_PAGES);
 
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
@@ -202,19 +213,28 @@ export const useCaseDashboard = (): {
   }, [fetchCases]);
 
   useEffect(() => {
-    if (typeof params === 'object' && 'caseId' in params) {
-      const caseId = Number(params.caseId);
-      if (caseId && cases.length > 0) {
-        const caseToView = cases.find((c) => c.id === caseId);
-        if (caseToView) {
-          setSelectedRow(caseToView);
-          setIsViewOpen(true);
-        } else {
-          navigate('/cases');
+    const fetchAndViewCase = async (): Promise<void> => {
+      if (typeof params === 'object' && 'caseId' in params) {
+        const caseId = Number(params.caseId);
+        if (caseId) {
+          try {
+            // Fetch case directly from API to bypass filters
+            const caseData = await caseService.getCaseDetails(caseId);
+            const transformedCase = transformBackendCaseToUI(
+              caseData as unknown as CaseWithTasksDto,
+            );
+            setSelectedRow(transformedCase);
+            setIsViewOpen(true);
+          } catch (err) {
+            error('Failed to load case details');
+            navigate('/cases');
+          }
         }
       }
-    }
-  }, [cases, params, navigate, error]);
+    };
+
+    fetchAndViewCase();
+  }, [params, navigate, error]);
 
   const totalItems = backendTotalItems;
   const totalPages = backendTotalPages;
@@ -225,7 +245,7 @@ export const useCaseDashboard = (): {
       // Search is still being typed, don't reset page yet
       return;
     }
-    setCurrentPage(1);
+    setCurrentPage(DEFAULT_PAGE);
   }, [debouncedSearch, search]);
 
   // Reset to page 1 when any filter changes

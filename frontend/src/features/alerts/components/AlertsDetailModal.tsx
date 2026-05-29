@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   XMarkIcon,
   ExclamationTriangleIcon,
   ClockIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 import type {
   Alert as TriageAlert,
@@ -20,6 +22,7 @@ import { useCase, canActOnCase } from '../../cases/hooks/useCase';
 import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
 import { formatDate } from '@/shared/utils/dateUtils';
 import { useQueryClient } from '@tanstack/react-query';
+import { caseService } from '../../cases/services/caseService';
 
 interface AlertsDetailModalProps {
   alertId: number | null;
@@ -32,6 +35,7 @@ interface AlertsDetailModalProps {
   ) => void;
   onAlertUpdated?: () => void;
   onManualTriage?: (alert: LegacyAlert) => void;
+  onNavigateToCase?: () => void;
 }
 
 const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
@@ -219,7 +223,7 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
       ? action.action_performed.replace(action.user_id, username)
       : action.action_performed;
 
-  const userDisplayName = username ?? action.user_id;
+  // const userDisplayName = username;
 
   return (
     <>
@@ -231,7 +235,7 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
         {action.user_id && (
           <>
             <span>•</span>
-            <span className="font-medium">User: {userDisplayName}</span>
+            <span className="font-medium">User ID: {action.user_id}</span>
           </>
         )}
       </div>
@@ -245,19 +249,22 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   onClose,
   onAlertUpdated,
   onManualTriage,
+  onNavigateToCase,
 }) => {
   const { isManualMode, isDisabledMode, isAIMode } = useSystemConfig();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [alert, setAlert] = useState<TriageAlert | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
 
-  const [actionHistory, setActionHistory] = useState<ActionHistory>();
+  const [actionHistory, setActionHistory] = useState<ActionHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isCompleteNewCaseCompleted, setIsCompleteNewCaseCompleted] =
     useState(false);
+  const [hasCaseAccess, setHasCaseAccess] = useState<boolean>(true); // Default true for better UX
 
   const { data: caseDetails } = useCase(alert?.case_id);
 
@@ -288,13 +295,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         setLoadingHistory(true);
         try {
           const history = await triageService.getAlertActionHistory(alertId);
-          setActionHistory(
-            Array.isArray(history) && history.length > 0
-              ? history[0]
-              : undefined,
-          );
+          setActionHistory(Array.isArray(history) ? history : []);
         } catch {
-          setActionHistory(undefined);
+          setActionHistory([]);
         } finally {
           setLoadingHistory(false);
         }
@@ -339,6 +342,26 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
     checkCompleteNewCaseStatus();
   }, [alert?.case_id, isOpen]);
+
+  // Check if user has access to view the case using SAME logic as dashboard
+  useEffect(() => {
+    const checkCaseAccess = async () => {
+      if (!alert?.case_id) {
+        setHasCaseAccess(true); // No case to check
+        return;
+      }
+
+      try {
+        const hasAccess = await caseService.checkCaseAccess(alert.case_id);
+        setHasCaseAccess(hasAccess);
+      } catch (error) {
+        console.error('Failed to check case access:', error);
+        setHasCaseAccess(false); // Deny access on error
+      }
+    };
+
+    checkCaseAccess();
+  }, [alert?.case_id]);
 
   if (!isOpen) {
     return null;
@@ -479,8 +502,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     <div className="flex items-center space-x-2 ml-4">
                       {}
                       {(() => {
-                        const triageCompleted =
-                          actionHistory?.operation.includes('ALERT_UPDATED');
+                        const triageCompleted = actionHistory.some(
+                          (action) => action.operation.includes('ALERT_UPDATED')
+                        );
                         const showButton =
                           canPerformActions &&
                           onManualTriage &&
@@ -564,6 +588,35 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           {caseDetails?.status ?? 'Loading...'}
                         </p>
                       </div>
+                      {caseDetails?.case_id && (
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">
+                            Case ID:
+                          </span>
+                          {hasCaseAccess ? (
+                            <button
+                              onClick={() => {
+                                navigate(`/cases/${alert.case_id}`);
+                                onClose();
+                                onNavigateToCase?.();
+                              }}
+                              className="flex items-center gap-1 text-sm text-gray-900 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                              title="View case details"
+                            >
+                              <span>{alert.case_id}</span>
+                              <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <div 
+                              className="flex items-center gap-1 text-sm text-gray-500 cursor-not-allowed" 
+                              title="You don't have permission to view this case"
+                            >
+                              <span>{alert.case_id}</span>
+                              <ArrowTopRightOnSquareIcon className="w-4 h-4 opacity-50" />
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -606,29 +659,29 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           Loading...
                         </span>
                       </div>
-                    ) : actionHistory ? (
+                    ) : actionHistory.length > 0 ? (
                       <div className="space-y-3 max-h-64 overflow-y-auto">
-                        {/* {actionHistory.map((action) => ( */}
-                        <div
-                          key={actionHistory.audit_log_id}
-                          className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
-                        >
+                        {actionHistory.map((action) => (
                           <div
-                            className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
-                              actionHistory.outcome === 'SUCCESS'
-                                ? 'bg-green-100 text-green-600'
-                                : actionHistory.outcome === 'FAILURE'
-                                  ? 'bg-red-100 text-red-600'
-                                  : 'bg-blue-100 text-blue-600'
-                            }`}
+                            key={action.audit_log_id}
+                            className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
                           >
-                            <ClockIcon className="w-4 h-4" />
+                            <div
+                              className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
+                                action.outcome === 'SUCCESS'
+                                  ? 'bg-green-100 text-green-600'
+                                  : action.outcome === 'FAILURE'
+                                    ? 'bg-red-100 text-red-600'
+                                    : 'bg-blue-100 text-blue-600'
+                              }`}
+                            >
+                              <ClockIcon className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <ActionHistoryItem action={action} />
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <ActionHistoryItem action={actionHistory} />
-                          </div>
-                        </div>
-                        {/* ))} */}
+                        ))}
                       </div>
                     ) : (
                       <div className="text-center py-4">
@@ -658,11 +711,12 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
 
                 <div className="mb-4">
-                  <div className="flex items-center space-x-4 text-sm">
-                    {(() => {
+                  {(() => {
+                    const alertedTypologies = alert.alerted_typologies || [];
+                    if (alertedTypologies.length === 0) {
                       const typ = extractTypologyInfo(alert);
                       return (
-                        <>
+                        <div className="flex items-center space-x-4 text-sm">
                           <span className="text-gray-500">Risk Category:</span>
                           <span className="font-medium text-gray-900">
                             {typ.label ?? typ.id ?? 'Unknown'}
@@ -672,10 +726,39 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           <span className="font-medium text-red-600 text-base">
                             {typ.result ?? getRiskScore(alert)}
                           </span>
-                        </>
+                        </div>
                       );
-                    })()}
-                  </div>
+                    }
+                    return (
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium text-gray-700 mb-2">
+                          Alerted Typologies ({alertedTypologies.length}):
+                        </div>
+                        {alertedTypologies.map((typ, index) => (
+                          <div
+                            key={typ.id || index}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                          >
+                            <div className="flex items-center space-x-4 text-sm">
+                              <span className="text-gray-500">Risk Category:</span>
+                              <span className="font-medium text-gray-900">
+                                {typ.label}
+                              </span>
+                              <span className="text-gray-500">•</span>
+                              <span className="text-gray-500">Risk Score:</span>
+                              <span className="font-medium text-red-600 text-base">
+                                {typ.result}
+                              </span>
+                              <span className="text-gray-500">•</span>
+                              <span className="text-xs text-gray-400">
+                                (Threshold: {typ.alertThreshold})
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {}

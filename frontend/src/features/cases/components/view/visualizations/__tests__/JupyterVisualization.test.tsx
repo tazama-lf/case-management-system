@@ -1,7 +1,9 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import JupyterVisualization from '../shared/JupyterVisualization';
+import { server } from '@/test/mocks/server';
 
 vi.mock('@/shared/services/apiClient', () => ({
   default: {
@@ -10,6 +12,16 @@ vi.mock('@/shared/services/apiClient', () => ({
 }));
 
 import apiClient from '@/shared/services/apiClient';
+
+beforeEach(() => {
+  // Prevent MSW from throwing on the iframe src URL that happy-dom tries to fetch
+  server.use(
+    http.get(
+      'https://jupyter.test/*',
+      () => new HttpResponse(null, { status: 200 }),
+    ),
+  );
+});
 
 describe('JupyterVisualization', () => {
   it('shows loading state initially', () => {

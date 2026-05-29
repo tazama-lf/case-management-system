@@ -49,9 +49,9 @@ export interface CaseWithTasksDto {
   case_type: string;
   created_at: Date;
   updated_at: Date;
-  user_role: 'owner' | 'task_assignee' | 'both';
-  user_tasks: UserTaskDto[];
-  total_tasks: number;
+  user_role?: 'owner' | 'task_assignee' | 'both';
+  user_tasks?: UserTaskDto[];
+  total_tasks?: number;
   alert: AlertInfoDto | null;
   assigned_to?: {
     user_id: string;
@@ -653,6 +653,24 @@ export class CaseService {
     }
     const message = error instanceof Error ? error.message : 'Unknown error';
     return new Error(`Failed to ${operation}: ${message}`);
+  }
+
+  /**
+   * Check if user has access to view a case
+   * Uses the same permission logic as the dashboard filtering
+   */
+  async checkCaseAccess(caseId: number): Promise<boolean> {
+    try {
+      const response = await apiClient.get<{
+        hasAccess: boolean;
+        caseId: number;
+      }>(`${this.baseUrl}/check-access/${caseId}`);
+      return response.hasAccess;
+    } catch (error: unknown) {
+      console.error('[CaseService] Error checking case access:', error);
+      // On error, return false (deny access)
+      return false;
+    }
   }
 }
 
