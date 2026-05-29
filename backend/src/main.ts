@@ -27,9 +27,30 @@ async function bootstrap(): Promise<void> {
     logger.error(`[WS] Proxy error: ${err.message}`);
   });
 
-  app.use('/api/kernels', (req, res, next) => {
-    proxy.web(req, res, {}, (err) => {
-      logger.error(`[WS] Proxy error: ${err.message}`);
+  app.use('/api/kernels', (req: Request, res: Response, next) => {
+    // Enforce authentication
+    const accessToken = extractAccessToken(req);
+    if (!accessToken || !verifyToken(accessToken)) {
+      logger.warn(`[Kernels] Unauthorized request to ${req.originalUrl}`);
+      res.status(401).json({
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      });
+      return;
+    }
+
+    // Express strips the mount path (/api/kernels) from req.url when using app.use(path, ...).
+    // Restore the full path so Voila receives the request at its actual API endpoint.
+    // eslint-disable-next-line no-param-reassign -- Required to restore the URL stripped by Express mount path
+    req.url = req.originalUrl;
+
+    logger.log(`[Kernels] Proxying authenticated request: ${req.method} ${req.url}`);
+    proxy.web(req, res, {}, (err?: Error) => {
+      if (err) {
+        logger.error(`[Kernels] Proxy callback error: ${err.message}`);
+        res.status(502).end('Bad Gateway');
+      }
     });
   });
 
