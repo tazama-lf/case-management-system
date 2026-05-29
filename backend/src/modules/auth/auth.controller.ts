@@ -35,16 +35,13 @@ export class AuthController {
 
       // Decode JWT to extract userId (no verification needed, just reading the payload)
       const decoded = jwt.decode(result.token) as { clientId?: string; sub?: string } | null;
-      this.logger.log(`Decoded JWT payload: ${JSON.stringify(decoded)}`);
       const userId = decoded?.clientId ?? decoded?.sub ?? 'unknown';
-
-      this.logger.log(`User logged in: ${userId}`);
 
       // Set JWT as HttpOnly cookie for iframe authentication (Voila proxy)
       // This allows iframes to send the token automatically via cookies
       res.cookie(`access_token_${userId}`, result.token, {
         httpOnly: true,
-        secure: false, // Set to true in production with HTTPS
+        secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
         sameSite: 'lax', // Allows cookie with same-site iframe requests
         maxAge: result.expiresIn ? result.expiresIn * 1000 : 24 * 60 * 60 * 1000, // Convert to ms
         path: '/',
@@ -95,12 +92,12 @@ export class AuthController {
   @ApiOkResponse({ description: 'Logout successful.' })
   @ApiBearerAuth('jwt')
   async logout(@Res({ passthrough: true }) res: Response, @User() user: AuthenticatedUser): Promise<{ message: string }> {
-    const userId = user.userId || 'unknown';
+    const { userId } = user;
 
     // Clear the HttpOnly cookie
     res.clearCookie(`access_token_${userId}`, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
     });

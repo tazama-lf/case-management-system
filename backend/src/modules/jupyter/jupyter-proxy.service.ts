@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { TransactionLakehouseService } from '../gold-lakehouse/transaction-lakehouse.service';
 import { AccountLakehouseService } from '../gold-lakehouse/account-lakehouse.service';
 import { AlertsLakehouseService } from '../gold-lakehouse/alerts-lakehouse.service';
@@ -45,13 +45,13 @@ export class JupyterProxyService {
 
       if (!userJwt) {
         this.logger.warn(`No JWT found in cache for user: ${userId}`);
-        throw new Error('User session not found');
+        throw new UnauthorizedException('User session not found');
       }
 
       // Optionally verify the token hasn't expired
       if (this.authService.isTokenExpired(userJwt)) {
         this.logger.warn(`Expired JWT for user: ${userId}`);
-        throw new Error('User session expired');
+        throw new UnauthorizedException('User session expired');
       }
 
       return userJwt;
@@ -106,7 +106,6 @@ export class JupyterProxyService {
     granularity?: string,
   ): Promise<TransactionHistoryResponse> {
     const userJwt = await this.getUserJwt(userId);
-    this.logger.log(`User token: ${userJwt}`);
     return await this.transactionLakehouseService.getTransactionHistoryByAccountId(
       accountId,
       tenantId ?? 'DEFAULT',

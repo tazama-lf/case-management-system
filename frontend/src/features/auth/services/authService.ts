@@ -115,10 +115,11 @@ class AuthService {
       fetch(`${API_BASE_URL}/v1/auth/logout`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include', // Important: send cookies to be cleared
-      }).catch(error => {
+        keepalive: true, // Ensure the request completes even if the page navigates away
+      }).catch((error: unknown) => {
         console.error('Error clearing auth cookie:', error);
       });
     }

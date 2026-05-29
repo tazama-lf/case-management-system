@@ -9,18 +9,6 @@ import { CacheService } from '../shared/cache.service';
 
 /**
  * VoilaProxyController handles proxying requests to Voila notebooks.
- *
- * Flow:
- * 1. Browser sends request to /voila-proxy/* with JWT cookie
- * 2. Extract and validate user JWT from HttpOnly cookie
- * 3. Store user JWT in cache for later retrieval
- * 4. Mint short-lived service token (2min) with userId
- * 5. Append service_token to query params
- * 6. Proxy request to Voila server (internal-only)
- *
- * Note: This controller handles /voila-proxy/* and /voila/* routes.
- * - /voila/* route is for static assets referenced by Voila notebooks
- * - /api/kernels/* routes are handled by middleware for WebSocket support
  */
 @Controller(['voila-proxy', 'voila'])
 export class VoilaProxyController {

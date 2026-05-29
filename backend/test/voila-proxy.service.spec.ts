@@ -161,7 +161,7 @@ describe('VoilaProxyService', () => {
       });
     });
 
-    it('should append service_token to URL without existing query params', async () => {
+    it('should add service_token via header and strip /voila-proxy prefix', async () => {
       const mockReq = {
         url: '/voila-proxy/render/notebook.ipynb',
         headers: { host: 'localhost:3000' },
@@ -171,11 +171,13 @@ describe('VoilaProxyService', () => {
 
       await service.proxyRequest(mockReq, mockRes, 'test-token-123');
 
-      expect(mockReq.url).toContain('?service_token=test-token-123');
+      // Service token is passed via header, not URL
       expect(mockReq.headers['x-service-token']).toBe('test-token-123');
+      // URL should have /voila-proxy prefix stripped
+      expect(mockReq.url).toBe('/render/notebook.ipynb');
     });
 
-    it('should append service_token to URL with existing query params', async () => {
+    it('should add service_token via header with existing query params', async () => {
       const mockReq = {
         url: '/voila-proxy/render/notebook.ipynb?param=value',
         headers: { host: 'localhost:3000' },
@@ -185,7 +187,9 @@ describe('VoilaProxyService', () => {
 
       await service.proxyRequest(mockReq, mockRes, 'test-token-123');
 
-      expect(mockReq.url).toContain('&service_token=test-token-123');
+      // Service token is passed via header, not URL - existing query params preserved
+      expect(mockReq.headers['x-service-token']).toBe('test-token-123');
+      expect(mockReq.url).toBe('/render/notebook.ipynb?param=value');
     });
 
     it('should not append service_token for empty token (static files)', async () => {
@@ -256,7 +260,7 @@ describe('VoilaProxyService', () => {
       await expect(service.proxyRequest(mockReq, mockRes, 'token')).rejects.toThrow('Proxy error: Connection refused');
     });
 
-    it('should encode service_token in the URL', async () => {
+    it('should pass service_token with special chars via header', async () => {
       const mockReq = {
         url: '/voila-proxy/render/notebook.ipynb',
         headers: {},
@@ -267,7 +271,8 @@ describe('VoilaProxyService', () => {
       const tokenWithSpecialChars = 'token with spaces&special=chars';
       await service.proxyRequest(mockReq, mockRes, tokenWithSpecialChars);
 
-      expect(mockReq.url).toContain(encodeURIComponent(tokenWithSpecialChars));
+      // Service token passed via header without encoding concerns
+      expect(mockReq.headers['x-service-token']).toBe(tokenWithSpecialChars);
     });
   });
 });

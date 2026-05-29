@@ -78,16 +78,19 @@ export class VoilaProxyService implements OnModuleInit {
 
     // Only append service_token for authenticated requests (not static files)
     if (serviceToken) {
-      this.logger.log('[ProxyRequest] Adding service_token to request');
-      // Add as both query parameter and header for maximum compatibility
-      const separator = modifiedReq.url.includes('?') ? '&' : '?';
-      const currentUrl = modifiedReq.url;
-      modifiedReq.url = `${currentUrl}${separator}service_token=${encodeURIComponent(serviceToken)}`;
+      // this.logger.log('[ProxyRequest] Adding service_token to request');
+      // // Add as both query parameter and header for maximum compatibility
+      // const separator = modifiedReq.url.includes('?') ? '&' : '?';
+      // const currentUrl = modifiedReq.url;
+      // modifiedReq.url = `${currentUrl}${separator}service_token=${encodeURIComponent(serviceToken)}`;
 
-      // Also add as a custom header that Voila can read
+      // // Also add as a custom header that Voila can read
+      // modifiedReq.headers = { ...req.headers, 'x-service-token': serviceToken };
+
+      // this.logger.log(`[ProxyRequest] Modified URL: ${modifiedReq.url}`);
+      this.logger.log('[ProxyRequest] Adding service token header to request');
+      // Forward token only via header; Voila reads X-Service-Token (see voila.json)
       modifiedReq.headers = { ...req.headers, 'x-service-token': serviceToken };
-
-      this.logger.log(`[ProxyRequest] Modified URL: ${modifiedReq.url}`);
     } else {
       this.logger.log('[ProxyRequest] Static file request - no service_token appended');
     }

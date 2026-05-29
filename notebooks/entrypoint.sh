@@ -18,7 +18,7 @@ print(json.dumps(settings))
 ")
 
 # Enable the custom Voila extension for service_token support
-export PYTHONPATH=/app/notebooks:$PYTHONPATH
+export PYTHONPATH="/app/notebooks:${PYTHONPATH:-}"
 
 exec voila /app/notebooks \
   --config=/app/notebooks/voila.json \
