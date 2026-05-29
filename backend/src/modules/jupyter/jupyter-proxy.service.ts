@@ -16,13 +16,9 @@ import { AlertHistoryAlertsResponse } from '../gold-lakehouse/types/IAlertHistor
 import { TransactionHistoryResponse } from '../gold-lakehouse/types/transaction-history-response.types';
 import { AuthService } from '../auth/auth.service';
 import { CacheService } from '../shared/cache.service';
-import { AuthService } from '../auth/auth.service';
-import { CacheService } from '../shared/cache.service';
 
 @Injectable()
 export class JupyterProxyService {
-  private readonly logger = new Logger(JupyterProxyService.name);
-
   private readonly logger = new Logger(JupyterProxyService.name);
 
   constructor(
@@ -73,18 +69,9 @@ export class JupyterProxyService {
   ): Promise<CounterpartyNetworkResponseDto> {
     const userJwt = await this.getUserJwt(userId);
     return await this.transactionLakehouseService.getCounterpartyNetworkData(accountId, tenantId, timeRange, userJwt);
-  async getCounterpartyNetworkData(
-    userId: string,
-    accountId: string,
-    tenantId: string,
-    timeRange: string,
-  ): Promise<CounterpartyNetworkResponseDto> {
-    const userJwt = await this.getUserJwt(userId);
-    return await this.transactionLakehouseService.getCounterpartyNetworkData(accountId, tenantId, timeRange, userJwt);
   }
 
   async getCounterpartyNodeFullData(
-    userId: string,
     userId: string,
     counterpartyId: string,
     tenantId: string,
@@ -92,12 +79,9 @@ export class JupyterProxyService {
   ): Promise<CounterpartyNodeFullDataResponse> {
     const userJwt = await this.getUserJwt(userId);
     return await this.accountLakehouseService.getCounterpartyNodeFullData(counterpartyId, tenantId, granularity, userJwt);
-    const userJwt = await this.getUserJwt(userId);
-    return await this.accountLakehouseService.getCounterpartyNodeFullData(counterpartyId, tenantId, granularity, userJwt);
   }
 
   async getAlertHistorySummary(
-    userId: string,
     userId: string,
     endToEndId?: string,
     tenantId?: string,
@@ -111,12 +95,9 @@ export class JupyterProxyService {
   }> {
     const userJwt = await this.getUserJwt(userId);
     return await this.alertsLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all', userJwt);
-    const userJwt = await this.getUserJwt(userId);
-    return await this.alertsLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all', userJwt);
   }
 
   async getTransactionHistoryData(
-    userId: string,
     userId: string,
     accountId: string,
     tenantId?: string,
@@ -133,19 +114,9 @@ export class JupyterProxyService {
       endDate,
       granularity,
       userJwt,
-      userJwt,
     );
   }
 
-  async getAlertHistoryTimeline(
-    userId: string,
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
-    granularity = 'day',
-  ): Promise<unknown> {
-    const userJwt = await this.getUserJwt(userId);
-    return await this.alertsLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity, userJwt);
   async getAlertHistoryTimeline(
     userId: string,
     endToEndId?: string,
@@ -159,7 +130,6 @@ export class JupyterProxyService {
 
   async getAlertHistoryAlerts(
     userId: string,
-    userId: string,
     endToEndId?: string,
     tenantId?: string,
     dateRange?: string,
@@ -168,18 +138,8 @@ export class JupyterProxyService {
   ): Promise<AlertHistoryAlertsResponse> {
     const userJwt = await this.getUserJwt(userId);
     return await this.alertsLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page, limit, userJwt);
-    const userJwt = await this.getUserJwt(userId);
-    return await this.alertsLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page, limit, userJwt);
   }
 
-  async getTransactionNetworkData(
-    userId: string,
-    accountId: string,
-    tenantId: string,
-    timeRange: string,
-  ): Promise<TransactionNetworkResponseDto> {
-    const userJwt = await this.getUserJwt(userId);
-    return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId, timeRange, userJwt);
   async getTransactionNetworkData(
     userId: string,
     accountId: string,
@@ -192,19 +152,15 @@ export class JupyterProxyService {
 
   async getAccountNetworkData(
     userId: string,
-    userId: string,
     entityId: string,
     tenantId?: string,
     granularity: 'day' | 'month' | 'year' = 'month',
   ): Promise<AccountNodeFullDataResponse> {
     const userJwt = await this.getUserJwt(userId);
     return await this.accountLakehouseService.getAccountNodeFullData(entityId, tenantId ?? 'DEFAULT', granularity, userJwt);
-    const userJwt = await this.getUserJwt(userId);
-    return await this.accountLakehouseService.getAccountNodeFullData(entityId, tenantId ?? 'DEFAULT', granularity, userJwt);
   }
 
   async getBenfordByAccount(
-    userId: string,
     userId: string,
     accountId: string,
     tenantId: string,
@@ -223,14 +179,11 @@ export class JupyterProxyService {
   }> {
     const userJwt = await this.getUserJwt(userId);
     return await this.benfordsLawLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, from, to, userJwt);
-    const userJwt = await this.getUserJwt(userId);
-    return await this.benfordsLawLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, from, to, userJwt);
   }
 
   // ================ CONDITIONS PROXY METHODS ================
 
   async getConditionsContextByTransaction(
-    userId: string,
     userId: string,
     transactionId: string,
     tenantId: string,
@@ -238,20 +191,14 @@ export class JupyterProxyService {
   ): Promise<ConditionsContextByTransactionResponse> {
     const userJwt = await this.getUserJwt(userId);
     return await this.conditionLakehouseService.getConditionsContextByTransaction(transactionId, tenantId, asOfDate, userJwt);
-    const userJwt = await this.getUserJwt(userId);
-    return await this.conditionLakehouseService.getConditionsContextByTransaction(transactionId, tenantId, asOfDate, userJwt);
   }
 
-  async getConditionsSummary(userId: string, accountId: string, tenantId: string, asOfDate?: string): Promise<AccountConditionsSummary> {
-    const userJwt = await this.getUserJwt(userId);
-    return await this.conditionLakehouseService.getConditionsSummaryByAccount(accountId, tenantId, undefined, asOfDate, userJwt);
   async getConditionsSummary(userId: string, accountId: string, tenantId: string, asOfDate?: string): Promise<AccountConditionsSummary> {
     const userJwt = await this.getUserJwt(userId);
     return await this.conditionLakehouseService.getConditionsSummaryByAccount(accountId, tenantId, undefined, asOfDate, userJwt);
   }
 
   async getConditionsDetails(
-    userId: string,
     userId: string,
     accountId: string,
     tenantId: string,
@@ -260,18 +207,8 @@ export class JupyterProxyService {
   ): Promise<ConditionsListByAccountResponse> {
     const userJwt = await this.getUserJwt(userId);
     return await this.conditionLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive ?? false, userJwt);
-    const userJwt = await this.getUserJwt(userId);
-    return await this.conditionLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive ?? false, userJwt);
   }
 
-  async getConditionsEvaluatedTransactions(
-    userId: string,
-    accountId: string,
-    tenantId: string,
-    fromDate?: string,
-  ): Promise<EvaluatedTransactionsResponse> {
-    const userJwt = await this.getUserJwt(userId);
-    return await this.conditionLakehouseService.getEvaluatedTransactionsByAccount(accountId, tenantId, fromDate, userJwt);
   async getConditionsEvaluatedTransactions(
     userId: string,
     accountId: string,

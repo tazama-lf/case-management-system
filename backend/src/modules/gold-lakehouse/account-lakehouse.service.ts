@@ -24,7 +24,6 @@ export class AccountLakehouseService extends GoldLakehouseService {
   }
 
   async getEntityMetadataByAlertId(alertId: number, tenantId: string, userJwt?: string): Promise<EntityMetadataResponse> {
-  async getEntityMetadataByAlertId(alertId: number, tenantId: string, userJwt?: string): Promise<EntityMetadataResponse> {
     try {
       const alert = await this.alertRepository.getAlertById(alertId);
       if (!alert) {
@@ -49,7 +48,6 @@ export class AccountLakehouseService extends GoldLakehouseService {
         FROM transaction_detail td 
         WHERE td.end_to_end_id = $1 AND td.tenant_id = $2 AND td.tx_type = 'pacs.008.001.10'
         `;
-      const entityMetadataResp = await this.runSqlQuery(entitySQL, 1, [referenceId, tenantId], userJwt);
       const entityMetadataResp = await this.runSqlQuery(entitySQL, 1, [referenceId, tenantId], userJwt);
       const entityMetadataRow = entityMetadataResp.data?.[0];
       const entityMetadata = {
@@ -183,7 +181,6 @@ export class AccountLakehouseService extends GoldLakehouseService {
     tenantId: string,
     granularity: 'day' | 'month' | 'year' = 'month',
     userJwt?: string,
-    userJwt?: string,
   ): Promise<AccountNodeFullDataResponse> {
     try {
       const enhancedEntityId = `${entityId}TAZAMA_EID`;
@@ -196,7 +193,6 @@ export class AccountLakehouseService extends GoldLakehouseService {
           AND ah.tenant_id = $2
       `;
 
-      const accountHolderResp = await this.runSqlQuery(accountHolderSql, 100, [enhancedEntityId, tenantId], userJwt);
       const accountHolderResp = await this.runSqlQuery(accountHolderSql, 100, [enhancedEntityId, tenantId], userJwt);
       const accountHolderRows = accountHolderResp.data ?? [];
 
@@ -227,7 +223,6 @@ export class AccountLakehouseService extends GoldLakehouseService {
 
       const networkSql = `SELECT from_account_id, to_account_id, tx_count, total_amount, currency_hint, first_event_ts, last_event_ts, is_alerted_edge, is_investigated_edge FROM tx_network_accounts_edges WHERE tenant_id = $1 AND bucket_granularity = $2 AND ( from_account_id IN (${accountPlaceholders}) OR to_account_id IN (${accountPlaceholders}) )`;
 
-      const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, cleanedAccountIds], userJwt);
       const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, cleanedAccountIds], userJwt);
       const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
       const result = this.processNetworkRows(networkRows, entityId, 'ACCOUNT', 'from_account_id', 'to_account_id');
@@ -283,7 +278,6 @@ export class AccountLakehouseService extends GoldLakehouseService {
     tenantId: string,
     granularity: 'day' | 'month' | 'year' = 'month',
     userJwt?: string,
-    userJwt?: string,
   ): Promise<CounterpartyNodeFullDataResponse> {
     try {
       const networkSql = `
@@ -306,7 +300,6 @@ export class AccountLakehouseService extends GoldLakehouseService {
         )
     `;
 
-      const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, counterpartyId], userJwt);
       const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, counterpartyId], userJwt);
       const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
 
@@ -360,7 +353,6 @@ export class AccountLakehouseService extends GoldLakehouseService {
     `;
 
       const metricsResp = await this.runSqlQuery(metricsSql, 1, [tenantId, granularity, counterpartyId], userJwt);
-      const metricsResp = await this.runSqlQuery(metricsSql, 1, [tenantId, granularity, counterpartyId], userJwt);
       const metrics = this.stripHudiMetadata(metricsResp.data?.[0] ?? {});
 
       const nameSql = `
@@ -372,7 +364,6 @@ export class AccountLakehouseService extends GoldLakehouseService {
       LIMIT 1
     `;
 
-      const nameResp = await this.runSqlQuery(nameSql, 1, [tenantId, counterpartyId], userJwt);
       const nameResp = await this.runSqlQuery(nameSql, 1, [tenantId, counterpartyId], userJwt);
       const nameRow = nameResp.data?.[0];
 

@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../shared/redis.service';
 import axios from 'axios';
 import * as jwt from 'jsonwebtoken';
-import * as jwt from 'jsonwebtoken';
 import { UserGroupDetails } from '../../utils/types/UserList';
 
 export interface UserDetails {
@@ -21,7 +20,6 @@ export class CacheService {
   private readonly logger = new Logger(CacheService.name);
   private readonly CACHE_ROLES = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'];
   private readonly CACHE_KEY_PREFIX = 'cms:users:';
-  private readonly TOKEN_CACHE_KEY_PREFIX = 'cms:tokens:';
   private readonly TOKEN_CACHE_KEY_PREFIX = 'cms:tokens:';
   private readonly CACHE_TTL_HOURS = 720; // 720 hours == 30 days TTL
   private readonly AuthBaseUrl: string;

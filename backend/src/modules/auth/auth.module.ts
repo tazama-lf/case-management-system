@@ -7,7 +7,6 @@ import { ConfigModule } from '@nestjs/config';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import { LoggerModule } from 'src/logger/logger.module';
 import { SharedModule } from '../shared/shared.module';
-import { SharedModule } from '../shared/shared.module';
 
 @Module({
   imports: [ConfigModule, PrismaModule, HttpModule, LoggerModule, forwardRef(() => SharedModule)],

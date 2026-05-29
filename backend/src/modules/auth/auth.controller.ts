@@ -1,8 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
-import { Body, Controller, Get, HttpCode, Post, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
-import { Response } from 'express';
-import * as jwt from 'jsonwebtoken';
 import { Response } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { RequireAuthenticated } from '../../decorators/auth.decorator';
@@ -15,7 +12,6 @@ import { AuthMeResponseDto } from 'src/modules/auth/dto/AuthMeResponse.dto';
 import { LoginRequestDto } from 'src/modules/auth/dto/LoginRequest.dto';
 import { LoginResponseDto } from 'src/modules/auth/dto/LoginResponse.dto';
 import { CacheService } from '../shared/cache.service';
-import { CacheService } from '../shared/cache.service';
 
 @ApiTags('Auth')
 @ApiBearerAuth('jwt')
@@ -25,7 +21,6 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly logger: LoggerService,
     private readonly cacheService: CacheService,
-    private readonly cacheService: CacheService,
   ) {}
 
   @Post('login')
@@ -34,7 +29,6 @@ export class AuthController {
   @ApiBody({ type: LoginRequestDto })
   @ApiOkResponse({ description: 'Login successful. JWT token returned.', type: LoginResponseDto })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials supplied.' })
-  async login(@Body() body: LoginRequestDto, @Res({ passthrough: true }) res: Response): Promise<LoginResponseDto> {
   async login(@Body() body: LoginRequestDto, @Res({ passthrough: true }) res: Response): Promise<LoginResponseDto> {
     try {
       const result = await this.authService.login(body.username, body.password);

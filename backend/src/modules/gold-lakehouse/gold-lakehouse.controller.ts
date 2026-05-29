@@ -44,17 +44,6 @@ export class GoldLakehouseController {
     return undefined;
   }
 
-  /**
-   * Extract JWT token from request headers
-   */
-  private extractJwt(req: AuthenticatedRequest): string | undefined {
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith('Bearer ')) {
-      return authHeader.substring(7);
-    }
-    return undefined;
-  }
-
   @Get('entity-metadata/:alertId')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Get Entity Metadata for a given Alert ID' })
@@ -62,13 +51,10 @@ export class GoldLakehouseController {
     @Param('alertId') alertId: number,
     @Query('tenantId') tenantId: string,
     @Req() req: AuthenticatedRequest,
-    @Req() req: AuthenticatedRequest,
   ): Promise<EntityMetadataResponse> {
     if (isNaN(alertId)) {
       throw new BadRequestException('Invalid alertId: must be a number');
     }
-    const userJwt = this.extractJwt(req);
-    const entityMetadata = await this.accountLakehouseService.getEntityMetadataByAlertId(alertId, tenantId, userJwt);
     const userJwt = this.extractJwt(req);
     const entityMetadata = await this.accountLakehouseService.getEntityMetadataByAlertId(alertId, tenantId, userJwt);
     return entityMetadata;
@@ -83,16 +69,9 @@ export class GoldLakehouseController {
     @Query('tenantId') tenantId: string,
     @Req() req: AuthenticatedRequest,
   ): Promise<AlertNavigatorDataResponse> {
-  async getAlertNavigatorData(
-    @Param('alertId') alertId: number,
-    @Query('tenantId') tenantId: string,
-    @Req() req: AuthenticatedRequest,
-  ): Promise<AlertNavigatorDataResponse> {
     if (isNaN(alertId)) {
       throw new BadRequestException('Invalid alertId: must be a number');
     }
-    const userJwt = this.extractJwt(req);
-    return await this.alertsLakehouseService.getAlertNavigatorData(alertId, tenantId, userJwt);
     const userJwt = this.extractJwt(req);
     return await this.alertsLakehouseService.getAlertNavigatorData(alertId, tenantId, userJwt);
   }
@@ -105,10 +84,7 @@ export class GoldLakehouseController {
     @Param('endToEndId') endToEndId: string,
     @Query('tenantId') tenantId: string,
     @Req() req: AuthenticatedRequest,
-    @Req() req: AuthenticatedRequest,
   ): Promise<TransactionDetailDataResponse> {
-    const userJwt = this.extractJwt(req);
-    return await this.transactionLakehouseService.getTransactionDetailData(endToEndId, tenantId, userJwt);
     const userJwt = this.extractJwt(req);
     return await this.transactionLakehouseService.getTransactionDetailData(endToEndId, tenantId, userJwt);
   }
@@ -189,13 +165,10 @@ export class GoldLakehouseController {
     @Query('tenantId') tenantId: string,
     @Query('asOfDate') asOfDate?: string,
     @Req() req?: AuthenticatedRequest,
-    @Req() req?: AuthenticatedRequest,
   ): Promise<AccountConditionsSummary> {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
-    const userJwt = req ? this.extractJwt(req) : undefined;
-    return await this.conditionLakehouseService.getConditionsSummaryByAccount(accountId, tenantId, undefined, asOfDate, userJwt);
     const userJwt = req ? this.extractJwt(req) : undefined;
     return await this.conditionLakehouseService.getConditionsSummaryByAccount(accountId, tenantId, undefined, asOfDate, userJwt);
   }
@@ -286,13 +259,10 @@ export class GoldLakehouseController {
     @Query('asOfDate') asOfDate?: string,
     @Query('showInactive') showInactive?: boolean,
     @Req() req?: AuthenticatedRequest,
-    @Req() req?: AuthenticatedRequest,
   ): Promise<ConditionsListByAccountResponse> {
     if (!accountId) {
       throw new BadRequestException('accountId is required');
     }
-    const userJwt = req ? this.extractJwt(req) : undefined;
-    return await this.conditionLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive, userJwt);
     const userJwt = req ? this.extractJwt(req) : undefined;
     return await this.conditionLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive, userJwt);
   }
@@ -345,7 +315,6 @@ export class GoldLakehouseController {
     @Query('endToEndId') endToEndId?: string,
     @Query('dateRange') dateRange?: string,
     @Req() req?: AuthenticatedRequest,
-    @Req() req?: AuthenticatedRequest,
   ): Promise<{
     totalAlerts: number;
     casesOpened: number;
@@ -356,8 +325,6 @@ export class GoldLakehouseController {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
-    const userJwt = req ? this.extractJwt(req) : undefined;
-    return await this.alertsLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all', userJwt);
     const userJwt = req ? this.extractJwt(req) : undefined;
     return await this.alertsLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all', userJwt);
   }
@@ -438,7 +405,6 @@ export class GoldLakehouseController {
     @Query('dateRange') dateRange?: string,
     @Query('granularity') granularity = 'day',
     @Req() req?: AuthenticatedRequest,
-    @Req() req?: AuthenticatedRequest,
   ): Promise<AlertHistoryTimelineResponse> {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
@@ -449,8 +415,6 @@ export class GoldLakehouseController {
         throw new BadRequestException(`Invalid granularity. Must be one of: ${validGranularities.join(', ')}`);
       }
     }
-    const userJwt = req ? this.extractJwt(req) : undefined;
-    return await this.alertsLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity, userJwt);
     const userJwt = req ? this.extractJwt(req) : undefined;
     return await this.alertsLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity, userJwt);
   }
@@ -535,20 +499,10 @@ export class GoldLakehouseController {
     @Query('page', ParseIntPipe) page?: number,
     @Query('limit', ParseIntPipe) limit?: number,
     @Req() req?: AuthenticatedRequest,
-    @Req() req?: AuthenticatedRequest,
   ): Promise<AlertHistoryAlertsResponse> {
     if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
       throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
     }
-    const userJwt = req ? this.extractJwt(req) : undefined;
-    return await this.alertsLakehouseService.getAlertHistoryAlerts(
-      endToEndId,
-      tenantId,
-      dateRange ?? 'all',
-      page ?? 1,
-      limit ?? 20,
-      userJwt,
-    );
     const userJwt = req ? this.extractJwt(req) : undefined;
     return await this.alertsLakehouseService.getAlertHistoryAlerts(
       endToEndId,
@@ -596,13 +550,10 @@ export class GoldLakehouseController {
     @Param('accountId') accountId: string,
     @Query('timeRange') timeRange?: string,
     @Req() req?: AuthenticatedRequest,
-    @Req() req?: AuthenticatedRequest,
   ): Promise<TransactionNetworkResponseDto> {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    const userJwt = req ? this.extractJwt(req) : undefined;
-    return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId, timeRange ?? '30d', userJwt);
     const userJwt = req ? this.extractJwt(req) : undefined;
     return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId, timeRange ?? '30d', userJwt);
   }
@@ -642,7 +593,6 @@ export class GoldLakehouseController {
     @Query('tenantId') tenantId: string,
     @Query('granularity') granularity?: string,
     @Req() req?: AuthenticatedRequest,
-    @Req() req?: AuthenticatedRequest,
   ): Promise<AccountNodeFullDataResponse> {
     if (!entityId || entityId.trim() === '') {
       throw new BadRequestException('entityId is required');
@@ -653,12 +603,10 @@ export class GoldLakehouseController {
     }
 
     const userJwt = req ? this.extractJwt(req) : undefined;
-    const userJwt = req ? this.extractJwt(req) : undefined;
     return await this.accountLakehouseService.getAccountNodeFullData(
       entityId,
       tenantId,
       (granularity as 'day' | 'month' | 'year' | undefined) ?? 'month',
-      userJwt,
       userJwt,
     );
   }
@@ -697,7 +645,6 @@ export class GoldLakehouseController {
     @Query('tenantId') tenantId: string,
     @Query('granularity') granularity?: string,
     @Req() req?: AuthenticatedRequest,
-    @Req() req?: AuthenticatedRequest,
   ): Promise<CounterpartyNodeFullDataResponse> {
     if (!counterpartyId || counterpartyId.trim() === '') {
       throw new BadRequestException('counterpartyId is required');
@@ -708,12 +655,10 @@ export class GoldLakehouseController {
     }
 
     const userJwt = req ? this.extractJwt(req) : undefined;
-    const userJwt = req ? this.extractJwt(req) : undefined;
     return await this.accountLakehouseService.getCounterpartyNodeFullData(
       counterpartyId,
       tenantId,
       (granularity as 'day' | 'month' | 'year' | undefined) ?? 'month',
-      userJwt,
       userJwt,
     );
   }
@@ -759,7 +704,6 @@ export class GoldLakehouseController {
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
     @Req() req?: AuthenticatedRequest,
-    @Req() req?: AuthenticatedRequest,
   ): Promise<{
     expected: Record<number, number>;
     actual: Record<number, number>;
@@ -788,8 +732,6 @@ export class GoldLakehouseController {
       throw new BadRequestException('from date cannot be after to date');
     }
 
-    const userJwt = req ? this.extractJwt(req) : undefined;
-    return await this.benfordsLawLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, fromDate, toDate, userJwt);
     const userJwt = req ? this.extractJwt(req) : undefined;
     return await this.benfordsLawLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, fromDate, toDate, userJwt);
   }
@@ -837,13 +779,10 @@ export class GoldLakehouseController {
     @Query('tenantId') tenantId: string,
     @Query('timeRange') timeRange?: string,
     @Req() req?: AuthenticatedRequest,
-    @Req() req?: AuthenticatedRequest,
   ): Promise<CounterpartyNetworkResponseDto> {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    const userJwt = req ? this.extractJwt(req) : undefined;
-    return await this.transactionLakehouseService.getCounterpartyNetworkData(accountId, tenantId, timeRange ?? '30d', userJwt);
     const userJwt = req ? this.extractJwt(req) : undefined;
     return await this.transactionLakehouseService.getCounterpartyNetworkData(accountId, tenantId, timeRange ?? '30d', userJwt);
   }

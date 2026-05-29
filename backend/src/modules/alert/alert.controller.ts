@@ -30,17 +30,6 @@ export class AlertController {
     return undefined;
   }
 
-  /**
-   * Extract JWT token from request headers
-   */
-  private extractJwt(req: AuthenticatedRequest): string | undefined {
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith('Bearer ')) {
-      return authHeader.substring(7);
-    }
-    return undefined;
-  }
-
   @Get()
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
