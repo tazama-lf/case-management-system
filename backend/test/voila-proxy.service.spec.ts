@@ -26,9 +26,6 @@ describe('VoilaProxyService', () => {
   let service: VoilaProxyService;
   let configService: jest.Mocked<ConfigService>;
   const voilaBaseUrl = 'http://localhost:8866';
-  let service: VoilaProxyService;
-  let configService: jest.Mocked<ConfigService>;
-  const voilaBaseUrl = 'http://localhost:8866';
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -47,30 +44,11 @@ describe('VoilaProxyService', () => {
         },
       ],
     }).compile();
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        VoilaProxyService,
-        {
-          provide: ConfigService,
-          useValue: {
-            getOrThrow: jest.fn().mockReturnValue(voilaBaseUrl),
-          },
-        },
-      ],
-    }).compile();
 
     service = module.get<VoilaProxyService>(VoilaProxyService);
     configService = module.get(ConfigService);
   });
-    service = module.get<VoilaProxyService>(VoilaProxyService);
-    configService = module.get(ConfigService);
-  });
 
-  describe('constructor', () => {
-    it('should read VOILA_BASE_URL from config', () => {
-      expect(configService.getOrThrow).toHaveBeenCalledWith('VOILA_BASE_URL');
-    });
-  });
   describe('constructor', () => {
     it('should read VOILA_BASE_URL from config', () => {
       expect(configService.getOrThrow).toHaveBeenCalledWith('VOILA_BASE_URL');
@@ -106,7 +84,6 @@ describe('VoilaProxyService', () => {
       await service.initProxy();
 
       expect(mockProxyServer.on).toHaveBeenCalledWith('proxyReq', expect.any(Function));
-      expect(mockProxyServer.on).toHaveBeenCalledWith('proxyRes', expect.any(Function));
       expect(mockProxyServer.on).toHaveBeenCalledWith('error', expect.any(Function));
     });
 
@@ -116,9 +93,6 @@ describe('VoilaProxyService', () => {
       const proxyReqHandler = eventHandlers['proxyReq'];
       expect(proxyReqHandler).toBeDefined();
 
-      const mockProxyReq = { path: '/render/notebook.ipynb' };
-      const mockReq = { method: 'GET', url: '/voila-proxy/render/notebook.ipynb' };
-      const mockRes = {};
       const mockProxyReq = { path: '/render/notebook.ipynb' };
       const mockReq = { method: 'GET', url: '/voila-proxy/render/notebook.ipynb' };
       const mockRes = {};
@@ -135,27 +109,16 @@ describe('VoilaProxyService', () => {
       const mockProxyRes = { statusCode: 200 };
       const mockReq = { url: '/voila-proxy/render/notebook.ipynb' };
       const mockRes = {};
-      const mockProxyRes = { statusCode: 200 };
-      const mockReq = { url: '/voila-proxy/render/notebook.ipynb' };
-      const mockRes = {};
 
       expect(() => proxyResHandler(mockProxyRes, mockReq, mockRes)).not.toThrow();
     });
 
     it('should handle proxy error and send 502 response', async () => {
       await service.initProxy();
-    it('should handle proxy error and send 502 response', async () => {
-      await service.initProxy();
 
       const errorHandler = eventHandlers['error'];
       expect(errorHandler).toBeDefined();
 
-      const mockErr = new Error('ECONNREFUSED');
-      const mockReq = { url: '/voila-proxy/render/notebook.ipynb' };
-      const mockRes = {
-        writeHead: jest.fn(),
-        end: jest.fn(),
-      };
       const mockErr = new Error('ECONNREFUSED');
       const mockReq = { url: '/voila-proxy/render/notebook.ipynb' };
       const mockRes = {
@@ -174,27 +137,13 @@ describe('VoilaProxyService', () => {
         }),
       );
     });
-      expect(mockRes.writeHead).toHaveBeenCalledWith(502, { 'Content-Type': 'application/json' });
-      expect(mockRes.end).toHaveBeenCalledWith(
-        JSON.stringify({
-          statusCode: 502,
-          message: 'Voila server is unavailable',
-          error: 'Bad Gateway',
-        }),
-      );
-    });
 
-    it('should handle proxy error when response has no writeHead', async () => {
-      await service.initProxy();
     it('should handle proxy error when response has no writeHead', async () => {
       await service.initProxy();
 
       const errorHandler = eventHandlers['error'];
       expect(errorHandler).toBeDefined();
 
-      const mockErr = new Error('ECONNREFUSED');
-      const mockReq = { url: '/voila-proxy/render/notebook.ipynb' };
-      const mockRes = {};
       const mockErr = new Error('ECONNREFUSED');
       const mockReq = { url: '/voila-proxy/render/notebook.ipynb' };
       const mockRes = {};
@@ -216,20 +165,11 @@ describe('VoilaProxyService', () => {
         url: '/voila-proxy/render/notebook.ipynb',
         headers: { host: 'localhost:3000' },
       } as unknown as Request;
-    it('should append service_token to URL without existing query params', async () => {
-      const mockReq = {
-        url: '/voila-proxy/render/notebook.ipynb',
-        headers: { host: 'localhost:3000' },
-      } as unknown as Request;
 
       const mockRes = {} as Response;
 
       await service.proxyRequest(mockReq, mockRes, 'test-token-123');
-      await service.proxyRequest(mockReq, mockRes, 'test-token-123');
 
-      expect(mockReq.url).toContain('?service_token=test-token-123');
-      expect(mockReq.headers['x-service-token']).toBe('test-token-123');
-    });
       expect(mockReq.url).toContain('?service_token=test-token-123');
       expect(mockReq.headers['x-service-token']).toBe('test-token-123');
     });
@@ -239,28 +179,14 @@ describe('VoilaProxyService', () => {
         url: '/voila-proxy/render/notebook.ipynb?param=value',
         headers: { host: 'localhost:3000' },
       } as unknown as Request;
-    it('should append service_token to URL with existing query params', async () => {
-      const mockReq = {
-        url: '/voila-proxy/render/notebook.ipynb?param=value',
-        headers: { host: 'localhost:3000' },
-      } as unknown as Request;
 
       const mockRes = {} as Response;
 
       await service.proxyRequest(mockReq, mockRes, 'test-token-123');
-      await service.proxyRequest(mockReq, mockRes, 'test-token-123');
 
       expect(mockReq.url).toContain('&service_token=test-token-123');
     });
-      expect(mockReq.url).toContain('&service_token=test-token-123');
-    });
 
-    it('should not append service_token for empty token (static files)', async () => {
-      const originalUrl = '/voila/static/style.css';
-      const mockReq = {
-        url: originalUrl,
-        headers: { host: 'localhost:3000' },
-      } as unknown as Request;
     it('should not append service_token for empty token (static files)', async () => {
       const originalUrl = '/voila/static/style.css';
       const mockReq = {
@@ -271,10 +197,7 @@ describe('VoilaProxyService', () => {
       const mockRes = {} as Response;
 
       await service.proxyRequest(mockReq, mockRes, '');
-      await service.proxyRequest(mockReq, mockRes, '');
 
-      expect(mockReq.url).toBe(originalUrl);
-    });
       expect(mockReq.url).toBe(originalUrl);
     });
 
@@ -312,7 +235,6 @@ describe('VoilaProxyService', () => {
       } as unknown as Request;
 
       const mockRes = {} as Response;
-      const mockRes = {} as Response;
 
       await expect(service.proxyRequest(mockReq, mockRes, 'token')).resolves.toBeUndefined();
       expect(mockProxyServer.web).toHaveBeenCalled();
@@ -332,14 +254,7 @@ describe('VoilaProxyService', () => {
 
       await expect(service.proxyRequest(mockReq, mockRes, 'token')).rejects.toThrow('Proxy error: Connection refused');
     });
-      await expect(service.proxyRequest(mockReq, mockRes, 'token')).rejects.toThrow('Proxy error: Connection refused');
-    });
 
-    it('should encode service_token in the URL', async () => {
-      const mockReq = {
-        url: '/voila-proxy/render/notebook.ipynb',
-        headers: {},
-      } as unknown as Request;
     it('should encode service_token in the URL', async () => {
       const mockReq = {
         url: '/voila-proxy/render/notebook.ipynb',
@@ -350,12 +265,7 @@ describe('VoilaProxyService', () => {
 
       const tokenWithSpecialChars = 'token with spaces&special=chars';
       await service.proxyRequest(mockReq, mockRes, tokenWithSpecialChars);
-      const tokenWithSpecialChars = 'token with spaces&special=chars';
-      await service.proxyRequest(mockReq, mockRes, tokenWithSpecialChars);
 
-      expect(mockReq.url).toContain(encodeURIComponent(tokenWithSpecialChars));
-    });
-  });
       expect(mockReq.url).toContain(encodeURIComponent(tokenWithSpecialChars));
     });
   });

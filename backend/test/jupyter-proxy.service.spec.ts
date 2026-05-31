@@ -10,11 +10,6 @@ import { CacheService } from '../src/modules/shared/cache.service';
 
 const MOCK_USER_ID = 'user-1';
 const MOCK_JWT = 'mock-jwt-token';
-import { AuthService } from '../src/modules/auth/auth.service';
-import { CacheService } from '../src/modules/shared/cache.service';
-
-const MOCK_USER_ID = 'user-1';
-const MOCK_JWT = 'mock-jwt-token';
 
 describe('JupyterProxyService', () => {
   let service: JupyterProxyService;
@@ -109,8 +104,6 @@ describe('JupyterProxyService', () => {
     it('delegates to GoldLakehouseService', async () => {
       const result = await service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d');
       expect(transactionSvc.getCounterpartyNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', '30d', MOCK_JWT);
-      const result = await service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d');
-      expect(transactionSvc.getCounterpartyNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', '30d', MOCK_JWT);
       expect(result).toEqual({});
     });
   });
@@ -119,13 +112,9 @@ describe('JupyterProxyService', () => {
     it('delegates with explicit granularity', async () => {
       await service.getCounterpartyNodeFullData(MOCK_USER_ID, 'cp1', 'DEFAULT', 'day');
       expect(accountSvc.getCounterpartyNodeFullData).toHaveBeenCalledWith('cp1', 'DEFAULT', 'day', MOCK_JWT);
-      await service.getCounterpartyNodeFullData(MOCK_USER_ID, 'cp1', 'DEFAULT', 'day');
-      expect(accountSvc.getCounterpartyNodeFullData).toHaveBeenCalledWith('cp1', 'DEFAULT', 'day', MOCK_JWT);
     });
 
     it('defaults granularity to "month" when omitted', async () => {
-      await service.getCounterpartyNodeFullData(MOCK_USER_ID, 'cp1', 'DEFAULT');
-      expect(accountSvc.getCounterpartyNodeFullData).toHaveBeenCalledWith('cp1', 'DEFAULT', 'month', MOCK_JWT);
       await service.getCounterpartyNodeFullData(MOCK_USER_ID, 'cp1', 'DEFAULT');
       expect(accountSvc.getCounterpartyNodeFullData).toHaveBeenCalledWith('cp1', 'DEFAULT', 'month', MOCK_JWT);
     });
@@ -135,14 +124,10 @@ describe('JupyterProxyService', () => {
     it('delegates with explicit dateRange', async () => {
       const result = await service.getAlertHistorySummary(MOCK_USER_ID, 'e2e1', 'DEFAULT', '30days');
       expect(alertsSvc.getAlertHistorySummary).toHaveBeenCalledWith('e2e1', 'DEFAULT', '30days', MOCK_JWT);
-      const result = await service.getAlertHistorySummary(MOCK_USER_ID, 'e2e1', 'DEFAULT', '30days');
-      expect(alertsSvc.getAlertHistorySummary).toHaveBeenCalledWith('e2e1', 'DEFAULT', '30days', MOCK_JWT);
       expect(result).toEqual({});
     });
 
     it('defaults dateRange to "all" when omitted', async () => {
-      await service.getAlertHistorySummary(MOCK_USER_ID, 'e2e1', 'DEFAULT');
-      expect(alertsSvc.getAlertHistorySummary).toHaveBeenCalledWith('e2e1', 'DEFAULT', 'all', MOCK_JWT);
       await service.getAlertHistorySummary(MOCK_USER_ID, 'e2e1', 'DEFAULT');
       expect(alertsSvc.getAlertHistorySummary).toHaveBeenCalledWith('e2e1', 'DEFAULT', 'all', MOCK_JWT);
     });
@@ -151,12 +136,26 @@ describe('JupyterProxyService', () => {
   describe('getTransactionHistoryData', () => {
     it('delegates with all parameters', async () => {
       await service.getTransactionHistoryData(MOCK_USER_ID, 'ent1', 'TENANT_A', '2024-01-01', '2024-12-31', 'day');
-      expect(transactionSvc.getTransactionHistoryByAccountId).toHaveBeenCalledWith('ent1', 'TENANT_A', '2024-01-01', '2024-12-31', 'day', MOCK_JWT);
+      expect(transactionSvc.getTransactionHistoryByAccountId).toHaveBeenCalledWith(
+        'ent1',
+        'TENANT_A',
+        '2024-01-01',
+        '2024-12-31',
+        'day',
+        MOCK_JWT,
+      );
     });
 
     it('defaults tenantId to "DEFAULT" when omitted', async () => {
       await service.getTransactionHistoryData(MOCK_USER_ID, 'ent1');
-      expect(transactionSvc.getTransactionHistoryByAccountId).toHaveBeenCalledWith('ent1', 'DEFAULT', undefined, undefined, undefined, MOCK_JWT);
+      expect(transactionSvc.getTransactionHistoryByAccountId).toHaveBeenCalledWith(
+        'ent1',
+        'DEFAULT',
+        undefined,
+        undefined,
+        undefined,
+        MOCK_JWT,
+      );
     });
   });
 
@@ -164,13 +163,9 @@ describe('JupyterProxyService', () => {
     it('delegates with all parameters', async () => {
       await service.getAlertHistoryTimeline(MOCK_USER_ID, 'e2e1', 'DEFAULT', '30days', 'month');
       expect(alertsSvc.getAlertHistoryTimeline).toHaveBeenCalledWith('e2e1', 'DEFAULT', '30days', 'month', MOCK_JWT);
-      await service.getAlertHistoryTimeline(MOCK_USER_ID, 'e2e1', 'DEFAULT', '30days', 'month');
-      expect(alertsSvc.getAlertHistoryTimeline).toHaveBeenCalledWith('e2e1', 'DEFAULT', '30days', 'month', MOCK_JWT);
     });
 
     it('applies defaults when parameters are omitted', async () => {
-      await service.getAlertHistoryTimeline(MOCK_USER_ID);
-      expect(alertsSvc.getAlertHistoryTimeline).toHaveBeenCalledWith(undefined, undefined, 'all', 'day', MOCK_JWT);
       await service.getAlertHistoryTimeline(MOCK_USER_ID);
       expect(alertsSvc.getAlertHistoryTimeline).toHaveBeenCalledWith(undefined, undefined, 'all', 'day', MOCK_JWT);
     });
@@ -180,14 +175,10 @@ describe('JupyterProxyService', () => {
     it('delegates with all parameters', async () => {
       const result = await service.getAlertHistoryAlerts(MOCK_USER_ID, 'e2e1', 'DEFAULT', '30days', 2, 50);
       expect(alertsSvc.getAlertHistoryAlerts).toHaveBeenCalledWith('e2e1', 'DEFAULT', '30days', 2, 50, MOCK_JWT);
-      const result = await service.getAlertHistoryAlerts(MOCK_USER_ID, 'e2e1', 'DEFAULT', '30days', 2, 50);
-      expect(alertsSvc.getAlertHistoryAlerts).toHaveBeenCalledWith('e2e1', 'DEFAULT', '30days', 2, 50, MOCK_JWT);
       expect(result).toEqual({});
     });
 
     it('applies defaults when parameters are omitted', async () => {
-      await service.getAlertHistoryAlerts(MOCK_USER_ID);
-      expect(alertsSvc.getAlertHistoryAlerts).toHaveBeenCalledWith(undefined, undefined, 'all', 1, 20, MOCK_JWT);
       await service.getAlertHistoryAlerts(MOCK_USER_ID);
       expect(alertsSvc.getAlertHistoryAlerts).toHaveBeenCalledWith(undefined, undefined, 'all', 1, 20, MOCK_JWT);
     });
@@ -197,13 +188,8 @@ describe('JupyterProxyService', () => {
     it('delegates with all parameters', async () => {
       await service.getTransactionNetworkData(MOCK_USER_ID, 'acc1', 'TENANT_A', '90d');
       expect(transactionSvc.getTransactionNetworkData).toHaveBeenCalledWith('acc1', 'TENANT_A', '90d', MOCK_JWT);
-      await service.getTransactionNetworkData(MOCK_USER_ID, 'acc1', 'TENANT_A', '90d');
-      expect(transactionSvc.getTransactionNetworkData).toHaveBeenCalledWith('acc1', 'TENANT_A', '90d', MOCK_JWT);
     });
 
-    it('delegates with given parameters', async () => {
-      await service.getTransactionNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', 'day');
-      expect(transactionSvc.getTransactionNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', 'day', MOCK_JWT);
     it('delegates with given parameters', async () => {
       await service.getTransactionNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', 'day');
       expect(transactionSvc.getTransactionNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', 'day', MOCK_JWT);
@@ -214,13 +200,9 @@ describe('JupyterProxyService', () => {
     it('delegates with all parameters', async () => {
       await service.getAccountNetworkData(MOCK_USER_ID, 'acc1', 'TENANT_A', 'year');
       expect(accountSvc.getAccountNodeFullData).toHaveBeenCalledWith('acc1', 'TENANT_A', 'year', MOCK_JWT);
-      await service.getAccountNetworkData(MOCK_USER_ID, 'acc1', 'TENANT_A', 'year');
-      expect(accountSvc.getAccountNodeFullData).toHaveBeenCalledWith('acc1', 'TENANT_A', 'year', MOCK_JWT);
     });
 
     it('defaults tenantId and granularity when omitted', async () => {
-      await service.getAccountNetworkData(MOCK_USER_ID, 'acc1');
-      expect(accountSvc.getAccountNodeFullData).toHaveBeenCalledWith('acc1', 'DEFAULT', 'month', MOCK_JWT);
       await service.getAccountNetworkData(MOCK_USER_ID, 'acc1');
       expect(accountSvc.getAccountNodeFullData).toHaveBeenCalledWith('acc1', 'DEFAULT', 'month', MOCK_JWT);
     });
@@ -230,8 +212,6 @@ describe('JupyterProxyService', () => {
     it('delegates to GoldLakehouseService', async () => {
       const result = await service.getBenfordByAccount(MOCK_USER_ID, 'acc1', 'DEFAULT', '2024-01-01', '2024-12-31');
       expect(benfordsSvc.getBenfordAnalysisByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', '2024-01-01', '2024-12-31', MOCK_JWT);
-      const result = await service.getBenfordByAccount(MOCK_USER_ID, 'acc1', 'DEFAULT', '2024-01-01', '2024-12-31');
-      expect(benfordsSvc.getBenfordAnalysisByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', '2024-01-01', '2024-12-31', MOCK_JWT);
       expect(result).toEqual({});
     });
   });
@@ -239,12 +219,22 @@ describe('JupyterProxyService', () => {
   describe('getConditionsContextByTransaction', () => {
     it('delegates with explicit tenantId', async () => {
       await service.getConditionsContextByTransaction(MOCK_USER_ID, 'TMICFBPK2801321903297120', 'TENANT_A', '2024-01-01');
-      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith('TMICFBPK2801321903297120', 'TENANT_A', '2024-01-01', MOCK_JWT);
+      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith(
+        'TMICFBPK2801321903297120',
+        'TENANT_A',
+        '2024-01-01',
+        MOCK_JWT,
+      );
     });
 
     it('omits asOfDate when not provided', async () => {
       await service.getConditionsContextByTransaction(MOCK_USER_ID, 'TMICFBPK2801321903297120', 'DEFAULT');
-      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith('TMICFBPK2801321903297120', 'DEFAULT', undefined, MOCK_JWT);
+      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith(
+        'TMICFBPK2801321903297120',
+        'DEFAULT',
+        undefined,
+        MOCK_JWT,
+      );
     });
   });
 
@@ -252,13 +242,8 @@ describe('JupyterProxyService', () => {
     it('delegates with explicit tenantId', async () => {
       await service.getConditionsSummary(MOCK_USER_ID, 'acc1', 'TENANT_A', '2024-01-01');
       expect(conditionSvc.getConditionsSummaryByAccount).toHaveBeenCalledWith('acc1', 'TENANT_A', undefined, '2024-01-01', MOCK_JWT);
-      await service.getConditionsSummary(MOCK_USER_ID, 'acc1', 'TENANT_A', '2024-01-01');
-      expect(conditionSvc.getConditionsSummaryByAccount).toHaveBeenCalledWith('acc1', 'TENANT_A', undefined, '2024-01-01', MOCK_JWT);
     });
 
-    it('omits asOfDate when not provided', async () => {
-      await service.getConditionsSummary(MOCK_USER_ID, 'acc1', 'DEFAULT');
-      expect(conditionSvc.getConditionsSummaryByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, undefined, MOCK_JWT);
     it('omits asOfDate when not provided', async () => {
       await service.getConditionsSummary(MOCK_USER_ID, 'acc1', 'DEFAULT');
       expect(conditionSvc.getConditionsSummaryByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, undefined, MOCK_JWT);
@@ -269,13 +254,9 @@ describe('JupyterProxyService', () => {
     it('delegates with all parameters', async () => {
       await service.getConditionsDetails(MOCK_USER_ID, 'acc1', 'TENANT_A', '2024-01-01', true);
       expect(conditionSvc.getConditionsListByAccount).toHaveBeenCalledWith('acc1', 'TENANT_A', '2024-01-01', true, MOCK_JWT);
-      await service.getConditionsDetails(MOCK_USER_ID, 'acc1', 'TENANT_A', '2024-01-01', true);
-      expect(conditionSvc.getConditionsListByAccount).toHaveBeenCalledWith('acc1', 'TENANT_A', '2024-01-01', true, MOCK_JWT);
     });
 
     it('applies defaults when parameters are omitted', async () => {
-      await service.getConditionsDetails(MOCK_USER_ID, 'acc1', 'DEFAULT');
-      expect(conditionSvc.getConditionsListByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, false, MOCK_JWT);
       await service.getConditionsDetails(MOCK_USER_ID, 'acc1', 'DEFAULT');
       expect(conditionSvc.getConditionsListByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, false, MOCK_JWT);
     });
@@ -285,13 +266,8 @@ describe('JupyterProxyService', () => {
     it('delegates with explicit tenantId', async () => {
       await service.getConditionsEvaluatedTransactions(MOCK_USER_ID, 'acc1', 'TENANT_A', '2024-01-01');
       expect(conditionSvc.getEvaluatedTransactionsByAccount).toHaveBeenCalledWith('acc1', 'TENANT_A', '2024-01-01', MOCK_JWT);
-      await service.getConditionsEvaluatedTransactions(MOCK_USER_ID, 'acc1', 'TENANT_A', '2024-01-01');
-      expect(conditionSvc.getEvaluatedTransactionsByAccount).toHaveBeenCalledWith('acc1', 'TENANT_A', '2024-01-01', MOCK_JWT);
     });
 
-    it('omits fromDate when not provided', async () => {
-      await service.getConditionsEvaluatedTransactions(MOCK_USER_ID, 'acc1', 'DEFAULT');
-      expect(conditionSvc.getEvaluatedTransactionsByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, MOCK_JWT);
     it('omits fromDate when not provided', async () => {
       await service.getConditionsEvaluatedTransactions(MOCK_USER_ID, 'acc1', 'DEFAULT');
       expect(conditionSvc.getEvaluatedTransactionsByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, MOCK_JWT);
@@ -302,12 +278,10 @@ describe('JupyterProxyService', () => {
     it('propagates errors from TransactionLakehouseService', async () => {
       transactionSvc.getCounterpartyNetworkData.mockRejectedValue(new Error('network error'));
       await expect(service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d')).rejects.toThrow('network error');
-      await expect(service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d')).rejects.toThrow('network error');
     });
 
     it('propagates errors from AlertsLakehouseService', async () => {
       alertsSvc.getAlertHistorySummary.mockRejectedValue(new Error('summary error'));
-      await expect(service.getAlertHistorySummary(MOCK_USER_ID)).rejects.toThrow('summary error');
       await expect(service.getAlertHistorySummary(MOCK_USER_ID)).rejects.toThrow('summary error');
     });
   });
