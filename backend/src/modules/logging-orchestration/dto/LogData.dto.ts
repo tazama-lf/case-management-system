@@ -3,17 +3,20 @@ import { Outcome } from 'src/utils/types/outcome';
 
 export class LogDataDTO {
   @IsString()
-  userId: string;
+  userId!: string;
 
   @IsString()
-  actionPerformed: string;
+  tenantId!: string;
 
   @IsString()
-  entityName: string;
+  actionPerformed!: string;
 
   @IsString()
-  operation: string;
+  entityName!: string;
 
   @IsString()
-  outcome: Outcome;
+  operation!: string;
+
+  @IsString()
+  outcome!: Outcome;
 }

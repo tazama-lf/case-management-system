@@ -265,6 +265,7 @@ export class EvidenceService {
 
     await this.eventLogSerice.logEventAction({
       userId,
+      tenantId,
       operation: 'upload',
       entityName: 'Evidence',
       actionPerformed: `EVIDENCE_UPLOADED for Case ${task.case_id} and Task ${dto.taskId}`,

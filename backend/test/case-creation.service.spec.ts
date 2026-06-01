@@ -159,6 +159,7 @@ describe('CaseCreationService', () => {
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalledWith(
         {
           userId,
+          tenantId,
           operation: 'createCase',
           entityName: 'CaseCreationService',
           actionPerformed: `Case ${mockCase.case_id} created successfully`,
@@ -263,6 +264,7 @@ describe('CaseCreationService', () => {
       );
       expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith({
         userId,
+        tenantId,
         operation: 'ADDITIONAL_CASE_CREATED',
         entityName: 'CaseCreationService',
         actionPerformed: expect.stringContaining(`Created ${CaseType.FRAUD} child case ${mockCase.case_id}`),

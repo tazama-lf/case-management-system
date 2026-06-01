@@ -110,6 +110,7 @@ export class CaseCreationApprovalService {
           entityName: 'CaseCreation',
           actionPerformed: `Draft case ${result.case.case_id} created`,
           outcome: Outcome.SUCCESS,
+          tenantId: tenantId,
         },
         result.case.case_id,
         tenantId,
@@ -139,6 +140,7 @@ export class CaseCreationApprovalService {
         entityName: 'CaseCreation',
         actionPerformed: `Failed: alert ${dto.alertId}`,
         outcome: Outcome.FAILURE,
+        tenantId: tenantId,
       });
 
       throw new InternalServerErrorException(`Failed to save case as draft: ${errorMessage}`);
@@ -225,6 +227,7 @@ export class CaseCreationApprovalService {
           entityName: CaseCreationApprovalService.name,
           actionPerformed: `Approved case creation for case ${caseId}`,
           outcome: Outcome.SUCCESS,
+          tenantId: tenantId,
         },
         caseId,
         tenantId,
@@ -250,6 +253,7 @@ export class CaseCreationApprovalService {
         entityName: CaseCreationApprovalService.name,
         actionPerformed: `Failed to approve case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
+        tenantId: tenantId,
       });
 
       throw error;
@@ -334,6 +338,7 @@ export class CaseCreationApprovalService {
           entityName: CaseCreationApprovalService.name,
           actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${result.newTask.task_id}. Reason: ${reason}`,
           outcome: Outcome.SUCCESS,
+          tenantId: tenantId,
         },
         caseId,
         tenantId,
@@ -353,6 +358,7 @@ export class CaseCreationApprovalService {
         entityName: CaseCreationApprovalService.name,
         actionPerformed: `Failed to reject case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
+        tenantId: tenantId,
       });
       throw error;
     }
@@ -376,6 +382,7 @@ export class CaseCreationApprovalService {
         entityName: CaseCreationApprovalService.name,
         actionPerformed: `Failed case completion due to missing fields [${missingFields.join(', ')}]`,
         outcome: Outcome.FAILURE,
+        tenantId: tenantId,
       });
       throw new BadRequestException(msg);
     }
@@ -429,6 +436,7 @@ export class CaseCreationApprovalService {
           entityName: CaseCreationApprovalService.name,
           actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
           outcome: Outcome.SUCCESS,
+          tenantId: tenantId,
         },
         caseId,
         tenantId,
@@ -498,6 +506,7 @@ export class CaseCreationApprovalService {
           entityName: 'CaseCreationApprovalService',
           actionPerformed: `Updated case ${caseId} status to ${status}`,
           outcome: Outcome.SUCCESS,
+          tenantId: updatedCase.tenant_id,
         },
         caseId,
         updatedCase.tenant_id,

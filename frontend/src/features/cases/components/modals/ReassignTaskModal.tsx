@@ -209,7 +209,10 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({
                       user.id !== currentUserInvestigator?.userId,
                   );
 
-                  if (filteredList.length === 0) {
+                  const canAssignToSelf =
+                    currentUserInvestigator?.userId !== task.assignee;
+
+                  if (filteredList.length === 0 && !canAssignToSelf) {
                     return (
                       <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
                         No other{' '}
@@ -232,6 +235,15 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({
                         Select{' '}
                         {isSarTask ? 'Compliance Officer' : 'Investigator'}
                       </option>
+
+                      {canAssignToSelf && currentUserInvestigator && (
+                        <option
+                          key={`me-${currentUserInvestigator.userId}`}
+                          value={currentUserInvestigator.userId}
+                        >
+                          {currentUserInvestigator.fullName} (Me)
+                        </option>
+                      )}
 
                       {isSarTask
                         ? filteredList.map((co) => (
