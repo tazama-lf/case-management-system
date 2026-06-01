@@ -16,6 +16,7 @@ export class BenfordsLawLakehouseService extends GoldLakehouseService {
     tenantId: string,
     fromDate: string,
     toDate: string,
+    userJwt?: string,
   ): Promise<BenfordAnalysisResponse> {
     try {
       this.logger.log(`Running Benford analysis for account ${accountId}, tenant ${tenantId}, range ${fromDate} → ${toDate}`);
@@ -30,7 +31,7 @@ export class BenfordsLawLakehouseService extends GoldLakehouseService {
           AND tx_event_date BETWEEN $3 AND $4
       `;
 
-      const response = await this.runSqlQuery(sql, 100000, [tenantId, accountId, fromDate, toDate]);
+      const response = await this.runSqlQuery(sql, 100000, [tenantId, accountId, fromDate, toDate], userJwt);
       const rows = response?.data ?? [];
 
       const amounts: number[] = rows.map((r) => Number(r.amount)).filter((v) => !isNaN(v) && v > 0);

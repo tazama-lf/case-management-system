@@ -35,7 +35,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     return allowed.includes(granularity) ? (granularity as 'day' | 'week' | 'month' | 'year') : 'day';
   }
 
-  async getAlertNavigatorData(alertId: number, tenantId = 'DEFAULT'): Promise<AlertNavigatorDataResponse> {
+  async getAlertNavigatorData(alertId: number, tenantId = 'DEFAULT', userJwt?: string): Promise<AlertNavigatorDataResponse> {
     try {
       this.logger.log(`Fetching Alert Navigator data for alert: ${alertId}`);
 
@@ -148,7 +148,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             anh.alert_date
       `;
 
-      const response = await this.runSqlQuery(sql, 1);
+      const response = await this.runSqlQuery(sql, 1, undefined, userJwt);
       const rawData = response?.data?.[0];
 
       if (!rawData) {
@@ -233,6 +233,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     endToEndId?: string,
     tenantId?: string,
     dateRange?: string,
+    userJwt?: string,
   ): Promise<{
     totalAlerts: number;
     casesOpened: number;
@@ -289,7 +290,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         ${dateFilter}
       `;
 
-      const response = await this.runSqlQuery(sql, 1);
+      const response = await this.runSqlQuery(sql, 1, undefined, userJwt);
       const row = response.data?.[0] ?? {};
 
       return {
@@ -311,6 +312,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     tenantId?: string,
     dateRange?: string,
     granularity = 'day',
+    userJwt?: string,
   ): Promise<AlertHistoryTimelineResponse> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
@@ -363,7 +365,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       ORDER BY date ASC
       `;
 
-      const response = await this.runSqlQuery(sql, 1000);
+      const response = await this.runSqlQuery(sql, 1000, undefined, userJwt);
       const rows = response.data ?? [];
 
       const alertCountOverTime = rows.map((r) => ({
@@ -395,6 +397,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     dateRange?: string,
     page = 1,
     limit = 20,
+    userJwt?: string,
   ): Promise<AlertHistoryAlertsResponse> {
     try {
       const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
@@ -442,7 +445,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         ${dateFilter}
       `;
 
-      const countResponse = await this.runSqlQuery(countSql, 1);
+      const countResponse = await this.runSqlQuery(countSql, 1, undefined, userJwt);
       const total = Number(countResponse.data?.[0]?.total ?? 0);
 
       const sql = `
@@ -465,7 +468,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       LIMIT ${safeLimit} OFFSET ${offset}
       `;
 
-      const response = await this.runSqlQuery(sql, safeLimit);
+      const response = await this.runSqlQuery(sql, safeLimit, undefined, userJwt);
       const rows = response.data ?? [];
 
       const alerts = rows.map((r) => {

@@ -2,5 +2,13 @@
   "Voila": {
     "ip": "0.0.0.0",
     "port": 8866
+  },
+  "VoilaConfiguration": {
+    "http_header_envs": [
+      "X-Service-Token"
+    ]
+  },
+  "KernelManager": {
+    "kernel_info_timeout": 60
   }
 }

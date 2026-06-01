@@ -21,14 +21,22 @@ export class GoldLakehouseService {
     this.alertHistoryFallbackE2EId = this.configService.get<string>('ALERT_HISTORY_FALLBACK_E2E_ID', '05c7ead85a1343d5a959561523a965fb');
   }
 
-  async query(queryRequest: QueryRequestDto): Promise<QueryResponseDto> {
+  async query(queryRequest: QueryRequestDto, userJwt?: string): Promise<QueryResponseDto> {
     try {
       this.logger.log(`Querying Gold Lakehouse table: ${queryRequest.table_name}`);
       this.logger.log(`API URL: ${this.apiUrl}/query`);
       this.logger.log(`Request body: ${JSON.stringify(queryRequest)}`);
 
+      const headers: Record<string, string> = {};
+      if (userJwt) {
+        headers.Authorization = `Bearer ${userJwt}`;
+      }
+
       const response = await firstValueFrom(
-        this.httpService.post<QueryResponseDto>(`${this.apiUrl}/query`, queryRequest, { timeout: this.timeout }),
+        this.httpService.post<QueryResponseDto>(`${this.apiUrl}/query`, queryRequest, {
+          timeout: this.timeout,
+          headers,
+        }),
       );
 
       if (response.data.status !== 'success') {
@@ -80,7 +88,7 @@ export class GoldLakehouseService {
     return `'${escaped}'`;
   }
 
-  async runSqlQuery(sql: string, limit = 1, parameters?: any[]): Promise<any> {
+  async runSqlQuery(sql: string, limit = 1, parameters?: any[], userJwt?: string): Promise<any> {
     try {
       let finalSql = sql;
 
@@ -97,6 +105,12 @@ export class GoldLakehouseService {
       this.logger.log('Running raw SQL query on Gold Lakehouse');
       this.logger.log(finalSql);
 
+      const headers: Record<string, string> = {};
+      if (userJwt) {
+        headers.Authorization = `Bearer ${userJwt}`;
+      }
+      // this.logger.log(`headers: ${JSON.stringify(headers)}`);
+
       const response = await firstValueFrom(
         this.httpService.post(
           `${this.apiUrl}/execute_sql`,
@@ -104,7 +118,10 @@ export class GoldLakehouseService {
             sql_query: finalSql,
             limit,
           },
-          { timeout: this.timeout },
+          {
+            timeout: this.timeout,
+            headers,
+          },
         ),
       );
 

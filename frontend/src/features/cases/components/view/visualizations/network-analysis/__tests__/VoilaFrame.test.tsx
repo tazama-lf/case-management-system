@@ -4,14 +4,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import VoilaFrame from '../VoilaFrame';
 
 describe('VoilaFrame', () => {
-  const originalEnv = import.meta.env.VITE_VOILA_BASE_URL;
-
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('renders error state when VITE_VOILA_BASE_URL is not set', () => {
-    vi.stubEnv('VITE_VOILA_BASE_URL', undefined);
+  it('renders error state when VITE_API_BASE_URL is not set', () => {
+    vi.stubEnv('VITE_API_BASE_URL', undefined);
 
     render(
       <VoilaFrame
@@ -26,8 +24,8 @@ describe('VoilaFrame', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders error state when VITE_VOILA_BASE_URL is empty string', () => {
-    vi.stubEnv('VITE_VOILA_BASE_URL', '');
+  it('renders error state when VITE_API_BASE_URL is empty string', () => {
+    vi.stubEnv('VITE_API_BASE_URL', '');
 
     render(
       <VoilaFrame
@@ -39,8 +37,8 @@ describe('VoilaFrame', () => {
     expect(screen.getByText('Visualization Unavailable')).toBeInTheDocument();
   });
 
-  it('renders error state when VITE_VOILA_BASE_URL is a relative path', () => {
-    vi.stubEnv('VITE_VOILA_BASE_URL', '/relative/path');
+  it('renders error state when VITE_API_BASE_URL is a relative path', () => {
+    vi.stubEnv('VITE_API_BASE_URL', '');
 
     render(
       <VoilaFrame
@@ -52,8 +50,8 @@ describe('VoilaFrame', () => {
     expect(screen.getByText('Visualization Unavailable')).toBeInTheDocument();
   });
 
-  it('renders iframe with correct src when VITE_VOILA_BASE_URL is valid', () => {
-    vi.stubEnv('VITE_VOILA_BASE_URL', 'https://voila.example.com');
+  it('renders iframe with correct src when VITE_API_BASE_URL is valid', () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3090');
 
     render(
       <VoilaFrame
@@ -65,12 +63,12 @@ describe('VoilaFrame', () => {
     const iframe = screen.getByTitle('Transaction Network');
     expect(iframe).toBeInTheDocument();
     expect(iframe.getAttribute('src')).toContain(
-      'https://voila.example.com/voila/render/transaction-network.ipynb',
+      'http://localhost:3090/voila-proxy/voila/render/transaction-network.ipynb',
     );
   });
 
   it('appends query params to iframe src', () => {
-    vi.stubEnv('VITE_VOILA_BASE_URL', 'https://voila.example.com');
+    vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3090');
 
     render(
       <VoilaFrame
@@ -87,7 +85,7 @@ describe('VoilaFrame', () => {
   });
 
   it('shows loading spinner initially', () => {
-    vi.stubEnv('VITE_VOILA_BASE_URL', 'https://voila.example.com');
+    vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3090');
 
     render(
       <VoilaFrame
@@ -100,7 +98,7 @@ describe('VoilaFrame', () => {
   });
 
   it('hides loading and shows iframe on load', () => {
-    vi.stubEnv('VITE_VOILA_BASE_URL', 'https://voila.example.com');
+    vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3090');
 
     render(
       <VoilaFrame
@@ -119,7 +117,7 @@ describe('VoilaFrame', () => {
   });
 
   it('iframe is invisible while loading', () => {
-    vi.stubEnv('VITE_VOILA_BASE_URL', 'https://voila.example.com');
+    vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3090');
 
     render(
       <VoilaFrame
@@ -133,7 +131,7 @@ describe('VoilaFrame', () => {
   });
 
   it('generates new iframe key on voilaUrl change via queryParams', () => {
-    vi.stubEnv('VITE_VOILA_BASE_URL', 'https://voila.example.com');
+    vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3090');
 
     const { rerender } = render(
       <VoilaFrame
@@ -161,7 +159,7 @@ describe('VoilaFrame', () => {
   });
 
   it('sets correct sandbox attributes on iframe', () => {
-    vi.stubEnv('VITE_VOILA_BASE_URL', 'https://voila.example.com');
+    vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3090');
 
     render(
       <VoilaFrame

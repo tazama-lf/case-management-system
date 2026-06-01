@@ -34,6 +34,7 @@ import { TaskHistoryModule } from './modules/task_history/taskHistory.module';
 import { LoggingOrchestrationModule } from './modules/logging-orchestration/logging-orchestration.module';
 import { GoldLakehouseModule } from './modules/gold-lakehouse/gold-lakehouse.module';
 import { JupyterModule } from './modules/jupyter/jupyter.module';
+import { VoilaProxyModule } from './modules/voila-proxy/voila-proxy.module';
 
 @Module({
   controllers: [AppController],
@@ -68,12 +69,11 @@ import { JupyterModule } from './modules/jupyter/jupyter.module';
     EvidenceModule,
     GoldLakehouseModule,
     JupyterModule,
+    VoilaProxyModule,
     FilterModule,
     CaseHistoryModule,
     TaskHistoryModule,
     LoggingOrchestrationModule,
-    GoldLakehouseModule,
-    JupyterModule,
   ],
   providers: [
     PrismaService,
