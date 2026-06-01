@@ -22,6 +22,7 @@ import { ManualAlertUpdateDTO, IngestAlertDto } from '../src/modules/alert/dto';
 import { Outcome } from '../src/utils/types/outcome';
 import axios from 'axios';
 import * as timersPromises from 'node:timers/promises';
+import * as timersPromises from 'node:timers/promises';
 
 jest.mock('node:timers/promises', () => ({ setTimeout: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('axios');
@@ -840,8 +841,7 @@ describe('TriageService', () => {
       });
 
       it('should retry on failure and eventually succeed', async () => {
-        const setTimeoutSpy = timersPromises.setTimeout as jest.Mock;
-        setTimeoutSpy.mockResolvedValue(undefined);
+        const setTimeoutSpy = jest.spyOn(timersPromises, 'setTimeout').mockResolvedValue(undefined as any);
         const mockFn = jest
           .fn()
           .mockRejectedValueOnce(new Error('Attempt 1 failed'))
@@ -852,19 +852,18 @@ describe('TriageService', () => {
 
         expect(mockFn).toHaveBeenCalledTimes(3);
         expect(setTimeoutSpy).toHaveBeenCalledTimes(2);
-        setTimeoutSpy.mockReset();
+        setTimeoutSpy.mockRestore();
       });
 
       it('should throw error after max retries', async () => {
-        const setTimeoutSpy = timersPromises.setTimeout as jest.Mock;
-        setTimeoutSpy.mockResolvedValue(undefined);
+        const setTimeoutSpy = jest.spyOn(timersPromises, 'setTimeout').mockResolvedValue(undefined as any);
         const mockFn = jest.fn().mockRejectedValue(new Error('Always fails'));
 
         await expect((service as any).retry(mockFn, 2)).rejects.toThrow('Always fails');
 
         expect(mockFn).toHaveBeenCalledTimes(2);
         expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
-        setTimeoutSpy.mockReset();
+        setTimeoutSpy.mockRestore();
       });
     });
   });

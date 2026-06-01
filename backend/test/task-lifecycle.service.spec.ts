@@ -16,8 +16,6 @@ import { RbacService, EndpointKey } from '../src/utils/rbac/rbacHelper';
 import { AuthenticatedUser } from '../src/utils/types/auth.types';
 import * as timersPromises from 'node:timers/promises';
 
-jest.mock('node:timers/promises', () => ({ setTimeout: jest.fn().mockResolvedValue(undefined) }));
-
 describe('TaskLifecycleService', () => {
   let service: TaskLifecycleService;
   let prisma: PrismaService;
@@ -589,8 +587,7 @@ describe('TaskLifecycleService', () => {
     });
 
     it('should handle flowable service errors with retry mechanism', async () => {
-      const setTimeoutSpy = timersPromises.setTimeout as jest.Mock;
-      setTimeoutSpy.mockResolvedValue(undefined);
+      const setTimeoutSpy = jest.spyOn(timersPromises, 'setTimeout').mockResolvedValue(undefined as any);
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockTaskRepository.updateTask.mockResolvedValue({
         ...existingTask,
@@ -608,12 +605,11 @@ describe('TaskLifecycleService', () => {
       expect(result.status).toBe(TaskStatus.STATUS_30_COMPLETED);
       expect(mockFlowableService.handleTaskCompleted).toHaveBeenCalledTimes(3);
       expect(setTimeoutSpy).toHaveBeenCalledTimes(2);
-      setTimeoutSpy.mockReset();
+      setTimeoutSpy.mockRestore();
     });
 
     it('should handle max retries exceeded for flowable operation', async () => {
-      const setTimeoutSpy = timersPromises.setTimeout as jest.Mock;
-      setTimeoutSpy.mockResolvedValue(undefined);
+      const setTimeoutSpy = jest.spyOn(timersPromises, 'setTimeout').mockResolvedValue(undefined as any);
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockTaskRepository.updateTask.mockResolvedValue({
         ...existingTask,
@@ -634,7 +630,7 @@ describe('TaskLifecycleService', () => {
         'TaskLifecycleService',
       );
       expect(setTimeoutSpy).toHaveBeenCalledTimes(4);
-      setTimeoutSpy.mockReset();
+      setTimeoutSpy.mockRestore();
     }, 5000);
   });
 

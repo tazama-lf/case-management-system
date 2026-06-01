@@ -10,8 +10,6 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { TaskStatus, CaseStatus, Priority } from '@prisma/client-cms';
 import * as timersPromises from 'node:timers/promises';
 
-jest.mock('node:timers/promises', () => ({ setTimeout: jest.fn().mockResolvedValue(undefined) }));
-
 describe('TaskService', () => {
   let service: TaskService;
   let taskRepository: jest.Mocked<TaskRepository>;
@@ -302,8 +300,7 @@ describe('TaskService', () => {
     it(
       'should handle flowable operation retry failure',
       async () => {
-        const setTimeoutSpy = timersPromises.setTimeout as jest.Mock;
-        setTimeoutSpy.mockResolvedValue(undefined);
+        const setTimeoutSpy = jest.spyOn(timersPromises, 'setTimeout').mockResolvedValue(undefined as any);
         const updateData = { status: TaskStatus.STATUS_10_ASSIGNED };
 
         taskRepository.transaction.mockImplementation(async (callback) => {
@@ -321,8 +318,9 @@ describe('TaskService', () => {
 
         await expect(service.updateTask(1, updateData, 'user1', 'tenant1')).rejects.toThrow('Flowable error 5');
         expect(setTimeoutSpy).toHaveBeenCalledTimes(4);
-        setTimeoutSpy.mockReset();
+        setTimeoutSpy.mockRestore();
       },
+      5000,
       5000,
     );
 

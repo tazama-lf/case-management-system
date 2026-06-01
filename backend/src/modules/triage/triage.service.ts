@@ -48,7 +48,7 @@ export class TriageService {
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   async getAlertNavigator(alertId: number, tenantId: string, userId: string): Promise<AlertNavigatorDto> {
     this.logger.log(`Fetching alert navigator for alertId: ${alertId}, tenantId: ${tenantId}, userId: ${userId}`, TriageService.name);
@@ -708,7 +708,7 @@ export class TriageService {
         entityName: 'Alert',
         actionPerformed: `Triage failed for alert ${alertId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
-        tenantId,
+        tenantId: tenantId,
       });
       throw new InternalServerErrorException('Triage process failed');
     }
@@ -750,7 +750,7 @@ export class TriageService {
         entityName: 'Case',
         actionPerformed: `Failed to auto close case ${caseId}`,
         outcome: Outcome.FAILURE,
-        tenantId,
+        tenantId: tenantId,
       });
       throw new InternalServerErrorException('Failed to auto close case');
     }
@@ -810,7 +810,7 @@ export class TriageService {
         entityName: 'Task',
         actionPerformed: `Failed to complete triage for case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
-        tenantId,
+        tenantId: tenantId,
       });
       throw new InternalServerErrorException('Failed to complete triage');
     }
@@ -856,7 +856,7 @@ export class TriageService {
           entityName: 'Alert & Task',
           actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with prediction`,
           outcome: Outcome.SUCCESS,
-          tenantId,
+          tenantId: tenantId,
         },
         task.case_id,
         tenantId,
