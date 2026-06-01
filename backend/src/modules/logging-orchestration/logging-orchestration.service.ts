@@ -19,6 +19,7 @@ export class LoggingOrchestrationService {
       const performedAt = new Date();
       await this.eventLogService.logEventAction({
         userId: logData.userId,
+        tenantId: logData.tenantId ?? 'DEFAULT',
         operation: logData.operation,
         entityName: logData.entityName,
         actionPerformed: logData.actionPerformed,
@@ -38,7 +39,10 @@ export class LoggingOrchestrationService {
 
       if (taskId) {
         await Promise.all([
-          this.eventLogService.logEventAction(logData),
+          this.eventLogService.logEventAction({
+            ...logData,
+            tenantId: logData.tenantId ?? tenantId ?? 'DEFAULT',
+          }),
           this.taskHistoryService.logTaskHistoryAction({
             userId: logData.userId,
             operation: logData.operation,
@@ -53,7 +57,10 @@ export class LoggingOrchestrationService {
         return;
       }
       await Promise.all([
-        this.eventLogService.logEventAction(logData),
+        this.eventLogService.logEventAction({
+          ...logData,
+          tenantId: logData.tenantId ?? tenantId ?? 'DEFAULT',
+        }),
         this.caseHistoryService.logCaseHistoryAction({
           userId: logData.userId,
           operation: logData.operation,
