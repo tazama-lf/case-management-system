@@ -1,4 +1,4 @@
-﻿import { Test, TestingModule } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { JupyterProxyService } from '../src/modules/jupyter/jupyter-proxy.service';
 import { TransactionLakehouseService } from '../src/modules/gold-lakehouse/transaction-lakehouse.service';
 import { AccountLakehouseService } from '../src/modules/gold-lakehouse/account-lakehouse.service';
