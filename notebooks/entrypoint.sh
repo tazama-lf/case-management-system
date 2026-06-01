@@ -26,5 +26,4 @@ exec voila /app/notebooks \
   --Voila.port=8866 \
   --Voila.tornado_settings="$TORNADO_SETTINGS" \
   --VoilaConfiguration.extension_language_mapping='{".py": "python"}' \
-  --VoilaConfiguration.extension_language_mapping='{".py": "python"}' \
   --no-browser
