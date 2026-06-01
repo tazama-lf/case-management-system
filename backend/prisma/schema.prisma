@@ -78,18 +78,6 @@ model IntegrationConfig {
   @@map("integration_configs")
 }
 
-model AuditLog {
-  audit_log_id     Int      @id @default(autoincrement())
-  user_id          String   @db.Uuid
-  operation        String   @db.VarChar(50)
-  entity_name      String   @db.VarChar(50)
-  action_performed String   @db.VarChar(1000)
-  outcome          String   @db.VarChar(255)
-  performed_at     DateTime @default(now()) @db.Timestamp(6)
-
-  @@map("audit_log")
-}
-
 model Alert {
   alert_id           Int                @id @default(autoincrement())
   tenant_id          String
@@ -443,6 +431,7 @@ enum AsyncTaskStatus {
 model EventLog {
   event_log_id     Int      @id @default(autoincrement())
   user_id          String   @db.Uuid
+  tenant_id        String
   operation        String   @db.VarChar(50)
   entity_name      String   @db.VarChar(50)
   action_performed String   @db.VarChar(1000)

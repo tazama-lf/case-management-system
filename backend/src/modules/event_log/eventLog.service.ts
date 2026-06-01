@@ -9,6 +9,7 @@ export class EventLogService {
 
   async logEventAction(data: {
     userId?: string;
+    tenantId: string;
     operation: string;
     entityName: string;
     actionPerformed: string;
@@ -16,9 +17,11 @@ export class EventLogService {
     performedAt?: Date;
   }): Promise<EventLog> {
     const userId = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
+    const tenantId = data.tenantId ?? 'DEFAULT';
     return await this.prisma.eventLog.create({
       data: {
         user_id: userId,
+        tenant_id: tenantId,
         operation: data.operation,
         entity_name: data.entityName,
         action_performed: data.actionPerformed,
@@ -31,6 +34,7 @@ export class EventLogService {
   async logPermissionDenied(user: any, entityName: string, action: string, _details?: any): Promise<EventLog> {
     return await this.logEventAction({
       userId: user?.sub ?? 'unknown',
+      tenantId: user?.tenant_id ?? 'unknown',
       operation: 'permission_denied',
       entityName,
       actionPerformed: action,

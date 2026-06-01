@@ -17,6 +17,7 @@ describe('LoggingOrchestrationService', () => {
 
   const mockLogData: LogDataDTO = {
     userId: '550e8400-e29b-41d4-a716-446655440000',
+    tenantId: 'tenant-1',
     operation: 'CREATE',
     entityName: 'Case',
     actionPerformed: 'Created case 123',
@@ -63,6 +64,7 @@ describe('LoggingOrchestrationService', () => {
       expect(eventLogService.logEventAction).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: mockLogData.userId,
+          tenantId: mockLogData.tenantId,
           operation: mockLogData.operation,
           entityName: mockLogData.entityName,
           actionPerformed: mockLogData.actionPerformed,

@@ -854,6 +854,7 @@ export class CaseQueryService {
           entityName: CaseQueryService.name,
           actionPerformed: `Case updated successfully: ${updatedCase.case_id}`,
           outcome: Outcome.SUCCESS,
+          tenantId: updatedCase.tenant_id,
         },
         caseId,
         updatedCase.tenant_id,

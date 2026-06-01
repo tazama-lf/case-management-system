@@ -59,6 +59,7 @@ export class TaskService {
           entityName: TaskService.name,
           operation: 'createTask',
           outcome: Outcome.SUCCESS,
+          tenantId: caseRecord.tenant_id,
         },
         createdTask.case_id,
         caseRecord.tenant_id,
@@ -76,6 +77,7 @@ export class TaskService {
         entityName: TaskService.name,
         operation: 'createTask',
         outcome: Outcome.FAILURE,
+        tenantId: tenantId,
       });
       throw error;
     }
@@ -112,6 +114,7 @@ export class TaskService {
             entityName: TaskService.name,
             operation: 'updateTask',
             outcome: Outcome.SUCCESS,
+            tenantId: updatedTask.tenant_id,
           });
         } else {
           await this.loggingOrchestrationService.logActionsWithHistory(
@@ -121,6 +124,7 @@ export class TaskService {
               entityName: TaskService.name,
               operation: 'updateTask',
               outcome: Outcome.SUCCESS,
+              tenantId: updatedTask.tenant_id,
             },
             updatedTask.case_id,
             updatedTask.tenant_id,
@@ -141,6 +145,7 @@ export class TaskService {
         entityName: TaskService.name,
         operation: 'updateTask',
         outcome: Outcome.FAILURE,
+        tenantId: tenantId,
       });
       throw error;
     }
@@ -166,6 +171,7 @@ export class TaskService {
           entityName: TaskService.name,
           actionPerformed: `Successfully retrieved tasks for case: ${caseId}`,
           outcome: Outcome.SUCCESS,
+          tenantId: tenantId,
         });
       }
 
@@ -179,6 +185,7 @@ export class TaskService {
           entityName: TaskService.name,
           actionPerformed: `Error retrieving tasks for case: ${caseId}`,
           outcome: Outcome.FAILURE,
+          tenantId: tenantId,
         });
       }
       throw error;
@@ -232,6 +239,7 @@ export class TaskService {
           entityName: TaskService.name,
           operation: 'claimTask',
           outcome: Outcome.SUCCESS,
+          tenantId: updatedTask.tenant_id,
         },
         updatedTask.case_id,
         updatedTask.tenant_id,

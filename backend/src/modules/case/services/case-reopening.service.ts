@@ -96,6 +96,7 @@ export class CaseReopeningService {
             entityName: CaseReopeningService.name,
             actionPerformed: `Reopened case ${caseId} and created investigation task ${txResult.investigationTask.task_id}. Reason: ${reason}`,
             outcome: Outcome.SUCCESS,
+            tenantId: txResult.case.tenant_id,
           },
           caseId,
           txResult.case.tenant_id,
@@ -162,6 +163,7 @@ export class CaseReopeningService {
             entityName: CaseReopeningService.name,
             actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
             outcome: Outcome.SUCCESS,
+            tenantId: txResult.case.tenant_id,
           },
           caseId,
           txResult.case.tenant_id,
@@ -185,6 +187,7 @@ export class CaseReopeningService {
         entityName: CaseReopeningService.name,
         actionPerformed: `Failed to reopen case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
+        tenantId: tenantId,
       });
 
       throw error;
@@ -306,6 +309,7 @@ export class CaseReopeningService {
           entityName: CaseReopeningService.name,
           actionPerformed: `Case ${caseId} reopening approved.`,
           outcome: Outcome.SUCCESS,
+          tenantId: caseData.tenant_id,
         },
         caseId,
         caseData.tenant_id,
@@ -344,6 +348,7 @@ export class CaseReopeningService {
         entityName: CaseReopeningService.name,
         actionPerformed: `Failed to approve case reopening for ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
+        tenantId: tenantId,
       });
 
       throw error;
@@ -423,6 +428,7 @@ export class CaseReopeningService {
           entityName: CaseReopeningService.name,
           actionPerformed: `Case ${caseId} reopening rejected. Case restored to ${originalClosedStatus}. Reason: ${rejectionReason}`,
           outcome: Outcome.SUCCESS,
+          tenantId: caseData.tenant_id,
         },
         caseId,
         caseData.tenant_id,
@@ -455,6 +461,7 @@ export class CaseReopeningService {
         entityName: CaseReopeningService.name,
         actionPerformed: `Failed to reject case reopening for ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
+        tenantId: tenantId,
       });
 
       throw error;
