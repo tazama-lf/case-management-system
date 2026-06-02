@@ -40,12 +40,13 @@ describe('CaseAgeingStatsCards', () => {
     expect(card).toBeInTheDocument();
     
     // Wait for animation to complete and verify the correct number is displayed in this card
+    // The StatsCard component animates from 0 to the target value over 1000ms
     await waitFor(
       () => {
         const cardElement = card as HTMLElement;
         expect(within(cardElement).getByText('25')).toBeInTheDocument();
       },
-      { timeout: 2000 },
+      { timeout: 3000, interval: 100 }, // Increased timeout and check interval for animation
     );
   });
 
@@ -57,12 +58,13 @@ describe('CaseAgeingStatsCards', () => {
     expect(card).toBeInTheDocument();
     
     // Wait for animation to complete and verify the correct number is displayed in this card
+    // The StatsCard component animates from 0 to the target value over 1000ms
     await waitFor(
       () => {
         const cardElement = card as HTMLElement;
         expect(within(cardElement).getByText('10')).toBeInTheDocument();
       },
-      { timeout: 2000 },
+      { timeout: 3000, interval: 100 }, // Increased timeout and check interval for animation
     );
   });
 

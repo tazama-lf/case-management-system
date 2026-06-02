@@ -8,6 +8,15 @@ import { of, throwError } from 'rxjs';
 import * as jwt from 'jsonwebtoken';
 import { CacheService } from '../src/modules/shared/cache.service';
 
+// Make jwt.decode mockable (non-configurable in newer jsonwebtoken versions)
+jest.mock('jsonwebtoken', () => {
+  const actual = jest.requireActual('jsonwebtoken');
+  return {
+    ...actual,
+    decode: jest.fn((...args: unknown[]) => actual.decode(...args)),
+  };
+});
+
 describe('AuthService', () => {
   let service: AuthService;
   let httpService: jest.Mocked<HttpService>;
@@ -186,7 +195,7 @@ describe('AuthService', () => {
     });
 
     it('should handle non-Error thrown during decode', () => {
-      jest.spyOn(jwt, 'decode').mockImplementation(() => {
+      (jwt.decode as jest.Mock).mockImplementation(() => {
         throw 'string error';
       });
 
@@ -227,7 +236,7 @@ describe('AuthService', () => {
     });
 
     it('should handle non-Error thrown during decode', () => {
-      jest.spyOn(jwt, 'decode').mockImplementation(() => {
+      (jwt.decode as jest.Mock).mockImplementation(() => {
         throw { code: 'INVALID_TOKEN' };
       });
 

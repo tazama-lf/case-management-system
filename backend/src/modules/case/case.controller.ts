@@ -7,7 +7,6 @@ import {
   RequireSupervisorRole,
 } from '../../decorators/auth.decorator';
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
-import { EndpointKey } from '../../utils/rbac/rbacHelper';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { extractUserData } from '../../utils/helperFunction';
 import {
@@ -87,14 +86,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; task: Task }> {
     const { userId, tenantId } = extractUserData(req);
-    return await this.caseService.abandonCase(
-      caseId,
-      body.reason,
-      userId,
-      tenantId,
-      req.user,
-      'PUT /api/v1/cases/:caseId/abandon' as EndpointKey,
-    );
+    return await this.caseService.abandonCase(caseId, body.reason, userId, tenantId, req.user, 'PUT /api/v1/cases/:caseId/abandon');
   }
 
   @Put(':caseId/reopen')
@@ -129,7 +121,7 @@ export class CaseController {
       tenantId,
       validateClaim,
       req.user,
-      'PUT /api/v1/cases/:caseId/reopen' as EndpointKey,
+      'PUT /api/v1/cases/:caseId/reopen',
     );
   }
 
@@ -165,7 +157,7 @@ export class CaseController {
       userId,
       tenantId,
       req.user,
-      'PUT /api/v1/cases/:caseId/suspend' as EndpointKey,
+      'PUT /api/v1/cases/:caseId/suspend',
     );
   }
 
@@ -194,15 +186,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; task: Task[] }> {
     const { userId, tenantId, userInfo } = extractUserData(req);
-    return await this.caseService.resumeCase(
-      caseId,
-      body.reason,
-      userId,
-      tenantId,
-      userInfo,
-      req.user,
-      'PUT /api/v1/cases/:caseId/resume' as EndpointKey,
-    );
+    return await this.caseService.resumeCase(caseId, body.reason, userId, tenantId, userInfo, req.user, 'PUT /api/v1/cases/:caseId/resume');
   }
 
   @Put(':caseId/complete')
@@ -229,7 +213,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; completedTask: Task; newTask: Task }> {
     const { userId, tenantId } = extractUserData(req);
-    return await this.caseService.completeCase(caseId, userId, tenantId, req.user, 'PUT /api/v1/cases/:caseId/complete' as EndpointKey);
+    return await this.caseService.completeCase(caseId, userId, tenantId, req.user, 'PUT /api/v1/cases/:caseId/complete');
   }
 
   @Post('manual')
@@ -312,15 +296,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ message: string; closed_case: { case_id: number; status: string; updated_at: Date }; supervisor_closure?: boolean }> {
     const { userId, tenantId, validateClaim } = extractUserData(req);
-    return await this.caseService.closeCase(
-      caseId,
-      dto,
-      userId,
-      tenantId,
-      validateClaim,
-      req.user,
-      'PUT /api/v1/cases/:caseId/close' as EndpointKey,
-    );
+    return await this.caseService.closeCase(caseId, dto, userId, tenantId, validateClaim, req.user, 'PUT /api/v1/cases/:caseId/close');
   }
 
   @Get('all')
@@ -647,7 +623,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Case not found' })
   async updateCase(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest): Promise<Case> {
     const { userId, tenantId } = extractUserData(req);
-    return await this.caseService.updateCase(caseId, dto, userId, req.user, 'PUT /api/v1/cases/:caseId' as EndpointKey, tenantId);
+    return await this.caseService.updateCase(caseId, dto, userId, req.user, 'PUT /api/v1/cases/:caseId', tenantId);
   }
 
   @Post(':caseId/complete-case-creation')
@@ -676,7 +652,7 @@ export class CaseController {
       tenantId,
       role,
       req.user,
-      'POST /api/v1/cases/:caseId/complete-case-creation' as EndpointKey,
+      'POST /api/v1/cases/:caseId/complete-case-creation',
     );
   }
 
@@ -770,7 +746,7 @@ export class CaseController {
       supervisorId,
       tenantId,
       req.user,
-      'PUT /api/v1/cases/:caseId/approve' as EndpointKey,
+      'PUT /api/v1/cases/:caseId/approve',
     );
   }
 
@@ -852,7 +828,7 @@ export class CaseController {
       supervisorId,
       tenantId,
       req.user,
-      'PUT /api/v1/cases/:caseId/reject' as EndpointKey,
+      'PUT /api/v1/cases/:caseId/reject',
     );
   }
 
@@ -903,7 +879,7 @@ export class CaseController {
       supervisorId,
       tenantId,
       req.user,
-      'PUT /api/v1/cases/:caseId/approve-creation' as EndpointKey,
+      'PUT /api/v1/cases/:caseId/approve-creation',
     );
   }
 
@@ -960,7 +936,7 @@ export class CaseController {
       tenantId,
       body.reason,
       req.user,
-      'PUT /api/v1/cases/:caseId/reject-creation' as EndpointKey,
+      'PUT /api/v1/cases/:caseId/reject-creation',
     );
   }
 
@@ -1039,7 +1015,7 @@ export class CaseController {
       supervisorId,
       tenantId,
       req.user,
-      'PUT /api/v1/cases/:caseId/approve-reopening' as EndpointKey,
+      'PUT /api/v1/cases/:caseId/approve-reopening',
     );
   }
 
@@ -1134,7 +1110,7 @@ export class CaseController {
       supervisorId,
       tenantId,
       req.user,
-      'PUT /api/v1/cases/:caseId/reject-reopening' as EndpointKey,
+      'PUT /api/v1/cases/:caseId/reject-reopening',
     );
   }
 
@@ -1185,7 +1161,7 @@ export class CaseController {
       supervisorId,
       tenantId,
       req.user,
-      'PUT /api/v1/cases/:caseId/return-for-review' as EndpointKey,
+      'PUT /api/v1/cases/:caseId/return-for-review',
     );
   }
 

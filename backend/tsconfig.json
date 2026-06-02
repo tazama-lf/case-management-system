@@ -18,7 +18,16 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "resolveJsonModule": true,
-    "types": ["node", "jest"]
+    "types": [
+      "node",
+      "jest"
+    ],
+    "esModuleInterop": true
   },
-  "include": ["src/**/*", "prisma/**/*", "test/**/*", "jest.config.ts"]
+  "include": [
+    "src/**/*",
+    "prisma/**/*",
+    "test/**/*",
+    "jest.config.ts"
+  ]
 }

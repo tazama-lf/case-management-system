@@ -25,6 +25,7 @@ class AuthService {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // IMPORTANT: Send/receive cookies for iframe auth
         body: JSON.stringify(credentials),
       });
 
@@ -107,6 +108,22 @@ class AuthService {
   }
 
   logout(): void {
+    const token = this.getToken();
+
+    // Call backend to clear the access_token_${userId} cookie
+    if (token) {
+      fetch(`${API_BASE_URL}/v1/auth/logout`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: 'include', // Important: send cookies to be cleared
+      }).catch((error) => {
+        console.error('Error clearing auth cookie:', error);
+      });
+    }
+
+    // Clear localStorage
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
     localStorage.removeItem('ACTIVE_SESSION_USER');

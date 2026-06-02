@@ -33,37 +33,40 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     super(httpService, configService);
   }
 
-  async getTransactionDetailData(endToEndId: string, tenantId = 'DEFAULT'): Promise<TransactionDetailDataResponse> {
+  async getTransactionDetailData(endToEndId: string, tenantId = 'DEFAULT', userJwt?: string): Promise<TransactionDetailDataResponse> {
     try {
       this.logger.log(`Fetching Transaction Detail UI data for transaction: ${endToEndId}`);
 
-      const response = await this.query({
-        table_name: 'transaction_detail',
-        filters: {
-          end_to_end_id: endToEndId,
-          tenant_id: tenantId,
+      const response = await this.query(
+        {
+          table_name: 'transaction_detail',
+          filters: {
+            end_to_end_id: endToEndId,
+            tenant_id: tenantId,
+          },
+          columns: [
+            'transaction_id',
+            'tx_msg_id',
+            'tx_event_ts',
+            'tx_type',
+            'interbank_settlement_amount',
+            'interbank_settlement_currency',
+            'debtor_name',
+            'debtor_account_id',
+            'creditor_name',
+            'creditor_account_id',
+            'instg_mmb_id',
+            'instd_mmb_id',
+            'instructed_amount',
+            'instructed_currency',
+            'exchange_rate',
+            'charge_total_amount',
+            'charge_currency',
+            'tx_event_date',
+          ],
         },
-        columns: [
-          'transaction_id',
-          'tx_msg_id',
-          'tx_event_ts',
-          'tx_type',
-          'interbank_settlement_amount',
-          'interbank_settlement_currency',
-          'debtor_name',
-          'debtor_account_id',
-          'creditor_name',
-          'creditor_account_id',
-          'instg_mmb_id',
-          'instd_mmb_id',
-          'instructed_amount',
-          'instructed_currency',
-          'exchange_rate',
-          'charge_total_amount',
-          'charge_currency',
-          'tx_event_date',
-        ],
-      });
+        userJwt,
+      );
 
       if (response.data.length === 0) {
         throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
@@ -170,6 +173,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     startDate?: string,
     endDate?: string,
     granularity?: string,
+    userJwt?: string,
   ): Promise<TransactionHistoryResponse> {
     try {
       this.logger.log(`Start - getTransactionHistoryByAccountId: ${accountId}`);
@@ -181,6 +185,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         `,
         1000,
         [accountId, tenantId],
+        userJwt,
       );
 
       // Query 2: Fetch AGG rows for volume distribution (if granularity provided)
@@ -202,6 +207,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           `,
           1000,
           [accountId, granularity, tenantId],
+          userJwt,
         );
         aggregates = (aggResponse?.data ?? []).map((a) => this.stripHudiMetadata(a));
       }
@@ -227,6 +233,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           `,
           100,
           [accountId, tenantId],
+          userJwt,
         );
         const baseline = baselineResponse?.data?.[0];
         if (baseline) {
@@ -357,7 +364,12 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async getTransactionNetworkData(accountId: string, tenantId: string, timeRange: string): Promise<TransactionNetworkResponseDto> {
+  async getTransactionNetworkData(
+    accountId: string,
+    tenantId: string,
+    timeRange: string,
+    userJwt?: string,
+  ): Promise<TransactionNetworkResponseDto> {
     try {
       this.logger.log(`Fetching transaction network for account: ${accountId}, timeRange: ${timeRange}`);
 
@@ -371,7 +383,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         LIMIT 1
       `;
 
-      const centerAccountResponse = await this.runSqlQuery(centerAccountSql, 1, [accountId, tenantId]);
+      const centerAccountResponse = await this.runSqlQuery(centerAccountSql, 1, [accountId, tenantId], userJwt);
       const centerAccountRow = centerAccountResponse?.data?.[0];
 
       if (!centerAccountRow) {
@@ -423,9 +435,9 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       `;
 
       const [outboundResponse, inboundResponse, alertFlagsResponse] = await Promise.all([
-        this.runSqlQuery(outboundSql, 1000, [accountId, tenantId]),
-        this.runSqlQuery(inboundSql, 1000, [accountId, tenantId]),
-        this.runSqlQuery(alertFlagsSql, 10, [accountId, tenantId]),
+        this.runSqlQuery(outboundSql, 1000, [accountId, tenantId], userJwt),
+        this.runSqlQuery(inboundSql, 1000, [accountId, tenantId], userJwt),
+        this.runSqlQuery(alertFlagsSql, 10, [accountId, tenantId], userJwt),
       ]);
 
       const outboundData = (outboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
@@ -504,7 +516,12 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async getCounterpartyNetworkData(accountId: string, tenantId: string, timeRange = '30d'): Promise<CounterpartyNetworkResponseDto> {
+  async getCounterpartyNetworkData(
+    accountId: string,
+    tenantId: string,
+    timeRange = '30d',
+    userJwt?: string,
+  ): Promise<CounterpartyNetworkResponseDto> {
     try {
       this.logger.log(`Fetching counterparty network for account: ${accountId}`);
 
@@ -520,7 +537,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         LIMIT 1
       `;
 
-      const accountHolderResponse = await this.runSqlQuery(accountHolderSql, 1, [accountId, tenantId]);
+      const accountHolderResponse = await this.runSqlQuery(accountHolderSql, 1, [accountId, tenantId], userJwt);
       const accountRow = accountHolderResponse?.data?.[0];
 
       if (!accountRow) {
@@ -538,7 +555,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         LIMIT 1
       `;
 
-      const counterpartyLinksResponse = await this.runSqlQuery(counterpartyLinksSql, 1, [accountId, tenantId]);
+      const counterpartyLinksResponse = await this.runSqlQuery(counterpartyLinksSql, 1, [accountId, tenantId], userJwt);
       const counterpartyIds = (counterpartyLinksResponse?.data ?? []).map((row) => this.stripHudiMetadata(row).counterparty_id);
 
       if (counterpartyIds.length === 0) {
@@ -563,7 +580,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           AND tenant_id = $2
       `;
 
-      const edgesResponse = await this.runSqlQuery(networkEdgesSql, 1000, [centerCounterpartyId, tenantId]);
+      const edgesResponse = await this.runSqlQuery(networkEdgesSql, 1000, [centerCounterpartyId, tenantId], userJwt);
       const edges = (edgesResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
 
       const allCounterpartyIds = new Set<string>([centerCounterpartyId]);
@@ -596,7 +613,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
             AND td.tenant_id = $${counterpartyIdsArray.length + 1}
         `;
 
-        const namesResponse = await this.runSqlQuery(namesSql, 1000, [...counterpartyIdsArray, tenantId]);
+        const namesResponse = await this.runSqlQuery(namesSql, 1000, [...counterpartyIdsArray, tenantId], userJwt);
         const namesRows = (namesResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
 
         namesRows.forEach((row) => {
@@ -699,7 +716,13 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     }
   }
 
-  async generateProfile(alertId: number, dto: GenerateProfileDto, userId: string, tenantId: string): Promise<GenerateProfileResponseDto> {
+  async generateProfile(
+    alertId: number,
+    dto: GenerateProfileDto,
+    userId: string,
+    tenantId: string,
+    userJwt?: string,
+  ): Promise<GenerateProfileResponseDto> {
     this.logger.log(`Alert ID:  ${alertId}`, GoldLakehouseService.name);
 
     try {
@@ -717,12 +740,12 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       const transactionCreditorSql = `
       SELECT DISTINCT th.tx_msg_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.creditor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.creditor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = $1 AND td_src.tenant_id = $2 AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC`;
 
-      const transactionCreditorResp = await this.runSqlQuery(transactionCreditorSql, 1000, [referenceId, tenantId]);
+      const transactionCreditorResp = await this.runSqlQuery(transactionCreditorSql, 1000, [referenceId, tenantId], userJwt);
 
       const transactionDebtorSql = `
       SELECT DISTINCT th.tx_msg_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.debtor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.debtor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = $1 AND td_src.tenant_id = $2 AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC`;
 
-      const transactionDebtorResp = await this.runSqlQuery(transactionDebtorSql, 1000, [referenceId, tenantId]);
+      const transactionDebtorResp = await this.runSqlQuery(transactionDebtorSql, 1000, [referenceId, tenantId], userJwt);
       return {
         tenantId,
         transactionCreditorResp,
