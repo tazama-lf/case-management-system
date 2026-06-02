@@ -22,7 +22,6 @@ import { ManualAlertUpdateDTO, IngestAlertDto } from '../src/modules/alert/dto';
 import { Outcome } from '../src/utils/types/outcome';
 import axios from 'axios';
 import * as timersPromises from 'node:timers/promises';
-import * as timersPromises from 'node:timers/promises';
 
 jest.mock('node:timers/promises', () => ({ setTimeout: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('axios');

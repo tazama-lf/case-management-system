@@ -324,7 +324,6 @@ describe('TaskService', () => {
         setTimeoutSpy.mockReset();
       },
       5000,
-      5000,
     );
 
     it('should handle parent case promotion error', async () => {
