@@ -99,13 +99,10 @@ export class TriageService {
     const blockStatusValue = alertReport?.block_status ?? '';
     const blockReasonValue = alertReport?.block_reason ?? '';
 
-    const blockStatus: BlockStatusDto | null =
-      (blockStatusValue ?? blockReasonValue)
-        ? {
-            status: blockStatusValue ?? '',
-            reason: blockReasonValue ?? '',
-          }
-        : null;
+    const blockStatus: BlockStatusDto = {
+      status: blockStatusValue ?? '',
+      reason: blockReasonValue ?? '',
+    };
 
     const transactionId = transactionData?.FIToFIPmtSts?.GrpHdr?.MsgId ?? '';
     const amount = {
