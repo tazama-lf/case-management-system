@@ -107,10 +107,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
 
             events.push({
               id: `event-${log.case_id}`,
-              timestamp:
-                log.performed_at instanceof Date
-                  ? formatDate(log.performed_at.toISOString())
-                  : formatDate(new Date(log.performed_at).toISOString()),
+              timestamp: new Date(log.performed_at).toISOString(),
               action,
               performedBy: log.entity_name === 'System' ? 'System' : 'User',
               userId: log.user_id,
@@ -163,10 +160,7 @@ const CaseHistoryTab: React.FC<CaseHistoryTabProps> = ({ caseId }) => {
 
             events.push({
               id: `task-${log.task_id}`,
-              timestamp:
-                log.performed_at instanceof Date
-                  ? log.performed_at.toISOString()
-                  : new Date(log.performed_at).toISOString(),
+              timestamp: new Date(log.performed_at).toISOString(),
               action,
               performedBy: log.entity_name === 'System' ? 'System' : 'User',
               userId: log.user_id,
