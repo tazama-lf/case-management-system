@@ -218,7 +218,7 @@ describe('ReassignTaskModal', () => {
       />,
     );
     expect(
-      screen.getByText(/No other investigators available/i),
+      screen.getByText(/No other investigators available for reassignment/i)
     ).toBeInTheDocument();
   });
 
@@ -233,7 +233,7 @@ describe('ReassignTaskModal', () => {
       />,
     );
     expect(
-      screen.getByText(/No other compliance officers available/i),
+      screen.getByText(/No other compliance officers available for reassignment/i),
     ).toBeInTheDocument();
   });
 
@@ -294,7 +294,7 @@ describe('ReassignTaskModal', () => {
 
   it('handles reassignment error gracefully', async () => {
     const user = userEvent.setup();
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockOnReassign.mockRejectedValue(new Error('Network error'));
 
     render(
@@ -493,7 +493,7 @@ describe('ReassignTaskModal', () => {
     const select = screen.getByRole('combobox');
     const options = Array.from(select.querySelectorAll('option'));
     // First option is placeholder, remaining are compliance officers
-    expect(options.length).toBe(2); // placeholder + co-2
+    expect(options.length).toBe(3); // placeholder + co-2 = me
     expect(options[1].textContent).toContain('Dave Compliance');
     expect(options[1].value).toBe('co-2');
   });
