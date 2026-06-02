@@ -16,12 +16,14 @@ export class EventLogService {
     outcome: string;
     performedAt?: Date;
   }): Promise<EventLog> {
+    if (!data.tenantId) {
+      throw new Error('Missing tenantId in event log write');
+    }
     const userId = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
-    const tenantId = data.tenantId ?? 'DEFAULT';
     return await this.prisma.eventLog.create({
       data: {
         user_id: userId,
-        tenant_id: tenantId,
+        tenant_id: data.tenantId,
         operation: data.operation,
         entity_name: data.entityName,
         action_performed: data.actionPerformed,
@@ -32,9 +34,13 @@ export class EventLogService {
   }
 
   async logPermissionDenied(user: any, entityName: string, action: string, _details?: any): Promise<EventLog> {
+    const tenantId = user?.tenant_id;
+    if (!tenantId) {
+      throw new Error('Missing tenantId in permission denied event');
+    }
     return await this.logEventAction({
       userId: user?.sub ?? 'unknown',
-      tenantId: user?.tenant_id ?? 'unknown',
+      tenantId,
       operation: 'permission_denied',
       entityName,
       actionPerformed: action,

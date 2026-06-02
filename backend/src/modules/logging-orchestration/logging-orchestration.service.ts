@@ -16,10 +16,13 @@ export class LoggingOrchestrationService {
 
   async logActions(logData: LogDataDTO): Promise<void> {
     try {
+      if (!logData.tenantId) {
+        throw new Error('Missing tenantId in logActions');
+      }
       const performedAt = new Date();
       await this.eventLogService.logEventAction({
         userId: logData.userId,
-        tenantId: logData.tenantId ?? 'DEFAULT',
+        tenantId: logData.tenantId,
         operation: logData.operation,
         entityName: logData.entityName,
         actionPerformed: logData.actionPerformed,
@@ -35,13 +38,18 @@ export class LoggingOrchestrationService {
 
   async logActionsWithHistory(logData: LogDataDTO, caseId: number, tenantId: string, taskId?: number): Promise<void> {
     try {
+      const effectiveTenantId = logData.tenantId || tenantId;
+      if (!effectiveTenantId) {
+        throw new Error('Missing tenantId in logActionsWithHistory');
+      }
       const performedAt = new Date();
 
       if (taskId) {
         await Promise.all([
           this.eventLogService.logEventAction({
+            // eslint-disable-next-line @typescript-eslint/no-misused-spread -- We want to allow logData to override tenantId if it exists, but fall back to the provided tenantId if not
             ...logData,
-            tenantId: logData.tenantId ?? tenantId ?? 'DEFAULT',
+            tenantId: effectiveTenantId,
           }),
           this.taskHistoryService.logTaskHistoryAction({
             userId: logData.userId,
@@ -58,8 +66,9 @@ export class LoggingOrchestrationService {
       }
       await Promise.all([
         this.eventLogService.logEventAction({
+          // eslint-disable-next-line @typescript-eslint/no-misused-spread -- We want to allow logData to override tenantId if it exists, but fall back to the provided tenantId if not
           ...logData,
-          tenantId: logData.tenantId ?? tenantId ?? 'DEFAULT',
+          tenantId: effectiveTenantId,
         }),
         this.caseHistoryService.logCaseHistoryAction({
           userId: logData.userId,
