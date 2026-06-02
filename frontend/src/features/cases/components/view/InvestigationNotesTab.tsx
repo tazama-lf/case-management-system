@@ -128,7 +128,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
       ) : (
         <>
           {/* MDX Editor */}
-          <div className="mdx-editor-container min-h-[250px]">
+          <div className="mdx-editor-container min-h-[250px] border border-gray-300 rounded-lg bg-white shadow-sm overflow-hidden">
             <MDXEditor
               markdown={notes}
               onChange={handleNotesChange}
@@ -139,7 +139,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
                 task?.status === 'STATUS_21_BLOCKED'
               }
               className="mdx-editor"
-              contentEditableClassName="prose"
+              contentEditableClassName="prose min-h-[250px] p-4"
               plugins={[
                 headingsPlugin(),
                 listsPlugin(),
