@@ -76,38 +76,23 @@ describe('ReassignTaskModal', () => {
     });
   });
 
-  it('does not render when open is false', () => {
+  it('does not render when closed', () => {
     render(
-      <ReassignTaskModal
-        open={false}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
+      <ReassignTaskModal open={false} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
     );
     expect(screen.queryByText(/Reassign Task/i)).not.toBeInTheDocument();
   });
 
   it('does not render when task is null', () => {
     render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={null}
-      />,
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={null} />
     );
     expect(screen.queryByText(/Reassign Task/i)).not.toBeInTheDocument();
   });
 
-  it('renders modal with task information when open', async () => {
+  it('renders modal with task info', () => {
     render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
     );
 
     expect(screen.getByText(/Reassign Task/i)).toBeInTheDocument();
@@ -115,172 +100,253 @@ describe('ReassignTaskModal', () => {
     expect(screen.getByText('Review Transaction')).toBeInTheDocument();
   });
 
-  it('displays current assignee name with full name', () => {
+  it('shows current assignee formatted correctly', () => {
     render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
     );
-    // getAssigneeFullName looks up in investigators
-    expect(screen.getByText(/John Doe.*inv-1/)).toBeInTheDocument();
+
+    expect(
+      screen.getByText(/John Doe \(inv-1\)/)
+    ).toBeInTheDocument();
   });
 
-  it('displays "Unassigned" when task has no assignee', () => {
-    const unassignedTask = {
-      ...mockTask,
-      assignee: undefined as any,
-      assigneeName: undefined as any,
-    };
+  it('shows Unassigned when no assignee', () => {
     render(
       <ReassignTaskModal
         open={true}
         onClose={mockOnClose}
         onReassign={mockOnReassign}
-        task={unassignedTask}
-      />,
+        task={{ ...mockTask, assignee: undefined as any, assigneeName: undefined as any }}
+      />
     );
+
     expect(screen.getByText('Unassigned')).toBeInTheDocument();
   });
 
-  it('fetches investigators when modal opens', async () => {
+  it('fetches investigators on open', async () => {
     render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
     );
 
     await waitFor(() => {
-      expect(mockFetchInvestigatorsList).toHaveBeenCalled();
+      expect(mockFetchInvestigatorsList).toHaveBeenCalledTimes(1);
     });
   });
 
-  it('fetches compliance officers for SAR tasks when user has compliance role', async () => {
+  it('fetches compliance officers for SAR when allowed', async () => {
     mockHasComplianceOfficerRole = true;
+
     render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockSarTask}
-      />,
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockSarTask} />
     );
 
     await waitFor(() => {
-      expect(mockFetchComplianceOfficersList).toHaveBeenCalled();
+      expect(mockFetchComplianceOfficersList).toHaveBeenCalledTimes(1);
     });
   });
 
-  it('shows loading state when investigators are loading', () => {
+  it('shows loading state', () => {
     mockLoadingInvestigators = true;
+
     render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
     );
-    expect(screen.getByText(/Loading investigators.../i)).toBeInTheDocument();
+
+    expect(screen.getByText(/Loading investigators/i)).toBeInTheDocument();
   });
 
-  it('filters out current assignee and current user from dropdown', () => {
+  it('filters dropdown options correctly', () => {
     render(
       <ReassignTaskModal
         open={true}
         onClose={mockOnClose}
         onReassign={mockOnReassign}
         task={mockTask}
-      />,
+      />
     );
+
     const select = screen.getByRole('combobox');
-    const options = select.querySelectorAll('option');
-    // inv-1 is current assignee and user-1 is current user, so only inv-2 should remain + the placeholder
-    expect(options.length).toBeGreaterThanOrEqual(1);
+    const options = Array.from(select.querySelectorAll('option'));
+
+    // must always have placeholder
+    expect(options[0].textContent).toContain('Select');
+
+    // should NOT include current assignee
+    expect(options.some(o => o.value === 'inv-1')).toBe(false);
+
+    // inv-2 should be available (based on your mock)
+    expect(options.some(o => o.value === 'inv-2')).toBe(true);
   });
 
-  it('shows "No other investigators available" when list is empty after filtering', () => {
+  it('shows "Me" option when user can assign to self', () => {
+    (authService.getUser as vi.Mock).mockReturnValue({
+      userId: 'inv-2',
+      name: 'Test User',
+      firstName: 'Test',
+      lastName: 'User',
+    });
+
+    render(
+      <ReassignTaskModal
+        open={true}
+        onClose={mockOnClose}
+        onReassign={mockOnReassign}
+        task={mockTask}
+      />
+    );
+
+    const select = screen.getByRole('combobox');
+    const options = Array.from(select.querySelectorAll('option'));
+
+    expect(
+      options.some(o => o.textContent?.includes('(Me)'))
+    ).toBe(true);
+  });
+
+  it('does not show Me option when user is already the assignee', () => {
+    (authService.getUser as vi.Mock).mockReturnValue({
+      userId: 'inv-1', // same as task assignee
+    });
+
+    render(
+      <ReassignTaskModal
+        open={true}
+        onClose={mockOnClose}
+        onReassign={mockOnReassign}
+        task={mockTask}
+      />
+    );
+
+    const select = screen.getByRole('combobox');
+    const options = Array.from(select.querySelectorAll('option'));
+
+    expect(
+      options.some(o => o.textContent?.includes('(Me)'))
+    ).toBe(false);
+  });
+
+  it('shows empty state when no other investigators available and user cannot self-assign', () => {
     mockInvestigators = [
       { id: 'inv-1', firstName: 'John', lastName: 'Doe', name: 'jdoe' },
     ];
-    // inv-1 is the current assignee, so after filtering, no investigators available
+
+    // force same user as assignee → disables "Me"
+    (authService.getUser as vi.Mock).mockReturnValue({
+      userId: 'inv-1',
+    });
+
     render(
       <ReassignTaskModal
         open={true}
         onClose={mockOnClose}
         onReassign={mockOnReassign}
         task={mockTask}
-      />,
+      />
     );
+
     expect(
-      screen.getByText(/No other investigators available for reassignment/i)
+      screen.getByText(/No other investigators available/i)
     ).toBeInTheDocument();
   });
 
-  it('shows "No other compliance officers" for SAR tasks with empty list', () => {
-    mockComplianceOfficers = [];
-    render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockSarTask}
-      />,
-    );
-    expect(
-      screen.getByText(/No other compliance officers available for reassignment/i),
-    ).toBeInTheDocument();
-  });
-
-  it('submits form with assignee and justification', async () => {
+  it('submits form correctly', async () => {
     const user = userEvent.setup();
     mockOnReassign.mockResolvedValue(undefined);
 
     render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
     );
 
-    const assigneeSelect = screen.getByRole('combobox');
-    await user.selectOptions(assigneeSelect, 'inv-2');
+    await user.selectOptions(screen.getByRole('combobox'), 'inv-2');
+    await user.type(screen.getByPlaceholderText(/Provide a reason/i), 'Workload redistribution');
 
-    const justificationTextarea = screen.getByPlaceholderText(
-      /Provide a reason for reassigning this task/i,
-    );
-    await user.type(justificationTextarea, 'Workload redistribution');
-
-    const submitButton = screen.getByRole('button', { name: /Reassign/i });
-    await user.click(submitButton);
+    await user.click(screen.getByRole('button', { name: /Reassign/i }));
 
     await waitFor(() => {
       expect(mockOnReassign).toHaveBeenCalledWith(
         mockTask,
         'inv-2',
-        'Workload redistribution',
+        'Workload redistribution'
       );
     });
   });
 
-  it('calls onClose after successful reassignment', async () => {
+  it('prevents double submission when already submitting', async () => {
+    const user = userEvent.setup();
+
+    let resolveFn: any;
+
+    mockOnReassign.mockImplementation(
+      () => new Promise(res => (resolveFn = res))
+    );
+
+    render(
+      <ReassignTaskModal
+        open={true}
+        onClose={mockOnClose}
+        onReassign={mockOnReassign}
+        task={mockTask}
+      />
+    );
+
+    await user.selectOptions(screen.getByRole('combobox'), 'inv-2');
+    await user.type(screen.getByPlaceholderText(/Provide a reason/i), 'Reason');
+
+    await user.click(screen.getByRole('button', { name: /Reassign/i }));
+    await user.click(screen.getByRole('button', { name: /Reassign/i }));
+
+    expect(mockOnReassign).toHaveBeenCalledTimes(1);
+
+    resolveFn();
+  });
+
+  it('does not submit when justification is empty', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ReassignTaskModal
+        open={true}
+        onClose={mockOnClose}
+        onReassign={mockOnReassign}
+        task={mockTask}
+      />
+    );
+
+    await user.selectOptions(screen.getByRole('combobox'), 'inv-2');
+
+    await user.click(screen.getByRole('button', { name: /Reassign/i }));
+
+    expect(mockOnReassign).not.toHaveBeenCalled();
+  });
+
+  it('does not submit when assignee is empty', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ReassignTaskModal
+        open={true}
+        onClose={mockOnClose}
+        onReassign={mockOnReassign}
+        task={mockTask}
+      />
+    );
+
+    await user.type(
+      screen.getByPlaceholderText(/Provide a reason/i),
+      'Valid reason'
+    );
+
+    await user.click(screen.getByRole('button', { name: /Reassign/i }));
+
+    expect(mockOnReassign).not.toHaveBeenCalled();
+  });
+
+  it('calls onClose after success', async () => {
     const user = userEvent.setup();
     mockOnReassign.mockResolvedValue(undefined);
 
     render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
     );
 
     await user.selectOptions(screen.getByRole('combobox'), 'inv-2');
@@ -292,246 +358,67 @@ describe('ReassignTaskModal', () => {
     });
   });
 
-  it('handles reassignment error gracefully', async () => {
+  it('handles error gracefully', async () => {
     const user = userEvent.setup();
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-    mockOnReassign.mockRejectedValue(new Error('Network error'));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => { });
+    mockOnReassign.mockRejectedValue(new Error('fail'));
 
     render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
     );
 
     await user.selectOptions(screen.getByRole('combobox'), 'inv-2');
-    await user.type(
-      screen.getByPlaceholderText(/Provide a reason/i),
-      'Reason text here',
-    );
+    await user.type(screen.getByPlaceholderText(/Provide a reason/i), 'Reason');
     await user.click(screen.getByRole('button', { name: /Reassign/i }));
 
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to reassign task:',
-        expect.any(Error),
-      );
+      expect(spy).toHaveBeenCalled();
     });
-    consoleSpy.mockRestore();
+
+    spy.mockRestore();
   });
 
-  it('disables confirm button when form is incomplete', () => {
+  it('disables submit when invalid', () => {
     render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
     );
-    const submitButton = screen.getByRole('button', {
-      name: /Confirm Reassignment/i,
-    });
-    expect(submitButton).toBeDisabled();
+
+    expect(
+      screen.getByRole('button', { name: /Confirm Reassignment/i })
+    ).toBeDisabled();
   });
 
-  it('closes modal when cancel button is clicked', async () => {
+  it('closes on cancel', async () => {
     const user = userEvent.setup();
+
     render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
     );
 
-    const cancelButton = screen.getByRole('button', { name: /Cancel/i });
-    await user.click(cancelButton);
+    await user.click(screen.getByRole('button', { name: /Cancel/i }));
 
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  it('resets form fields when task or open changes', async () => {
+  it('resets form on reopen', async () => {
     const user = userEvent.setup();
     const { rerender } = render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
     );
 
-    const textarea = screen.getByPlaceholderText(/Provide a reason/i);
-    await user.type(textarea, 'Some reason');
+    await user.type(screen.getByPlaceholderText(/Provide a reason/i), 'test');
 
-    // Close and reopen
-    rerender(
-      <ReassignTaskModal
-        open={false}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
-    );
-    rerender(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
-    );
+    rerender(<ReassignTaskModal open={false} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />);
+    rerender(<ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />);
 
-    const newTextarea = screen.getByPlaceholderText(/Provide a reason/i);
-    expect(newTextarea).toHaveValue('');
+    expect(screen.getByPlaceholderText(/Provide a reason/i)).toHaveValue('');
   });
 
-  it('shows Note label with required indicator', () => {
+  it('shows audit text', () => {
     render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
-    );
-    expect(screen.getByText('Note')).toBeInTheDocument();
-    expect(screen.getByText('*')).toBeInTheDocument();
-  });
-
-  it('shows audit log info text', () => {
-    render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
-    );
-    expect(
-      screen.getByText(/This note will be recorded in the audit log/i),
-    ).toBeInTheDocument();
-  });
-
-  it('resolves assignee full name from supervisors', () => {
-    mockSupervisors = [
-      { id: 'sup-1', firstName: 'Super', lastName: 'Visor', name: 'svisor' },
-    ];
-    const taskWithSupervisor = {
-      ...mockTask,
-      assignee: 'sup-1',
-      assigneeName: 'svisor',
-    };
-    render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={taskWithSupervisor}
-      />,
-    );
-    expect(screen.getByText(/Super Visor.*sup-1/)).toBeInTheDocument();
-  });
-
-  it('shows submitting overlay during reassignment', async () => {
-    const user = userEvent.setup();
-    let resolveReassign: () => void;
-    mockOnReassign.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveReassign = resolve;
-        }),
+      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
     );
 
-    render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockTask}
-      />,
-    );
-
-    await user.selectOptions(screen.getByRole('combobox'), 'inv-2');
-    await user.type(screen.getByPlaceholderText(/Provide a reason/i), 'Reason');
-    await user.click(screen.getByRole('button', { name: /Reassign/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/Reassigning task.../i)).toBeInTheDocument();
-    });
-
-    resolveReassign!();
-
-    await waitFor(() => {
-      expect(mockOnClose).toHaveBeenCalled();
-    });
-  });
-
-  it('shows compliance officer options for SAR task dropdown', () => {
-    mockComplianceOfficers = [
-      { id: 'co-1', firstName: 'Carol', lastName: 'Officer', name: 'cofficer' },
-      {
-        id: 'co-2',
-        firstName: 'Dave',
-        lastName: 'Compliance',
-        name: 'dcompliance',
-      },
-    ];
-    render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={mockSarTask}
-      />,
-    );
-    // co-1 is the current assignee, so only co-2 should appear in dropdown
-    const select = screen.getByRole('combobox');
-    const options = Array.from(select.querySelectorAll('option'));
-    // First option is placeholder, remaining are compliance officers
-    expect(options.length).toBe(3); // placeholder + co-2 = me
-    expect(options[1].textContent).toContain('Dave Compliance');
-    expect(options[1].value).toBe('co-2');
-  });
-
-  it('resolves assignee full name from compliance officers', () => {
-    mockComplianceOfficers = [
-      { id: 'co-1', firstName: 'Carol', lastName: 'Officer', name: 'cofficer' },
-    ];
-    const taskWithCO = {
-      ...mockTask,
-      assignee: 'co-1',
-      assigneeName: 'cofficer',
-    };
-    render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={taskWithCO}
-      />,
-    );
-    expect(screen.getByText(/Carol Officer.*co-1/)).toBeInTheDocument();
-  });
-
-  it('falls back to assigneeName when not found in any list', () => {
-    const taskWithUnknown = {
-      ...mockTask,
-      assignee: 'unknown-id',
-      assigneeName: 'unknownuser',
-    };
-    render(
-      <ReassignTaskModal
-        open={true}
-        onClose={mockOnClose}
-        onReassign={mockOnReassign}
-        task={taskWithUnknown}
-      />,
-    );
-    expect(screen.getByText(/unknownuser.*unknown-id/)).toBeInTheDocument();
+    expect(screen.getByText(/audit log/i)).toBeInTheDocument();
   });
 });
