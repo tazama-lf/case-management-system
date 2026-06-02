@@ -96,8 +96,8 @@ export class TriageService {
 
     this.logger.log(`Extracted ${typologies.length} typologies and ${rules.length} rules`, TriageService.name);
 
-    const blockStatusValue = alert.block_status ?? alertReport?.block_status;
-    const blockReasonValue = alert.block_reason ?? alertReport?.block_reason;
+    const blockStatusValue = alertReport?.block_status ?? null;
+    const blockReasonValue = alertReport?.block_reason ?? null;
 
     const blockStatus: BlockStatusDto | null =
       (blockStatusValue ?? blockReasonValue)

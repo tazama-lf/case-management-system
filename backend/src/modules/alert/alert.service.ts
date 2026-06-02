@@ -219,8 +219,6 @@ export class AlertService {
     transaction: Prisma.JsonValue;
     network_map: Prisma.JsonValue;
     confidence_per: number;
-    block_status: string | null;
-    block_reason: string | null;
     case_id: number | null;
     alerted_typologies: Array<{
       id: string;
