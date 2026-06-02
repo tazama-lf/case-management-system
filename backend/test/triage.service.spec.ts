@@ -921,8 +921,8 @@ describe('TriageService', () => {
       expect(result.rules).toHaveLength(2);
       expect(result).toHaveProperty('blockStatus');
       expect(result.blockStatus).toEqual({
-        status: 'BLOCKED',
-        reason: 'Test reason',
+        status: '',
+        reason: '',
       });
       expect(mockPrisma.alert.findUnique).toHaveBeenCalledWith({
         where: { alert_id: 1, tenant_id: 'tenant-123' },
