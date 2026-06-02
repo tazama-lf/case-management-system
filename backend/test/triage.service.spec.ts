@@ -69,8 +69,6 @@ describe('TriageService', () => {
     case_id: 1,
     alert_type: CaseType.FRAUD,
     prediction_outcome: null,
-    block_status: null,
-    block_reason: null,
     created_at: new Date('2026-01-01'),
     updated_at: new Date('2026-01-01'),
   };
@@ -886,8 +884,6 @@ describe('TriageService', () => {
             },
           ],
         },
-        block_status: 'BLOCKED',
-        block_reason: 'Suspicious activity detected',
       },
       transaction: {
         FIToFIPmtSts: {
@@ -905,8 +901,6 @@ describe('TriageService', () => {
       },
       txtp: 'pacs.002.001.12',
       message: 'Alert reason',
-      block_status: 'BLOCKED',
-      block_reason: 'Test reason',
     };
 
     it('should return alert navigator data successfully', async () => {
@@ -941,8 +935,6 @@ describe('TriageService', () => {
         alert_data: {
           tadpResult: { typologyResult: [] },
         },
-        block_status: null,
-        block_reason: null,
       };
 
       const mockPrisma = {
@@ -1104,8 +1096,6 @@ describe('TriageService', () => {
         transaction: null,
         txtp: '',
         message: '',
-        block_status: null,
-        block_reason: null,
       };
 
       const mockPrisma = {
@@ -1141,8 +1131,6 @@ describe('TriageService', () => {
         transaction: {},
         txtp: '',
         message: '',
-        block_status: null,
-        block_reason: null,
       };
 
       const mockPrisma = {
