@@ -79,8 +79,7 @@ describe('ReassignTaskModal', () => {
   it('does not render when closed', () => {
     it('does not render when closed', () => {
       render(
-      <ReassignTaskModal open={false} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
-      <ReassignTaskModal open={false} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
+        <ReassignTaskModal open={false} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
       );
       expect(screen.queryByText(/Reassign Task/i)).not.toBeInTheDocument();
     });
