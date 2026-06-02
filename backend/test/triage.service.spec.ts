@@ -929,7 +929,7 @@ describe('TriageService', () => {
       });
     });
 
-    it('should handle alert with null blockStatus', async () => {
+    it('should handle alert with empty blockStatus', async () => {
       const alertWithoutBlock = {
         ...mockPrismaAlert,
         alert_data: {
@@ -942,11 +942,15 @@ describe('TriageService', () => {
           findUnique: jest.fn().mockResolvedValue(alertWithoutBlock),
         },
       };
+
       (service as any).prisma = mockPrisma;
 
       const result = await service.getAlertNavigator(1, 'tenant-123', 'user-123');
 
-      expect(result.blockStatus).toBeNull();
+      expect(result.blockStatus).toEqual({
+        status: '',
+        reason: '',
+      });
     });
 
     it('should throw NotFoundException when alert not found', async () => {
