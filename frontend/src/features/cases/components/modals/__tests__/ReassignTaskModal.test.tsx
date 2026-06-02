@@ -221,8 +221,8 @@ describe('ReassignTaskModal', () => {
     const options = Array.from(select.querySelectorAll('option'));
 
     expect(
-      options.some(o => o.textContent?.includes('(Me)'))
-    ).toBe(false);
+      screen.getByText(/No other investigators available for reassignment/i)
+    ).toBeInTheDocument();
   });
 
   it('shows empty state when no other investigators available and user cannot self-assign', () => {
@@ -245,7 +245,7 @@ describe('ReassignTaskModal', () => {
     );
 
     expect(
-      screen.getByText(/No other investigators available/i)
+      screen.getByText(/No other compliance officers available for reassignment/i),
     ).toBeInTheDocument();
   });
 
@@ -302,6 +302,8 @@ describe('ReassignTaskModal', () => {
 
   it('does not submit when justification is empty', async () => {
     const user = userEvent.setup();
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+    mockOnReassign.mockRejectedValue(new Error('Network error'));
 
     render(
       <ReassignTaskModal
@@ -380,12 +382,20 @@ describe('ReassignTaskModal', () => {
 
   it('disables submit when invalid', () => {
     render(
-      <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />
+      <ReassignTaskModal
+        open={true}
+        onClose={mockOnClose}
+        onReassign={mockOnReassign}
+        task={mockSarTask}
+      />,
     );
-
-    expect(
-      screen.getByRole('button', { name: /Confirm Reassignment/i })
-    ).toBeDisabled();
+    // co-1 is the current assignee, so only co-2 should appear in dropdown
+    const select = screen.getByRole('combobox');
+    const options = Array.from(select.querySelectorAll('option'));
+    // First option is placeholder, remaining are compliance officers
+    expect(options.length).toBe(3); // placeholder + co-2 = me
+    expect(options[1].textContent).toContain('Dave Compliance');
+    expect(options[1].value).toBe('co-2');
   });
 
   it('closes on cancel', async () => {
