@@ -106,18 +106,18 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
     }
   }, []);
 
-  const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
+  const getAssigneeFullName = (assignee?: string) => {
     const inv = investigators.find(
-      (i) => i.id === assigneeName || i.id === assignee,
+      (i) => i.id === assignee,
     );
     if (inv) return `${inv.firstName} ${inv.lastName}`;
 
     const sup = supervisors.find(
-      (i) => i.id === assigneeName || i.id === assignee,
+      (i) => i.id === assignee,
     );
     if (sup) return `${sup.firstName} ${sup.lastName}`;
 
-    return '';
+    return 'N/A';
   };
 
   const loadEvidence = React.useCallback(async (): Promise<void> => {
@@ -407,7 +407,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
                   Investigator
                 </p>
                 <p className="text-sm font-semibold text-gray-900">
-                  {getAssigneeFullName(investigationTask.assigned_user_id) || 'N/A'}
+                  {getAssigneeFullName(investigationTask?.assigned_user_id)}
                 </p>
               </div>
               <div>

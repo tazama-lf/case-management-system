@@ -188,18 +188,18 @@ const GenerateInvestigationReportModal: React.FC<
       }
     }, []);
 
-    const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
+    const getAssigneeFullName = (assignee?: string) => {
       const inv = investigators.find(
-        (i) => i.id === assigneeName || i.id === assignee,
+        (i) => i.id === assignee,
       );
       if (inv) return `${inv.firstName} ${inv.lastName}`;
 
       const sup = supervisors.find(
-        (i) => i.id === assigneeName || i.id === assignee,
+        (i) => i.id === assignee,
       );
       if (sup) return `${sup.firstName} ${sup.lastName}`;
 
-      return '';
+      return 'N/A';
     };
 
     useEffect(() => {

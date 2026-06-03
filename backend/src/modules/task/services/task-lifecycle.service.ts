@@ -103,8 +103,8 @@ export class TaskLifecycleService {
       return { updatedTask, updatedCase };
     });
 
-    const { token } = user;
-    const fullname = await this.fetchUserDetails(token.tokenString, tenantId, assignedUserId);
+    const { token, tenantName } = user;
+    const fullname = await this.fetchUserDetails(token.tokenString, tenantName, assignedUserId);
 
     await this.loggingOrchestrationService.logActionsWithHistory(
       {
@@ -211,8 +211,8 @@ export class TaskLifecycleService {
       return { updatedTask, updatedCase };
     });
 
-    const { token } = user;
-    const fullname = await this.fetchUserDetails(token.tokenString, tenantId, assignedUserId);
+    const { token, tenantName } = user;
+    const fullname = await this.fetchUserDetails(token.tokenString, tenantName, assignedUserId);
 
     await this.loggingOrchestrationService.logActionsWithHistory(
       {
@@ -331,8 +331,8 @@ export class TaskLifecycleService {
       const errorStack = e instanceof Error ? e.stack : undefined;
       this.logger.warn(`Failed notifications for unassign: ${errorMessage}`, errorStack, TaskLifecycleService.name);
     }
-    const { token } = user;
-    const fullname = await this.fetchUserDetails(token.tokenString, tenantId, existingTask.assigned_user_id);
+    const { token, tenantName } = user;
+    const fullname = await this.fetchUserDetails(token.tokenString, tenantName, existingTask.assigned_user_id);
 
     await this.loggingOrchestrationService.logActionsWithHistory(
       {

@@ -54,18 +54,18 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
     }
   }, []);
 
-  const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
+  const getAssigneeFullName = (assignee?: string) => {
     const inv = investigators.find(
-      (i) => i.id === assigneeName || i.id === assignee,
+      (i) => i.id === assignee,
     );
     if (inv) return `${inv.firstName} ${inv.lastName}`;
 
     const sup = supervisors.find(
-      (i) => i.id === assigneeName || i.id === assignee,
+      (i) => i.id === assignee,
     );
     if (sup) return `${sup.firstName} ${sup.lastName}`;
 
-    return '';
+    return 'Unassigned';
   };
 
   const getTaskStatusColor = (status: string): string => {
@@ -211,11 +211,9 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
                     Assigned To
                   </div>
                   <div className="font-medium text-gray-900">
-                    {task.assigned_user_id ? (
-                      getAssigneeFullName(task.assigned_user_id)
-                    ) : (
-                      'Unassigned'
-                    )}
+                    {task.assigned_user_id
+                      ? getAssigneeFullName(task.assigned_user_id)
+                      : 'Unassigned'}
                   </div>
                 </div>
               </div>
