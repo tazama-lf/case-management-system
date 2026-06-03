@@ -15,20 +15,11 @@ vi.mock('../../../services/taskService');
 vi.mock('@/features/auth/services/authService');
 vi.mock('../../../hooks/useInvestigatorSupervisorList', () => ({
   useInvestigatorSupervisorList: () => ({
-    investigators: [
-      {
-        id: 'user-1',
-        firstName: 'John',
-        lastName: 'Doe',
-      },
-    ],
-    supervisors: [
-      {
-        id: 'supervisor-1',
-        firstName: 'Jane',
-        lastName: 'Supervisor',
-      },
-    ],
+    getAssigneeFullName: (assignee?: string) => {
+      if (assignee === 'user-1') return 'John Doe';
+      if (assignee === 'supervisor-1') return 'Jane Supervisor';
+      return '';
+    },
     fetchInvestigatorsList: vi.fn(),
     fetchSupervisorsList: vi.fn(),
   }),

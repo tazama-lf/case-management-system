@@ -50,12 +50,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
   refreshKey,
   task,
 }) => {
-  const {
-    investigators,
-    supervisors,
-    fetchInvestigatorsList,
-    fetchSupervisorsList,
-  } = useInvestigatorSupervisorList();
+  const { getAssigneeFullName } = useInvestigatorSupervisorList();
   const [currentTaskId, setCurrentTaskId] = useState<number | null>(null);
   const { success, error: toastError } = useToast();
   const [caseDetails, setCaseDetails] = useState<Case | null>(null);
@@ -97,28 +92,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
     caseId: task.case_id,
   });
 
-  useEffect(() => {
-    if (investigators.length === 0) {
-      fetchInvestigatorsList();
-    }
-    if (supervisors.length === 0) {
-      fetchSupervisorsList();
-    }
-  }, []);
-
-  const getAssigneeFullName = (assignee?: string) => {
-    const inv = investigators.find(
-      (i) => i.id === assignee,
-    );
-    if (inv) return `${inv.firstName} ${inv.lastName}`;
-
-    const sup = supervisors.find(
-      (i) => i.id === assignee,
-    );
-    if (sup) return `${sup.firstName} ${sup.lastName}`;
-
-    return 'N/A';
-  };
 
   const loadEvidence = React.useCallback(async (): Promise<void> => {
     if (!currentTaskId) return;

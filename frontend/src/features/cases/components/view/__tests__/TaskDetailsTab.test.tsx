@@ -7,17 +7,14 @@ import type { TaskForSupervisor } from '../../../services/taskService';
 
 const mockFetchInvestigatorsList = vi.fn();
 const mockFetchSupervisorsList = vi.fn();
+const mockGetAssigneeFullName = vi.fn((assignee?: string) => {
+  if (assignee === 'user-1') return 'John Doe';
+  return '';
+});
 
 vi.mock('../../../hooks/useInvestigatorSupervisorList', () => ({
   useInvestigatorSupervisorList: () => ({
-    investigators: [
-      {
-        id: 'user-1',
-        firstName: 'John',
-        lastName: 'Doe',
-      },
-    ],
-    supervisors: [],
+    getAssigneeFullName: mockGetAssigneeFullName,
     fetchInvestigatorsList: mockFetchInvestigatorsList,
     fetchSupervisorsList: mockFetchSupervisorsList,
   }),

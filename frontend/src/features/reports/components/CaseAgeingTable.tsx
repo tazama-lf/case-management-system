@@ -20,14 +20,7 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
   onExportCSV,
   onExportPDF,
 }) => {
-  const {
-    investigators,
-    supervisors,
-    fetchInvestigatorsList,
-    fetchSupervisorsList,
-    complianceOfficers,
-    fetchComplianceOfficersList,
-  } = useInvestigatorSupervisorList();
+  const { getAssigneeFullName } = useInvestigatorSupervisorList();
 
   const { currentPage, totalPages, paginatedData, setCurrentPage } =
     usePagination({
@@ -62,37 +55,6 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
       default:
         return 'text-gray-600';
     }
-  };
-
-  useEffect(() => {
-    if (investigators.length === 0) {
-      fetchInvestigatorsList();
-    }
-    if (supervisors.length === 0) {
-      fetchSupervisorsList();
-    }
-    if (complianceOfficers.length === 0) {
-      fetchComplianceOfficersList();
-    }
-  }, []);
-
-  const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
-    const compliance = complianceOfficers.find(
-      (i) => i.id === assigneeName || i.id === assignee,
-    );
-    if (compliance) return `${compliance.firstName} ${compliance.lastName}`;
-
-    const inv = investigators.find(
-      (i) => i.id === assigneeName || i.id === assignee,
-    );
-    if (inv) return `${inv.firstName} ${inv.lastName}`;
-
-    const sup = supervisors.find(
-      (i) => i.id === assigneeName || i.id === assignee,
-    );
-    if (sup) return `${sup.firstName} ${sup.lastName}`;
-
-    return '';
   };
 
   return (

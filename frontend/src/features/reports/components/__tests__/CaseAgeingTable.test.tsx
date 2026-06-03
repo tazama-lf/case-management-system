@@ -7,12 +7,11 @@ import type { CaseAgeingDetail } from '../../types/reports.types';
 
 vi.mock('@/features/cases/hooks/useInvestigatorSupervisorList', () => ({
   useInvestigatorSupervisorList: () => ({
-    investigators: [
-      { id: 'user-1', firstName: 'John', lastName: 'Doe' },
-      { id: 'user-2', firstName: 'Jane', lastName: 'Smith' },
-    ],
-    supervisors: [],
-    complianceOfficers: [],
+    getAssigneeFullName: (assignee?: string) => {
+      if (assignee === 'user-1') return 'John Doe';
+      if (assignee === 'user-2') return 'Jane Smith';
+      return '';
+    },
     fetchInvestigatorsList: vi.fn(),
     fetchSupervisorsList: vi.fn(),
     fetchComplianceOfficersList: vi.fn(),

@@ -172,35 +172,7 @@ const GenerateInvestigationReportModal: React.FC<
     const [commentsLoaded, setCommentsLoaded] = useState(false);
     const [notesLoaded, setNotesLoaded] = useState(false);
     const [submittedDate, setSubmittedDate] = useState<string>('N/A');
-    const {
-      investigators,
-      supervisors,
-      fetchInvestigatorsList,
-      fetchSupervisorsList,
-    } = useInvestigatorSupervisorList();
-
-    useEffect(() => {
-      if (investigators.length === 0) {
-        fetchInvestigatorsList();
-      }
-      if (supervisors.length === 0) {
-        fetchSupervisorsList();
-      }
-    }, []);
-
-    const getAssigneeFullName = (assignee?: string) => {
-      const inv = investigators.find(
-        (i) => i.id === assignee,
-      );
-      if (inv) return `${inv.firstName} ${inv.lastName}`;
-
-      const sup = supervisors.find(
-        (i) => i.id === assignee,
-      );
-      if (sup) return `${sup.firstName} ${sup.lastName}`;
-
-      return 'N/A';
-    };
+    const { getAssigneeFullName } = useInvestigatorSupervisorList();
 
     useEffect(() => {
       hasFetchedRef.current = false;

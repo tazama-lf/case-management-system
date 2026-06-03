@@ -9,6 +9,10 @@ import { useNotifications } from '@/shared/providers/NotificationProvider';
 
 const mockFetchInvestigatorsList = vi.fn();
 const mockFetchSupervisorsList = vi.fn();
+const mockGetAssigneeFullName = vi.fn((assignee?: string) => {
+  if (assignee === 'user-1') return 'John Doe';
+  return '';
+});
 
 vi.mock('@/shared/providers/NotificationProvider');
 vi.mock('../../../../reports/services/reportsService', () => ({
@@ -39,14 +43,7 @@ vi.mock('../../../utils/investigationUtils', () => ({
 }));
 vi.mock('../../../hooks/useInvestigatorSupervisorList', () => ({
   useInvestigatorSupervisorList: () => ({
-    investigators: [
-      {
-        id: 'user-1',
-        firstName: 'John',
-        lastName: 'Doe',
-      },
-    ],
-    supervisors: [],
+    getAssigneeFullName: mockGetAssigneeFullName,
     fetchInvestigatorsList: mockFetchInvestigatorsList,
     fetchSupervisorsList: mockFetchSupervisorsList,
   }),

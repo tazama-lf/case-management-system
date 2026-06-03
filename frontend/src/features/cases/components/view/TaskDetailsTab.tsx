@@ -38,35 +38,7 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
   loadingTasks = false,
 }) => {
   const task = tasks.length > 0 ? tasks[0] : null;
-  const {
-    investigators,
-    supervisors,
-    fetchInvestigatorsList,
-    fetchSupervisorsList,
-  } = useInvestigatorSupervisorList();
-
-  useEffect(() => {
-    if (investigators.length === 0) {
-      fetchInvestigatorsList();
-    }
-    if (supervisors.length === 0) {
-      fetchSupervisorsList();
-    }
-  }, []);
-
-  const getAssigneeFullName = (assignee?: string) => {
-    const inv = investigators.find(
-      (i) => i.id === assignee,
-    );
-    if (inv) return `${inv.firstName} ${inv.lastName}`;
-
-    const sup = supervisors.find(
-      (i) => i.id === assignee,
-    );
-    if (sup) return `${sup.firstName} ${sup.lastName}`;
-
-    return 'Unassigned';
-  };
+  const { getAssigneeFullName } = useInvestigatorSupervisorList();
 
   const getTaskStatusColor = (status: string): string => {
     const statusConfig: Record<string, string> = {

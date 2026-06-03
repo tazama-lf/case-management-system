@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import userService from '../services/userService';
 import type { UserOption } from '../services/userService';
 
@@ -11,6 +11,7 @@ export const useInvestigatorSupervisorList = (): {
   fetchInvestigatorsList: () => Promise<void>;
   fetchSupervisorsList: () => Promise<void>;
   fetchComplianceOfficersList: () => Promise<void>;
+  getAssigneeFullName: (assignee?: string) => string;
   clearCache: () => void;
 } => {
   const supervisorsCacheKey = 'supervisors';
@@ -109,6 +110,31 @@ export const useInvestigatorSupervisorList = (): {
     }
   };
 
+  const getAssigneeFullName = useCallback(
+    (assignee?: string): string => {
+      const compliance = complianceOfficers.find((i) => i.id === assignee);
+
+      if (compliance) {
+        return `${compliance.firstName} ${compliance.lastName}`;
+      }
+
+      const investigator = investigators.find((i) => i.id === assignee);
+
+      if (investigator) {
+        return `${investigator.firstName} ${investigator.lastName}`;
+      }
+
+      const supervisor = supervisors.find((i) => i.id === assignee);
+
+      if (supervisor) {
+        return `${supervisor.firstName} ${supervisor.lastName}`;
+      }
+
+      return '';
+    },
+    [complianceOfficers, investigators, supervisors],
+  );
+
   const clearCache = (): void => {
     sessionStorage.removeItem(investigatorsCacheKey);
     setInvestigators([]);
@@ -131,6 +157,7 @@ export const useInvestigatorSupervisorList = (): {
     fetchInvestigatorsList,
     fetchSupervisorsList,
     fetchComplianceOfficersList,
+    getAssigneeFullName,
     clearCache,
   };
 };
