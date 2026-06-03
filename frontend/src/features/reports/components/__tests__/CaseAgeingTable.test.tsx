@@ -5,6 +5,20 @@ import userEvent from '@testing-library/user-event';
 import CaseAgeingTable from '../CaseAgeingTable';
 import type { CaseAgeingDetail } from '../../types/reports.types';
 
+vi.mock('@/features/cases/hooks/useInvestigatorSupervisorList', () => ({
+  useInvestigatorSupervisorList: () => ({
+    investigators: [
+      { id: 'user-1', firstName: 'John', lastName: 'Doe' },
+      { id: 'user-2', firstName: 'Jane', lastName: 'Smith' },
+    ],
+    supervisors: [],
+    complianceOfficers: [],
+    fetchInvestigatorsList: vi.fn(),
+    fetchSupervisorsList: vi.fn(),
+    fetchComplianceOfficersList: vi.fn(),
+  }),
+}));
+
 // Mock authService (not used by component but may be needed by imports)
 vi.mock('@/features/auth/services/authService', () => ({
   default: {
@@ -87,7 +101,7 @@ describe('CaseAgeingTable', () => {
       createdDate: '2024-01-01',
       ageDays: 5,
       priority: 'High',
-      investigator: 'User user-1',
+      investigator: 'user-1',
     },
     {
       caseId: 'CASE-2',
@@ -96,7 +110,7 @@ describe('CaseAgeingTable', () => {
       createdDate: '2024-01-05',
       ageDays: 12,
       priority: 'Medium',
-      investigator: 'User user-2',
+      investigator: 'user-2',
     },
     {
       caseId: 'CASE-3',
@@ -171,8 +185,8 @@ describe('CaseAgeingTable', () => {
     render(<CaseAgeingTable data={mockData} title="Case Ageing" />);
 
     await waitFor(() => {
-      expect(screen.getByText('User user-1')).toBeInTheDocument();
-      expect(screen.getByText('User user-2')).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     });
   });
 

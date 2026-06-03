@@ -23,6 +23,7 @@ import {
 import type { TaskComment } from '../../services/commentService';
 import { formatDate } from '@/shared/utils/dateUtils';
 import type { TDocumentDefinitions } from 'pdfmake/interfaces';
+import { useInvestigatorSupervisorList } from '../../hooks/useInvestigatorSupervisorList';
 
 interface EvidenceCategory {
   type: string;
@@ -152,7 +153,6 @@ const GenerateInvestigationReportModal: React.FC<
     const [step, setStep] = useState<'initial' | 'generated'>('initial');
     const [isGenerating, setIsGenerating] = useState(false);
     const [isFinalizing, setIsFinalizing] = useState(false);
-    const [investigatorName, setInvestigatorName] = useState<string>('N/A');
     const [isApproved, setIsApproved] = useState(false);
     const [tasksCompleted, setTasksCompleted] = useState(false);
     const [incompleteTasks, setIncompleteTasks] = useState<string[]>([]);
@@ -172,6 +172,35 @@ const GenerateInvestigationReportModal: React.FC<
     const [commentsLoaded, setCommentsLoaded] = useState(false);
     const [notesLoaded, setNotesLoaded] = useState(false);
     const [submittedDate, setSubmittedDate] = useState<string>('N/A');
+    const {
+      investigators,
+      supervisors,
+      fetchInvestigatorsList,
+      fetchSupervisorsList,
+    } = useInvestigatorSupervisorList();
+
+    useEffect(() => {
+      if (investigators.length === 0) {
+        fetchInvestigatorsList();
+      }
+      if (supervisors.length === 0) {
+        fetchSupervisorsList();
+      }
+    }, []);
+
+    const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
+      const inv = investigators.find(
+        (i) => i.id === assigneeName || i.id === assignee,
+      );
+      if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+      const sup = supervisors.find(
+        (i) => i.id === assigneeName || i.id === assignee,
+      );
+      if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+      return '';
+    };
 
     useEffect(() => {
       hasFetchedRef.current = false;
@@ -219,12 +248,10 @@ const GenerateInvestigationReportModal: React.FC<
       try {
         const {
           supervisorComments,
-          investigatorName,
           investigationNotes,
           submittedDate,
         } = await fetchCasesAndEvidence(caseId, latestInvestigateTask.task_id);
         setSupervisorComments(supervisorComments);
-        setInvestigatorName(investigatorName);
         setSubmittedDate(submittedDate);
         setInvestigationNotes(investigationNotes);
       } catch (err) {
@@ -409,7 +436,7 @@ const GenerateInvestigationReportModal: React.FC<
                 {
                   text: [
                     { text: 'Investigator: ', bold: true },
-                    investigatorName,
+                    getAssigneeFullName(latestInvestigateTask?.assigned_user_id),
                   ],
                   margin: [0, 0, 0, 5],
                 },
@@ -918,7 +945,7 @@ const GenerateInvestigationReportModal: React.FC<
                       <span className="font-medium text-gray-700">
                         Investigator:
                       </span>
-                      <span className="text-gray-900">{investigatorName}</span>
+                      <span className="text-gray-900">{getAssigneeFullName(latestInvestigateTask?.assigned_user_id)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-700">
@@ -1120,8 +1147,8 @@ const GenerateInvestigationReportModal: React.FC<
                     onClick={handleApproveClick}
                     disabled={isFinalizing || isApproved}
                     className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md ${isApproved
-                        ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-                        : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
+                      ? 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                      : 'text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed'
                       }`}
                   >
                     {isFinalizing ? (

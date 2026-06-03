@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { CaseAgeingDetail } from '../types/reports.types';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import TablePagination from '../../../shared/components/TablePagination';
 import type { TablePaginationInfo } from '../../../shared/types/pagination.types';
+import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 
 interface CaseAgeingTableProps {
   data: CaseAgeingDetail[];
@@ -19,6 +20,15 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
   onExportCSV,
   onExportPDF,
 }) => {
+  const {
+    investigators,
+    supervisors,
+    fetchInvestigatorsList,
+    fetchSupervisorsList,
+    complianceOfficers,
+    fetchComplianceOfficersList,
+  } = useInvestigatorSupervisorList();
+
   const { currentPage, totalPages, paginatedData, setCurrentPage } =
     usePagination({
       data,
@@ -52,6 +62,37 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
       default:
         return 'text-gray-600';
     }
+  };
+
+  useEffect(() => {
+    if (investigators.length === 0) {
+      fetchInvestigatorsList();
+    }
+    if (supervisors.length === 0) {
+      fetchSupervisorsList();
+    }
+    if (complianceOfficers.length === 0) {
+      fetchComplianceOfficersList();
+    }
+  }, []);
+
+  const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
+    const compliance = complianceOfficers.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
+    if (compliance) return `${compliance.firstName} ${compliance.lastName}`;
+
+    const inv = investigators.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
+    if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+    const sup = supervisors.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
+    if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    return '';
   };
 
   return (
@@ -180,7 +221,7 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
                     <div className="break-words">
-                      {row.investigator || 'Unassigned'}
+                      {getAssigneeFullName(row.investigator) || 'Unassigned'}
                     </div>
                   </td>
                 </tr>

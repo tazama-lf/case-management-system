@@ -696,7 +696,7 @@ export class ReportsService {
 
         return {
           investigatorId: caseOwnerUserId,
-          investigator: `User ${caseOwnerUserId}`,
+          investigator: caseOwnerUserId,
           role: 'Investigator',
           totalCases,
           activeCases,
@@ -1129,7 +1129,7 @@ export class ReportsService {
       ageDays: case_.ageDays,
       priority: case_.priority,
       userId: case_.case_owner_user_id ?? null,
-      investigator: case_.case_owner_user_id ? `User ${case_.case_owner_user_id}` : 'Unassigned',
+      investigator: case_.case_owner_user_id ?? 'Unassigned',
     }));
 
     return {

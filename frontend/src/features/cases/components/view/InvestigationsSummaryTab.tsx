@@ -10,7 +10,6 @@ import { caseService } from '../../services/caseService';
 import { evidenceService } from '../../services/evidenceService';
 import { commentService } from '../../services/commentService';
 import { taskService, TaskStatus } from '../../services/taskService';
-import userService from '../../services/userService';
 import type { Case } from '@/features/alerts/types/triage.types';
 import type { Evidence } from '../../types/evidence.types';
 import type { TaskComment } from '../../services/commentService';
@@ -19,6 +18,7 @@ import authService from '@/features/auth/services/authService';
 import type { UnifiedWorkQueueTask } from '../../types/task.types';
 import type { TaskForSupervisor } from '../../services/taskService';
 import { formatDate } from '@/shared/utils/dateUtils';
+import { useInvestigatorSupervisorList } from '../../hooks/useInvestigatorSupervisorList';
 
 const CompleteTaskModal = lazy(
   async () => await import('../modals/CompleteTaskModal'),
@@ -50,6 +50,12 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
   refreshKey,
   task,
 }) => {
+  const {
+    investigators,
+    supervisors,
+    fetchInvestigatorsList,
+    fetchSupervisorsList,
+  } = useInvestigatorSupervisorList();
   const [currentTaskId, setCurrentTaskId] = useState<number | null>(null);
   const { success, error: toastError } = useToast();
   const [caseDetails, setCaseDetails] = useState<Case | null>(null);
@@ -59,7 +65,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
   const [supervisorComments, setSupervisorComments] = useState<TaskComment[]>(
     [],
   );
-  const [investigatorName, setInvestigatorName] = useState<string>('N/A');
   const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(),
@@ -91,6 +96,29 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
     dueDate: task.sla_deadline ?? undefined,
     caseId: task.case_id,
   });
+
+  useEffect(() => {
+    if (investigators.length === 0) {
+      fetchInvestigatorsList();
+    }
+    if (supervisors.length === 0) {
+      fetchSupervisorsList();
+    }
+  }, []);
+
+  const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
+    const inv = investigators.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
+    if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+    const sup = supervisors.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
+    if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    return '';
+  };
 
   const loadEvidence = React.useCallback(async (): Promise<void> => {
     if (!currentTaskId) return;
@@ -281,17 +309,17 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
           // Then find the approval task that comes after this investigation task
           const approvalTask = investigationTask
             ? tasks
-                .filter(
-                  (t) =>
-                    t.name?.toLowerCase().includes('approve') &&
-                    new Date(t.created_at || 0).getTime() >
-                      new Date(investigationTask.created_at || 0).getTime(),
-                )
-                .sort((a, b) => {
-                  const dateA = new Date(a.created_at || 0).getTime();
-                  const dateB = new Date(b.created_at || 0).getTime();
-                  return dateA - dateB; // ascending order (earliest approval after investigation)
-                })[0]
+              .filter(
+                (t) =>
+                  t.name?.toLowerCase().includes('approve') &&
+                  new Date(t.created_at || 0).getTime() >
+                  new Date(investigationTask.created_at || 0).getTime(),
+              )
+              .sort((a, b) => {
+                const dateA = new Date(a.created_at || 0).getTime();
+                const dateB = new Date(b.created_at || 0).getTime();
+                return dateA - dateB; // ascending order (earliest approval after investigation)
+              })[0]
             : undefined;
 
           if (approvalTask) {
@@ -319,14 +347,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
                   ? formatDate(investigationTask.updated_at)
                   : 'N/A',
               );
-            }
-            if (investigationTask.assigned_user_id) {
-              const userDetails = await userService.getUserDetailsById(
-                investigationTask.assigned_user_id,
-              );
-              if (userDetails) {
-                setInvestigatorName(userService.formatUserName(userDetails));
-              }
             }
           }
         } catch (error) {
@@ -387,7 +407,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
                   Investigator
                 </p>
                 <p className="text-sm font-semibold text-gray-900">
-                  {investigatorName}
+                  {getAssigneeFullName(investigationTask.assigned_user_id) || 'N/A'}
                 </p>
               </div>
               <div>
@@ -497,7 +517,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
                       (caseDetails.status === 'STATUS_81_CLOSED_REFUTED' ||
                         caseDetails.status === 'STATUS_82_CLOSED_CONFIRMED' ||
                         caseDetails.status ===
-                          'STATUS_83_CLOSED_INCONCLUSIVE') && (
+                        'STATUS_83_CLOSED_INCONCLUSIVE') && (
                         <div className="p-3 bg-green-50 border border-green-200 rounded">
                           <p className="text-xs text-green-600 font-medium mb-1">
                             Supervisor Final Outcome

@@ -4,9 +4,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TaskDetailsTab from '../TaskDetailsTab';
 import type { CaseRow } from '../../casesTable.utils';
 import type { TaskForSupervisor } from '../../../services/taskService';
-import userService from '../../../services/userService';
 
-vi.mock('../../../services/userService');
+const mockFetchInvestigatorsList = vi.fn();
+const mockFetchSupervisorsList = vi.fn();
+
+vi.mock('../../../hooks/useInvestigatorSupervisorList', () => ({
+  useInvestigatorSupervisorList: () => ({
+    investigators: [
+      {
+        id: 'user-1',
+        firstName: 'John',
+        lastName: 'Doe',
+      },
+    ],
+    supervisors: [],
+    fetchInvestigatorsList: mockFetchInvestigatorsList,
+    fetchSupervisorsList: mockFetchSupervisorsList,
+  }),
+}));
 
 const mockCaseRow: CaseRow = {
   id: 123,
@@ -46,12 +61,6 @@ const mockTask: TaskForSupervisor = {
 describe('TaskDetailsTab', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (userService.getUserDetailsById as vi.Mock).mockResolvedValue({
-      id: 'user-1',
-      firstName: 'John',
-      lastName: 'Doe',
-      username: 'jdoe',
-    });
   });
 
   it('renders loading state when loadingTasks is true', () => {
@@ -75,11 +84,11 @@ describe('TaskDetailsTab', () => {
     });
   });
 
-  it('fetches user details when task has assigned_user_id', async () => {
+  it('renders assignee full name when task has assigned_user_id', async () => {
     render(<TaskDetailsTab row={mockCaseRow} tasks={[mockTask]} />);
 
     await waitFor(() => {
-      expect(userService.getUserDetailsById).toHaveBeenCalledWith('user-1');
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
   });
 

@@ -4,7 +4,6 @@ import { evidenceService } from '../../services/evidenceService';
 import { caseService } from '../../services/caseService';
 import { commentService } from '../../services/commentService';
 import { taskService } from '../../services/taskService';
-import userService from '../../services/userService';
 
 vi.mock('../../services/evidenceService', () => ({
   evidenceService: { getTaskEvidence: vi.fn() },
@@ -17,9 +16,6 @@ vi.mock('../../services/commentService', () => ({
 }));
 vi.mock('../../services/taskService', () => ({
   taskService: { getTasksByCaseId: vi.fn() },
-}));
-vi.mock('../../services/userService', () => ({
-  default: { getUserDetailsById: vi.fn(), formatUserName: vi.fn() },
 }));
 
 const mockGetEv = vi.mocked(evidenceService.getTaskEvidence);
@@ -154,7 +150,7 @@ describe('fetchCasesAndEvidence', () => {
     expect(result.investigationTask).toBeUndefined();
   });
 
-  it('populates investigator name from user details', async () => {
+  it('keeps default investigator name when task has assignee', async () => {
     (caseService.getCaseDetails as vi.Mock).mockResolvedValue({ case_id: 1 });
     (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue([
       {
@@ -164,15 +160,10 @@ describe('fetchCasesAndEvidence', () => {
         investigationNotes: 'Some notes',
       },
     ]);
-    (userService.getUserDetailsById as vi.Mock).mockResolvedValue({
-      firstName: 'John',
-      lastName: 'Doe',
-    });
-    (userService.formatUserName as vi.Mock).mockReturnValue('John Doe');
 
     const result = await fetchCasesAndEvidence(1, 10);
 
-    expect(result.investigatorName).toBe('John Doe');
+    expect(result.investigatorName).toBe('N/A');
     expect(result.investigationNotes).toBe('Some notes');
   });
 
@@ -211,7 +202,6 @@ describe('fetchCasesAndEvidence', () => {
     (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue([
       { task_id: 10, assigned_user_id: 'user-1' },
     ]);
-    (userService.getUserDetailsById as vi.Mock).mockResolvedValue(null);
 
     const result = await fetchCasesAndEvidence(1, 10);
     expect(result.investigatorName).toBe('N/A');

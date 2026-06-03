@@ -7,6 +7,9 @@ import GenerateInvestigationReportModal, {
 } from '../GenerateInvestigationReportModal';
 import { useNotifications } from '@/shared/providers/NotificationProvider';
 
+const mockFetchInvestigatorsList = vi.fn();
+const mockFetchSupervisorsList = vi.fn();
+
 vi.mock('@/shared/providers/NotificationProvider');
 vi.mock('../../../../reports/services/reportsService', () => ({
   default: {
@@ -32,6 +35,20 @@ vi.mock('../../../utils/investigationUtils', () => ({
     investigatorName: 'John Doe',
     investigationNotes: 'Some investigation notes',
     submittedDate: '2024-01-15',
+  }),
+}));
+vi.mock('../../../hooks/useInvestigatorSupervisorList', () => ({
+  useInvestigatorSupervisorList: () => ({
+    investigators: [
+      {
+        id: 'user-1',
+        firstName: 'John',
+        lastName: 'Doe',
+      },
+    ],
+    supervisors: [],
+    fetchInvestigatorsList: mockFetchInvestigatorsList,
+    fetchSupervisorsList: mockFetchSupervisorsList,
   }),
 }));
 vi.mock('pdfmake/build/pdfmake', () => ({
@@ -67,6 +84,7 @@ const mockTasks = [
     name: 'Investigate AML',
     status: 'STATUS_30_COMPLETED',
     created_at: '2024-01-01T00:00:00Z',
+    assigned_user_id: 'user-1',
   },
 ];
 
@@ -91,6 +109,7 @@ describe('GenerateInvestigationReportModal', () => {
         name: 'Investigate AML',
         status: 'STATUS_30_COMPLETED',
         created_at: '2024-01-01T00:00:00Z',
+        assigned_user_id: 'user-1',
       },
     ]);
     // Re-set investigationUtils mocks after clearAllMocks

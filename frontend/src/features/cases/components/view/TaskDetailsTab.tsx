@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { CaseRow } from '../casesTable.utils';
 import type { TaskForSupervisor } from '../../services/taskService';
 import { formatDate } from '../../../../shared/utils/dateUtils';
-import userService, { type UserDetails } from '../../services/userService';
+import { useInvestigatorSupervisorList } from '../../hooks/useInvestigatorSupervisorList';
 
 interface TaskDetailsTabProps {
   row: CaseRow;
@@ -38,33 +38,35 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
   loadingTasks = false,
 }) => {
   const task = tasks.length > 0 ? tasks[0] : null;
-  const [assignedUser, setAssignedUser] = React.useState<UserDetails | null>(
-    null,
-  );
-  const [loadingUser, setLoadingUser] = React.useState(false);
+  const {
+    investigators,
+    supervisors,
+    fetchInvestigatorsList,
+    fetchSupervisorsList,
+  } = useInvestigatorSupervisorList();
 
-  React.useEffect(() => {
-    const fetchUserDetails = async () => {
-      if (task?.assigned_user_id) {
-        setLoadingUser(true);
-        try {
-          const userDetails = await userService.getUserDetailsById(
-            task.assigned_user_id,
-          );
-          setAssignedUser(userDetails);
-        } catch (error) {
-          console.error('Failed to fetch user details:', error);
-          setAssignedUser(null);
-        } finally {
-          setLoadingUser(false);
-        }
-      } else {
-        setAssignedUser(null);
-      }
-    };
+  useEffect(() => {
+    if (investigators.length === 0) {
+      fetchInvestigatorsList();
+    }
+    if (supervisors.length === 0) {
+      fetchSupervisorsList();
+    }
+  }, []);
 
-    fetchUserDetails();
-  }, [task?.assigned_user_id]);
+  const getAssigneeFullName = (assigneeName?: string, assignee?: string) => {
+    const inv = investigators.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
+    if (inv) return `${inv.firstName} ${inv.lastName}`;
+
+    const sup = supervisors.find(
+      (i) => i.id === assigneeName || i.id === assignee,
+    );
+    if (sup) return `${sup.firstName} ${sup.lastName}`;
+
+    return '';
+  };
 
   const getTaskStatusColor = (status: string): string => {
     const statusConfig: Record<string, string> = {
@@ -209,18 +211,8 @@ const TaskDetailsTab: React.FC<TaskDetailsTabProps> = ({
                     Assigned To
                   </div>
                   <div className="font-medium text-gray-900">
-                    {loadingUser ? (
-                      <span className="text-gray-400">Loading...</span>
-                    ) : assignedUser ? (
-                      (() => {
-                        const fullName =
-                          `${assignedUser.firstName ?? ''} ${assignedUser.lastName ?? ''}`.trim();
-                        return fullName !== ''
-                          ? fullName
-                          : (assignedUser.username ?? 'Unknown');
-                      })()
-                    ) : task.assigned_user_id ? (
-                      task.assigned_user_id.substring(0, 8)
+                    {task.assigned_user_id ? (
+                      getAssigneeFullName(task.assigned_user_id)
                     ) : (
                       'Unassigned'
                     )}
