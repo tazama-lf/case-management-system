@@ -1121,7 +1121,7 @@ export class ReportsService {
       });
     });
 
-    const caseDetails = casesWithAge.slice(0, 5).map((case_) => ({
+    const caseDetails = casesWithAge.map((case_) => ({
       caseId: case_.case_id,
       type: case_.case_type ?? 'NONE',
       status: this.formatStatusName(case_.status),
