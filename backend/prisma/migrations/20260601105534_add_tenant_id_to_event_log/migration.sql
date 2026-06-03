@@ -5,4 +5,11 @@
 
 */
 -- AlterTable
-ALTER TABLE "event_log" ADD COLUMN     "tenant_id" TEXT NOT NULL;
+-- Step 1
+ALTER TABLE event_log ADD COLUMN tenant_id TEXT;
+
+-- Step 2
+UPDATE event_log SET tenant_id = 'DEFAULT';
+
+-- Step 3
+ALTER TABLE event_log ALTER COLUMN tenant_id SET NOT NULL;
