@@ -24,7 +24,7 @@ export class EventLogService {
     return await this.prisma.eventLog.create({
       data: {
         user_id: userId,
-        tenant_id: tenantId,
+        tenant_id: data.tenantId,
         operation: data.operation,
         entity_name: data.entityName,
         action_performed: data.actionPerformed,
