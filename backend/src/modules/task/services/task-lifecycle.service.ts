@@ -443,13 +443,14 @@ export class TaskLifecycleService {
       this.logger.log(`Fetching user details for userId: ${userId} in tenant: ${tenantName}`, TaskLifecycleService.name);
       if (userId) {
         const investigatorList = await this.userService.getUsersByRole(token, 'CMS_INVESTIGATOR', tenantName);
-
+        this.logger.log(`Fetched ${investigatorList.length} investigators`, TaskLifecycleService.name);
         const investigator = investigatorList.find((i) => i.id === userId);
 
         if (investigator) {
           return `${investigator.firstName} ${investigator.lastName}`;
         } else {
           const supervisorList = await this.userService.getUsersByRole(token, 'CMS_SUPERVISOR', tenantName);
+          this.logger.log(`Fetched ${supervisorList.length} supervisors`, TaskLifecycleService.name);
           const isSupervisor = supervisorList.find((s) => s.id === userId);
           if (isSupervisor) {
             return `${isSupervisor.firstName} ${isSupervisor.lastName}`;
