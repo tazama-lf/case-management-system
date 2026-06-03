@@ -48,6 +48,7 @@ export class CaseCreationService {
           entityName: 'CaseCreationService',
           actionPerformed: `Case ${createdCase.case_id} created successfully`,
           outcome: Outcome.SUCCESS,
+          tenantId: tenantId,
         },
         createdCase.case_id,
         tenantId,
@@ -104,6 +105,7 @@ export class CaseCreationService {
         entityName: 'CaseCreationService',
         actionPerformed: `Created ${alertType} child case ${newCase.case_id} linked to parent ${parentCaseId}. BPMN will create investigation task.`,
         outcome: Outcome.SUCCESS,
+        tenantId: tenantId,
       });
 
       this.loggerService.log(
@@ -228,6 +230,7 @@ export class CaseCreationService {
           entityName: CaseCreationService.name,
           operation: 'createManualCase',
           outcome: Outcome.SUCCESS,
+          tenantId: tenantId,
         },
         createdCase.case_id,
         tenantId,

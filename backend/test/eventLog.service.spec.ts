@@ -10,6 +10,7 @@ describe('EventLogService', () => {
   const mockEventLog = {
     id: 1,
     user_id: '550e8400-e29b-41d4-a716-446655440000',
+    tenant_id: 'tenant-1',
     operation: 'CREATE',
     entity_name: 'Case',
     action_performed: 'Created case 123',
@@ -22,6 +23,7 @@ describe('EventLogService', () => {
     {
       id: 2,
       user_id: '660e8400-e29b-41d4-a716-446655440001',
+      tenant_id: 'tenant-2',
       operation: 'UPDATE',
       entity_name: 'Alert',
       action_performed: 'Updated alert 456',
@@ -58,6 +60,7 @@ describe('EventLogService', () => {
   describe('logEventAction', () => {
     const actionData = {
       userId: '550e8400-e29b-41d4-a716-446655440000',
+      tenantId: 'tenant-1',
       operation: 'CREATE',
       entityName: 'Case',
       actionPerformed: 'Created case 123',
@@ -75,6 +78,7 @@ describe('EventLogService', () => {
       expect(prismaService.eventLog.create).toHaveBeenCalledWith({
         data: {
           user_id: actionData.userId,
+          tenant_id: actionData.tenantId,
           operation: actionData.operation,
           entity_name: actionData.entityName,
           action_performed: actionData.actionPerformed,
@@ -156,7 +160,7 @@ describe('EventLogService', () => {
   });
 
   describe('logPermissionDenied', () => {
-    const user = { sub: '550e8400-e29b-41d4-a716-446655440000' };
+    const user = { sub: '550e8400-e29b-41d4-a716-446655440000', tenant_id: 'tenant-1' };
 
     beforeEach(() => {
       prismaService.eventLog.create.mockResolvedValue(mockEventLog);
@@ -169,6 +173,7 @@ describe('EventLogService', () => {
       expect(prismaService.eventLog.create).toHaveBeenCalledWith({
         data: {
           user_id: user.sub,
+          tenant_id: user.tenant_id,
           operation: 'permission_denied',
           entity_name: 'Case',
           action_performed: 'DELETE',
@@ -182,11 +187,10 @@ describe('EventLogService', () => {
       ['null', null],
       ['undefined', undefined],
       ['missing sub', { id: 'test' }],
-    ])('should generate UUID when user is %s', async (_description, userValue) => {
-      await service.logPermissionDenied(userValue, 'Alert', 'UPDATE');
-
-      const callData = prismaService.eventLog.create.mock.calls[0][0].data;
-      expect(isUuid(callData.user_id)).toBe(true);
+    ])('should throw when user is %s (missing tenantId)', async (_description, userValue) => {
+      await expect(service.logPermissionDenied(userValue, 'Alert', 'UPDATE')).rejects.toThrow(
+        'Missing tenantId in permission denied event',
+      );
     });
 
     it.each([

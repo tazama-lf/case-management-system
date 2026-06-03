@@ -48,7 +48,7 @@ export class TriageService {
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   async getAlertNavigator(alertId: number, tenantId: string, userId: string): Promise<AlertNavigatorDto> {
     this.logger.log(`Fetching alert navigator for alertId: ${alertId}, tenantId: ${tenantId}, userId: ${userId}`, TriageService.name);
@@ -96,16 +96,13 @@ export class TriageService {
 
     this.logger.log(`Extracted ${typologies.length} typologies and ${rules.length} rules`, TriageService.name);
 
-    const blockStatusValue = alert.block_status ?? alertReport?.block_status;
-    const blockReasonValue = alert.block_reason ?? alertReport?.block_reason;
+    const blockStatusValue = alertReport?.block_status ?? '';
+    const blockReasonValue = alertReport?.block_reason ?? '';
 
-    const blockStatus: BlockStatusDto | null =
-      (blockStatusValue ?? blockReasonValue)
-        ? {
-            status: blockStatusValue ?? '',
-            reason: blockReasonValue ?? '',
-          }
-        : null;
+    const blockStatus: BlockStatusDto = {
+      status: blockStatusValue ?? '',
+      reason: blockReasonValue ?? '',
+    };
 
     const transactionId = transactionData?.FIToFIPmtSts?.GrpHdr?.MsgId ?? '';
     const amount = {
@@ -711,6 +708,7 @@ export class TriageService {
         entityName: 'Alert',
         actionPerformed: `Triage failed for alert ${alertId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
+        tenantId,
       });
       throw new InternalServerErrorException('Triage process failed');
     }
@@ -733,6 +731,7 @@ export class TriageService {
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
           userId,
+          tenantId: existingCase.tenant_id,
           operation: 'CASE_AUTO_CLOSED',
           entityName: 'Case',
           actionPerformed: `Auto-closed case ${caseId} with status: ${status}`,
@@ -751,6 +750,7 @@ export class TriageService {
         entityName: 'Case',
         actionPerformed: `Failed to auto close case ${caseId}`,
         outcome: Outcome.FAILURE,
+        tenantId,
       });
       throw new InternalServerErrorException('Failed to auto close case');
     }
@@ -783,6 +783,7 @@ export class TriageService {
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
           userId,
+          tenantId: existingCase.tenant_id,
           operation: 'INVESTIGATION_TASK_TRIGGERED',
           entityName: 'Task',
           actionPerformed: `AI triage completed for case ${caseId}. BPMN will create investigation task.`,
@@ -809,6 +810,7 @@ export class TriageService {
         entityName: 'Task',
         actionPerformed: `Failed to complete triage for case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
+        tenantId,
       });
       throw new InternalServerErrorException('Failed to complete triage');
     }
@@ -854,6 +856,7 @@ export class TriageService {
           entityName: 'Alert & Task',
           actionPerformed: `Updated alert ${alertId} and triage task ${taskId} with prediction`,
           outcome: Outcome.SUCCESS,
+          tenantId,
         },
         task.case_id,
         tenantId,

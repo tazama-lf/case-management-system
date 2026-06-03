@@ -191,15 +191,18 @@ describe('AlertService', () => {
 
     it('updates alert successfully', async () => {
       const updated = { ...mockAlert, ...updateData };
+      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
       alertRepository.updateAlert.mockResolvedValue(updated as any);
       loggingOrchestrationService.logActions.mockResolvedValue(undefined as any);
 
       const result = await service.updateAlert(1, 'user-123', updateData, undefined, 'Test User');
 
       expect(result).toEqual(updated);
+      expect(alertRepository.getAlertById).toHaveBeenCalledWith(1, undefined);
       expect(alertRepository.updateAlert).toHaveBeenCalledWith(1, updateData, undefined);
       expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith({
         userId: 'user-123',
+        tenantId: mockAlert.tenant_id,
         operation: 'ALERT_UPDATED',
         entityName: AlertService.name,
         actionPerformed: '1 - Triaged by user Test User',
@@ -209,15 +212,18 @@ describe('AlertService', () => {
 
     it('passes transaction client to repository', async () => {
       const tx = {} as any;
+      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
       alertRepository.updateAlert.mockResolvedValue({ ...mockAlert } as any);
       loggingOrchestrationService.logActions.mockResolvedValue(undefined as any);
 
       await service.updateAlert(1, 'user-123', updateData, tx);
 
+      expect(alertRepository.getAlertById).toHaveBeenCalledWith(1, tx);
       expect(alertRepository.updateAlert).toHaveBeenCalledWith(1, updateData, tx);
     });
 
     it('throws InternalServerErrorException on Error', async () => {
+      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
       alertRepository.updateAlert.mockRejectedValue(new Error('Update failed'));
 
       await expect(service.updateAlert(1, 'user-123', updateData)).rejects.toThrow(InternalServerErrorException);
@@ -229,6 +235,7 @@ describe('AlertService', () => {
     });
 
     it('throws InternalServerErrorException on string error', async () => {
+      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
       alertRepository.updateAlert.mockRejectedValue('string error');
 
       await expect(service.updateAlert(1, 'user-123', updateData)).rejects.toThrow(InternalServerErrorException);

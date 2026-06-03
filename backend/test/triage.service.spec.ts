@@ -21,7 +21,9 @@ import { Priority, CaseStatus, CaseType, TaskStatus, CaseCreationType } from '@p
 import { ManualAlertUpdateDTO, IngestAlertDto } from '../src/modules/alert/dto';
 import { Outcome } from '../src/utils/types/outcome';
 import axios from 'axios';
+import * as timersPromises from 'node:timers/promises';
 
+jest.mock('node:timers/promises', () => ({ setTimeout: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
@@ -68,8 +70,6 @@ describe('TriageService', () => {
     case_id: 1,
     alert_type: CaseType.FRAUD,
     prediction_outcome: null,
-    block_status: null,
-    block_reason: null,
     created_at: new Date('2026-01-01'),
     updated_at: new Date('2026-01-01'),
   };
@@ -840,6 +840,8 @@ describe('TriageService', () => {
       });
 
       it('should retry on failure and eventually succeed', async () => {
+        const setTimeoutSpy = timersPromises.setTimeout as jest.Mock;
+        setTimeoutSpy.mockResolvedValue(undefined);
         const mockFn = jest
           .fn()
           .mockRejectedValueOnce(new Error('Attempt 1 failed'))
@@ -849,14 +851,20 @@ describe('TriageService', () => {
         await (service as any).retry(mockFn);
 
         expect(mockFn).toHaveBeenCalledTimes(3);
+        expect(setTimeoutSpy).toHaveBeenCalledTimes(2);
+        setTimeoutSpy.mockReset();
       });
 
       it('should throw error after max retries', async () => {
+        const setTimeoutSpy = timersPromises.setTimeout as jest.Mock;
+        setTimeoutSpy.mockResolvedValue(undefined);
         const mockFn = jest.fn().mockRejectedValue(new Error('Always fails'));
 
         await expect((service as any).retry(mockFn, 2)).rejects.toThrow('Always fails');
 
         expect(mockFn).toHaveBeenCalledTimes(2);
+        expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+        setTimeoutSpy.mockReset();
       });
     });
   });
@@ -879,8 +887,6 @@ describe('TriageService', () => {
             },
           ],
         },
-        block_status: 'BLOCKED',
-        block_reason: 'Suspicious activity detected',
       },
       transaction: {
         FIToFIPmtSts: {
@@ -898,8 +904,6 @@ describe('TriageService', () => {
       },
       txtp: 'pacs.002.001.12',
       message: 'Alert reason',
-      block_status: 'BLOCKED',
-      block_reason: 'Test reason',
     };
 
     it('should return alert navigator data successfully', async () => {
@@ -920,22 +924,20 @@ describe('TriageService', () => {
       expect(result.rules).toHaveLength(2);
       expect(result).toHaveProperty('blockStatus');
       expect(result.blockStatus).toEqual({
-        status: 'BLOCKED',
-        reason: 'Test reason',
+        status: '',
+        reason: '',
       });
       expect(mockPrisma.alert.findUnique).toHaveBeenCalledWith({
         where: { alert_id: 1, tenant_id: 'tenant-123' },
       });
     });
 
-    it('should handle alert with null blockStatus', async () => {
+    it('should handle alert with empty blockStatus', async () => {
       const alertWithoutBlock = {
         ...mockPrismaAlert,
         alert_data: {
           tadpResult: { typologyResult: [] },
         },
-        block_status: null,
-        block_reason: null,
       };
 
       const mockPrisma = {
@@ -943,11 +945,15 @@ describe('TriageService', () => {
           findUnique: jest.fn().mockResolvedValue(alertWithoutBlock),
         },
       };
+
       (service as any).prisma = mockPrisma;
 
       const result = await service.getAlertNavigator(1, 'tenant-123', 'user-123');
 
-      expect(result.blockStatus).toBeNull();
+      expect(result.blockStatus).toEqual({
+        status: '',
+        reason: '',
+      });
     });
 
     it('should throw NotFoundException when alert not found', async () => {
@@ -1097,8 +1103,6 @@ describe('TriageService', () => {
         transaction: null,
         txtp: '',
         message: '',
-        block_status: null,
-        block_reason: null,
       };
 
       const mockPrisma = {
@@ -1134,8 +1138,6 @@ describe('TriageService', () => {
         transaction: {},
         txtp: '',
         message: '',
-        block_status: null,
-        block_reason: null,
       };
 
       const mockPrisma = {

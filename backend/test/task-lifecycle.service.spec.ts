@@ -14,6 +14,9 @@ import { TaskStatus, CaseStatus } from '@prisma/client-cms';
 import { TASK_NAMES } from '../src/constants/case.constants';
 import { RbacService, EndpointKey } from '../src/utils/rbac/rbacHelper';
 import { AuthenticatedUser } from '../src/utils/types/auth.types';
+import * as timersPromises from 'node:timers/promises';
+
+jest.mock('node:timers/promises', () => ({ setTimeout: jest.fn().mockResolvedValue(undefined) }));
 
 describe('TaskLifecycleService', () => {
   let service: TaskLifecycleService;
@@ -586,6 +589,8 @@ describe('TaskLifecycleService', () => {
     });
 
     it('should handle flowable service errors with retry mechanism', async () => {
+      const setTimeoutSpy = timersPromises.setTimeout as jest.Mock;
+      setTimeoutSpy.mockResolvedValue(undefined);
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockTaskRepository.updateTask.mockResolvedValue({
         ...existingTask,
@@ -602,9 +607,13 @@ describe('TaskLifecycleService', () => {
 
       expect(result.status).toBe(TaskStatus.STATUS_30_COMPLETED);
       expect(mockFlowableService.handleTaskCompleted).toHaveBeenCalledTimes(3);
+      expect(setTimeoutSpy).toHaveBeenCalledTimes(2);
+      setTimeoutSpy.mockReset();
     });
 
     it('should handle max retries exceeded for flowable operation', async () => {
+      const setTimeoutSpy = timersPromises.setTimeout as jest.Mock;
+      setTimeoutSpy.mockResolvedValue(undefined);
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockTaskRepository.updateTask.mockResolvedValue({
         ...existingTask,
@@ -624,7 +633,9 @@ describe('TaskLifecycleService', () => {
         expect.anything(),
         'TaskLifecycleService',
       );
-    }, 30000);
+      expect(setTimeoutSpy).toHaveBeenCalledTimes(4);
+      setTimeoutSpy.mockReset();
+    }, 5000);
   });
 
   describe('fetchTaskAndCase (private method coverage)', () => {

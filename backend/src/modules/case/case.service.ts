@@ -123,6 +123,7 @@ export class CaseService {
             entityName: CaseService.name,
             actionPerformed: `Suspend case ${caseId}`,
             outcome: Outcome.SUCCESS,
+            tenantId: updatedCase.tenant_id,
           },
           caseId,
           updatedCase.tenant_id,
@@ -169,6 +170,7 @@ export class CaseService {
         entityName: CaseService.name,
         actionPerformed: `Attempted to suspend case ${caseId}`,
         outcome: Outcome.FAILURE,
+        tenantId: tenantId,
       });
       this.logger.error('suspendCase failed', { error: err, caseId, userId, tenantId });
       throw new InternalServerErrorException(`Failed to suspend case: ${err}`);
@@ -261,6 +263,7 @@ export class CaseService {
             entityName: CaseService.name,
             actionPerformed: `Resume case ${caseId}`,
             outcome: Outcome.SUCCESS,
+            tenantId: updatedCase.tenant_id,
           },
           caseId,
           updatedCase.tenant_id,
@@ -302,6 +305,7 @@ export class CaseService {
         entityName: CaseService.name,
         actionPerformed: `Attempted to resume case ${caseId}`,
         outcome: Outcome.FAILURE,
+        tenantId: tenantId,
       });
 
       this.logger.error('resumeCase failed', { error: err, caseId, userId, tenantId });
@@ -366,6 +370,7 @@ export class CaseService {
             entityName: CaseService.name,
             actionPerformed: `Abandon case ${caseId}`,
             outcome: Outcome.SUCCESS,
+            tenantId: updatedCase.tenant_id,
           },
           caseId,
           updatedCase.tenant_id,
@@ -1056,6 +1061,7 @@ export class CaseService {
           entityName: CaseService.name,
           actionPerformed: `Completed draft case ${caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
           outcome: Outcome.SUCCESS,
+          tenantId: existingCase.tenant_id,
         },
         caseId,
         existingCase.tenant_id,
@@ -1080,6 +1086,7 @@ export class CaseService {
         entityName: CaseService.name,
         actionPerformed: `Failed to complete draft case ${caseId}: ${err}`,
         outcome: Outcome.FAILURE,
+        tenantId: existingCase.tenant_id,
       });
 
       throw new InternalServerErrorException(`Failed to complete case creation: ${err}`);

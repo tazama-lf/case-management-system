@@ -118,7 +118,7 @@ class AuthService {
           Authorization: `Bearer ${token}`,
         },
         credentials: 'include', // Important: send cookies to be cleared
-      }).catch((error) => {
+      }).catch((error: unknown) => {
         console.error('Error clearing auth cookie:', error);
       });
     }

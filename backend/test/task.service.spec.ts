@@ -8,6 +8,9 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { TaskStatus, CaseStatus, Priority } from '@prisma/client-cms';
+import * as timersPromises from 'node:timers/promises';
+
+jest.mock('node:timers/promises', () => ({ setTimeout: jest.fn().mockResolvedValue(undefined) }));
 
 describe('TaskService', () => {
   let service: TaskService;
@@ -296,14 +299,11 @@ describe('TaskService', () => {
       expect(result).toBeDefined();
     });
 
-    // Note: This test requires 15s timeout because the service's retry mechanism uses
-    // promise-based setTimeout with delays (1s, 2s, 3s, 4s = 10s total).
-    // Jest's timer mocks don't work reliably with promise-based setTimeout in Node.js,
-    // so we allow the actual delays to occur. To optimize further, the retry logic
-    // itself would need to be mocked or refactored to be timer-mockable.
     it(
       'should handle flowable operation retry failure',
       async () => {
+        const setTimeoutSpy = timersPromises.setTimeout as jest.Mock;
+        setTimeoutSpy.mockResolvedValue(undefined);
         const updateData = { status: TaskStatus.STATUS_10_ASSIGNED };
 
         taskRepository.transaction.mockImplementation(async (callback) => {
@@ -320,8 +320,10 @@ describe('TaskService', () => {
           .mockRejectedValueOnce(new Error('Flowable error 5'));
 
         await expect(service.updateTask(1, updateData, 'user1', 'tenant1')).rejects.toThrow('Flowable error 5');
+        expect(setTimeoutSpy).toHaveBeenCalledTimes(4);
+        setTimeoutSpy.mockReset();
       },
-      15000,
+      5000,
     );
 
     it('should handle parent case promotion error', async () => {

@@ -226,8 +226,6 @@ export class AlertController {
     transaction: Prisma.JsonValue;
     network_map: Prisma.JsonValue;
     confidence_per: number;
-    block_status: string | null;
-    block_reason: string | null;
     case_id: number | null;
   } | null> {
     const userId = req.user.token.clientId;

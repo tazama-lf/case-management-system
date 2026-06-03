@@ -181,8 +181,8 @@ describe('useCaseDashboard', () => {
       expect(result.current.dashboardState.loading).toBe(false),
     );
 
-    await waitFor(() => 
-      expect(result.current.modalState.isViewOpen).toBe(true)
+    await waitFor(() =>
+      expect(result.current.modalState.isViewOpen).toBe(true),
     );
 
     expect(result.current.modalState.selectedRow?.id).toBe(777);
@@ -512,7 +512,7 @@ describe('useCaseDashboard', () => {
       pagination: { total: 1, totalPages: 1 },
     });
     (caseService.getCaseDetails as unknown as vi.Mock).mockRejectedValue(
-      new Error('Case not found')
+      new Error('Case not found'),
     );
 
     const { result } = renderHook(() => useCaseDashboard());
@@ -520,10 +520,10 @@ describe('useCaseDashboard', () => {
       expect(result.current.dashboardState.loading).toBe(false),
     );
 
-    await waitFor(() => 
-      expect(routeMock.navigate).toHaveBeenCalledWith('/cases')
+    await waitFor(() =>
+      expect(routeMock.navigate).toHaveBeenCalledWith('/cases'),
     );
-    
+
     expect(toastMock.error).toHaveBeenCalledWith('Failed to load case details');
   });
 

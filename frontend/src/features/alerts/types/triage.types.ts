@@ -188,7 +188,6 @@ export interface Alert extends Record<string, unknown> {
   alerted_typologies?: AlertedTypology[];
 }
 
-
 export interface Case {
   alert: Alert;
   case_id: number;

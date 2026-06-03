@@ -69,6 +69,12 @@ export class AlertService {
   ): Promise<Alert> {
     this.loggerService.log(`Start - Alert Update - ${alertId}`, AlertService.name);
     try {
+      // Fetch the alert to get tenant_id
+      const existingAlert = await this.alertRepository.getAlertById(alertId, tx);
+      if (!existingAlert) {
+        throw new NotFoundException(`Alert with id ${alertId} not found`);
+      }
+
       const updatedAlert = await this.alertRepository.updateAlert(alertId, updateData, tx);
 
       // Only include user name in message if it's available
@@ -80,6 +86,7 @@ export class AlertService {
         entityName: AlertService.name,
         actionPerformed: actionMessage,
         outcome: Outcome.SUCCESS,
+        tenantId: existingAlert.tenant_id,
       });
 
       this.loggerService.log(`End - Alert Update - ${alertId}`, AlertService.name);
@@ -212,8 +219,6 @@ export class AlertService {
     transaction: Prisma.JsonValue;
     network_map: Prisma.JsonValue;
     confidence_per: number;
-    block_status: string | null;
-    block_reason: string | null;
     case_id: number | null;
     alerted_typologies: Array<{
       id: string;
