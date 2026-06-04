@@ -19,6 +19,7 @@ import {
 import { useAuth } from '@/features/auth';
 import DeleteEvidenceModal from '../modals/DeleteEvidenceModal';
 import { formatDate } from '@/shared/utils/dateUtils';
+import { useInvestigatorSupervisorList } from '../../hooks/useInvestigatorSupervisorList';
 
 const CompleteTaskModal = lazy(
   async () => await import('../modals/CompleteTaskModal'),
@@ -50,6 +51,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
   const { success, error } = useToast();
   const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
   const { hasComplianceOfficerRole, hasSupervisorRole } = useAuth();
+  const { getAssigneeFullName } = useInvestigatorSupervisorList();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
     id: string;
@@ -410,11 +412,10 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                 <div className="mt-1">
                   <div className="flex justify-between items-center">
                     <span
-                      className={`text-xs ${
-                        sarRemarks.length === 500
-                          ? 'text-red-500'
-                          : 'text-gray-500'
-                      }`}
+                      className={`text-xs ${sarRemarks.length === 500
+                        ? 'text-red-500'
+                        : 'text-gray-500'
+                        }`}
                     >
                       {sarRemarks.length}/500
                     </span>
@@ -490,7 +491,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                             )}
                             <p className="text-xs text-gray-500 mt-1.5">
                               Uploaded: {formatDate(evidence.uploadedAt)} by{' '}
-                              {evidence.uploadedBy}
+                              {getAssigneeFullName(evidence.uploadedBy)}
                             </p>
                           </div>
                           {/* <div className="ml-3 flex items-center gap-2">
