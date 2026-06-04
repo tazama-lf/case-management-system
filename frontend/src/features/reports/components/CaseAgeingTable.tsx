@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { CaseAgeingDetail } from '../types/reports.types';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import TablePagination from '../../../shared/components/TablePagination';
 import type { TablePaginationInfo } from '../../../shared/types/pagination.types';
+import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 
 interface CaseAgeingTableProps {
   data: CaseAgeingDetail[];
@@ -19,16 +20,18 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
   onExportCSV,
   onExportPDF,
 }) => {
+  const { getAssigneeFullName } = useInvestigatorSupervisorList();
+
   const { currentPage, totalPages, paginatedData, setCurrentPage } =
     usePagination({
       data,
-      defaultItemsPerPage: 10,
+      defaultItemsPerPage: 5,
     });
 
   // Create pagination object for TablePagination
   const pagination: TablePaginationInfo = {
     currentPage,
-    pageSize: 10, // Fixed page size since usePagination doesn't expose itemsPerPage in a way we need
+    pageSize: 5, // Fixed page size since usePagination doesn't expose itemsPerPage in a way we need
     totalItems: data.length,
     totalPages,
     onPageChange: setCurrentPage,
@@ -180,7 +183,7 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
                     <div className="break-words">
-                      {row.investigator || 'Unassigned'}
+                      {getAssigneeFullName(row.investigator) || 'Unassigned'}
                     </div>
                   </td>
                 </tr>

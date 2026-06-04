@@ -12,6 +12,7 @@ import { CaseRepository } from 'src/modules/repository/case.repository';
 import { setTimeout } from 'node:timers/promises';
 import { RbacService, EndpointKey } from 'src/utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from 'src/utils/types/auth.types';
+import { UserService } from 'src/modules/user/user.service';
 
 @Injectable()
 export class TaskLifecycleService {
@@ -25,6 +26,7 @@ export class TaskLifecycleService {
     private readonly flowableService: FlowableService,
     private readonly notificationService: NotificationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly userService: UserService,
   ) {}
 
   async assignTaskToInvestigator(
@@ -101,12 +103,15 @@ export class TaskLifecycleService {
       return { updatedTask, updatedCase };
     });
 
+    const { token, tenantName } = user;
+    const fullname = await this.fetchUserDetails(token.tokenString, tenantName, assignedUserId);
+
     await this.loggingOrchestrationService.logActionsWithHistory(
       {
         userId,
         actionPerformed: isInvestigationTask
-          ? `Assigned task ${taskId} to investigator ${assignedUserId} and updated case ${existingTask.case_id} to ASSIGNED`
-          : `Assigned task ${taskId} to user ${assignedUserId}`,
+          ? `Assigned task ${taskId} to investigator ${fullname ?? assignedUserId} and updated case ${existingTask.case_id} to ASSIGNED`
+          : `Assigned task ${taskId} to user ${fullname ?? assignedUserId}`,
         entityName: 'TaskService',
         operation: 'assignTaskToInvestigator',
         outcome: Outcome.SUCCESS,
@@ -206,10 +211,13 @@ export class TaskLifecycleService {
       return { updatedTask, updatedCase };
     });
 
+    const { token, tenantName } = user;
+    const fullname = await this.fetchUserDetails(token.tokenString, tenantName, assignedUserId);
+
     await this.loggingOrchestrationService.logActionsWithHistory(
       {
         userId: assignedUserId,
-        actionPerformed: `Task ${taskId} reassigned to investigator ${assignedUserId}`,
+        actionPerformed: `Task ${taskId} reassigned to investigator ${fullname ?? assignedUserId}`,
         entityName: 'TaskService',
         operation: 'retrieveTask',
         outcome: Outcome.SUCCESS,
@@ -323,11 +331,13 @@ export class TaskLifecycleService {
       const errorStack = e instanceof Error ? e.stack : undefined;
       this.logger.warn(`Failed notifications for unassign: ${errorMessage}`, errorStack, TaskLifecycleService.name);
     }
+    const { token, tenantName } = user;
+    const fullname = await this.fetchUserDetails(token.tokenString, tenantName, existingTask.assigned_user_id);
 
     await this.loggingOrchestrationService.logActionsWithHistory(
       {
         userId: actorUserId,
-        actionPerformed: `Unassigned task ${taskId} from user ${existingTask.assigned_user_id}.`,
+        actionPerformed: `Unassigned task ${taskId} from user ${fullname ?? existingTask.assigned_user_id}.`,
         entityName: 'TaskService',
         operation: 'unassignTask',
         outcome: Outcome.SUCCESS,
@@ -425,6 +435,34 @@ export class TaskLifecycleService {
       }
       await setTimeout(1000 * attempt);
       await this.retry(fn, maxRetries, attempt + 1);
+    }
+  }
+
+  private async fetchUserDetails(token: string, tenantName: string, userId?: string): Promise<string | undefined> {
+    try {
+      this.logger.log(`Fetching user details for userId: ${userId} in tenant: ${tenantName}`, TaskLifecycleService.name);
+      if (userId) {
+        const investigatorList = await this.userService.getUsersByRole(token, 'CMS_INVESTIGATOR', tenantName);
+        this.logger.log(`Fetched ${investigatorList.length} investigators`, TaskLifecycleService.name);
+        const investigator = investigatorList.find((i) => i.id === userId);
+
+        if (investigator) {
+          return `${investigator.firstName} ${investigator.lastName}`;
+        } else {
+          const supervisorList = await this.userService.getUsersByRole(token, 'CMS_SUPERVISOR', tenantName);
+          this.logger.log(`Fetched ${supervisorList.length} supervisors`, TaskLifecycleService.name);
+          const isSupervisor = supervisorList.find((s) => s.id === userId);
+          if (isSupervisor) {
+            return `${isSupervisor.firstName} ${isSupervisor.lastName}`;
+          }
+        }
+      } else {
+        return undefined;
+      }
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      const errorStack = e instanceof Error ? e.stack : undefined;
+      this.logger.warn(`Failed to fetch user details: ${errorMessage}`, errorStack, TaskLifecycleService.name);
     }
   }
 

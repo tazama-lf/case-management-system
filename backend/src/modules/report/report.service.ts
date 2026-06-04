@@ -696,7 +696,7 @@ export class ReportsService {
 
         return {
           investigatorId: caseOwnerUserId,
-          investigator: `User ${caseOwnerUserId}`,
+          investigator: caseOwnerUserId,
           role: 'Investigator',
           totalCases,
           activeCases,
@@ -1121,7 +1121,7 @@ export class ReportsService {
       });
     });
 
-    const caseDetails = casesWithAge.slice(0, 5).map((case_) => ({
+    const caseDetails = casesWithAge.map((case_) => ({
       caseId: case_.case_id,
       type: case_.case_type ?? 'NONE',
       status: this.formatStatusName(case_.status),
@@ -1129,7 +1129,7 @@ export class ReportsService {
       ageDays: case_.ageDays,
       priority: case_.priority,
       userId: case_.case_owner_user_id ?? null,
-      investigator: case_.case_owner_user_id ? `User ${case_.case_owner_user_id}` : 'Unassigned',
+      investigator: case_.case_owner_user_id ?? 'Unassigned',
     }));
 
     return {

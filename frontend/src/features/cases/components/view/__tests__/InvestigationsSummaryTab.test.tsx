@@ -6,15 +6,24 @@ import { caseService } from '../../../services/caseService';
 import { evidenceService } from '../../../services/evidenceService';
 import { commentService } from '../../../services/commentService';
 import { taskService } from '../../../services/taskService';
-import userService from '../../../services/userService';
 import authService from '@/features/auth/services/authService';
 
 vi.mock('../../../services/caseService');
 vi.mock('../../../services/evidenceService');
 vi.mock('../../../services/commentService');
 vi.mock('../../../services/taskService');
-vi.mock('../../../services/userService');
 vi.mock('@/features/auth/services/authService');
+vi.mock('../../../hooks/useInvestigatorSupervisorList', () => ({
+  useInvestigatorSupervisorList: () => ({
+    getAssigneeFullName: (assignee?: string) => {
+      if (assignee === 'user-1') return 'John Doe';
+      if (assignee === 'supervisor-1') return 'Jane Supervisor';
+      return '';
+    },
+    fetchInvestigatorsList: vi.fn(),
+    fetchSupervisorsList: vi.fn(),
+  }),
+}));
 const mockSuccess = vi.fn();
 const mockError = vi.fn();
 vi.mock('@/shared/providers/ToastProvider', () => ({
@@ -92,17 +101,11 @@ describe('InvestigationSummaryTab', () => {
     (evidenceService.formatFileSize as vi.Mock).mockReturnValue('1 KB');
     (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue(mockTasks);
     (commentService.getCommentsByTask as vi.Mock).mockResolvedValue([]);
-    (userService.getUserDetailsById as vi.Mock).mockResolvedValue({
-      id: 'user-1',
-      firstName: 'John',
-      lastName: 'Doe',
-    });
-    (userService.formatUserName as vi.Mock).mockReturnValue('John Doe');
   });
 
   it('renders loading state initially', () => {
     (caseService.getCaseDetails as vi.Mock).mockImplementation(
-      () => new Promise(() => {}),
+      () => new Promise(() => { }),
     );
     render(<InvestigationSummaryTab caseId={123} task={mockTask} />);
     expect(document.querySelector('.animate-spin')).toBeInTheDocument();

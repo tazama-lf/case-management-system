@@ -14,6 +14,7 @@ import { TaskStatus, CaseStatus } from '@prisma/client-cms';
 import { TASK_NAMES } from '../src/constants/case.constants';
 import { RbacService, EndpointKey } from '../src/utils/rbac/rbacHelper';
 import { AuthenticatedUser } from '../src/utils/types/auth.types';
+import { UserService } from '../src/modules/user/user.service';
 import * as timersPromises from 'node:timers/promises';
 
 jest.mock('node:timers/promises', () => ({ setTimeout: jest.fn().mockResolvedValue(undefined) }));
@@ -72,6 +73,10 @@ describe('TaskLifecycleService', () => {
 
   const mockNotificationService = {
     sendNotification: jest.fn(),
+  };
+
+  const mockUserService = {
+    getUsersByRole: jest.fn().mockResolvedValue([]),
   };
 
   const mockLoggingService = {
@@ -146,6 +151,10 @@ describe('TaskLifecycleService', () => {
         {
           provide: NotificationService,
           useValue: mockNotificationService,
+        },
+        {
+          provide: UserService,
+          useValue: mockUserService,
         },
         {
           provide: LoggingOrchestrationService,

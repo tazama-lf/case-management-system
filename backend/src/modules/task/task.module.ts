@@ -12,6 +12,7 @@ import { EventLogModule } from '../event_log/eventLog.module';
 import { TaskHistoryModule } from '../task_history/taskHistory.module';
 import { CaseHistoryModule } from '../case_history/caseHistory.module';
 import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orchestration.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orc
     TaskHistoryModule,
     CaseHistoryModule,
     LoggingOrchestrationModule,
+    UserModule,
   ],
   providers: [TaskService, TaskLifecycleService],
   exports: [TaskService],
