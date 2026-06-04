@@ -2,6 +2,7 @@ export interface RuleDetailDto {
   ruleId: string;
   ruleWeight: number;
   subRef?: string;
+  independentVariable?: string;
 }
 
 export interface TypologyDto {

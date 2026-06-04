@@ -48,7 +48,7 @@ export class TriageService {
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
   async getAlertNavigator(alertId: number, tenantId: string, userId: string): Promise<AlertNavigatorDto> {
     this.logger.log(`Fetching alert navigator for alertId: ${alertId}, tenantId: ${tenantId}, userId: ${userId}`, TriageService.name);

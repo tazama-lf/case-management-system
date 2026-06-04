@@ -235,18 +235,29 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                     ) : (
                       <ChevronDownIcon className="h-4 w-4 text-gray-500" />
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <div
-                        className={`h-2 w-2 rounded-full ${
-                          typology.typologyScore >= 80
-                            ? 'bg-red-500'
-                            : typology.typologyScore >= 60
-                              ? 'bg-orange-500'
-                              : 'bg-yellow-500'
-                        }`}
+                        className={`h-2 w-2 rounded-full ${typology.typologyScore >= 80
+                          ? 'bg-red-500'
+                          : typology.typologyScore >= 60
+                            ? 'bg-orange-500'
+                            : 'bg-yellow-500'
+                          }`}
                       />
+
+                      {/* CFG */}
                       <span className="text-sm font-medium text-gray-900">
-                        {typology.typologyId}
+                        {typology.typologyCfg}
+                      </span>
+
+                      {/* Alert Threshold */}
+                      <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-0.5 rounded">
+                        Alert Threshold: {typology.alertThreshold}
+                      </span>
+
+                      {/* Interdiction Threshold */}
+                      <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-0.5 rounded">
+                        Interdiction Threshold: {typology.interdictionThreshold}
                       </span>
                     </div>
                   </div>
@@ -256,7 +267,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                         typology.typologyScore,
                       )}`}
                     >
-                      Score: {typology.typologyScore.toFixed(2)}
+                      Typology Score: {typology.typologyScore.toFixed(2)}
                     </span>
                     <div className="w-24 bg-gray-200 rounded-full h-2">
                       <div
@@ -286,6 +297,11 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                             {rule.subRef && (
                               <div className="text-xs text-gray-500 mt-0.5">
                                 Sub-ref: {rule.subRef}
+                              </div>
+                            )}
+                            {rule.independentVariable && (
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                Independent Variable: {rule.independentVariable}
                               </div>
                             )}
                           </div>
@@ -335,11 +351,11 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
             <span className="text-2xl font-bold text-gray-900">
               {data.typologies && data.typologies.length > 0
                 ? (
-                    data.typologies.reduce(
-                      (sum: number, t) => sum + t.typologyScore,
-                      0,
-                    ) / data.typologies.length
-                  ).toFixed(0)
+                  data.typologies.reduce(
+                    (sum: number, t) => sum + t.typologyScore,
+                    0,
+                  ) / data.typologies.length
+                ).toFixed(0)
                 : '0'}
             </span>
           </div>
