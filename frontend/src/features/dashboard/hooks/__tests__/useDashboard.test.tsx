@@ -39,7 +39,7 @@ describe('useDashboard', () => {
         openCases: 3,
         casesResolvedThisWeek: 7,
       },
-      recentAlerts: [],
+      recentCases: [],
       activeCases: [],
     };
 
@@ -59,7 +59,7 @@ describe('useDashboard', () => {
 
   it('handles loading state', () => {
     (dashboardService.getDashboardData as vi.Mock).mockImplementation(
-      () => new Promise(() => {}),
+      () => new Promise(() => { }),
     );
 
     const { result } = renderHook(() => useDashboard(), {
@@ -92,7 +92,7 @@ describe('useDashboard', () => {
         openCases: 0,
         casesResolvedThisWeek: 0,
       },
-      recentAlerts: [],
+      recentCases: [],
       activeCases: [],
     });
 
@@ -139,7 +139,7 @@ describe('useDashboardStats', () => {
 
   it('handles loading state', () => {
     (dashboardService.getDashboardStats as vi.Mock).mockImplementation(
-      () => new Promise(() => {}),
+      () => new Promise(() => { }),
     );
 
     const { result } = renderHook(() => useDashboardStats(), {

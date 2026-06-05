@@ -332,7 +332,12 @@ export class ReportsService {
       closedCases: number;
       openCases: number;
       avgResolutionTime: number;
+      highPriorityCases: number;
     };
+    recentCases: Array<{
+      priority: string;
+      count: number;
+    }>;
     statusDistribution: {
       assigned: number;
       inProgress: number;
@@ -372,7 +377,11 @@ export class ReportsService {
     );
 
     // Run all aggregate queries that share these scopes in parallel.
-    const [statusCounts, typeCounts, totalCases, closedCases, closedCasesWithTimes, outcomeCounts] = await Promise.all([
+    const [allCases, statusCounts, typeCounts, totalCases, closedCases, closedCasesWithTimes, outcomeCounts] = await Promise.all([
+      this.prisma.case.findMany({
+        where: whereClause,
+        select: { status: true, priority: true },
+      }),
       this.prisma.case.groupBy({ by: ['status'], where: whereClause, _count: { case_id: true } }),
       this.prisma.case.groupBy({ by: ['case_type'], where: whereClause, _count: { case_id: true } }),
       this.prisma.case.count({ where: whereClause }),
@@ -401,13 +410,42 @@ export class ReportsService {
       this.computeResolutionTrend(filters),
     ]);
 
+    const openCases = allCases.filter((c) => !ReportsService.CLOSED_STATUSES.includes(c.status)).length;
+
+    const lowPriorityCases = allCases.filter(
+      (c) => c.priority === Priority.NEW && !ReportsService.CLOSED_STATUSES.includes(c.status),
+    ).length;
+    const mediumPriorityCases = allCases.filter(
+      (c) => (c.priority === Priority.CRITICAL || c.priority === Priority.URGENT) && !ReportsService.CLOSED_STATUSES.includes(c.status),
+    ).length;
+    const highPriorityCases = allCases.filter(
+      (c) => c.priority === Priority.BREACH && !ReportsService.CLOSED_STATUSES.includes(c.status),
+    ).length;
+
+    const recentCases = [
+      {
+        priority: 'Low',
+        count: lowPriorityCases,
+      },
+      {
+        priority: 'Medium',
+        count: mediumPriorityCases,
+      },
+      {
+        priority: 'High',
+        count: highPriorityCases,
+      },
+    ];
+
     return {
       stats: {
         totalCases,
         closedCases,
-        openCases: totalCases - closedCases,
+        openCases,
         avgResolutionTime: Math.round(avgResolutionTime),
+        highPriorityCases,
       },
+      recentCases,
       statusDistribution,
       caseTypes,
       outcomes,
