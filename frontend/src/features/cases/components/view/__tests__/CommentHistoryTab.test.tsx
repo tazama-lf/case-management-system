@@ -14,6 +14,19 @@ const mockInvestigators = [{ id: 'inv-1', firstName: 'John', lastName: 'Doe' }];
 const mockSupervisors = [{ id: 'sup-1', firstName: 'Jane', lastName: 'Smith' }];
 vi.mock('../../../../cases/hooks/useInvestigatorSupervisorList', () => ({
   useInvestigatorSupervisorList: () => ({
+    getAssigneeFullName: (assigneeId: string) => {
+      const investigator = mockInvestigators.find((u) => u.id === assigneeId);
+      if (investigator) {
+        return `${investigator.firstName} ${investigator.lastName}`;
+      }
+
+      const supervisor = mockSupervisors.find((u) => u.id === assigneeId);
+      if (supervisor) {
+        return `${supervisor.firstName} ${supervisor.lastName}`;
+      }
+
+      return assigneeId;
+    },
     fetchInvestigatorsList: vi.fn(),
     investigators: mockInvestigators,
     supervisors: mockSupervisors,
