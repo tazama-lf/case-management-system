@@ -130,7 +130,7 @@ export const useInvestigatorSupervisorList = (): {
         return `${supervisor.firstName} ${supervisor.lastName}`;
       }
 
-      return 'N/A';
+      return assignee ?? 'N/A';
     },
     [complianceOfficers, investigators, supervisors],
   );
