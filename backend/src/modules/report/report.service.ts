@@ -27,6 +27,8 @@ export class ReportsService {
     CaseStatus.STATUS_81_CLOSED_REFUTED,
     CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+    CaseStatus.STATUS_99_ABANDONED,
+    CaseStatus.STATUS_84_COMPLETED,
   ];
 
   private static readonly STATUS_DISTRIBUTION_MAP: Record<CaseStatus, string> = {
