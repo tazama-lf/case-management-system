@@ -12,30 +12,9 @@ const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
   const [tasks, setTasks] = useState<CommentsByCaseId[]>([]);
   const [loading, setLoading] = useState(true);
   const {
-    fetchInvestigatorsList,
-    investigators,
-    supervisors,
-    fetchSupervisorsList,
+    getAssigneeFullName
   } = useInvestigatorSupervisorList();
 
-  useEffect(() => {
-    if (investigators.length === 0) {
-      fetchInvestigatorsList();
-    }
-    if (supervisors.length === 0) {
-      fetchSupervisorsList();
-    }
-  }, []);
-
-  const getUserNameById = (userId: string) => {
-    const inv = investigators.find((i) => i.id === userId);
-    if (inv) return `${inv.firstName} ${inv.lastName}`;
-
-    const sup = supervisors.find((i) => i.id === userId);
-    if (sup) return `${sup.firstName} ${sup.lastName}`;
-
-    return userId;
-  };
 
   useEffect(() => {
     async function loadTasks() {
@@ -106,7 +85,7 @@ const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
               <div>
                 <div className="text-xs text-gray-500 uppercase">User Name</div>
                 <div className="font-medium text-gray-900 break-all">
-                  {getUserNameById(c.user_id)}
+                  {getAssigneeFullName(c.user_id)}
                 </div>
               </div>
 
@@ -175,7 +154,7 @@ const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
               <div>
                 <div className="text-xs text-gray-500 uppercase">User Name</div>
                 <div className="font-medium text-gray-900 break-all">
-                  {getUserNameById(c.user_id)}
+                  {getAssigneeFullName(c.user_id)}
                 </div>
               </div>
 
