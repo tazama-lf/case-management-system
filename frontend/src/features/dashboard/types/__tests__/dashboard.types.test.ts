@@ -26,34 +26,34 @@ describe('dashboard.types', () => {
   describe('AlertSummary', () => {
     it('defines AlertSummary interface with high priority', () => {
       const alert: AlertSummary = {
-        priority: 'high',
+        priority: 'High',
         count: 5,
-        description: 'High priority alerts',
+        description: 'High priority cases',
       };
 
-      expect(alert.priority).toBe('high');
+      expect(alert.priority).toBe('High');
       expect(alert.count).toBe(5);
-      expect(alert.description).toBe('High priority alerts');
+      expect(alert.description).toBe('High priority cases');
     });
 
     it('defines AlertSummary interface with medium priority', () => {
       const alert: AlertSummary = {
-        priority: 'medium',
+        priority: 'Medium',
         count: 3,
-        description: 'Medium priority alerts',
+        description: 'Medium priority cases',
       };
 
-      expect(alert.priority).toBe('medium');
+      expect(alert.priority).toBe('Medium');
     });
 
     it('defines AlertSummary interface with low priority', () => {
       const alert: AlertSummary = {
-        priority: 'low',
+        priority: 'Low',
         count: 2,
-        description: 'Low priority alerts',
+        description: 'Low priority cases',
       };
 
-      expect(alert.priority).toBe('low');
+      expect(alert.priority).toBe('Low');
     });
   });
 
@@ -100,11 +100,11 @@ describe('dashboard.types', () => {
           openCases: 3,
           casesResolvedThisWeek: 7,
         },
-        recentAlerts: [
+        recentCases: [
           {
-            priority: 'high',
+            priority: 'High',
             count: 5,
-            description: 'High priority alerts',
+            description: 'High priority cases',
           },
         ],
         activeCases: [
@@ -117,9 +117,9 @@ describe('dashboard.types', () => {
       };
 
       expect(dashboardData.stats).toBeDefined();
-      expect(dashboardData.recentAlerts).toBeDefined();
+      expect(dashboardData.recentCases).toBeDefined();
       expect(dashboardData.activeCases).toBeDefined();
-      expect(dashboardData.recentAlerts.length).toBe(1);
+      expect(dashboardData.recentCases.length).toBe(1);
       expect(dashboardData.activeCases.length).toBe(1);
     });
 
@@ -131,11 +131,11 @@ describe('dashboard.types', () => {
           openCases: 0,
           casesResolvedThisWeek: 0,
         },
-        recentAlerts: [],
+        recentCases: [],
         activeCases: [],
       };
 
-      expect(dashboardData.recentAlerts).toEqual([]);
+      expect(dashboardData.recentCases).toEqual([]);
       expect(dashboardData.activeCases).toEqual([]);
     });
   });

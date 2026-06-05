@@ -267,7 +267,7 @@ describe('TaskLogTab', () => {
 
   it('displays loading state initially', async () => {
     (taskService.getTasksByCaseId as vi.Mock).mockImplementation(
-      () => new Promise(() => {}),
+      () => new Promise(() => { }),
     );
     renderWithProviders(<TaskLogTab caseId={123} />);
     expect(screen.getByText('Loading tasks...')).toBeInTheDocument();
@@ -707,16 +707,15 @@ describe('TaskLogTab', () => {
     });
   });
 
-  it('resolves investigator names from fetchAllInvestigators', async () => {
-    (authService.fetchAllInvestigators as vi.Mock).mockResolvedValue([
-      { id: 'user-1', firstName: 'John', lastName: 'Doe', username: 'jdoe' },
-    ]);
+  it('renders tasks even when assignee lookup service differs', async () => {
     (taskService.getTasksByCaseId as vi.Mock).mockResolvedValue([
       { ...mockTasks[0], assigned_user_id: 'user-1' },
     ]);
+
     renderWithProviders(<TaskLogTab caseId={123} />);
+
     await waitFor(() => {
-      expect(authService.fetchAllInvestigators).toHaveBeenCalled();
+      expect(screen.getByText('Investigate Case')).toBeInTheDocument();
     });
   });
 

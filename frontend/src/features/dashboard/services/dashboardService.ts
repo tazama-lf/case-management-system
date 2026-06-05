@@ -10,15 +10,17 @@ import type {
 class DashboardService {
   async getDashboardData(): Promise<DashboardData> {
     try {
-      const [stats, recentAlerts, activeCases] = await Promise.all([
-        this.getDashboardStats(),
-        this.getRecentAlerts(),
-        this.getActiveCases(),
-      ]);
+      const response = await apiClient.get<Record<string, unknown>>(
+        '/api/v1/reports/case-status?dateRange=last30',
+      );
+
+      const stats = this.mapStats(response);
+      const recentCases = this.mapRecentCases(response);
+      const activeCases = this.mapActiveCases(response);
 
       return {
         stats,
-        recentAlerts,
+        recentCases,
         activeCases,
       };
     } catch (error: unknown) {
@@ -27,134 +29,67 @@ class DashboardService {
     }
   }
 
-  async getDashboardStats(): Promise<DashboardStats> {
-    try {
-      const response = await apiClient.get<Record<string, unknown>>(
-        '/api/v1/reports/case-status?dateRange=last30',
-      );
+  private mapStats(response: Record<string, unknown>): DashboardStats {
+    const stats = response.stats as Record<string, unknown> | undefined;
 
-      const stats = response.stats as Record<string, unknown> | undefined;
-      const caseTypes = (response.caseTypes ?? []) as Array<
-        Record<string, unknown>
-      >;
-
-      return {
-        totalAlerts: (stats?.totalCases ?? 0) as number,
-        highPriorityAlerts: (caseTypes.find((ct) => ct.name === 'FRAUD')
-          ?.count ?? 0) as number,
-        openCases: (stats?.openCases ?? 0) as number,
-        casesResolvedThisWeek: (stats?.closedCases ?? 0) as number,
-      };
-    } catch (error: unknown) {
-      console.error('Failed to fetch dashboard stats:', error);
-      return {
-        totalAlerts: 42,
-        highPriorityAlerts: 8,
-        openCases: 12,
-        casesResolvedThisWeek: 24,
-      };
-    }
+    return {
+      totalAlerts: (stats?.totalCases ?? 0) as number,
+      highPriorityAlerts: (stats?.highPriorityCases ?? 0) as number,
+      openCases: (stats?.openCases ?? 0) as number,
+      casesResolvedThisWeek: (stats?.closedCases ?? 0) as number,
+    };
   }
 
-  async getRecentAlerts(): Promise<AlertSummary[]> {
-    try {
-      const response = await apiClient.get<Record<string, unknown>>(
-        '/api/v1/reports/case-status?dateRange=last7',
-      );
+  private mapRecentCases(response: Record<string, unknown>): AlertSummary[] {
+    const recentCases = (response.recentCases ?? []) as Array<
+      Record<string, unknown>
+    >;
 
-      const caseTypes = (response.caseTypes ?? []) as Array<
-        Record<string, unknown>
-      >;
-
-      return caseTypes.map((caseType) => ({
-        priority: DashboardService.mapCaseTypeToPriority(
-          caseType.name as string,
-        ),
-        count: caseType.count as number,
-        description: `${String(caseType.name).toLowerCase()} cases requiring attention`,
-      }));
-    } catch (error: unknown) {
-      console.error('Failed to fetch recent alerts:', error);
-      return [
-        {
-          priority: 'high',
-          count: 8,
-          description: 'alerts requiring immediate attention',
-        },
-        {
-          priority: 'medium',
-          count: 15,
-          description: 'alerts pending review',
-        },
-        {
-          priority: 'low',
-          count: 19,
-          description: 'alerts for routine checking',
-        },
-      ];
-    }
+    return recentCases.map((caseType) => ({
+      priority: caseType.priority as 'High' | 'Medium' | 'Low',
+      count: caseType.count as number,
+      description: this.getDescription(caseType.priority as string),
+    }));
   }
 
-  async getActiveCases(): Promise<CaseSummary[]> {
-    try {
-      const response = await apiClient.get<Record<string, unknown>>(
-        '/api/v1/reports/case-status?dateRange=last30',
-      );
-      const statusDist = (response.statusDistribution ?? {}) as Record<
-        string,
-        unknown
-      >;
+  private mapActiveCases(response: Record<string, unknown>): CaseSummary[] {
+    const statusDist = (response.statusDistribution ?? {}) as Record<
+      string,
+      unknown
+    >;
 
-      return [
-        {
-          status: 'assigned',
-          count: (statusDist.assigned ?? 0) as number,
-          description: 'cases requiring your action',
-        },
-        {
-          status: 'pending',
-          count: (statusDist.pendingApproval ?? 0) as number,
-          description: 'cases awaiting your approval',
-        },
-        {
-          status: 'closed',
-          count: (statusDist.closed ?? 0) as number,
-          description: 'cases resolved recently',
-        },
-      ];
-    } catch (error: unknown) {
-      console.error('Failed to fetch active cases:', error);
-      return [
-        {
-          status: 'assigned',
-          count: 5,
-          description: 'cases requiring your action',
-        },
-        {
-          status: 'pending',
-          count: 3,
-          description: 'cases awaiting your approval',
-        },
-        {
-          status: 'closed',
-          count: 8,
-          description: 'cases resolved in the past week',
-        },
-      ];
-    }
+    return [
+      {
+        status: 'assigned',
+        count: (statusDist.assigned ?? 0) as number,
+        description: 'cases requiring your action',
+      },
+      {
+        status: 'pending',
+        count: (statusDist.pendingApproval ?? 0) as number,
+        description: 'cases awaiting your approval',
+      },
+      {
+        status: 'closed',
+        count: (statusDist.closed ?? 0) as number,
+        description: 'cases resolved recently',
+      },
+    ];
   }
 
-  private static mapCaseTypeToPriority(
-    caseType: string,
-  ): 'high' | 'medium' | 'low' {
-    switch (caseType) {
-      case 'FRAUD':
-      case 'FRAUD_AND_AML':
-        return 'high';
-      case 'AML':
-        return 'medium';
+  getDescription(priority: string): string {
+    switch (priority) {
+      case 'High':
+        return 'Breached cases requiring attention';
+
+      case 'Medium':
+        return 'Critical/Urgent cases requiring attention';
+
+      case 'Low':
+        return 'New cases requiring attention';
+
       default:
-        return 'low';
+        return `${priority.toLowerCase()} cases requiring attention`;
     }
   }
 }

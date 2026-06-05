@@ -6,7 +6,7 @@ export interface DashboardStats {
 }
 
 export interface AlertSummary {
-  priority: 'high' | 'medium' | 'low';
+  priority: 'High' | 'Medium' | 'Low';
   count: number;
   description: string;
 }
@@ -19,6 +19,6 @@ export interface CaseSummary {
 
 export interface DashboardData {
   stats: DashboardStats;
-  recentAlerts: AlertSummary[];
+  recentCases: AlertSummary[];
   activeCases: CaseSummary[];
 }

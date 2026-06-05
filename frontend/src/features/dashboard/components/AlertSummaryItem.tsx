@@ -2,30 +2,30 @@ import React from 'react';
 import type { AlertSummary } from '../types/dashboard.types';
 
 interface AlertSummaryItemProps {
-  alert: AlertSummary;
+  summary: AlertSummary;
 }
 
-const AlertSummaryItem: React.FC<AlertSummaryItemProps> = ({ alert }) => {
+const AlertSummaryItem: React.FC<AlertSummaryItemProps> = ({ summary }) => {
   const getPriorityLabel = (priority: string) => {
     switch (priority) {
-      case 'high':
-        return 'High priority alerts';
-      case 'medium':
-        return 'Medium priority alerts';
-      case 'low':
-        return 'Low priority alerts';
+      case 'High':
+        return 'High priority cases';
+      case 'Medium':
+        return 'Medium priority cases';
+      case 'Low':
+        return 'Low priority cases';
       default:
-        return 'Alerts';
+        return 'Cases';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high':
+      case 'High':
         return 'text-red-600';
-      case 'medium':
+      case 'Medium':
         return 'text-yellow-600';
-      case 'low':
+      case 'Low':
         return 'text-blue-600';
       default:
         return 'text-gray-600';
@@ -36,16 +36,16 @@ const AlertSummaryItem: React.FC<AlertSummaryItemProps> = ({ alert }) => {
     <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
       <div className="flex-1">
         <p
-          className={`text-sm font-medium ${getPriorityColor(alert.priority)}`}
+          className={`text-sm font-medium ${getPriorityColor(summary.priority)}`}
         >
-          {getPriorityLabel(alert.priority)}
+          {getPriorityLabel(summary.priority)}
         </p>
       </div>
       <div className="flex items-center space-x-4">
         <span className="text-lg font-semibold text-gray-900">
-          {alert.count}
+          {summary.count}
         </span>
-        <span className="text-sm text-gray-600">{alert.description}</span>
+        <span className="text-sm text-gray-600">{summary.description}</span>
       </div>
     </div>
   );
