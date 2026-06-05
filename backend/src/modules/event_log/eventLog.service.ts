@@ -20,7 +20,6 @@ export class EventLogService {
       throw new Error('Missing tenantId in event log write');
     }
     const userId = data.userId && isUuid(data.userId) ? data.userId : uuidv4();
-    const { tenantId } = data;
     return await this.prisma.eventLog.create({
       data: {
         user_id: userId,

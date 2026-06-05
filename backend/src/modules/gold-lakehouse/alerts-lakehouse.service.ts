@@ -180,6 +180,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
               ruleId: r.rule_id,
               ruleWeight: r.rule_weight,
               subRef: r.rule_sub_ref,
+              independentVariable: r.rule_independent_variable,
             })),
           );
 
