@@ -299,7 +299,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                                 Sub-ref: {rule.subRef}
                               </div>
                             )}
-                            {rule.independentVariable && (
+                            {rule.independentVariable != null && (
                               <div className="text-xs text-gray-500 mt-0.5">
                                 Independent Variable: {rule.independentVariable}
                               </div>
