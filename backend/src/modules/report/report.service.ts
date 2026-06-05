@@ -33,12 +33,12 @@ export class ReportsService {
 
   private static readonly STATUS_DISTRIBUTION_MAP: Record<CaseStatus, string> = {
     [CaseStatus.STATUS_10_ASSIGNED]: 'assigned',
-    [CaseStatus.STATUS_20_IN_PROGRESS]: 'inProgress',
+    [CaseStatus.STATUS_20_IN_PROGRESS]: 'assigned',
     [CaseStatus.STATUS_00_DRAFT]: 'draft',
     [CaseStatus.STATUS_21_SUSPENDED]: 'suspended',
     [CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL]: 'pendingApproval',
     [CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL]: 'pendingApproval',
-    [CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT]: 'assigned',
+    [CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT]: 'draft',
     [CaseStatus.STATUS_03_RETURNED]: 'draft',
     [CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL]: 'pendingApproval',
     [CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED]: 'closed',
@@ -64,7 +64,7 @@ export class ReportsService {
     if (filters?.caseType) where.case_type = filters.caseType;
     if (filters?.priority) where.priority = filters.priority;
     if (filters?.investigator) where.case_owner_user_id = filters.investigator;
-    if (filters?.tenantId) where.alert = { tenant_id: filters.tenantId };
+    if (filters?.tenantId) where.tenant_id = filters.tenantId;
     return where;
   }
 
@@ -80,23 +80,32 @@ export class ReportsService {
    * filters (date window, caseType, priority, tenantId, …) are preserved on
    * every branch — investigators still only see cases that match those filters.
    */
-  private applyInvestigatorScope(baseFilters: any, requestingUserId?: string): any {
+  private applyInvestigatorScope(baseFilters: any, requestingUserId?: string, tenantId?: string): any {
     if (!requestingUserId) return baseFilters;
     return {
       AND: [
         baseFilters,
         {
           OR: [
-            { case_owner_user_id: requestingUserId }, // Cases owned by this investigator
+            {
+              case_owner_user_id: requestingUserId,
+            },
+            {
+              case_creator_user_id: requestingUserId,
+            },
             {
               tasks: {
                 some: {
-                  assigned_user_id: requestingUserId, // Cases with tasks assigned to this investigator
+                  assigned_user_id: requestingUserId,
                 },
               },
             },
-            { case_owner_user_id: null }, // Unassigned cases
-            { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
+            {
+              case_owner_user_id: null,
+            },
+            {
+              status: CaseStatus.STATUS_00_DRAFT,
+            },
           ],
         },
       ],
@@ -372,10 +381,11 @@ export class ReportsService {
 
     // Build the overall scope: date window + filters + (optional) investigator restriction.
     const baseFilters = { created_at: dateWindow, ...this.buildCommonCaseFilters(filters) };
-    const whereClause = this.applyInvestigatorScope(baseFilters, filters?.requestingUserId);
+    const whereClause = filters?.investigator ? {} : this.applyInvestigatorScope(baseFilters, filters?.requestingUserId, filters?.tenantId);
     const closedCasesWhere = this.applyInvestigatorScope(
       { ...baseFilters, status: { in: ReportsService.CLOSED_STATUSES } },
       filters?.requestingUserId,
+      filters?.tenantId,
     );
 
     // Run all aggregate queries that share these scopes in parallel.
