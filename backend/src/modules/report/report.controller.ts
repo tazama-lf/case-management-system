@@ -265,7 +265,7 @@ export class ReportsController {
     @Query('investigator') investigator?: string,
   ): Promise<unknown> {
     const { tenantId } = req.user.token;
-    const userId = req.user.token.clientId;
+    const { userId } = req.user;
     const userClaims = req.user.token.claims;
 
     const isInvestigator =

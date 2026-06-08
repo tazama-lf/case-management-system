@@ -18,6 +18,7 @@ import { transformBackendCaseToUI } from '../casesTable.utils';
 import type { CaseRow } from '../casesTable.utils';
 import type { CaseWithTasksDto } from '../../services/caseService';
 import { caseService } from '../../services/caseService';
+import useInvestigatorSupervisorList from '../../hooks/useInvestigatorSupervisorList';
 
 const UnassignTaskModal = lazy(
   async () => await import('../modals/UnassignTaskModal'),
@@ -81,17 +82,14 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
   const [unassignModalOpen, setUnassignModalOpen] = useState(false);
   const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
   const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
+  const { getAssigneeFullName } = useInvestigatorSupervisorList();
   const [selectedTask, setSelectedTask] = useState<UnifiedWorkQueueTask | null>(
     null,
-  );
-  const [investigators, setInvestigators] = useState<Record<string, string>>(
-    {},
   );
   // Check if user is investigator only (no supervisor or admin role)
   const isInvestigatorOnly =
     hasInvestigatorRole() && !hasSupervisorRole() && !hasCMSAdminRole();
   const { tasks, loading, error, fetchTasks } = useCaseTasks(caseId);
-
   useEffect(() => {
     const fetchData = async (): Promise<void> => {
       await fetchTasks();
@@ -114,21 +112,6 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
         );
         setCaseDetails(transformedCase);
       }
-
-      try {
-        const investigatorList = await authService.fetchAllInvestigators();
-        const investigatorMap: Record<string, string> = {};
-        investigatorList.forEach((inv) => {
-          const fullName =
-            inv.firstName && inv.lastName
-              ? `${inv.firstName} ${inv.lastName}`
-              : inv.username;
-          investigatorMap[inv.id] = fullName;
-        });
-        setInvestigators(investigatorMap);
-      } catch (err) {
-        console.warn('Failed to fetch investigators:', err);
-      }
     };
 
     fetchData();
@@ -144,13 +127,6 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
     ) {
       effectiveStatus = 'STATUS_01_UNASSIGNED';
     }
-    let assigneeName: string | undefined;
-    if (backendTask.assigned_user_id) {
-      assigneeName =
-        investigators[backendTask.assigned_user_id] ||
-        backendTask.assignedUser?.username ||
-        backendTask.assigned_user_id;
-    }
 
     return {
       id: backendTask.task_id,
@@ -159,7 +135,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       description: backendTask.description,
       assignee: backendTask.assigned_user_id,
       assigneeName:
-        backendTask.assignedUser?.username || backendTask.assigned_user_id,
+        getAssigneeFullName(backendTask.assigned_user_id),
       candidateGroup: backendTask.candidateGroup || 'investigations',
       status: mapTaskStatus(effectiveStatus),
       priority: 'NEW',

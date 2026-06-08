@@ -27,16 +27,18 @@ export class ReportsService {
     CaseStatus.STATUS_81_CLOSED_REFUTED,
     CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+    CaseStatus.STATUS_99_ABANDONED,
+    CaseStatus.STATUS_84_COMPLETED,
   ];
 
   private static readonly STATUS_DISTRIBUTION_MAP: Record<CaseStatus, string> = {
     [CaseStatus.STATUS_10_ASSIGNED]: 'assigned',
-    [CaseStatus.STATUS_20_IN_PROGRESS]: 'inProgress',
+    [CaseStatus.STATUS_20_IN_PROGRESS]: 'assigned',
     [CaseStatus.STATUS_00_DRAFT]: 'draft',
     [CaseStatus.STATUS_21_SUSPENDED]: 'suspended',
     [CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL]: 'pendingApproval',
     [CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL]: 'pendingApproval',
-    [CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT]: 'assigned',
+    [CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT]: 'draft',
     [CaseStatus.STATUS_03_RETURNED]: 'draft',
     [CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL]: 'pendingApproval',
     [CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED]: 'closed',
@@ -62,7 +64,7 @@ export class ReportsService {
     if (filters?.caseType) where.case_type = filters.caseType;
     if (filters?.priority) where.priority = filters.priority;
     if (filters?.investigator) where.case_owner_user_id = filters.investigator;
-    if (filters?.tenantId) where.alert = { tenant_id: filters.tenantId };
+    if (filters?.tenantId) where.tenant_id = filters.tenantId;
     return where;
   }
 
@@ -78,23 +80,32 @@ export class ReportsService {
    * filters (date window, caseType, priority, tenantId, …) are preserved on
    * every branch — investigators still only see cases that match those filters.
    */
-  private applyInvestigatorScope(baseFilters: any, requestingUserId?: string): any {
+  private applyInvestigatorScope(baseFilters: any, requestingUserId?: string, tenantId?: string): any {
     if (!requestingUserId) return baseFilters;
     return {
       AND: [
         baseFilters,
         {
           OR: [
-            { case_owner_user_id: requestingUserId }, // Cases owned by this investigator
+            {
+              case_owner_user_id: requestingUserId,
+            },
+            {
+              case_creator_user_id: requestingUserId,
+            },
             {
               tasks: {
                 some: {
-                  assigned_user_id: requestingUserId, // Cases with tasks assigned to this investigator
+                  assigned_user_id: requestingUserId,
                 },
               },
             },
-            { case_owner_user_id: null }, // Unassigned cases
-            { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
+            {
+              case_owner_user_id: null,
+            },
+            {
+              status: CaseStatus.STATUS_00_DRAFT,
+            },
           ],
         },
       ],
@@ -332,7 +343,12 @@ export class ReportsService {
       closedCases: number;
       openCases: number;
       avgResolutionTime: number;
+      highPriorityCases: number;
     };
+    recentCases: Array<{
+      priority: string;
+      count: number;
+    }>;
     statusDistribution: {
       assigned: number;
       inProgress: number;
@@ -365,14 +381,19 @@ export class ReportsService {
 
     // Build the overall scope: date window + filters + (optional) investigator restriction.
     const baseFilters = { created_at: dateWindow, ...this.buildCommonCaseFilters(filters) };
-    const whereClause = this.applyInvestigatorScope(baseFilters, filters?.requestingUserId);
+    const whereClause = filters?.investigator ? {} : this.applyInvestigatorScope(baseFilters, filters?.requestingUserId, filters?.tenantId);
     const closedCasesWhere = this.applyInvestigatorScope(
       { ...baseFilters, status: { in: ReportsService.CLOSED_STATUSES } },
       filters?.requestingUserId,
+      filters?.tenantId,
     );
 
     // Run all aggregate queries that share these scopes in parallel.
-    const [statusCounts, typeCounts, totalCases, closedCases, closedCasesWithTimes, outcomeCounts] = await Promise.all([
+    const [allCases, statusCounts, typeCounts, totalCases, closedCases, closedCasesWithTimes, outcomeCounts] = await Promise.all([
+      this.prisma.case.findMany({
+        where: whereClause,
+        select: { status: true, priority: true },
+      }),
       this.prisma.case.groupBy({ by: ['status'], where: whereClause, _count: { case_id: true } }),
       this.prisma.case.groupBy({ by: ['case_type'], where: whereClause, _count: { case_id: true } }),
       this.prisma.case.count({ where: whereClause }),
@@ -401,13 +422,42 @@ export class ReportsService {
       this.computeResolutionTrend(filters),
     ]);
 
+    const openCases = allCases.filter((c) => !ReportsService.CLOSED_STATUSES.includes(c.status)).length;
+
+    const lowPriorityCases = allCases.filter(
+      (c) => c.priority === Priority.NEW && !ReportsService.CLOSED_STATUSES.includes(c.status),
+    ).length;
+    const mediumPriorityCases = allCases.filter(
+      (c) => (c.priority === Priority.CRITICAL || c.priority === Priority.URGENT) && !ReportsService.CLOSED_STATUSES.includes(c.status),
+    ).length;
+    const highPriorityCases = allCases.filter(
+      (c) => c.priority === Priority.BREACH && !ReportsService.CLOSED_STATUSES.includes(c.status),
+    ).length;
+
+    const recentCases = [
+      {
+        priority: 'Low',
+        count: lowPriorityCases,
+      },
+      {
+        priority: 'Medium',
+        count: mediumPriorityCases,
+      },
+      {
+        priority: 'High',
+        count: highPriorityCases,
+      },
+    ];
+
     return {
       stats: {
         totalCases,
         closedCases,
-        openCases: totalCases - closedCases,
+        openCases,
         avgResolutionTime: Math.round(avgResolutionTime),
+        highPriorityCases,
       },
+      recentCases,
       statusDistribution,
       caseTypes,
       outcomes,

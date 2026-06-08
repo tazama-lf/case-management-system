@@ -191,8 +191,10 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
   ): Promise<void> => {
     try {
       const taskIdToComplete = task.task_id ?? task.id;
+
       await taskService.updateTaskForSupervisor(taskIdToComplete, {
         status: TaskStatus.STATUS_30_COMPLETED,
+        investigationNotes: _notes,
       });
       setShowCompleteModal(false);
       const tasks = await taskService.getTasksByCaseId(caseId);

@@ -27,8 +27,8 @@ vi.mock('@/features/dashboard/components/DashboardSection', () => ({
 }));
 
 vi.mock('@/features/dashboard/components/AlertSummaryItem', () => ({
-  default: ({ alert }: any) => (
-    <div data-testid="alert-summary">Alert: {alert.priority}</div>
+  default: ({ summary }: any) => (
+    <div data-testid="alert-summary">Alert: {summary.priority}</div>
   ),
 }));
 
@@ -116,8 +116,8 @@ describe('Dashboard', () => {
         openCases: 3,
         casesResolvedThisWeek: 7,
       },
-      recentAlerts: [
-        { priority: 'high', count: 5, description: 'High priority alerts' },
+      recentCases: [
+        { priority: 'High', count: 5, description: 'High priority cases' },
       ],
       activeCases: [
         { status: 'assigned', count: 3, description: 'Assigned cases' },
@@ -138,7 +138,7 @@ describe('Dashboard', () => {
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(
-      screen.getByTestId('dashboard-section-recent-alerts'),
+      screen.getByTestId('dashboard-section-recent-cases'),
     ).toBeInTheDocument();
     expect(
       screen.getByTestId('dashboard-section-active-cases'),
@@ -153,7 +153,7 @@ describe('Dashboard', () => {
         openCases: 0,
         casesResolvedThisWeek: 0,
       },
-      recentAlerts: [],
+      recentCases: [],
       activeCases: [],
     };
 
@@ -166,7 +166,7 @@ describe('Dashboard', () => {
     render(<Dashboard />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText('No recent alerts')).toBeInTheDocument();
+      expect(screen.getByText('No recent cases')).toBeInTheDocument();
     });
 
     expect(screen.getByText('No active cases')).toBeInTheDocument();
@@ -180,9 +180,9 @@ describe('Dashboard', () => {
         openCases: 3,
         casesResolvedThisWeek: 7,
       },
-      recentAlerts: [
-        { priority: 'high', count: 5, description: 'High priority' },
-        { priority: 'medium', count: 3, description: 'Medium priority' },
+      recentCases: [
+        { priority: 'High', count: 5, description: 'High priority' },
+        { priority: 'Medium', count: 3, description: 'Medium priority' },
       ],
       activeCases: [],
     };
@@ -209,7 +209,7 @@ describe('Dashboard', () => {
         openCases: 3,
         casesResolvedThisWeek: 7,
       },
-      recentAlerts: [],
+      recentCases: [],
       activeCases: [
         { status: 'assigned', count: 3, description: 'Assigned' },
         { status: 'pending', count: 2, description: 'Pending' },
@@ -238,7 +238,7 @@ describe('Dashboard', () => {
         openCases: 3,
         casesResolvedThisWeek: 7,
       },
-      recentAlerts: [],
+      recentCases: [],
       activeCases: [],
     };
 

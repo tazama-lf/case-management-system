@@ -29,7 +29,7 @@ const Dashboard: React.FC = () => {
     return (
       <PageContainer
         title="Dashboard"
-        subtitle="Welcome to the Fraud Case Management System"
+        subtitle="Welcome to the Fraud Case Management System. (Last 30 days data displayed)"
       >
         <LoadingState
           loading={true}
@@ -72,21 +72,21 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  const { stats, recentAlerts, activeCases } = dashboardData ?? {
+  const { stats, recentCases, activeCases } = dashboardData ?? {
     stats: {
       totalAlerts: 0,
       highPriorityAlerts: 0,
       openCases: 0,
       casesResolvedThisWeek: 0,
     },
-    recentAlerts: [],
+    recentCases: [],
     activeCases: [],
   };
 
   return (
     <PageContainer
       title="Dashboard"
-      subtitle="Welcome to the Fraud Case Management System"
+      subtitle="Welcome to the Fraud Case Management System. (Last 30 days data displayed)"
     >
       <div
         className={`transition-all duration-700 ${isAnimated ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'}`}
@@ -98,22 +98,22 @@ const Dashboard: React.FC = () => {
             className={`transition-all duration-500 delay-300 ${isAnimated ? 'opacity-100 transform translate-x-0' : 'opacity-0 transform -translate-x-4'}`}
           >
             <DashboardSection
-              title="Recent Alerts"
-              subtitle="Latest alerts requiring your attention"
-              viewAllHref="/alerts"
+              title="Recent Cases"
+              subtitle="Latest Cases requiring your attention"
+              viewAllHref="/cases"
             >
-              {recentAlerts.length > 0 ? (
-                recentAlerts.map((alert, index) => (
+              {recentCases.length > 0 ? (
+                recentCases.map((cases, index) => (
                   <div
                     key={index}
                     className={`transition-all duration-300 ${isAnimated ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-2'}`}
                     style={{ transitionDelay: `${600 + index * 100}ms` }}
                   >
-                    <AlertSummaryItem alert={alert} />
+                    <AlertSummaryItem summary={cases} />
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500 text-sm">No recent alerts</p>
+                <p className="text-gray-500 text-sm">No recent cases</p>
               )}
             </DashboardSection>
           </div>
@@ -143,7 +143,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    </PageContainer>
+    </PageContainer >
   );
 };
 
