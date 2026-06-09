@@ -80,16 +80,15 @@ export class ReportsService {
    * filters (date window, caseType, priority, tenantId, …) are preserved on
    * every branch — investigators still only see cases that match those filters.
    */
-  private applyInvestigatorScope(baseFilters: any, requestingUserId?: string, tenantId?: string): any {
+  private applyInvestigatorScope(baseFilters: any, requestingUserId?: string): any {
     if (!requestingUserId) return baseFilters;
+
     return {
       AND: [
         baseFilters,
         {
           OR: [
-            {
-              case_owner_user_id: requestingUserId,
-            },
+            // Tasks assigned to the user
             {
               tasks: {
                 some: {
@@ -97,11 +96,22 @@ export class ReportsService {
                 },
               },
             },
+            // Case owner is the user
             {
-              status: CaseStatus.STATUS_00_DRAFT,
+              case_owner_user_id: requestingUserId,
             },
+            // DRAFT or READY_FOR_ASSIGNMENT where owner is null or owner is the user
             {
-              status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+              AND: [
+                { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
+                {
+                  OR: [{ case_owner_user_id: null }, { case_owner_user_id: requestingUserId }],
+                },
+              ],
+            },
+            // Pending approval status where creator is the user
+            {
+              AND: [{ status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL }, { case_creator_user_id: requestingUserId }],
             },
           ],
         },
@@ -378,11 +388,10 @@ export class ReportsService {
 
     // Build the overall scope: date window + filters + (optional) investigator restriction.
     const baseFilters = { created_at: dateWindow, ...this.buildCommonCaseFilters(filters) };
-    const whereClause = filters?.investigator ? {} : this.applyInvestigatorScope(baseFilters, filters?.requestingUserId, filters?.tenantId);
+    const whereClause = filters?.investigator ? this.applyInvestigatorScope(baseFilters, filters.requestingUserId) : {};
     const closedCasesWhere = this.applyInvestigatorScope(
       { ...baseFilters, status: { in: ReportsService.CLOSED_STATUSES } },
       filters?.requestingUserId,
-      filters?.tenantId,
     );
 
     // Run all aggregate queries that share these scopes in parallel.
