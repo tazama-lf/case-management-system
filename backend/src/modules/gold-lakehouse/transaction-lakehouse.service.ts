@@ -103,7 +103,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
             account: {
               iban: String(pacs8.debtor_account_id),
             },
-            bank: String(pacs8.instd_mmb_id),
+            bank: String(pacs8.instg_mmb_id),
           },
           amount: {
             amount: Number(pacs8.interbank_settlement_amount),
@@ -114,7 +114,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
             account: {
               iban: String(pacs8.creditor_account_id),
             },
-            bankName: String(pacs8.instg_mmb_id),
+            bankName: String(pacs8.instd_mmb_id),
           },
         },
         debtorProfile: {
@@ -122,14 +122,14 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           account: {
             iban: String(pacs8.debtor_account_id),
           },
-          bank: String(pacs8.instd_mmb_id),
+          bank: String(pacs8.instg_mmb_id),
         },
         creditorProfile: {
           name: String(pacs8.creditor_name),
           account: {
             iban: String(pacs8.creditor_account_id),
           },
-          bank: String(pacs8.instg_mmb_id),
+          bank: String(pacs8.instd_mmb_id),
         },
         amountAndCurrency: [
           {

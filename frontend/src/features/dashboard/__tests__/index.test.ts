@@ -36,11 +36,6 @@ describe('dashboard index barrel exports', () => {
     expect(mod.useDashboard).toBeDefined();
   });
 
-  it('exports useDashboardStats hook', async () => {
-    const mod = await import('../index');
-    expect(mod.useDashboardStats).toBeDefined();
-  });
-
   it('exports dashboardService', async () => {
     const mod = await import('../index');
     expect(mod.dashboardService).toBeDefined();

@@ -52,15 +52,6 @@ export interface ActionHistory {
   outcome: string;
   performed_at: string;
 }
-
-// export interface TransactionHistoryDto {
-//   transactionId: number;
-//   tenantId: string;
-//   endToEndId: string;
-//   transactionData: unknown;
-//   createdAt: Date;
-// }
-
 export class TransactionDetailDTO {
   pk!: string;
   transaction_id!: number;
@@ -168,6 +159,7 @@ export interface AlertedTypology {
   label: string;
   result: number;
   alertThreshold: number;
+  cfg: string;
 }
 
 export interface Alert extends Record<string, unknown> {

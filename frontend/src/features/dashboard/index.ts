@@ -6,7 +6,7 @@ export { default as DashboardSection } from './components/DashboardSection';
 export { default as AlertSummaryItem } from './components/AlertSummaryItem';
 export { default as CaseSummaryItem } from './components/CaseSummaryItem';
 
-export { useDashboard, useDashboardStats } from './hooks/useDashboard';
+export { useDashboard} from './hooks/useDashboard';
 
 export { dashboardService } from './services/dashboardService';
 

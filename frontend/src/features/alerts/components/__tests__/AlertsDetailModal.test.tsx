@@ -434,8 +434,7 @@ describe('AlertsDetailModal', () => {
     });
   });
 
-  it('toggles risk breakdown table', async () => {
-    const user = userEvent.setup();
+  it('shows empty typologies state when none are triggered', async () => {
     (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
     (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
 
@@ -444,45 +443,27 @@ describe('AlertsDetailModal', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Rules & Typologies')).toBeInTheDocument();
+      expect(screen.getByText('Triggered Typologies')).toBeInTheDocument();
+      expect(screen.getByText('No typologies triggered')).toBeInTheDocument();
     });
-
-    const toggleBtn = screen.getByRole('button', {
-      name: /show risk breakdown/i,
-    });
-    await user.click(toggleBtn);
-
-    expect(screen.getByText('Risk Component')).toBeInTheDocument();
-    expect(screen.getByText('Total Score')).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole('button', { name: /hide risk breakdown/i }),
-    );
   });
 
-  it('renders CRITICAL priority with extra risk component', async () => {
+  it('renders CRITICAL priority badge', async () => {
     const criticalAlert = { ...mockAlert, priority: 'CRITICAL' };
     (triageService.getAlertById as vi.Mock).mockResolvedValue(criticalAlert);
     (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
 
-    const user = userEvent.setup();
     renderModal(
       <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Rules & Typologies')).toBeInTheDocument();
+      expect(screen.getByText('CRITICAL')).toBeInTheDocument();
     });
-
-    await user.click(
-      screen.getByRole('button', { name: /show risk breakdown/i }),
-    );
-    expect(
-      screen.getByText('Aggregated Transaction Mirroring'),
-    ).toBeInTheDocument();
   });
 
   it('renders alert with alert_data containing typology results', async () => {
+    const user = userEvent.setup();
     const alertWithTypology = {
       ...mockAlert,
       alert_data: {
@@ -510,7 +491,6 @@ describe('AlertsDetailModal', () => {
     );
     (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
 
-    const user = userEvent.setup();
     renderModal(
       <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
     );
@@ -519,10 +499,13 @@ describe('AlertsDetailModal', () => {
       expect(screen.getByText('Money Laundering')).toBeInTheDocument();
     });
 
-    await user.click(
-      screen.getByRole('button', { name: /show risk breakdown/i }),
-    );
-    expect(screen.getByText('High Value')).toBeInTheDocument();
+    if (!screen.queryByText('R001')) {
+      await user.click(
+        screen.getByRole('button', { name: /money laundering/i }),
+      );
+    }
+    expect(screen.getByText('R001')).toBeInTheDocument();
+    expect(screen.getByText('Sub-ref: Velocity')).toBeInTheDocument();
   });
 
   it('displays all typologies that exceed alert threshold', async () => {
@@ -589,7 +572,7 @@ describe('AlertsDetailModal', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Alerted Typologies (2):')).toBeInTheDocument();
+      expect(screen.getByText('Triggered Typologies')).toBeInTheDocument();
       expect(screen.getByText('Money Laundering')).toBeInTheDocument();
       expect(screen.getByText('Structuring')).toBeInTheDocument();
       expect(screen.queryByText('Smurfing')).not.toBeInTheDocument();
