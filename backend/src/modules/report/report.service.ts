@@ -91,9 +91,6 @@ export class ReportsService {
               case_owner_user_id: requestingUserId,
             },
             {
-              case_creator_user_id: requestingUserId,
-            },
-            {
               tasks: {
                 some: {
                   assigned_user_id: requestingUserId,
@@ -101,10 +98,10 @@ export class ReportsService {
               },
             },
             {
-              case_owner_user_id: null,
+              status: CaseStatus.STATUS_00_DRAFT,
             },
             {
-              status: CaseStatus.STATUS_00_DRAFT,
+              status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
             },
           ],
         },
@@ -195,7 +192,7 @@ export class ReportsService {
     requestingUserId?: string;
   }): Promise<monthlyTrend[]> {
     const now = new Date();
-    const trendStartDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const trendStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const base: any = {
       created_at: { gte: trendStartDate },
