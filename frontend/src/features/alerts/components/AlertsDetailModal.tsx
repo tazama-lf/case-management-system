@@ -1,28 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   XMarkIcon,
   ExclamationTriangleIcon,
   ClockIcon,
   ArrowTopRightOnSquareIcon,
-} from '@heroicons/react/24/outline';
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from "@heroicons/react/24/outline";
 import type {
   Alert as TriageAlert,
   ActionHistory,
   AlertStatus,
-} from '../types/triage.types';
-import type { Alert as LegacyAlert } from '../types/alertsdashboard.types';
-import triageService from '../services/triageservice';
-import userService from '../../cases/services/userService';
+} from "../types/triage.types";
+import type { Alert as LegacyAlert } from "../types/alertsdashboard.types";
+import triageService from "../services/triageservice";
+import userService from "../../cases/services/userService";
 import {
   taskService,
   type TaskForSupervisor,
-} from '../../cases/services/taskService';
-import { useCase, canActOnCase } from '../../cases/hooks/useCase';
-import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
-import { formatDate } from '@/shared/utils/dateUtils';
-import { useQueryClient } from '@tanstack/react-query';
-import { caseService } from '../../cases/services/caseService';
+} from "../../cases/services/taskService";
+import { useCase, canActOnCase } from "../../cases/hooks/useCase";
+import { useSystemConfig } from "../../../shared/hooks/useSystemConfig";
+import { formatDate } from "@/shared/utils/dateUtils";
+import { useQueryClient } from "@tanstack/react-query";
+import { caseService } from "../../cases/services/caseService";
 
 interface AlertsDetailModalProps {
   alertId: number | null;
@@ -55,127 +57,146 @@ const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
   prediction_outcome: alert.prediction_outcome,
 });
 
-const getRiskScore = (alert: TriageAlert): number => {
-  const priorityWeights = {
-    NEW: 1,
-    URGENT: 1.5,
-    CRITICAL: 2,
-    BREACH: 3,
-  };
+interface TriggeredRuleDetail {
+  ruleId: string;
+  ruleWeight: number;
+  subRef?: string;
+  independentVariable?: unknown;
+}
 
-  const baseScore = alert.confidence_per ?? 50;
-  const weight = priorityWeights[alert.priority] || 1;
-  return Math.round(baseScore * weight * 10);
+interface TriggeredTypologyDetail {
+  typologyId: string;
+  typologyCfg: string;
+  typologyScore: number;
+  alertThreshold: number;
+  interdictionThreshold: number;
+  rules: TriggeredRuleDetail[];
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+
+const asNumber = (value: unknown, fallback = 0): number => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const getRiskBreakdown = (alert: TriageAlert) => {
-  try {
-    const maybe = alert.alert_data as unknown;
-    if (maybe && typeof maybe === 'object') {
-      const tadp = (maybe as Record<string, unknown>).tadpResult;
-      if (tadp && typeof tadp === 'object') {
-        const { typologyResult } = tadp as Record<string, unknown>;
-        if (
-          Array.isArray(typologyResult) &&
-          typologyResult.length > 0 &&
-          typeof typologyResult[0] === 'object'
-        ) {
-          const typ = typologyResult[0] as Record<string, unknown>;
-          const maybeRules = typ.ruleResults;
-          if (Array.isArray(maybeRules)) {
-            return maybeRules.map((r) => {
-              const rec = r as Record<string, unknown>;
-              const id = (rec.id as string) || String(rec.ruleId ?? 'unknown');
-              const name = (rec.label as string) || (rec.name as string) || id;
-              const type =
-                (rec.subRuleRef as string) ||
-                (rec.type as string) ||
-                (rec.category as string) ||
-                'Unknown';
-              const wght =
-                typeof rec.wght === 'number'
-                  ? rec.wght
-                  : Number(rec.weight ?? 0);
-              return { name, type, score: wght };
-            });
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error parsing risk components:', error);
-  }
+const asString = (value: unknown, fallback = ""): string =>
+  typeof value === "string" && value.trim() ? value : fallback;
 
-  const totalScore = getRiskScore(alert);
-  const components = [
-    {
-      name: 'Multiple ATM Withdrawals',
-      type: 'Velocity',
-      score: Math.round(totalScore * 0.31),
-    },
-    {
-      name: 'High-Value Cash Transactions',
-      type: 'Pattern',
-      score: Math.round(totalScore * 0.34),
-    },
-    {
-      name: 'Geographic Distribution',
-      type: 'Pattern',
-      score: Math.round(totalScore * 0.34),
-    },
-  ];
+const getScoreColor = (score: number): string => {
+  if (score >= 80) return "bg-red-500";
+  if (score >= 60) return "bg-orange-500";
+  return "bg-yellow-500";
+};
 
-  if (alert.priority === 'CRITICAL' || alert.priority === 'BREACH') {
-    components.push({
-      name: 'Aggregated Transaction Mirroring',
-      type: 'Pattern',
-      score: Math.round(totalScore * 0.33),
+const getScoreTextColor = (score: number): string => {
+  if (score >= 80) return "text-red-700";
+  if (score >= 60) return "text-orange-700";
+  return "text-yellow-700";
+};
+
+const extractTriggeredTypologies = (
+  alert: TriageAlert,
+): TriggeredTypologyDetail[] => {
+  const alertData = isRecord(alert.alert_data) ? alert.alert_data : {};
+  const tadpResult = isRecord(alertData.tadpResult) ? alertData.tadpResult : {};
+  const tadpTypologies = Array.isArray(tadpResult.typologyResult)
+    ? tadpResult.typologyResult.filter(isRecord)
+    : [];
+
+  const networkMap = isRecord(alert.network_map) ? alert.network_map : {};
+  const networkMessages = Array.isArray(networkMap.messages)
+    ? networkMap.messages.filter(isRecord)
+    : [];
+  const networkTypologies = networkMessages.flatMap((message) =>
+    Array.isArray(message.typologies)
+      ? message.typologies.filter(isRecord)
+      : [],
+  );
+
+  const alertedTypologies = Array.isArray(alert.alerted_typologies)
+    ? alert.alerted_typologies.filter(isRecord)
+    : [];
+
+  const sourceTypologies = alertedTypologies.length
+    ? alertedTypologies
+    : tadpTypologies;
+
+  return sourceTypologies.map((source, index) => {
+    const sourceId = asString(source.id, `typology-${index}`);
+    const sourceCfg = asString(source.cfg, sourceId);
+
+    const tadpTypology = tadpTypologies.find((typology) => {
+      const id = asString(typology.id);
+      const cfg = asString(typology.cfg);
+      return (
+        id === sourceId ||
+        cfg === sourceId ||
+        id === sourceCfg ||
+        cfg === sourceCfg
+      );
     });
-    components[0].score = Math.round(totalScore * 0.22);
-    components[1].score = Math.round(totalScore * 0.22);
-    components[2].score = Math.round(totalScore * 0.23);
-  }
 
-  return components;
-};
+    const networkTypology = networkTypologies.find((typology) => {
+      const id = asString(typology.id);
+      const cfg = asString(typology.cfg);
+      return (
+        id === sourceId ||
+        cfg === sourceId ||
+        id === sourceCfg ||
+        cfg === sourceCfg
+      );
+    });
 
-const extractTypologyInfo = (alert: TriageAlert) => {
-  try {
-    const maybe = alert.alert_data as unknown;
-    if (maybe && typeof maybe === 'object') {
-      const tadp = (maybe as Record<string, unknown>).tadpResult;
-      if (tadp && typeof tadp === 'object') {
-        const { typologyResult } = tadp as Record<string, unknown>;
-        if (
-          Array.isArray(typologyResult) &&
-          typologyResult.length > 0 &&
-          typeof typologyResult[0] === 'object'
-        ) {
-          const typ = typologyResult[0] as Record<string, unknown>;
-          const id = typ.cfg as string | undefined;
-          const label = (typ.label as string) || (typ.name as string) || id;
-          const result =
-            typeof typ.result === 'number' ? typ.result : undefined;
-          return { id, label, result };
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error parsing risk type:', error);
-  }
-  return { id: undefined, label: undefined, result: undefined };
+    const workflow = isRecord(tadpTypology?.workflow)
+      ? tadpTypology.workflow
+      : {};
+
+    const ruleResults = Array.isArray(tadpTypology?.ruleResults)
+      ? tadpTypology.ruleResults.filter(isRecord)
+      : [];
+    const networkRules = Array.isArray(networkTypology?.rules)
+      ? networkTypology.rules.filter(isRecord)
+      : [];
+
+    const rules = (ruleResults.length ? ruleResults : networkRules).map(
+      (rule, ruleIndex) => ({
+        ruleId: asString(rule.id, `rule-${ruleIndex + 1}`),
+        ruleWeight: asNumber(rule.wght ?? rule.weight, 0),
+        subRef: asString(rule.subRuleRef),
+        independentVariable: rule.indpdntVarbl ?? rule.independentVariable,
+      }),
+    );
+
+    return {
+      typologyId: asString(tadpTypology?.id, sourceId),
+      typologyCfg: asString(
+        source.label,
+        asString(source.cfg, asString(tadpTypology?.cfg, sourceId)),
+      ),
+      typologyScore: asNumber(source.result ?? tadpTypology?.result, 0),
+      alertThreshold: asNumber(
+        source.alertThreshold ?? workflow.alertThreshold,
+        0,
+      ),
+      interdictionThreshold: asNumber(workflow.interdictionThreshold, 0),
+      rules,
+    };
+  });
 };
 
 const escapeHtml = (unsafe: string) =>
   unsafe
-    .replace(/&/gu, '&amp;')
-    .replace(/</gu, '&lt;')
-    .replace(/>/gu, '&gt;')
-    .replace(/"/gu, '&quot;')
-    .replace(/'/gu, '&#039;');
+    .replace(/&/gu, "&amp;")
+    .replace(/</gu, "&lt;")
+    .replace(/>/gu, "&gt;")
+    .replace(/"/gu, "&quot;")
+    .replace(/'/gu, "&#039;");
 
 const syntaxHighlightJson = (obj: unknown) => {
-  const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+  const json = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
   const escaped = escapeHtml(String(json));
 
   const highlighted = escaped
@@ -194,7 +215,7 @@ const syntaxHighlightJson = (obj: unknown) => {
     )
     .replace(/(:\s*)(null)/giu, '$1<span class="text-gray-500">$2</span>');
 
-  return highlighted.replace(/\n/gu, '<br/>').replace(/ /gu, '&nbsp;');
+  return highlighted.replace(/\n/gu, "<br/>").replace(/ /gu, "&nbsp;");
 };
 
 const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
@@ -211,7 +232,7 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
           setUsername(userName);
         }
       } catch (error) {
-        console.error('Failed to fetch user details:', error);
+        console.error("Failed to fetch user details:", error);
       }
     };
 
@@ -258,7 +279,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [alert, setAlert] = useState<TriageAlert | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showRules, setShowRules] = useState(false);
+  const [expandedTypologies, setExpandedTypologies] = useState<Set<string>>(
+    new Set(),
+  );
 
   const [actionHistory, setActionHistory] = useState<ActionHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -269,6 +292,30 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const { data: caseDetails } = useCase(alert?.case_id);
 
   const canPerformActions = canActOnCase(caseDetails?.status);
+
+  const toggleTypology = (typologyId: string) => {
+    setExpandedTypologies((prev) => {
+      const next = new Set(prev);
+      if (next.has(typologyId)) {
+        next.delete(typologyId);
+      } else {
+        next.add(typologyId);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!alert) {
+      setExpandedTypologies(new Set());
+      return;
+    }
+
+    const firstTypologyId = extractTriggeredTypologies(alert)[0]?.typologyId;
+    setExpandedTypologies(
+      firstTypologyId ? new Set([firstTypologyId]) : new Set(),
+    );
+  }, [alert]);
 
   useEffect(() => {
     const fetchAlertDetails = async () => {
@@ -288,7 +335,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
         if (alertDetails.case_id) {
           queryClient.invalidateQueries({
-            queryKey: ['case', alertDetails.case_id],
+            queryKey: ["case", alertDetails.case_id],
           });
         }
 
@@ -303,7 +350,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         }
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : 'Failed to load alert details',
+          err instanceof Error ? err.message : "Failed to load alert details",
         );
       } finally {
         setLoading(false);
@@ -324,18 +371,18 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       try {
         const tasks = await taskService.getTasksByCaseId(alert.case_id);
         const completeNewCaseTask = tasks.find(
-          (task: TaskForSupervisor) => task.name === 'Complete New Case',
+          (task: TaskForSupervisor) => task.name === "Complete New Case",
         );
 
         if (completeNewCaseTask) {
           setIsCompleteNewCaseCompleted(
-            completeNewCaseTask.status === 'STATUS_30_COMPLETED',
+            completeNewCaseTask.status === "STATUS_30_COMPLETED",
           );
         } else {
           setIsCompleteNewCaseCompleted(false);
         }
       } catch (error) {
-        console.error('Failed to fetch tasks for case:', error);
+        console.error("Failed to fetch tasks for case:", error);
         setIsCompleteNewCaseCompleted(false);
       }
     };
@@ -355,7 +402,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         const hasAccess = await caseService.checkCaseAccess(alert.case_id);
         setHasCaseAccess(hasAccess);
       } catch (error) {
-        console.error('Failed to check case access:', error);
+        console.error("Failed to check case access:", error);
         setHasCaseAccess(false); // Deny access on error
       }
     };
@@ -400,7 +447,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
               Error Loading Alert
             </h3>
             <p className="mt-2 text-sm text-gray-600">
-              {error ?? 'An error occurred while loading the alert'}
+              {error ?? "An error occurred while loading the alert"}
             </p>
             <div className="mt-6 flex justify-center space-x-3">
               <button
@@ -430,18 +477,20 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
-      case 'critical':
-        return 'text-red-600 bg-red-50';
-      case 'high':
-        return 'text-orange-600 bg-orange-50';
-      case 'medium':
-        return 'text-yellow-600 bg-yellow-50';
-      case 'low':
-        return 'text-green-600 bg-green-50';
+      case "critical":
+        return "text-red-600 bg-red-50";
+      case "high":
+        return "text-orange-600 bg-orange-50";
+      case "medium":
+        return "text-yellow-600 bg-yellow-50";
+      case "low":
+        return "text-green-600 bg-green-50";
       default:
-        return 'text-gray-600 bg-gray-50';
+        return "text-gray-600 bg-gray-50";
     }
   };
+
+  const triggeredTypologies = extractTriggeredTypologies(alert);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -452,7 +501,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           onClick={() => {
             if (alert?.case_id) {
               queryClient.invalidateQueries({
-                queryKey: ['case', alert.case_id],
+                queryKey: ["case", alert.case_id],
               });
             }
             onAlertUpdated?.();
@@ -469,7 +518,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
               onClick={() => {
                 if (alert?.case_id) {
                   queryClient.invalidateQueries({
-                    queryKey: ['case', alert.case_id],
+                    queryKey: ["case", alert.case_id],
                   });
                 }
                 onAlertUpdated?.();
@@ -502,8 +551,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     <div className="flex items-center space-x-2 ml-4">
                       {}
                       {(() => {
-                        const triageCompleted = actionHistory.some(
-                          (action) => action.operation.includes('ALERT_UPDATED')
+                        const triageCompleted = actionHistory.some((action) =>
+                          action.operation.includes("ALERT_UPDATED"),
                         );
                         const showButton =
                           canPerformActions &&
@@ -521,11 +570,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                             className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
                             title={
                               isManualMode
-                                ? 'Perform manual triage - update alert and make case decision'
-                                : 'Update alert details - direct investigation mode'
+                                ? "Perform manual triage - update alert and make case decision"
+                                : "Update alert details - direct investigation mode"
                             }
                           >
-                            {isManualMode ? 'Update Alert' : 'Update Alert'}
+                            {isManualMode ? "Update Alert" : "Update Alert"}
                           </button>
                         ) : null;
                       })()}
@@ -539,10 +588,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     </div>
                   </div>
                   <p className="text-lg text-gray-600 mb-1">
-                    {alert?.alert_data?.status ?? 'No message available'}
+                    {alert?.alert_data?.status ?? "No message available"}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Alert ID: {alert.alert_id} • Source: {alert.source ?? 'N/A'}
+                    Alert ID: {alert.alert_id} • Source: {alert.source ?? "N/A"}
                   </p>
                 </div>
               </div>
@@ -585,7 +634,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           Case Status:
                         </span>
                         <p className="text-sm text-gray-900">
-                          {caseDetails?.status ?? 'Loading...'}
+                          {caseDetails?.status ?? "Loading..."}
                         </p>
                       </div>
                       {caseDetails?.case_id && (
@@ -607,8 +656,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                               <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                             </button>
                           ) : (
-                            <div 
-                              className="flex items-center gap-1 text-sm text-gray-500 cursor-not-allowed" 
+                            <div
+                              className="flex items-center gap-1 text-sm text-gray-500 cursor-not-allowed"
                               title="You don't have permission to view this case"
                             >
                               <span>{alert.case_id}</span>
@@ -668,11 +717,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           >
                             <div
                               className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
-                                action.outcome === 'SUCCESS'
-                                  ? 'bg-green-100 text-green-600'
-                                  : action.outcome === 'FAILURE'
-                                    ? 'bg-red-100 text-red-600'
-                                    : 'bg-blue-100 text-blue-600'
+                                action.outcome === "SUCCESS"
+                                  ? "bg-green-100 text-green-600"
+                                  : action.outcome === "FAILURE"
+                                    ? "bg-red-100 text-red-600"
+                                    : "bg-blue-100 text-blue-600"
                               }`}
                             >
                               <ClockIcon className="w-4 h-4" />
@@ -695,124 +744,119 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
               </div>
 
               {}
-              <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
-                    Rules & Typologies
-                  </h4>
-                  <button
-                    onClick={() => {
-                      setShowRules(!showRules);
-                    }}
-                    className="text-sm px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {showRules ? 'Hide Risk Breakdown' : 'Show Risk Breakdown'}
-                  </button>
-                </div>
+              <div className="rounded-lg border border-gray-200 bg-white p-5 mb-4">
+                <h4 className="text-sm font-semibold text-gray-900 mb-4">
+                  Triggered Typologies
+                </h4>
+                <div className="space-y-3">
+                  {triggeredTypologies.length > 0 ? (
+                    triggeredTypologies.map((typology) => (
+                      <div
+                        key={typology.typologyId}
+                        className="rounded-lg border border-gray-200 bg-gray-50"
+                      >
+                        <button
+                          onClick={() => {
+                            toggleTypology(typology.typologyId);
+                          }}
+                          className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            {expandedTypologies.has(typology.typologyId) ? (
+                              <ChevronUpIcon className="h-4 w-4 text-gray-500" />
+                            ) : (
+                              <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+                            )}
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <div
+                                className={`h-2 w-2 rounded-full ${getScoreColor(
+                                  typology.typologyScore,
+                                )}`}
+                              />
 
-                <div className="mb-4">
-                  {(() => {
-                    const alertedTypologies = alert.alerted_typologies || [];
-                    if (alertedTypologies.length === 0) {
-                      const typ = extractTypologyInfo(alert);
-                      return (
-                        <div className="flex items-center space-x-4 text-sm">
-                          <span className="text-gray-500">Risk Category:</span>
-                          <span className="font-medium text-gray-900">
-                            {typ.label ?? typ.id ?? 'Unknown'}
-                          </span>
-                          <span className="text-gray-500">•</span>
-                          <span className="text-gray-500">Risk Score:</span>
-                          <span className="font-medium text-red-600 text-base">
-                            {typ.result ?? getRiskScore(alert)}
-                          </span>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className="space-y-3">
-                        <div className="text-sm font-medium text-gray-700 mb-2">
-                          Alerted Typologies ({alertedTypologies.length}):
-                        </div>
-                        {alertedTypologies.map((typ, index) => (
-                          <div
-                            key={typ.id || index}
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
-                          >
-                            <div className="flex items-center space-x-4 text-sm">
-                              <span className="text-gray-500">Risk Category:</span>
-                              <span className="font-medium text-gray-900">
-                                {typ.label}
+                              <span className="text-sm font-medium text-gray-900">
+                                {typology.typologyCfg}
                               </span>
-                              <span className="text-gray-500">•</span>
-                              <span className="text-gray-500">Risk Score:</span>
-                              <span className="font-medium text-red-600 text-base">
-                                {typ.result}
+
+                              <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-0.5 rounded">
+                                Alert Threshold: {typology.alertThreshold}
                               </span>
-                              <span className="text-gray-500">•</span>
-                              <span className="text-xs text-gray-400">
-                                (Threshold: {typ.alertThreshold})
+
+                              <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-0.5 rounded">
+                                Interdiction Threshold:{" "}
+                                {typology.interdictionThreshold}
                               </span>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                </div>
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`text-sm font-semibold ${getScoreTextColor(
+                                typology.typologyScore,
+                              )}`}
+                            >
+                              Typology Score:{" "}
+                              {typology.typologyScore.toFixed(2)}
+                            </span>
+                            {/* <div className="w-24 bg-gray-200 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full ${getScoreColor(
+                                  typology.typologyScore,
+                                )}`}
+                                style={{
+                                  width: `${Math.min(
+                                    typology.typologyScore,
+                                    100,
+                                  )}%`,
+                                }}
+                              />
+                            </div> */}
+                          </div>
+                        </button>
 
-                {}
-                <div
-                  className={`overflow-hidden transition-all duration-300 ${showRules ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
-                >
-                  {showRules && (
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="max-h-80 overflow-y-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50 sticky top-0 z-10">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Risk Component
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Type
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Score
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {getRiskBreakdown(alert).map((component, index) => (
-                              <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {component.name}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                  {component.type}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                  {component.score}
-                                </td>
-                              </tr>
-                            ))}
-                            <tr className="bg-gray-50 sticky bottom-0">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                Total Score
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                Aggregate
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                                {(() => {
-                                  const typ = extractTypologyInfo(alert);
-                                  return typ.result ?? getRiskScore(alert);
-                                })()}
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
+                        {expandedTypologies.has(typology.typologyId) && (
+                          <div className="px-4 pb-4 space-y-2 border-t border-gray-200 pt-3 bg-white">
+                            {typology.rules.length > 0 ? (
+                              typology.rules.map((rule, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-start gap-2"
+                                >
+                                  <div className="flex-shrink-0 mt-1">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+                                  </div>
+                                  <div>
+                                    <div className="text-sm text-gray-900">
+                                      {rule.ruleId}
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                      Weight: {rule.ruleWeight.toFixed(2)}
+                                    </div>
+                                    {rule.subRef && (
+                                      <div className="text-xs text-gray-500 mt-0.5">
+                                        Sub-ref: {rule.subRef}
+                                      </div>
+                                    )}
+                                    {rule.independentVariable != null && (
+                                      <div className="text-xs text-gray-500 mt-0.5">
+                                        Independent Variable:{" "}
+                                        {String(rule.independentVariable)}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-sm text-gray-500">
+                                No rules
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-gray-500 py-4">
+                      No typologies triggered
                     </div>
                   )}
                 </div>
