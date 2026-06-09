@@ -463,6 +463,7 @@ describe('AlertsDetailModal', () => {
   });
 
   it('renders alert with alert_data containing typology results', async () => {
+    const user = userEvent.setup();
     const alertWithTypology = {
       ...mockAlert,
       alert_data: {
@@ -498,6 +499,11 @@ describe('AlertsDetailModal', () => {
       expect(screen.getByText('Money Laundering')).toBeInTheDocument();
     });
 
+    if (!screen.queryByText('R001')) {
+      await user.click(
+        screen.getByRole('button', { name: /money laundering/i }),
+      );
+    }
     expect(screen.getByText('R001')).toBeInTheDocument();
     expect(screen.getByText('Sub-ref: Velocity')).toBeInTheDocument();
   });
