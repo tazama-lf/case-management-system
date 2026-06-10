@@ -244,8 +244,6 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
       ? action.action_performed.replace(action.user_id, username)
       : action.action_performed;
 
-  // const userDisplayName = username;
-
   return (
     <>
       <p className="text-sm text-gray-900">
@@ -287,7 +285,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isCompleteNewCaseCompleted, setIsCompleteNewCaseCompleted] =
     useState(false);
-  const [hasCaseAccess, setHasCaseAccess] = useState<boolean>(true); // Default true for better UX
+  const [hasCaseAccess, setHasCaseAccess] = useState<boolean>(true);
+  const [activeDataTab, setActiveDataTab] = useState<"transaction" | "alert">(
+    "transaction",
+  );
 
   const { data: caseDetails } = useCase(alert?.case_id);
 
@@ -360,7 +361,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     fetchAlertDetails();
   }, [alertId, isOpen, queryClient]);
 
-  // Check if Complete New Case task is completed
   useEffect(() => {
     const checkCompleteNewCaseStatus = async () => {
       if (!alert?.case_id) {
@@ -390,11 +390,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     checkCompleteNewCaseStatus();
   }, [alert?.case_id, isOpen]);
 
-  // Check if user has access to view the case using SAME logic as dashboard
   useEffect(() => {
     const checkCaseAccess = async () => {
       if (!alert?.case_id) {
-        setHasCaseAccess(true); // No case to check
+        setHasCaseAccess(true);
         return;
       }
 
@@ -422,6 +421,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
             className="fixed inset-0 bg-gray-500 opacity-20 transition-opacity"
             aria-hidden="true"
           ></div>
+
           <div className="relative inline-block align-middle bg-white rounded-lg text-center overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full p-6">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-sm text-gray-600">
@@ -441,6 +441,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
             className="fixed inset-0 bg-gray-500 opacity-20 transition-opacity"
             aria-hidden="true"
           ></div>
+
           <div className="relative inline-block align-middle bg-white rounded-lg text-center overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full p-6">
             <ExclamationTriangleIcon className="h-12 w-12 text-red-600 mx-auto" />
             <h3 className="mt-4 text-lg font-medium text-gray-900">
@@ -486,7 +487,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       case 'low':
         return 'text-green-600 bg-green-50';
       default:
-        return 'text-gray-600 bg-gray-50';
+        return "text-gray-600 bg-gray-50";
     }
   };
 
@@ -495,7 +496,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
-        {}
         <div
           className="fixed inset-0 bg-gray-900 opacity-60 transition-opacity"
           onClick={() => {
@@ -510,9 +510,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           aria-hidden="true"
         ></div>
 
-        {}
         <div className="relative inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-5xl sm:w-full">
-          {}
           <div className="absolute top-0 right-0 pt-4 pr-4 z-10">
             <button
               onClick={() => {
@@ -531,29 +529,27 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
             </button>
           </div>
 
-          {}
           <div className="bg-white px-4 pt-4 pb-4 max-h-[85vh] overflow-y-auto">
             <div className="max-w-4xl mx-auto">
-              {}
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-4 pr-14">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
                     <h3 className="text-xl font-bold text-gray-900 mt-4">
                       Alert Details
                     </h3>
+
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(alert.priority)}`}
+                      className={`px-3 py-1 rounded-full text-xs font-medium mt-4 ml-4 ${getPriorityColor(alert.priority)}`}
                     >
                       {alert.priority}
                     </span>
 
-                    {}
-                    <div className="flex items-center space-x-2 ml-4">
-                      {}
+                    <div className="flex items-center space-x-2 ml-4 mt-4">
                       {(() => {
                         const triageCompleted = actionHistory.some((action) =>
                           action.operation.includes('ALERT_UPDATED'),
                         );
+
                         const showButton =
                           canPerformActions &&
                           onManualTriage &&
@@ -579,7 +575,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                         ) : null;
                       })()}
 
-                      {}
                       {isAIMode && (
                         <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md border border-blue-200">
                           AI Processed
@@ -591,19 +586,27 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     {alert?.alert_data?.status ?? 'No message available'}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Alert ID: {alert.alert_id} • Source: {alert.source ?? 'N/A'}
+                    Alert ID: {alert.alert_id} • Source:{" "}
+                    {alert.source ?? "N/A"}
                   </p>
                 </div>
+
+                <p
+                  className={`inline-flex items-center rounded-md px-3 py-1 text-xs font-medium mt-4 ${getAlertStatusColor(
+                    alert?.alert_data?.status,
+                  )}`}
+                >
+                  {alert?.alert_data?.status ?? "No message available"}
+                </p>
               </div>
 
-              {}
               <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-                  {}
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Alert Summary
                     </h4>
+
                     <div className="space-y-3">
                       <div>
                         <span className="text-sm font-medium text-gray-500">
@@ -613,6 +616,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           {alert.alert_id}
                         </p>
                       </div>
+
                       <div>
                         <span className="text-sm font-medium text-gray-500">
                           Confidence Score:
@@ -621,6 +625,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           {alert.confidence_per}%
                         </p>
                       </div>
+
                       <div>
                         <span className="text-sm font-medium text-gray-500">
                           Created:
@@ -629,6 +634,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           {formatDate(alert.created_at)}
                         </p>
                       </div>
+
                       <div>
                         <span className="text-sm font-medium text-gray-500">
                           Case Status:
@@ -637,6 +643,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           {caseDetails?.status ?? 'Loading...'}
                         </p>
                       </div>
+
                       {caseDetails?.case_id && (
                         <div>
                           <span className="text-sm font-medium text-gray-500">
@@ -669,22 +676,54 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     </div>
                   </div>
 
-                  {}
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                      Transaction Data
-                    </h4>
+                    <div className="flex items-center border-b border-gray-200 mb-4">
+                      <button
+                        onClick={() => setActiveDataTab("transaction")}
+                        className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                          activeDataTab === "transaction"
+                            ? "text-blue-600 border-b-2 border-blue-600"
+                            : "text-gray-600 hover:text-gray-900"
+                        }`}
+                      >
+                        Transaction Data
+                      </button>
+                      <button
+                        onClick={() => setActiveDataTab("alert")}
+                        className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                          activeDataTab === "alert"
+                            ? "text-blue-600 border-b-2 border-blue-600"
+                            : "text-gray-600 hover:text-gray-900"
+                        }`}
+                      >
+                        Alert Data
+                      </button>
+                    </div>
+
                     <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-                      {alert.transaction ? (
+                      {activeDataTab === "transaction" ? (
+                        alert.transaction ? (
+                          <pre
+                            className="whitespace-pre-wrap break-words max-h-64 overflow-auto text-sm"
+                            dangerouslySetInnerHTML={{
+                              __html: syntaxHighlightJson(alert.transaction),
+                            }}
+                          />
+                        ) : (
+                          <div className="text-sm text-gray-600">
+                            No transaction data
+                          </div>
+                        )
+                      ) : alert.alert_data ? (
                         <pre
                           className="whitespace-pre-wrap break-words max-h-64 overflow-auto text-sm"
                           dangerouslySetInnerHTML={{
-                            __html: syntaxHighlightJson(alert.transaction),
+                            __html: syntaxHighlightJson(alert.alert_data),
                           }}
                         />
                       ) : (
                         <div className="text-sm text-gray-600">
-                          No transaction data
+                          No alert data
                         </div>
                       )}
                     </div>
@@ -692,10 +731,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              {}
               <div className="bg-white rounded-lg mb-4">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-                  {}
                   <div className="w-full bg-white rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                       Action History
@@ -716,13 +753,12 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                             className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
                           >
                             <div
-                              className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
-                                action.outcome === 'SUCCESS'
-                                  ? 'bg-green-100 text-green-600'
-                                  : action.outcome === 'FAILURE'
-                                    ? 'bg-red-100 text-red-600'
-                                    : 'bg-blue-100 text-blue-600'
-                              }`}
+                              className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${action.outcome === "SUCCESS"
+                                ? "bg-green-100 text-green-600"
+                                : action.outcome === "FAILURE"
+                                  ? "bg-red-100 text-red-600"
+                                  : "bg-blue-100 text-blue-600"
+                                }`}
                             >
                               <ClockIcon className="w-4 h-4" />
                             </div>
@@ -743,11 +779,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 </div>
               </div>
 
-              {}
               <div className="rounded-lg border border-gray-200 bg-white p-5 mb-4">
                 <h4 className="text-sm font-semibold text-gray-900 mb-4">
                   Triggered Typologies
                 </h4>
+
                 <div className="space-y-3">
                   {triggeredTypologies.length > 0 ? (
                     triggeredTypologies.map((typology) => (
@@ -767,6 +803,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                             ) : (
                               <ChevronDownIcon className="h-4 w-4 text-gray-500" />
                             )}
+
                             <div className="flex items-center gap-3 flex-wrap">
                               <div
                                 className={`h-2 w-2 rounded-full ${getScoreColor(
@@ -788,6 +825,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                               </span>
                             </div>
                           </div>
+
                           <div className="flex items-center gap-3">
                             <span
                               className={`text-sm font-semibold ${getScoreTextColor(
@@ -797,19 +835,6 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                               Typology Score:{' '}
                               {typology.typologyScore.toFixed(2)}
                             </span>
-                            {/* <div className="w-24 bg-gray-200 rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full ${getScoreColor(
-                                  typology.typologyScore,
-                                )}`}
-                                style={{
-                                  width: `${Math.min(
-                                    typology.typologyScore,
-                                    100,
-                                  )}%`,
-                                }}
-                              />
-                            </div> */}
                           </div>
                         </button>
 
@@ -824,18 +849,22 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                                   <div className="flex-shrink-0 mt-1">
                                     <div className="h-1.5 w-1.5 rounded-full bg-gray-400" />
                                   </div>
+
                                   <div>
                                     <div className="text-sm text-gray-900">
                                       {rule.ruleId}
                                     </div>
+
                                     <div className="text-xs text-gray-500 mt-0.5">
                                       Weight: {rule.ruleWeight.toFixed(2)}
                                     </div>
+
                                     {rule.subRef && (
                                       <div className="text-xs text-gray-500 mt-0.5">
                                         Sub-ref: {rule.subRef}
                                       </div>
                                     )}
+
                                     {rule.independentVariable != null && (
                                       <div className="text-xs text-gray-500 mt-0.5">
                                         Independent Variable:{' '}

@@ -171,6 +171,17 @@ const AlertsDashboard: React.FC = () => {
     }
   };
 
+  const getStatusColor = (status?: string): string => {
+    switch (status) {
+      case 'ALRT':
+        return 'text-red-700 bg-red-50 ring-1 ring-red-200';
+      case 'NALT':
+        return 'text-green-700 bg-green-50 ring-1 ring-green-200';
+      default:
+        return 'text-gray-700 bg-gray-50 ring-1 ring-gray-200';
+    }
+  };
+
   const columns: Array<AlertsTableColumn<Alert>> = [
     {
       key: 'alert_id',
@@ -216,6 +227,24 @@ const AlertsDashboard: React.FC = () => {
       key: 'source',
       header: 'Source',
       sortable: true,
+    },
+    {
+      key: 'alert_status',
+      header: 'Status',
+      sortable: false,
+      render: (_, alert) => {
+        const status = alert.alert_data?.status as string | undefined;
+
+        return (
+          <span
+            className={`inline-flex px-2 py-1 text-xs font-medium rounded-md ${getStatusColor(
+              status,
+            )}`}
+          >
+            {status || 'N/A'}
+          </span>
+        );
+      },
     },
     {
       key: 'alert_type',
@@ -330,7 +359,7 @@ const AlertsDashboard: React.FC = () => {
 
   return (
     <PageContainer title="Alerts Dashboard" subtitle={getSubtitle()}>
-      {}
+      { }
       {error && (
         <div className="mb-4">
           <Notification
@@ -341,7 +370,7 @@ const AlertsDashboard: React.FC = () => {
         </div>
       )}
 
-      {}
+      { }
       <AlertsSearchAndFilters
         searchFilters={filters}
         onFilterChange={(key, value) => {
@@ -381,7 +410,7 @@ const AlertsDashboard: React.FC = () => {
         sort={{ column: String(sort.column), direction: sort.direction }}
       />
 
-      {}
+      { }
       <div className="bg-white rounded-lg shadow">
         <AlertsTable
           data={alerts}
