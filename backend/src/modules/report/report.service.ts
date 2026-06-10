@@ -208,17 +208,18 @@ export class ReportsService {
       created_at: { gte: trendStartDate },
       ...this.buildCommonCaseFilters(filters),
     };
+
     const where = filters?.requestingUserId
       ? {
           AND: [
             base,
             {
               OR: [
-                { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
+                { case_owner_user_id: filters.requestingUserId },
                 {
                   tasks: {
                     some: {
-                      assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
+                      assigned_user_id: filters.requestingUserId,
                     },
                   },
                 },
@@ -230,38 +231,63 @@ export class ReportsService {
 
     const recentCases = await this.prisma.case.findMany({
       where,
-      select: { created_at: true, updated_at: true, status: true },
-      orderBy: { created_at: 'asc' },
+      select: {
+        created_at: true,
+        updated_at: true,
+        status: true,
+      },
     });
 
     const casesByDate = new Map<string, { created: number; closed: number }>();
 
-    recentCases.forEach((c) => {
-      const createdDate = c.created_at.toLocaleDateString('en-US', {
+    const formatDate = (date: Date): string =>
+      date.toLocaleDateString('en-US', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
       });
 
+    // Count created cases by created_at date
+    recentCases.forEach((c) => {
+      const createdDate = formatDate(c.created_at);
+
       if (!casesByDate.has(createdDate)) {
         casesByDate.set(createdDate, { created: 0, closed: 0 });
       }
-      const entry = casesByDate.get(createdDate)!;
-      entry.created += 1;
-      if (ReportsService.CLOSED_STATUSES.includes(c.status)) {
+
+      const entry = casesByDate.get(createdDate);
+
+      if (entry) {
+        entry.created += 1;
+      }
+    });
+
+    // Count closed cases by updated_at date
+    recentCases.forEach((c) => {
+      if (!ReportsService.CLOSED_STATUSES.includes(c.status)) {
+        return;
+      }
+
+      const closedDate = formatDate(c.updated_at);
+
+      if (!casesByDate.has(closedDate)) {
+        casesByDate.set(closedDate, { created: 0, closed: 0 });
+      }
+
+      const entry = casesByDate.get(closedDate);
+
+      if (entry) {
         entry.closed += 1;
       }
     });
 
-    const trend: monthlyTrend[] = [];
-    casesByDate.forEach((value, date) => {
-      trend.push({
+    return Array.from(casesByDate.entries())
+      .map(([date, counts]) => ({
         month: date,
-        casesCreated: value.created,
-        casesClosed: value.closed,
-      });
-    });
-    return trend;
+        casesCreated: counts.created,
+        casesClosed: counts.closed,
+      }))
+      .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
   }
 
   private async computeStatusDetails(
