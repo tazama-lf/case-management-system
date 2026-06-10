@@ -65,6 +65,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     { value: 'STATUS_81_CLOSED_REFUTED', label: 'Closed - Refuted' },
     { value: 'STATUS_00_DRAFT', label: 'Draft' },
     { value: 'STATUS_20_IN_PROGRESS', label: 'In Progress' },
+    { value: 'STATUS_84_COMPLETED', label: 'Completed' },
     {
       value: 'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
       label: 'Pending Creation Approval',
@@ -114,7 +115,8 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
           opt.value === '' ||
           opt.value === 'STATUS_82_CLOSED_CONFIRMED' ||
           opt.value === 'STATUS_83_CLOSED_INCONCLUSIVE' ||
-          opt.value === 'STATUS_81_CLOSED_REFUTED',
+          opt.value === 'STATUS_81_CLOSED_REFUTED' ||
+          opt.value === 'STATUS_84_COMPLETED'
       );
     }
     return statusOptions;
@@ -133,7 +135,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
         'STATUS_82_CLOSED_CONFIRMED',
         'STATUS_83_CLOSED_INCONCLUSIVE',
         'STATUS_81_CLOSED_REFUTED',
-        'STATUS_99_ABANDONED',
+        'STATUS_84_COMPLETED',
       ];
       if (!closedStatuses.includes(statusFilter)) {
         onStatusFilterChange('');
