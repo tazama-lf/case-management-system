@@ -102,7 +102,7 @@ export class ReportsService {
             // DRAFT or READY_FOR_ASSIGNMENT where owner is null or owner is the user
             {
               AND: [
-                { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
+                { status: { in: [CaseStatus.STATUS_00_DRAFT] } },
                 {
                   OR: [{ case_owner_user_id: null }, { case_owner_user_id: requestingUserId }],
                 },
@@ -117,6 +117,7 @@ export class ReportsService {
                       CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
                       CaseStatus.STATUS_99_ABANDONED,
                       CaseStatus.STATUS_84_COMPLETED,
+                      CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
                     ],
                   },
                 },
@@ -424,7 +425,6 @@ export class ReportsService {
   }> {
     const { startDate, endDate } = getDateRange(dateRange);
     const dateWindow = { gte: startDate, lte: endDate };
-
     // Build the overall scope: date window + filters + (optional) investigator restriction.
     const baseFilters = { created_at: dateWindow, ...this.buildCommonCaseFilters(filters) };
     const whereClause = filters?.isInvestigator ? this.applyInvestigatorScope(baseFilters, filters.requestingUserId) : baseFilters;
@@ -432,7 +432,6 @@ export class ReportsService {
       { ...baseFilters, status: { in: ReportsService.CLOSED_STATUSES } },
       filters?.requestingUserId,
     );
-
     // Run all aggregate queries that share these scopes in parallel.
     const [allCases, statusCounts, typeCounts, totalCases, closedCases, closedCasesWithTimes, outcomeCounts] = await Promise.all([
       this.prisma.case.findMany({
