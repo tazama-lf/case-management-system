@@ -94,8 +94,10 @@ export class TaskService {
         }
 
         let investigationNote: string | undefined;
-        if (existingTask.investigationNotes !== null && updateData.investigationNotes !== undefined) {
-          investigationNote = `${existingTask.investigationNotes}\n\n[${new Date().toISOString()}] Completion Notes: ${updateData.investigationNotes ?? ''}`;
+        if (updateData.investigationNotes !== undefined && existingTask.investigationNotes !== null) {
+          investigationNote = `${existingTask.investigationNotes}\n\n[${new Date().toISOString()}] Completion Notes: ${updateData.investigationNotes}`;
+        } else {
+          investigationNote = updateData.investigationNotes;
         }
 
         const updateInput: Prisma.TaskUpdateInput = {
