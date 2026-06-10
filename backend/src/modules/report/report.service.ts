@@ -27,13 +27,12 @@ export class ReportsService {
     CaseStatus.STATUS_81_CLOSED_REFUTED,
     CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-    CaseStatus.STATUS_99_ABANDONED,
     CaseStatus.STATUS_84_COMPLETED,
   ];
 
   private static readonly STATUS_DISTRIBUTION_MAP: Record<CaseStatus, string> = {
     [CaseStatus.STATUS_10_ASSIGNED]: 'assigned',
-    [CaseStatus.STATUS_20_IN_PROGRESS]: 'assigned',
+    [CaseStatus.STATUS_20_IN_PROGRESS]: 'inProgress',
     [CaseStatus.STATUS_00_DRAFT]: 'draft',
     [CaseStatus.STATUS_21_SUSPENDED]: 'suspended',
     [CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL]: 'pendingApproval',
@@ -46,7 +45,7 @@ export class ReportsService {
     [CaseStatus.STATUS_81_CLOSED_REFUTED]: 'closed',
     [CaseStatus.STATUS_82_CLOSED_CONFIRMED]: 'closed',
     [CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE]: 'closed',
-    [CaseStatus.STATUS_99_ABANDONED]: 'closed',
+    [CaseStatus.STATUS_99_ABANDONED]: 'abandoned',
     [CaseStatus.STATUS_84_COMPLETED]: 'closed',
   };
 
@@ -111,7 +110,18 @@ export class ReportsService {
             },
             // Pending approval status where creator is the user
             {
-              AND: [{ status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL }, { case_creator_user_id: requestingUserId }],
+              AND: [
+                {
+                  status: {
+                    in: [
+                      CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+                      CaseStatus.STATUS_99_ABANDONED,
+                      CaseStatus.STATUS_84_COMPLETED,
+                    ],
+                  },
+                },
+                { case_creator_user_id: requestingUserId },
+              ],
             },
           ],
         },
@@ -133,6 +143,7 @@ export class ReportsService {
     suspended: number;
     pendingApproval: number;
     closed: number;
+    abandoned: number;
   } {
     const distribution = {
       assigned: 0,
@@ -141,6 +152,7 @@ export class ReportsService {
       suspended: 0,
       pendingApproval: 0,
       closed: 0,
+      abandoned: 0,
     };
 
     statusCounts.forEach(({ status, _count }) => {
@@ -389,6 +401,7 @@ export class ReportsService {
       suspended: number;
       pendingApproval: number;
       closed: number;
+      abandoned: number;
     };
     caseTypes: Array<{
       name: string;

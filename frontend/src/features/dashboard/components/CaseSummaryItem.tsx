@@ -10,6 +10,8 @@ const CaseSummaryItem: React.FC<CaseSummaryItemProps> = ({
 }) => {
   const getStatusLabel = (status: string) => {
     switch (status) {
+      case 'inProgress':
+        return 'In Progress';
       case 'assigned':
         return 'Assigned to you';
       case 'pending':
@@ -25,6 +27,8 @@ const CaseSummaryItem: React.FC<CaseSummaryItemProps> = ({
     switch (status) {
       case 'assigned':
         return 'text-blue-600';
+      case 'inProgress':
+        return 'text-purple-600';
       case 'pending':
         return 'text-yellow-600';
       case 'closed':

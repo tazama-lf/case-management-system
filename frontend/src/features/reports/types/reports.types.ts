@@ -8,6 +8,7 @@ export interface CaseStatusStats {
 export interface CaseStatusDistribution {
   assigned: number;
   inProgress: number;
+  abandoned: number;
   draft: number;
   suspended: number;
   pendingApproval: number;

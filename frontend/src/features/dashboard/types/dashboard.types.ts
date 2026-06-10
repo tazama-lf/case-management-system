@@ -12,7 +12,7 @@ export interface AlertSummary {
 }
 
 export interface CaseSummary {
-  status: 'assigned' | 'pending' | 'closed';
+  status: 'assigned' | 'pending' | 'closed' | 'inProgress';
   count: number;
   description: string;
 }

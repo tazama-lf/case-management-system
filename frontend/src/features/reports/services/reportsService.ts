@@ -66,6 +66,7 @@ class ReportsService {
         },
         statusDistribution: {
           assigned: 0,
+          abandoned: 0,
           inProgress: 0,
           draft: 0,
           suspended: 0,
