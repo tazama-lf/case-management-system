@@ -4,7 +4,7 @@ import { Outcome } from '../../../utils/types/outcome';
 import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, Alert, Task } from '@prisma/client-cms';
 import { ManualCreateCaseDto, CreateCaseDto } from '../dto';
 import { TaskService } from 'src/modules/task/task.service';
-import { TASK_NAMES, CANDIDATE_GROUPS } from '../../../constants/case.constants';
+import { TASK_NAMES, CANDIDATE_GROUPS, CLOSED_CASE_STATUSES } from '../../../constants/case.constants';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { CasePriorityUtil } from '../../shared/utils/case-priority.util';
 import { CaseQueryService } from './case-query.service';
@@ -110,7 +110,7 @@ export class CaseCreationApprovalService {
           entityName: 'CaseCreation',
           actionPerformed: `Draft case ${result.case.case_id} created`,
           outcome: Outcome.SUCCESS,
-          tenantId: tenantId,
+          tenantId,
         },
         result.case.case_id,
         tenantId,
@@ -140,7 +140,7 @@ export class CaseCreationApprovalService {
         entityName: 'CaseCreation',
         actionPerformed: `Failed: alert ${dto.alertId}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
 
       throw new InternalServerErrorException(`Failed to save case as draft: ${errorMessage}`);
@@ -227,7 +227,7 @@ export class CaseCreationApprovalService {
           entityName: CaseCreationApprovalService.name,
           actionPerformed: `Approved case creation for case ${caseId}`,
           outcome: Outcome.SUCCESS,
-          tenantId: tenantId,
+          tenantId,
         },
         caseId,
         tenantId,
@@ -253,7 +253,7 @@ export class CaseCreationApprovalService {
         entityName: CaseCreationApprovalService.name,
         actionPerformed: `Failed to approve case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
 
       throw error;
@@ -338,7 +338,7 @@ export class CaseCreationApprovalService {
           entityName: CaseCreationApprovalService.name,
           actionPerformed: `Rejected case creation for case ${caseId}, created Complete New Case task ${result.newTask.task_id}. Reason: ${reason}`,
           outcome: Outcome.SUCCESS,
-          tenantId: tenantId,
+          tenantId,
         },
         caseId,
         tenantId,
@@ -358,7 +358,7 @@ export class CaseCreationApprovalService {
         entityName: CaseCreationApprovalService.name,
         actionPerformed: `Failed to reject case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
       throw error;
     }
@@ -382,7 +382,7 @@ export class CaseCreationApprovalService {
         entityName: CaseCreationApprovalService.name,
         actionPerformed: `Failed case completion due to missing fields [${missingFields.join(', ')}]`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
       throw new BadRequestException(msg);
     }
@@ -436,7 +436,7 @@ export class CaseCreationApprovalService {
           entityName: CaseCreationApprovalService.name,
           actionPerformed: `Completed case ${caseId} and created Investigate Case task ${investigateTask.task_id}`,
           outcome: Outcome.SUCCESS,
-          tenantId: tenantId,
+          tenantId,
         },
         caseId,
         tenantId,
@@ -492,6 +492,10 @@ export class CaseCreationApprovalService {
         });
       }
 
+      if (CLOSED_CASE_STATUSES.includes(status)) {
+        updateData.case_owner_user_id = userId;
+        updateData.final_outcome = status;
+      }
       const updatedCase = await this.caseRepository.updateCase(caseId, updateData);
 
       this.flowableService.handleCaseStatusChanged({

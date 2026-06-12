@@ -98,7 +98,7 @@ describe('AlertsDetailModal', () => {
 
   it('renders loading state when fetching alert', () => {
     (triageService.getAlertById as vi.Mock).mockImplementation(
-      () => new Promise(() => {}), // Never resolves
+      () => new Promise(() => { }), // Never resolves
     );
 
     renderModal(
@@ -317,7 +317,7 @@ describe('AlertsDetailModal', () => {
 
     // Case status is displayed in the Alert Summary section
     expect(screen.getByText('IN_PROGRESS')).toBeInTheDocument();
-    
+
     // Case ID is displayed (from alert.case_id)
     expect(screen.getByText('case-123')).toBeInTheDocument();
   });
@@ -504,8 +504,11 @@ describe('AlertsDetailModal', () => {
         screen.getByRole('button', { name: /money laundering/i }),
       );
     }
-    expect(screen.getByText('R001')).toBeInTheDocument();
-    expect(screen.getByText('Sub-ref: Velocity')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('R001')).toBeInTheDocument();
+      expect(screen.getByText('Sub-ref: Velocity')).toBeInTheDocument();
+    });
   });
 
   it('displays all typologies that exceed alert threshold', async () => {

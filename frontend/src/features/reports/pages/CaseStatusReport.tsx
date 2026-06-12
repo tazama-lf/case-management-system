@@ -180,6 +180,7 @@ const Reports: React.FC = () => {
     statusDistribution: {
       assigned: 0,
       inProgress: 0,
+      abandoned: 0,
       draft: 0,
       suspended: 0,
       pendingApproval: 0,
@@ -195,37 +196,43 @@ const Reports: React.FC = () => {
     {
       label: 'ASSIGNED',
       value: statusDistribution.assigned,
-      color: '#3b82f6',
+      color: '#3B82F6', // Blue
       percentage: 0,
     },
     {
       label: 'IN PROGRESS',
       value: statusDistribution.inProgress,
-      color: '#10b981',
+      color: '#06B6D4', // Cyan
+      percentage: 0,
+    },
+    {
+      label: 'ABANDONED',
+      value: statusDistribution.abandoned,
+      color: '#6B7280', // Gray
       percentage: 0,
     },
     {
       label: 'DRAFT',
       value: statusDistribution.draft,
-      color: '#f59e0b',
+      color: '#F97316', // Orange
       percentage: 0,
     },
     {
       label: 'SUSPENDED',
       value: statusDistribution.suspended,
-      color: '#ef4444',
+      color: '#DC2626', // Red
       percentage: 0,
     },
     {
       label: 'PENDING APPROVAL',
       value: statusDistribution.pendingApproval,
-      color: '#8b5cf6',
+      color: '#A855F7', // Purple
       percentage: 0,
     },
     {
       label: 'CLOSED',
       value: statusDistribution.closed,
-      color: '#6b7280',
+      color: '#22C55E', // Green
       percentage: 0,
     },
   ].map((item) => ({

@@ -77,7 +77,7 @@ export class TaskService {
         entityName: TaskService.name,
         operation: 'createTask',
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
       throw error;
     }
@@ -92,10 +92,18 @@ export class TaskService {
         if (existingTask === null || existingTask.case === null) {
           throw new NotFoundException(`Task ${taskId} not found`);
         }
+
+        let investigationNote: string | undefined;
+        if (updateData.investigationNotes !== undefined && existingTask.investigationNotes !== null) {
+          investigationNote = `${existingTask.investigationNotes}\n\n[${new Date().toISOString()}] Completion Notes: ${updateData.investigationNotes}`;
+        } else {
+          investigationNote = updateData.investigationNotes;
+        }
+
         const updateInput: Prisma.TaskUpdateInput = {
           status: updateData.status,
           assigned_user_id: updateData.assignedUserId === existingTask.assigned_user_id ? existingTask.assigned_user_id : userId,
-          investigationNotes: updateData.investigationNotes,
+          investigationNotes: investigationNote,
         };
 
         const shouldPromoteCaseToInProgress = this.shouldPromoteCaseToInProgress(existingTask, updateData);
@@ -145,7 +153,7 @@ export class TaskService {
         entityName: TaskService.name,
         operation: 'updateTask',
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
       throw error;
     }
@@ -171,7 +179,7 @@ export class TaskService {
           entityName: TaskService.name,
           actionPerformed: `Successfully retrieved tasks for case: ${caseId}`,
           outcome: Outcome.SUCCESS,
-          tenantId: tenantId,
+          tenantId,
         });
       }
 
@@ -185,7 +193,7 @@ export class TaskService {
           entityName: TaskService.name,
           actionPerformed: `Error retrieving tasks for case: ${caseId}`,
           outcome: Outcome.FAILURE,
-          tenantId: tenantId,
+          tenantId,
         });
       }
       throw error;

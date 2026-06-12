@@ -27,13 +27,12 @@ export class ReportsService {
     CaseStatus.STATUS_81_CLOSED_REFUTED,
     CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-    CaseStatus.STATUS_99_ABANDONED,
     CaseStatus.STATUS_84_COMPLETED,
   ];
 
   private static readonly STATUS_DISTRIBUTION_MAP: Record<CaseStatus, string> = {
     [CaseStatus.STATUS_10_ASSIGNED]: 'assigned',
-    [CaseStatus.STATUS_20_IN_PROGRESS]: 'assigned',
+    [CaseStatus.STATUS_20_IN_PROGRESS]: 'inProgress',
     [CaseStatus.STATUS_00_DRAFT]: 'draft',
     [CaseStatus.STATUS_21_SUSPENDED]: 'suspended',
     [CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL]: 'pendingApproval',
@@ -46,7 +45,7 @@ export class ReportsService {
     [CaseStatus.STATUS_81_CLOSED_REFUTED]: 'closed',
     [CaseStatus.STATUS_82_CLOSED_CONFIRMED]: 'closed',
     [CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE]: 'closed',
-    [CaseStatus.STATUS_99_ABANDONED]: 'closed',
+    [CaseStatus.STATUS_99_ABANDONED]: 'abandoned',
     [CaseStatus.STATUS_84_COMPLETED]: 'closed',
   };
 
@@ -80,19 +79,15 @@ export class ReportsService {
    * filters (date window, caseType, priority, tenantId, …) are preserved on
    * every branch — investigators still only see cases that match those filters.
    */
-  private applyInvestigatorScope(baseFilters: any, requestingUserId?: string, tenantId?: string): any {
+  private applyInvestigatorScope(baseFilters: any, requestingUserId?: string): any {
     if (!requestingUserId) return baseFilters;
+
     return {
       AND: [
         baseFilters,
         {
           OR: [
-            {
-              case_owner_user_id: requestingUserId,
-            },
-            {
-              case_creator_user_id: requestingUserId,
-            },
+            // Tasks assigned to the user
             {
               tasks: {
                 some: {
@@ -100,11 +95,34 @@ export class ReportsService {
                 },
               },
             },
+            // Case owner is the user
             {
-              case_owner_user_id: null,
+              case_owner_user_id: requestingUserId,
             },
+            // DRAFT or READY_FOR_ASSIGNMENT where owner is null or owner is the user
             {
-              status: CaseStatus.STATUS_00_DRAFT,
+              AND: [
+                { status: { in: [CaseStatus.STATUS_00_DRAFT] } },
+                {
+                  OR: [{ case_owner_user_id: null }, { case_owner_user_id: requestingUserId }],
+                },
+              ],
+            },
+            // Pending approval status where creator is the user
+            {
+              AND: [
+                {
+                  status: {
+                    in: [
+                      CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
+                      CaseStatus.STATUS_99_ABANDONED,
+                      CaseStatus.STATUS_84_COMPLETED,
+                      CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+                    ],
+                  },
+                },
+                { case_creator_user_id: requestingUserId },
+              ],
             },
           ],
         },
@@ -126,6 +144,7 @@ export class ReportsService {
     suspended: number;
     pendingApproval: number;
     closed: number;
+    abandoned: number;
   } {
     const distribution = {
       assigned: 0,
@@ -134,6 +153,7 @@ export class ReportsService {
       suspended: 0,
       pendingApproval: 0,
       closed: 0,
+      abandoned: 0,
     };
 
     statusCounts.forEach(({ status, _count }) => {
@@ -195,23 +215,24 @@ export class ReportsService {
     requestingUserId?: string;
   }): Promise<monthlyTrend[]> {
     const now = new Date();
-    const trendStartDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const trendStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const base: any = {
       created_at: { gte: trendStartDate },
       ...this.buildCommonCaseFilters(filters),
     };
+
     const where = filters?.requestingUserId
       ? {
           AND: [
             base,
             {
               OR: [
-                { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
+                { case_owner_user_id: filters.requestingUserId },
                 {
                   tasks: {
                     some: {
-                      assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
+                      assigned_user_id: filters.requestingUserId,
                     },
                   },
                 },
@@ -223,38 +244,63 @@ export class ReportsService {
 
     const recentCases = await this.prisma.case.findMany({
       where,
-      select: { created_at: true, updated_at: true, status: true },
-      orderBy: { created_at: 'asc' },
+      select: {
+        created_at: true,
+        updated_at: true,
+        status: true,
+      },
     });
 
     const casesByDate = new Map<string, { created: number; closed: number }>();
 
-    recentCases.forEach((c) => {
-      const createdDate = c.created_at.toLocaleDateString('en-US', {
+    const formatDate = (date: Date): string =>
+      date.toLocaleDateString('en-US', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
       });
 
+    // Count created cases by created_at date
+    recentCases.forEach((c) => {
+      const createdDate = formatDate(c.created_at);
+
       if (!casesByDate.has(createdDate)) {
         casesByDate.set(createdDate, { created: 0, closed: 0 });
       }
-      const entry = casesByDate.get(createdDate)!;
-      entry.created += 1;
-      if (ReportsService.CLOSED_STATUSES.includes(c.status)) {
+
+      const entry = casesByDate.get(createdDate);
+
+      if (entry) {
+        entry.created += 1;
+      }
+    });
+
+    // Count closed cases by updated_at date
+    recentCases.forEach((c) => {
+      if (!ReportsService.CLOSED_STATUSES.includes(c.status)) {
+        return;
+      }
+
+      const closedDate = formatDate(c.updated_at);
+
+      if (!casesByDate.has(closedDate)) {
+        casesByDate.set(closedDate, { created: 0, closed: 0 });
+      }
+
+      const entry = casesByDate.get(closedDate);
+
+      if (entry) {
         entry.closed += 1;
       }
     });
 
-    const trend: monthlyTrend[] = [];
-    casesByDate.forEach((value, date) => {
-      trend.push({
+    return Array.from(casesByDate.entries())
+      .map(([date, counts]) => ({
         month: date,
-        casesCreated: value.created,
-        casesClosed: value.closed,
-      });
-    });
-    return trend;
+        casesCreated: counts.created,
+        casesClosed: counts.closed,
+      }))
+      .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
   }
 
   private async computeStatusDetails(
@@ -333,7 +379,7 @@ export class ReportsService {
     filters?: {
       caseType?: string;
       priority?: string;
-      investigator?: string;
+      isInvestigator?: boolean;
       tenantId: string;
       requestingUserId?: string;
     },
@@ -356,6 +402,7 @@ export class ReportsService {
       suspended: number;
       pendingApproval: number;
       closed: number;
+      abandoned: number;
     };
     caseTypes: Array<{
       name: string;
@@ -378,16 +425,13 @@ export class ReportsService {
   }> {
     const { startDate, endDate } = getDateRange(dateRange);
     const dateWindow = { gte: startDate, lte: endDate };
-
     // Build the overall scope: date window + filters + (optional) investigator restriction.
     const baseFilters = { created_at: dateWindow, ...this.buildCommonCaseFilters(filters) };
-    const whereClause = filters?.investigator ? {} : this.applyInvestigatorScope(baseFilters, filters?.requestingUserId, filters?.tenantId);
+    const whereClause = filters?.isInvestigator ? this.applyInvestigatorScope(baseFilters, filters.requestingUserId) : baseFilters;
     const closedCasesWhere = this.applyInvestigatorScope(
       { ...baseFilters, status: { in: ReportsService.CLOSED_STATUSES } },
       filters?.requestingUserId,
-      filters?.tenantId,
     );
-
     // Run all aggregate queries that share these scopes in parallel.
     const [allCases, statusCounts, typeCounts, totalCases, closedCases, closedCasesWithTimes, outcomeCounts] = await Promise.all([
       this.prisma.case.findMany({
@@ -408,7 +452,6 @@ export class ReportsService {
         _count: { case_id: true },
       }),
     ]);
-
     // Pure transformations.
     const statusDistribution = this.computeStatusDistribution(statusCounts);
     const caseTypes = this.computeCaseTypes(typeCounts);

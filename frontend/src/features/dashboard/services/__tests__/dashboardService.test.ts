@@ -64,6 +64,11 @@ describe('dashboardService', () => {
             description: 'cases requiring your action',
           },
           {
+            status: 'inProgress',
+            count: 0,
+            description: 'cases you are working on',
+          },
+          {
             status: 'pending',
             count: 2,
             description: 'cases awaiting your approval',
@@ -95,6 +100,11 @@ describe('dashboardService', () => {
             status: 'assigned',
             count: 0,
             description: 'cases requiring your action',
+          },
+          {
+            status: 'inProgress',
+            count: 0,
+            description: 'cases you are working on',
           },
           {
             status: 'pending',

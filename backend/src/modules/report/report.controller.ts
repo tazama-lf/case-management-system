@@ -274,7 +274,7 @@ export class ReportsController {
     return await this.reportsService.getCaseStatus(dateRange, {
       caseType,
       priority,
-      investigator,
+      isInvestigator,
       tenantId,
       requestingUserId: isInvestigator ? userId : undefined,
     });

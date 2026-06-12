@@ -65,6 +65,11 @@ class DashboardService {
         description: 'cases requiring your action',
       },
       {
+        status: 'inProgress',
+        count: (statusDist.inProgress ?? 0) as number,
+        description: 'cases you are working on',
+      },
+      {
         status: 'pending',
         count: (statusDist.pendingApproval ?? 0) as number,
         description: 'cases awaiting your approval',
