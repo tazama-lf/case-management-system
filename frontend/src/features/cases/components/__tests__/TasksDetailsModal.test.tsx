@@ -213,7 +213,7 @@ describe('TasksDetailsModal', () => {
     const caseWithNonPacs002: CaseRow = {
       ...mockCaseData,
       transaction: JSON.stringify({
-        tx_type: 'pacs.008.001.10',
+        TxTp: 'pacs.008.001.10',
       }),
     };
 

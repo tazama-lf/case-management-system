@@ -51,7 +51,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [parentCaseDetails, setParentCaseDetails] = React.useState<
     Case | undefined
   >(undefined);
-  const [isParentCaseLoading, setIsParentCaseLoading] = React.useState(false);
+  const [isParentCaseLoading, setIsParentCaseLoading] =
+    React.useState(false);
+  const [shouldShowVisualizations, setShouldShowVisualizations] = React.useState(false);
 
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
   const initialCaseIdRef = React.useRef<number | undefined>(undefined);
@@ -146,6 +148,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     }
 
     const transaction = transactionData as Record<string, unknown>;
+    setShouldShowVisualizations(transaction?.FIToFIPmtSts !== undefined);
 
     const fiToFIPmtSts = transaction?.FIToFIPmtSts as
       | Record<string, unknown>
@@ -168,57 +171,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     return undefined;
   }, [row, parentCaseDetails]);
 
-  const shouldShowVisualizations = React.useMemo(() => {
-    const alertTxtp = row?.parentId
-      ? parentCaseDetails?.alert?.txtp
-      : undefined;
-
-    if (
-      typeof alertTxtp === 'string' &&
-      alertTxtp.toLowerCase().includes('pacs.002')
-    ) {
-      return true;
-    }
-
-    let transactionData = row?.parentId
-      ? parentCaseDetails?.alert.transaction
-      : row?.transaction;
-
-    if (!transactionData) {
-      return true;
-    }
-
-    if (typeof transactionData === 'string') {
-      try {
-        transactionData = JSON.parse(transactionData);
-      } catch {
-        return true;
-      }
-    }
-
-    if (typeof transactionData !== 'object' || transactionData === null) {
-      return true;
-    }
-
-    const transactionRecord = transactionData as Record<string, unknown>;
-
-    if (typeof transactionRecord.tx_type === 'string') {
-      return transactionRecord.tx_type.toLowerCase().includes('pacs.002');
-    }
-
-    if (typeof transactionRecord.txTp === 'string') {
-      return transactionRecord.txTp.toLowerCase().includes('pacs.002');
-    }
-
-    if ('FIToFIPmtSts' in transactionRecord) {
-      return true;
-    }
-
-    return true;
-  }, [row?.parentId, row?.transaction, parentCaseDetails]);
-
   React.useEffect(() => {
-    if (!shouldShowVisualizations && tab === 'visualizations') {
+    if (shouldShowVisualizations === false && tab === 'visualizations') {
       setTab('details');
     }
   }, [shouldShowVisualizations, tab]);
@@ -252,7 +206,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 { key: 'details', label: 'Task Details' },
                 { key: 'linked', label: 'Linked Items' },
                 { key: 'evidence', label: 'Evidence' },
-                ...(shouldShowVisualizations
+                ...(shouldShowVisualizations === true
                   ? ([
                     {
                       key: 'visualizations',
@@ -306,7 +260,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   }}
                 />
               </div>
-              {shouldShowVisualizations && (
+              {shouldShowVisualizations === true && (
                 <div
                   style={{ display: tab === 'visualizations' ? 'block' : 'none' }}
                 >
