@@ -51,9 +51,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [parentCaseDetails, setParentCaseDetails] = React.useState<
     Case | undefined
   >(undefined);
-  const [isParentCaseLoading, setIsParentCaseLoading] =
-    React.useState(false);
-  const [shouldShowVisualizations, setShouldShowVisualizations] = React.useState(false);
+  const [isParentCaseLoading, setIsParentCaseLoading] = React.useState(false);
 
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
   const initialCaseIdRef = React.useRef<number | undefined>(undefined);
@@ -148,7 +146,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     }
 
     const transaction = transactionData as Record<string, unknown>;
-    setShouldShowVisualizations(transaction?.FIToFIPmtSts !== undefined);
 
     const fiToFIPmtSts = transaction?.FIToFIPmtSts as
       | Record<string, unknown>
@@ -169,7 +166,32 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     }
 
     return undefined;
-  }, [row, parentCaseDetails]);
+  }, [row, parentCaseDetails, isParentCaseLoading]);
+
+  const shouldShowVisualizations = React.useMemo(() => {
+    if (row?.parentId && isParentCaseLoading) {
+      return false;
+    }
+
+    let transactionData = row?.parentId
+      ? parentCaseDetails?.alert.transaction
+      : row?.transaction;
+
+    if (!transactionData) {
+      return false;
+    }
+
+    if (typeof transactionData === 'string') {
+      try {
+        transactionData = JSON.parse(transactionData);
+      } catch (e) {
+        return false;
+      }
+    }
+
+    const transaction = transactionData as Record<string, unknown>;
+    return transaction?.FIToFIPmtSts !== undefined;
+  }, [row, parentCaseDetails, isParentCaseLoading]);
 
   React.useEffect(() => {
     if (shouldShowVisualizations === false && tab === 'visualizations') {
@@ -262,7 +284,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               </div>
               {shouldShowVisualizations === true && (
                 <div
-                  style={{ display: tab === 'visualizations' ? 'block' : 'none' }}
+                  style={{
+                    display: tab === 'visualizations' ? 'block' : 'none',
+                  }}
                 >
                   <VisualizationsTab
                     alertId={row?.parentId ? parentAlertId : row?.alertId}
