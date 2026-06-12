@@ -213,7 +213,7 @@ describe('TasksDetailsModal', () => {
     const caseWithNonPacs002: CaseRow = {
       ...mockCaseData,
       transaction: JSON.stringify({
-        tx_type: 'pacs.008.001.10',
+        TxTp: 'pacs.008.001.10',
       }),
     };
 
@@ -274,6 +274,37 @@ describe('TasksDetailsModal', () => {
 
     await waitFor(() => {
       expect(mockGetCaseDetails).toHaveBeenCalledWith(999);
+    });
+  });
+
+  it('defers Visualizations tab visibility until parent case details finish loading', async () => {
+    let resolveParentCase: ((value: unknown) => void) | undefined;
+    mockGetCaseDetails.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveParentCase = resolve;
+        }),
+    );
+
+    renderModal({ row: mockCaseWithParent });
+
+    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
+
+    resolveParentCase?.({
+      alert: {
+        alert_id: 42,
+        transaction: JSON.stringify({
+          FIToFIPmtSts: {
+            TxInfAndSts: {
+              OrgnlEndToEndId: 'PARENT-TXN-001',
+            },
+          },
+        }),
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Visualizations')).toBeInTheDocument();
     });
   });
 
@@ -342,28 +373,24 @@ describe('TasksDetailsModal', () => {
     });
   });
 
-  it('returns undefined transactionId when transaction data is invalid JSON', async () => {
-    const user = userEvent.setup();
+  it('hides Visualizations when transaction data is invalid JSON', () => {
     const caseWithBadTransaction: CaseRow = {
       ...mockCaseData,
       transaction: 'invalid json{{{',
     };
     renderModal({ row: caseWithBadTransaction });
 
-    await user.click(screen.getByText('Visualizations'));
-    expect(screen.queryByText(/txn:/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
   });
 
-  it('returns undefined transactionId when transaction is null', async () => {
-    const user = userEvent.setup();
+  it('hides Visualizations when transaction is null', () => {
     const caseWithNoTransaction: CaseRow = {
       ...mockCaseData,
       transaction: undefined,
     };
     renderModal({ row: caseWithNoTransaction });
 
-    await user.click(screen.getByText('Visualizations'));
-    expect(screen.queryByText(/txn:/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
   });
 
   it('increments summaryRefreshKey on evidence upload complete', async () => {
@@ -421,8 +448,7 @@ describe('TasksDetailsModal', () => {
     expect(screen.getByText(/txn:E2E-TXN-001/)).toBeInTheDocument();
   });
 
-  it('extracts transactionId from transaction_id field', async () => {
-    const user = userEvent.setup();
+  it('hides Visualizations when only transaction_id field is present', () => {
     const caseWithTxnId: CaseRow = {
       ...mockCaseData,
       transaction: JSON.stringify({
@@ -431,12 +457,10 @@ describe('TasksDetailsModal', () => {
     };
     renderModal({ row: caseWithTxnId });
 
-    await user.click(screen.getByText('Visualizations'));
-    expect(screen.getByText(/txn:SIMPLE-TXN-001/)).toBeInTheDocument();
+    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
   });
 
-  it('extracts transactionId from transactionId field', async () => {
-    const user = userEvent.setup();
+  it('hides Visualizations when only transactionId field is present', () => {
     const caseWithTxnId: CaseRow = {
       ...mockCaseData,
       transaction: JSON.stringify({
@@ -445,7 +469,6 @@ describe('TasksDetailsModal', () => {
     };
     renderModal({ row: caseWithTxnId });
 
-    await user.click(screen.getByText('Visualizations'));
-    expect(screen.getByText(/txn:CAMEL-TXN-001/)).toBeInTheDocument();
+    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
   });
 });
