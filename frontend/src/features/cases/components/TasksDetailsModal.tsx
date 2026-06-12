@@ -100,7 +100,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     if (open && initialCaseIdRef.current && row?.id !== initialCaseIdRef.current) {
       onClose();
     }
-    
+
     if (open) {
       initialCaseIdRef.current = row?.id;
     }
@@ -148,12 +148,67 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     return undefined;
   }, [row, parentCaseDetails]);
 
+  const shouldShowVisualizations = React.useMemo(() => {
+    const alertTxtp = row?.parentId
+      ? parentCaseDetails?.alert?.txtp
+      : undefined;
+
+    if (
+      typeof alertTxtp === 'string' &&
+      alertTxtp.toLowerCase().includes('pacs.002')
+    ) {
+      return true;
+    }
+
+    let transactionData = row?.parentId
+      ? parentCaseDetails?.alert.transaction
+      : row?.transaction;
+
+    if (!transactionData) {
+      return true;
+    }
+
+    if (typeof transactionData === 'string') {
+      try {
+        transactionData = JSON.parse(transactionData);
+      } catch {
+        return true;
+      }
+    }
+
+    if (typeof transactionData !== 'object' || transactionData === null) {
+      return true;
+    }
+
+    const transactionRecord = transactionData as Record<string, unknown>;
+
+    if (typeof transactionRecord.tx_type === 'string') {
+      return transactionRecord.tx_type.toLowerCase().includes('pacs.002');
+    }
+
+    if (typeof transactionRecord.txTp === 'string') {
+      return transactionRecord.txTp.toLowerCase().includes('pacs.002');
+    }
+
+    if ('FIToFIPmtSts' in transactionRecord) {
+      return true;
+    }
+
+    return true;
+  }, [row?.parentId, row?.transaction, parentCaseDetails]);
+
+  React.useEffect(() => {
+    if (!shouldShowVisualizations && tab === 'visualizations') {
+      setTab('details');
+    }
+  }, [shouldShowVisualizations, tab]);
+
   if (!open || !row) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
       <div className="mt-6 w-full max-w-5xl rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
-        {}
+        { }
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900">
@@ -169,7 +224,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           </button>
         </div>
 
-        {}
+        { }
         {!showCollaborate && (
           <div className="flex items-center gap-2 px-6 pt-3">
             {(
@@ -177,7 +232,14 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 { key: 'details', label: 'Task Details' },
                 { key: 'linked', label: 'Linked Items' },
                 { key: 'evidence', label: 'Evidence' },
-                { key: 'visualizations', label: 'Visualizations' },
+                ...(shouldShowVisualizations
+                  ? ([
+                    {
+                      key: 'visualizations',
+                      label: 'Visualizations',
+                    },
+                  ] as const)
+                  : []),
                 { key: 'notes', label: 'Investigation Notes' },
                 { key: 'summary', label: 'Investigation Summary' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
@@ -187,11 +249,10 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 onClick={() => {
                   setTab(t.key);
                 }}
-                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${
-                  tab === t.key
-                    ? 'border-b-2 border-indigo-600 text-indigo-700'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
+                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${tab === t.key
+                  ? 'border-b-2 border-indigo-600 text-indigo-700'
+                  : 'text-gray-600 hover:text-gray-800'
+                  }`}
               >
                 {t.label}
               </button>
@@ -199,7 +260,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           </div>
         )}
 
-        {}
+        { }
         {/* Content */}
         <div className="px-6 py-5 overflow-y-auto flex-1">
           {showCollaborate ? (
@@ -225,15 +286,17 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   }}
                 />
               </div>
-              <div
-                style={{ display: tab === 'visualizations' ? 'block' : 'none' }}
-              >
-                <VisualizationsTab
-                  alertId={row?.parentId ? parentAlertId : row?.alertId}
-                  caseId={row?.id}
-                  transactionId={transactionId}
-                />
-              </div>
+              {shouldShowVisualizations && (
+                <div
+                  style={{ display: tab === 'visualizations' ? 'block' : 'none' }}
+                >
+                  <VisualizationsTab
+                    alertId={row?.parentId ? parentAlertId : row?.alertId}
+                    caseId={row?.id}
+                    transactionId={transactionId}
+                  />
+                </div>
+              )}
               <div style={{ display: tab === 'linked' ? 'block' : 'none' }}>
                 {row?.id && (
                   <LinkedItemsTab
@@ -282,7 +345,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           )}
         </div>
 
-        {}
+        { }
         <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
           <button
             type="button"
