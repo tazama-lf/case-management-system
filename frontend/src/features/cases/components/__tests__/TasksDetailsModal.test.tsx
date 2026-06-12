@@ -213,7 +213,7 @@ describe('TasksDetailsModal', () => {
     const caseWithNonPacs002: CaseRow = {
       ...mockCaseData,
       transaction: JSON.stringify({
-        TxTp: 'pacs.008.001.10',
+        tx_type: 'pacs.008.001.10',
       }),
     };
 
@@ -309,7 +309,7 @@ describe('TasksDetailsModal', () => {
   });
 
   it('handles parent case details fetch error', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockGetCaseDetails.mockRejectedValue(new Error('fetch failed'));
 
     renderModal({ row: mockCaseWithParent });
@@ -324,7 +324,7 @@ describe('TasksDetailsModal', () => {
   });
 
   it('handles task fetch error gracefully', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockGetTasksByCaseId.mockRejectedValue(new Error('task fetch failed'));
 
     renderModal({});
