@@ -209,6 +209,19 @@ describe('TasksDetailsModal', () => {
     expect(screen.getByText('Investigation Summary')).toBeInTheDocument();
   });
 
+  it('hides Visualizations tab for non-pacs002 transactions', () => {
+    const caseWithNonPacs002: CaseRow = {
+      ...mockCaseData,
+      transaction: JSON.stringify({
+        tx_type: 'pacs.008.001.10',
+      }),
+    };
+
+    renderModal({ row: caseWithNonPacs002 });
+
+    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
+  });
+
   it('switches to Evidence tab', async () => {
     const user = userEvent.setup();
     mockGetTasksByCaseId.mockResolvedValue(mockTasks);
@@ -265,7 +278,7 @@ describe('TasksDetailsModal', () => {
   });
 
   it('handles parent case details fetch error', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockGetCaseDetails.mockRejectedValue(new Error('fetch failed'));
 
     renderModal({ row: mockCaseWithParent });
@@ -280,7 +293,7 @@ describe('TasksDetailsModal', () => {
   });
 
   it('handles task fetch error gracefully', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockGetTasksByCaseId.mockRejectedValue(new Error('task fetch failed'));
 
     renderModal({});
