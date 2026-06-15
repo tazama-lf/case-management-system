@@ -114,7 +114,6 @@ export const fetchCasesAndEvidence = async (
       if (investigationTask.investigationNotes) {
         investigationNotes = investigationTask.investigationNotes;
       }
-
     }
 
     const approvalTask = tasks.find((t) =>

@@ -67,9 +67,7 @@ describe('AlertSummaryItem', () => {
     };
 
     const { rerender } = render(<AlertSummaryItem summary={highAlert} />);
-    expect(screen.getByText('High priority cases')).toHaveClass(
-      'text-red-600',
-    );
+    expect(screen.getByText('High priority cases')).toHaveClass('text-red-600');
 
     const mediumAlert: AlertSummary = {
       priority: 'Medium',
@@ -87,8 +85,6 @@ describe('AlertSummaryItem', () => {
       description: 'Test',
     };
     rerender(<AlertSummaryItem summary={lowAlert} />);
-    expect(screen.getByText('Low priority cases')).toHaveClass(
-      'text-blue-600',
-    );
+    expect(screen.getByText('Low priority cases')).toHaveClass('text-blue-600');
   });
 });

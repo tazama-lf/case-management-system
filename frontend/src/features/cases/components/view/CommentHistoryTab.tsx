@@ -11,10 +11,7 @@ interface CommentsHistoryTabProps {
 const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
   const [tasks, setTasks] = useState<CommentsByCaseId[]>([]);
   const [loading, setLoading] = useState(true);
-  const {
-    getAssigneeFullName
-  } = useInvestigatorSupervisorList();
-
+  const { getAssigneeFullName } = useInvestigatorSupervisorList();
 
   useEffect(() => {
     async function loadTasks() {

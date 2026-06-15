@@ -134,8 +134,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       name: backendTask.name || 'Unnamed Task',
       description: backendTask.description,
       assignee: backendTask.assigned_user_id,
-      assigneeName:
-        getAssigneeFullName(backendTask.assigned_user_id),
+      assigneeName: getAssigneeFullName(backendTask.assigned_user_id),
       candidateGroup: backendTask.candidateGroup || 'investigations',
       status: mapTaskStatus(effectiveStatus),
       priority: 'NEW',

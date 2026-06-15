@@ -122,7 +122,8 @@ const Reports: React.FC = () => {
     }
   };
 
-  const isSupervisor = authService.getUser()?.validatedClaims?.CMS_SUPERVISOR === true;
+  const isSupervisor =
+    authService.getUser()?.validatedClaims?.CMS_SUPERVISOR === true;
 
   if (isLoading) {
     return (
