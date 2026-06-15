@@ -204,7 +204,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
       <div className="mt-6 w-full max-w-5xl rounded-lg bg-white shadow-lg max-h-[85vh] flex flex-col">
-        { }
+        {}
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900">
@@ -220,7 +220,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           </button>
         </div>
 
-        { }
+        {}
         {!showCollaborate && (
           <div className="flex items-center gap-2 px-6 pt-3">
             {(
@@ -230,11 +230,11 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 { key: 'evidence', label: 'Evidence' },
                 ...(shouldShowVisualizations === true
                   ? ([
-                    {
-                      key: 'visualizations',
-                      label: 'Visualizations',
-                    },
-                  ] as const)
+                      {
+                        key: 'visualizations',
+                        label: 'Visualizations',
+                      },
+                    ] as const)
                   : []),
                 { key: 'notes', label: 'Investigation Notes' },
                 { key: 'summary', label: 'Investigation Summary' },
@@ -245,10 +245,11 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 onClick={() => {
                   setTab(t.key);
                 }}
-                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${tab === t.key
-                  ? 'border-b-2 border-indigo-600 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-800'
-                  }`}
+                className={`-mb-px rounded-t-md px-3 py-2 text-sm font-medium ${
+                  tab === t.key
+                    ? 'border-b-2 border-indigo-600 text-indigo-700'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
               >
                 {t.label}
               </button>
@@ -256,7 +257,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           </div>
         )}
 
-        { }
+        {}
         {/* Content */}
         <div className="px-6 py-5 overflow-y-auto flex-1">
           {showCollaborate ? (
@@ -343,7 +344,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           )}
         </div>
 
-        { }
+        {}
         <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
           <button
             type="button"
