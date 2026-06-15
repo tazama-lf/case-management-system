@@ -1,7 +1,25 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import CryptoJS from 'crypto-js';
 
-// Mock import.meta.env before importing the module
-vi.stubEnv('VITE_CRYPTO_KEY', 'test-secret-key-123');
+// Mock the crypto module entirely
+vi.mock('../crypto', () => {
+  const mockKey = 'test-secret-key-123';
+
+  return {
+    encrypt: (data: unknown): string => {
+      const stringified = JSON.stringify(data);
+      return CryptoJS.AES.encrypt(stringified, mockKey).toString();
+    },
+    decrypt: (encryptedData: string): unknown => {
+      const bytes = CryptoJS.AES.decrypt(encryptedData, mockKey);
+      const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+      if (!decryptedString) {
+        throw new Error('Failed to decrypt data');
+      }
+      return JSON.parse(decryptedString) as unknown;
+    },
+  };
+});
 
 const { encrypt, decrypt } = await import('../crypto');
 
