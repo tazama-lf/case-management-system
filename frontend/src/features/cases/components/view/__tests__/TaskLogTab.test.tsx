@@ -267,7 +267,7 @@ describe('TaskLogTab', () => {
 
   it('displays loading state initially', async () => {
     (taskService.getTasksByCaseId as vi.Mock).mockImplementation(
-      () => new Promise(() => { }),
+      () => new Promise(() => {}),
     );
     renderWithProviders(<TaskLogTab caseId={123} />);
     expect(screen.getByText('Loading tasks...')).toBeInTheDocument();

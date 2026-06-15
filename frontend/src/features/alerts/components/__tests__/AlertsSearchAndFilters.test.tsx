@@ -195,11 +195,14 @@ describe('AlertsSearchAndFilters', () => {
     fireEvent.change(savedSelect, { target: { value: '1' } });
 
     // Wait for async setTimeout calls to complete
-    await waitFor(() => {
-      expect(onFilterChange).toHaveBeenCalledWith('type', 'FRAUD');
-      expect(onFilterChange).toHaveBeenCalledWith('priority', 'URGENT');
-      expect(onFilterChange).toHaveBeenCalledWith('source', 'System A');
-    }, { timeout: 100 });
+    await waitFor(
+      () => {
+        expect(onFilterChange).toHaveBeenCalledWith('type', 'FRAUD');
+        expect(onFilterChange).toHaveBeenCalledWith('priority', 'URGENT');
+        expect(onFilterChange).toHaveBeenCalledWith('source', 'System A');
+      },
+      { timeout: 100 },
+    );
   });
 
   it('renders filter dropdowns with provided options', async () => {

@@ -14,7 +14,10 @@ interface LinkedAlert {
   type: string;
 }
 
-const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({ caseId, onNavigateToCase }) => {
+const LinkedItemsTab: React.FC<LinkedItemsTabProps> = ({
+  caseId,
+  onNavigateToCase,
+}) => {
   const [loading, setLoading] = useState(true);
   const [linkedAlerts, setLinkedAlerts] = useState<LinkedAlert[]>([]);
   const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null);

@@ -1,6 +1,28 @@
+import CryptoJS from 'crypto-js';
+import { vi, beforeEach, afterEach } from 'vitest';
+
+// Mock the crypto module entirely
+vi.mock('@/shared/utils/crypto', () => {
+  const mockKey = 'test-secret-key-123';
+
+  return {
+    encrypt: (data: unknown): string => {
+      const stringified = JSON.stringify(data);
+      return CryptoJS.AES.encrypt(stringified, mockKey).toString();
+    },
+    decrypt: (encryptedData: string): unknown => {
+      const bytes = CryptoJS.AES.decrypt(encryptedData, mockKey);
+      const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+      if (!decryptedString) {
+        throw new Error('Failed to decrypt data');
+      }
+      return JSON.parse(decryptedString) as unknown;
+    },
+  };
+});
+
 import apiClient from '../apiClient';
 import authService from '../../../features/auth/services/authService';
-import { vi, beforeEach, afterEach } from 'vitest';
 
 describe('apiClient', () => {
   beforeEach(() => {

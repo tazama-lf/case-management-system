@@ -5,18 +5,18 @@ import authService from '@/features/auth/services/authService';
 
 interface ReportFiltersProps {
   reportType:
-  | 'CASE_STATUS'
-  | 'CASE_AGEING'
-  | 'INVESTIGATOR_WORKLOAD'
-  | 'EVIDENCE_FINDINGS';
+    | 'CASE_STATUS'
+    | 'CASE_AGEING'
+    | 'INVESTIGATOR_WORKLOAD'
+    | 'EVIDENCE_FINDINGS';
   dateRange:
-  | 'today'
-  | 'yesterday'
-  | 'last7'
-  | 'last30'
-  | 'last90'
-  | 'thisMonth'
-  | 'lastYear';
+    | 'today'
+    | 'yesterday'
+    | 'last7'
+    | 'last30'
+    | 'last90'
+    | 'thisMonth'
+    | 'lastYear';
   onChangeReportType: (type: ReportFiltersProps['reportType']) => void;
   onChangeDateRange: (range: ReportFiltersProps['dateRange']) => void;
   onApplyFilters: (filters: {
@@ -114,16 +114,14 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
             {openMenu === 'report' && (
               <div className="absolute z-10 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg">
                 <ul className="py-1 text-sm text-gray-700">
-                  {Object.entries(reportTypeLabels).filter(([type]) => {
-                    if (
-                      type === 'INVESTIGATOR_WORKLOAD' &&
-                      !isSupervisor
-                    ) {
-                      return false;
-                    }
+                  {Object.entries(reportTypeLabels)
+                    .filter(([type]) => {
+                      if (type === 'INVESTIGATOR_WORKLOAD' && !isSupervisor) {
+                        return false;
+                      }
 
-                    return true;
-                  })
+                      return true;
+                    })
                     .map(([type, label]) => (
                       <li key={type}>
                         <button

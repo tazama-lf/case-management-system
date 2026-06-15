@@ -249,7 +249,7 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({
               users.
             </p>
           </div>
-          
+
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
               onClick={onClose}

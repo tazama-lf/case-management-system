@@ -298,9 +298,7 @@ The case may have been deleted or moved.`;
         errorString.includes('403')
       ) {
         errorMessage =
-          'Access Denied.\n\n' +
-          'You don\'t have permission to abandon this case.\n' +
-          'Please ensure you have the appropriate role.';
+          'Access Denied. Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage =
           'Case Not Found.\n\nThe case may have been deleted or moved.';
@@ -357,9 +355,7 @@ The case has been suspended and all associated tasks have been blocked. Supervis
         errorString.includes('403')
       ) {
         errorMessage =
-          'Access Denied.\n\n' +
-          'You don\'t have permission to suspend this case.\n' +
-          'Please ensure you have the appropriate role.';
+          'Access Denied. Please ensure you have the appropriate role.';
       } else if (errorString.includes('404')) {
         errorMessage = `Case Not Found.
 

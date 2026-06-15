@@ -116,7 +116,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
           opt.value === 'STATUS_82_CLOSED_CONFIRMED' ||
           opt.value === 'STATUS_83_CLOSED_INCONCLUSIVE' ||
           opt.value === 'STATUS_81_CLOSED_REFUTED' ||
-          opt.value === 'STATUS_84_COMPLETED'
+          opt.value === 'STATUS_84_COMPLETED',
       );
     }
     return statusOptions;

@@ -203,7 +203,10 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
     // Apply custom date range if present
     setTimeout(() => {
-      if (filter.timeRange === 'custom' && (filter.startDate || filter.endDate)) {
+      if (
+        filter.timeRange === 'custom' &&
+        (filter.startDate || filter.endDate)
+      ) {
         onCustomDateRangeChange({
           startDate: filter.startDate || '',
           endDate: filter.endDate || '',
@@ -255,7 +258,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     <div className="bg-white rounded-lg shadow mb-6">
       <div className="p-4">
         <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
-          { }
+          {}
           <div className="flex-1">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -271,7 +274,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             </div>
           </div>
 
-          { }
+          {}
           <button
             onClick={() => {
               setShowFilters(!showFilters);
@@ -287,7 +290,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             )}
           </button>
 
-          { }
+          {}
           {hasActiveFilters && (
             <button
               onClick={onClearFilters}
@@ -300,7 +303,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
         </div>
       </div>
 
-      { }
+      {}
       {showFilters && (
         <div className="p-4 bg-gray-50 border-t border-gray-200">
           {loadingOptions ? (
@@ -312,7 +315,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-              { }
+              {}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Alert Type
@@ -336,7 +339,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                 </select>
               </div>
 
-              { }
+              {}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Priority
@@ -357,7 +360,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                 </select>
               </div>
 
-              { }
+              {}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Source
@@ -378,7 +381,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                 </select>
               </div>
 
-              { }
+              {}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Time Range
@@ -404,7 +407,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
             </div>
           )}
 
-          { }
+          {}
           {showCustomDatePicker && searchFilters.timeRange === 'custom' && (
             <div className="mt-4 p-4 bg-white border border-gray-200 rounded-md">
               <h4 className="text-sm font-medium text-gray-700 mb-3">

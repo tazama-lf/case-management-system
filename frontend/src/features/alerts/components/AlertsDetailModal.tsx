@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   XMarkIcon,
   ExclamationTriangleIcon,
@@ -7,24 +7,24 @@ import {
   ArrowTopRightOnSquareIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-} from "@heroicons/react/24/outline";
+} from '@heroicons/react/24/outline';
 import type {
   Alert as TriageAlert,
   ActionHistory,
   AlertStatus,
-} from "../types/triage.types";
-import type { Alert as LegacyAlert } from "../types/alertsdashboard.types";
-import triageService from "../services/triageservice";
-import userService from "../../cases/services/userService";
+} from '../types/triage.types';
+import type { Alert as LegacyAlert } from '../types/alertsdashboard.types';
+import triageService from '../services/triageservice';
+import userService from '../../cases/services/userService';
 import {
   taskService,
   type TaskForSupervisor,
-} from "../../cases/services/taskService";
-import { useCase, canActOnCase } from "../../cases/hooks/useCase";
-import { useSystemConfig } from "../../../shared/hooks/useSystemConfig";
-import { formatDate } from "@/shared/utils/dateUtils";
-import { useQueryClient } from "@tanstack/react-query";
-import { caseService } from "../../cases/services/caseService";
+} from '../../cases/services/taskService';
+import { useCase, canActOnCase } from '../../cases/hooks/useCase';
+import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
+import { formatDate } from '@/shared/utils/dateUtils';
+import { useQueryClient } from '@tanstack/react-query';
+import { caseService } from '../../cases/services/caseService';
 
 interface AlertsDetailModalProps {
   alertId: number | null;
@@ -74,27 +74,27 @@ interface TriggeredTypologyDetail {
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === "object" && !Array.isArray(value);
+  !!value && typeof value === 'object' && !Array.isArray(value);
 
 const asNumber = (value: unknown, fallback = 0): number => {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const asString = (value: unknown, fallback = ""): string =>
-  typeof value === "string" && value.trim() ? value : fallback;
+const asString = (value: unknown, fallback = ''): string =>
+  typeof value === 'string' && value.trim() ? value : fallback;
 
 const getScoreColor = (score: number): string => {
-  if (score >= 80) return "bg-red-500";
-  if (score >= 60) return "bg-orange-500";
-  return "bg-yellow-500";
+  if (score >= 80) return 'bg-red-500';
+  if (score >= 60) return 'bg-orange-500';
+  return 'bg-yellow-500';
 };
 
 const getScoreTextColor = (score: number): string => {
-  if (score >= 80) return "text-red-700";
-  if (score >= 60) return "text-orange-700";
-  return "text-yellow-700";
+  if (score >= 80) return 'text-red-700';
+  if (score >= 60) return 'text-orange-700';
+  return 'text-yellow-700';
 };
 
 const extractTriggeredTypologies = (
@@ -189,14 +189,14 @@ const extractTriggeredTypologies = (
 
 const escapeHtml = (unsafe: string) =>
   unsafe
-    .replace(/&/gu, "&amp;")
-    .replace(/</gu, "&lt;")
-    .replace(/>/gu, "&gt;")
-    .replace(/"/gu, "&quot;")
-    .replace(/'/gu, "&#039;");
+    .replace(/&/gu, '&amp;')
+    .replace(/</gu, '&lt;')
+    .replace(/>/gu, '&gt;')
+    .replace(/"/gu, '&quot;')
+    .replace(/'/gu, '&#039;');
 
 const syntaxHighlightJson = (obj: unknown) => {
-  const json = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+  const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
   const escaped = escapeHtml(String(json));
 
   const highlighted = escaped
@@ -215,7 +215,7 @@ const syntaxHighlightJson = (obj: unknown) => {
     )
     .replace(/(:\s*)(null)/giu, '$1<span class="text-gray-500">$2</span>');
 
-  return highlighted.replace(/\n/gu, "<br/>").replace(/ /gu, "&nbsp;");
+  return highlighted.replace(/\n/gu, '<br/>').replace(/ /gu, '&nbsp;');
 };
 
 const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
@@ -232,7 +232,7 @@ const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
           setUsername(userName);
         }
       } catch (error) {
-        console.error("Failed to fetch user details:", error);
+        console.error('Failed to fetch user details:', error);
       }
     };
 
@@ -335,7 +335,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
         if (alertDetails.case_id) {
           queryClient.invalidateQueries({
-            queryKey: ["case", alertDetails.case_id],
+            queryKey: ['case', alertDetails.case_id],
           });
         }
 
@@ -350,7 +350,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         }
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load alert details",
+          err instanceof Error ? err.message : 'Failed to load alert details',
         );
       } finally {
         setLoading(false);
@@ -371,18 +371,18 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       try {
         const tasks = await taskService.getTasksByCaseId(alert.case_id);
         const completeNewCaseTask = tasks.find(
-          (task: TaskForSupervisor) => task.name === "Complete New Case",
+          (task: TaskForSupervisor) => task.name === 'Complete New Case',
         );
 
         if (completeNewCaseTask) {
           setIsCompleteNewCaseCompleted(
-            completeNewCaseTask.status === "STATUS_30_COMPLETED",
+            completeNewCaseTask.status === 'STATUS_30_COMPLETED',
           );
         } else {
           setIsCompleteNewCaseCompleted(false);
         }
       } catch (error) {
-        console.error("Failed to fetch tasks for case:", error);
+        console.error('Failed to fetch tasks for case:', error);
         setIsCompleteNewCaseCompleted(false);
       }
     };
@@ -402,7 +402,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         const hasAccess = await caseService.checkCaseAccess(alert.case_id);
         setHasCaseAccess(hasAccess);
       } catch (error) {
-        console.error("Failed to check case access:", error);
+        console.error('Failed to check case access:', error);
         setHasCaseAccess(false); // Deny access on error
       }
     };
@@ -447,7 +447,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
               Error Loading Alert
             </h3>
             <p className="mt-2 text-sm text-gray-600">
-              {error ?? "An error occurred while loading the alert"}
+              {error ?? 'An error occurred while loading the alert'}
             </p>
             <div className="mt-6 flex justify-center space-x-3">
               <button
@@ -477,16 +477,16 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
-      case "critical":
-        return "text-red-600 bg-red-50";
-      case "high":
-        return "text-orange-600 bg-orange-50";
-      case "medium":
-        return "text-yellow-600 bg-yellow-50";
-      case "low":
-        return "text-green-600 bg-green-50";
+      case 'critical':
+        return 'text-red-600 bg-red-50';
+      case 'high':
+        return 'text-orange-600 bg-orange-50';
+      case 'medium':
+        return 'text-yellow-600 bg-yellow-50';
+      case 'low':
+        return 'text-green-600 bg-green-50';
       default:
-        return "text-gray-600 bg-gray-50";
+        return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -501,7 +501,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
           onClick={() => {
             if (alert?.case_id) {
               queryClient.invalidateQueries({
-                queryKey: ["case", alert.case_id],
+                queryKey: ['case', alert.case_id],
               });
             }
             onAlertUpdated?.();
@@ -518,7 +518,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
               onClick={() => {
                 if (alert?.case_id) {
                   queryClient.invalidateQueries({
-                    queryKey: ["case", alert.case_id],
+                    queryKey: ['case', alert.case_id],
                   });
                 }
                 onAlertUpdated?.();
@@ -552,7 +552,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       {}
                       {(() => {
                         const triageCompleted = actionHistory.some((action) =>
-                          action.operation.includes("ALERT_UPDATED"),
+                          action.operation.includes('ALERT_UPDATED'),
                         );
                         const showButton =
                           canPerformActions &&
@@ -570,11 +570,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                             className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
                             title={
                               isManualMode
-                                ? "Perform manual triage - update alert and make case decision"
-                                : "Update alert details - direct investigation mode"
+                                ? 'Perform manual triage - update alert and make case decision'
+                                : 'Update alert details - direct investigation mode'
                             }
                           >
-                            {isManualMode ? "Update Alert" : "Update Alert"}
+                            {isManualMode ? 'Update Alert' : 'Update Alert'}
                           </button>
                         ) : null;
                       })()}
@@ -588,10 +588,10 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     </div>
                   </div>
                   <p className="text-lg text-gray-600 mb-1">
-                    {alert?.alert_data?.status ?? "No message available"}
+                    {alert?.alert_data?.status ?? 'No message available'}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Alert ID: {alert.alert_id} • Source: {alert.source ?? "N/A"}
+                    Alert ID: {alert.alert_id} • Source: {alert.source ?? 'N/A'}
                   </p>
                 </div>
               </div>
@@ -634,7 +634,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           Case Status:
                         </span>
                         <p className="text-sm text-gray-900">
-                          {caseDetails?.status ?? "Loading..."}
+                          {caseDetails?.status ?? 'Loading...'}
                         </p>
                       </div>
                       {caseDetails?.case_id && (
@@ -717,11 +717,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           >
                             <div
                               className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
-                                action.outcome === "SUCCESS"
-                                  ? "bg-green-100 text-green-600"
-                                  : action.outcome === "FAILURE"
-                                    ? "bg-red-100 text-red-600"
-                                    : "bg-blue-100 text-blue-600"
+                                action.outcome === 'SUCCESS'
+                                  ? 'bg-green-100 text-green-600'
+                                  : action.outcome === 'FAILURE'
+                                    ? 'bg-red-100 text-red-600'
+                                    : 'bg-blue-100 text-blue-600'
                               }`}
                             >
                               <ClockIcon className="w-4 h-4" />
@@ -783,7 +783,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                               </span>
 
                               <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-0.5 rounded">
-                                Interdiction Threshold:{" "}
+                                Interdiction Threshold:{' '}
                                 {typology.interdictionThreshold}
                               </span>
                             </div>
@@ -794,7 +794,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                                 typology.typologyScore,
                               )}`}
                             >
-                              Typology Score:{" "}
+                              Typology Score:{' '}
                               {typology.typologyScore.toFixed(2)}
                             </span>
                             {/* <div className="w-24 bg-gray-200 rounded-full h-2">
@@ -838,7 +838,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                                     )}
                                     {rule.independentVariable != null && (
                                       <div className="text-xs text-gray-500 mt-0.5">
-                                        Independent Variable:{" "}
+                                        Independent Variable:{' '}
                                         {String(rule.independentVariable)}
                                       </div>
                                     )}
