@@ -40,6 +40,30 @@ interface AlertsDetailModalProps {
   onNavigateToCase?: () => void;
 }
 
+interface AlertedRuleResultResponse {
+  id?: unknown;
+  cfg?: unknown;
+  wght?: unknown;
+  weight?: unknown;
+  prcgTm?: unknown;
+  tenantId?: unknown;
+  subRuleRef?: unknown;
+  indpdntVarbl?: unknown;
+  independentVariable?: unknown;
+}
+interface AlertedTypologyResponse {
+  id?: unknown;
+  cfg?: unknown;
+  result?: unknown;
+  alertThreshold?: unknown;
+  interdictionThreshold?: unknown;
+  ruleResults?: unknown;
+}
+
+type AlertWithAlertedTypologies = TriageAlert & {
+  alerted_typologies?: AlertedTypologyResponse[] | null;
+};
+
 const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
   alert_id: alert.alert_id,
   tenant_id: alert.tenant_id,
@@ -59,12 +83,14 @@ const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
 
 interface TriggeredRuleDetail {
   ruleId: string;
+  ruleCfg:string,
   ruleWeight: number;
   subRef?: string;
   independentVariable?: unknown;
 }
 
 interface TriggeredTypologyDetail {
+  typologyKey: string;
   typologyId: string;
   typologyCfg: string;
   typologyScore: number;
@@ -98,90 +124,37 @@ const getScoreTextColor = (score: number): string => {
 };
 
 const extractTriggeredTypologies = (
-  alert: TriageAlert,
+  alert: AlertWithAlertedTypologies,
 ): TriggeredTypologyDetail[] => {
-  const alertData = isRecord(alert.alert_data) ? alert.alert_data : {};
-  const tadpResult = isRecord(alertData.tadpResult) ? alertData.tadpResult : {};
-  const tadpTypologies = Array.isArray(tadpResult.typologyResult)
-    ? tadpResult.typologyResult.filter(isRecord)
-    : [];
-
-  const networkMap = isRecord(alert.network_map) ? alert.network_map : {};
-  const networkMessages = Array.isArray(networkMap.messages)
-    ? networkMap.messages.filter(isRecord)
-    : [];
-  const networkTypologies = networkMessages.flatMap((message) =>
-    Array.isArray(message.typologies)
-      ? message.typologies.filter(isRecord)
-      : [],
-  );
-
   const alertedTypologies = Array.isArray(alert.alerted_typologies)
     ? alert.alerted_typologies.filter(isRecord)
     : [];
 
-  const sourceTypologies = alertedTypologies.length
-    ? alertedTypologies
-    : tadpTypologies;
-
-  return sourceTypologies.map((source, index) => {
-    const sourceId = asString(source.id, `typology-${index}`);
-    const sourceCfg = asString(source.cfg, sourceId);
-
-    const tadpTypology = tadpTypologies.find((typology) => {
-      const id = asString(typology.id);
-      const cfg = asString(typology.cfg);
-      return (
-        id === sourceId ||
-        cfg === sourceId ||
-        id === sourceCfg ||
-        cfg === sourceCfg
-      );
-    });
-
-    const networkTypology = networkTypologies.find((typology) => {
-      const id = asString(typology.id);
-      const cfg = asString(typology.cfg);
-      return (
-        id === sourceId ||
-        cfg === sourceId ||
-        id === sourceCfg ||
-        cfg === sourceCfg
-      );
-    });
-
-    const workflow = isRecord(tadpTypology?.workflow)
-      ? tadpTypology.workflow
-      : {};
-
-    const ruleResults = Array.isArray(tadpTypology?.ruleResults)
-      ? tadpTypology.ruleResults.filter(isRecord)
-      : [];
-    const networkRules = Array.isArray(networkTypology?.rules)
-      ? networkTypology.rules.filter(isRecord)
+  return alertedTypologies.map((source: AlertedTypologyResponse, index) => {
+    const ruleResults = Array.isArray(source.ruleResults)
+      ? source.ruleResults.filter(isRecord)
       : [];
 
-    const rules = (ruleResults.length ? ruleResults : networkRules).map(
-      (rule, ruleIndex) => ({
+    const rules = ruleResults.map(
+      (rule: AlertedRuleResultResponse, ruleIndex): TriggeredRuleDetail => ({
         ruleId: asString(rule.id, `rule-${ruleIndex + 1}`),
+        ruleCfg: asString(rule.cfg, "none"),
         ruleWeight: asNumber(rule.wght ?? rule.weight, 0),
         subRef: asString(rule.subRuleRef),
         independentVariable: rule.indpdntVarbl ?? rule.independentVariable,
       }),
     );
 
+    const typologyId = asString(source.id, "unknown");
+    const typologyCfg = asString(source.cfg, "Unknown");
+
     return {
-      typologyId: asString(tadpTypology?.id, sourceId),
-      typologyCfg: asString(
-        source.label,
-        asString(source.cfg, asString(tadpTypology?.cfg, sourceId)),
-      ),
-      typologyScore: asNumber(source.result ?? tadpTypology?.result, 0),
-      alertThreshold: asNumber(
-        source.alertThreshold ?? workflow.alertThreshold,
-        0,
-      ),
-      interdictionThreshold: asNumber(workflow.interdictionThreshold, 0),
+      typologyKey: `${typologyId}::${typologyCfg}::${index}`,
+      typologyId,
+      typologyCfg,
+      typologyScore: asNumber(source.result, 0),
+      alertThreshold: asNumber(source.alertThreshold, 0),
+      interdictionThreshold: asNumber(source.interdictionThreshold, 0),
       rules,
     };
   });
@@ -294,13 +267,13 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
   const canPerformActions = canActOnCase(caseDetails?.status);
 
-  const toggleTypology = (typologyId: string) => {
+  const toggleTypology = (typologyKey: string) => {
     setExpandedTypologies((prev) => {
       const next = new Set(prev);
-      if (next.has(typologyId)) {
-        next.delete(typologyId);
+      if (next.has(typologyKey)) {
+        next.delete(typologyKey);
       } else {
-        next.add(typologyId);
+        next.add(typologyKey);
       }
       return next;
     });
@@ -312,9 +285,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       return;
     }
 
-    const firstTypologyId = extractTriggeredTypologies(alert)[0]?.typologyId;
+    const firstTypologyKey = extractTriggeredTypologies(alert)[0]?.typologyKey;
     setExpandedTypologies(
-      firstTypologyId ? new Set([firstTypologyId]) : new Set(),
+      firstTypologyKey ? new Set([firstTypologyKey]) : new Set(),
     );
   }, [alert]);
 
@@ -788,17 +761,18 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                   {triggeredTypologies.length > 0 ? (
                     triggeredTypologies.map((typology) => (
                       <div
-                        key={typology.typologyId}
+                        key={typology.typologyKey}
                         className="rounded-lg border border-gray-200 bg-gray-50"
                       >
                         <button
+                          type="button"
                           onClick={() => {
-                            toggleTypology(typology.typologyId);
+                            toggleTypology(typology.typologyKey);
                           }}
                           className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100 transition-colors"
                         >
                           <div className="flex items-center gap-3 flex-1">
-                            {expandedTypologies.has(typology.typologyId) ? (
+                            {expandedTypologies.has(typology.typologyKey) ? (
                               <ChevronUpIcon className="h-4 w-4 text-gray-500" />
                             ) : (
                               <ChevronDownIcon className="h-4 w-4 text-gray-500" />
@@ -838,7 +812,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           </div>
                         </button>
 
-                        {expandedTypologies.has(typology.typologyId) && (
+                        {expandedTypologies.has(typology.typologyKey) && (
                           <div className="px-4 pb-4 space-y-2 border-t border-gray-200 pt-3 bg-white">
                             {typology.rules.length > 0 ? (
                               typology.rules.map((rule, idx) => (

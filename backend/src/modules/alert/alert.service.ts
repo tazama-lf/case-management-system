@@ -15,6 +15,25 @@ import { EventLogService } from '../event_log/eventLog.service';
 import { GoldLakehouseService } from '../gold-lakehouse/gold-lakehouse.service';
 import { transactionDataResponseDTO } from './dto/transactionHistory.dto';
 
+interface RuleResult {
+  id: string;
+  cfg: string;
+  wght: number;
+  prcgTm: number;
+  tenantId: string;
+  subRuleRef: string;
+  indpdntVarbl: number;
+}
+
+interface AlertedTypology {
+  id: string;
+  cfg: string;
+  result: number;
+  alertThreshold: number;
+  interdictionThreshold: number;
+  ruleResults: RuleResult[];
+}
+
 @Injectable()
 export class AlertService {
   constructor(
@@ -156,12 +175,7 @@ export class AlertService {
     return { transactionData };
   }
 
-  private extractAlertedTypologies(alertData: Prisma.JsonValue): Array<{
-    id: string;
-    label: string;
-    result: number;
-    alertThreshold: number;
-  }> {
+  private extractAlertedTypologies(alertData: Prisma.JsonValue): AlertedTypology[] {
     try {
       if (!alertData || typeof alertData !== 'object') {
         return [];
@@ -188,10 +202,12 @@ export class AlertService {
           return result >= alertThreshold;
         })
         .map((typ) => ({
-          id: typ.cfg ?? typ.id ?? 'unknown',
-          label: typ.label ?? typ.name ?? typ.cfg ?? typ.id ?? 'Unknown',
+          id: typ.id ?? 'unknown',
+          cfg: typ.cfg ?? 'Unknown',
           result: typeof typ.result === 'number' ? typ.result : 0,
           alertThreshold: typ.workflow?.alertThreshold ?? 0,
+          interdictionThreshold: typ.workflow?.interdictionThreshold ?? 0,
+          ruleResults: typ.ruleResults ?? [],
         }));
 
       return alertedTypologies;
@@ -220,12 +236,7 @@ export class AlertService {
     network_map: Prisma.JsonValue;
     confidence_per: number;
     case_id: number | null;
-    alerted_typologies: Array<{
-      id: string;
-      label: string;
-      result: number;
-      alertThreshold: number;
-    }>;
+    alerted_typologies: AlertedTypology[];
   } | null> {
     try {
       const alert = await this.alertRepository.getAlertById(alertId);
