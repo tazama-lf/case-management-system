@@ -207,7 +207,7 @@ export class AlertService {
           result: typeof typ.result === 'number' ? typ.result : 0,
           alertThreshold: typ.workflow?.alertThreshold ?? 0,
           interdictionThreshold: typ.workflow?.interdictionThreshold ?? 0,
-          ruleResults: typ.ruleResults ?? [],
+          ruleResults: Array.isArray(typ.ruleResults) ? typ.ruleResults : [],
         }));
 
       return alertedTypologies;

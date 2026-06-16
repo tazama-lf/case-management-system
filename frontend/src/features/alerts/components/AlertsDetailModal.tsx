@@ -83,7 +83,7 @@ const convertToLegacyAlert = (alert: TriageAlert): LegacyAlert => ({
 
 interface TriggeredRuleDetail {
   ruleId: string;
-  ruleCfg:string,
+  ruleCfg: string,
   ruleWeight: number;
   subRef?: string;
   independentVariable?: unknown;
@@ -160,36 +160,24 @@ const extractTriggeredTypologies = (
   });
 };
 
-const escapeHtml = (unsafe: string) =>
-  unsafe
-    .replace(/&/gu, '&amp;')
-    .replace(/</gu, '&lt;')
-    .replace(/>/gu, '&gt;')
-    .replace(/"/gu, '&quot;')
-    .replace(/'/gu, '&#039;');
+const formatJson = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return 'No data available';
+  }
 
-const syntaxHighlightJson = (obj: unknown) => {
-  const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
-  const escaped = escapeHtml(String(json));
+  try {
+    if (typeof value === 'string') {
+      return JSON.stringify(JSON.parse(value), null, 2);
+    }
 
-  const highlighted = escaped
-    .replace(
-      /("(.*?)")(?=\s*:)/gu,
-      '<span class="text-indigo-700 font-medium">$1</span>',
-    )
-    .replace(/:\s*"(.*?)"/gu, ': <span class="text-green-700">"$1"</span>')
-    .replace(
-      /(:\s*)(-?\d+\.?\d*(?:e[+-]?\d+)?)/giu,
-      '$1<span class="text-red-600">$2</span>',
-    )
-    .replace(
-      /(:\s*)(true|false)/giu,
-      '$1<span class="text-yellow-600">$2</span>',
-    )
-    .replace(/(:\s*)(null)/giu, '$1<span class="text-gray-500">$2</span>');
-
-  return highlighted.replace(/\n/gu, '<br/>').replace(/ /gu, '&nbsp;');
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
 };
+
+const jsonPreviewClassName =
+  'm-0 w-full whitespace-pre-wrap break-words font-mono text-xs leading-5 text-gray-900';
 
 const ActionHistoryItem: React.FC<{ action: ActionHistory }> = ({ action }) => {
   const [username, setUsername] = useState<string | null>(null);
@@ -258,7 +246,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isCompleteNewCaseCompleted, setIsCompleteNewCaseCompleted] =
     useState(false);
-  const [hasCaseAccess, setHasCaseAccess] = useState<boolean>(true);
+  const [hasCaseAccess, setHasCaseAccess] = useState<boolean>(false);
   const [activeDataTab, setActiveDataTab] = useState<"transaction" | "alert">(
     "transaction",
   );
@@ -277,6 +265,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       }
       return next;
     });
+  };
+  const getAlertStatusColor = (status?: string | null): string => {
+    return status?.toUpperCase() === "ALRT"
+      ? "text-red-600 bg-red-50"
+      : "text-green-600 bg-green-50";
   };
 
   useEffect(() => {
@@ -555,9 +548,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       )}
                     </div>
                   </div>
-                  <p className="text-lg text-gray-600 mb-1">
+                  {/* <p className="text-lg text-gray-600 mb-1">
                     {alert?.alert_data?.status ?? 'No message available'}
-                  </p>
+                  </p> */}
                   <p className="text-sm text-gray-500">
                     Alert ID: {alert.alert_id} • Source:{" "}
                     {alert.source ?? "N/A"}
@@ -613,7 +606,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           Case Status:
                         </span>
                         <p className="text-sm text-gray-900">
-                          {caseDetails?.status ?? 'Loading...'}
+                          {caseDetails?.status}
                         </p>
                       </div>
 
@@ -653,47 +646,35 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     <div className="flex items-center border-b border-gray-200 mb-4">
                       <button
                         onClick={() => setActiveDataTab("transaction")}
-                        className={`px-4 py-2 text-sm font-medium transition-colors relative ${
-                          activeDataTab === "transaction"
+                        className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeDataTab === "transaction"
                             ? "text-blue-600 border-b-2 border-blue-600"
                             : "text-gray-600 hover:text-gray-900"
-                        }`}
+                          }`}
                       >
                         Transaction Data
                       </button>
                       <button
                         onClick={() => setActiveDataTab("alert")}
-                        className={`px-4 py-2 text-sm font-medium transition-colors relative ${
-                          activeDataTab === "alert"
+                        className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeDataTab === "alert"
                             ? "text-blue-600 border-b-2 border-blue-600"
                             : "text-gray-600 hover:text-gray-900"
-                        }`}
+                          }`}
                       >
                         Alert Data
                       </button>
                     </div>
 
-                    <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+                    <div className="max-h-64 max-w-full overflow-y-auto overflow-x-hidden rounded-lg bg-gray-50 p-4">
                       {activeDataTab === "transaction" ? (
                         alert.transaction ? (
-                          <pre
-                            className="whitespace-pre-wrap break-words max-h-64 overflow-auto text-sm"
-                            dangerouslySetInnerHTML={{
-                              __html: syntaxHighlightJson(alert.transaction),
-                            }}
-                          />
+                          <pre className={jsonPreviewClassName}>{formatJson(alert.transaction)}</pre>
                         ) : (
                           <div className="text-sm text-gray-600">
                             No transaction data
                           </div>
                         )
                       ) : alert.alert_data ? (
-                        <pre
-                          className="whitespace-pre-wrap break-words max-h-64 overflow-auto text-sm"
-                          dangerouslySetInnerHTML={{
-                            __html: syntaxHighlightJson(alert.alert_data),
-                          }}
-                        />
+                        <pre className={jsonPreviewClassName}>{formatJson(alert.alert_data)}</pre>
                       ) : (
                         <div className="text-sm text-gray-600">
                           No alert data
