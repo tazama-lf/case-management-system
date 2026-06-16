@@ -474,3 +474,13 @@ model filters {
   created_at   DateTime @default(now()) @db.Timestamp(6)
   updated_at   DateTime @updatedAt @db.Timestamp(6)
 }
+
+model cms_usernames {
+  id Int      @id @default(autoincrement())
+  user_id    String   @db.Uuid
+  tenant_id  String
+  name       String
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+  @@map("cms_usernames")
+}

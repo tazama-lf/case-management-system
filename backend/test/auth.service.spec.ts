@@ -7,6 +7,8 @@ import { UnauthorizedException, ServiceUnavailableException, BadRequestException
 import { of, throwError } from 'rxjs';
 import * as jwt from 'jsonwebtoken';
 import { CacheService } from '../src/modules/shared/cache.service';
+import { TazamaAuthGuard } from '../src/guards/tazama-auth.guard';
+import { PrismaService } from '../prisma/prisma.service';
 
 // Make jwt.decode mockable (non-configurable in newer jsonwebtoken versions)
 jest.mock('jsonwebtoken', () => {
@@ -23,6 +25,8 @@ describe('AuthService', () => {
   let configService: jest.Mocked<ConfigService>;
   let loggerService: jest.Mocked<LoggerService>;
   let cacheService: jest.Mocked<CacheService>;
+  let authGuard: jest.Mocked<TazamaAuthGuard>;
+  let prismaService: jest.Mocked<PrismaService>;
 
   const mockToken = jwt.sign({ exp: Math.floor(Date.now() / 1000) + 3600, sub: 'user123' }, 'secret');
   const expiredToken = jwt.sign({ exp: Math.floor(Date.now() / 1000) - 3600, sub: 'user123' }, 'secret');
@@ -62,6 +66,18 @@ describe('AuthService', () => {
       initializeUserCache: jest.fn().mockResolvedValue(undefined),
     };
 
+    const mockAuthGuard = {
+      extractInnerToken: jest.fn(),
+    };
+
+    const mockPrismaService = {
+      cms_usernames: {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -81,6 +97,14 @@ describe('AuthService', () => {
           provide: CacheService,
           useValue: mockCacheService,
         },
+        {
+          provide: TazamaAuthGuard,
+          useValue: mockAuthGuard,
+        },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
       ],
     }).compile();
 
@@ -89,6 +113,8 @@ describe('AuthService', () => {
     configService = module.get(ConfigService);
     loggerService = module.get(LoggerService);
     cacheService = module.get(CacheService);
+    authGuard = module.get(TazamaAuthGuard);
+    prismaService = module.get(PrismaService);
   });
 
   afterEach(() => {
@@ -101,6 +127,13 @@ describe('AuthService', () => {
       jest.useFakeTimers();
       setupAuthUrl();
       mockHttpResponse(mockToken);
+      (authGuard.extractInnerToken as jest.Mock).mockReturnValue({
+        sub: 'user123',
+        name: 'Test User',
+        tenant_id: 'tenant-123',
+      });
+      (prismaService.cms_usernames.findFirst as jest.Mock).mockResolvedValue(null);
+      (prismaService.cms_usernames.create as jest.Mock).mockResolvedValue({ id: 1, user_id: 'user123' });
 
       const result = await service.login('testuser', 'password123');
 
@@ -112,6 +145,10 @@ describe('AuthService', () => {
         username: 'testuser',
         password: 'password123',
       });
+      expect(prismaService.cms_usernames.findFirst).toHaveBeenCalledWith({
+        where: { user_id: 'user123' },
+      });
+      expect(prismaService.cms_usernames.create).toHaveBeenCalled();
 
       // Advance timers to trigger cache initialization
       jest.advanceTimersByTime(2000);
@@ -402,6 +439,110 @@ describe('AuthService', () => {
       const result = await service.userExists(userId);
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('storeUserName', () => {
+    const mockToken = jwt.sign(
+      { exp: Math.floor(Date.now() / 1000) + 3600, sub: 'user123', name: 'Test User', tenant_id: 'tenant-123' },
+      'secret',
+    );
+
+    beforeEach(() => {
+      (authGuard.extractInnerToken as jest.Mock).mockClear();
+      (prismaService.cms_usernames.findFirst as jest.Mock).mockClear();
+      (prismaService.cms_usernames.update as jest.Mock).mockClear();
+      (prismaService.cms_usernames.create as jest.Mock).mockClear();
+    });
+
+    it('should create a new user record if user does not exist', async () => {
+      (authGuard.extractInnerToken as jest.Mock).mockReturnValue({
+        sub: 'user123',
+        name: 'Test User',
+        tenant_id: 'tenant-123',
+      });
+      (prismaService.cms_usernames.findFirst as jest.Mock).mockResolvedValue(null);
+      (prismaService.cms_usernames.create as jest.Mock).mockResolvedValue({
+        id: 1,
+        user_id: 'user123',
+        name: 'Test User',
+        tenant_id: 'tenant-123',
+      });
+
+      await service['storeUserName'](mockToken);
+
+      expect(authGuard.extractInnerToken).toHaveBeenCalledWith(mockToken);
+      expect(prismaService.cms_usernames.findFirst).toHaveBeenCalledWith({
+        where: { user_id: 'user123' },
+      });
+      expect(prismaService.cms_usernames.create).toHaveBeenCalledWith({
+        data: {
+          user_id: 'user123',
+          name: 'Test User',
+          tenant_id: 'tenant-123',
+          created_at: expect.any(Date),
+        },
+      });
+      expect(loggerService.log).toHaveBeenCalledWith('Created new user user123 in database');
+    });
+
+    it('should update user name if it differs from the existing record', async () => {
+      (authGuard.extractInnerToken as jest.Mock).mockReturnValue({
+        sub: 'user123',
+        name: 'Updated Name',
+        tenant_id: 'tenant-123',
+      });
+      (prismaService.cms_usernames.findFirst as jest.Mock).mockResolvedValue({
+        id: 1,
+        user_id: 'user123',
+        name: 'Old Name',
+        tenant_id: 'tenant-123',
+      });
+      (prismaService.cms_usernames.update as jest.Mock).mockResolvedValue({
+        id: 1,
+        user_id: 'user123',
+        name: 'Updated Name',
+        tenant_id: 'tenant-123',
+      });
+
+      await service['storeUserName'](mockToken);
+
+      expect(prismaService.cms_usernames.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { name: 'Updated Name', updated_at: expect.any(Date) },
+      });
+      expect(loggerService.log).toHaveBeenCalledWith('Updated name for user user123 in database');
+    });
+
+    it('should not update user if name matches existing record', async () => {
+      (authGuard.extractInnerToken as jest.Mock).mockReturnValue({
+        sub: 'user123',
+        name: 'Test User',
+        tenant_id: 'tenant-123',
+      });
+      (prismaService.cms_usernames.findFirst as jest.Mock).mockResolvedValue({
+        id: 1,
+        user_id: 'user123',
+        name: 'Test User',
+        tenant_id: 'tenant-123',
+      });
+
+      await service['storeUserName'](mockToken);
+
+      expect(prismaService.cms_usernames.update).not.toHaveBeenCalled();
+      expect(prismaService.cms_usernames.create).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors gracefully', async () => {
+      const error = new Error('Database error');
+      (authGuard.extractInnerToken as jest.Mock).mockReturnValue({
+        sub: 'user123',
+        name: 'Test User',
+        tenant_id: 'tenant-123',
+      });
+      (prismaService.cms_usernames.findFirst as jest.Mock).mockRejectedValue(error);
+
+      await expect(service['storeUserName'](mockToken)).rejects.toThrow('Database error');
     });
   });
 

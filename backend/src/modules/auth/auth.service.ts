@@ -7,6 +7,8 @@ import * as jwt from 'jsonwebtoken';
 import type { AxiosError, AxiosResponse } from 'axios';
 import { AuthLoginResponse, AuthServiceUserResponse, AuthUser } from 'src/utils/interfaces/Auth.interface';
 import { CacheService } from '../shared/cache.service';
+import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
+import { PrismaService } from 'prisma/prisma.service';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +17,8 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
     private readonly cacheService: CacheService,
+    private readonly authGuard: TazamaAuthGuard,
+    private readonly prisma: PrismaService,
   ) {}
 
   async login(username: string, password: string): Promise<{ message: string; token: string; expiresIn: number | null }> {
@@ -54,6 +58,24 @@ export class AuthService {
       }
 
       this.logger.log('Login successful');
+
+      this.storeUserName(token).catch((error: unknown) => {
+        if (error instanceof Error) {
+          this.logger.error('Error storing user name:', error);
+        }
+      });
+
+      /* This implementation will happen after successful login and token retrieval in auth.service.
+       * Add Method here use tazama-auth.guard extractInnerToken to get name etc
+       * extractInnerToken.name gets you the the name and tenant_id
+       * sub gets the innerToken
+       * Check in DB if this userId exist, if it does check if name matches,
+       * if it does not match update the name in DB with the name from token,
+       * if it does not exist create a new record with userId and name from token.
+       * This is to ensure that we have the latest name for the user in our DB,
+       * as the name can be updated in Keycloak and we want to reflect that in our
+       * system without requiring the user to login again after the name change.
+       */
       // Add delay to ensure all services (especially Redis) are initialized
       setTimeout(() => {
         this.cacheService.initializeUserCache(0, token).catch((error: unknown) => {
@@ -250,5 +272,41 @@ export class AuthService {
     }
 
     throw new ServiceUnavailableException('Authentication service unavailable');
+  }
+
+  private async storeUserName(token: string): Promise<void> {
+    this.logger.log('Storing user name from token into database if needed');
+
+    const innerDecoded = this.authGuard.extractInnerToken(token);
+    const userId = innerDecoded.sub as string;
+    const name = innerDecoded.name as string;
+    const tenantId = innerDecoded.tenant_id as string;
+
+    const userDetails = await this.prisma.cms_usernames.findFirst({
+      where: {
+        user_id: userId,
+      },
+    });
+
+    if (userDetails) {
+      if (userDetails.name !== name) {
+        await this.prisma.cms_usernames.update({
+          where: { id: userDetails.id },
+          data: { name, updated_at: new Date() },
+        });
+        this.logger.log(`Updated name for user ${userId} in database`);
+      }
+    } else {
+      // Create a new user record
+      await this.prisma.cms_usernames.create({
+        data: {
+          user_id: userId,
+          name,
+          tenant_id: tenantId,
+          created_at: new Date(),
+        },
+      });
+      this.logger.log(`Created new user ${userId} in database`);
+    }
   }
 }
