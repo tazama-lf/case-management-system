@@ -88,12 +88,8 @@ const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
       <div className="flex items-center justify-between">
         {/* Left side */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            Alert History
-          </h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Visualize alert history
-          </p>
+          <h3 className="text-lg font-semibold text-gray-900">Alert History</h3>
+          <p className="text-sm text-gray-600 mt-1">Visualize alert history</p>
         </div>
 
         {/* Right side (grouped correctly) */}
@@ -104,10 +100,11 @@ const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
               onClick={() => {
                 setActiveEntityRole('creditor');
               }}
-              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'creditor'
-                ? 'bg-white shadow text-blue-600 font-medium'
-                : 'text-gray-600 hover:text-gray-800'
-                }`}
+              className={`px-4 py-1.5 text-sm rounded-md transition ${
+                activeEntityRole === 'creditor'
+                  ? 'bg-white shadow text-blue-600 font-medium'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
             >
               Creditor
             </button>
@@ -116,10 +113,11 @@ const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
               onClick={() => {
                 setActiveEntityRole('debtor');
               }}
-              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'debtor'
-                ? 'bg-white shadow text-blue-600 font-medium'
-                : 'text-gray-600 hover:text-gray-800'
-                }`}
+              className={`px-4 py-1.5 text-sm rounded-md transition ${
+                activeEntityRole === 'debtor'
+                  ? 'bg-white shadow text-blue-600 font-medium'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
             >
               Debtor
             </button>
@@ -146,10 +144,11 @@ const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
                       setTimeRange(option.value);
                       setShowTimeDropdown(false);
                     }}
-                    className={`block w-full px-4 py-2 text-left text-sm ${timeRange === option.value
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-gray-700 hover:bg-gray-50'
-                      }`}
+                    className={`block w-full px-4 py-2 text-left text-sm ${
+                      timeRange === option.value
+                        ? 'bg-indigo-50 text-indigo-700'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
                   >
                     {option.label}
                   </button>
