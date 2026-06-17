@@ -367,15 +367,14 @@ describe("AlertsDetailModal", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Money Laundering")).toBeInTheDocument();
+      expect(screen.getByText(/Alert Threshold:\s*50/i)).toBeInTheDocument();
+      expect(screen.getByText(/Interdiction Threshold:\s*80/i)).toBeInTheDocument();
+      expect(screen.getByText(/Typology Score:\s*95\.00/i)).toBeInTheDocument();
+      expect(screen.getByText("075@1.0.0")).toBeInTheDocument();
+      expect(screen.getByText(/Weight:\s*100\.00/i)).toBeInTheDocument();
+      expect(screen.getByText(/Sub-ref:\s*\.02/i)).toBeInTheDocument();
+      expect(screen.getByText(/Independent Variable:\s*1/i)).toBeInTheDocument();
     });
-
-    expect(screen.getByText(/Alert Threshold:\s*50/i)).toBeInTheDocument();
-    expect(screen.getByText(/Interdiction Threshold:\s*80/i)).toBeInTheDocument();
-    expect(screen.getByText(/Typology Score:\s*95\.00/i)).toBeInTheDocument();
-    expect(screen.getByText("075@1.0.0")).toBeInTheDocument();
-    expect(screen.getByText(/Weight:\s*100\.00/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sub-ref:\s*\.02/i)).toBeInTheDocument();
-    expect(screen.getByText(/Independent Variable:\s*1/i)).toBeInTheDocument();
   });
 
   it("displays all typologies returned by backend alerted_typologies", async () => {
