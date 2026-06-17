@@ -262,9 +262,9 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         dateFilter = startDate.toISOString();
       }
 
-      const sql = `SELECT CASE WHEN td.debtor_id = ${entityId} THEN td.debtor_id ELSE td.creditor_id END AS entity_id, 
-      CASE WHEN td.debtor_id = ${entityId} THEN td.debtor_name ELSE td.creditor_name END AS entity_name, 
-      CASE WHEN td.debtor_id = ${entityId} THEN 'DEBTOR' ELSE 'CREDITOR' END AS entity_role, 
+      const sql = `SELECT CASE WHEN td.debtor_id = '${entityId}' THEN td.debtor_id ELSE td.creditor_id END AS entity_id, 
+      CASE WHEN td.debtor_id = '${entityId}' THEN td.debtor_name ELSE td.creditor_name END AS entity_name, 
+      CASE WHEN td.debtor_id = '${entityId}' THEN 'DEBTOR' ELSE 'CREDITOR' END AS entity_role, 
       COUNT(DISTINCT a.alert_id) AS total_alerts, COUNT(DISTINCT c.case_id) FILTER (WHERE c.case_id IS NOT NULL) AS cases_opened, 
       COUNT(DISTINCT CASE WHEN c.status LIKE 'STATUS_%' AND c.status != 'STATUS_00_DRAFT' THEN c.case_id END) AS investigations, 
       COALESCE(SUM(t.sar_filings), 0) AS sar_filings, 
@@ -272,8 +272,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       FROM alerts a LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id AND 
       td.tx_type = 'pacs.008.001.10' LEFT JOIN cases c ON a.case_id = c.case_id LEFT JOIN 
       (SELECT case_id, COUNT(DISTINCT task_id) FILTER (WHERE task_type LIKE '%SAR_STR_FILING%') AS sar_filings FROM tasks 
-      GROUP BY case_id) t ON c.case_id = t.case_id WHERE a.tenant_id = ${tenantId} AND a.created_at_ts >= '${dateFilter}' AND 
-      (td.debtor_id = ${entityId} OR td.creditor_id = ${entityId}) GROUP BY entity_id, entity_name, entity_role`;
+      GROUP BY case_id) t ON c.case_id = t.case_id WHERE a.tenant_id = '${tenantId}' AND a.created_at_ts >= '${dateFilter}' AND 
+      (td.debtor_id = '${entityId}' OR td.creditor_id = '${entityId}') GROUP BY entity_id, entity_name, entity_role`;
 
       // const sql = `
       // SELECT
@@ -293,6 +293,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       // `;
 
       const response = await this.runSqlQuery(sql, 1, undefined, userJwt);
+
+      this.logger.log(`response AlertHistorySummary: ${JSON.stringify(response)}`);
       const row = response.data?.[0] ?? {};
 
       return {
@@ -345,8 +347,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       COUNT(DISTINCT c.case_id) FILTER (WHERE c.case_id IS NOT NULL) as case_count, 
       COUNT(DISTINCT CASE WHEN c.status LIKE 'STATUS_%' AND c.status != 'STATUS_00_DRAFT' THEN c.case_id END) as investigation_count, 
       COALESCE(SUM(td.instructed_amount), 0) as total_value FROM alerts a LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id 
-      AND td.tx_type = 'pacs.008.001.10' LEFT JOIN cases c ON a.case_id = c.case_id WHERE 1=1 AND a.tenant_id = ${tenantId} 
-      AND a.created_at_ts >= ${dateFilter} AND (td.debtor_id = ${entityId} OR td.creditor_id = ${entityId}) GROUP BY DATE_TRUNC('month', a.created_at_ts) ORDER BY date ASC`;
+      AND td.tx_type = 'pacs.008.001.10' LEFT JOIN cases c ON a.case_id = c.case_id WHERE 1=1 AND a.tenant_id = '${tenantId}' 
+      AND a.created_at_ts >= '${dateFilter}' AND (td.debtor_id = '${entityId}' OR td.creditor_id = '${entityId}') GROUP BY DATE_TRUNC('month', a.created_at_ts) ORDER BY date ASC`;
 
       // const sql = `
       // SELECT
@@ -367,6 +369,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       // `;
 
       const response = await this.runSqlQuery(sql, 1000, undefined, userJwt);
+      this.logger.log(`response AlertHistoryTimeline: ${JSON.stringify(response)}`);
       const rows = response.data ?? [];
 
       const alertCountOverTime = rows.map((r) => ({
@@ -375,11 +378,13 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         cases: Number(r.case_count ?? 0),
         investigations: Number(r.investigation_count ?? 0),
       }));
+      this.logger.log(`response AlertHistoryTimeline alertCountOverTime: ${JSON.stringify(alertCountOverTime)}`);
 
       const alertValueOverTime = rows.map((r) => ({
         date: r.date,
         totalValue: parseFloat(r.total_value) || 0,
       }));
+      this.logger.log(`response AlertHistoryTimeline alertValueOverTime: ${JSON.stringify(alertValueOverTime)}`);
 
       return {
         alertCountOverTime,
@@ -432,8 +437,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
 
       const countSql = `SELECT COUNT(DISTINCT a.alert_id) as total FROM alerts a 
       LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id AND td.tx_type = 'pacs.008.001.10' 
-      WHERE 1=1 AND a.tenant_id = ${tenantId} AND a.created_at_ts >= ${dateFilter} AND 
-      (td.debtor_id = ${entityId} OR td.creditor_id = ${entityId})`;
+      WHERE 1=1 AND a.tenant_id = '${tenantId}' AND a.created_at_ts >= '${dateFilter}' AND 
+      (td.debtor_id = '${entityId}' OR td.creditor_id = '${entityId}')`;
 
       // const countSql = `
       // SELECT COUNT(DISTINCT a.alert_id) as total
@@ -445,13 +450,15 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       // `;
 
       const countResponse = await this.runSqlQuery(countSql, 1, undefined, userJwt);
+
+      this.logger.log(`response AlertHistoryAlerts countResponse: ${JSON.stringify(countResponse)}`);
       const total = Number(countResponse.data?.[0]?.total ?? 0);
 
       const sql = `SELECT DISTINCT a.alert_id, a.created_at_ts as date, a.alert_type_norm as type,
        a.priority_norm as severity, a.alert_status as status, a.case_id, c.status as case_status,
         a.evaluation_id FROM alerts a LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id 
-        AND td.tx_type = 'pacs.008.001.10' LEFT JOIN cases c ON a.case_id = c.case_id WHERE 1=1 AND a.tenant_id = ${tenantId} 
-        AND a.created_at_ts >= ${dateFilter} AND (td.debtor_id = ${entityId} OR td.creditor_id = ${entityId}) 
+        AND td.tx_type = 'pacs.008.001.10' LEFT JOIN cases c ON a.case_id = c.case_id WHERE 1=1 AND a.tenant_id = '${tenantId}' 
+        AND a.created_at_ts >= '${dateFilter}' AND (td.debtor_id = '${entityId}' OR td.creditor_id = '${entityId}') 
         ORDER BY date DESC LIMIT 1000 OFFSET 0`;
 
       // const sql = `
@@ -475,6 +482,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       // `;
 
       const response = await this.runSqlQuery(sql, safeLimit, undefined, userJwt);
+
+      this.logger.log(`response AlertHistoryAlerts response: ${JSON.stringify(response)}`);
       const rows = response.data ?? [];
 
       const alerts = rows.map((r) => {
@@ -499,6 +508,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
           },
         };
       });
+
+      this.logger.log(`response AlertHistoryAlerts alerts: ${JSON.stringify(alerts)}`);
 
       return {
         alerts,
