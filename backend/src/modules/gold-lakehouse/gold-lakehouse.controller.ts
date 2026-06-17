@@ -29,7 +29,7 @@ export class GoldLakehouseController {
     private readonly conditionLakehouseService: ConditionLakehouseService,
     private readonly benfordsLawLakehouseService: BenfordsLawLakehouseService,
     private readonly accountLakehouseService: AccountLakehouseService,
-  ) { }
+  ) {}
 
   /**
    * Extract JWT token from request headers
