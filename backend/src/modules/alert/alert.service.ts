@@ -14,7 +14,7 @@ import { Outcome } from 'src/utils/types/outcome';
 import { EventLogService } from '../event_log/eventLog.service';
 import { GoldLakehouseService } from '../gold-lakehouse/gold-lakehouse.service';
 import { transactionDataResponseDTO } from './dto/transactionHistory.dto';
-import {AlertedTypology} from './types/alert.types'
+import { AlertedTypology } from './types/alert.types';
 @Injectable()
 export class AlertService {
   constructor(
