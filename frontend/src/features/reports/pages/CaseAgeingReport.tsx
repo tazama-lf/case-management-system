@@ -14,6 +14,7 @@ import {
   formatDataForExport,
   getColumnsForReport,
 } from '../../../shared/utils/exportUtils';
+import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 
 interface CaseAgeingReportProps {
   dateRange: string;
@@ -21,6 +22,7 @@ interface CaseAgeingReportProps {
 
 const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({ dateRange }) => {
   const { data: ageingData, isLoading, error } = useCaseAgeing(dateRange);
+  const { getAssigneeFullName } = useInvestigatorSupervisorList();
 
   if (isLoading) {
     return (
@@ -74,7 +76,7 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({ dateRange }) => {
 
   const handleExportExcel = () => {
     try {
-      const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING');
+      const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING', getAssigneeFullName);
       const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
       exportToExcel(formattedData, filename, 'Case Ageing Report');
     } catch (error) {
@@ -85,7 +87,7 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({ dateRange }) => {
 
   const handleExportCSV = () => {
     try {
-      const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING');
+      const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING', getAssigneeFullName);
       const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
       exportToCSV(formattedData, filename);
     } catch (error) {
@@ -96,7 +98,7 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({ dateRange }) => {
 
   const handleExportPDF = () => {
     try {
-      const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING');
+      const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING', getAssigneeFullName);
       const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
       const columns = getColumnsForReport('CASE_AGEING');
       exportToPDF(formattedData, filename, 'Case Ageing Report', columns);

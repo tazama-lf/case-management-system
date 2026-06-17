@@ -284,6 +284,7 @@ export const exportToPDF = (
 export const formatDataForExport = (
   data: Array<Record<string, unknown>>,
   reportType: string,
+  getAssigneeFullName?: (userId: string) => string,
 ): ExportData[] => {
   switch (reportType) {
     case 'CASE_STATUS':
@@ -344,10 +345,15 @@ export const formatDataForExport = (
               '',
           ),
           Investigator:
-            item.investigator ??
-            item.assignee ??
-            item.assigned_to ??
-            'Unassigned',
+            getAssigneeFullName?.(
+              String(
+                item.userId ??
+                  item.user_id ??
+                  item.assigneeId ??
+                  item.assignee_id ??
+                  'N/A',
+              ),
+            ) ?? 'N/A',
         };
       });
 
