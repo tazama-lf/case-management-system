@@ -115,6 +115,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       onClose();
     }
 
+
     if (open) {
       initialCaseIdRef.current = row?.id;
     }
