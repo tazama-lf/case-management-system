@@ -276,6 +276,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       (td.debtor_id = '${entityId}' OR td.creditor_id = '${entityId}') GROUP BY entity_id, entity_name, entity_role`;
 
       const response = await this.runSqlQuery(sql, 1, undefined, userJwt);
+
+      this.logger.log(`response AlertHistorySummary: ${JSON.stringify(response)}`);
       const row = response.data?.[0] ?? {};
 
       return {
@@ -332,6 +334,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       AND a.created_at_ts >= '${dateFilter}' AND (td.debtor_id = '${entityId}' OR td.creditor_id = '${entityId}') GROUP BY DATE_TRUNC('month', a.created_at_ts) ORDER BY date ASC`;
 
       const response = await this.runSqlQuery(sql, 1000, undefined, userJwt);
+      this.logger.log(`response AlertHistoryTimeline: ${JSON.stringify(response)}`);
       const rows = response.data ?? [];
 
       const alertCountOverTime = rows.map((r) => ({
@@ -340,11 +343,13 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         cases: Number(r.case_count ?? 0),
         investigations: Number(r.investigation_count ?? 0),
       }));
+      this.logger.log(`response AlertHistoryTimeline alertCountOverTime: ${JSON.stringify(alertCountOverTime)}`);
 
       const alertValueOverTime = rows.map((r) => ({
         date: r.date,
         totalValue: parseFloat(r.total_value) || 0,
       }));
+      this.logger.log(`response AlertHistoryTimeline alertValueOverTime: ${JSON.stringify(alertValueOverTime)}`);
 
       return {
         alertCountOverTime,
@@ -437,6 +442,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
           },
         };
       });
+
+      this.logger.log(`response AlertHistoryAlerts alerts: ${JSON.stringify(alerts)}`);
 
       return {
         alerts,
