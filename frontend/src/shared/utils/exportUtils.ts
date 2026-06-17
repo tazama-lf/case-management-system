@@ -342,7 +342,7 @@ export const formatDataForExport = (
               item.user_id ??
               item.assigneeId ??
               item.assignee_id ??
-              '',
+              'N/A',
           ),
           Investigator:
             getAssigneeFullName?.(
