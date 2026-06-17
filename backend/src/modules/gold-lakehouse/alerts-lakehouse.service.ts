@@ -30,11 +30,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     return Math.max(min, Math.min(max, parsed));
   }
 
-  private validateGranularity(granularity: string): 'day' | 'week' | 'month' | 'year' {
-    const allowed = ['day', 'week', 'month', 'year'];
-    return allowed.includes(granularity) ? (granularity as 'day' | 'week' | 'month' | 'year') : 'day';
-  }
-
   async getAlertNavigatorData(alertId: number, tenantId = 'DEFAULT', userJwt?: string): Promise<AlertNavigatorDataResponse> {
     try {
       this.logger.log(`Fetching Alert Navigator data for alert: ${alertId}`);
@@ -231,10 +226,9 @@ export class AlertsLakehouseService extends GoldLakehouseService {
   }
 
   async getAlertHistorySummary(
-    endToEndId?: string,
-    tenantId?: string,
-    entityId?: string,
-    granularity?: string,
+    tenantId: string,
+    entityId: string,
+    granularity: string,
     userJwt?: string,
   ): Promise<{
     totalAlerts: number;
@@ -244,7 +238,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     totalValue: number;
   }> {
     try {
-
       let dateFilter = '';
 
       if (granularity) {
@@ -265,7 +258,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             startDate.setHours(0, 0, 0, 0);
             break;
         }
-
 
         dateFilter = startDate.toISOString();
       }
@@ -318,14 +310,12 @@ export class AlertsLakehouseService extends GoldLakehouseService {
   }
 
   async getAlertHistoryTimeline(
-    endToEndId?: string,
-    tenantId?: string,
-    entityId?: string,
-    granularity?: string,
+    tenantId: string,
+    entityId: string,
+    granularity: string,
     userJwt?: string,
   ): Promise<AlertHistoryTimelineResponse> {
     try {
-
       let dateFilter = '';
 
       if (granularity) {
@@ -346,7 +336,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             startDate.setHours(0, 0, 0, 0);
             break;
         }
-
 
         dateFilter = startDate.toISOString();
       }
@@ -404,16 +393,14 @@ export class AlertsLakehouseService extends GoldLakehouseService {
   }
 
   async getAlertHistoryAlerts(
-    endToEndId?: string,
-    tenantId?: string,
-    entityId?: string,
-    granularity?: string,
-    page = 1,
-    limit = 20,
+    tenantId: string,
+    entityId: string,
+    granularity: string,
+    page: number,
+    limit: number,
     userJwt?: string,
   ): Promise<AlertHistoryAlertsResponse> {
     try {
-
       let dateFilter = '';
 
       if (granularity) {
@@ -435,14 +422,13 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             break;
         }
 
-
         dateFilter = startDate.toISOString();
       }
 
       // Validate and clamp pagination parameters
       const safePage = this.clampPositiveInteger(page, 1, 100000);
       const safeLimit = this.clampPositiveInteger(limit, 1, 1000);
-      const offset = (safePage - 1) * safeLimit;
+      // const offset = (safePage - 1) * safeLimit;
 
       const countSql = `SELECT COUNT(DISTINCT a.alert_id) as total FROM alerts a 
       LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id AND td.tx_type = 'pacs.008.001.10' 

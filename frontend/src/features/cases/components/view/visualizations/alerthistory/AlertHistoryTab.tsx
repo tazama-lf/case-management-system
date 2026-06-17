@@ -166,7 +166,6 @@ const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
         notebookPath="alert-history.ipynb"
         title="Alert History"
         queryParams={{
-          transactionId: transactionId || '',
           tenantId: tenantId || '',
           entityId:
             activeEntityRole === 'creditor'

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards, BadRequestException, ParseIntPipe, Post, Body, Req } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards, BadRequestException, Post, Body, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { AlertsLakehouseService } from './alerts-lakehouse.service';
@@ -12,8 +12,6 @@ import { AccountNodeFullDataResponse, CounterpartyNodeFullDataResponse } from '.
 import { AlertNavigatorDataResponse } from './types/alert-navigator.types';
 import { TransactionDetailDataResponse } from './types/transaction-detail.types';
 import { AccountConditionsSummary, ConditionsListByAccountResponse } from './types/IAccountConditions.types';
-import { AlertHistoryTimelineResponse } from './types/IAlertHistoryTimeline.types';
-import { AlertHistoryAlertsResponse } from './types/IAlertHistory.types';
 import { Audit } from '../audit/decorators/audit-log.decorator';
 import { GenerateProfileDto } from './dto/generate-profile.dto';
 import { GenerateProfileResponseDto } from './dto/profile-response.dto';
@@ -31,7 +29,7 @@ export class GoldLakehouseController {
     private readonly conditionLakehouseService: ConditionLakehouseService,
     private readonly benfordsLawLakehouseService: BenfordsLawLakehouseService,
     private readonly accountLakehouseService: AccountLakehouseService,
-  ) { }
+  ) {}
 
   /**
    * Extract JWT token from request headers
