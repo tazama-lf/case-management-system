@@ -145,7 +145,7 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
           ) : (
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-sm text-gray-600">
-                Select an alert to view network analysis
+                Select an alert to view transaction history
               </p>
             </div>
           ))}

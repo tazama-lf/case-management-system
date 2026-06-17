@@ -121,15 +121,15 @@ describe('JupyterProxyService', () => {
   });
 
   describe('getAlertHistorySummary', () => {
-    it('delegates with explicit dateRange', async () => {
-      const result = await service.getAlertHistorySummary(MOCK_USER_ID, 'e2e1', 'DEFAULT', '30days');
-      expect(alertsSvc.getAlertHistorySummary).toHaveBeenCalledWith('e2e1', 'DEFAULT', '30days', MOCK_JWT);
+    it('delegates with an explicit granularity of "day"', async () => {
+      const result = await service.getAlertHistorySummary(MOCK_USER_ID, 'e2e1', 'DEFAULT', 'day');
+      expect(alertsSvc.getAlertHistorySummary).toHaveBeenCalledWith('e2e1', 'DEFAULT', 'day', MOCK_JWT);
       expect(result).toEqual({});
     });
 
-    it('defaults dateRange to "all" when omitted', async () => {
+    it('defaults granularity to "month" when omitted', async () => {
       await service.getAlertHistorySummary(MOCK_USER_ID, 'e2e1', 'DEFAULT');
-      expect(alertsSvc.getAlertHistorySummary).toHaveBeenCalledWith('e2e1', 'DEFAULT', 'all', MOCK_JWT);
+      expect(alertsSvc.getAlertHistorySummary).toHaveBeenCalledWith('e2e1', 'DEFAULT', 'month', MOCK_JWT);
     });
   });
 
@@ -161,26 +161,26 @@ describe('JupyterProxyService', () => {
 
   describe('getAlertHistoryTimeline', () => {
     it('delegates with all parameters', async () => {
-      await service.getAlertHistoryTimeline(MOCK_USER_ID, 'e2e1', 'DEFAULT', '30days', 'month');
-      expect(alertsSvc.getAlertHistoryTimeline).toHaveBeenCalledWith('e2e1', 'DEFAULT', '30days', 'month', MOCK_JWT);
+      await service.getAlertHistoryTimeline(MOCK_USER_ID, 'e2e1', 'DEFAULT', 'year');
+      expect(alertsSvc.getAlertHistoryTimeline).toHaveBeenCalledWith('e2e1', 'DEFAULT', 'year', MOCK_JWT);
     });
 
-    it('applies defaults when parameters are omitted', async () => {
-      await service.getAlertHistoryTimeline(MOCK_USER_ID);
-      expect(alertsSvc.getAlertHistoryTimeline).toHaveBeenCalledWith(undefined, undefined, 'all', 'day', MOCK_JWT);
+    it('defaults granularity to "month" when omitted', async () => {
+      await service.getAlertHistoryTimeline(MOCK_USER_ID, 'e2e1', 'DEFAULT');
+      expect(alertsSvc.getAlertHistoryTimeline).toHaveBeenCalledWith('e2e1', 'DEFAULT', 'month', MOCK_JWT);
     });
   });
 
   describe('getAlertHistoryAlerts', () => {
     it('delegates with all parameters', async () => {
-      const result = await service.getAlertHistoryAlerts(MOCK_USER_ID, 'e2e1', 'DEFAULT', '30days', 2, 50);
-      expect(alertsSvc.getAlertHistoryAlerts).toHaveBeenCalledWith('e2e1', 'DEFAULT', '30days', 2, 50, MOCK_JWT);
+      const result = await service.getAlertHistoryAlerts(MOCK_USER_ID, 'e2e1', 'DEFAULT', 'year', 2, 50);
+      expect(alertsSvc.getAlertHistoryAlerts).toHaveBeenCalledWith('e2e1', 'DEFAULT', 'year', 2, 50, MOCK_JWT);
       expect(result).toEqual({});
     });
 
-    it('applies defaults when parameters are omitted', async () => {
-      await service.getAlertHistoryAlerts(MOCK_USER_ID);
-      expect(alertsSvc.getAlertHistoryAlerts).toHaveBeenCalledWith(undefined, undefined, 'all', 1, 20, MOCK_JWT);
+    it('defaults granularity to "month" when explicitly undefined, while page and limit pass through unchanged (they have no defaults)', async () => {
+      await service.getAlertHistoryAlerts(MOCK_USER_ID, 'e2e1', 'DEFAULT', undefined, 1, 20);
+      expect(alertsSvc.getAlertHistoryAlerts).toHaveBeenCalledWith('e2e1', 'DEFAULT', 'month', 1, 20, MOCK_JWT);
     });
   });
 
@@ -282,7 +282,7 @@ describe('JupyterProxyService', () => {
 
     it('propagates errors from AlertsLakehouseService', async () => {
       alertsSvc.getAlertHistorySummary.mockRejectedValue(new Error('summary error'));
-      await expect(service.getAlertHistorySummary(MOCK_USER_ID)).rejects.toThrow('summary error');
+      await expect(service.getAlertHistorySummary(MOCK_USER_ID, 'e2e1', 'DEFAULT')).rejects.toThrow('summary error');
     });
   });
 });

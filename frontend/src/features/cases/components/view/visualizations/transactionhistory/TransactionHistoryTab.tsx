@@ -28,7 +28,6 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
     { value: 'day', label: 'Day' },
     { value: 'month', label: 'Month' },
     { value: 'year', label: 'Year' },
-    { value: 'all', label: 'All Time' },
   ];
 
   const selectedTimeLabel =
@@ -74,11 +73,10 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
               onClick={() => {
                 setActiveEntityRole('creditor');
               }}
-              className={`px-4 py-1.5 text-sm rounded-md transition ${
-                activeEntityRole === 'creditor'
+              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'creditor'
                   ? 'bg-white shadow text-blue-600 font-medium'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
             >
               Creditor
             </button>
@@ -87,11 +85,10 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
               onClick={() => {
                 setActiveEntityRole('debtor');
               }}
-              className={`px-4 py-1.5 text-sm rounded-md transition ${
-                activeEntityRole === 'debtor'
+              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'debtor'
                   ? 'bg-white shadow text-blue-600 font-medium'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
             >
               Debtor
             </button>
@@ -118,11 +115,10 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
                       setTimeRange(option.value);
                       setShowTimeDropdown(false);
                     }}
-                    className={`block w-full px-4 py-2 text-left text-sm ${
-                      timeRange === option.value
+                    className={`block w-full px-4 py-2 text-left text-sm ${timeRange === option.value
                         ? 'bg-indigo-50 text-indigo-700'
                         : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {option.label}
                   </button>

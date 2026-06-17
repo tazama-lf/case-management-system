@@ -199,6 +199,92 @@ describe('AlertsLakehouseService', () => {
       expect(result.statistics.totalRules).toBe(0);
     });
 
+    it('defaults tenantId to DEFAULT when not provided', async () => {
+      http.mockReturnValue(okHttp([{ alert_id: 8 }]));
+      const result = await service.getAlertNavigatorData(8);
+      expect(result.meta.tenantId).toBe('DEFAULT');
+    });
+
+    it('parses typologies when the lakehouse returns them as a JSON string instead of an array', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 9,
+            tenant_id: 'DEFAULT',
+            typologies: JSON.stringify([
+              {
+                typology_id: 'typology-003',
+                typology_cfg: '003@1.0.0',
+                typology_score: 300,
+                alert_threshold: 100,
+                interdiction_threshold: 200,
+                rule_count_in_typology: 1,
+                rules: [
+                  {
+                    rule_id: 'rule-010',
+                    rule_weight: 100,
+                    rule_sub_ref: '.01',
+                    rule_independent_variable: null,
+                  },
+                ],
+              },
+            ]),
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(9, 'DEFAULT');
+
+      expect(result.typologies).toHaveLength(1);
+      expect(result.typologies[0].typologyId).toBe('typology-003');
+      const parsedRules = JSON.parse(result.typologies[0].rules);
+      expect(parsedRules[0].ruleId).toBe('rule-010');
+    });
+
+    it('parses a typology\'s rules when returned as a JSON string instead of an array', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 10,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: 'typology-004',
+                typology_cfg: '004@1.0.0',
+                typology_score: 400,
+                rule_count_in_typology: 1,
+                rules: JSON.stringify([
+                  { rule_id: 'rule-020', rule_weight: 150, rule_sub_ref: '.02', rule_independent_variable: null },
+                ]),
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(10, 'DEFAULT');
+      const parsedRules = JSON.parse(result.typologies[0].rules);
+      expect(parsedRules).toHaveLength(1);
+      expect(parsedRules[0].ruleId).toBe('rule-020');
+    });
+
+    it('returns an empty typologies array when typologies is a malformed JSON string', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 11,
+            tenant_id: 'DEFAULT',
+            typologies: '[{ this is not valid json',
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(11, 'DEFAULT');
+      expect(result.typologies).toEqual([]);
+      expect(result.statistics.totalTypologies).toBe(0);
+      expect(result.statistics.totalRules).toBe(0);
+    });
+
     it('throws when alert not found', async () => {
       http.mockReturnValue(okHttp([]));
       await expect(service.getAlertNavigatorData(999)).rejects.toThrow(HttpException);
@@ -215,38 +301,40 @@ describe('AlertsLakehouseService', () => {
   describe('getAlertHistorySummary', () => {
     it('returns summary with data', async () => {
       http.mockReturnValue(okHttp([{ total_alerts: 10, cases_opened: 5, investigations: 3, sar_filings: 1, total_value: 50000 }]));
-      const result = await service.getAlertHistorySummary('e2e1', 'DEFAULT', '30days');
+      const result = await service.getAlertHistorySummary('DEFAULT', 'entity1', 'day');
       expect(result.totalAlerts).toBe(10);
     });
 
     it('returns zeros on empty row', async () => {
-      const result = await service.getAlertHistorySummary();
+      const result = await service.getAlertHistorySummary('DEFAULT', 'entity1', 'day');
       expect(result.totalAlerts).toBe(0);
     });
 
-    it('handles 90days date range', async () => {
-      await service.getAlertHistorySummary('e2e1', 'DEFAULT', '90days');
+    it('handles day granularity (matches the switch and zeroes the time-of-day)', async () => {
+      await service.getAlertHistorySummary('DEFAULT', 'entity1', 'day');
       expect(http).toHaveBeenCalled();
     });
 
-    it('handles 6months date range', async () => {
-      await service.getAlertHistorySummary('e2e1', 'DEFAULT', '6months');
+    it('handles month granularity (matches the switch and resets to the 1st)', async () => {
+      await service.getAlertHistorySummary('DEFAULT', 'entity1', 'month');
       expect(http).toHaveBeenCalled();
     });
 
-    it('handles 1year date range', async () => {
-      await service.getAlertHistorySummary('e2e1', 'DEFAULT', '1year');
+    it('handles year granularity (matches the switch and resets to Jan 1st)', async () => {
+      await service.getAlertHistorySummary('DEFAULT', 'entity1', 'year');
       expect(http).toHaveBeenCalled();
     });
 
-    it('handles unknown date range gracefully', async () => {
-      await service.getAlertHistorySummary('e2e1', 'DEFAULT', 'custom');
+    it('handles an unmatched granularity value gracefully (falls through the switch)', async () => {
+      await service.getAlertHistorySummary('DEFAULT', 'entity1', 'custom');
       expect(http).toHaveBeenCalled();
     });
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getAlertHistorySummary()).rejects.toThrow('Failed to fetch alert history summary');
+      await expect(service.getAlertHistorySummary('DEFAULT', 'entity1', 'day')).rejects.toThrow(
+        'Failed to fetch alert history summary',
+      );
     });
   });
 
@@ -254,27 +342,29 @@ describe('AlertsLakehouseService', () => {
   describe('getAlertHistoryTimeline', () => {
     it('returns timeline', async () => {
       http.mockReturnValue(okHttp([{ date: '2024-01-01', alert_count: 5, case_count: 2, investigation_count: 1, total_value: 1000 }]));
-      const result = await service.getAlertHistoryTimeline('e2e1', 'DEFAULT', '30days', 'day');
+      const result = await service.getAlertHistoryTimeline('DEFAULT', 'entity1', 'day');
       expect(result.alertCountOverTime).toHaveLength(1);
       expect(result.alertCountOverTime[0].alerts).toBe(5);
     });
 
     it('returns empty arrays on empty data', async () => {
       http.mockReturnValue(okHttp([]));
-      const result = await service.getAlertHistoryTimeline();
+      const result = await service.getAlertHistoryTimeline('DEFAULT', 'entity1', 'day');
       expect(result.alertCountOverTime).toEqual([]);
     });
 
-    it('handles date range branches', async () => {
-      for (const r of ['30days', '90days', '6months', '1year', 'custom']) {
-        await service.getAlertHistoryTimeline(undefined, undefined, r);
+    it('handles every granularity branch, including ones that fall through the switch', async () => {
+      for (const granularity of ['day', 'month', 'year', 'custom']) {
+        await service.getAlertHistoryTimeline('DEFAULT', 'entity1', granularity);
       }
-      expect(http).toHaveBeenCalledTimes(5);
+      expect(http).toHaveBeenCalledTimes(4);
     });
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getAlertHistoryTimeline()).rejects.toThrow('Failed to fetch alert history timeline');
+      await expect(service.getAlertHistoryTimeline('DEFAULT', 'entity1', 'day')).rejects.toThrow(
+        'Failed to fetch alert history timeline',
+      );
     });
   });
 
@@ -286,40 +376,61 @@ describe('AlertsLakehouseService', () => {
 
     it('returns alerts with Investigating outcome', async () => {
       setup([{ total: 1 }], [{ alert_id: 1, case_status: 'STATUS_02_ASSIGNED' }]);
-      const result = await service.getAlertHistoryAlerts('e2e1', 'DEFAULT', 'all', 1, 20);
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 1, 20);
       expect(result.pagination.total).toBe(1);
       expect((result.alerts[0] as any).outcome).toBe('Investigating');
     });
 
     it('maps Closed outcome for COMPLETED status', async () => {
       setup([{ total: 1 }], [{ alert_id: 2, case_status: 'STATUS_99_COMPLETED' }]);
-      const result = await service.getAlertHistoryAlerts();
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 1, 20);
       expect((result.alerts[0] as any).outcome).toBe('Closed');
     });
 
     it('maps Draft outcome', async () => {
       setup([{ total: 1 }], [{ alert_id: 3, case_status: 'STATUS_00_DRAFT' }]);
-      const result = await service.getAlertHistoryAlerts();
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 1, 20);
       expect((result.alerts[0] as any).outcome).toBe('Draft');
     });
 
     it('maps Pending outcome for no case_status', async () => {
       setup([{ total: 1 }], [{ alert_id: 4, case_status: null }]);
-      const result = await service.getAlertHistoryAlerts();
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 1, 20);
       expect((result.alerts[0] as any).outcome).toBe('Pending');
     });
 
-    it('handles date range branches', async () => {
-      for (const r of ['30days', '90days', '6months', '1year', 'custom']) {
+    it('maps Pending outcome for a status that only contains PROGRESS (the current check only matches ASSIGNED)', async () => {
+      setup([{ total: 1 }], [{ alert_id: 5, case_status: 'STATUS_03_IN_PROGRESS' }]);
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 1, 20);
+      expect((result.alerts[0] as any).outcome).toBe('Pending');
+    });
+
+    it('clamps a page of 0 up to the minimum and a limit above 1000 down to the maximum', async () => {
+      setup([{ total: 1 }], [{ alert_id: 6, case_status: null }]);
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 0, 5000);
+      expect(result.pagination.page).toBe(1);
+      expect(result.pagination.limit).toBe(1000);
+    });
+
+    it('takes the absolute value of a negative page rather than clamping it to the minimum', async () => {
+      setup([{ total: 1 }], [{ alert_id: 7, case_status: null }]);
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', -5, 20);
+      expect(result.pagination.page).toBe(5);
+    });
+
+    it('handles every granularity branch, including ones that fall through the switch', async () => {
+      for (const granularity of ['day', 'month', 'year', 'custom']) {
         http.mockReturnValueOnce(okHttp([{ total: 0 }])).mockReturnValueOnce(okHttp([]));
-        await service.getAlertHistoryAlerts('e2e1', 'DEFAULT', r);
+        await service.getAlertHistoryAlerts('DEFAULT', 'entity1', granularity, 1, 20);
       }
-      expect(http).toHaveBeenCalledTimes(10);
+      expect(http).toHaveBeenCalledTimes(8);
     });
 
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
-      await expect(service.getAlertHistoryAlerts()).rejects.toThrow('Failed to fetch alert history alerts');
+      await expect(service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 1, 20)).rejects.toThrow(
+        'Failed to fetch alert history alerts',
+      );
     });
   });
 });

@@ -26,7 +26,6 @@ const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
     { value: 'day', label: 'Day' },
     { value: 'month', label: 'Month' },
     { value: 'year', label: 'Year' },
-    { value: 'all', label: 'All Time' },
   ];
 
   const selectedTimeLabel =

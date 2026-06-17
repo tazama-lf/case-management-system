@@ -275,26 +275,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       GROUP BY case_id) t ON c.case_id = t.case_id WHERE a.tenant_id = '${tenantId}' AND a.created_at_ts >= '${dateFilter}' AND 
       (td.debtor_id = '${entityId}' OR td.creditor_id = '${entityId}') GROUP BY entity_id, entity_name, entity_role`;
 
-      // const sql = `
-      // SELECT
-      //   COUNT(DISTINCT a.alert_id) as total_alerts,
-      //   COUNT(DISTINCT c.case_id) FILTER (WHERE c.case_id IS NOT NULL) as cases_opened,
-      //   COUNT(DISTINCT CASE WHEN c.status LIKE 'STATUS_%' AND c.status != 'STATUS_00_DRAFT' THEN c.case_id END) as investigations,
-      //   COUNT(DISTINCT t.task_id) FILTER (WHERE t.task_type LIKE '%SAR_STR_FILING%') as sar_filings,
-      //   COALESCE(SUM(td.instructed_amount), 0) as total_value
-      // FROM alerts a
-      // LEFT JOIN cases c ON a.case_id = c.case_id
-      // LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id
-      // LEFT JOIN tasks t ON c.case_id = t.case_id
-      // WHERE 1=1
-      //   ${endToEndFilter}
-      //   ${tenantFilter}
-      //   ${dateFilter}
-      // `;
-
       const response = await this.runSqlQuery(sql, 1, undefined, userJwt);
-
-      this.logger.log(`response AlertHistorySummary: ${JSON.stringify(response)}`);
       const row = response.data?.[0] ?? {};
 
       return {
@@ -334,7 +315,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             break;
 
           case 'year':
-            startDate.setMonth(0, 1); // January 1st
+            startDate.setMonth(0, 1);
             startDate.setHours(0, 0, 0, 0);
             break;
         }
@@ -350,26 +331,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       AND td.tx_type = 'pacs.008.001.10' LEFT JOIN cases c ON a.case_id = c.case_id WHERE 1=1 AND a.tenant_id = '${tenantId}' 
       AND a.created_at_ts >= '${dateFilter}' AND (td.debtor_id = '${entityId}' OR td.creditor_id = '${entityId}') GROUP BY DATE_TRUNC('month', a.created_at_ts) ORDER BY date ASC`;
 
-      // const sql = `
-      // SELECT
-      //   DATE_TRUNC('${safeGranularity}', a.created_at_ts) as date,
-      //   COUNT(DISTINCT a.alert_id) as alert_count,
-      //   COUNT(DISTINCT c.case_id) FILTER (WHERE c.case_id IS NOT NULL) as case_count,
-      //   COUNT(DISTINCT CASE WHEN c.status LIKE 'STATUS_%' AND c.status != 'STATUS_00_DRAFT' THEN c.case_id END) as investigation_count,
-      //   COALESCE(SUM(td.instructed_amount), 0) as total_value
-      // FROM alerts a
-      // LEFT JOIN cases c ON a.case_id = c.case_id
-      // LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id
-      // WHERE 1=1
-      //   ${endToEndFilter}
-      //   ${tenantFilter}
-      //   ${dateFilter}
-      // GROUP BY DATE_TRUNC('${safeGranularity}', a.created_at_ts)
-      // ORDER BY date ASC
-      // `;
-
       const response = await this.runSqlQuery(sql, 1000, undefined, userJwt);
-      this.logger.log(`response AlertHistoryTimeline: ${JSON.stringify(response)}`);
       const rows = response.data ?? [];
 
       const alertCountOverTime = rows.map((r) => ({
@@ -378,13 +340,11 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         cases: Number(r.case_count ?? 0),
         investigations: Number(r.investigation_count ?? 0),
       }));
-      this.logger.log(`response AlertHistoryTimeline alertCountOverTime: ${JSON.stringify(alertCountOverTime)}`);
 
       const alertValueOverTime = rows.map((r) => ({
         date: r.date,
         totalValue: parseFloat(r.total_value) || 0,
       }));
-      this.logger.log(`response AlertHistoryTimeline alertValueOverTime: ${JSON.stringify(alertValueOverTime)}`);
 
       return {
         alertCountOverTime,
@@ -440,18 +400,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       WHERE 1=1 AND a.tenant_id = '${tenantId}' AND a.created_at_ts >= '${dateFilter}' AND 
       (td.debtor_id = '${entityId}' OR td.creditor_id = '${entityId}')`;
 
-      // const countSql = `
-      // SELECT COUNT(DISTINCT a.alert_id) as total
-      // FROM alerts a
-      // WHERE 1=1
-      //   ${endToEndFilter}
-      //   ${tenantFilter}
-      //   ${dateFilter}
-      // `;
-
       const countResponse = await this.runSqlQuery(countSql, 1, undefined, userJwt);
 
-      this.logger.log(`response AlertHistoryAlerts countResponse: ${JSON.stringify(countResponse)}`);
       const total = Number(countResponse.data?.[0]?.total ?? 0);
 
       const sql = `SELECT DISTINCT a.alert_id, a.created_at_ts as date, a.alert_type_norm as type,
@@ -461,29 +411,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         AND a.created_at_ts >= '${dateFilter}' AND (td.debtor_id = '${entityId}' OR td.creditor_id = '${entityId}') 
         ORDER BY date DESC LIMIT 1000 OFFSET 0`;
 
-      // const sql = `
-      // SELECT DISTINCT
-      //   a.alert_id,
-      //   a.created_at_ts as date,
-      //   a.alert_type_norm as type,
-      //   a.priority_norm as severity,
-      //   a.alert_status as status,
-      //   a.case_id,
-      //   c.status as case_status,
-      //   a.evaluation_id
-      // FROM alerts a
-      // LEFT JOIN cases c ON a.case_id = c.case_id
-      // WHERE 1=1
-      //   ${endToEndFilter}
-      //   ${tenantFilter}
-      //   ${dateFilter}
-      // ORDER BY date DESC
-      // LIMIT ${safeLimit} OFFSET ${offset}
-      // `;
-
       const response = await this.runSqlQuery(sql, safeLimit, undefined, userJwt);
 
-      this.logger.log(`response AlertHistoryAlerts response: ${JSON.stringify(response)}`);
       const rows = response.data ?? [];
 
       const alerts = rows.map((r) => {
@@ -508,8 +437,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
           },
         };
       });
-
-      this.logger.log(`response AlertHistoryAlerts alerts: ${JSON.stringify(alerts)}`);
 
       return {
         alerts,
