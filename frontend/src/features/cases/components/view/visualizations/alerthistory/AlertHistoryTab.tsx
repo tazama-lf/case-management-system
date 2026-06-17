@@ -1,29 +1,47 @@
 import React from 'react';
 import VoilaFrame from '../network-analysis/VoilaFrame';
+import { useEntityMetadata } from '@/features/cases/hooks/useEntityMetadata';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
+type TimeRange = 'day' | 'month' | 'year' | 'all';
 interface AlertHistoryTabProps {
-  caseId?: number;
+  alertId: number;
   transactionId?: string;
   tenantId: string;
 }
 
 const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
-  caseId,
+  alertId,
   transactionId,
   tenantId,
 }) => {
-  // Build query parameters for Voila
-  const queryParams = React.useMemo(() => {
-    const params: Record<string, string> = {
-      tenantId,
-    };
+  const [activeEntityRole, setActiveEntityRole] = React.useState<
+    'creditor' | 'debtor'
+  >('creditor');
+  const [timeRange, setTimeRange] = React.useState<TimeRange>('month');
+  const [showTimeDropdown, setShowTimeDropdown] = React.useState(false);
+  const { entityMetadata } = useEntityMetadata(alertId, tenantId);
 
-    if (transactionId) {
-      params.endToEndId = transactionId;
-    }
+  const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
+    { value: 'day', label: 'Day' },
+    { value: 'month', label: 'Month' },
+    { value: 'year', label: 'Year' },
+    { value: 'all', label: 'All Time' },
+  ];
 
-    return params;
-  }, [transactionId, tenantId]);
+  const selectedTimeLabel =
+    timeRangeOptions.find((opt) => opt.value === timeRange)?.label ||
+    'Last 30 Days';
+
+  if (!alertId) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <p className="text-sm text-gray-600">
+          Select an alert to view alert history
+        </p>
+      </div>
+    );
+  }
 
   // Show error state if no transaction ID
   if (!transactionId) {
@@ -57,12 +75,107 @@ const AlertHistoryTab: React.FC<AlertHistoryTabProps> = ({
     );
   }
 
+  if (!entityMetadata) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <p className="text-sm text-gray-600">Loading entity metadata...</p>
+      </div>
+    );
+  }
+
   return (
-    <VoilaFrame
-      notebookPath="alert-history.ipynb"
-      title="Alert History"
-      queryParams={queryParams}
-    />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        {/* Left side */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Alert History
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Visualize alert history
+          </p>
+        </div>
+
+        {/* Right side (grouped correctly) */}
+        <div className="flex items-center gap-3">
+          {/* Creditor/Debtor toggle */}
+          <div className="flex bg-gray-100 p-1 rounded-md">
+            <button
+              onClick={() => {
+                setActiveEntityRole('creditor');
+              }}
+              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'creditor'
+                ? 'bg-white shadow text-blue-600 font-medium'
+                : 'text-gray-600 hover:text-gray-800'
+                }`}
+            >
+              Creditor
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveEntityRole('debtor');
+              }}
+              className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'debtor'
+                ? 'bg-white shadow text-blue-600 font-medium'
+                : 'text-gray-600 hover:text-gray-800'
+                }`}
+            >
+              Debtor
+            </button>
+          </div>
+
+          {/* Time Range Dropdown (moved here) */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowTimeDropdown(!showTimeDropdown);
+              }}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              {selectedTimeLabel}
+              <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+            </button>
+
+            {showTimeDropdown && (
+              <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                {timeRangeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setTimeRange(option.value);
+                      setShowTimeDropdown(false);
+                    }}
+                    className={`block w-full px-4 py-2 text-left text-sm ${timeRange === option.value
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <VoilaFrame
+        key={`${activeEntityRole}-${timeRange}-${transactionId}`}
+        notebookPath="alert-history.ipynb"
+        title="Alert History"
+        queryParams={{
+          transactionId: transactionId || '',
+          tenantId: tenantId || '',
+          entityId:
+            activeEntityRole === 'creditor'
+              ? entityMetadata?.creditorId
+              : entityMetadata?.debtorId,
+          granularity: timeRange,
+        }}
+      />
+    </div>
   );
 };
 

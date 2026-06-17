@@ -29,7 +29,7 @@ export class JupyterProxyService {
     private readonly conditionLakehouseService: ConditionLakehouseService,
     private readonly authService: AuthService,
     private readonly cacheService: CacheService,
-  ) {}
+  ) { }
 
   /**
    * Retrieve the original user's JWT token from cache.
@@ -85,7 +85,8 @@ export class JupyterProxyService {
     userId: string,
     endToEndId?: string,
     tenantId?: string,
-    dateRange?: string,
+    entityId?: string,
+    granularity: 'day' | 'month' | 'year' = 'month',
   ): Promise<{
     totalAlerts: number;
     casesOpened: number;
@@ -94,7 +95,7 @@ export class JupyterProxyService {
     totalValue: number;
   }> {
     const userJwt = await this.getUserJwt(userId);
-    return await this.alertsLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all', userJwt);
+    return await this.alertsLakehouseService.getAlertHistorySummary(endToEndId, tenantId, entityId, granularity, userJwt);
   }
 
   async getTransactionHistoryData(
@@ -121,23 +122,24 @@ export class JupyterProxyService {
     userId: string,
     endToEndId?: string,
     tenantId?: string,
-    dateRange?: string,
-    granularity = 'day',
+    entityId?: string,
+    granularity: 'day' | 'month' | 'year' = 'month',
   ): Promise<unknown> {
     const userJwt = await this.getUserJwt(userId);
-    return await this.alertsLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity, userJwt);
+    return await this.alertsLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, entityId, granularity, userJwt);
   }
 
   async getAlertHistoryAlerts(
     userId: string,
     endToEndId?: string,
     tenantId?: string,
-    dateRange?: string,
+    entityId?: string,
+    granularity: 'day' | 'month' | 'year' = 'month',
     page = 1,
     limit = 20,
   ): Promise<AlertHistoryAlertsResponse> {
     const userJwt = await this.getUserJwt(userId);
-    return await this.alertsLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page, limit, userJwt);
+    return await this.alertsLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, entityId, granularity, page, limit, userJwt);
   }
 
   async getTransactionNetworkData(
