@@ -959,7 +959,7 @@ export class ReportsService {
     const baseFilters: any = {};
 
     if (filters?.tenantId) {
-      baseFilters.alert = {
+      baseFilters.cases = {
         tenant_id: filters.tenantId,
       };
     }
