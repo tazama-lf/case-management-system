@@ -11,6 +11,7 @@ export class AdminRepository extends BaseRepository {
 
   async registerReferenceId(
     idData: Prisma.ReferenceIdCreateInput,
+    tenantId: string,
     tx?: Prisma.TransactionClient,
   ): Promise<{
     txTp: string;
@@ -21,7 +22,10 @@ export class AdminRepository extends BaseRepository {
     try {
       const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
       const referenceId = await client.referenceId.create({
-        data: idData,
+        data: {
+          ...idData,
+          tenant_id: tenantId,
+        },
       });
 
       return referenceId;
@@ -29,11 +33,14 @@ export class AdminRepository extends BaseRepository {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new Error('ReferenceId already exists', { cause: error });
       }
-      throw new Error(`Failed to create ReferenceId: ${error.message}`, { cause: error });
+      throw new Error('Failed to register ReferenceId', { cause: error });
     }
   }
 
-  async getReferenceId(tx?: Prisma.TransactionClient): Promise<
+  async getReferenceId(
+    tenantId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<
     Array<{
       txTp: string;
       referenceIdName: string;
@@ -43,7 +50,11 @@ export class AdminRepository extends BaseRepository {
   > {
     try {
       const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
-      const referenceIds = await client.referenceId.findMany();
+      const referenceIds = await client.referenceId.findMany({
+        where: {
+          tenant_id: tenantId,
+        },
+      });
 
       if (referenceIds.length === 0) {
         throw new NotFoundException('No ReferenceIds found');
