@@ -60,7 +60,7 @@ export class CaseClosureApprovalService {
         entityName: CaseClosureApprovalService.name,
         actionPerformed: `Auto-generated SAR_STR_FILING task ${createSARFilingTask.task_id} for confirmed case ${caseId}`,
         outcome: Outcome.SUCCESS,
-        tenantId: tenantId,
+        tenantId,
       });
 
       this.logger.log(
@@ -82,7 +82,7 @@ export class CaseClosureApprovalService {
         entityName: CaseClosureApprovalService.name,
         actionPerformed: `Failed to create SAR_STR_FILING task for case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
     }
   }
@@ -251,7 +251,7 @@ export class CaseClosureApprovalService {
               entityName: CaseClosureApprovalService.name,
               actionPerformed: `Supervisor closed case ${caseId} with outcome: ${dto.recommendedOutcome}`,
               outcome: Outcome.SUCCESS,
-              tenantId: tenantId,
+              tenantId,
             });
           }
         }
@@ -346,7 +346,7 @@ export class CaseClosureApprovalService {
         entityName: CaseClosureApprovalService.name,
         actionPerformed: `Failed to close case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
 
       if (error instanceof NotFoundException || error instanceof BadRequestException || error instanceof ConflictException) {
@@ -532,7 +532,7 @@ export class CaseClosureApprovalService {
         entityName: CaseClosureApprovalService.name,
         actionPerformed: `Failed to approve case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
 
       if (error instanceof NotFoundException || error instanceof BadRequestException || error instanceof ConflictException) {
@@ -676,7 +676,7 @@ export class CaseClosureApprovalService {
         entityName: CaseClosureApprovalService.name,
         actionPerformed: `Failed to reject case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
 
       throw error;
@@ -764,7 +764,7 @@ export class CaseClosureApprovalService {
         entityName: CaseClosureApprovalService.name,
         actionPerformed: `Failed to return case ${caseId} for review: ${errorMessage}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
       throw error;
     }

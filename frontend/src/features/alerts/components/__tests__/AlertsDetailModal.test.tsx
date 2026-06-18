@@ -1,611 +1,561 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import AlertsDetailModal from '../AlertsDetailModal';
-import triageService from '../../services/triageservice';
-import { useSystemConfig } from '@/shared/hooks/useSystemConfig';
-import { useCase, canActOnCase } from '../../../cases/hooks/useCase';
-import { caseService } from '../../../cases/services/caseService';
+import React from "react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import AlertsDetailModal from "../AlertsDetailModal";
+import triageService from "../../services/triageservice";
+import userService from "../../../cases/services/userService";
+import { taskService } from "../../../cases/services/taskService";
+import { canActOnCase, useCase } from "../../../cases/hooks/useCase";
+import { useSystemConfig } from "../../../../shared/hooks/useSystemConfig";
+import { caseService } from "../../../cases/services/caseService";
 
 const mockNavigate = vi.fn();
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>(
+    "react-router-dom",
+  );
+
   return {
     ...actual,
     useNavigate: () => mockNavigate,
   };
 });
 
-vi.mock('../../services/triageservice');
-vi.mock('@/shared/hooks/useSystemConfig');
-vi.mock('../../../cases/hooks/useCase');
-vi.mock('../../../cases/services/caseService', () => ({
+vi.mock("../../services/triageservice", () => ({
+  default: {
+    getAlertById: vi.fn(),
+    getAlertActionHistory: vi.fn(),
+    updateAlert: vi.fn(),
+  },
+}));
+
+vi.mock("../../../cases/services/userService", () => ({
+  default: {
+    getUserDetailsById: vi.fn(),
+    formatUserName: vi.fn(),
+  },
+}));
+
+vi.mock("../../../cases/services/taskService", () => ({
+  taskService: {
+    getTasksByCaseId: vi.fn(),
+  },
+}));
+
+vi.mock("../../../cases/hooks/useCase", () => ({
+  useCase: vi.fn(),
+  canActOnCase: vi.fn(),
+}));
+
+vi.mock("../../../../shared/hooks/useSystemConfig", () => ({
+  useSystemConfig: vi.fn(),
+}));
+
+vi.mock("../../../cases/services/caseService", () => ({
   caseService: {
     checkCaseAccess: vi.fn(),
   },
 }));
 
-const createWrapper = () => {
+vi.mock("@/shared/utils/dateUtils", () => ({
+  formatDate: vi.fn(() => "Jan 1, 05:00 AM"),
+}));
+
+type RenderOptions = Partial<React.ComponentProps<typeof AlertsDetailModal>>;
+
+const mockOnClose = vi.fn();
+const mockOnAlertUpdated = vi.fn();
+const mockOnManualTriage = vi.fn();
+const mockOnNavigateToCase = vi.fn();
+
+const baseAlert = {
+  alert_id: 123,
+  tenant_id: "DEFAULT",
+  priority: "URGENT",
+  alert_type: "ALRT",
+  source: "REST API",
+  txtp: "pacs.008",
+  message: "Suspicious activity detected",
+  alert_data: {},
+  transaction: {
+    id: "tx-456",
+    amount: 1000,
+  },
+  network_map: {},
+  confidence_per: 85,
+  created_at: "2024-01-01T05:00:00.000Z",
+  case_id: null,
+  prediction_outcome: null,
+  alerted_typologies: [],
+};
+
+const actionHistoryItem = {
+  audit_log_id: 1,
+  user_id: "user-1",
+  operation: "ALERT_VIEWED",
+  entity_name: "AlertService",
+  action_performed: "Alert opened by user user-1",
+  outcome: "SUCCESS",
+  performed_at: "2024-01-01T05:00:00.000Z",
+};
+
+const renderModal = (props: RenderOptions = {}) => {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
   });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <AlertsDetailModal
+          alertId={123}
+          isOpen={true}
+          onClose={mockOnClose}
+          onAlertUpdated={mockOnAlertUpdated}
+          {...props}
+        />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 };
 
-const renderModal = (ui: React.ReactElement) =>
-  render(ui, { wrapper: createWrapper() });
+const mockGetAlertById = triageService.getAlertById as Mock;
+const mockGetAlertActionHistory = triageService.getAlertActionHistory as Mock;
+const mockGetUserDetailsById = userService.getUserDetailsById as Mock;
+const mockFormatUserName = userService.formatUserName as Mock;
+const mockGetTasksByCaseId = taskService.getTasksByCaseId as Mock;
+const mockUseCase = useCase as Mock;
+const mockCanActOnCase = canActOnCase as Mock;
+const mockUseSystemConfig = useSystemConfig as Mock;
+const mockCheckCaseAccess = caseService.checkCaseAccess as Mock;
 
-describe('AlertsDetailModal', () => {
-  const mockAlert = {
-    alert_id: 123,
-    tenant_id: 'tenant-1',
-    priority: 'URGENT',
-    alert_type: 'FRAUD',
-    source: 'REST API',
-    txtp: 'tx-456',
-    message: 'Test alert message',
-    alert_data: {},
-    transaction: { id: 'tx-456', amount: 1000 },
-    network_map: {},
-    confidence_per: 85,
-    created_at: '2024-01-01T00:00:00Z',
-    case_id: null,
-    prediction_outcome: null,
-  };
-
-  const mockActionHistory = [
-    {
-      audit_log_id: 'log-1',
-      operation: 'ALERT_CREATED',
-      action_performed: 'Alert created',
-      performed_at: '2024-01-01T00:00:00Z',
-      user_id: 'user-1',
-      outcome: 'SUCCESS',
-    },
-  ];
-
-  const mockOnClose = vi.fn();
-  const mockOnAlertUpdated = vi.fn();
-  const mockOnManualTriage = vi.fn();
-  const mockOnCloseAlert = vi.fn();
-
+describe("AlertsDetailModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (useSystemConfig as vi.Mock).mockReturnValue({
-      isManualMode: true,
+
+    mockGetAlertById.mockResolvedValue({ ...baseAlert });
+    mockGetAlertActionHistory.mockResolvedValue([]);
+    mockGetUserDetailsById.mockResolvedValue({
+      user_id: "user-1",
+      first_name: "Jane",
+      last_name: "Doe",
+    });
+    mockFormatUserName.mockReturnValue("Jane Doe");
+    mockGetTasksByCaseId.mockResolvedValue([]);
+    mockUseCase.mockReturnValue({ data: null, isLoading: false });
+    mockCanActOnCase.mockReturnValue(true);
+    mockUseSystemConfig.mockReturnValue({
+      isManualMode: false,
       isDisabledMode: false,
       isAIMode: false,
     });
-    (useCase as vi.Mock).mockReturnValue({
-      data: null,
-      loading: false,
-    });
-    (canActOnCase as vi.Mock).mockReturnValue(true);
-    (caseService.checkCaseAccess as vi.Mock).mockResolvedValue(true);
+    mockCheckCaseAccess.mockResolvedValue(true);
   });
 
-  it('does not render when isOpen is false', () => {
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={false} onClose={mockOnClose} />,
-    );
-    expect(screen.queryByText(/Alert Details/i)).not.toBeInTheDocument();
+  it("does not render when closed", () => {
+    renderModal({ isOpen: false });
+
+    expect(screen.queryByText("Alert Details")).not.toBeInTheDocument();
+    expect(mockGetAlertById).not.toHaveBeenCalled();
   });
 
-  it('renders loading state when fetching alert', () => {
-    (triageService.getAlertById as vi.Mock).mockImplementation(
-      () => new Promise(() => {}), // Never resolves
-    );
+  it("does not fetch details when alertId is null", () => {
+    renderModal({ alertId: null });
 
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
-
-    expect(screen.getByText(/Loading alert details/i)).toBeInTheDocument();
+    expect(screen.queryByText("Alert Details")).not.toBeInTheDocument();
+    expect(mockGetAlertById).not.toHaveBeenCalled();
   });
 
-  it('renders error state when fetch fails', async () => {
-    const error = new Error('Failed to load alert');
-    (triageService.getAlertById as vi.Mock).mockRejectedValue(error);
+  it("shows loading state while fetching alert details", () => {
+    renderModal();
 
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
+    expect(screen.getByText("Loading alert details...")).toBeInTheDocument();
+  });
+
+  it("loads and displays alert summary", async () => {
+    renderModal();
 
     await waitFor(() => {
-      expect(screen.getByText(/Error Loading Alert/i)).toBeInTheDocument();
+      expect(screen.getByText("Alert Details")).toBeInTheDocument();
     });
-    expect(screen.getByText(/Failed to load alert/i)).toBeInTheDocument();
+
+    expect(screen.getByText("URGENT")).toBeInTheDocument();
+    expect(screen.getAllByText("123").length).toBeGreaterThan(0);
+    expect(screen.getByText(/REST API/i)).toBeInTheDocument();
+    expect(screen.getByText("85%")).toBeInTheDocument();
+    expect(screen.getByText("Jan 1, 05:00 AM")).toBeInTheDocument();
   });
 
-  it('renders alert details when loaded successfully', async () => {
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue(
-      mockActionHistory,
-    );
+  it("shows an error state when alert details fail to load", async () => {
+    mockGetAlertById.mockRejectedValue(new Error("Failed to load alert"));
 
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
+    renderModal();
 
     await waitFor(() => {
-      expect(screen.getByText('Alert Details')).toBeInTheDocument();
+      expect(screen.getByText("Error Loading Alert")).toBeInTheDocument();
     });
 
-    expect(screen.getByText('123')).toBeInTheDocument();
-    expect(screen.getByText('No message available')).toBeInTheDocument();
-    expect(screen.getByText('URGENT')).toBeInTheDocument();
+    expect(screen.getByText("Failed to load alert")).toBeInTheDocument();
   });
 
-  it('closes modal when close button is clicked', async () => {
-    const user = userEvent.setup();
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
+  it("calls onClose when close button is clicked", async () => {
+    renderModal();
 
     await waitFor(() => {
-      expect(screen.getByText('Alert Details')).toBeInTheDocument();
+      expect(screen.getByText("Alert Details")).toBeInTheDocument();
     });
 
-    const closeButton = screen.getByRole('button', { name: /close/i });
-    await user.click(closeButton);
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+    expect(mockOnAlertUpdated).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onClose when retry error close button is clicked", async () => {
+    mockGetAlertById.mockRejectedValue(new Error("Failed to load alert"));
+
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText("Error Loading Alert")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
 
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
-  it('closes modal when backdrop is clicked', async () => {
-    const user = userEvent.setup();
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-
-    const { container } = renderModal(
-      <AlertsDetailModal
-        alertId={123}
-        isOpen={true}
-        onClose={mockOnClose}
-        onAlertUpdated={mockOnAlertUpdated}
-      />,
-    );
+  it("displays transaction data by default", async () => {
+    renderModal();
 
     await waitFor(() => {
-      expect(screen.getByText('Alert Details')).toBeInTheDocument();
+      expect(screen.getByText("Alert Details")).toBeInTheDocument();
     });
 
-    const backdrop = container.querySelector('.fixed.inset-0.bg-gray-900');
-    if (backdrop) {
-      await user.click(backdrop as HTMLElement);
-      expect(mockOnClose).toHaveBeenCalledTimes(1);
-      expect(mockOnAlertUpdated).toHaveBeenCalledTimes(1);
-    }
+    expect(screen.getByText(/tx-456/i)).toBeInTheDocument();
+    expect(screen.getByText(/1000/i)).toBeInTheDocument();
   });
 
-  it('shows manual triage button in manual mode', async () => {
-    (useSystemConfig as vi.Mock).mockReturnValue({
+  it("switches to alert data tab", async () => {
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      alert_data: {
+        status: "ALRT",
+        reason: "Suspicious activity detected",
+      },
+    });
+
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText("Alert Details")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /alert data/i }));
+
+    expect(screen.getByText(/reason/i)).toBeInTheDocument();
+    expect(screen.getByText(/Suspicious activity detected/i)).toBeInTheDocument();
+  });
+
+  it("shows no transaction data when transaction is missing", async () => {
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      transaction: null,
+    });
+
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText("No transaction data")).toBeInTheDocument();
+    });
+  });
+
+  it("shows no alert data when alert_data is missing", async () => {
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      alert_data: null,
+    });
+
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText("Alert Details")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /alert data/i }));
+
+    expect(screen.getByText("No alert data")).toBeInTheDocument();
+  });
+
+  it("shows no action history message when history is empty", async () => {
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText("No action history available")).toBeInTheDocument();
+    });
+  });
+
+  it("renders action history and replaces user id with formatted name", async () => {
+    mockGetAlertActionHistory.mockResolvedValue([actionHistoryItem]);
+
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Alert opened by user Jane Doe/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/User ID: user-1/i)).toBeInTheDocument();
+  });
+
+  it("falls back to no action history when history request fails", async () => {
+    mockGetAlertActionHistory.mockRejectedValue(new Error("History failed"));
+
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText("No action history available")).toBeInTheDocument();
+    });
+  });
+
+  it("shows no typologies message when backend returns no alerted_typologies", async () => {
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      alerted_typologies: [],
+    });
+
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText("Triggered Typologies")).toBeInTheDocument();
+      expect(screen.getByText("No typologies triggered")).toBeInTheDocument();
+    });
+  });
+
+  it("displays triggered typologies from backend alerted_typologies", async () => {
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      alerted_typologies: [
+        {
+          id: "typology-1",
+          cfg: "Money Laundering",
+          result: 95,
+          alertThreshold: 50,
+          interdictionThreshold: 80,
+          ruleResults: [
+            {
+              id: "075@1.0.0",
+              cfg: "1.0.0",
+              wght: 100,
+              prcgTm: 32943014,
+              tenantId: "DEFAULT",
+              subRuleRef: ".02",
+              indpdntVarbl: 1,
+            },
+          ],
+        },
+      ],
+    });
+
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText("Money Laundering")).toBeInTheDocument();
+      expect(screen.getByText(/Alert Threshold:\s*50/i)).toBeInTheDocument();
+      expect(screen.getByText(/Interdiction Threshold:\s*80/i)).toBeInTheDocument();
+      expect(screen.getByText(/Typology Score:\s*95\.00/i)).toBeInTheDocument();
+      expect(screen.getByText("075@1.0.0")).toBeInTheDocument();
+      expect(screen.getByText(/Weight:\s*100\.00/i)).toBeInTheDocument();
+      expect(screen.getByText(/Sub-ref:\s*\.02/i)).toBeInTheDocument();
+      expect(screen.getByText(/Independent Variable:\s*1/i)).toBeInTheDocument();
+    });
+  });
+
+  it("displays all typologies returned by backend alerted_typologies", async () => {
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      alerted_typologies: [
+        {
+          id: "typology-1",
+          cfg: "Money Laundering",
+          result: 95,
+          alertThreshold: 50,
+          interdictionThreshold: 80,
+          ruleResults: [],
+        },
+        {
+          id: "typology-2",
+          cfg: "Structuring",
+          result: 75,
+          alertThreshold: 60,
+          interdictionThreshold: 90,
+          ruleResults: [],
+        },
+      ],
+    });
+
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText("Triggered Typologies")).toBeInTheDocument();
+      expect(screen.getByText("Money Laundering")).toBeInTheDocument();
+      expect(screen.getByText("Structuring")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Typology Score:\s*95\.00/i)).toBeInTheDocument();
+    expect(screen.getByText(/Typology Score:\s*75\.00/i)).toBeInTheDocument();
+    expect(screen.getByText(/Alert Threshold:\s*50/i)).toBeInTheDocument();
+    expect(screen.getByText(/Alert Threshold:\s*60/i)).toBeInTheDocument();
+  });
+
+  it("toggles typology rule expansion", async () => {
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      alerted_typologies: [
+        {
+          id: "typology-1",
+          cfg: "Money Laundering",
+          result: 95,
+          alertThreshold: 50,
+          interdictionThreshold: 80,
+          ruleResults: [
+            {
+              id: "075@1.0.0",
+              cfg: "1.0.0",
+              wght: 100,
+              prcgTm: 32943014,
+              tenantId: "DEFAULT",
+              subRuleRef: ".02",
+              indpdntVarbl: 1,
+            },
+          ],
+        },
+      ],
+    });
+
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText("075@1.0.0")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Money Laundering/i }));
+
+    expect(screen.queryByText("075@1.0.0")).not.toBeInTheDocument();
+  });
+
+  it("shows update alert button in manual mode and calls onManualTriage", async () => {
+    mockUseSystemConfig.mockReturnValue({
       isManualMode: true,
       isDisabledMode: false,
       isAIMode: false,
     });
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
 
-    renderModal(
-      <AlertsDetailModal
-        alertId={123}
-        isOpen={true}
-        onClose={mockOnClose}
-        onManualTriage={mockOnManualTriage}
-      />,
-    );
+    renderModal({ onManualTriage: mockOnManualTriage });
 
     await waitFor(() => {
-      expect(screen.getByText('Alert Details')).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /update alert/i })).toBeInTheDocument();
     });
 
-    const updateButton = screen.getByRole('button', { name: /Update Alert/i });
-    expect(updateButton).toBeInTheDocument();
-  });
+    fireEvent.click(screen.getByRole("button", { name: /update alert/i }));
 
-  it('calls onManualTriage when update button is clicked', async () => {
-    const user = userEvent.setup();
-    (useSystemConfig as vi.Mock).mockReturnValue({
-      isManualMode: true,
-      isDisabledMode: false,
-      isAIMode: false,
-    });
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-
-    renderModal(
-      <AlertsDetailModal
-        alertId={123}
-        isOpen={true}
-        onClose={mockOnClose}
-        onManualTriage={mockOnManualTriage}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Alert Details')).toBeInTheDocument();
-    });
-
-    const updateButton = screen.getByRole('button', { name: /Update Alert/i });
-    await user.click(updateButton);
-
+    expect(mockOnManualTriage).toHaveBeenCalledTimes(1);
     expect(mockOnManualTriage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        alert_id: 123,
-      }),
+      expect.objectContaining({ alert_id: 123 }),
     );
   });
 
-  it('shows AI Processed badge in AI mode', async () => {
-    (useSystemConfig as vi.Mock).mockReturnValue({
+  it("shows AI processed badge in AI mode", async () => {
+    mockUseSystemConfig.mockReturnValue({
       isManualMode: false,
       isDisabledMode: false,
       isAIMode: true,
     });
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
 
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
+    renderModal({ onManualTriage: mockOnManualTriage });
 
     await waitFor(() => {
-      expect(screen.getByText('AI Processed')).toBeInTheDocument();
+      expect(screen.getByText("AI Processed")).toBeInTheDocument();
     });
+
+    expect(screen.queryByRole("button", { name: /update alert/i })).not.toBeInTheDocument();
   });
 
-  it('displays action history', async () => {
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue(
-      mockActionHistory,
-    );
+  it("does not show update alert button after alert has been triaged", async () => {
+    mockUseSystemConfig.mockReturnValue({
+      isManualMode: true,
+      isDisabledMode: false,
+      isAIMode: false,
+    });
+    mockGetAlertActionHistory.mockResolvedValue([
+      {
+        ...actionHistoryItem,
+        operation: "ALERT_UPDATED",
+        action_performed: "123 - Triaged by user user-1",
+      },
+    ]);
 
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
+    renderModal({ onManualTriage: mockOnManualTriage });
 
     await waitFor(() => {
-      expect(screen.getByText('Action History')).toBeInTheDocument();
+      expect(screen.getByText(/123 - Triaged by user Jane Doe/i)).toBeInTheDocument();
     });
 
-    // Action history displays action_performed, not operation
-    expect(screen.getByText('Alert created')).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /update alert/i })).not.toBeInTheDocument();
   });
 
-  it('displays transaction data when available', async () => {
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Transaction Data')).toBeInTheDocument();
+  it("navigates to case details when case id is clicked", async () => {
+    mockUseCase.mockReturnValue({
+      data: {
+        case_id: 999,
+        status: "STATUS_00_DRAFT",
+      },
+      isLoading: false,
+    });
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      case_id: 999,
     });
 
-    // Transaction data should be displayed
-    expect(screen.getByText(/tx-456/i)).toBeInTheDocument();
+    renderModal({ onNavigateToCase: mockOnNavigateToCase });
+
+    await waitFor(() => {
+      expect(screen.getByTitle("View case details")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle("View case details"));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/cases/999");
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+    expect(mockOnNavigateToCase).toHaveBeenCalledTimes(1);
   });
 
-  it('displays case status when case is linked', async () => {
-    const alertWithCase = { ...mockAlert, case_id: 'case-123' };
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(alertWithCase);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-    (useCase as vi.Mock).mockReturnValue({
-      data: { case_id: 456, status: 'IN_PROGRESS' },
-      loading: false,
+  it("shows disabled case id when user has no case access", async () => {
+    mockUseCase.mockReturnValue({
+      data: {
+        case_id: 999,
+        status: "STATUS_00_DRAFT",
+      },
+      isLoading: false,
     });
-    (caseService.checkCaseAccess as vi.Mock).mockResolvedValue(true);
-
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Alert Summary')).toBeInTheDocument();
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      case_id: 999,
     });
+    mockCheckCaseAccess.mockResolvedValue(false);
 
-    // Case status is displayed in the Alert Summary section
-    expect(screen.getByText('IN_PROGRESS')).toBeInTheDocument();
-
-    // Case ID is displayed (from alert.case_id)
-    expect(screen.getByText('case-123')).toBeInTheDocument();
-  });
-
-  it('navigates to case details when case ID is clicked', async () => {
-    const user = userEvent.setup();
-    const alertWithCase = { ...mockAlert, case_id: 'case-123' };
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(alertWithCase);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-    (useCase as vi.Mock).mockReturnValue({
-      data: { case_id: 456, status: 'IN_PROGRESS' },
-      loading: false,
-    });
-    (caseService.checkCaseAccess as vi.Mock).mockResolvedValue(true);
-
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Alert Summary')).toBeInTheDocument();
-    });
-
-    // Click on the case ID link
-    const caseIdButton = screen.getByRole('button', { name: /case-123/i });
-    await user.click(caseIdButton);
-
-    // Verify navigation was called with correct case ID
-    expect(mockNavigate).toHaveBeenCalledWith('/cases/case-123');
-  });
-
-  it('fetches alert details when alertId changes', async () => {
-    const { rerender } = renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
-
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-
-    await waitFor(() => {
-      expect(triageService.getAlertById).toHaveBeenCalledWith(123);
-    });
-
-    // Change alertId
-    rerender(
-      <AlertsDetailModal alertId={456} isOpen={true} onClose={mockOnClose} />,
-    );
-
-    await waitFor(() => {
-      expect(triageService.getAlertById).toHaveBeenCalledWith(456);
-    });
-  });
-
-  it('handles retry button click in error state', async () => {
-    const user = userEvent.setup();
-    const error = new Error('Failed to load alert');
-    (triageService.getAlertById as vi.Mock).mockRejectedValue(error);
-
-    // Mock window.location.reload
-    const originalReload = window.location.reload;
-    const reloadSpy = vi.fn();
-    Object.defineProperty(window, 'location', {
-      value: { ...window.location, reload: reloadSpy },
-      writable: true,
-    });
-
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText(/Error Loading Alert/i)).toBeInTheDocument();
-    });
-
-    const retryButton = screen.getByRole('button', { name: /retry/i });
-    await user.click(retryButton);
-
-    expect(reloadSpy).toHaveBeenCalled();
-
-    // Restore original
-    Object.defineProperty(window, 'location', {
-      value: { ...window.location, reload: originalReload },
-      writable: true,
-    });
-  });
-
-  it('shows no transaction data message when transaction is null', async () => {
-    const alertNoTx = { ...mockAlert, transaction: null };
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(alertNoTx);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Transaction Data')).toBeInTheDocument();
-    });
-    expect(screen.getByText('No transaction data')).toBeInTheDocument();
-  });
-
-  it('shows no action history message when empty', async () => {
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue(null);
-
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
+    renderModal();
 
     await waitFor(() => {
       expect(
-        screen.getByText('No action history available'),
+        screen.getByTitle("You don't have permission to view this case"),
       ).toBeInTheDocument();
     });
-  });
-
-  it('shows empty typologies state when none are triggered', async () => {
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Triggered Typologies')).toBeInTheDocument();
-      expect(screen.getByText('No typologies triggered')).toBeInTheDocument();
-    });
-  });
-
-  it('renders CRITICAL priority badge', async () => {
-    const criticalAlert = { ...mockAlert, priority: 'CRITICAL' };
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(criticalAlert);
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('CRITICAL')).toBeInTheDocument();
-    });
-  });
-
-  it('renders alert with alert_data containing typology results', async () => {
-    const user = userEvent.setup();
-    const alertWithTypology = {
-      ...mockAlert,
-      alert_data: {
-        tadpResult: {
-          typologyResult: [
-            {
-              cfg: 'TYP-001',
-              label: 'Money Laundering',
-              result: 95,
-              ruleResults: [
-                {
-                  id: 'R001',
-                  label: 'High Value',
-                  subRuleRef: 'Velocity',
-                  wght: 50,
-                },
-              ],
-            },
-          ],
-        },
-      },
-    };
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(
-      alertWithTypology,
-    );
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Money Laundering')).toBeInTheDocument();
-    });
-
-    if (!screen.queryByText('R001')) {
-      await user.click(
-        screen.getByRole('button', { name: /money laundering/i }),
-      );
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText('R001')).toBeInTheDocument();
-      expect(screen.getByText('Sub-ref: Velocity')).toBeInTheDocument();
-    });
-  });
-
-  it('displays all typologies that exceed alert threshold', async () => {
-    const alertWithMultipleTypologies = {
-      ...mockAlert,
-      alerted_typologies: [
-        {
-          id: 'TYP-001',
-          label: 'Money Laundering',
-          result: 95,
-          alertThreshold: 50,
-        },
-        {
-          id: 'TYP-002',
-          label: 'Structuring',
-          result: 75,
-          alertThreshold: 60,
-        },
-      ],
-      alert_data: {
-        tadpResult: {
-          typologyResult: [
-            {
-              cfg: 'TYP-001',
-              label: 'Money Laundering',
-              result: 95,
-              workflow: {
-                alertThreshold: 50,
-                interdictionThreshold: 80,
-              },
-              ruleResults: [],
-            },
-            {
-              cfg: 'TYP-002',
-              label: 'Structuring',
-              result: 75,
-              workflow: {
-                alertThreshold: 60,
-                interdictionThreshold: 80,
-              },
-              ruleResults: [],
-            },
-            {
-              cfg: 'TYP-003',
-              label: 'Smurfing',
-              result: 45,
-              workflow: {
-                alertThreshold: 60,
-                interdictionThreshold: 80,
-              },
-              ruleResults: [],
-            },
-          ],
-        },
-      },
-    };
-    (triageService.getAlertById as vi.Mock).mockResolvedValue(
-      alertWithMultipleTypologies,
-    );
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-
-    renderModal(
-      <AlertsDetailModal alertId={123} isOpen={true} onClose={mockOnClose} />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Triggered Typologies')).toBeInTheDocument();
-      expect(screen.getByText('Money Laundering')).toBeInTheDocument();
-      expect(screen.getByText('Structuring')).toBeInTheDocument();
-      expect(screen.queryByText('Smurfing')).not.toBeInTheDocument();
-    });
-  });
-
-  it('hides update button when canActOnCase is false', async () => {
-    (canActOnCase as vi.Mock).mockReturnValue(false);
-    (triageService.getAlertById as vi.Mock).mockResolvedValue({
-      ...mockAlert,
-      case_id: 'case-1',
-    });
-    (triageService.getAlertActionHistory as vi.Mock).mockResolvedValue([]);
-    (useCase as vi.Mock).mockReturnValue({ data: { status: 'CLOSED' } });
-
-    renderModal(
-      <AlertsDetailModal
-        alertId={123}
-        isOpen={true}
-        onClose={mockOnClose}
-        onManualTriage={mockOnManualTriage}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Alert Details')).toBeInTheDocument();
-    });
-
-    expect(
-      screen.queryByRole('button', { name: /Update Alert/i }),
-    ).not.toBeInTheDocument();
   });
 });

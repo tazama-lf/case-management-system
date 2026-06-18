@@ -170,7 +170,7 @@ export class CaseService {
         entityName: CaseService.name,
         actionPerformed: `Attempted to suspend case ${caseId}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
       this.logger.error('suspendCase failed', { error: err, caseId, userId, tenantId });
       throw new InternalServerErrorException(`Failed to suspend case: ${err}`);
@@ -305,7 +305,7 @@ export class CaseService {
         entityName: CaseService.name,
         actionPerformed: `Attempted to resume case ${caseId}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
 
       this.logger.error('resumeCase failed', { error: err, caseId, userId, tenantId });

@@ -170,7 +170,7 @@ const AlertsDashboard: React.FC = () => {
         return 'text-gray-600 bg-gray-50';
     }
   };
-
+  
   const columns: Array<AlertsTableColumn<Alert>> = [
     {
       key: 'alert_id',
@@ -330,7 +330,7 @@ const AlertsDashboard: React.FC = () => {
 
   return (
     <PageContainer title="Alerts Dashboard" subtitle={getSubtitle()}>
-      {}
+      { }
       {error && (
         <div className="mb-4">
           <Notification
@@ -341,7 +341,7 @@ const AlertsDashboard: React.FC = () => {
         </div>
       )}
 
-      {}
+      { }
       <AlertsSearchAndFilters
         searchFilters={filters}
         onFilterChange={(key, value) => {
@@ -381,7 +381,7 @@ const AlertsDashboard: React.FC = () => {
         sort={{ column: String(sort.column), direction: sort.direction }}
       />
 
-      {}
+      { }
       <div className="bg-white rounded-lg shadow">
         <AlertsTable
           data={alerts}

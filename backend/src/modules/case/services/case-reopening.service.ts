@@ -187,7 +187,7 @@ export class CaseReopeningService {
         entityName: CaseReopeningService.name,
         actionPerformed: `Failed to reopen case ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
 
       throw error;
@@ -348,7 +348,7 @@ export class CaseReopeningService {
         entityName: CaseReopeningService.name,
         actionPerformed: `Failed to approve case reopening for ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
 
       throw error;
@@ -461,7 +461,7 @@ export class CaseReopeningService {
         entityName: CaseReopeningService.name,
         actionPerformed: `Failed to reject case reopening for ${caseId}: ${errorMessage}`,
         outcome: Outcome.FAILURE,
-        tenantId: tenantId,
+        tenantId,
       });
 
       throw error;
