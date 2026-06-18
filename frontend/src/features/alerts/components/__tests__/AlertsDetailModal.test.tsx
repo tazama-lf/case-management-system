@@ -98,7 +98,7 @@ describe('AlertsDetailModal', () => {
 
   it('renders loading state when fetching alert', () => {
     (triageService.getAlertById as vi.Mock).mockImplementation(
-      () => new Promise(() => { }), // Never resolves
+      () => new Promise(() => {}), // Never resolves
     );
 
     renderModal(

@@ -36,9 +36,11 @@ describe('CaseAgeingStatsCards', () => {
     render(<CaseAgeingStatsCards stats={mockStats} />);
 
     // Find the specific card container by its title
-    const card = screen.getByText('Cases > 15 Days').closest('div[class*="bg-white"]');
+    const card = screen
+      .getByText('Cases > 15 Days')
+      .closest('div[class*="bg-white"]');
     expect(card).toBeInTheDocument();
-    
+
     // Wait for animation to complete and verify the correct number is displayed in this card
     // The StatsCard component animates from 0 to the target value over 1000ms
     await waitFor(
@@ -54,9 +56,11 @@ describe('CaseAgeingStatsCards', () => {
     render(<CaseAgeingStatsCards stats={mockStats} />);
 
     // Find the specific card container by its title
-    const card = screen.getByText('Cases > 30 Days').closest('div[class*="bg-white"]');
+    const card = screen
+      .getByText('Cases > 30 Days')
+      .closest('div[class*="bg-white"]');
     expect(card).toBeInTheDocument();
-    
+
     // Wait for animation to complete and verify the correct number is displayed in this card
     // The StatsCard component animates from 0 to the target value over 1000ms
     await waitFor(

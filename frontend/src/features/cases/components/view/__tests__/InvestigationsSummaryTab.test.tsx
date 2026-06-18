@@ -105,7 +105,7 @@ describe('InvestigationSummaryTab', () => {
 
   it('renders loading state initially', () => {
     (caseService.getCaseDetails as vi.Mock).mockImplementation(
-      () => new Promise(() => { }),
+      () => new Promise(() => {}),
     );
     render(<InvestigationSummaryTab caseId={123} task={mockTask} />);
     expect(document.querySelector('.animate-spin')).toBeInTheDocument();

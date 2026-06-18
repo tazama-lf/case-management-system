@@ -143,7 +143,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    </PageContainer >
+    </PageContainer>
   );
 };
 

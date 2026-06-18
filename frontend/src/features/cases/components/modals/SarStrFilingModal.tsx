@@ -412,10 +412,11 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                 <div className="mt-1">
                   <div className="flex justify-between items-center">
                     <span
-                      className={`text-xs ${sarRemarks.length === 500
-                        ? 'text-red-500'
-                        : 'text-gray-500'
-                        }`}
+                      className={`text-xs ${
+                        sarRemarks.length === 500
+                          ? 'text-red-500'
+                          : 'text-gray-500'
+                      }`}
                     >
                       {sarRemarks.length}/500
                     </span>

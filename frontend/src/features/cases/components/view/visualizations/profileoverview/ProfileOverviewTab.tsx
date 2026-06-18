@@ -467,22 +467,24 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
                   </thead>
 
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {sortedTransactions.map((tx: Transaction, index: number) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {new Date(tx.event_date).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          {Number(tx.tx_amount).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {tx.tx_ccy}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {tx.tx_type}
-                        </td>
-                      </tr>
-                    ))}
+                    {sortedTransactions.map(
+                      (tx: Transaction, index: number) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {new Date(tx.event_date).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                            {Number(tx.tx_amount).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {tx.tx_ccy}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {tx.tx_type}
+                          </td>
+                        </tr>
+                      ),
+                    )}
                   </tbody>
                 </table>
               </div>

@@ -92,7 +92,6 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
     caseId: task.case_id,
   });
 
-
   const loadEvidence = React.useCallback(async (): Promise<void> => {
     if (!currentTaskId) return;
     const evidenceResponse =
@@ -284,17 +283,17 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
           // Then find the approval task that comes after this investigation task
           const approvalTask = investigationTask
             ? tasks
-              .filter(
-                (t) =>
-                  t.name?.toLowerCase().includes('approve') &&
-                  new Date(t.created_at || 0).getTime() >
-                  new Date(investigationTask.created_at || 0).getTime(),
-              )
-              .sort((a, b) => {
-                const dateA = new Date(a.created_at || 0).getTime();
-                const dateB = new Date(b.created_at || 0).getTime();
-                return dateA - dateB; // ascending order (earliest approval after investigation)
-              })[0]
+                .filter(
+                  (t) =>
+                    t.name?.toLowerCase().includes('approve') &&
+                    new Date(t.created_at || 0).getTime() >
+                      new Date(investigationTask.created_at || 0).getTime(),
+                )
+                .sort((a, b) => {
+                  const dateA = new Date(a.created_at || 0).getTime();
+                  const dateB = new Date(b.created_at || 0).getTime();
+                  return dateA - dateB; // ascending order (earliest approval after investigation)
+                })[0]
             : undefined;
 
           if (approvalTask) {
@@ -492,7 +491,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
                       (caseDetails.status === 'STATUS_81_CLOSED_REFUTED' ||
                         caseDetails.status === 'STATUS_82_CLOSED_CONFIRMED' ||
                         caseDetails.status ===
-                        'STATUS_83_CLOSED_INCONCLUSIVE') && (
+                          'STATUS_83_CLOSED_INCONCLUSIVE') && (
                         <div className="p-3 bg-green-50 border border-green-200 rounded">
                           <p className="text-xs text-green-600 font-medium mb-1">
                             Supervisor Final Outcome
