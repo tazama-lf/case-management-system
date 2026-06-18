@@ -68,10 +68,10 @@ describe('AdminService', () => {
     it('should successfully register a reference ID', async () => {
       adminRepository.registerReferenceId.mockResolvedValue(mockReferenceId);
 
-      const result = await service.registerReferenceId(referenceIdData);
+      const result = await service.registerReferenceId(referenceIdData, 'tenant-123');
 
       expect(result).toEqual(mockReferenceId);
-      expect(adminRepository.registerReferenceId).toHaveBeenCalledWith(referenceIdData);
+      expect(adminRepository.registerReferenceId).toHaveBeenCalledWith(referenceIdData, 'tenant-123');
       expect(adminRepository.registerReferenceId).toHaveBeenCalledTimes(1);
     });
 
@@ -85,12 +85,12 @@ describe('AdminService', () => {
 
       adminRepository.registerReferenceId.mockResolvedValue(mockResult);
 
-      const result = await service.registerReferenceId(data);
+      const result = await service.registerReferenceId(data, 'tenant-123');
 
       expect(result).toEqual(mockResult);
       expect(result.txTp).toBe(txTp);
       expect(result.referenceIdName).toBe(referenceIdName);
-      expect(adminRepository.registerReferenceId).toHaveBeenCalledWith(data);
+      expect(adminRepository.registerReferenceId).toHaveBeenCalledWith(data, 'tenant-123');
     });
 
     it.each([
@@ -100,20 +100,20 @@ describe('AdminService', () => {
     ])('should handle %s and re-throw it', async (_desc, error) => {
       adminRepository.registerReferenceId.mockRejectedValue(error);
 
-      await expect(service.registerReferenceId(referenceIdData)).rejects.toThrow(error.message);
-      expect(adminRepository.registerReferenceId).toHaveBeenCalledWith(referenceIdData);
+      await expect(service.registerReferenceId(referenceIdData, 'tenant-123')).rejects.toThrow(error.message);
+      expect(adminRepository.registerReferenceId).toHaveBeenCalledWith(referenceIdData, 'tenant-123');
     });
 
     it('should handle non-Error exceptions', async () => {
       adminRepository.registerReferenceId.mockRejectedValue('String error');
 
-      await expect(service.registerReferenceId(referenceIdData)).rejects.toBe('String error');
+      await expect(service.registerReferenceId(referenceIdData, 'tenant-123')).rejects.toBe('String error');
     });
 
     it('should return the complete reference ID object with all properties', async () => {
       adminRepository.registerReferenceId.mockResolvedValue(mockReferenceId);
 
-      const result = await service.registerReferenceId(referenceIdData);
+      const result = await service.registerReferenceId(referenceIdData, 'tenant-123');
 
       expect(result).toHaveProperty('id');
       expect(result).toHaveProperty('txTp');
@@ -124,7 +124,7 @@ describe('AdminService', () => {
     it('should handle null return from repository', async () => {
       adminRepository.registerReferenceId.mockResolvedValue(null as any);
 
-      const result = await service.registerReferenceId(referenceIdData);
+      const result = await service.registerReferenceId(referenceIdData, 'tenant-123');
       expect(result).toBeNull();
     });
   });
@@ -133,11 +133,11 @@ describe('AdminService', () => {
     it('should successfully retrieve all reference IDs', async () => {
       adminRepository.getReferenceId.mockResolvedValue(mockReferenceIds);
 
-      const result = await service.getReferenceIds();
+      const result = await service.getReferenceIds('tenant-123');
 
       expect(result).toEqual(mockReferenceIds);
       expect(adminRepository.getReferenceId).toHaveBeenCalledTimes(1);
-      expect(adminRepository.getReferenceId).toHaveBeenCalledWith();
+      expect(adminRepository.getReferenceId).toHaveBeenCalledWith('tenant-123');
     });
 
     it.each([
@@ -147,7 +147,7 @@ describe('AdminService', () => {
     ])('should return %s when repository returns it', async (_desc, mockData) => {
       adminRepository.getReferenceId.mockResolvedValue(mockData);
 
-      const result = await service.getReferenceIds();
+      const result = await service.getReferenceIds('tenant-123');
 
       expect(result).toEqual(mockData);
       expect(result).toHaveLength(mockData.length);
@@ -163,7 +163,7 @@ describe('AdminService', () => {
 
       adminRepository.getReferenceId.mockResolvedValue(largeArray);
 
-      const result = await service.getReferenceIds();
+      const result = await service.getReferenceIds('tenant-123');
 
       expect(result).toHaveLength(100);
       expect(result).toEqual(largeArray);
@@ -175,20 +175,20 @@ describe('AdminService', () => {
     ])('should handle %s and re-throw it', async (_desc, error) => {
       adminRepository.getReferenceId.mockRejectedValue(error);
 
-      await expect(service.getReferenceIds()).rejects.toThrow(error.message);
+      await expect(service.getReferenceIds('tenant-123')).rejects.toThrow(error.message);
       expect(adminRepository.getReferenceId).toHaveBeenCalledTimes(1);
     });
 
     it('should handle non-Error exceptions', async () => {
       adminRepository.getReferenceId.mockRejectedValue('String error');
 
-      await expect(service.getReferenceIds()).rejects.toBe('String error');
+      await expect(service.getReferenceIds('tenant-123')).rejects.toBe('String error');
     });
 
     it('should return reference IDs with correct structure', async () => {
       adminRepository.getReferenceId.mockResolvedValue(mockReferenceIds);
 
-      const result = await service.getReferenceIds();
+      const result = await service.getReferenceIds('tenant-123');
 
       result.forEach((referenceId) => {
         expect(referenceId).toHaveProperty('id');
@@ -202,7 +202,7 @@ describe('AdminService', () => {
       const sortedMockReferenceIds = [...mockReferenceIds].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
       adminRepository.getReferenceId.mockResolvedValue(sortedMockReferenceIds);
 
-      const result = await service.getReferenceIds();
+      const result = await service.getReferenceIds('tenant-123');
 
       expect(result[0].createdAt).toEqual(new Date('2026-01-01'));
       expect(result[1].createdAt).toEqual(new Date('2026-01-02'));
@@ -212,7 +212,7 @@ describe('AdminService', () => {
     it('should handle undefined return from repository', async () => {
       adminRepository.getReferenceId.mockResolvedValue(undefined as any);
 
-      const result = await service.getReferenceIds();
+      const result = await service.getReferenceIds('tenant-123');
       expect(result).toBeUndefined();
     });
   });
@@ -227,10 +227,10 @@ describe('AdminService', () => {
       adminRepository.registerReferenceId.mockResolvedValue(mockReferenceId);
       adminRepository.getReferenceId.mockResolvedValue([mockReferenceId]);
 
-      const registered = await service.registerReferenceId(referenceIdData);
+      const registered = await service.registerReferenceId(referenceIdData, 'tenant-123');
       expect(registered).toEqual(mockReferenceId);
 
-      const allReferenceIds = await service.getReferenceIds();
+      const allReferenceIds = await service.getReferenceIds('tenant-123');
       expect(allReferenceIds).toContainEqual(mockReferenceId);
     });
 
@@ -247,8 +247,8 @@ describe('AdminService', () => {
 
       adminRepository.registerReferenceId.mockResolvedValueOnce(mockReferenceIds[0]).mockResolvedValueOnce(mockReferenceIds[1]);
 
-      const result1 = await service.registerReferenceId(data1);
-      const result2 = await service.registerReferenceId(data2);
+      const result1 = await service.registerReferenceId(data1, 'tenant-123');
+      const result2 = await service.registerReferenceId(data2, 'tenant-123');
 
       expect(result1).toEqual(mockReferenceIds[0]);
       expect(result2).toEqual(mockReferenceIds[1]);
@@ -264,9 +264,9 @@ describe('AdminService', () => {
       adminRepository.registerReferenceId.mockRejectedValue(new Error('Registration failed'));
       adminRepository.getReferenceId.mockResolvedValue([]);
 
-      await expect(service.registerReferenceId(referenceIdData)).rejects.toThrow('Registration failed');
+      await expect(service.registerReferenceId(referenceIdData, 'tenant-123')).rejects.toThrow('Registration failed');
 
-      const result = await service.getReferenceIds();
+      const result = await service.getReferenceIds('tenant-123');
       expect(result).toEqual([]);
     });
   });
