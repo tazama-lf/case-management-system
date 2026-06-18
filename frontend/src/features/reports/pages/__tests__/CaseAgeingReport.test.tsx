@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import CaseAgeingReport from '../CaseAgeingReport';
 import { useCaseAgeing } from '../../hooks/useReports';
+import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 import {
   exportToExcel,
   exportToCSV,
@@ -15,6 +16,10 @@ import {
 // Mock hooks
 vi.mock('../../hooks/useReports', () => ({
   useCaseAgeing: vi.fn(),
+}));
+
+vi.mock('@/features/cases/hooks/useInvestigatorSupervisorList', () => ({
+  useInvestigatorSupervisorList: vi.fn(),
 }));
 
 // Mock components
@@ -126,6 +131,9 @@ describe('CaseAgeingReport', () => {
     ],
   };
 
+  // Stable reference so we can assert it's the exact function threaded through to formatDataForExport
+  const mockGetAssigneeFullName = vi.fn((investigatorId: string) => investigatorId);
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useCaseAgeing).mockReturnValue({
@@ -133,6 +141,9 @@ describe('CaseAgeingReport', () => {
       isLoading: false,
       error: null,
       isError: false,
+    } as any);
+    vi.mocked(useInvestigatorSupervisorList).mockReturnValue({
+      getAssigneeFullName: mockGetAssigneeFullName,
     } as any);
   });
 
@@ -206,6 +217,7 @@ describe('CaseAgeingReport', () => {
     expect(formatDataForExport).toHaveBeenCalledWith(
       mockAgeingData.caseDetails,
       'CASE_AGEING',
+      mockGetAssigneeFullName,
     );
     expect(exportToExcel).toHaveBeenCalled();
   });
@@ -226,6 +238,7 @@ describe('CaseAgeingReport', () => {
     expect(formatDataForExport).toHaveBeenCalledWith(
       mockAgeingData.caseDetails,
       'CASE_AGEING',
+      mockGetAssigneeFullName,
     );
     expect(exportToCSV).toHaveBeenCalled();
   });
@@ -247,6 +260,7 @@ describe('CaseAgeingReport', () => {
       expect(formatDataForExport).toHaveBeenCalledWith(
         mockAgeingData.caseDetails,
         'CASE_AGEING',
+        mockGetAssigneeFullName,
       );
       expect(getColumnsForReport).toHaveBeenCalledWith('CASE_AGEING');
       expect(exportToPDF).toHaveBeenCalled();
