@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards, Get } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards, Get, Req } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -6,6 +6,8 @@ import { RequireAdminRole } from 'src/decorators/auth.decorator';
 import { RegisterReferenceIdDto } from './dto/RegisterReferenceId.dto';
 import { ReferenceIdDetailsDto } from './dto/GetReferenceIdsQueryDto';
 import { Audit } from '../audit/decorators/audit-log.decorator';
+import { AuthenticatedRequest } from 'src/utils/types/auth.types';
+import { extractUserData } from 'src/utils/helperFunction';
 
 @Controller('admin')
 @UseGuards(TazamaAuthGuard)
@@ -17,13 +19,17 @@ export class AdminController {
   @RequireAdminRole()
   @Audit()
   @ApiBody({ description: 'EndToEndIdPathCreateInput', type: RegisterReferenceIdDto })
-  async registerReferenceId(@Body() idData: RegisterReferenceIdDto): Promise<{
+  async registerReferenceId(
+    @Body() idData: RegisterReferenceIdDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{
     txTp: string;
     referenceIdName: string;
     createdAt: Date;
     id: number;
   }> {
-    const result = await this.adminService.registerReferenceId(idData);
+    const { tenantId } = extractUserData(req);
+    const result = await this.adminService.registerReferenceId(idData, tenantId);
     return result;
   }
 
@@ -40,8 +46,9 @@ export class AdminController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Requires admin role' })
-  async getReferenceIds(): Promise<ReferenceIdDetailsDto[]> {
-    const result = await this.adminService.getReferenceIds();
+  async getReferenceIds(@Req() req: AuthenticatedRequest): Promise<ReferenceIdDetailsDto[]> {
+    const { tenantId } = extractUserData(req);
+    const result = await this.adminService.getReferenceIds(tenantId);
     return result;
   }
 }

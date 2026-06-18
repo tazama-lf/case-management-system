@@ -6,16 +6,19 @@ import { Prisma } from '@prisma/client-cms';
 export class AdminService {
   constructor(private readonly adminRepository: AdminRepository) {}
 
-  async registerReferenceId(idData: Prisma.ReferenceIdCreateInput): Promise<{
+  async registerReferenceId(
+    idData: Prisma.ReferenceIdCreateInput,
+    tenantId: string,
+  ): Promise<{
     txTp: string;
     referenceIdName: string;
     createdAt: Date;
     id: number;
   }> {
-    return await this.adminRepository.registerReferenceId(idData);
+    return await this.adminRepository.registerReferenceId(idData, tenantId);
   }
 
-  async getReferenceIds(): Promise<
+  async getReferenceIds(tenantId: string): Promise<
     Array<{
       id: number;
       txTp: string;
@@ -23,7 +26,7 @@ export class AdminService {
       createdAt: Date;
     }>
   > {
-    const referenceIds = await this.adminRepository.getReferenceId();
+    const referenceIds = await this.adminRepository.getReferenceId(tenantId);
     return referenceIds;
   }
 }

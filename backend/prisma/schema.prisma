@@ -86,7 +86,7 @@ model Alert {
   alert_type         CaseType?
   prediction_outcome PredictionOutcome? @default(TRUE_POSITIVE)
   source             String?            @db.VarChar(50)
-  txtp               String            @db.VarChar(50)
+  txtp               String             @db.VarChar(50)
   message            String             @db.VarChar(100)
   alert_data         Json
   transaction        Json
@@ -100,15 +100,15 @@ model Alert {
 }
 
 model Case {
-  case_id              Int              @id @default(autoincrement())
-  case_creator_user_id String           @db.Uuid
-  case_owner_user_id   String?          @db.Uuid
+  case_id              Int                  @id @default(autoincrement())
+  case_creator_user_id String               @db.Uuid
+  case_owner_user_id   String?              @db.Uuid
   tenant_id            String
   status               CaseStatus
-  priority             Priority         @default(NEW)
-  created_at           DateTime         @default(now()) @db.Timestamp(6)
-  updated_at           DateTime         @updatedAt @db.Timestamp(6)
-  final_outcome       CaseStatus?
+  priority             Priority             @default(NEW)
+  created_at           DateTime             @default(now()) @db.Timestamp(6)
+  updated_at           DateTime             @updatedAt @db.Timestamp(6)
+  final_outcome        CaseStatus?
   parent_id            Int?
   case_type            CaseType?
   case_creation_type   CaseCreationType
@@ -129,7 +129,7 @@ model Task {
   assigned_user_id   String?    @db.Uuid
   name               String?
   description        String?
-  investigationNotes String? @db.Text
+  investigationNotes String?    @db.Text
   task_type          TaskType?
   candidateGroup     String?    @db.VarChar(50)
   sla_deadline       DateTime?  @db.Timestamp(6)
@@ -166,11 +166,11 @@ model Comment {
 model Evidence {
   evidence_id      String   @id @db.VarChar(255)
   task_id          Int
-  case_id          Int    
+  case_id          Int
   uploader_user_id String   @db.Uuid
-  tenant_id        String   
+  tenant_id        String
   name             String   @db.VarChar(255)
-  description      String?   @db.VarChar(1000)
+  description      String?  @db.VarChar(1000)
   type             String   @db.VarChar(50)
   file_path        String
   file_size        BigInt?
@@ -203,35 +203,36 @@ model Report {
 }
 
 model TransactionProfile {
-  profile_id      String   @id @default(uuid())
-  case_id         Int   
-  generated_by    String   @db.Uuid
-  generated_at    DateTime @default(now())
-  filters         Json?
-  metrics         Json?
-  outliers        Json?
-  summary_table   Json?
-  notes           String?  @db.Text
-  visualization   String?
+  profile_id         String   @id @default(uuid())
+  case_id            Int
+  generated_by       String   @db.Uuid
+  generated_at       DateTime @default(now())
+  filters            Json?
+  metrics            Json?
+  outliers           Json?
+  summary_table      Json?
+  notes              String?  @db.Text
+  visualization      String?
   detected_anomalies Json?
-  case            Case     @relation(fields: [case_id], references: [case_id])
+  case               Case     @relation(fields: [case_id], references: [case_id])
 }
 
 model TransactionData {
-  transactionId Int      @id @default(autoincrement())
-  tenantId      String
-  endToEndId    String   @db.VarChar(50)
+  transactionId   Int      @id @default(autoincrement())
+  tenantId        String
+  endToEndId      String   @db.VarChar(50)
   transactionData Json
-  createdAt     DateTime @default(now()) @db.Timestamp(6)
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
 
   @@map("transaction_data")
 }
 
 model ReferenceId {
-  id   Int      @id @default(autoincrement())
-  txTp String   @db.VarChar(50) @unique
-  referenceIdName   String @db.VarChar(50)
-  createdAt  DateTime @default(now()) @db.Timestamp(6)
+  id              Int      @id @default(autoincrement())
+  txTp            String   @unique @db.VarChar(50)
+  referenceIdName String   @db.VarChar(50)
+  tenantId        String?
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
 
   @@map("reference_ids")
 }
@@ -319,6 +320,7 @@ enum AssignmentRuleType {
   LOAD_BALANCED
   MANUAL
 }
+
 enum AssignmentType {
   MANUAL
   AUTOMATIC
@@ -399,16 +401,16 @@ model NotificationLog {
 }
 
 model AsyncTask {
-  task_id        Int             @id @default(autoincrement())
-  task_type      String          @db.VarChar(50) // 'EMAIL', 'SMS', 'WEBHOOK', etc.
-  status         AsyncTaskStatus @default(PENDING)
-  payload        Json            // Email details: {to, subject, html, metadata}
-  max_retries    Int             @default(5)
-  retry_count    Int             @default(0)
-  next_retry_at  DateTime?       @db.Timestamp(6)
-  created_at     DateTime        @default(now()) @db.Timestamp(6)
-  updated_at     DateTime        @updatedAt @db.Timestamp(6)
-  created_by     String?         @db.VarChar(100) // User ID or 'SYSTEM'
+  task_id       Int             @id @default(autoincrement())
+  task_type     String          @db.VarChar(50) // 'EMAIL', 'SMS', 'WEBHOOK', etc.
+  status        AsyncTaskStatus @default(PENDING)
+  payload       Json // Email details: {to, subject, html, metadata}
+  max_retries   Int             @default(5)
+  retry_count   Int             @default(0)
+  next_retry_at DateTime?       @db.Timestamp(6)
+  created_at    DateTime        @default(now()) @db.Timestamp(6)
+  updated_at    DateTime        @updatedAt @db.Timestamp(6)
+  created_by    String?         @db.VarChar(100) // User ID or 'SYSTEM'
 
   @@index([status])
   @@index([task_type])
@@ -440,7 +442,7 @@ model EventLog {
 }
 
 model TaskHistory {
-  task_history_id     Int   @id @default(autoincrement())
+  task_history_id  Int      @id @default(autoincrement())
   user_id          String   @db.Uuid
   tenant_id        String
   operation        String   @db.VarChar(50)
@@ -454,7 +456,7 @@ model TaskHistory {
 }
 
 model CaseHistory {
-  case_history_id     Int      @id @default(autoincrement())
+  case_history_id  Int      @id @default(autoincrement())
   user_id          String   @db.Uuid
   tenant_id        String
   operation        String   @db.VarChar(50)
@@ -476,7 +478,7 @@ model filters {
 }
 
 model cms_usernames {
-  id Int      @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   user_id    String   @unique @db.Uuid
   tenant_id  String
   name       String

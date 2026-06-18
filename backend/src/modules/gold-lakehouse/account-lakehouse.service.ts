@@ -30,7 +30,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
         throw new InternalServerErrorException(`Unable to fetch details for AlertId ${alertId}`);
       }
 
-      const referenceIdData = await this.alertRepository.getReferenceId(alert.txtp);
+      const referenceIdData = await this.alertRepository.getReferenceId(alert.txtp, tenantId);
       const referenceId = extractReferenceId(alert.transaction as unknown as JsonValue, 10, 0, referenceIdData.referenceIdName);
       if (!referenceId) {
         throw new Error('ReferenceId not found in transaction data');
