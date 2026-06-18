@@ -344,7 +344,7 @@ describe('AlertService', () => {
       const result = await service.getAlertTransactionalData(1, 'tenant-123');
 
       expect(result).toEqual({ transactionData: mockTransactionData });
-      expect(alertRepository.getReferenceId).toHaveBeenCalledWith('pacs.002.001.12');
+      expect(alertRepository.getReferenceId).toHaveBeenCalledWith('pacs.002.001.12', 'tenant-123');
       expect(goldLakehouseService.runSqlQuery).toHaveBeenCalledWith(
         expect.stringContaining("SELECT * from transaction_detail where end_to_end_id = $1"),
         1000,
