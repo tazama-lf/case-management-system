@@ -93,8 +93,8 @@ export class JupyterProxyController {
     totalValue: number;
   }> {
     const userId = this.getUserId(req);
-    if (granularity && !['day', 'week', 'month', 'year'].includes(granularity)) {
-      throw new BadRequestException('Invalid granularity. Must be one of: day, week, month, year');
+    if (granularity && !['day', 'month', 'year'].includes(granularity)) {
+      throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
     return await this.proxyService.getAlertHistorySummary(userId, tenantId, entityId, granularity as 'day' | 'month' | 'year');
   }
@@ -111,8 +111,8 @@ export class JupyterProxyController {
     @Query('granularity') granularity: string,
   ): Promise<unknown> {
     const userId = this.getUserId(req);
-    if (granularity && !['day', 'week', 'month', 'year'].includes(granularity)) {
-      throw new BadRequestException('Invalid granularity. Must be one of: day, week, month, year');
+    if (granularity && !['day', 'month', 'year'].includes(granularity)) {
+      throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
     return await this.proxyService.getAlertHistoryTimeline(userId, tenantId, entityId, granularity as 'day' | 'month' | 'year');
   }
@@ -133,8 +133,8 @@ export class JupyterProxyController {
     @Query('limit') limit?: number,
   ): Promise<AlertHistoryAlertsResponse> {
     const userId = this.getUserId(req);
-    if (granularity && !['day', 'week', 'month', 'year'].includes(granularity)) {
-      throw new BadRequestException('Invalid granularity. Must be one of: day, week, month, year');
+    if (granularity && !['day', 'month', 'year'].includes(granularity)) {
+      throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
     return await this.proxyService.getAlertHistoryAlerts(
       userId,

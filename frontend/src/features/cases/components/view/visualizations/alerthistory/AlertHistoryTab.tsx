@@ -3,7 +3,7 @@ import VoilaFrame from '../network-analysis/VoilaFrame';
 import { useEntityMetadata } from '@/features/cases/hooks/useEntityMetadata';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
-type TimeRange = 'day' | 'month' | 'year' | 'all';
+type TimeRange = 'day' | 'month' | 'year';
 interface AlertHistoryTabProps {
   alertId: number;
   transactionId?: string;
