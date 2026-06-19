@@ -77,14 +77,14 @@ export class JupyterProxyController {
 
   @Get('alert-history/summary')
   @ApiOperation({ summary: 'Proxy: Get Alert History Summary' })
-  @ApiQuery({ name: 'endToEndId', required: false })
   @ApiQuery({ name: 'tenantId', required: true })
-  @ApiQuery({ name: 'dateRange', required: false, example: '30days' })
+  @ApiQuery({ name: 'entityId', required: true })
+  @ApiQuery({ name: 'granularity', required: false })
   async getAlertHistorySummary(
     @Req() req: AuthenticatedRequest,
     @Query('tenantId') tenantId: string,
-    @Query('endToEndId') endToEndId?: string,
-    @Query('dateRange') dateRange?: string,
+    @Query('entityId') entityId: string,
+    @Query('granularity') granularity: string,
   ): Promise<{
     totalAlerts: number;
     casesOpened: number;
@@ -93,55 +93,57 @@ export class JupyterProxyController {
     totalValue: number;
   }> {
     const userId = this.getUserId(req);
-    if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
-      throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
+    if (granularity && !['day', 'month', 'year'].includes(granularity)) {
+      throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
-    return await this.proxyService.getAlertHistorySummary(userId, endToEndId, tenantId, dateRange ?? 'all');
+    return await this.proxyService.getAlertHistorySummary(userId, tenantId, entityId, granularity as 'day' | 'month' | 'year');
   }
 
   @Get('alert-history/timeline')
   @ApiOperation({ summary: 'Proxy: Get Alert History Timeline' })
-  @ApiQuery({ name: 'endToEndId', required: false })
   @ApiQuery({ name: 'tenantId', required: true })
-  @ApiQuery({ name: 'dateRange', required: false })
+  @ApiQuery({ name: 'entityId', required: true })
   @ApiQuery({ name: 'granularity', required: false })
   async getAlertHistoryTimeline(
     @Req() req: AuthenticatedRequest,
     @Query('tenantId') tenantId: string,
-    @Query('endToEndId') endToEndId?: string,
-    @Query('dateRange') dateRange?: string,
-    @Query('granularity') granularity = 'day',
+    @Query('entityId') entityId: string,
+    @Query('granularity') granularity: string,
   ): Promise<unknown> {
     const userId = this.getUserId(req);
-    if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
-      throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
+    if (granularity && !['day', 'month', 'year'].includes(granularity)) {
+      throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
-    if (granularity && !['day', 'week', 'month', 'year'].includes(granularity)) {
-      throw new BadRequestException('Invalid granularity. Must be one of: day, week, month, year');
-    }
-    return await this.proxyService.getAlertHistoryTimeline(userId, endToEndId, tenantId, dateRange ?? 'all', granularity);
+    return await this.proxyService.getAlertHistoryTimeline(userId, tenantId, entityId, granularity as 'day' | 'month' | 'year');
   }
 
   @Get('alert-history/alerts')
   @ApiOperation({ summary: 'Proxy: Get Alert History Alerts' })
-  @ApiQuery({ name: 'endToEndId', required: false })
   @ApiQuery({ name: 'tenantId', required: true })
-  @ApiQuery({ name: 'dateRange', required: false })
+  @ApiQuery({ name: 'entityId', required: true })
+  @ApiQuery({ name: 'granularity', required: false })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   async getAlertHistoryAlerts(
     @Req() req: AuthenticatedRequest,
     @Query('tenantId') tenantId: string,
-    @Query('endToEndId') endToEndId?: string,
-    @Query('dateRange') dateRange?: string,
+    @Query('entityId') entityId: string,
+    @Query('granularity') granularity?: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ): Promise<AlertHistoryAlertsResponse> {
     const userId = this.getUserId(req);
-    if (dateRange && !['30days', '90days', '6months', '1year', 'all'].includes(dateRange)) {
-      throw new BadRequestException('Invalid dateRange. Must be one of: 30days, 90days, 6months, 1year, all');
+    if (granularity && !['day', 'month', 'year'].includes(granularity)) {
+      throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
-    return await this.proxyService.getAlertHistoryAlerts(userId, endToEndId, tenantId, dateRange ?? 'all', page ?? 1, limit ?? 20);
+    return await this.proxyService.getAlertHistoryAlerts(
+      userId,
+      tenantId,
+      entityId,
+      granularity as 'day' | 'month' | 'year',
+      page ?? 1,
+      limit ?? 20,
+    );
   }
 
   @Get('transaction-history/:accountId')

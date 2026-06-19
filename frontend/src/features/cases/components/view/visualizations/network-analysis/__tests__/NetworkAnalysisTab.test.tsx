@@ -209,7 +209,6 @@ describe('NetworkAnalysisTab', () => {
 
     expect(screen.getByText('Day')).toBeInTheDocument();
     expect(screen.getByText('Year')).toBeInTheDocument();
-    expect(screen.getByText('All Time')).toBeInTheDocument();
   });
 
   it('selects a new time range from dropdown', async () => {

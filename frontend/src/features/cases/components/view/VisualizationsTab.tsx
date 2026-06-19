@@ -103,10 +103,9 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
                 setActiveSubTab(tab.key as VisualizationSubTab);
               }}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all
-                ${
-                  isActive
-                    ? 'bg-white shadow text-indigo-600'
-                    : 'text-gray-600 hover:bg-gray-200'
+                ${isActive
+                  ? 'bg-white shadow text-indigo-600'
+                  : 'text-gray-600 hover:bg-gray-200'
                 }`}
             >
               <Icon className="w-4 h-4" />
@@ -146,7 +145,7 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
           ) : (
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-sm text-gray-600">
-                Select an alert to view network analysis
+                Select an alert to view transaction history
               </p>
             </div>
           ))}
@@ -167,13 +166,20 @@ const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
             </div>
           ))}
 
-        {activeSubTab === 'alert-history' && (
-          <AlertHistoryTab
-            caseId={caseId}
-            transactionId={transactionId}
-            tenantId={tenantId}
-          />
-        )}
+        {activeSubTab === 'alert-history' &&
+          (alertId && tenantId ? (
+            <AlertHistoryTab
+              alertId={alertId}
+              transactionId={transactionId}
+              tenantId={tenantId}
+            />
+          ) : (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <p className="text-sm text-gray-600">
+                Select an alert to view alert history
+              </p>
+            </div>
+          ))}
 
         {activeSubTab === 'conditions' && (
           <ConditionsTab

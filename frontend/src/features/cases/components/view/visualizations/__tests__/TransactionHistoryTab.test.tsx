@@ -128,7 +128,6 @@ describe('TransactionHistoryTab', () => {
     // Dropdown options visible
     expect(screen.getByText('Day')).toBeInTheDocument();
     expect(screen.getByText('Year')).toBeInTheDocument();
-    expect(screen.getByText('All Time')).toBeInTheDocument();
     // Select Day
     fireEvent.click(screen.getByText('Day'));
     const frame = screen.getByTestId('voila-frame');
@@ -151,21 +150,6 @@ describe('TransactionHistoryTab', () => {
     expect(params.granularity).toBe('year');
   });
 
-  it('selects All Time time range', () => {
-    render(
-      <TransactionHistoryTab
-        alertId={1}
-        transactionId="TXN-001"
-        tenantId="DEFAULT"
-      />,
-    );
-    fireEvent.click(screen.getByText('Month'));
-    fireEvent.click(screen.getByText('All Time'));
-    const frame = screen.getByTestId('voila-frame');
-    const params = JSON.parse(frame.getAttribute('data-params')!);
-    expect(params.granularity).toBe('all');
-  });
-
   it('closes dropdown after selecting a time range', () => {
     render(
       <TransactionHistoryTab
@@ -175,7 +159,6 @@ describe('TransactionHistoryTab', () => {
       />,
     );
     fireEvent.click(screen.getByText('Month'));
-    expect(screen.getByText('All Time')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Day'));
     // Dropdown should be closed, 'All Time' as dropdown option should not be visible
     // but 'Day' is now the label

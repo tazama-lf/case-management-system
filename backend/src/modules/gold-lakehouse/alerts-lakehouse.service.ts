@@ -30,11 +30,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     return Math.max(min, Math.min(max, parsed));
   }
 
-  private validateGranularity(granularity: string): 'day' | 'week' | 'month' | 'year' {
-    const allowed = ['day', 'week', 'month', 'year'];
-    return allowed.includes(granularity) ? (granularity as 'day' | 'week' | 'month' | 'year') : 'day';
-  }
-
   async getAlertNavigatorData(alertId: number, tenantId = 'DEFAULT', userJwt?: string): Promise<AlertNavigatorDataResponse> {
     try {
       this.logger.log(`Fetching Alert Navigator data for alert: ${alertId}`);
@@ -231,9 +226,9 @@ export class AlertsLakehouseService extends GoldLakehouseService {
   }
 
   async getAlertHistorySummary(
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
+    tenantId: string,
+    entityId: string,
+    granularity: string,
     userJwt?: string,
   ): Promise<{
     totalAlerts: number;
@@ -243,53 +238,44 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     totalValue: number;
   }> {
     try {
-      const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
-      const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${this.escapeSqlString(effectiveEndToEndId)}'` : '';
-      const tenantFilter = tenantId ? `AND a.tenant_id = '${this.escapeSqlString(tenantId)}'` : '';
-
+      const safeTenantId = this.escapeSqlString(tenantId);
+      const safeEntityId = this.escapeSqlString(entityId);
       let dateFilter = '';
-      if (dateRange && dateRange !== 'all') {
-        const now = new Date();
-        let startDate: Date | null = null;
 
-        switch (dateRange) {
-          case '30days':
-            startDate = new Date(now.setDate(now.getDate() - 30));
+      if (granularity) {
+        const startDate = new Date();
+
+        switch (granularity) {
+          case 'day':
+            startDate.setHours(0, 0, 0, 0);
             break;
-          case '90days':
-            startDate = new Date(now.setDate(now.getDate() - 90));
+
+          case 'month':
+            startDate.setDate(1);
+            startDate.setHours(0, 0, 0, 0);
             break;
-          case '6months':
-            startDate = new Date(now.setMonth(now.getMonth() - 6));
+
+          case 'year':
+            startDate.setMonth(0, 1);
+            startDate.setHours(0, 0, 0, 0);
             break;
-          case '1year':
-            startDate = new Date(now.setFullYear(now.getFullYear() - 1));
-            break;
-          default:
-            startDate = null;
         }
 
-        if (startDate) {
-          dateFilter = `AND a.created_at_ts >= '${startDate.toISOString()}'`;
-        }
+        dateFilter = startDate.toISOString();
       }
 
-      const sql = `
-      SELECT
-        COUNT(DISTINCT a.alert_id) as total_alerts,
-        COUNT(DISTINCT c.case_id) FILTER (WHERE c.case_id IS NOT NULL) as cases_opened,
-        COUNT(DISTINCT CASE WHEN c.status LIKE 'STATUS_%' AND c.status != 'STATUS_00_DRAFT' THEN c.case_id END) as investigations,
-        COUNT(DISTINCT t.task_id) FILTER (WHERE t.task_type LIKE '%SAR_STR_FILING%') as sar_filings,
-        COALESCE(SUM(td.instructed_amount), 0) as total_value
-      FROM alerts a
-      LEFT JOIN cases c ON a.case_id = c.case_id
-      LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id
-      LEFT JOIN tasks t ON c.case_id = t.case_id
-      WHERE 1=1
-        ${endToEndFilter}
-        ${tenantFilter}
-        ${dateFilter}
-      `;
+      const sql = `SELECT CASE WHEN td.debtor_id = '${safeEntityId}' THEN td.debtor_id ELSE td.creditor_id END AS entity_id, 
+      CASE WHEN td.debtor_id = '${safeEntityId}' THEN td.debtor_name ELSE td.creditor_name END AS entity_name, 
+      CASE WHEN td.debtor_id = '${safeEntityId}' THEN 'DEBTOR' ELSE 'CREDITOR' END AS entity_role, 
+      COUNT(DISTINCT a.alert_id) AS total_alerts, COUNT(DISTINCT c.case_id) FILTER (WHERE c.case_id IS NOT NULL) AS cases_opened, 
+      COUNT(DISTINCT CASE WHEN c.status LIKE 'STATUS_%' AND c.status != 'STATUS_00_DRAFT' THEN c.case_id END) AS investigations, 
+      COALESCE(SUM(t.sar_filings), 0) AS sar_filings, 
+      COALESCE(SUM(td.instructed_amount), 0) AS total_value 
+      FROM alerts a LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id AND 
+      td.tx_type = 'pacs.008.001.10' LEFT JOIN cases c ON a.case_id = c.case_id LEFT JOIN 
+      (SELECT case_id, COUNT(DISTINCT task_id) FILTER (WHERE task_type LIKE '%SAR_STR_FILING%') AS sar_filings FROM tasks 
+      GROUP BY case_id) t ON c.case_id = t.case_id WHERE a.tenant_id = '${safeTenantId}' AND a.created_at_ts >= '${dateFilter}' AND 
+      (td.debtor_id = '${safeEntityId}' OR td.creditor_id = '${safeEntityId}') GROUP BY entity_id, entity_name, entity_role`;
 
       const response = await this.runSqlQuery(sql, 1, undefined, userJwt);
       const row = response.data?.[0] ?? {};
@@ -309,62 +295,45 @@ export class AlertsLakehouseService extends GoldLakehouseService {
   }
 
   async getAlertHistoryTimeline(
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
-    granularity = 'day',
+    tenantId: string,
+    entityId: string,
+    granularity: string,
     userJwt?: string,
   ): Promise<AlertHistoryTimelineResponse> {
     try {
-      const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
-      const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${this.escapeSqlString(effectiveEndToEndId)}'` : '';
-      const tenantFilter = tenantId ? `AND a.tenant_id = '${this.escapeSqlString(tenantId)}'` : '';
-      const safeGranularity = this.validateGranularity(granularity);
-
+      const safeTenantId = this.escapeSqlString(tenantId);
+      const safeEntityId = this.escapeSqlString(entityId);
       let dateFilter = '';
-      if (dateRange && dateRange !== 'all') {
-        const now = new Date();
-        let startDate: Date | null = null;
 
-        switch (dateRange) {
-          case '30days':
-            startDate = new Date(now.setDate(now.getDate() - 30));
+      if (granularity) {
+        const startDate = new Date();
+
+        switch (granularity) {
+          case 'day':
+            startDate.setHours(0, 0, 0, 0);
             break;
-          case '90days':
-            startDate = new Date(now.setDate(now.getDate() - 90));
+
+          case 'month':
+            startDate.setDate(1);
+            startDate.setHours(0, 0, 0, 0);
             break;
-          case '6months':
-            startDate = new Date(now.setMonth(now.getMonth() - 6));
+
+          case 'year':
+            startDate.setMonth(0, 1);
+            startDate.setHours(0, 0, 0, 0);
             break;
-          case '1year':
-            startDate = new Date(now.setFullYear(now.getFullYear() - 1));
-            break;
-          default:
-            startDate = null;
         }
 
-        if (startDate) {
-          dateFilter = `AND a.created_at_ts >= '${startDate.toISOString()}'`;
-        }
+        dateFilter = startDate.toISOString();
       }
 
-      const sql = `
-      SELECT
-        DATE_TRUNC('${safeGranularity}', a.created_at_ts) as date,
-        COUNT(DISTINCT a.alert_id) as alert_count,
-        COUNT(DISTINCT c.case_id) FILTER (WHERE c.case_id IS NOT NULL) as case_count,
-        COUNT(DISTINCT CASE WHEN c.status LIKE 'STATUS_%' AND c.status != 'STATUS_00_DRAFT' THEN c.case_id END) as investigation_count,
-        COALESCE(SUM(td.instructed_amount), 0) as total_value
-      FROM alerts a
-      LEFT JOIN cases c ON a.case_id = c.case_id
-      LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id
-      WHERE 1=1
-        ${endToEndFilter}
-        ${tenantFilter}
-        ${dateFilter}
-      GROUP BY DATE_TRUNC('${safeGranularity}', a.created_at_ts)
-      ORDER BY date ASC
-      `;
+      const sql = `SELECT DATE_TRUNC('month', a.created_at_ts) as date, 
+      COUNT(DISTINCT a.alert_id) as alert_count, 
+      COUNT(DISTINCT c.case_id) FILTER (WHERE c.case_id IS NOT NULL) as case_count, 
+      COUNT(DISTINCT CASE WHEN c.status LIKE 'STATUS_%' AND c.status != 'STATUS_00_DRAFT' THEN c.case_id END) as investigation_count, 
+      COALESCE(SUM(td.instructed_amount), 0) as total_value FROM alerts a LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id 
+      AND td.tx_type = 'pacs.008.001.10' LEFT JOIN cases c ON a.case_id = c.case_id WHERE 1=1 AND a.tenant_id = '${safeTenantId}' 
+      AND a.created_at_ts >= '${dateFilter}' AND (td.debtor_id = '${safeEntityId}' OR td.creditor_id = '${safeEntityId}') GROUP BY DATE_TRUNC('month', a.created_at_ts) ORDER BY date ASC`;
 
       const response = await this.runSqlQuery(sql, 1000, undefined, userJwt);
       const rows = response.data ?? [];
@@ -393,83 +362,63 @@ export class AlertsLakehouseService extends GoldLakehouseService {
   }
 
   async getAlertHistoryAlerts(
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
-    page = 1,
-    limit = 20,
+    tenantId: string,
+    entityId: string,
+    granularity: string,
+    page: number,
+    limit: number,
     userJwt?: string,
   ): Promise<AlertHistoryAlertsResponse> {
     try {
-      const effectiveEndToEndId = endToEndId ?? this.alertHistoryFallbackE2EId;
-      const endToEndFilter = effectiveEndToEndId ? `AND a.tx_original_e2e_id = '${this.escapeSqlString(effectiveEndToEndId)}'` : '';
-      const tenantFilter = tenantId ? `AND a.tenant_id = '${this.escapeSqlString(tenantId)}'` : '';
-
+      const safeTenantId = this.escapeSqlString(tenantId);
+      const safeEntityId = this.escapeSqlString(entityId);
       let dateFilter = '';
-      if (dateRange && dateRange !== 'all') {
-        const now = new Date();
-        let startDate: Date | null = null;
 
-        switch (dateRange) {
-          case '30days':
-            startDate = new Date(now.setDate(now.getDate() - 30));
+      if (granularity) {
+        const startDate = new Date();
+
+        switch (granularity) {
+          case 'day':
+            startDate.setHours(0, 0, 0, 0);
             break;
-          case '90days':
-            startDate = new Date(now.setDate(now.getDate() - 90));
+
+          case 'month':
+            startDate.setDate(1);
+            startDate.setHours(0, 0, 0, 0);
             break;
-          case '6months':
-            startDate = new Date(now.setMonth(now.getMonth() - 6));
+
+          case 'year':
+            startDate.setMonth(0, 1);
+            startDate.setHours(0, 0, 0, 0);
             break;
-          case '1year':
-            startDate = new Date(now.setFullYear(now.getFullYear() - 1));
-            break;
-          default:
-            startDate = null;
         }
 
-        if (startDate) {
-          dateFilter = `AND a.created_at_ts >= '${startDate.toISOString()}'`;
-        }
+        dateFilter = startDate.toISOString();
       }
 
       // Validate and clamp pagination parameters
       const safePage = this.clampPositiveInteger(page, 1, 100000);
       const safeLimit = this.clampPositiveInteger(limit, 1, 1000);
-      const offset = (safePage - 1) * safeLimit;
+      // const offset = (safePage - 1) * safeLimit;
 
-      const countSql = `
-      SELECT COUNT(DISTINCT a.alert_id) as total
-      FROM alerts a
-      WHERE 1=1
-        ${endToEndFilter}
-        ${tenantFilter}
-        ${dateFilter}
-      `;
+      const countSql = `SELECT COUNT(DISTINCT a.alert_id) as total FROM alerts a 
+      LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id AND td.tx_type = 'pacs.008.001.10' 
+      WHERE 1=1 AND a.tenant_id = '${safeTenantId}' AND a.created_at_ts >= '${dateFilter}' AND 
+      (td.debtor_id = '${safeEntityId}' OR td.creditor_id = '${safeEntityId}')`;
 
       const countResponse = await this.runSqlQuery(countSql, 1, undefined, userJwt);
+
       const total = Number(countResponse.data?.[0]?.total ?? 0);
 
-      const sql = `
-      SELECT DISTINCT
-        a.alert_id,
-        a.created_at_ts as date,
-        a.alert_type_norm as type,
-        a.priority_norm as severity,
-        a.alert_status as status,
-        a.case_id,
-        c.status as case_status,
-        a.evaluation_id
-      FROM alerts a
-      LEFT JOIN cases c ON a.case_id = c.case_id
-      WHERE 1=1
-        ${endToEndFilter}
-        ${tenantFilter}
-        ${dateFilter}
-      ORDER BY date DESC
-      LIMIT ${safeLimit} OFFSET ${offset}
-      `;
+      const sql = `SELECT DISTINCT a.alert_id, a.created_at_ts as date, a.alert_type_norm as type,
+       a.priority_norm as severity, a.alert_status as status, a.case_id, c.status as case_status,
+        a.evaluation_id FROM alerts a LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id 
+        AND td.tx_type = 'pacs.008.001.10' LEFT JOIN cases c ON a.case_id = c.case_id WHERE 1=1 AND a.tenant_id = '${safeTenantId}' 
+        AND a.created_at_ts >= '${dateFilter}' AND (td.debtor_id = '${safeEntityId}' OR td.creditor_id = '${safeEntityId}') 
+        ORDER BY date DESC LIMIT 1000 OFFSET 0`;
 
       const response = await this.runSqlQuery(sql, safeLimit, undefined, userJwt);
+
       const rows = response.data ?? [];
 
       const alerts = rows.map((r) => {

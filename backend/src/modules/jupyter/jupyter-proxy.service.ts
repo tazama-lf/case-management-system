@@ -83,9 +83,9 @@ export class JupyterProxyService {
 
   async getAlertHistorySummary(
     userId: string,
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
+    tenantId: string,
+    entityId: string,
+    granularity: 'day' | 'month' | 'year' = 'month',
   ): Promise<{
     totalAlerts: number;
     casesOpened: number;
@@ -94,7 +94,7 @@ export class JupyterProxyService {
     totalValue: number;
   }> {
     const userJwt = await this.getUserJwt(userId);
-    return await this.alertsLakehouseService.getAlertHistorySummary(endToEndId, tenantId, dateRange ?? 'all', userJwt);
+    return await this.alertsLakehouseService.getAlertHistorySummary(tenantId, entityId, granularity, userJwt);
   }
 
   async getTransactionHistoryData(
@@ -119,25 +119,24 @@ export class JupyterProxyService {
 
   async getAlertHistoryTimeline(
     userId: string,
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
-    granularity = 'day',
+    tenantId: string,
+    entityId: string,
+    granularity: 'day' | 'month' | 'year' = 'month',
   ): Promise<unknown> {
     const userJwt = await this.getUserJwt(userId);
-    return await this.alertsLakehouseService.getAlertHistoryTimeline(endToEndId, tenantId, dateRange ?? 'all', granularity, userJwt);
+    return await this.alertsLakehouseService.getAlertHistoryTimeline(tenantId, entityId, granularity, userJwt);
   }
 
   async getAlertHistoryAlerts(
     userId: string,
-    endToEndId?: string,
-    tenantId?: string,
-    dateRange?: string,
-    page = 1,
-    limit = 20,
+    tenantId: string,
+    entityId: string,
+    granularity: 'day' | 'month' | 'year' = 'month',
+    page: number,
+    limit: number,
   ): Promise<AlertHistoryAlertsResponse> {
     const userJwt = await this.getUserJwt(userId);
-    return await this.alertsLakehouseService.getAlertHistoryAlerts(endToEndId, tenantId, dateRange ?? 'all', page, limit, userJwt);
+    return await this.alertsLakehouseService.getAlertHistoryAlerts(tenantId, entityId, granularity, page, limit, userJwt);
   }
 
   async getTransactionNetworkData(
