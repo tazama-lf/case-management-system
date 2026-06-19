@@ -234,6 +234,7 @@ model ReferenceId {
   tenant_id       String?
   createdAt       DateTime @default(now()) @db.Timestamp(6)
 
+  @@unique([txTp, tenant_id])
   @@map("reference_ids")
 }
 
