@@ -231,7 +231,7 @@ model ReferenceId {
   id              Int      @id @default(autoincrement())
   txTp            String   @unique @db.VarChar(50)
   referenceIdName String   @db.VarChar(50)
-  tenantId        String?
+  tenant_id       String?
   createdAt       DateTime @default(now()) @db.Timestamp(6)
 
   @@map("reference_ids")
