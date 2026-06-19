@@ -959,9 +959,7 @@ export class ReportsService {
     const baseFilters: any = {};
 
     if (filters?.tenantId) {
-      baseFilters.cases = {
-        tenant_id: filters.tenantId,
-      };
+      baseFilters.tenant_id = filters.tenantId;
     }
 
     let whereClause: any;
@@ -1086,9 +1084,7 @@ export class ReportsService {
         };
 
         if (filters?.tenantId) {
-          caseTypeBaseFilters.cases = {
-            tenant_id: filters.tenantId,
-          };
+          caseTypeBaseFilters.tenant_id = filters.tenantId;
         }
 
         let caseTypeWhereClause: any;
@@ -1163,9 +1159,7 @@ export class ReportsService {
     };
 
     if (filters?.tenantId) {
-      recentClosedBaseFilters.cases = {
-        tenant_id: filters.tenantId,
-      };
+      recentClosedBaseFilters.tenant_id = filters.tenantId;
     }
 
     let recentClosedWhereClause: any;
