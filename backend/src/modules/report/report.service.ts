@@ -1086,7 +1086,7 @@ export class ReportsService {
         };
 
         if (filters?.tenantId) {
-          caseTypeBaseFilters.alert = {
+          caseTypeBaseFilters.cases = {
             tenant_id: filters.tenantId,
           };
         }
@@ -1163,7 +1163,7 @@ export class ReportsService {
     };
 
     if (filters?.tenantId) {
-      recentClosedBaseFilters.alert = {
+      recentClosedBaseFilters.cases = {
         tenant_id: filters.tenantId,
       };
     }
