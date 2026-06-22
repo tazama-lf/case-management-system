@@ -459,7 +459,7 @@ describe('TransactionLakehouseService', () => {
       expect(result).toHaveProperty('transactionCreditorResp');
       expect(result).toHaveProperty('transactionDebtorResp');
       expect(alertRepository.getAlertById).toHaveBeenCalledWith(1);
-      expect(alertRepository.getReferenceId).toHaveBeenCalledWith('pacs.008.001.10');
+      expect(alertRepository.getReferenceId).toHaveBeenCalledWith('pacs.008.001.10', 'DEFAULT');
     });
 
     it('throws InternalServerErrorException when alert not found', async () => {

@@ -230,11 +230,11 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 { key: 'evidence', label: 'Evidence' },
                 ...(shouldShowVisualizations === true
                   ? ([
-                      {
-                        key: 'visualizations',
-                        label: 'Visualizations',
-                      },
-                    ] as const)
+                    {
+                      key: 'visualizations',
+                      label: 'Visualizations',
+                    },
+                  ] as const)
                   : []),
                 { key: 'notes', label: 'Investigation Notes' },
                 { key: 'summary', label: 'Investigation Summary' },

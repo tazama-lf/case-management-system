@@ -95,7 +95,7 @@ export class TaskService {
 
         let investigationNote: string | undefined;
         if (updateData.investigationNotes !== undefined && existingTask.investigationNotes !== null) {
-          investigationNote = `${existingTask.investigationNotes}\n\n[${new Date().toISOString()}] Completion Notes: ${updateData.investigationNotes}`;
+          investigationNote = `${existingTask.investigationNotes}\n\n Completion Notes: ${updateData.investigationNotes}`;
         } else {
           investigationNote = updateData.investigationNotes;
         }

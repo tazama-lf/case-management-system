@@ -48,7 +48,7 @@ export class AlertRepository extends BaseRepository {
     if (!transactionData.TxTp) {
       throw new Error('Invalid transaction data');
     }
-    const referenceIdData = await this.getReferenceId(transactionData.TxTp);
+    const referenceIdData = await this.getReferenceId(transactionData.TxTp, tenantId);
     const referenceId = extractReferenceId(transactionData as unknown as JsonValue, 10, 0, referenceIdData.referenceIdName);
     if (!referenceId) {
       throw new Error('ReferenceId not found in transaction data');
@@ -170,12 +170,13 @@ export class AlertRepository extends BaseRepository {
     return totalCount;
   }
 
-  async getReferenceId(txTp: string, tx?: Prisma.TransactionClient): Promise<{ referenceIdName: string }> {
+  async getReferenceId(txTp: string, tenantId: string, tx?: Prisma.TransactionClient): Promise<{ referenceIdName: string }> {
     try {
       const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
-      const referenceId = await client.referenceId.findUnique({
+      const referenceId = await client.referenceId.findFirst({
         where: {
           txTp,
+          tenant_id: tenantId,
         },
       });
 

@@ -74,6 +74,12 @@ vi.mock('../../../../shared/utils/exportUtils', () => ({
   getColumnsForReport: vi.fn(() => []),
 }));
 
+vi.mock('@/features/cases/hooks/useInvestigatorSupervisorList', () => ({
+  useInvestigatorSupervisorList: vi.fn(() => ({
+    getAssigneeFullName: vi.fn((id: string) => id),
+  })),
+}));
+
 // Mock window.alert
 global.alert = vi.fn();
 
@@ -202,6 +208,7 @@ describe('InvestigatorWorkloadReport', () => {
     expect(formatDataForExport).toHaveBeenCalledWith(
       mockWorkloadData.performanceData,
       'INVESTIGATOR_WORKLOAD',
+      expect.any(Function),
     );
     expect(exportToExcel).toHaveBeenCalled();
   });
@@ -222,6 +229,7 @@ describe('InvestigatorWorkloadReport', () => {
     expect(formatDataForExport).toHaveBeenCalledWith(
       mockWorkloadData.performanceData,
       'INVESTIGATOR_WORKLOAD',
+      expect.any(Function),
     );
     expect(exportToCSV).toHaveBeenCalled();
   });
@@ -243,6 +251,7 @@ describe('InvestigatorWorkloadReport', () => {
       expect(formatDataForExport).toHaveBeenCalledWith(
         mockWorkloadData.performanceData,
         'INVESTIGATOR_WORKLOAD',
+        expect.any(Function),
       );
       expect(getColumnsForReport).toHaveBeenCalledWith('INVESTIGATOR_WORKLOAD');
       expect(exportToPDF).toHaveBeenCalled();

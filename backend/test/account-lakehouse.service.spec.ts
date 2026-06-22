@@ -197,7 +197,7 @@ describe('AccountLakehouseService', () => {
         ]),
       );
       const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'month');
-      
+
       // Should have exactly 2 edges (not duplicated)
       expect(result.network.edges.length).toBe(2);
       // Total transactions should be 8 (5 + 3)
@@ -356,7 +356,7 @@ describe('AccountLakehouseService', () => {
 
       await service.getEntityMetadataByAlertId(1, 'DEFAULT');
 
-      expect(alertRepo.getReferenceId).toHaveBeenCalledWith('pacs.008.001.10');
+      expect(alertRepo.getReferenceId).toHaveBeenCalledWith('pacs.008.001.10', 'DEFAULT');
     });
   });
 });
