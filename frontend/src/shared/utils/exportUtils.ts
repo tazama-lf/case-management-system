@@ -369,7 +369,9 @@ export const formatDataForExport = (
               '',
           ),
           Investigator:
-            item.investigator ?? item.name ?? item.fullName ?? 'Unknown',
+            getAssigneeFullName?.(
+              String(item.investigator ?? item.name ?? item.fullName ?? 'N/A'),
+            ) ?? 'N/A',
           Role: item.role ?? 'Investigator',
           'Active Cases': item.activeCases ?? item.active_cases ?? 0,
           'Completed Cases': item.completedCases ?? item.completed_cases ?? 0,
