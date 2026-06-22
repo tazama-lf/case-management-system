@@ -14,6 +14,7 @@ import {
   formatDataForExport,
   getColumnsForReport,
 } from '../../../shared/utils/exportUtils';
+import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 
 interface InvestigatorWorkloadReportProps {
   dateRange: string;
@@ -22,6 +23,7 @@ interface InvestigatorWorkloadReportProps {
 const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
   dateRange,
 }) => {
+  const { getAssigneeFullName } = useInvestigatorSupervisorList();
   const {
     data: workloadData,
     isLoading,
@@ -83,6 +85,7 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
       const formattedData = formatDataForExport(
         performanceData,
         'INVESTIGATOR_WORKLOAD',
+        getAssigneeFullName
       );
       const filename = `investigator-workload-report-${new Date().toISOString().split('T')[0]}`;
       exportToExcel(formattedData, filename, 'Investigator Workload Report');
@@ -97,6 +100,7 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
       const formattedData = formatDataForExport(
         performanceData,
         'INVESTIGATOR_WORKLOAD',
+        getAssigneeFullName
       );
       const filename = `investigator-workload-report-${new Date().toISOString().split('T')[0]}`;
       exportToCSV(formattedData, filename);
@@ -111,6 +115,7 @@ const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
       const formattedData = formatDataForExport(
         performanceData,
         'INVESTIGATOR_WORKLOAD',
+        getAssigneeFullName
       );
       const filename = `investigator-workload-report-${new Date().toISOString().split('T')[0]}`;
       const columns = getColumnsForReport('INVESTIGATOR_WORKLOAD');
