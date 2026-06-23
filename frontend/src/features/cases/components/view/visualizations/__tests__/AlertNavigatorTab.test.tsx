@@ -59,6 +59,7 @@ describe('AlertNavigatorTab', () => {
           alertThreshold: 50,
           interdictionThreshold: 80,
           ruleCount: 2,
+          flowProcessorData: 'Block',
           rules: [],
         },
       ],
@@ -68,6 +69,8 @@ describe('AlertNavigatorTab', () => {
     render(<AlertNavigatorTab alertId={1} tenantId="DEFAULT" />);
     await waitFor(() => {
       expect(screen.getByText('Alert Navigator')).toBeInTheDocument();
+      expect(screen.getByText('EFRuP:')).toBeInTheDocument();
+      expect(screen.getByText('Block')).toBeInTheDocument();
     });
   });
 });

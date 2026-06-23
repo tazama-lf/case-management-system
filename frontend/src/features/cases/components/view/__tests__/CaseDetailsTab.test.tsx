@@ -21,6 +21,30 @@ vi.mock('../../../services/evidenceService', () => ({
   },
 }));
 
+const mockGetInvestigationTaskForCase = vi.fn();
+vi.mock('../../../services/taskService', () => ({
+  taskService: {
+    getInvestigationTaskForCase: (...args: any[]) =>
+      mockGetInvestigationTaskForCase(...args),
+  },
+}));
+
+vi.mock('../../../hooks/useInvestigatorSupervisorList', () => ({
+  default: () => ({
+    supervisors: [],
+    investigators: [],
+    complianceOfficers: [],
+    loadingInvestigators: false,
+    loadingSupervisors: false,
+    fetchInvestigatorsList: vi.fn(),
+    fetchSupervisorsList: vi.fn(),
+    fetchComplianceOfficersList: vi.fn(),
+    getAssigneeFullName: (assignee?: string) =>
+      assignee === 'user-1' ? 'John Doe' : (assignee ?? 'N/A'),
+    clearCache: vi.fn(),
+  }),
+}));
+
 vi.mock('../CaseActionsPanel', () => ({
   default: () => <div data-testid="case-actions-panel" />,
 }));
@@ -63,6 +87,15 @@ describe('CaseDetailsTab', () => {
     vi.clearAllMocks();
     mockGetCaseEvidence.mockResolvedValue({ evidence: [] });
     mockGetAlertTransactionalData.mockResolvedValue([]);
+    mockGetInvestigationTaskForCase.mockResolvedValue({
+      task_id: 1,
+      case_id: 123,
+      status: 'STATUS_20_IN_PROGRESS',
+      assigned_user_id: 'user-1',
+      name: 'Investigate Case',
+      created_at: '2024-01-01',
+      updated_at: '2024-01-01',
+    });
   });
 
   it('renders case details', async () => {
@@ -211,6 +244,92 @@ describe('CaseDetailsTab', () => {
     await waitFor(() => {
       expect(screen.getByText('Sub Case Information')).toBeInTheDocument();
       expect(screen.getByText('201')).toBeInTheDocument();
+    });
+  });
+
+  it('shows investigation assignee from the investigation task', async () => {
+    render(
+      <CaseDetailsTab
+        row={mockCaseRow}
+        subCasesDetails={undefined}
+        parentCaseDetails={null}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockGetInvestigationTaskForCase).toHaveBeenCalledWith(123);
+      expect(screen.getByText('Assignee')).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+    });
+  });
+
+  it('shows Unassigned when the investigation task has no assignee', async () => {
+    mockGetInvestigationTaskForCase.mockResolvedValueOnce({
+      task_id: 1,
+      case_id: 123,
+      status: 'STATUS_01_UNASSIGNED',
+      assigned_user_id: null,
+      name: 'Investigate Case',
+      created_at: '2024-01-01',
+      updated_at: '2024-01-01',
+    });
+
+    render(
+      <CaseDetailsTab
+        row={mockCaseRow}
+        subCasesDetails={undefined}
+        parentCaseDetails={null}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Unassigned')).toBeInTheDocument();
+    });
+  });
+
+  it('hides parent assignee for FRAUD_AND_AML and shows subcase assignees', async () => {
+    const famlRow = { ...mockCaseRow, type: 'FRAUD_AND_AML' };
+    const subCases = [
+      {
+        id: 201,
+        type: 'AML',
+        typeColor: 'bg-purple-50',
+        status: 'STATUS_22_PENDING_FINAL_APPROVAL',
+        statusColor: 'bg-purple-50',
+      },
+      {
+        id: 202,
+        type: 'FRAUD',
+        typeColor: 'bg-red-50',
+        status: 'STATUS_20_IN_PROGRESS',
+        statusColor: 'bg-blue-50',
+      },
+    ] as CaseRow[];
+
+    mockGetInvestigationTaskForCase.mockImplementation(async (caseId) => ({
+      task_id: caseId,
+      case_id: caseId,
+      status: 'STATUS_20_IN_PROGRESS',
+      assigned_user_id: caseId === 201 ? 'user-1' : null,
+      name: 'Investigate Case',
+      created_at: '2024-01-01',
+      updated_at: '2024-01-01',
+    }));
+
+    render(
+      <CaseDetailsTab
+        row={famlRow}
+        subCasesDetails={subCases}
+        parentCaseDetails={null}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockGetInvestigationTaskForCase).not.toHaveBeenCalledWith(123);
+      expect(mockGetInvestigationTaskForCase).toHaveBeenCalledWith(201);
+      expect(mockGetInvestigationTaskForCase).toHaveBeenCalledWith(202);
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.getByText('Unassigned')).toBeInTheDocument();
     });
   });
 

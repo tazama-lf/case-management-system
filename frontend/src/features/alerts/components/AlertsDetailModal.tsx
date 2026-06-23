@@ -660,7 +660,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                             : "text-gray-600 hover:text-gray-900"
                           }`}
                       >
-                        Alert Data
+                        Evaluation Response Data
                       </button>
                     </div>
 

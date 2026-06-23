@@ -181,7 +181,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       // Query 1: Fetch EVENT rows with transaction details
       const eventsResponse = await this.runSqlQuery(
         `
-        SELECT DISTINCT th.end_to_end_id, th.tx_msg_id, th.end_to_end_id, th.transaction_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td.debtor_name, td.creditor_name FROM transaction_history th LEFT JOIN transaction_detail td ON th.transaction_id = td.transaction_id AND th.tenant_id = td.tenant_id WHERE th.row_type = 'EVENT' AND th.entity_id = $1 AND th.tenant_id = $2 AND td.debtor_name IS NOT NULL AND td.creditor_name IS NOT NULL ORDER BY th.event_date DESC
+        SELECT DISTINCT th.end_to_end_id, th.tx_msg_id, th.end_to_end_id, th.transaction_id, td.tx_event_ts as event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td.debtor_name, td.creditor_name FROM transaction_history th LEFT JOIN transaction_detail td ON th.transaction_id = td.transaction_id AND th.tenant_id = td.tenant_id WHERE th.row_type = 'EVENT' AND th.entity_id = $1 AND th.tenant_id = $2 AND td.debtor_name IS NOT NULL AND td.creditor_name IS NOT NULL ORDER BY event_date DESC
         `,
         1000,
         [accountId, tenantId],
@@ -738,13 +738,12 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       }
 
       const transactionCreditorSql = `
-      SELECT DISTINCT th.tx_msg_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.creditor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.creditor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = $1 AND td_src.tenant_id = $2 AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC`;
+      SELECT DISTINCT th.tx_msg_id, td_src.tx_event_ts as event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.creditor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.creditor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = $1 AND td_src.tenant_id = $2 AND td_src.tx_type = 'pacs.008.001.10' ORDER BY event_date DESC`;
 
       const transactionCreditorResp = await this.runSqlQuery(transactionCreditorSql, 1000, [referenceId, tenantId], userJwt);
 
       const transactionDebtorSql = `
-      SELECT DISTINCT th.tx_msg_id, th.event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.debtor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.debtor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = $1 AND td_src.tenant_id = $2 AND td_src.tx_type = 'pacs.008.001.10' ORDER BY th.event_date DESC`;
-
+      SELECT DISTINCT th.tx_msg_id, td_src.tx_event_ts as event_date, th.tx_amount, th.tx_ccy, th.tx_type, th.is_alerted, th.is_investigated, th.cum_tx_count, th.cum_tx_amount, th.entity_role, td_src.debtor_name, th.entity_id, th.entity_type FROM transaction_detail td_src INNER JOIN transaction_history th ON th.entity_id IN (td_src.debtor_id) AND th.tenant_id = td_src.tenant_id AND th.row_type = 'EVENT' WHERE td_src.end_to_end_id = $1 AND td_src.tenant_id = $2 AND td_src.tx_type = 'pacs.008.001.10' ORDER BY event_date DESC`;
       const transactionDebtorResp = await this.runSqlQuery(transactionDebtorSql, 1000, [referenceId, tenantId], userJwt);
       return {
         tenantId,

@@ -63,8 +63,8 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
 
         setError(
           err?.response?.data?.message ||
-            err?.message ||
-            'Something went wrong while fetching profile',
+          err?.message ||
+          'Something went wrong while fetching profile',
         );
       } finally {
         setLoading(false);
@@ -229,11 +229,10 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
             onClick={() => {
               setActiveTab('creditor');
             }}
-            className={`px-4 py-1.5 text-sm rounded-md transition ${
-              activeTab === 'creditor'
+            className={`px-4 py-1.5 text-sm rounded-md transition ${activeTab === 'creditor'
                 ? 'bg-white shadow text-blue-600 font-medium'
                 : 'text-gray-600 hover:text-gray-800'
-            }`}
+              }`}
           >
             Creditor
           </button>
@@ -242,11 +241,10 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
             onClick={() => {
               setActiveTab('debtor');
             }}
-            className={`px-4 py-1.5 text-sm rounded-md transition ${
-              activeTab === 'debtor'
+            className={`px-4 py-1.5 text-sm rounded-md transition ${activeTab === 'debtor'
                 ? 'bg-white shadow text-blue-600 font-medium'
                 : 'text-gray-600 hover:text-gray-800'
-            }`}
+              }`}
           >
             Debtor
           </button>
@@ -471,7 +469,14 @@ const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
                       (tx: Transaction, index: number) => (
                         <tr key={index} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-sm text-gray-900">
-                            {new Date(tx.event_date).toLocaleDateString()}
+                            {new Date(tx.event_date).toLocaleString('sv-SE', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                            })}
                           </td>
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">
                             {Number(tx.tx_amount).toLocaleString()}

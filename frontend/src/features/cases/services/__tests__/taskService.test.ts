@@ -85,6 +85,35 @@ describe('taskService', () => {
       expect(result?.task_id).toBe('TASK-1');
     });
 
+    it('gets investigate case task for case', async () => {
+      const mockTasks = [
+        {
+          task_id: 'TASK-1',
+          case_id: 'CASE-123',
+          name: 'Complete New Case',
+          status: 'STATUS_30_COMPLETED',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        {
+          task_id: 'TASK-2',
+          case_id: 'CASE-123',
+          name: 'Investigate Case',
+          status: 'STATUS_20_IN_PROGRESS',
+          assigned_user_id: 'user-1',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+      ];
+      (apiClient.get as vi.Mock).mockResolvedValue(mockTasks);
+
+      const result = await taskService.getInvestigationTaskForCase('CASE-123');
+
+      expect(result).toBeDefined();
+      expect(result?.task_id).toBe('TASK-2');
+      expect(result?.assigned_user_id).toBe('user-1');
+    });
+
     it('returns null when no investigation task found', async () => {
       const mockTasks = [
         {
