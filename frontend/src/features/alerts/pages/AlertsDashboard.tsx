@@ -305,7 +305,7 @@ const AlertsDashboard: React.FC = () => {
     return 'Triage and investigate alerts, convert to cases, and manage alert workflows';
   };
 
-  if (loading && alerts.length === 0) {
+  if (loading && alerts.length === 0 && !lastUpdated) {
     return (
       <PageContainer title="Alerts Dashboard" subtitle={getSubtitle()}>
         <AlertsTableSkeleton rows={pagination.pageSize} />

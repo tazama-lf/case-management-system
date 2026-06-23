@@ -69,9 +69,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
   const getTypologyKey = (
     typology: AlertNavigatorDto['typologies'][number],
     index: number,
-  ) => {
-    return `${typology.typologyId ?? 'no-id'}-${typology.typologyCfg ?? 'no-cfg'}-${index}`;
-  };
+  ) => `${typology.typologyId ?? 'no-id'}-${typology.typologyCfg ?? 'no-cfg'}-${index}`;
 
   const toggleTypology = (typologyKey: string) => {
     setExpandedTypologyKey((prev) =>
@@ -258,7 +256,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                   className="rounded-lg border border-gray-200 bg-gray-50"
                 >
                   <button
-                    onClick={() => toggleTypology(typologyKey)}
+                    onClick={() => { toggleTypology(typologyKey); }}
                     className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex items-center gap-3 flex-1">

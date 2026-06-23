@@ -129,6 +129,20 @@ describe('AlertsSearchAndFilters', () => {
 
   it('saves current filters successfully', async () => {
     (filterService.createFilter as vi.Mock).mockResolvedValue({});
+    (filterService.getFilters as vi.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          filter_Id: 7,
+          user_filters: JSON.stringify({
+            alertType: '',
+            priority: 'URGENT',
+            source: '',
+            timeRange: '',
+          }),
+        },
+      ]);
+
     renderComponent({ priority: 'URGENT' });
 
     await userEvent.click(screen.getByRole('button', { name: /filters/i }));
@@ -148,6 +162,13 @@ describe('AlertsSearchAndFilters', () => {
         expect.any(String),
       );
     });
+
+    expect(filterService.getFilters).toHaveBeenCalledTimes(2);
+    expect(
+      await screen.findByRole('option', {
+        name: /ALL TYPES - URGENT - ALL SOURCES - ALL TIME/i,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('handles save filter error', async () => {

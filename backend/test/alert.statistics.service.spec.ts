@@ -152,6 +152,22 @@ describe('AlertStatisticsService', () => {
         ).rejects.toThrow(new BadRequestException('Invalid alertType: INVALID_TYPE'));
       });
 
+      it('should throw BadRequestException when date range values are invalid', async () => {
+        await expect(
+          service.getAlertsForUser({
+            ...defaultParams,
+            startDate: 'not-a-date',
+          }),
+        ).rejects.toThrow(new BadRequestException('Invalid startDate: not-a-date'));
+
+        await expect(
+          service.getAlertsForUser({
+            ...defaultParams,
+            endDate: 'still-not-a-date',
+          }),
+        ).rejects.toThrow(new BadRequestException('Invalid endDate: still-not-a-date'));
+      });
+
       it('should accept all valid sortBy fields', async () => {
         alertRepository.findMany.mockResolvedValue(mockAlerts);
         alertRepository.count.mockResolvedValue(2);
@@ -253,6 +269,30 @@ describe('AlertStatisticsService', () => {
           expect.objectContaining({
             where: expect.objectContaining({
               source: 'system-a',
+            }),
+          }),
+        );
+      });
+    });
+
+    describe('Filter by date range', () => {
+      it('should filter alerts by created_at range', async () => {
+        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
+        alertRepository.count.mockResolvedValue(1);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          startDate: '2026-01-01T00:00:00.000Z',
+          endDate: '2026-01-31T23:59:59.999Z',
+        });
+
+        expect(alertRepository.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              created_at: {
+                gte: new Date('2026-01-01T00:00:00.000Z'),
+                lte: new Date('2026-01-31T23:59:59.999Z'),
+              },
             }),
           }),
         );
@@ -362,6 +402,25 @@ describe('AlertStatisticsService', () => {
         );
       });
 
+      it('should search by displayed ALERT-prefixed alert id', async () => {
+        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
+        alertRepository.count.mockResolvedValue(1);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search: 'ALERT-123',
+        });
+
+        expect(alertRepository.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              OR: expect.arrayContaining([{ alert_id: { equals: 123 } }, { case_id: { equals: 123 } }]),
+            }),
+          }),
+        );
+      });
+
+
       it('should search by priority when search matches priority value', async () => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
@@ -411,8 +470,8 @@ describe('AlertStatisticsService', () => {
         expect(callArgs.where?.OR).toHaveLength(4); // txtp, source, alert_id, case_id
         expect(callArgs.where?.OR).toEqual(
           expect.arrayContaining([
-            { txtp: { contains: 100, mode: 'insensitive' } },
-            { source: { contains: 100, mode: 'insensitive' } },
+            { txtp: { contains: '100', mode: 'insensitive' } },
+            { source: { contains: '100', mode: 'insensitive' } },
             { alert_id: { equals: 100 } },
             { case_id: { equals: 100 } },
           ]),

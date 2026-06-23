@@ -138,10 +138,10 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
         const parsed = JSON.parse(f.user_filters ?? '{}');
 
         const baseName = [
-          parsed.alertType ?? 'ALL TYPES',
-          parsed.priority ?? 'ALL PRIORITIES',
-          parsed.source ?? 'ALL SOURCES',
-          parsed.timeRange ?? 'ALL TIME',
+          parsed.alertType || 'ALL TYPES',
+          parsed.priority || 'ALL PRIORITIES',
+          parsed.source || 'ALL SOURCES',
+          parsed.timeRange || 'ALL TIME',
         ]
           .join(' - ')
           .toUpperCase();
@@ -240,6 +240,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
         }),
       };
       await filterService.createFilter(payload);
+      await fetchSavedFilters();
 
       success(
         'Filter Created',
