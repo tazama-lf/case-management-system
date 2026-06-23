@@ -75,6 +75,8 @@ class TriageService {
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.sortBy) params.append('sortBy', filters.sortBy);
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
 
     params.append('includeData', 'true');
 

@@ -91,19 +91,12 @@ describe('useAlerts', () => {
     expect(result.current.pagination.currentPage).toBe(2);
   });
 
-  it('filters alerts by query string', async () => {
-    const alert1 = {
-      ...uiAlert,
-      alert_id: 'ALERT-1',
-      message: 'Fraud detected',
-    };
-    const alert2 = { ...uiAlert, alert_id: 'ALERT-2', message: 'AML check' };
-
-    mockService.getAlerts.mockResolvedValueOnce({
-      alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
-      pagination: { totalItems: 2, totalPages: 1 },
+  it('sends query search to the server', async () => {
+    mockService.getAlerts.mockResolvedValue({
+      alerts: [backendAlert],
+      pagination: { totalItems: 1, totalPages: 1 },
     });
-    mockTransformer.mockReturnValueOnce(alert1).mockReturnValueOnce(alert2);
+    mockTransformer.mockReturnValue(uiAlert);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -113,10 +106,9 @@ describe('useAlerts', () => {
     });
 
     await waitFor(() => {
-      const filtered = result.current.filteredAlerts;
-      expect(
-        filtered.some((a) => a.message?.toLowerCase().includes('fraud')),
-      ).toBe(true);
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'fraud' }),
+      );
     });
   });
 
@@ -192,24 +184,12 @@ describe('useAlerts', () => {
     });
   });
 
-  it('filters alerts by time range - today', async () => {
-    const today = new Date();
-    const todayAlert = { ...uiAlert, created_at: today.toISOString() };
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayAlert = {
-      ...uiAlert,
-      alert_id: 'ALERT-2',
-      created_at: yesterday.toISOString(),
-    };
-
-    mockService.getAlerts.mockResolvedValueOnce({
-      alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
-      pagination: { totalItems: 2, totalPages: 1 },
+  it('sends today time range dates to the server', async () => {
+    mockService.getAlerts.mockResolvedValue({
+      alerts: [backendAlert],
+      pagination: { totalItems: 1, totalPages: 1 },
     });
-    mockTransformer
-      .mockReturnValueOnce(todayAlert)
-      .mockReturnValueOnce(yesterdayAlert);
+    mockTransformer.mockReturnValue(uiAlert);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -219,28 +199,23 @@ describe('useAlerts', () => {
     });
 
     await waitFor(() => {
-      const filtered = result.current.filteredAlerts;
-      expect(filtered.length).toBeGreaterThan(0);
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({
+          startDate: expect.any(String),
+          endDate: expect.any(String),
+        }),
+      );
     });
   });
 
-  it('filters alerts by custom date range', async () => {
+  it('sends custom date range to the server', async () => {
     const startDate = '2024-01-01';
     const endDate = '2024-01-31';
-    const inRangeAlert = { ...uiAlert, created_at: '2024-01-15T00:00:00Z' };
-    const outOfRangeAlert = {
-      ...uiAlert,
-      alert_id: 'ALERT-2',
-      created_at: '2024-02-15T00:00:00Z',
-    };
-
-    mockService.getAlerts.mockResolvedValueOnce({
-      alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
-      pagination: { totalItems: 2, totalPages: 1 },
+    mockService.getAlerts.mockResolvedValue({
+      alerts: [backendAlert],
+      pagination: { totalItems: 1, totalPages: 1 },
     });
-    mockTransformer
-      .mockReturnValueOnce(inRangeAlert)
-      .mockReturnValueOnce(outOfRangeAlert);
+    mockTransformer.mockReturnValue(uiAlert);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -253,8 +228,12 @@ describe('useAlerts', () => {
     });
 
     await waitFor(() => {
-      const filtered = result.current.filteredAlerts;
-      expect(filtered.length).toBeGreaterThan(0);
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({
+          startDate: expect.any(String),
+          endDate: expect.any(String),
+        }),
+      );
     });
   });
 
@@ -367,18 +346,12 @@ describe('useAlerts', () => {
     expect(result.current.pagination.currentPage).toBe(1);
   });
 
-  it('searches in transaction JSON and network map', async () => {
-    const alertWithTransaction = {
-      ...uiAlert,
-      transaction: { id: 'tx-123', amount: 1000 },
-      network_map: { nodes: [{ id: 'node-1' }] },
-    };
-
-    mockService.getAlerts.mockResolvedValueOnce({
+  it('sends transaction-like search terms to the server', async () => {
+    mockService.getAlerts.mockResolvedValue({
       alerts: [backendAlert],
       pagination: { totalItems: 1, totalPages: 1 },
     });
-    mockTransformer.mockReturnValue(alertWithTransaction);
+    mockTransformer.mockReturnValue(uiAlert);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -388,8 +361,9 @@ describe('useAlerts', () => {
     });
 
     await waitFor(() => {
-      const filtered = result.current.filteredAlerts;
-      expect(filtered.length).toBeGreaterThan(0);
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'tx-123' }),
+      );
     });
   });
 

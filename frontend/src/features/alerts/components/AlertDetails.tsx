@@ -360,7 +360,7 @@ const AlertDetailsHistory: React.FC<AlertDetailsHistoryProps> = ({
 
   // Helper function to extract username from action_performed string
   const extractUsername = (actionPerformed: string): string | null => {
-    const match = actionPerformed.match(/Triaged by user (.+)$/);
+    const match = /Triaged by user (.+)$/.exec(actionPerformed);
     return match ? match[1] : null;
   };
 

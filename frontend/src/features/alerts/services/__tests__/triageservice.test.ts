@@ -66,6 +66,8 @@ describe('triageService', () => {
         limit: 20,
         sortBy: 'created_at',
         sortOrder: 'desc',
+        startDate: '2024-01-01T00:00:00.000Z',
+        endDate: '2024-01-31T23:59:59.999Z',
       });
 
       expect(mockApi.get).toHaveBeenCalledWith(
@@ -97,6 +99,12 @@ describe('triageService', () => {
       );
       expect(mockApi.get).toHaveBeenCalledWith(
         expect.stringContaining('sortOrder=desc'),
+      );
+      expect(mockApi.get).toHaveBeenCalledWith(
+        expect.stringContaining('startDate=2024-01-01T00%3A00%3A00.000Z'),
+      );
+      expect(mockApi.get).toHaveBeenCalledWith(
+        expect.stringContaining('endDate=2024-01-31T23%3A59%3A59.999Z'),
       );
     });
 

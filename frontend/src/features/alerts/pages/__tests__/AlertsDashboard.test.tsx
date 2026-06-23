@@ -156,10 +156,27 @@ describe('AlertsDashboard', () => {
       ...mockUseAlerts,
       loading: true,
       paginatedAlerts: [],
+      lastUpdated: null,
     });
     render(<AlertsDashboard />);
     // The skeleton should be rendered by AlertsTableSkeleton
     expect(screen.getByText('Alerts Dashboard')).toBeInTheDocument();
+  });
+
+  it('keeps filter controls mounted during empty post-load refetches', () => {
+    (useAlerts as vi.Mock).mockReturnValue({
+      ...mockUseAlerts,
+      loading: true,
+      paginatedAlerts: [],
+      lastUpdated: new Date(),
+    });
+
+    render(<AlertsDashboard />);
+
+    expect(
+      screen.getByPlaceholderText(/search by alert id/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /filters/i })).toBeInTheDocument();
   });
 
   it('displays error fallback when error occurs and no alerts', () => {
