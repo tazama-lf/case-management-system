@@ -24,9 +24,6 @@ vi.mock('../view/TaskEvidenceTab', () => ({
   ),
 }));
 
-vi.mock('../view/LinkedItemsTab', () => ({
-  default: () => <div>Linked Items Tab</div>,
-}));
 
 vi.mock('../view/InvestigationNotesTab', () => ({
   default: ({ onNotesUpdate }: any) => (
@@ -202,7 +199,6 @@ describe('TasksDetailsModal', () => {
   it('renders all tab buttons', () => {
     renderModal({});
     expect(screen.getAllByText('Task Details')[0]).toBeInTheDocument();
-    expect(screen.getByText('Linked Items')).toBeInTheDocument();
     expect(screen.getByText('Evidence')).toBeInTheDocument();
     expect(screen.getByText('Visualizations')).toBeInTheDocument();
     expect(screen.getByText('Investigation Notes')).toBeInTheDocument();
@@ -229,14 +225,6 @@ describe('TasksDetailsModal', () => {
 
     await user.click(screen.getByText('Evidence'));
     expect(screen.getByText('Task Evidence Tab')).toBeInTheDocument();
-  });
-
-  it('switches to Linked Items tab', async () => {
-    const user = userEvent.setup();
-    renderModal({});
-
-    await user.click(screen.getByText('Linked Items'));
-    expect(screen.getByText('Linked Items Tab')).toBeInTheDocument();
   });
 
   it('switches to Visualizations tab', async () => {
@@ -309,7 +297,7 @@ describe('TasksDetailsModal', () => {
   });
 
   it('handles parent case details fetch error', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockGetCaseDetails.mockRejectedValue(new Error('fetch failed'));
 
     renderModal({ row: mockCaseWithParent });
@@ -324,7 +312,7 @@ describe('TasksDetailsModal', () => {
   });
 
   it('handles task fetch error gracefully', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockGetTasksByCaseId.mockRejectedValue(new Error('task fetch failed'));
 
     renderModal({});

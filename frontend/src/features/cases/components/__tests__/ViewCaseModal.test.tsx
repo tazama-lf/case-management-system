@@ -54,6 +54,11 @@ vi.mock('../view/TaskLogTab', () => ({
 vi.mock('../view/CollaboratePanel', () => ({
   default: () => <div>Collaborate Panel</div>,
 }));
+
+vi.mock('../view/LinkedItemsTab', () => ({
+  default: () => <div>Linked Items Tab</div>,
+}));
+
 vi.mock('../view/CommentHistoryTab', () => ({
   default: () => <div>Comments History Tab</div>,
 }));
@@ -178,6 +183,7 @@ describe('ViewCaseModal', () => {
       1,
     );
     expect(screen.getByText('Task Log')).toBeInTheDocument();
+    expect(screen.getByText('Linked Items')).toBeInTheDocument();
     expect(screen.getByText('Case History')).toBeInTheDocument();
     expect(screen.getByText('Comments History')).toBeInTheDocument();
   });
@@ -195,6 +201,20 @@ describe('ViewCaseModal', () => {
 
     await user.click(screen.getByText('Task Log'));
     expect(screen.getByText('Task Log Tab')).toBeInTheDocument();
+  });
+
+  it('switches to Linked Items tab', async () => {
+    const user = userEvent.setup();
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+    await user.click(screen.getByText('Linked Items'));
+    expect(screen.getByText('Linked Items Tab')).toBeInTheDocument();
   });
 
   it('switches to Case History tab', async () => {
@@ -307,7 +327,7 @@ describe('ViewCaseModal', () => {
   });
 
   it('handles getCaseDetails error gracefully', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockGetCaseDetails.mockRejectedValue(new Error('fetch failed'));
 
     render(
@@ -329,7 +349,7 @@ describe('ViewCaseModal', () => {
   });
 
   it('handles getSubCasesDetails error gracefully', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockGetSubCasesDetails.mockRejectedValue(new Error('sub-cases failed'));
 
     render(
