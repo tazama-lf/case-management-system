@@ -105,6 +105,15 @@ describe('AlertsLakehouseService', () => {
                     rule_processing_time_ms: 500,
                     rule_tenant_id: 'DEFAULT',
                   },
+                  {
+                    rule_id: 'EFRuP@1.0.0',
+                    rule_cfg: 'none',
+                    rule_weight: 0,
+                    rule_independent_variable: 'Block',
+                    rule_sub_ref: 'Block',
+                    rule_processing_time_ms: 500,
+                    rule_tenant_id: 'DEFAULT',
+                  },
                 ],
               },
             ],
@@ -133,6 +142,7 @@ describe('AlertsLakehouseService', () => {
       const parsedRules = JSON.parse(result.typologies[0].rules);
       expect(parsedRules).toHaveLength(2);
       expect(parsedRules[0].ruleId).toBe('rule-001');
+      expect(result.typologies[0].flowProcessorData).toBe('Block');
 
       expect(result.statistics.totalTypologies).toBe(1);
       expect(result.statistics.totalRules).toBe(2);

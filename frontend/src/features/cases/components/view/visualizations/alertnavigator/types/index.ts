@@ -3,6 +3,7 @@ export interface RuleDetailDto {
   ruleWeight: number;
   subRef?: string;
   independentVariable?: string;
+  data?: unknown;
 }
 
 export interface TypologyDto {
@@ -12,6 +13,7 @@ export interface TypologyDto {
   alertThreshold: number;
   interdictionThreshold: number;
   ruleCount: number;
+  flowProcessorData?: string;
   rules: RuleDetailDto[]; // Parsed from JSON string
 }
 

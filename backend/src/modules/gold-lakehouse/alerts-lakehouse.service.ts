@@ -15,10 +15,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     super(httpService, configService);
   }
 
-  /**
-   * Escapes a string value for safe use in SQL queries.
-   * Replaces single quotes with two single quotes to prevent SQL injection.
-   */
   private escapeSqlString(value: string): string {
     // Escape single quotes by doubling them and wrap in quotes
     // prettier-ignore
@@ -59,7 +55,10 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             FROM alert_navigator_rules anr
             WHERE anr.alert_id  = ${safeAlertId}
               AND anr.tenant_id = '${safeTenantId}'
-              AND anr.rule_weight > 0
+              AND (
+                anr.rule_weight > 0
+                OR anr.rule_id = 'EFRuP@1.0.0'
+              )
             GROUP BY
                 anr.alert_id,
                 anr.tenant_id,
@@ -170,14 +169,17 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         .filter((t) => t.typology_id !== null)
         .map((t) => {
           const rulesData = this.safeParseArray<RawRuleRow>(t.rules);
+          const flowProcessorRule = rulesData.find((r) => r.rule_id === 'EFRuP@1.0.0');
+          const triggeredRulesData = rulesData.filter((r) => (r.rule_weight ?? 0) > 0);
           const rulesString = JSON.stringify(
-            rulesData.map((r) => ({
+            triggeredRulesData.map((r) => ({
               ruleId: r.rule_id,
               ruleWeight: r.rule_weight,
               subRef: r.rule_sub_ref,
               independentVariable: r.rule_independent_variable,
             })),
           );
+          const flowProcessorData = flowProcessorRule?.rule_sub_ref ?? undefined;
 
           return {
             typologyId: t.typology_id ?? '',
@@ -186,6 +188,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             alertThreshold: t.alert_threshold ?? 0,
             interdictionThreshold: t.interdiction_threshold ?? 0,
             ruleCount: t.rule_count_in_typology ?? 0,
+            flowProcessorData,
             rules: rulesString,
           };
         });

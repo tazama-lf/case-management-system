@@ -258,7 +258,9 @@ describe("AlertsDetailModal", () => {
       expect(screen.getByText("Alert Details")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /alert data/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /evaluation response data/i }),
+    );
 
     expect(screen.getByText(/reason/i)).toBeInTheDocument();
     expect(screen.getByText(/Suspicious activity detected/i)).toBeInTheDocument();
@@ -289,7 +291,9 @@ describe("AlertsDetailModal", () => {
       expect(screen.getByText("Alert Details")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /alert data/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /evaluation response data/i }),
+    );
 
     expect(screen.getByText("No alert data")).toBeInTheDocument();
   });

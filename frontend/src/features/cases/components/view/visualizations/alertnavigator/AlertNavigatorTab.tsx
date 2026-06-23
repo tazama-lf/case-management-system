@@ -133,6 +133,10 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
     );
   }
 
+  const flowProcessorData = data.typologies?.find(
+    (typology) => typology.flowProcessorData,
+  )?.flowProcessorData;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -229,9 +233,18 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <h4 className="text-sm font-semibold text-gray-900 mb-4">
-          Triggered Typologies
-        </h4>
+        <div className="mb-4 grid grid-cols-3 items-center">
+          <h4 className="text-sm font-semibold text-gray-900">
+            Triggered Typologies
+          </h4>
+
+          {flowProcessorData && (
+            <div className="justify-self-center text-sm font-semibold">
+              <span className="text-gray-900">EFRuP:</span>{' '}
+              <span className="text-red-600">{flowProcessorData}</span>
+            </div>
+          )}
+        </div>
 
         <div className="space-y-3">
           {data.typologies && data.typologies.length > 0 ? (

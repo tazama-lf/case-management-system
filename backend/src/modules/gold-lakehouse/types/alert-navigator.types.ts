@@ -18,6 +18,7 @@ export interface AlertNavigatorDataResponse {
     alertThreshold: number;
     interdictionThreshold: number;
     ruleCount: number;
+    flowProcessorData?: string;
     rules: string;
   }>;
   statistics: {

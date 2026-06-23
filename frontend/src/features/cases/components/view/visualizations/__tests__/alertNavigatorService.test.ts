@@ -37,7 +37,8 @@ describe('AlertNavigatorService', () => {
           typologyId: 'typ-1',
           name: 'ML',
           score: 90,
-          rules: [{ ruleId: 'r1', name: 'Rule 1' }],
+          flowProcessorData: 'Block',
+          rules: [{ ruleId: 'r1', name: 'Rule 1', data: 'Rule data' }],
         },
       ],
     };
@@ -45,7 +46,8 @@ describe('AlertNavigatorService', () => {
 
     const result = await alertNavigatorService.getAlertNavigator(1, 'T1');
     expect(result.typologies[0].rules).toEqual([
-      { ruleId: 'r1', name: 'Rule 1' },
+      { ruleId: 'r1', name: 'Rule 1', data: 'Rule data' },
     ]);
+    expect(result.typologies[0].flowProcessorData).toBe('Block');
   });
 });

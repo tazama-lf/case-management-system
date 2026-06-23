@@ -281,9 +281,11 @@ export class TaskService {
   ): Promise<TaskForSupervisor | null> {
     try {
       const tasks = await this.getTasksByCaseId(caseId);
-      // Find investigation task
+      // Find investigation task. Backend task names currently use "Investigate Case".
       const investigationTask = tasks.find((t) =>
-        t.name?.toLowerCase().includes('investigation'),
+        ['investigate', 'investigation'].some((keyword) =>
+          t.name?.toLowerCase().includes(keyword),
+        ),
       );
       return investigationTask ?? null;
     } catch (error: unknown) {

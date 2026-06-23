@@ -10,6 +10,8 @@ import {
   DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { evidenceService } from '../../services/evidenceService';
+import { taskService } from '../../services/taskService';
+import useInvestigatorSupervisorList from '../../hooks/useInvestigatorSupervisorList';
 
 interface CaseDetailsTabProps {
   row: CaseRow;
@@ -65,6 +67,9 @@ interface LatestReport {
   reportId: string;
 }
 
+const shouldShowInvestigationAssignee = (caseType?: string): boolean =>
+  caseType === 'FRAUD' || caseType === 'AML';
+
 const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   row,
   subCasesDetails,
@@ -96,6 +101,10 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     Record<string, LatestReport | null>
   >({});
   const [loading, setLoading] = useState(false);
+  const [investigationAssignees, setInvestigationAssignees] = useState<
+    Record<number, string | null>
+  >({});
+  const { getAssigneeFullName } = useInvestigatorSupervisorList();
 
   useEffect(() => {
     setLatestReports({});
@@ -261,6 +270,85 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     loadReport();
   }, [loadReport]);
 
+  useEffect(() => {
+    const caseRowsToFetch = [row, ...(subCasesDetails ?? [])].filter((caseRow) =>
+      shouldShowInvestigationAssignee(caseRow.type),
+    );
+    const caseIdsToFetch = Array.from(
+      new Set(caseRowsToFetch.map((caseRow) => caseRow.id)),
+    );
+
+    setInvestigationAssignees((previous) => {
+      const next: Record<number, string | null> = {};
+      caseIdsToFetch.forEach((caseId) => {
+        if (Object.hasOwn(previous, caseId)) {
+          next[caseId] = previous[caseId];
+        }
+      });
+      return next;
+    });
+
+    if (caseIdsToFetch.length === 0) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchInvestigationAssignees = async (): Promise<void> => {
+      const results = await Promise.all(
+        caseIdsToFetch.map(async (caseId) => {
+          try {
+            const investigationTask =
+              await taskService.getInvestigationTaskForCase(caseId);
+
+            return {
+              caseId,
+              assigneeId: investigationTask?.assigned_user_id ?? null,
+            };
+          } catch (error) {
+            console.error(
+              `Failed to load investigation assignee for case ${caseId}:`,
+              error,
+            );
+            return { caseId, assigneeId: null };
+          }
+        }),
+      );
+
+      if (!isMounted) {
+        return;
+      }
+
+      setInvestigationAssignees((previous) => {
+        const next = { ...previous };
+        results.forEach(({ caseId, assigneeId }) => {
+          next[caseId] = assigneeId;
+        });
+        return next;
+      });
+    };
+
+    void fetchInvestigationAssignees();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [row, subCasesDetails]);
+
+  const renderInvestigationAssignee = (caseId: number): React.ReactNode => {
+    const assigneeId = investigationAssignees[caseId];
+    const assigneeName = assigneeId ? getAssigneeFullName(assigneeId) : null;
+
+    return (
+      <div>
+        <div className="text-xs text-gray-500 uppercase">Assignee</div>
+        <div className="font-medium text-gray-900">
+          {assigneeName ?? 'Unassigned'}
+        </div>
+      </div>
+    );
+  };
+
   const handleViewReport = async (reportId?: string): Promise<void> => {
     if (!reportId) {
       return;
@@ -416,22 +504,8 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
                 </div>
                 <div className="font-medium text-gray-900">{row.createdOn}</div>
               </div>
-              {/* <div>
-                <div className="text-xs text-gray-500 uppercase">Picked On</div>
-                <div className="font-medium text-gray-900">{row.pickedOn}</div>
-              </div> */}
-              {/* <div>
-                <div className="text-xs text-gray-500 uppercase">Assignee</div>
-                <div className="font-medium text-gray-900">{row.assignee || 'N/A'}</div>
-              </div> */}
-              {/* <div>
-                <div className="text-xs text-gray-500 uppercase">
-                  Total Tasks
-                </div>
-                <div className="font-medium text-gray-900">
-                  {row.totalTasks}
-                </div>
-              </div> */}
+              {shouldShowInvestigationAssignee(row.type) &&
+                renderInvestigationAssignee(row.id)}
             </div>
           </SectionCard>
         </div>
@@ -505,6 +579,9 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
                         {getCaseStatusBadge(subCases.status)}
                       </span>
                     </div>
+
+                    {shouldShowInvestigationAssignee(subCases.type) &&
+                      renderInvestigationAssignee(subCases.id)}
                   </div>
                 </div>
               ))}
