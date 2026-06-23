@@ -22,7 +22,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
   private escapeSqlString(value: string): string {
     // Escape single quotes by doubling them and wrap in quotes
     // prettier-ignore
-    return value.replace(/'/gv, '\'\'');
+    return value.split('\'').join('\'\'');
   }
 
   private clampPositiveInteger(value: number, min = 1, max = 10000): number {
