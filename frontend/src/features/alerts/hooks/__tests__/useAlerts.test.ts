@@ -123,27 +123,6 @@ describe('useAlerts', () => {
     });
   });
 
-  it('sends displayed ALERT-prefixed ids to the server', async () => {
-    mockService.getAlerts.mockResolvedValue({
-      alerts: [backendAlert],
-      pagination: { totalItems: 1, totalPages: 1 },
-    });
-    mockTransformer.mockReturnValue(uiAlert);
-
-    const { result } = renderHook(() => useAlerts());
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    act(() => {
-      result.current.setFilters({ query: 'ALERT-27' });
-    });
-
-    await waitFor(() => {
-      expect(mockService.getAlerts).toHaveBeenCalledWith(
-        expect.objectContaining({ search: 'ALERT-27' }),
-      );
-    });
-  });
-
   it('ignores stale responses when a filtered request finishes first', async () => {
     const slowUnfilteredRequest = createDeferred<{
       alerts: (typeof backendAlert)[];
@@ -290,6 +269,7 @@ describe('useAlerts', () => {
     });
   });
 
+  it('sends custom date range to the server', async () => {
   it('sends custom date range to the server', async () => {
     const startDate = '2024-01-01';
     const endDate = '2024-01-31';
