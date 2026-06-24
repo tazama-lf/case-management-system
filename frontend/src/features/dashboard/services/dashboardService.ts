@@ -11,7 +11,7 @@ class DashboardService {
   async getDashboardData(): Promise<DashboardData> {
     try {
       const response = await apiClient.get<Record<string, unknown>>(
-        '/api/v1/reports/case-status?dateRange=last30',
+        '/api/v1/reports/case-status?dateRange=all',
       );
 
       const stats = this.mapStats(response);

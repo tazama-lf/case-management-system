@@ -193,7 +193,7 @@ export class ReportsController {
   @ApiQuery({
     name: 'dateRange',
     required: false,
-    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
+    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear', 'all'],
     description: 'Time period for the report data',
     example: 'last30',
   })
