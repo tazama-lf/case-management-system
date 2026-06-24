@@ -41,7 +41,7 @@ describe('dashboardService', () => {
       const result = await dashboardService.getDashboardData();
 
       expect(apiClient.get).toHaveBeenCalledWith(
-        '/api/v1/reports/case-status?dateRange=last30',
+        '/api/v1/reports/case-status?dateRange=all',
       );
       expect(result).toEqual({
         stats: {
