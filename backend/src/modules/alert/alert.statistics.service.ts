@@ -232,10 +232,40 @@ export class AlertStatisticsService {
     ];
 
     this.addTransactionIdSearchConditions(searchConditions, searchString);
-    this.addNumericSearchConditions(searchConditions, numericAlertIdSearch);
+    this.addNumericSearchConditions(searchConditions, alertIdSearch);
     this.addEnumSearchConditions(searchConditions, searchString);
 
     return searchConditions;
+  }
+
+  private addTransactionIdSearchConditions(searchConditions: Prisma.AlertWhereInput[], searchString: string): void {
+    searchConditions.push({
+      transaction: {
+        path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
+        equals: searchString,
+      },
+    });
+    searchConditions.push({
+      transaction: {
+        path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
+        equals: searchString,
+      },
+    });
+  }
+
+  private addTransactionIdSearchConditions(searchConditions: Prisma.AlertWhereInput[], searchString: string): void {
+    searchConditions.push({
+      transaction: {
+        path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
+        equals: searchString,
+      },
+    });
+    searchConditions.push({
+      transaction: {
+        path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
+        equals: searchString,
+      },
+    });
   }
 
   private addTransactionIdSearchConditions(searchConditions: Prisma.AlertWhereInput[], searchString: string): void {
