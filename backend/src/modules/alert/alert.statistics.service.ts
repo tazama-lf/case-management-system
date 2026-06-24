@@ -215,10 +215,26 @@ export class AlertStatisticsService {
       { source: { contains: searchString, mode: 'insensitive' } },
     ];
 
+    this.addTransactionIdSearchConditions(searchConditions, searchString);
     this.addNumericSearchConditions(searchConditions, alertIdSearch);
     this.addEnumSearchConditions(searchConditions, searchString);
 
     return searchConditions;
+  }
+
+  private addTransactionIdSearchConditions(searchConditions: Prisma.AlertWhereInput[], searchString: string): void {
+    searchConditions.push({
+      transaction: {
+        path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
+        equals: searchString,
+      },
+    });
+    searchConditions.push({
+      transaction: {
+        path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
+        equals: searchString,
+      },
+    });
   }
 
   private addNumericSearchConditions(searchConditions: Prisma.AlertWhereInput[], alertIdSearch: string): void {
@@ -226,7 +242,6 @@ export class AlertStatisticsService {
     if (Number.isNaN(numericSearch)) return;
 
     searchConditions.push({ alert_id: { equals: numericSearch } });
-    searchConditions.push({ case_id: { equals: numericSearch } });
   }
 
   private addEnumSearchConditions(searchConditions: Prisma.AlertWhereInput[], searchString: string): void {
