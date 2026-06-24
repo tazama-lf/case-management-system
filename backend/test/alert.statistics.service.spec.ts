@@ -384,7 +384,38 @@ describe('AlertStatisticsService', () => {
         );
       });
 
-      it('should search by numeric alert_id and case_id', async () => {
+      it('should search by exact transaction id in supported transaction message paths', async () => {
+        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
+        alertRepository.count.mockResolvedValue(1);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search: 'TX-ABC-123',
+        });
+
+        expect(alertRepository.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              OR: expect.arrayContaining([
+                {
+                  transaction: {
+                    path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
+                    equals: 'TX-ABC-123',
+                  },
+                },
+                {
+                  transaction: {
+                    path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
+                    equals: 'TX-ABC-123',
+                  },
+                },
+              ]),
+            }),
+          }),
+        );
+      });
+
+      it('should search by numeric alert_id', async () => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
 
@@ -396,7 +427,7 @@ describe('AlertStatisticsService', () => {
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
-              OR: expect.arrayContaining([{ alert_id: { equals: 123 } }, { case_id: { equals: 123 } }]),
+              OR: expect.arrayContaining([{ alert_id: { equals: 123 } }]),
             }),
           }),
         );
@@ -414,7 +445,7 @@ describe('AlertStatisticsService', () => {
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
-              OR: expect.arrayContaining([{ alert_id: { equals: 123 } }, { case_id: { equals: 123 } }]),
+              OR: expect.arrayContaining([{ alert_id: { equals: 123 } }]),
             }),
           }),
         );
@@ -467,18 +498,29 @@ describe('AlertStatisticsService', () => {
         });
 
         const callArgs = alertRepository.findMany.mock.calls[0][0];
-        expect(callArgs.where?.OR).toHaveLength(4); // txtp, source, alert_id, case_id
+        expect(callArgs.where?.OR).toHaveLength(5);
         expect(callArgs.where?.OR).toEqual(
           expect.arrayContaining([
             { txtp: { contains: '100', mode: 'insensitive' } },
             { source: { contains: '100', mode: 'insensitive' } },
+            {
+              transaction: {
+                path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
+                equals: '100',
+              },
+            },
+            {
+              transaction: {
+                path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
+                equals: '100',
+              },
+            },
             { alert_id: { equals: 100 } },
-            { case_id: { equals: 100 } },
           ]),
         );
       });
 
-      it('should handle search with both priority and number matching', async () => {
+      it('should handle numeric search without matching case id', async () => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
 
@@ -488,7 +530,8 @@ describe('AlertStatisticsService', () => {
         });
 
         const callArgs = alertRepository.findMany.mock.calls[0][0];
-        expect(callArgs.where?.OR).toEqual(expect.arrayContaining([{ alert_id: { equals: 456 } }, { case_id: { equals: 456 } }]));
+        expect(callArgs.where?.OR).toEqual(expect.arrayContaining([{ alert_id: { equals: 456 } }]));
+        expect(callArgs.where?.OR).toEqual(expect.not.arrayContaining([{ case_id: { equals: 456 } }]));
       });
     });
 
