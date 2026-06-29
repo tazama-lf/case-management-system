@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useEffect, useMemo } from 'react';
+import { useReducer, useCallback, useEffect, useMemo, useRef } from 'react';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import type {
@@ -195,8 +195,12 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- Hook return type is inferred
 export const useAlerts = () => {
   const [state, dispatch] = useReducer(alertsReducer, initialState);
+  const latestFetchId = useRef(0);
 
   const fetchAlerts = useCallback(async () => {
+    const fetchId = latestFetchId.current + 1;
+    latestFetchId.current = fetchId;
+
     dispatch({ type: 'FETCH_START' });
     try {
       const dateRange = getDateRangeForFilter(state.filters);
@@ -214,6 +218,10 @@ export const useAlerts = () => {
       };
 
       const response = await triageService.getAlerts(filters);
+      if (fetchId !== latestFetchId.current) {
+        return;
+      }
+
       const transformedAlerts = response.alerts.map(transformBackendAlertToUI);
       dispatch({
         type: 'FETCH_SUCCESS',
@@ -226,6 +234,10 @@ export const useAlerts = () => {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'An unknown error occurred';
+      if (fetchId !== latestFetchId.current) {
+        return;
+      }
+
       dispatch({ type: 'FETCH_FAILURE', payload: errorMessage });
     }
   }, [

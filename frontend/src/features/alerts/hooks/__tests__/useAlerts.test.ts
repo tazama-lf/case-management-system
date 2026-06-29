@@ -33,6 +33,17 @@ const uiAlert = {
   alert_type: 'FRAUD',
 };
 
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+};
+
 describe('useAlerts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -110,6 +121,56 @@ describe('useAlerts', () => {
         expect.objectContaining({ search: 'fraud' }),
       );
     });
+  });
+
+  it('ignores stale responses when a filtered request finishes first', async () => {
+    const slowUnfilteredRequest = createDeferred<{
+      alerts: typeof backendAlert[];
+      pagination: { totalItems: number; totalPages: number };
+    }>();
+    const fastFilteredRequest = createDeferred<{
+      alerts: typeof backendAlert[];
+      pagination: { totalItems: number; totalPages: number };
+    }>();
+
+    const unfilteredAlert = { ...backendAlert, alert_id: 'ALERT-27' };
+    const filteredAlert = { ...backendAlert, alert_id: 'ALERT-24' };
+
+    mockService.getAlerts
+      .mockReturnValueOnce(slowUnfilteredRequest.promise)
+      .mockReturnValueOnce(fastFilteredRequest.promise);
+    mockTransformer.mockImplementation((alert) => alert);
+
+    const { result } = renderHook(() => useAlerts());
+
+    await waitFor(() => expect(mockService.getAlerts).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      result.current.setFilters({ query: '24' });
+    });
+
+    await waitFor(() => expect(mockService.getAlerts).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      fastFilteredRequest.resolve({
+        alerts: [filteredAlert],
+        pagination: { totalItems: 1, totalPages: 1 },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.paginatedAlerts).toEqual([filteredAlert]);
+    });
+
+    await act(async () => {
+      slowUnfilteredRequest.resolve({
+        alerts: [unfilteredAlert],
+        pagination: { totalItems: 10, totalPages: 1 },
+      });
+    });
+
+    expect(result.current.paginatedAlerts).toEqual([filteredAlert]);
+    expect(result.current.pagination.totalItems).toBe(1);
   });
 
   it('filters alerts by source', async () => {
