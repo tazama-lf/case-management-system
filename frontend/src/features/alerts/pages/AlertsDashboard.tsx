@@ -345,7 +345,7 @@ const AlertsDashboard: React.FC = () => {
       <AlertsSearchAndFilters
         searchFilters={filters}
         onFilterChange={(key, value) => {
-          setFilters({ ...filters, [key]: value });
+          setFilters({ [key]: value });
           setPage(1);
         }}
         onClearFilters={() => {
@@ -363,7 +363,7 @@ const AlertsDashboard: React.FC = () => {
           filters.customDateRange ?? { startDate: '', endDate: '' }
         }
         onCustomDateRangeChange={(range) => {
-          setFilters({ ...filters, customDateRange: range });
+          setFilters({ customDateRange: range });
         }}
         alertTypes={filterOptions.alertTypes}
         priorities={filterOptions.priorities}
