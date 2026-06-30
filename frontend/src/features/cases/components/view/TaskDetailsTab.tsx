@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import type { CaseRow } from '../casesTable.utils';
 import type { TaskForSupervisor } from '../../services/taskService';
 import { formatDate } from '../../../../shared/utils/dateUtils';

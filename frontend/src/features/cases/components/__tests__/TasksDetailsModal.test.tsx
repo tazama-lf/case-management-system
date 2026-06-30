@@ -42,12 +42,6 @@ vi.mock('../view/CollaboratePanel', () => ({
   default: () => <div>Collaborate Panel</div>,
 }));
 
-vi.mock('../view/VisualizationsTab', () => ({
-  default: ({ transactionId }: any) => (
-    <div>Visualizations Tab {transactionId && `txn:${transactionId}`}</div>
-  ),
-}));
-
 vi.mock('../view/InvestigationsSummaryTab', () => ({
   default: ({ onTaskUpdate }: any) => (
     <div>
@@ -76,17 +70,10 @@ vi.mock('@/shared/providers/ToastProvider', () => ({
 import TasksDetailsModal from '../TasksDetailsModal';
 
 const mockGetTasksByCaseId = vi.fn();
-const mockGetCaseDetails = vi.fn();
 
 vi.mock('../../services/taskService', () => ({
   taskService: {
     getTasksByCaseId: (...args: any[]) => mockGetTasksByCaseId(...args),
-  },
-}));
-
-vi.mock('../../services/caseService', () => ({
-  caseService: {
-    getCaseDetails: (...args: any[]) => mockGetCaseDetails(...args),
   },
 }));
 
@@ -115,11 +102,6 @@ const mockCaseData: CaseRow = {
   }),
 };
 
-const mockCaseWithParent: CaseRow = {
-  ...mockCaseData,
-  parentId: 999,
-};
-
 const mockTasks = [
   {
     task_id: 'TASK-1',
@@ -137,9 +119,6 @@ describe('TasksDetailsModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetTasksByCaseId.mockResolvedValue([]);
-    mockGetCaseDetails.mockResolvedValue({
-      alert: { alert_id: 42, transaction: null },
-    });
   });
 
   const renderModal = (
@@ -200,21 +179,12 @@ describe('TasksDetailsModal', () => {
     renderModal({});
     expect(screen.getAllByText('Task Details')[0]).toBeInTheDocument();
     expect(screen.getByText('Evidence')).toBeInTheDocument();
-    expect(screen.getByText('Visualizations')).toBeInTheDocument();
     expect(screen.getByText('Investigation Notes')).toBeInTheDocument();
     expect(screen.getByText('Investigation Summary')).toBeInTheDocument();
   });
 
-  it('hides Visualizations tab for non-pacs002 transactions', () => {
-    const caseWithNonPacs002: CaseRow = {
-      ...mockCaseData,
-      transaction: JSON.stringify({
-        TxTp: 'pacs.008.001.10',
-      }),
-    };
-
-    renderModal({ row: caseWithNonPacs002 });
-
+  it('does not render Visualizations tab', () => {
+    renderModal({});
     expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
   });
 
@@ -225,14 +195,6 @@ describe('TasksDetailsModal', () => {
 
     await user.click(screen.getByText('Evidence'));
     expect(screen.getByText('Task Evidence Tab')).toBeInTheDocument();
-  });
-
-  it('switches to Visualizations tab', async () => {
-    const user = userEvent.setup();
-    renderModal({});
-
-    await user.click(screen.getByText('Visualizations'));
-    expect(screen.getByText(/Visualizations Tab/)).toBeInTheDocument();
   });
 
   it('switches to Investigation Notes tab', async () => {
@@ -253,64 +215,6 @@ describe('TasksDetailsModal', () => {
     expect(screen.getByText('Investigation Summary Tab')).toBeInTheDocument();
   });
 
-  it('fetches parent case details when parentId exists', async () => {
-    mockGetCaseDetails.mockResolvedValue({
-      alert: { alert_id: 42, transaction: '{"data":"test"}' },
-    });
-
-    renderModal({ row: mockCaseWithParent });
-
-    await waitFor(() => {
-      expect(mockGetCaseDetails).toHaveBeenCalledWith(999);
-    });
-  });
-
-  it('defers Visualizations tab visibility until parent case details finish loading', async () => {
-    let resolveParentCase: ((value: unknown) => void) | undefined;
-    mockGetCaseDetails.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveParentCase = resolve;
-        }),
-    );
-
-    renderModal({ row: mockCaseWithParent });
-
-    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
-
-    resolveParentCase?.({
-      alert: {
-        alert_id: 42,
-        transaction: JSON.stringify({
-          FIToFIPmtSts: {
-            TxInfAndSts: {
-              OrgnlEndToEndId: 'PARENT-TXN-001',
-            },
-          },
-        }),
-      },
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('Visualizations')).toBeInTheDocument();
-    });
-  });
-
-  it('handles parent case details fetch error', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-    mockGetCaseDetails.mockRejectedValue(new Error('fetch failed'));
-
-    renderModal({ row: mockCaseWithParent });
-
-    await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to fetch case details for parent case:',
-        expect.any(Error),
-      );
-    });
-    consoleSpy.mockRestore();
-  });
-
   it('handles task fetch error gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockGetTasksByCaseId.mockRejectedValue(new Error('task fetch failed'));
@@ -324,61 +228,6 @@ describe('TasksDetailsModal', () => {
       );
     });
     consoleSpy.mockRestore();
-  });
-
-  it('extracts transactionId from row transaction data', async () => {
-    const user = userEvent.setup();
-    renderModal({});
-
-    await user.click(screen.getByText('Visualizations'));
-    expect(screen.getByText(/txn:TXN-12345/)).toBeInTheDocument();
-  });
-
-  it('extracts transactionId from parent case transaction data', async () => {
-    mockGetCaseDetails.mockResolvedValue({
-      alert: {
-        alert_id: 42,
-        transaction: JSON.stringify({
-          FIToFIPmtSts: {
-            TxInfAndSts: {
-              OrgnlEndToEndId: 'PARENT-TXN-001',
-            },
-          },
-        }),
-      },
-    });
-
-    const user = userEvent.setup();
-    renderModal({ row: mockCaseWithParent });
-
-    await waitFor(() => {
-      expect(mockGetCaseDetails).toHaveBeenCalledWith(999);
-    });
-
-    await user.click(screen.getByText('Visualizations'));
-    await waitFor(() => {
-      expect(screen.getByText(/txn:PARENT-TXN-001/)).toBeInTheDocument();
-    });
-  });
-
-  it('hides Visualizations when transaction data is invalid JSON', () => {
-    const caseWithBadTransaction: CaseRow = {
-      ...mockCaseData,
-      transaction: 'invalid json{{{',
-    };
-    renderModal({ row: caseWithBadTransaction });
-
-    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
-  });
-
-  it('hides Visualizations when transaction is null', () => {
-    const caseWithNoTransaction: CaseRow = {
-      ...mockCaseData,
-      transaction: undefined,
-    };
-    renderModal({ row: caseWithNoTransaction });
-
-    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
   });
 
   it('increments summaryRefreshKey on evidence upload complete', async () => {
@@ -418,45 +267,42 @@ describe('TasksDetailsModal', () => {
     expect(mockGetTasksByCaseId).toHaveBeenCalledTimes(2); // once on open, once on refresh
   });
 
-  it('extracts transactionId from EndToEndId field', async () => {
-    const user = userEvent.setup();
-    const caseWithEndToEnd: CaseRow = {
-      ...mockCaseData,
-      transaction: JSON.stringify({
-        FIToFIPmtSts: {
-          TxInfAndSts: {
-            EndToEndId: 'E2E-TXN-001',
-          },
-        },
-      }),
-    };
-    renderModal({ row: caseWithEndToEnd });
+  it('closes modal when navigating to a different case', async () => {
+    const { rerender } = renderModal({});
 
-    await user.click(screen.getByText('Visualizations'));
-    expect(screen.getByText(/txn:E2E-TXN-001/)).toBeInTheDocument();
+    // Re-render with a different case id
+    rerender(
+      <TasksDetailsModal
+        open={true}
+        onClose={mockOnClose}
+        row={{ ...mockCaseData, id: 456 }}
+        selectedTask={{ id: 'TASK-1' }}
+        onRefreshCases={mockOnRefreshCases}
+        onTaskUpdate={mockOnTaskUpdate}
+      />,
+    );
+
+    expect(mockOnClose).toHaveBeenCalled();
   });
 
-  it('hides Visualizations when only transaction_id field is present', () => {
-    const caseWithTxnId: CaseRow = {
-      ...mockCaseData,
-      transaction: JSON.stringify({
-        transaction_id: 'SIMPLE-TXN-001',
-      }),
-    };
-    renderModal({ row: caseWithTxnId });
-
-    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
+  it('does not fetch tasks when modal is closed', () => {
+    renderModal({ open: false });
+    expect(mockGetTasksByCaseId).not.toHaveBeenCalled();
   });
 
-  it('hides Visualizations when only transactionId field is present', () => {
-    const caseWithTxnId: CaseRow = {
-      ...mockCaseData,
-      transaction: JSON.stringify({
-        transactionId: 'CAMEL-TXN-001',
-      }),
-    };
-    renderModal({ row: caseWithTxnId });
+  it('does not fetch tasks when row has no id', () => {
+    renderModal({ row: { ...mockCaseData, id: undefined as any } });
+    expect(mockGetTasksByCaseId).not.toHaveBeenCalled();
+  });
 
-    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
+  it('renders Task Details tab content by default', () => {
+    renderModal({});
+    expect(screen.getByText('Task Details Tab')).toBeInTheDocument();
+  });
+
+  it('renders close button at the bottom', async () => {
+    renderModal({});
+    const closeButtons = screen.getAllByRole('button', { name: /Close/i });
+    expect(closeButtons.length).toBeGreaterThanOrEqual(2);
   });
 });

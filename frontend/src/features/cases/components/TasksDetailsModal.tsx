@@ -6,15 +6,11 @@ import TaskEvidenceTab from './view/TaskEvidenceTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import InvestigationSummaryTab from './view/InvestigationsSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
-import VisualizationsTab from './view/VisualizationsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
-import { caseService } from '../services/caseService';
-import type { Case } from '@/features/alerts/types/triage.types';
 
 type ViewTabKey =
   | 'details'
   | 'evidence'
-  | 'visualizations'
   | 'tasks'
   | 'notes'
   | 'customer'
@@ -43,40 +39,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [showCollaborate, setShowCollaborate] = React.useState(false);
   const [tasks, setTasks] = React.useState<TaskForSupervisor[]>([]);
   const [loadingTasks, setLoadingTasks] = React.useState(false);
-  const [parentAlertId, setParentAlertId] = React.useState<number | undefined>(
-    undefined,
-  );
-  const [parentCaseDetails, setParentCaseDetails] = React.useState<
-    Case | undefined
-  >(undefined);
-  const [isParentCaseLoading, setIsParentCaseLoading] = React.useState(false);
 
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
   const initialCaseIdRef = React.useRef<number | undefined>(undefined);
-
-  React.useEffect(() => {
-    if (row?.parentId) {
-      setIsParentCaseLoading(true);
-      caseService
-        .getCaseDetails(row.parentId)
-        .then((details) => {
-          setParentAlertId(details.alert.alert_id);
-          setParentCaseDetails(details);
-        })
-        .catch((error) => {
-          console.error('Failed to fetch case details for parent case:', error);
-          setParentAlertId(undefined);
-          setParentCaseDetails(undefined);
-        })
-        .finally(() => {
-          setIsParentCaseLoading(false);
-        });
-    } else {
-      setParentAlertId(undefined);
-      setParentCaseDetails(undefined);
-      setIsParentCaseLoading(false);
-    }
-  }, [row?.parentId]);
 
   React.useEffect(() => {
     if (open) {
@@ -119,84 +84,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     }
   }, [row?.id, open, onClose]);
 
-  //Extract transaction ID from transaction data
-  const transactionId = React.useMemo(() => {
-    if (row?.parentId && isParentCaseLoading) {
-      // Wait for parent details before deciding visibility to avoid tab flicker.
-      return undefined;
-    }
-
-    let transactionData = row?.parentId
-      ? parentCaseDetails?.alert.transaction
-      : row?.transaction;
-
-    if (!transactionData) {
-      return undefined;
-    }
-
-    // Check if transaction is a string that needs parsing
-    if (typeof transactionData === 'string') {
-      try {
-        transactionData = JSON.parse(transactionData);
-      } catch (e) {
-        return undefined;
-      }
-    }
-
-    const transaction = transactionData as Record<string, unknown>;
-
-    const fiToFIPmtSts = transaction?.FIToFIPmtSts as
-      | Record<string, unknown>
-      | undefined;
-    const txInfAndSts = fiToFIPmtSts?.TxInfAndSts as
-      | Record<string, unknown>
-      | undefined;
-
-    // Try multiple possible field locations
-    const extractedId =
-      txInfAndSts?.OrgnlEndToEndId ||
-      txInfAndSts?.EndToEndId ||
-      transaction?.transaction_id ||
-      transaction?.transactionId;
-
-    if (extractedId && typeof extractedId === 'string') {
-      return extractedId;
-    }
-
-    return undefined;
-  }, [row, parentCaseDetails, isParentCaseLoading]);
-
-  const shouldShowVisualizations = React.useMemo(() => {
-    if (row?.parentId && isParentCaseLoading) {
-      return false;
-    }
-
-    let transactionData = row?.parentId
-      ? parentCaseDetails?.alert.transaction
-      : row?.transaction;
-
-    if (!transactionData) {
-      return false;
-    }
-
-    if (typeof transactionData === 'string') {
-      try {
-        transactionData = JSON.parse(transactionData);
-      } catch (e) {
-        return false;
-      }
-    }
-
-    const transaction = transactionData as Record<string, unknown>;
-    return transaction?.FIToFIPmtSts !== undefined;
-  }, [row, parentCaseDetails, isParentCaseLoading]);
-
-  React.useEffect(() => {
-    if (shouldShowVisualizations === false && tab === 'visualizations') {
-      setTab('details');
-    }
-  }, [shouldShowVisualizations, tab]);
-
   if (!open || !row) return null;
 
   return (
@@ -225,14 +112,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               [
                 { key: 'details', label: 'Task Details' },
                 { key: 'evidence', label: 'Evidence' },
-                ...(shouldShowVisualizations === true
-                  ? ([
-                    {
-                      key: 'visualizations',
-                      label: 'Visualizations',
-                    },
-                  ] as const)
-                  : []),
                 { key: 'notes', label: 'Investigation Notes' },
                 { key: 'summary', label: 'Investigation Summary' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
@@ -279,19 +158,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   }}
                 />
               </div>
-              {shouldShowVisualizations === true && (
-                <div
-                  style={{
-                    display: tab === 'visualizations' ? 'block' : 'none',
-                  }}
-                >
-                  <VisualizationsTab
-                    alertId={row?.parentId ? parentAlertId : row?.alertId}
-                    caseId={row?.id}
-                    transactionId={transactionId}
-                  />
-                </div>
-              )}
               <div style={{ display: tab === 'notes' ? 'block' : 'none' }}>
                 <InvestigationNotesTab
                   task={tasks.filter((t) => t.task_id === selectedTask?.id)[0]}
