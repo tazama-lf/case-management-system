@@ -305,7 +305,7 @@ const AlertsDashboard: React.FC = () => {
     return 'Triage and investigate alerts, convert to cases, and manage alert workflows';
   };
 
-  if (loading && alerts.length === 0) {
+  if (loading && alerts.length === 0 && !lastUpdated) {
     return (
       <PageContainer title="Alerts Dashboard" subtitle={getSubtitle()}>
         <AlertsTableSkeleton rows={pagination.pageSize} />
@@ -345,7 +345,7 @@ const AlertsDashboard: React.FC = () => {
       <AlertsSearchAndFilters
         searchFilters={filters}
         onFilterChange={(key, value) => {
-          setFilters({ ...filters, [key]: value });
+          setFilters({ [key]: value });
           setPage(1);
         }}
         onClearFilters={() => {
@@ -363,7 +363,7 @@ const AlertsDashboard: React.FC = () => {
           filters.customDateRange ?? { startDate: '', endDate: '' }
         }
         onCustomDateRangeChange={(range) => {
-          setFilters({ ...filters, customDateRange: range });
+          setFilters({ customDateRange: range });
         }}
         alertTypes={filterOptions.alertTypes}
         priorities={filterOptions.priorities}

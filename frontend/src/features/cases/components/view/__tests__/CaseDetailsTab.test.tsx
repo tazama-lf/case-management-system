@@ -49,6 +49,19 @@ vi.mock('../CaseActionsPanel', () => ({
   default: () => <div data-testid="case-actions-panel" />,
 }));
 
+vi.mock('@/features/alerts/components/AlertsDetailModal', () => ({
+  default: ({
+    alertId,
+    isOpen,
+  }: {
+    alertId: number | null;
+    isOpen: boolean;
+  }) =>
+    isOpen ? (
+      <div data-testid="alerts-detail-modal">Alert details {alertId}</div>
+    ) : null,
+}));
+
 vi.mock('@/shared/constants/case.constant', () => ({
   getCaseStatusBadge: (s: string) => s,
 }));
@@ -149,6 +162,22 @@ describe('CaseDetailsTab', () => {
     await waitFor(() => {
       expect(screen.getByText('Alert Information')).toBeInTheDocument();
     });
+  });
+
+  it('opens related alert details from alert information', async () => {
+    render(
+      <CaseDetailsTab
+        row={mockCaseRow}
+        subCasesDetails={undefined}
+        parentCaseDetails={null}
+      />,
+    );
+
+    fireEvent.click(await screen.findByTitle('View alert details'));
+
+    expect(screen.getByTestId('alerts-detail-modal')).toHaveTextContent(
+      'Alert details 1',
+    );
   });
 
   it('does not fetch transaction data when alertId is missing', async () => {

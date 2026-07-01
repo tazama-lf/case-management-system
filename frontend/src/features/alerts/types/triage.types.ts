@@ -207,6 +207,8 @@ export interface AlertsFilter {
   limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface PaginationResponse {

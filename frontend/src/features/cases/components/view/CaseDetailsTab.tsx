@@ -5,6 +5,7 @@ import { getCaseStatusBadge } from '@/shared/constants/case.constant';
 import type { TransactionDetailDTO } from '../../../alerts/types/triage.types';
 import triageService from '../../../alerts/services/triageservice';
 import {
+  ArrowTopRightOnSquareIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   DocumentTextIcon,
@@ -12,6 +13,7 @@ import {
 import { evidenceService } from '../../services/evidenceService';
 import { taskService } from '../../services/taskService';
 import useInvestigatorSupervisorList from '../../hooks/useInvestigatorSupervisorList';
+import AlertsDetailModal from '@/features/alerts/components/AlertsDetailModal';
 
 interface CaseDetailsTabProps {
   row: CaseRow;
@@ -96,6 +98,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   );
   const [openPacs002, setOpenPacs002] = React.useState(false);
   const [openPacs008, setOpenPacs008] = React.useState(false);
+  const [isAlertModalOpen, setIsAlertModalOpen] = React.useState(false);
   const [, setViewingId] = useState<string | null>(null);
   const [latestReports, setLatestReports] = useState<
     Record<string, LatestReport | null>
@@ -601,7 +604,15 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
                   <div className="text-xs text-gray-500 uppercase">
                     Alert ID
                   </div>
-                  <div className="font-medium text-gray-900">{row.alertId}</div>
+                  <button
+                    type="button"
+                    onClick={() => { setIsAlertModalOpen(true); }}
+                    className="inline-flex items-center gap-1 font-medium text-gray-900 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                    title="View alert details"
+                  >
+                    <span>{row.alertId}</span>
+                    <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                  </button>
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 uppercase">
@@ -624,6 +635,12 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
           </div>
         )}
       </div>
+
+      <AlertsDetailModal
+        alertId={row.alertId ?? null}
+        isOpen={isAlertModalOpen}
+        onClose={() => { setIsAlertModalOpen(false); }}
+      />
 
       {/* PACS.002 Data */}
       {pacs002Data.length > 0 && (
