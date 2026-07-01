@@ -4,12 +4,11 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { Outcome } from '../../utils/types/outcome';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { TaskStatus, Task, Prisma, CaseStatus, Case } from '@prisma/client-cms';
+import { TaskStatus, Task, Prisma, CaseStatus } from '@prisma/client-cms';
 import { TaskAssignedEvent } from '../events/domain-events';
 import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
-import { CLOSED_CASE_STATUSES } from 'src/constants/case.constants';
 import { setTimeout } from 'node:timers/promises';
 
 @Injectable()
@@ -299,11 +298,7 @@ export class TaskService {
       const assigneeId = taskRecord.assigned_user_id ?? existingTask.assigned_user_id ?? null;
       const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
       if (assigneeId && caseRecord!.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
-      const updatedCase = await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
-      if (updatedCase.parent_id) {
-        await this.promoteParentCaseToInProgress(updatedCase.parent_id, updatedCase, tx);
-      }
-
+      await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
       await this.executeFlowableOperation(taskRecord, taskRecord.assigned_user_id ?? existingTask.assigned_user_id!);
 
       return taskRecord;
@@ -314,43 +309,6 @@ export class TaskService {
       throw error;
     }
   }
-
-  private readonly promoteParentCaseToInProgress = async (
-    parentId: number,
-    updatedCase: Case,
-    tx: Prisma.TransactionClient,
-  ): Promise<boolean> => {
-    try {
-      const subCase = await tx.case.findFirst({
-        where: {
-          parent_id: parentId,
-          NOT: {
-            case_id: updatedCase.case_id,
-          },
-        },
-      });
-
-      if (
-        updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS &&
-        subCase?.status &&
-        (subCase.status === CaseStatus.STATUS_20_IN_PROGRESS ||
-          subCase.status === CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL ||
-          CLOSED_CASE_STATUSES.includes(subCase.status))
-      ) {
-        await tx.case.update({
-          where: { case_id: parentId },
-          data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
-        });
-      }
-
-      return true;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error promoting parent case: ${errorMessage}`, errorStack, TaskService.name);
-      throw error;
-    }
-  };
 
   private isCaseEligibleForInProgress(status: CaseStatus): boolean {
     const eligibleStatuses: CaseStatus[] = [
