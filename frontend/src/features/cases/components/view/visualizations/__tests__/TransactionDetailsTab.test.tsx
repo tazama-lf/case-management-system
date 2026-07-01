@@ -51,8 +51,10 @@ const makeTransactionData = (overrides?: any) => ({
   amountAndCurrency: [
     {
       originalAmount: 5000,
+      originalCurrency: 'USD',
       exchangeRate: 1.2,
       convertedAmount: 6000,
+      convertedCurrency: 'USD',
     },
   ],
   settlementDetails: {
@@ -156,7 +158,7 @@ describe('TransactionDetailsTab', () => {
     expect(
       screen.getAllByText('Jane Smith Corp').length,
     ).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('$5,000')).toBeInTheDocument();
+    expect(screen.getAllByText('USD 5,000').length).toBeGreaterThanOrEqual(1);
     expect(
       screen.getAllByText('First National Bank').length,
     ).toBeGreaterThanOrEqual(1);
@@ -182,9 +184,9 @@ describe('TransactionDetailsTab', () => {
     await waitFor(() => {
       expect(screen.getByText('Amount & Currency')).toBeInTheDocument();
     });
-    expect(screen.getByText(/USD \$5,000/)).toBeInTheDocument();
+    expect(screen.getAllByText(/USD 5,000/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('1.2')).toBeInTheDocument();
-    expect(screen.getByText('$6,000')).toBeInTheDocument();
+    expect(screen.getByText('USD 6,000')).toBeInTheDocument();
   });
 
   it('renders settlement details section', async () => {
@@ -218,7 +220,7 @@ describe('TransactionDetailsTab', () => {
   it('handles amountAndCurrency without optional fields', async () => {
     mockGetTransactionDetails.mockResolvedValue(
       makeTransactionData({
-        amountAndCurrency: [{ originalAmount: 100 }],
+        amountAndCurrency: [{ originalAmount: 100, originalCurrency: 'USD' }],
       }),
     );
     render(
@@ -227,7 +229,7 @@ describe('TransactionDetailsTab', () => {
     await waitFor(() => {
       expect(screen.getByText('Amount & Currency')).toBeInTheDocument();
     });
-    expect(screen.getByText(/USD \$100/)).toBeInTheDocument();
+    expect(screen.getByText(/USD 100/)).toBeInTheDocument();
     expect(screen.queryByText('Exchange Rate')).not.toBeInTheDocument();
     expect(screen.queryByText('Converted Amount')).not.toBeInTheDocument();
   });

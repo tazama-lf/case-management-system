@@ -11,8 +11,15 @@ import CaseActionsPanel from './view/CaseActionsPanel';
 import { caseService, type CaseWithTasksDto } from '../services/caseService';
 import { transformBackendCaseToUI } from './casesTable.utils';
 import LinkedItemsTab from './view/LinkedItemsTab';
+import VisualizationsTab from './view/VisualizationsTab';
 
-type ViewTabKey = 'details' | 'tasks' | 'linked' | 'history' | 'comments';
+type ViewTabKey =
+  | 'details'
+  | 'tasks'
+  | 'linked'
+  | 'visualizations'
+  | 'history'
+  | 'comments';
 
 interface ViewCaseModalProps {
   open: boolean;
@@ -63,6 +70,13 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
   );
   const [subCases, setSubCases] = React.useState<CaseRow[]>([]);
   const [parentCase, setparentCase] = React.useState<CaseRow | null>(null);
+  // const [parentAlertId, setParentAlertId] = React.useState<number | undefined>(
+  //   undefined,
+  // );
+  // const [parentCaseDetails, setParentCaseDetails] = React.useState<
+  //   Case | undefined
+  // >(undefined);
+  const [isParentCaseLoading, setIsParentCaseLoading] = React.useState(false);
 
   // Initialize local case data when row changes
   React.useEffect(() => {
@@ -96,6 +110,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
   const getParentCaseData = React.useCallback(async () => {
     if (!row?.id || !row?.parentId) return;
     try {
+      setIsParentCaseLoading(true);
       const caseDetails = await caseService.getCaseDetails(row.parentId);
       const transformedCase = transformBackendCaseToUI(
         caseDetails as unknown as CaseWithTasksDto,
@@ -103,6 +118,8 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
       setparentCase(transformedCase);
     } catch (error) {
       console.error('Failed to refresh case data:', error);
+    } finally {
+      setIsParentCaseLoading(false);
     }
   }, [row?.id, row?.parentId]);
 
@@ -136,6 +153,113 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
     }
   }, [open, localCaseData, getSubCasesData, getParentCaseData]);
 
+  // Fetch parent case details for alert/transaction data (for sub-cases)
+  // React.useEffect(() => {
+  //   if (row?.parentId) {
+  //     setIsParentCaseLoading(true);
+  //     caseService
+  //       .getCaseDetails(row.parentId)
+  //       .then((details) => {
+  //         setParentAlertId(details.alert.alert_id);
+  //         setParentCaseDetails(details);
+  //       })
+  //       .catch((error) => {
+  //         console.error('Failed to fetch case details for parent case:', error);
+  //         setParentAlertId(undefined);
+  //         setParentCaseDetails(undefined);
+  //       })
+  //       .finally(() => {
+  //         setIsParentCaseLoading(false);
+  //       });
+  //   } else {
+  //     setParentAlertId(undefined);
+  //     setParentCaseDetails(undefined);
+  //     setIsParentCaseLoading(false);
+  //   }
+  // }, [row?.parentId]);
+
+  // Extract transaction ID from transaction data
+  const transactionId = React.useMemo(() => {
+    const currentRow = localCaseData;
+    if (!currentRow) return undefined;
+
+    if (currentRow?.parentId && isParentCaseLoading) {
+      return undefined;
+    }
+
+    let transactionData = currentRow?.parentId
+      ? parentCase?.transaction
+      : currentRow?.transaction;
+
+    if (!transactionData) {
+      return undefined;
+    }
+
+    if (typeof transactionData === 'string') {
+      try {
+        transactionData = JSON.parse(transactionData);
+      } catch (e) {
+        return undefined;
+      }
+    }
+
+    const transaction = transactionData as Record<string, unknown>;
+
+    const fiToFIPmtSts = transaction?.FIToFIPmtSts as
+      | Record<string, unknown>
+      | undefined;
+    const txInfAndSts = fiToFIPmtSts?.TxInfAndSts as
+      | Record<string, unknown>
+      | undefined;
+
+    const extractedId =
+      txInfAndSts?.OrgnlEndToEndId ||
+      txInfAndSts?.EndToEndId ||
+      transaction?.transaction_id ||
+      transaction?.transactionId;
+
+    if (extractedId && typeof extractedId === 'string') {
+      return extractedId;
+    }
+
+    return undefined;
+  }, [localCaseData, parentCase, isParentCaseLoading]);
+
+  const shouldShowVisualizations = React.useMemo(() => {
+    const currentRow = localCaseData;
+    if (!currentRow) return false;
+
+    if (currentRow?.parentId && isParentCaseLoading) {
+      return false;
+    }
+
+    let transactionData = currentRow?.parentId
+      ? parentCase?.transaction
+      : currentRow?.transaction;
+
+    if (!transactionData) {
+      return false;
+    }
+
+    if (typeof transactionData === 'string') {
+      try {
+        transactionData = JSON.parse(transactionData);
+      } catch (e) {
+        return false;
+      }
+    }
+
+    const transaction = transactionData as Record<string, unknown>;
+    return transaction?.FIToFIPmtSts !== undefined;
+  }, [localCaseData, parentCase, isParentCaseLoading]);
+
+  // Switch away from visualizations tab if it becomes hidden
+  React.useEffect(() => {
+    if (shouldShowVisualizations === false && tab === 'visualizations') {
+      setTab('details');
+    }
+  }, [shouldShowVisualizations, tab]);
+
   if (!open || !localCaseData) return null;
 
   const displayData = localCaseData;
@@ -167,6 +291,14 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                 { key: 'details', label: 'Case Details' },
                 { key: 'tasks', label: 'Task Log' },
                 { key: 'linked', label: 'Linked Items' },
+                ...(shouldShowVisualizations === true
+                  ? ([
+                    {
+                      key: 'visualizations',
+                      label: 'Visualizations',
+                    },
+                  ] as const)
+                  : []),
                 { key: 'history', label: 'Case History' },
                 { key: 'comments', label: 'Comments History' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
@@ -240,6 +372,16 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                   caseId={displayData.id}
                 />
               )}
+              {shouldShowVisualizations === true &&
+                tab === 'visualizations' && (
+                  <VisualizationsTab
+                    alertId={
+                      displayData?.parentId ? parentCase?.alertId : displayData?.alertId
+                    }
+                    caseId={displayData?.id}
+                    transactionId={transactionId}
+                  />
+                )}
               {tab === 'comments' && (
                 <CommentHistoryTab caseId={displayData.id} />
               )}

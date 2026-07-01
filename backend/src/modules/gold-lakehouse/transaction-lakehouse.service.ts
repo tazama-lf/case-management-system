@@ -134,11 +134,14 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         amountAndCurrency: [
           {
             originalAmount: Number(pacs8.instructed_amount) || 0,
+            originalCurrency: String(pacs8.instructed_currency) || 'USD',
             exchangeRate: Number(pacs8.exchange_rate) || 1,
             convertedAmount: Number(pacs8.interbank_settlement_amount) || 0,
+            convertedCurrency: String(pacs8.interbank_settlement_currency) || 'USD',
           },
           {
             totalCharges: Number(pacs8.charge_total_amount),
+            chargeCurrency: String(pacs8.charge_currency) || 'USD',
           },
         ],
         settlementDetails: {
