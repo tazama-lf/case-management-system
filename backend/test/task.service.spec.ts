@@ -264,24 +264,25 @@ describe('TaskService', () => {
       );
     });
 
-    it('should handle case with parent when promoting to in-progress', async () => {
+    it('should promote only the task case when the case has a parent', async () => {
       const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
       const caseWithParent = {
         case_id: 1,
         status: CaseStatus.STATUS_20_IN_PROGRESS,
         parent_id: 10,
       };
+      const txCase = {
+        findFirst: jest.fn().mockResolvedValue({
+          case_id: 2,
+          status: CaseStatus.STATUS_20_IN_PROGRESS,
+        }),
+        update: jest.fn(),
+      };
 
       taskRepository.transaction.mockImplementation(async (callback) => {
         const tx: any = {
           ...taskRepository,
-          case: {
-            findFirst: jest.fn().mockResolvedValue({
-              case_id: 2,
-              status: CaseStatus.STATUS_20_IN_PROGRESS,
-            }),
-            update: jest.fn(),
-          },
+          case: txCase,
         };
 
         tx.findTaskWithCase.mockResolvedValue(existingTask);
@@ -297,6 +298,13 @@ describe('TaskService', () => {
       const result = await service.updateTask(1, updateData, 'user1', 'tenant1');
 
       expect(result).toBeDefined();
+      expect(taskRepository.updateCase).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ status: CaseStatus.STATUS_20_IN_PROGRESS }),
+        expect.anything(),
+      );
+      expect(txCase.findFirst).not.toHaveBeenCalled();
+      expect(txCase.update).not.toHaveBeenCalled();
     });
 
     it(
@@ -326,7 +334,7 @@ describe('TaskService', () => {
       5000,
     );
 
-    it('should handle parent case promotion error', async () => {
+    it('should ignore parent case lookup errors because parent promotion is not performed', async () => {
       const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
 
       taskRepository.transaction.mockImplementation(async (callback) => {
@@ -346,7 +354,7 @@ describe('TaskService', () => {
         return callback(tx);
       });
 
-      await expect(service.updateTask(1, updateData, 'user1', 'tenant1')).rejects.toThrow();
+      await expect(service.updateTask(1, updateData, 'user1', 'tenant1')).resolves.toBeDefined();
     });
   });
 
