@@ -4,7 +4,7 @@ import { BadRequestException, InternalServerErrorException, Injectable } from '@
 import { Alert, CaseType, Priority, Prisma } from '@prisma/client-cms';
 
 const VALID_SORT_FIELDS = ['alert_id', 'txtp', 'priority', 'confidence_per', 'alert_status', 'source', 'alert_type', 'created_at'];
-const DISPLAY_ALERT_PREFIX = 'ALERT';
+const DISPLAY_ALERT_PREFIXES = ['ALERT'];
 const MIN_ENUM_SEARCH_LENGTH = 3;
 
 interface GetAlertsForUserParams {
@@ -118,6 +118,9 @@ export class AlertStatisticsService {
     if (parsedEndDate && Number.isNaN(parsedEndDate.getTime())) {
       throw new BadRequestException(`Invalid endDate: ${endDate}`);
     }
+    if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
+      throw new BadRequestException('startDate must be before or equal to endDate');
+    }
 
     return { parsedStartDate, parsedEndDate };
   }
@@ -213,18 +216,23 @@ export class AlertStatisticsService {
 
   private isDisplayAlertPrefixSearch(searchString: string): boolean {
     const normalizedSearch = searchString.replace(/[\-_\s]/gv, '').toUpperCase();
-    return normalizedSearch !== '' && DISPLAY_ALERT_PREFIX.includes(normalizedSearch);
+    return normalizedSearch !== '' && DISPLAY_ALERT_PREFIXES.some((prefix) => prefix.startsWith(normalizedSearch));
   }
 
   private buildSearchConditions(searchString: string): Prisma.AlertWhereInput[] {
     const alertIdSearch = searchString.replace(/^alert(?:-|_|\s)*/iv, '');
+    const numericAlertIdSearch = this.getNumericSearch(alertIdSearch);
+    if (numericAlertIdSearch !== undefined && alertIdSearch !== searchString) {
+      return [{ alert_id: { equals: numericAlertIdSearch } }];
+    }
+
     const searchConditions: Prisma.AlertWhereInput[] = [
       { txtp: { contains: searchString, mode: 'insensitive' } },
       { source: { contains: searchString, mode: 'insensitive' } },
     ];
 
     this.addTransactionIdSearchConditions(searchConditions, searchString);
-    this.addNumericSearchConditions(searchConditions, alertIdSearch);
+    this.addNumericSearchConditions(searchConditions, numericAlertIdSearch);
     this.addEnumSearchConditions(searchConditions, searchString);
 
     return searchConditions;
@@ -245,10 +253,13 @@ export class AlertStatisticsService {
     });
   }
 
-  private addNumericSearchConditions(searchConditions: Prisma.AlertWhereInput[], alertIdSearch: string): void {
-    const numericSearch = Number(alertIdSearch);
-    if (Number.isNaN(numericSearch)) return;
+  private getNumericSearch(searchString: string): number | undefined {
+    const numericSearch = Number(searchString);
+    return Number.isNaN(numericSearch) ? undefined : numericSearch;
+  }
 
+  private addNumericSearchConditions(searchConditions: Prisma.AlertWhereInput[], numericSearch?: number): void {
+    if (numericSearch === undefined) return;
     searchConditions.push({ alert_id: { equals: numericSearch } });
   }
 

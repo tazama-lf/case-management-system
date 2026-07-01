@@ -58,6 +58,23 @@ describe('AlertsSearchAndFilters', () => {
       />,
     );
 
+  const renderComponentWithProps = (
+    filterOverrides = {},
+    customDateRange = { startDate: '', endDate: '' },
+  ) =>
+    render(
+      <AlertsSearchAndFilters
+        searchFilters={{ ...baseFilters, ...filterOverrides }}
+        onFilterChange={onFilterChange}
+        onClearFilters={onClearFilters}
+        customDateRange={customDateRange}
+        onCustomDateRangeChange={onCustomDateRangeChange}
+        alertTypes={['FRAUD']}
+        priorities={['NEW', 'URGENT']}
+        sources={['System A']}
+      />,
+    );
+
   it('shows active badge and clear button when filters are applied', async () => {
     const user = userEvent.setup();
     renderComponent({ priority: 'URGENT' });
@@ -66,6 +83,33 @@ describe('AlertsSearchAndFilters', () => {
     expect(screen.getByText(/Active/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /clear/i }));
+    expect(onClearFilters).toHaveBeenCalled();
+  });
+
+  it('resets selected saved filter when filters are cleared', async () => {
+    (filterService.getFilters as vi.Mock).mockResolvedValue([
+      {
+        filter_Id: 1,
+        user_filters: JSON.stringify({
+          alertType: 'FRAUD',
+          priority: 'URGENT',
+          source: 'System A',
+          timeRange: 'today',
+        }),
+      },
+    ]);
+    const user = userEvent.setup();
+    renderComponent({ priority: 'URGENT' });
+
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+    const savedSelect = await screen.findByDisplayValue(
+      /select a saved filter/i,
+    );
+    fireEvent.change(savedSelect, { target: { value: '1' } });
+    expect(savedSelect).toHaveValue('1');
+
+    await user.click(screen.getByRole('button', { name: /clear/i }));
+    expect(savedSelect).toHaveValue('');
     expect(onClearFilters).toHaveBeenCalled();
   });
 
@@ -125,6 +169,30 @@ describe('AlertsSearchAndFilters', () => {
     });
 
     expect(onCustomDateRangeChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows a client-side validation message for an inverted custom date range', async () => {
+    renderComponentWithProps(
+      { timeRange: 'custom' },
+      { startDate: '2024-01-31', endDate: '' },
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /filters/i }));
+    const endDateInput = screen
+      .getByText('End Date')
+      .parentElement?.querySelector('input') as HTMLInputElement;
+    fireEvent.change(endDateInput, {
+      target: { value: '2024-01-01' },
+    });
+
+    expect(
+      screen.getByText('End date must be on or after the start date.'),
+    ).toBeInTheDocument();
+    expect(mockError).toHaveBeenCalledWith(
+      'Invalid Date Range',
+      'End date must be on or after the start date.',
+    );
+    expect(onCustomDateRangeChange).not.toHaveBeenCalled();
   });
 
   it('saves current filters successfully', async () => {
@@ -213,6 +281,9 @@ describe('AlertsSearchAndFilters', () => {
     const savedSelect = screen
       .getByText(/select a saved filter/i)
       .closest('select') as HTMLSelectElement;
+    const placeholderOption = savedSelect.querySelector('option[value=""]');
+    expect(placeholderOption).toHaveAttribute('hidden');
+    expect(placeholderOption).toHaveAttribute('disabled');
     fireEvent.change(savedSelect, { target: { value: '1' } });
 
     // Wait for async setTimeout calls to complete

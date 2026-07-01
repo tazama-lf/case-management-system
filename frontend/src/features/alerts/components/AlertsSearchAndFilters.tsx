@@ -64,6 +64,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
   const [showFilters, setShowFilters] = useState(false);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [dateRangeError, setDateRangeError] = useState('');
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     priorities: [],
     alertTypes: [],
@@ -88,6 +89,10 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     });
   }, [alertTypes, priorities, sources]);
 
+  useEffect(() => {
+    setShowCustomDatePicker(searchFilters.timeRange === 'custom');
+  }, [searchFilters.timeRange]);
+
   const hasActiveFilters = Object.entries(searchFilters).some(
     ([key, value]) => {
       if (key === 'query') return false;
@@ -109,7 +114,26 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
     value: string,
   ) => {
     const newRange = { ...customDateRange, [field]: value };
+    if (
+      newRange.startDate &&
+      newRange.endDate &&
+      newRange.endDate < newRange.startDate
+    ) {
+      const message = 'End date must be on or after the start date.';
+      setDateRangeError(message);
+      error('Invalid Date Range', message);
+      return;
+    }
+
+    setDateRangeError('');
     onCustomDateRangeChange(newRange);
+  };
+
+  const handleClearFilters = (): void => {
+    setSelectedSavedFilterId('');
+    setShowCustomDatePicker(false);
+    setDateRangeError('');
+    onClearFilters();
   };
 
   const formatDisplayValue = (value: string, type: 'priority' | 'status') => {
@@ -199,6 +223,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
 
     setTimeout(() => {
       onFilterChange('timeRange', filter.timeRange || '');
+      setDateRangeError('');
     }, 30);
 
     // Apply custom date range if present
@@ -294,7 +319,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
           {}
           {hasActiveFilters && (
             <button
-              onClick={onClearFilters}
+              onClick={handleClearFilters}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               <XMarkIcon className="h-5 w-5 mr-2" />
@@ -442,6 +467,11 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   />
                 </div>
               </div>
+              {dateRangeError && (
+                <p className="mt-3 text-sm font-medium text-red-600">
+                  {dateRangeError}
+                </p>
+              )}
             </div>
           )}
           {/* Saved Filters & Save Button */}
@@ -459,7 +489,9 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="">Select a saved filter</option>
+                  <option value="" disabled hidden>
+                    Select a saved filter
+                  </option>
                   {savedFilters.map((f) => (
                     <option key={f.id} value={f.id}>
                       {f.name}

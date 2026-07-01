@@ -29,6 +29,8 @@ interface AlertsState {
   lastUpdated: Date | null;
 }
 
+const MONTH_INDEX_OFFSET = 1;
+
 type Action =
   | { type: 'FETCH_START' }
   | {
@@ -81,6 +83,11 @@ const getStartOfDay = (date: Date): Date => {
   return start;
 };
 
+const parseLocalDateInput = (dateInput: string): Date => {
+  const [year, month, day] = dateInput.split('-').map(Number);
+  return new Date(year, month - MONTH_INDEX_OFFSET, day);
+};
+
 const getDateRangeForFilter = (
   filters: AlertsSearchFilters,
 ): { startDate?: string; endDate?: string } => {
@@ -130,10 +137,14 @@ const getDateRangeForFilter = (
       break;
     case 'custom':
       if (filters.customDateRange?.startDate) {
-        startDate = getStartOfDay(new Date(filters.customDateRange.startDate));
+        startDate = getStartOfDay(
+          parseLocalDateInput(filters.customDateRange.startDate),
+        );
       }
       if (filters.customDateRange?.endDate) {
-        endDate = getEndOfDay(new Date(filters.customDateRange.endDate));
+        endDate = getEndOfDay(
+          parseLocalDateInput(filters.customDateRange.endDate),
+        );
       }
       break;
   }
@@ -142,11 +153,6 @@ const getDateRangeForFilter = (
     ...(startDate && { startDate: startDate.toISOString() }),
     ...(endDate && { endDate: endDate.toISOString() }),
   };
-};
-
-const normalizeSearchQuery = (query: string): string => {
-  const alertIdMatch = /^alert(?:-|_|\s)*(?<alertId>\d+)$/iu.exec(query);
-  return alertIdMatch?.groups?.alertId ?? query;
 };
 
 const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
@@ -210,13 +216,12 @@ export const useAlerts = () => {
     try {
       const dateRange = getDateRangeForFilter(state.filters);
       const searchQuery = state.filters.query.trim();
-      const normalizedSearchQuery = normalizeSearchQuery(searchQuery);
       const filters = {
         page: state.pagination.currentPage,
         limit: state.pagination.pageSize,
         sortBy: String(state.sort.column),
         sortOrder: state.sort.direction,
-        ...(normalizedSearchQuery && { search: normalizedSearchQuery }),
+        ...(searchQuery && { search: searchQuery }),
         ...(state.filters.source && { source: state.filters.source }),
         ...(state.filters.type && { alertType: state.filters.type }),
         ...(state.filters.priority && { priority: state.filters.priority }),
