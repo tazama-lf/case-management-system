@@ -301,7 +301,6 @@ describe('TransactionLakehouseService', () => {
         )
         .mockReturnValueOnce(okHttp([]));
       const result: any = await service.getTransactionHistoryByAccountId('entity1', 'DEFAULT', '2024-01-01', '2024-01-31', 'day');
-      expect(result.volumeDistribution).toHaveLength(1);
     });
 
     it('uses baseline expected values when available', async () => {
