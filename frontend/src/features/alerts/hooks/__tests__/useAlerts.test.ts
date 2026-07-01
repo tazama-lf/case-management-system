@@ -123,6 +123,27 @@ describe('useAlerts', () => {
     });
   });
 
+  it('normalizes displayed ALERT-prefixed ids before searching', async () => {
+    mockService.getAlerts.mockResolvedValue({
+      alerts: [backendAlert],
+      pagination: { totalItems: 1, totalPages: 1 },
+    });
+    mockTransformer.mockReturnValue(uiAlert);
+
+    const { result } = renderHook(() => useAlerts());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    act(() => {
+      result.current.setFilters({ query: 'ALERT-27' });
+    });
+
+    await waitFor(() => {
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({ search: '27' }),
+      );
+    });
+  });
+
   it('ignores stale responses when a filtered request finishes first', async () => {
     const slowUnfilteredRequest = createDeferred<{
       alerts: typeof backendAlert[];

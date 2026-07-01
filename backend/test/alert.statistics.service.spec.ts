@@ -451,6 +451,19 @@ describe('AlertStatisticsService', () => {
         );
       });
 
+      it.each(['A', 'ALE', 'ALERT', 'ALERT-'])('should not filter when searching displayed alert id prefix %s', async (search) => {
+        alertRepository.findMany.mockResolvedValue(mockAlerts);
+        alertRepository.count.mockResolvedValue(2);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search,
+        });
+
+        const callArgs = alertRepository.findMany.mock.calls[0][0];
+        expect(callArgs.where?.OR).toBeUndefined();
+      });
+
 
       it('should search by priority when search matches priority value', async () => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
@@ -459,6 +472,24 @@ describe('AlertStatisticsService', () => {
         await service.getAlertsForUser({
           ...defaultParams,
           search: 'critical',
+        });
+
+        expect(alertRepository.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              OR: expect.arrayContaining([{ priority: { equals: Priority.CRITICAL } }]),
+            }),
+          }),
+        );
+      });
+
+      it('should search by priority when search partially matches at least 3 characters', async () => {
+        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
+        alertRepository.count.mockResolvedValue(1);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search: 'cri',
         });
 
         expect(alertRepository.findMany).toHaveBeenCalledWith(
@@ -485,6 +516,45 @@ describe('AlertStatisticsService', () => {
               OR: expect.arrayContaining([{ alert_type: { equals: CaseType.AML } }]),
             }),
           }),
+        );
+      });
+
+      it('should search by alert_type when search partially matches at least 3 characters', async () => {
+        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
+        alertRepository.count.mockResolvedValue(1);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search: 'fra',
+        });
+
+        expect(alertRepository.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              OR: expect.arrayContaining([
+                { alert_type: { equals: CaseType.FRAUD } },
+                { alert_type: { equals: CaseType.FRAUD_AND_AML } },
+              ]),
+            }),
+          }),
+        );
+      });
+
+      it('should not partially search priority or alert_type below 3 characters', async () => {
+        alertRepository.findMany.mockResolvedValue([]);
+        alertRepository.count.mockResolvedValue(0);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search: 'cr',
+        });
+
+        const callArgs = alertRepository.findMany.mock.calls[0][0];
+        expect(callArgs.where?.OR).toEqual(
+          expect.not.arrayContaining([{ priority: { equals: Priority.CRITICAL } }]),
+        );
+        expect(callArgs.where?.OR).toEqual(
+          expect.not.arrayContaining([{ alert_type: { equals: CaseType.FRAUD } }]),
         );
       });
 

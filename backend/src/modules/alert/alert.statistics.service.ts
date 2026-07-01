@@ -4,6 +4,8 @@ import { BadRequestException, InternalServerErrorException, Injectable } from '@
 import { Alert, CaseType, Priority, Prisma } from '@prisma/client-cms';
 
 const VALID_SORT_FIELDS = ['alert_id', 'txtp', 'priority', 'confidence_per', 'alert_status', 'source', 'alert_type', 'created_at'];
+const DISPLAY_ALERT_PREFIX = 'ALERT';
+const MIN_ENUM_SEARCH_LENGTH = 3;
 
 interface GetAlertsForUserParams {
   tenantId: string;
@@ -195,6 +197,7 @@ export class AlertStatisticsService {
   private getSearchFilter(search?: unknown): Prisma.AlertWhereInput {
     const searchString = this.normalizeSearch(search);
     if (!searchString) return {};
+    if (this.isDisplayAlertPrefixSearch(searchString)) return {};
 
     return { OR: this.buildSearchConditions(searchString) };
   }
@@ -206,6 +209,11 @@ export class AlertStatisticsService {
       return String(search).trim();
     }
     return '';
+  }
+
+  private isDisplayAlertPrefixSearch(searchString: string): boolean {
+    const normalizedSearch = searchString.replace(/[-_\s]/g, '').toUpperCase();
+    return normalizedSearch !== '' && DISPLAY_ALERT_PREFIX.includes(normalizedSearch);
   }
 
   private buildSearchConditions(searchString: string): Prisma.AlertWhereInput[] {
@@ -246,16 +254,22 @@ export class AlertStatisticsService {
 
   private addEnumSearchConditions(searchConditions: Prisma.AlertWhereInput[], searchString: string): void {
     const normalizedSearch = searchString.toUpperCase();
+    if (normalizedSearch.length < MIN_ENUM_SEARCH_LENGTH) return;
 
-    if (Object.values(Priority).includes(normalizedSearch as Priority)) {
-      searchConditions.push({
-        priority: { equals: normalizedSearch as Priority },
+    Object.values(Priority)
+      .filter((priority) => priority.includes(normalizedSearch))
+      .forEach((priority) => {
+        searchConditions.push({
+          priority: { equals: priority },
+        });
       });
-    }
-    if (Object.values(CaseType).includes(normalizedSearch as CaseType)) {
-      searchConditions.push({
-        alert_type: { equals: normalizedSearch as CaseType },
+
+    Object.values(CaseType)
+      .filter((alertType) => alertType.includes(normalizedSearch))
+      .forEach((alertType) => {
+        searchConditions.push({
+          alert_type: { equals: alertType },
+        });
       });
-    }
   }
 }
