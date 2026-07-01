@@ -123,7 +123,7 @@ describe('useAlerts', () => {
     });
   });
 
-  it('normalizes displayed ALERT-prefixed ids before searching', async () => {
+  it('sends displayed ALERT-prefixed ids to the server', async () => {
     mockService.getAlerts.mockResolvedValue({
       alerts: [backendAlert],
       pagination: { totalItems: 1, totalPages: 1 },
@@ -139,7 +139,7 @@ describe('useAlerts', () => {
 
     await waitFor(() => {
       expect(mockService.getAlerts).toHaveBeenCalledWith(
-        expect.objectContaining({ search: '27' }),
+        expect.objectContaining({ search: 'ALERT-27' }),
       );
     });
   });
@@ -293,6 +293,16 @@ describe('useAlerts', () => {
   it('sends custom date range to the server', async () => {
     const startDate = '2024-01-01';
     const endDate = '2024-01-31';
+    const expectedStartDate = new Date(2024, 0, 1, 0, 0, 0, 0).toISOString();
+    const expectedEndDate = new Date(
+      2024,
+      0,
+      31,
+      23,
+      59,
+      59,
+      999,
+    ).toISOString();
     mockService.getAlerts.mockResolvedValue({
       alerts: [backendAlert],
       pagination: { totalItems: 1, totalPages: 1 },
@@ -312,8 +322,8 @@ describe('useAlerts', () => {
     await waitFor(() => {
       expect(mockService.getAlerts).toHaveBeenCalledWith(
         expect.objectContaining({
-          startDate: expect.any(String),
-          endDate: expect.any(String),
+          startDate: expectedStartDate,
+          endDate: expectedEndDate,
         }),
       );
     });
