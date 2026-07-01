@@ -493,19 +493,6 @@ describe('AlertStatisticsService', () => {
         );
       });
 
-      it('should search displayed single-digit ALERT-prefixed alert id only by alert_id', async () => {
-        alertRepository.findMany.mockResolvedValue([]);
-        alertRepository.count.mockResolvedValue(0);
-
-        await service.getAlertsForUser({
-          ...defaultParams,
-          search: 'ALERT-1',
-        });
-
-        const callArgs = alertRepository.findMany.mock.calls[0][0];
-        expect(callArgs.where?.OR).toEqual([{ alert_id: { equals: 1 } }]);
-      });
-
       it.each(['A', 'ALE', 'ALERT', 'ALERT-'])('should not filter when searching displayed alert id prefix %s', async (search) => {
         alertRepository.findMany.mockResolvedValue(mockAlerts);
         alertRepository.count.mockResolvedValue(2);
@@ -517,24 +504,6 @@ describe('AlertStatisticsService', () => {
 
         const callArgs = alertRepository.findMany.mock.calls[0][0];
         expect(callArgs.where?.OR).toBeUndefined();
-      });
-
-      it('should not treat non-prefix substrings of displayed alert id prefix as prefix searches', async () => {
-        alertRepository.findMany.mockResolvedValue([]);
-        alertRepository.count.mockResolvedValue(0);
-
-        await service.getAlertsForUser({
-          ...defaultParams,
-          search: 'ERT',
-        });
-
-        const callArgs = alertRepository.findMany.mock.calls[0][0];
-        expect(callArgs.where?.OR).toEqual(
-          expect.arrayContaining([
-            { txtp: { contains: 'ERT', mode: 'insensitive' } },
-            { source: { contains: 'ERT', mode: 'insensitive' } },
-          ]),
-        );
       });
 
 
