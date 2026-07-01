@@ -145,8 +145,8 @@ const getDateRangeForFilter = (
 };
 
 const normalizeSearchQuery = (query: string): string => {
-  const alertIdMatch = query.match(/^alert(?:-|_|\s)*(\d+)$/i);
-  return alertIdMatch ? alertIdMatch[1] : query;
+  const alertIdMatch = /^alert(?:-|_|\s)*(?<alertId>\d+)$/iu.exec(query);
+  return alertIdMatch?.groups?.alertId ?? query;
 };
 
 const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
