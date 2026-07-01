@@ -33,7 +33,7 @@ const uiAlert = {
   alert_type: 'FRAUD',
 };
 
-const createDeferred = <T,>() => {
+const createDeferred = <T>() => {
   let resolve!: (value: T) => void;
   let reject!: (reason?: unknown) => void;
   const promise = new Promise<T>((res, rej) => {
@@ -146,11 +146,11 @@ describe('useAlerts', () => {
 
   it('ignores stale responses when a filtered request finishes first', async () => {
     const slowUnfilteredRequest = createDeferred<{
-      alerts: typeof backendAlert[];
+      alerts: (typeof backendAlert)[];
       pagination: { totalItems: number; totalPages: number };
     }>();
     const fastFilteredRequest = createDeferred<{
-      alerts: typeof backendAlert[];
+      alerts: (typeof backendAlert)[];
       pagination: { totalItems: number; totalPages: number };
     }>();
 
