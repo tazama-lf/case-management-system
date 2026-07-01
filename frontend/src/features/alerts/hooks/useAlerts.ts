@@ -289,7 +289,10 @@ export const useAlerts = () => {
     dispatch({ type: 'SET_PAGE_SIZE', payload: pageSize });
   };
 
-  const paginatedAlerts = useMemo(() => state.filteredAlerts, [state.filteredAlerts]);
+  const paginatedAlerts = useMemo(
+    () => state.filteredAlerts,
+    [state.filteredAlerts],
+  );
 
   return {
     ...state,
