@@ -212,7 +212,7 @@ export class AlertStatisticsService {
   }
 
   private isDisplayAlertPrefixSearch(searchString: string): boolean {
-    const normalizedSearch = searchString.replace(/[-_\s]/g, '').toUpperCase();
+    const normalizedSearch = searchString.replace(/[\-_\s]/gv, '').toUpperCase();
     return normalizedSearch !== '' && DISPLAY_ALERT_PREFIX.includes(normalizedSearch);
   }
 
