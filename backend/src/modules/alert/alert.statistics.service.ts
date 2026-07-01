@@ -5,6 +5,7 @@ import { Alert, CaseType, Priority, Prisma } from '@prisma/client-cms';
 
 const VALID_SORT_FIELDS = ['alert_id', 'txtp', 'priority', 'confidence_per', 'alert_status', 'source', 'alert_type', 'created_at'];
 const DISPLAY_ALERT_PREFIXES = ['ALERT'];
+const DISPLAY_ALERT_PREFIXES = ['ALERT'];
 const MIN_ENUM_SEARCH_LENGTH = 3;
 
 interface GetAlertsForUserParams {
@@ -232,7 +233,7 @@ export class AlertStatisticsService {
     ];
 
     this.addTransactionIdSearchConditions(searchConditions, searchString);
-    this.addNumericSearchConditions(searchConditions, alertIdSearch);
+    this.addNumericSearchConditions(searchConditions, numericAlertIdSearch);
     this.addEnumSearchConditions(searchConditions, searchString);
 
     return searchConditions;

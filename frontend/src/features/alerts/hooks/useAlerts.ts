@@ -155,11 +155,6 @@ const getDateRangeForFilter = (
   };
 };
 
-const normalizeSearchQuery = (query: string): string => {
-  const alertIdMatch = /^alert(?:-|_|\s)*(?<alertId>\d+)$/iu.exec(query);
-  return alertIdMatch?.groups?.alertId ?? query;
-};
-
 const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
   switch (action.type) {
     case 'FETCH_START':
@@ -221,13 +216,12 @@ export const useAlerts = () => {
     try {
       const dateRange = getDateRangeForFilter(state.filters);
       const searchQuery = state.filters.query.trim();
-      const normalizedSearchQuery = normalizeSearchQuery(searchQuery);
       const filters = {
         page: state.pagination.currentPage,
         limit: state.pagination.pageSize,
         sortBy: String(state.sort.column),
         sortOrder: state.sort.direction,
-        ...(normalizedSearchQuery && { search: normalizedSearchQuery }),
+        ...(searchQuery && { search: searchQuery }),
         ...(state.filters.source && { source: state.filters.source }),
         ...(state.filters.type && { alertType: state.filters.type }),
         ...(state.filters.priority && { priority: state.filters.priority }),

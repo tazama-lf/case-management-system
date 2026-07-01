@@ -123,7 +123,7 @@ describe('useAlerts', () => {
     });
   });
 
-  it('normalizes displayed ALERT-prefixed ids before searching', async () => {
+  it('sends displayed ALERT-prefixed ids to the server', async () => {
     mockService.getAlerts.mockResolvedValue({
       alerts: [backendAlert],
       pagination: { totalItems: 1, totalPages: 1 },
@@ -139,7 +139,7 @@ describe('useAlerts', () => {
 
     await waitFor(() => {
       expect(mockService.getAlerts).toHaveBeenCalledWith(
-        expect.objectContaining({ search: '27' }),
+        expect.objectContaining({ search: 'ALERT-27' }),
       );
     });
   });
