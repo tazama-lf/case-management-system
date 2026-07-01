@@ -488,3 +488,12 @@ model cms_usernames {
 
   @@map("cms_usernames")
 }
+
+model InvestigationGroup {
+  id         Int      @id @default(autoincrement())
+  alert_id   Int      @unique
+  tenant_id  String
+  created_at DateTime @default(now())
+
+  @@map("investigation_groups")
+}
