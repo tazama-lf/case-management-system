@@ -110,6 +110,7 @@ model Case {
   updated_at           DateTime             @updatedAt @db.Timestamp(6)
   final_outcome        CaseStatus?
   parent_id            Int?
+  group_id             Int?
   case_type            CaseType?
   case_creation_type   CaseCreationType
   alert                Alert?
@@ -497,3 +498,4 @@ model InvestigationGroup {
 
   @@map("investigation_groups")
 }
+
