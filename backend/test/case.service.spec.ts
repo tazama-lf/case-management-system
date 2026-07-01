@@ -305,17 +305,24 @@ describe('CaseService', () => {
       );
     });
 
-    it('should suspend parent case if both subcases are suspended', async () => {
+    it('should suspend only the subcase when the case has a parent', async () => {
       const subCase = { ...mockCase, parent_id: 10 };
+      const txCase = {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+      };
       caseQueryService.retrieveCase.mockResolvedValue(subCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([mockTask] as any);
-      setupMockTransaction({ ...subCase, status: CaseStatus.STATUS_21_SUSPENDED }, { case_id: 10, status: CaseStatus.STATUS_21_SUSPENDED });
+      prismaService.$transaction.mockImplementationOnce(async (callback) => callback({ case: txCase } as any));
       caseQueryService.updateCase.mockResolvedValue({ ...subCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED } as any);
 
       await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, suspendEndpoint);
 
       expect(prismaService.$transaction).toHaveBeenCalled();
+      expect(caseQueryService.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_21_SUSPENDED }, 'user-123');
+      expect(txCase.findFirst).not.toHaveBeenCalled();
+      expect(txCase.update).not.toHaveBeenCalled();
     });
 
     it('should send notification to assigned users when case is suspended', async () => {
@@ -398,20 +405,24 @@ describe('CaseService', () => {
       await expect(service.resumeCase(1, reason, 'user-123', 'tenant-123', {}, mockUser, resumeEndpoint)).rejects.toThrow(message);
     });
 
-    it('should resume parent case if at least one subcase is resumed', async () => {
+    it('should resume only the subcase when the case has a parent', async () => {
       const subCase = { ...mockCase, parent_id: 10, status: CaseStatus.STATUS_21_SUSPENDED };
+      const txCase = {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+      };
       caseQueryService.retrieveCase.mockResolvedValue(subCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([{ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED }] as any);
-      setupMockTransaction(
-        { ...subCase, status: CaseStatus.STATUS_20_IN_PROGRESS },
-        { case_id: 10, status: CaseStatus.STATUS_20_IN_PROGRESS },
-      );
+      prismaService.$transaction.mockImplementationOnce(async (callback) => callback({ case: txCase } as any));
       caseQueryService.updateCase.mockResolvedValue({ ...subCase, status: CaseStatus.STATUS_20_IN_PROGRESS } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_10_ASSIGNED } as any);
 
       await service.resumeCase(1, 'Resume reason', 'user-123', 'tenant-123', {}, mockUser, resumeEndpoint);
 
       expect(prismaService.$transaction).toHaveBeenCalled();
+      expect(caseQueryService.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_20_IN_PROGRESS }, 'user-123');
+      expect(txCase.findFirst).not.toHaveBeenCalled();
+      expect(txCase.update).not.toHaveBeenCalled();
     });
 
     it('should send notification to assigned users when case is resumed', async () => {

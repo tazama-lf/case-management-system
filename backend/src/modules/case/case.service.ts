@@ -87,24 +87,6 @@ export class CaseService {
       const result = await this.prismaService.$transaction(async (prisma) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_21_SUSPENDED }, userId);
 
-        if (updatedCase.parent_id) {
-          const subCase = await prisma.case.findFirst({
-            where: {
-              parent_id: updatedCase.parent_id,
-              tenant_id: updatedCase.tenant_id,
-              NOT: {
-                case_id: updatedCase.case_id,
-              },
-            },
-          });
-
-          if (updatedCase.status === CaseStatus.STATUS_21_SUSPENDED && subCase?.status === CaseStatus.STATUS_21_SUSPENDED) {
-            await prisma.case.update({
-              where: { case_id: updatedCase.parent_id },
-              data: { status: CaseStatus.STATUS_21_SUSPENDED, updated_at: new Date() },
-            });
-          }
-        }
         const updatedTask = await Promise.all(
           investigateTask.map(
             async (task) => await this.taskService.updateTask(task.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId, tenantId),
@@ -226,25 +208,6 @@ export class CaseService {
 
       const result = await this.prismaService.$transaction(async (prisma) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_20_IN_PROGRESS }, userId);
-        if (updatedCase.parent_id) {
-          const subCase = await prisma.case.findFirst({
-            where: {
-              parent_id: updatedCase.parent_id,
-              tenant_id: updatedCase.tenant_id,
-              NOT: {
-                case_id: updatedCase.case_id,
-              },
-            },
-          });
-
-          if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && subCase?.status === CaseStatus.STATUS_21_SUSPENDED) {
-            await prisma.case.update({
-              where: { case_id: updatedCase.parent_id },
-              data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
-            });
-          }
-        }
-
         const updatedTask = await Promise.all(
           investigateTask.map(
             async (t) => await this.taskService.updateTask(t.task_id, { status: TaskStatus.STATUS_20_IN_PROGRESS }, userId, tenantId),
