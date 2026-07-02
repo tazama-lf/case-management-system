@@ -10,6 +10,7 @@ import { CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus } from '@p
 import { CreateCaseDto } from '../src/modules/case/dto';
 import { CasePriorityUtil } from '../src/modules/shared/utils/case-priority.util';
 import { AlertRepository } from '../src/modules/repository/alert.repository';
+import { PrismaService } from '../prisma/prisma.service';
 
 describe('CaseCreationService', () => {
   let service: CaseCreationService;
@@ -20,6 +21,7 @@ describe('CaseCreationService', () => {
   let flowableService: any;
   let casePriorityUtil: any;
   let alertRepository: any;
+  let prismaService: any;
 
   const mockCase = {
     case_id: 1,
@@ -87,6 +89,16 @@ describe('CaseCreationService', () => {
       updateAlert: jest.fn(),
     };
 
+    const mockPrismaService = {
+      investigationGroup: {
+        create: jest.fn().mockResolvedValue({
+          id: 123,
+          alert_id: 1,
+          tenant_id: 'tenant-123',
+        }),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CaseCreationService,
@@ -97,6 +109,7 @@ describe('CaseCreationService', () => {
         { provide: FlowableService, useValue: mockFlowableService },
         { provide: CasePriorityUtil, useValue: mockCasePriorityUtil },
         { provide: AlertRepository, useValue: mockAlertRepository },
+        { provide: PrismaService, useValue: mockPrismaService },
       ],
     }).compile();
 
@@ -108,6 +121,7 @@ describe('CaseCreationService', () => {
     flowableService = module.get(FlowableService);
     casePriorityUtil = module.get(CasePriorityUtil);
     alertRepository = module.get(AlertRepository);
+    prismaService = module.get(PrismaService);
   });
 
   afterEach(() => {
@@ -143,7 +157,6 @@ describe('CaseCreationService', () => {
         caseOwnerUserId: createCaseDto.caseOwnerUserId,
         status: createCaseDto.status,
         priority: createCaseDto.priority,
-        parentId: null,
         caseType: createCaseDto.caseType,
         caseCreationType: createCaseDto.caseCreationType,
       });
@@ -170,7 +183,7 @@ describe('CaseCreationService', () => {
       );
     });
 
-    it('should create a case with parent id', async () => {
+    it('should create a case without persisting parent id', async () => {
       const createCaseDtoWithParent: CreateCaseDto = { ...createCaseDto, parentId: 100 };
       const caseWithParent = { ...mockCase, parent_id: 100 };
       caseRepository.createCase.mockResolvedValueOnce(caseWithParent);
@@ -180,7 +193,7 @@ describe('CaseCreationService', () => {
       const result = await service.createCase(createCaseDtoWithParent, userId, tenantId, userRole);
 
       expect(result.parent_id).toBe(100);
-      expect(caseRepository.createCase).toHaveBeenCalledWith(expect.objectContaining({ parentId: 100 }));
+      expect(caseRepository.createCase).not.toHaveBeenCalledWith(expect.objectContaining({ parentId: 100 }));
     });
 
     it.each([
@@ -218,7 +231,6 @@ describe('CaseCreationService', () => {
   describe('createCaseWithInvestigationTask', () => {
     const userId = 'user-123';
     const tenantId = 'tenant-123';
-    const parentCaseId = 100;
     const userRole = 'SYSTEM';
 
     it('should successfully create case with investigation task', async () => {
@@ -230,7 +242,6 @@ describe('CaseCreationService', () => {
         CaseType.FRAUD,
         userId,
         tenantId,
-        parentCaseId,
         Priority.CRITICAL,
         CaseCreationType.AUTOMATIC_SYSTEM,
         userRole,
@@ -246,7 +257,6 @@ describe('CaseCreationService', () => {
         tenantId,
         priority: Priority.CRITICAL,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-        parentId: parentCaseId,
         caseType: CaseType.FRAUD,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       });
@@ -267,7 +277,7 @@ describe('CaseCreationService', () => {
         tenantId,
         operation: 'ADDITIONAL_CASE_CREATED',
         entityName: 'CaseCreationService',
-        actionPerformed: expect.stringContaining(`Created ${CaseType.FRAUD} child case ${mockCase.case_id}`),
+        actionPerformed: expect.stringContaining(`Created ${CaseType.FRAUD} case ${mockCase.case_id} without a parent`),
         outcome: 'SUCCESS',
       });
     });
@@ -287,7 +297,6 @@ describe('CaseCreationService', () => {
         caseType,
         userId,
         tenantId,
-        parentCaseId,
         Priority.CRITICAL,
         CaseCreationType.AUTOMATIC_SYSTEM,
         userRole,
@@ -295,6 +304,26 @@ describe('CaseCreationService', () => {
 
       expect(result).toBeDefined();
       expect(caseRepository.createCase).toHaveBeenCalledWith(expect.objectContaining({ caseType }));
+    });
+
+    it('should create case with investigation group id', async () => {
+      caseRepository.createCase.mockResolvedValueOnce({ ...mockCase, group_id: 123 });
+      setupSuccessfulTaskCreation();
+      flowableService.handleCaseCreated.mockResolvedValueOnce(undefined);
+      loggingOrchestrationService.logActions.mockResolvedValueOnce(undefined);
+
+      const result = await service.createCaseWithInvestigationTask(
+        CaseType.AML,
+        userId,
+        tenantId,
+        Priority.CRITICAL,
+        CaseCreationType.AUTOMATIC_SYSTEM,
+        userRole,
+        123,
+      );
+
+      expect(result).toBeDefined();
+      expect(caseRepository.createCase).toHaveBeenCalledWith(expect.objectContaining({ groupId: 123 }));
     });
 
     it.each([
@@ -313,7 +342,6 @@ describe('CaseCreationService', () => {
         CaseType.FRAUD,
         userId,
         tenantId,
-        parentCaseId,
         priority,
         CaseCreationType.AUTOMATIC_SYSTEM,
         userRole,
@@ -332,7 +360,6 @@ describe('CaseCreationService', () => {
           CaseType.FRAUD,
           userId,
           tenantId,
-          parentCaseId,
           Priority.CRITICAL,
           CaseCreationType.AUTOMATIC_SYSTEM,
           userRole,
@@ -429,7 +456,7 @@ describe('CaseCreationService', () => {
       );
     });
 
-    it('should create FRAUD_AND_AML case with two child cases', async () => {
+    it('should create FRAUD_AND_AML case with companion AML and FRAUD cases', async () => {
       const fraudAndAmlDto = { ...manualCaseDto, alertType: CaseType.FRAUD_AND_AML };
       const fraudAndAmlCase = { ...mockCase, case_type: CaseType.FRAUD_AND_AML };
 
@@ -437,7 +464,7 @@ describe('CaseCreationService', () => {
       caseRepository.createCase.mockResolvedValueOnce(fraudAndAmlCase);
       flowableService.handleCaseCreated.mockResolvedValue(undefined);
 
-      // Mock for the two child cases
+      // Mock for the two companion cases
       caseRepository.createCase
         .mockResolvedValueOnce({ ...mockCase, case_type: CaseType.AML })
         .mockResolvedValueOnce({ ...mockCase, case_type: CaseType.FRAUD });
@@ -454,7 +481,34 @@ describe('CaseCreationService', () => {
       const result = await service.manualCaseCreation(fraudAndAmlDto, userId, tenantId, userRole);
 
       expect(result.success).toBe(true);
-      expect(caseRepository.createCase).toHaveBeenCalledTimes(3); // Parent + 2 children
+      expect(caseRepository.createCase).toHaveBeenCalledTimes(3);
+      expect(prismaService.investigationGroup.create).toHaveBeenCalledWith({
+        data: {
+          alert_id: 1,
+          tenant_id: tenantId,
+        },
+      });
+      expect(caseRepository.createCase).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          caseType: CaseType.FRAUD_AND_AML,
+          groupId: 123,
+        }),
+      );
+      expect(caseRepository.createCase).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          caseType: CaseType.AML,
+          groupId: 123,
+        }),
+      );
+      expect(caseRepository.createCase).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          caseType: CaseType.FRAUD,
+          groupId: 123,
+        }),
+      );
     });
 
     it('should throw BadRequestException if alert not found', async () => {

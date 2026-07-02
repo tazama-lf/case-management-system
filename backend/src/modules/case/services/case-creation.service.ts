@@ -11,6 +11,11 @@ import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CasePriorityUtil } from 'src/modules/shared/utils/case-priority.util';
 import { AlertRepository } from 'src/modules/repository/alert.repository';
 import { setTimeout } from 'node:timers/promises';
+import { PrismaService } from 'prisma/prisma.service';
+
+type InvestigationGroupDelegate = {
+  create: (args: { data: { alert_id: number; tenant_id: string } }) => Promise<{ id: number }>;
+};
 
 @Injectable()
 export class CaseCreationService {
@@ -22,7 +27,8 @@ export class CaseCreationService {
     private readonly alertRepository: AlertRepository,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-  ) {}
+    private readonly prisma: PrismaService,
+  ) { }
 
   async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string, userRole: string): Promise<Case> {
     try {
@@ -34,9 +40,9 @@ export class CaseCreationService {
         caseOwnerUserId: createCaseDTO.caseOwnerUserId,
         status: createCaseDTO.status,
         priority: createCaseDTO.priority,
-        parentId: createCaseDTO.parentId ?? null,
         caseType: createCaseDTO.caseType,
         caseCreationType: createCaseDTO.caseCreationType,
+        ...(createCaseDTO.groupId !== undefined ? { groupId: createCaseDTO.groupId } : {}),
       });
 
       await this.executeFlowableCaseCreationEvent(createdCase, createCaseDTO.caseCreationType, false, userRole);
@@ -68,10 +74,10 @@ export class CaseCreationService {
     alertType: CaseType,
     userId: string,
     tenantId: string,
-    parentCaseId: number,
     priority: Priority,
     caseCreationType: CaseCreationType = CaseCreationType.AUTOMATIC_SYSTEM,
     userRole: string,
+    groupId?: number,
   ): Promise<unknown> {
     try {
       const newCase = await this.caseRepository.createCase({
@@ -80,9 +86,9 @@ export class CaseCreationService {
         tenantId,
         priority,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-        parentId: parentCaseId,
         caseType: alertType,
         caseCreationType,
+        ...(groupId !== undefined ? { groupId } : {}),
       });
 
       await this.executeFlowableCaseCreationEvent(newCase, caseCreationType, true, userRole);
@@ -103,13 +109,13 @@ export class CaseCreationService {
         userId,
         operation: 'ADDITIONAL_CASE_CREATED',
         entityName: 'CaseCreationService',
-        actionPerformed: `Created ${alertType} child case ${newCase.case_id} linked to parent ${parentCaseId}. BPMN will create investigation task.`,
+        actionPerformed: `Created ${alertType} case ${newCase.case_id} without a parent. BPMN will create investigation task.`,
         outcome: Outcome.SUCCESS,
         tenantId,
       });
 
       this.loggerService.log(
-        `Child case ${newCase.case_id} (${alertType}) created. BPMN workflow will create investigation task.`,
+        `Case ${newCase.case_id} (${alertType}) created without parent. BPMN workflow will create investigation task.`,
         CaseCreationService.name,
       );
 
@@ -139,15 +145,6 @@ export class CaseCreationService {
     const needsApproval = userRole !== 'SUPERVISOR';
     const caseStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
     const caseOwnerId = needsApproval ? undefined : userId;
-    const caseDetail: CreateCaseDto = {
-      tenantId,
-      caseCreatorUserId: userId,
-      caseOwnerUserId: caseOwnerId,
-      status: caseStatus,
-      caseType,
-      priority,
-      caseCreationType: CaseCreationType.MANUAL,
-    };
 
     const existingAlert = await this.caseRepository.findAlert(dto.alertId, tenantId);
     if (!existingAlert) {
@@ -156,6 +153,18 @@ export class CaseCreationService {
     if (existingAlert.case_id ?? (existingAlert.alert_data as unknown as { status: string }).status !== 'NALT') {
       throw new BadRequestException('Case Already Exists');
     }
+
+    const investigationGroup = isFraudNAML ? await this.createInvestigationGroup(dto.alertId, tenantId) : undefined;
+    const caseDetail: CreateCaseDto = {
+      tenantId,
+      caseCreatorUserId: userId,
+      caseOwnerUserId: caseOwnerId,
+      status: caseStatus,
+      caseType,
+      priority,
+      caseCreationType: CaseCreationType.MANUAL,
+      ...(investigationGroup !== undefined ? { groupId: investigationGroup.id } : {}),
+    };
 
     try {
       const createdCase = await this.caseRepository.createCase(caseDetail);
@@ -191,19 +200,19 @@ export class CaseCreationService {
             CaseType.AML,
             userId,
             tenantId,
-            createdCase.case_id,
             priority,
             CaseCreationType.AUTOMATIC_SYSTEM,
             userRole,
+            investigationGroup?.id,
           );
           await this.createCaseWithInvestigationTask(
             CaseType.FRAUD,
             userId,
             tenantId,
-            createdCase.case_id,
             priority,
             CaseCreationType.AUTOMATIC_SYSTEM,
             userRole,
+            investigationGroup?.id,
           );
         } else {
           await this.taskService.createTask(
@@ -291,5 +300,23 @@ export class CaseCreationService {
       await setTimeout(1000 * attempt);
       await this.retry(fn, maxRetries, attempt + 1);
     }
+  }
+
+  private async createInvestigationGroup(alertId: number, tenantId: string): Promise<{ id: number }> {
+    const prismaWithInvestigationGroup = this.prisma as PrismaService & {
+      investigationGroup?: InvestigationGroupDelegate;
+    };
+    const investigationGroupDelegate = prismaWithInvestigationGroup.investigationGroup;
+
+    if (!investigationGroupDelegate) {
+      throw new InternalServerErrorException('InvestigationGroup Prisma model is not available');
+    }
+
+    return await investigationGroupDelegate.create({
+      data: {
+        alert_id: alertId,
+        tenant_id: tenantId,
+      },
+    });
   }
 }
