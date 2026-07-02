@@ -13,9 +13,9 @@ import { AlertRepository } from 'src/modules/repository/alert.repository';
 import { setTimeout } from 'node:timers/promises';
 import { PrismaService } from 'prisma/prisma.service';
 
-type InvestigationGroupDelegate = {
+interface InvestigationGroupDelegate {
   create: (args: { data: { alert_id: number; tenant_id: string } }) => Promise<{ id: number }>;
-};
+}
 
 @Injectable()
 export class CaseCreationService {
@@ -28,7 +28,7 @@ export class CaseCreationService {
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
   async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string, userRole: string): Promise<Case> {
     try {
@@ -42,7 +42,7 @@ export class CaseCreationService {
         priority: createCaseDTO.priority,
         caseType: createCaseDTO.caseType,
         caseCreationType: createCaseDTO.caseCreationType,
-        ...(createCaseDTO.groupId !== undefined ? { groupId: createCaseDTO.groupId } : {}),
+        ...(createCaseDTO.groupId === undefined ? {} : { groupId: createCaseDTO.groupId }),
       });
 
       await this.executeFlowableCaseCreationEvent(createdCase, createCaseDTO.caseCreationType, false, userRole);
@@ -88,7 +88,7 @@ export class CaseCreationService {
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         caseType: alertType,
         caseCreationType,
-        ...(groupId !== undefined ? { groupId } : {}),
+        ...(groupId === undefined ? {} : { groupId }),
       });
 
       await this.executeFlowableCaseCreationEvent(newCase, caseCreationType, true, userRole);
@@ -163,7 +163,7 @@ export class CaseCreationService {
       caseType,
       priority,
       caseCreationType: CaseCreationType.MANUAL,
-      ...(investigationGroup !== undefined ? { groupId: investigationGroup.id } : {}),
+      ...(investigationGroup === undefined ? {} : { groupId: investigationGroup.id }),
     };
 
     try {
@@ -303,7 +303,7 @@ export class CaseCreationService {
   }
 
   private async createInvestigationGroup(alertId: number, tenantId: string): Promise<{ id: number }> {
-    const prismaWithInvestigationGroup = this.prisma as PrismaService & {
+    const prismaWithInvestigationGroup = this.prisma as unknown as {
       investigationGroup?: InvestigationGroupDelegate;
     };
     const investigationGroupDelegate = prismaWithInvestigationGroup.investigationGroup;

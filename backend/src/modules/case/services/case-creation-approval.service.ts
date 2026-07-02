@@ -195,7 +195,7 @@ export class CaseCreationApprovalService {
           txResult.case.priority,
           CaseCreationType.AUTOMATIC_SYSTEM,
           'SUPERVISOR',
-          ...(txResult.case.group_id !== null ? [txResult.case.group_id] : []),
+          ...(txResult.case.group_id === null ? [] : [txResult.case.group_id]),
         );
         await this.caseCreateService.createCaseWithInvestigationTask(
           CaseType.FRAUD,
@@ -204,7 +204,7 @@ export class CaseCreationApprovalService {
           txResult.case.priority,
           CaseCreationType.AUTOMATIC_SYSTEM,
           'SUPERVISOR',
-          ...(txResult.case.group_id !== null ? [txResult.case.group_id] : []),
+          ...(txResult.case.group_id === null ? [] : [txResult.case.group_id]),
         );
       } else {
         await this.taskService.createTask(

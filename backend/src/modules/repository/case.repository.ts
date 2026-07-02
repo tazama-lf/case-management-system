@@ -255,19 +255,19 @@ export class CaseRepository extends BaseRepository {
     tenantId: string,
   ): Promise<
     | (Case & {
-      tasks: Task[];
-      alert: Alert | null;
-      comments: Array<{
-        case_id: number | null;
-        tenant_id: string;
-        created_at: Date;
-        updated_at: Date;
-        task_id: number | null;
-        comment_id: number;
-        user_id: string;
-        note: string;
-      }>;
-    })
+        tasks: Task[];
+        alert: Alert | null;
+        comments: Array<{
+          case_id: number | null;
+          tenant_id: string;
+          created_at: Date;
+          updated_at: Date;
+          task_id: number | null;
+          comment_id: number;
+          user_id: string;
+          note: string;
+        }>;
+      })
     | null
   > {
     return await this.prisma.case.findUnique({
@@ -556,7 +556,7 @@ export class CaseRepository extends BaseRepository {
 
   async createCase(caseDetail: any, tx?: Prisma.TransactionClient): Promise<Case> {
     const prisma = tx ?? this.prisma;
-    
+
     return await prisma.case.create({
       data: {
         tenant_id: caseDetail.tenantId,
@@ -567,7 +567,7 @@ export class CaseRepository extends BaseRepository {
         case_type: caseDetail.caseType,
         case_creation_type: caseDetail.caseCreationType,
         parent_id: caseDetail.parentId,
-        ...(caseDetail.groupId !== undefined ? { group_id: caseDetail.groupId } : {}),
+        ...(caseDetail.groupId === undefined ? {} : { group_id: caseDetail.groupId }),
       },
     });
   }

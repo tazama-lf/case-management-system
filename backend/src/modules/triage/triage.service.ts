@@ -23,9 +23,9 @@ import { LinkDto, TransactionDetailDto, ChargeDto, CreditorDto, DebtorDto } from
 import { setTimeout } from 'node:timers/promises';
 import { TaskRepository } from '../repository/task.repository';
 
-type InvestigationGroupDelegate = {
+interface InvestigationGroupDelegate {
   create: (args: { data: { alert_id: number; tenant_id: string } }) => Promise<{ id: number }>;
-};
+}
 
 @Injectable()
 export class TriageService {
@@ -475,7 +475,7 @@ export class TriageService {
   }
 
   private async createInvestigationGroup(alertId: number, tenantId: string): Promise<{ id: number }> {
-    const prismaWithInvestigationGroup = this.prisma as PrismaService & {
+    const prismaWithInvestigationGroup = this.prisma as unknown as {
       investigationGroup?: InvestigationGroupDelegate;
     };
     const investigationGroupDelegate = prismaWithInvestigationGroup.investigationGroup;
