@@ -25,7 +25,7 @@ describe('CaseQueryService', () => {
     case_owner_user_id: 'user-123',
     status: CaseStatus.STATUS_20_IN_PROGRESS,
     case_type: CaseType.FRAUD,
-    priority: Priority.CRITICAL,
+    priority: Priority.HIGH,
     parent_id: null,
     created_at: new Date('2024-01-01'),
     updated_at: new Date('2024-01-02'),
@@ -44,7 +44,7 @@ describe('CaseQueryService', () => {
       alert_id: 1,
       message: 'Suspicious transaction',
       confidence_per: 85,
-      priority: Priority.CRITICAL,
+      priority: Priority.HIGH,
       alert_type: 'FRAUD',
       transaction: { id: 'txn-123' },
     },
@@ -197,7 +197,7 @@ describe('CaseQueryService', () => {
         .mockResolvedValueOnce(1); // taskAssignmentCasesCount
       prismaService.case.groupBy
         .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
+        .mockResolvedValueOnce([{ priority: Priority.HIGH, _count: { case_id: 1 } }]);
 
       const result = await service.getUserCases(userId, queryWithTasks);
 
@@ -218,7 +218,7 @@ describe('CaseQueryService', () => {
       prismaService.case.count.mockResolvedValueOnce(1).mockResolvedValueOnce(1);
       prismaService.case.groupBy
         .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
+        .mockResolvedValueOnce([{ priority: Priority.HIGH, _count: { case_id: 1 } }]);
 
       const result = await service.getUserCases(userId, queryWithBoth);
 
@@ -228,7 +228,7 @@ describe('CaseQueryService', () => {
 
     it.each([
       ['status', { status: CaseStatus.STATUS_20_IN_PROGRESS }],
-      ['priority', { priority: Priority.CRITICAL }],
+      ['priority', { priority: Priority.HIGH }],
     ])('should filter by %s', async (filterName, filterValue) => {
       const queryWithFilter: GetUserCasesQueryDto = { ...query, includeOwnedCases: true, ...filterValue };
       setupGetUserCasesMocks();
@@ -247,7 +247,7 @@ describe('CaseQueryService', () => {
       prismaService.case.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
       prismaService.case.groupBy
         .mockResolvedValueOnce([{ status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
+        .mockResolvedValueOnce([{ priority: Priority.HIGH, _count: { case_id: 1 } }]);
 
       const result = await service.getUserCases(userId, queryWithOwned, true);
 
@@ -262,7 +262,7 @@ describe('CaseQueryService', () => {
       prismaService.case.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
       prismaService.case.groupBy
         .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
+        .mockResolvedValueOnce([{ priority: Priority.HIGH, _count: { case_id: 1 } }]);
 
       const result = await service.getUserCases(userId, queryWithPage);
 
@@ -301,7 +301,7 @@ describe('CaseQueryService', () => {
 
     it.each([
       ['status', { status: CaseStatus.STATUS_20_IN_PROGRESS }],
-      ['priority', { priority: Priority.CRITICAL }],
+      ['priority', { priority: Priority.HIGH }],
       ['case type', { caseType: CaseType.FRAUD }],
       ['owner id', { ownerId: 'user-123' }],
       ['date range', { createdAfter: '2024-01-01', createdBefore: '2024-01-31' }],
@@ -423,7 +423,7 @@ describe('CaseQueryService', () => {
       ]);
       prismaService.case.groupBy
         .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 2 } }])
-        .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 2 } }])
+        .mockResolvedValueOnce([{ priority: Priority.HIGH, _count: { case_id: 2 } }])
         .mockResolvedValueOnce([{ case_type: CaseType.FRAUD, _count: { case_id: 2 } }]);
       prismaService.case.count.mockResolvedValueOnce(0);
 
@@ -448,7 +448,7 @@ describe('CaseQueryService', () => {
         {
           case_id: 1,
           status: CaseStatus.STATUS_20_IN_PROGRESS,
-          priority: Priority.CRITICAL,
+          priority: Priority.HIGH,
           created_at: new Date('2024-01-01'),
         },
       ];
@@ -586,7 +586,7 @@ describe('CaseQueryService', () => {
     const userId = 'user-123';
     const updateData = {
       caseType: CaseType.FRAUD,
-      priority: Priority.URGENT,
+      priority: Priority.MEDIUM,
       status: CaseStatus.STATUS_20_IN_PROGRESS,
       caseOwnerUserId: 'user-456',
     };
@@ -607,7 +607,7 @@ describe('CaseQueryService', () => {
     });
 
     it('should update case with partial data', async () => {
-      const partialUpdate = { priority: Priority.NEW };
+      const partialUpdate = { priority: Priority.LOW };
       caseRepository.updateCase.mockResolvedValueOnce(mockCase as any);
 
       const result = await service.updateCase(caseId, partialUpdate, userId);
@@ -615,7 +615,7 @@ describe('CaseQueryService', () => {
       expect(result).toEqual(mockCase);
       expect(caseRepository.updateCase).toHaveBeenCalledWith(caseId, {
         case_type: undefined,
-        priority: Priority.NEW,
+        priority: Priority.LOW,
         status: undefined,
         case_owner_user_id: undefined,
       });

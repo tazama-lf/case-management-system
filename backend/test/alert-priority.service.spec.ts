@@ -13,7 +13,7 @@ describe('AlertPriorityService', () => {
     {
       alert_id: 1,
       tenant_id: 'tenant-123',
-      priority: Priority.NEW,
+      priority: Priority.LOW,
       priority_score: 0.1,
       case_id: 1,
       created_at: new Date(Date.now() - 10 * 60 * 60 * 1000),
@@ -22,7 +22,7 @@ describe('AlertPriorityService', () => {
     {
       alert_id: 2,
       tenant_id: 'tenant-123',
-      priority: Priority.NEW,
+      priority: Priority.LOW,
       priority_score: 0.2,
       case_id: 2,
       created_at: new Date(Date.now() - 30 * 60 * 60 * 1000),
@@ -31,7 +31,7 @@ describe('AlertPriorityService', () => {
     {
       alert_id: 3,
       tenant_id: 'tenant-123',
-      priority: Priority.NEW,
+      priority: Priority.LOW,
       priority_score: 0.3,
       case_id: 3,
       created_at: new Date(Date.now() - 50 * 60 * 60 * 1000),
@@ -40,7 +40,7 @@ describe('AlertPriorityService', () => {
     {
       alert_id: 4,
       tenant_id: 'tenant-123',
-      priority: Priority.NEW,
+      priority: Priority.LOW,
       priority_score: 0.4,
       case_id: null,
       created_at: new Date(Date.now() - 80 * 60 * 60 * 1000),
@@ -116,21 +116,21 @@ describe('AlertPriorityService', () => {
     });
 
     it.each([
-      ['NEW', Priority.NEW, 10, 13.9],
-      ['URGENT', Priority.URGENT, 30, 41.7],
-      ['CRITICAL', Priority.CRITICAL, 50, 69.4],
-      ['BREACH', Priority.BREACH, 80, 111.1],
+      ['LOW', Priority.LOW, 10, 13.9],
+      ['MEDIUM', Priority.MEDIUM, 30, 41.7],
+      ['HIGH', Priority.HIGH, 50, 69.4],
+      ['HIGH', Priority.HIGH, 80, 111.1],
     ])('should recalculate priority for %s alerts (SLA: %s%%)', async (_name, expectedPriority, hoursAgo, _slaPercent) => {
       const alert = {
         ...mockAlerts[0],
         alert_id:
-          expectedPriority === Priority.NEW ? 1 : expectedPriority === Priority.URGENT ? 2 : expectedPriority === Priority.CRITICAL ? 3 : 4,
+          expectedPriority === Priority.LOW ? 1 : expectedPriority === Priority.MEDIUM ? 2 : expectedPriority === Priority.HIGH ? 3 : 4,
         case_id:
-          expectedPriority === Priority.BREACH
+          expectedPriority === Priority.HIGH
             ? null
-            : expectedPriority === Priority.NEW
+            : expectedPriority === Priority.LOW
               ? 1
-              : expectedPriority === Priority.URGENT
+              : expectedPriority === Priority.MEDIUM
                 ? 2
                 : 3,
         created_at: new Date(Date.now() - hoursAgo * 60 * 60 * 1000),
@@ -256,7 +256,7 @@ describe('AlertPriorityService', () => {
       expect(prismaService.alert.update).toHaveBeenCalledWith({
         where: { alert_id: 1 },
         data: {
-          priority: Priority.URGENT,
+          priority: Priority.MEDIUM,
           priority_score: expect.any(Number),
         },
       });

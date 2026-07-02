@@ -35,7 +35,7 @@ export class AlertService {
       await this.alertRepository.createTransaction(tenantId, alert.transaction);
       const newAlert = await this.alertRepository.createAlert({
         tenantId,
-        priority: Priority.NEW,
+        priority: Priority.LOW,
         source,
         txtp,
         message,
@@ -112,7 +112,7 @@ export class AlertService {
         tenantId,
         caseCreatorUserId: systemUUID,
         status: CaseStatus.STATUS_00_DRAFT,
-        priority: Priority.NEW,
+        priority: Priority.LOW,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       };
       const createdCase = await this.caseCreationService.createCase(caseDetail, userId, tenantId, 'SUPERVISOR');

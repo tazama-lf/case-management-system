@@ -24,7 +24,7 @@ export class CreateAlertDTO {
   @IsEnum(Priority)
   @ApiProperty({
     description: 'Priority',
-    example: Priority.URGENT,
+    example: Priority.MEDIUM,
   })
   @IsOptional()
   priority?: Priority;

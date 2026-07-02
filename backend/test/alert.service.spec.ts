@@ -26,7 +26,7 @@ describe('AlertService', () => {
   const mockAlert: any = {
     alert_id: 1,
     tenant_id: 'tenant-123',
-    priority: Priority.NEW,
+    priority: Priority.LOW,
     source: 'test-source',
     txtp: 'pacs.002.001.12',
     message: 'Suspicious activity detected',
@@ -51,7 +51,7 @@ describe('AlertService', () => {
     tenant_id: 'tenant-123',
     case_creator_user_id: 'user-123',
     status: CaseStatus.STATUS_00_DRAFT,
-    priority: Priority.NEW,
+    priority: Priority.LOW,
     case_creation_type: CaseCreationType.AUTOMATIC_SYSTEM,
     case_type: null,
     created_at: new Date(),
@@ -128,7 +128,7 @@ describe('AlertService', () => {
       expect(alertRepository.createTransaction).toHaveBeenCalledWith('tenant-123', mockIngestAlertDto.transaction);
       expect(alertRepository.createAlert).toHaveBeenCalledWith({
         tenantId: 'tenant-123',
-        priority: Priority.NEW,
+        priority: Priority.LOW,
         source: 'test-source',
         txtp: 'pacs.002.001.12',
         message: 'Suspicious activity detected',
@@ -187,7 +187,7 @@ describe('AlertService', () => {
 
   // ===================== updateAlert =====================
   describe('updateAlert', () => {
-    const updateData = { priority: Priority.URGENT, message: 'Updated' };
+    const updateData = { priority: Priority.MEDIUM, message: 'Updated' };
 
     it('updates alert successfully', async () => {
       const updated = { ...mockAlert, ...updateData };
@@ -274,7 +274,7 @@ describe('AlertService', () => {
           tenantId: 'tenant-123',
           caseCreatorUserId: 'system-uuid',
           status: CaseStatus.STATUS_00_DRAFT,
-          priority: Priority.NEW,
+          priority: Priority.LOW,
           caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
         },
         'user-123',

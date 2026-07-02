@@ -43,15 +43,13 @@ export class AlertPriorityService implements OnModuleInit {
   //         const slaProgress = elapsedHours / slaHours;
   //         // Determine priority based on priority_score thresholds
   //         const priorityScore = slaProgress;
-  //         let priority: Priority = Priority.NEW;
-  //         if (priorityScore >= this.urgencyThresholds[2]) {
-  //           priority = Priority.BREACH;
-  //         } else if (priorityScore >= this.urgencyThresholds[1]) {
-  //           priority = Priority.CRITICAL;
+  //         let priority: Priority = Priority.LOW;
+  //         if (priorityScore >= this.urgencyThresholds[1]) {
+  //           priority = Priority.HIGH;
   //         } else if (priorityScore >= this.urgencyThresholds[0]) {
-  //           priority = Priority.URGENT;
+  //           priority = Priority.MEDIUM;
   //         } else {
-  //           priority = Priority.NEW;
+  //           priority = Priority.LOW;
   //         }
   //         // Update alert priority and priority_score
   //         await this.prisma.alert.update({

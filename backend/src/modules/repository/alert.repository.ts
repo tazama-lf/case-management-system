@@ -21,7 +21,7 @@ export class AlertRepository extends BaseRepository {
     const createdAlert = await client.alert.create({
       data: {
         tenant_id: alertData.tenantId,
-        priority: Priority.NEW,
+        priority: Priority.LOW,
         source: alertData.source,
         txtp: alertData.txtp,
         confidence_per: alertData.confidencePer,

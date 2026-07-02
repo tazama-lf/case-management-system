@@ -28,7 +28,7 @@ export class AlertTriageResponseDTO {
 
   @ApiProperty({
     description: 'Alert priority level',
-    example: 'URGENT',
+    example: 'MEDIUM',
     type: 'string',
   })
   @IsString()

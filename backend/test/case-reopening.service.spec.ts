@@ -26,7 +26,7 @@ describe('CaseReopeningService', () => {
     case_owner_user_id: 'user-123',
     status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     case_type: CaseType.FRAUD,
-    priority: Priority.CRITICAL,
+    priority: Priority.HIGH,
     parent_id: null,
     created_at: new Date(),
     updated_at: new Date(),

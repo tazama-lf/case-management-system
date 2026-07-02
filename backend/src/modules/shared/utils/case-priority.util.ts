@@ -1,26 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Priority } from '@prisma/client-cms';
+
+const HIGH_THRESHOLD = 0.7;
+const MEDIUM_THRESHOLD = 0.4;
 
 @Injectable()
 export class CasePriorityUtil {
-  constructor(private readonly configService: ConfigService) {}
-
   determinePriority(priorityScore: number): Priority {
-    const urgencyThresholds = [
-      parseFloat(this.configService.get<string>('PRIORITY_FIRST_HALF', '0.33')),
-      parseFloat(this.configService.get<string>('PRIORITY_SECOND_HALF', '0.66')),
-      parseFloat(this.configService.get<string>('PRIORITY_THIRD_HALF', '1.0')),
-    ];
-
-    if (priorityScore >= urgencyThresholds[2]) {
-      return Priority.BREACH;
-    } else if (priorityScore >= urgencyThresholds[1]) {
-      return Priority.CRITICAL;
-    } else if (priorityScore >= urgencyThresholds[0]) {
-      return Priority.URGENT;
+    if (priorityScore >= HIGH_THRESHOLD) {
+      return Priority.HIGH;
+    } else if (priorityScore >= MEDIUM_THRESHOLD) {
+      return Priority.MEDIUM;
     } else {
-      return Priority.NEW;
+      return Priority.LOW;
     }
   }
 }

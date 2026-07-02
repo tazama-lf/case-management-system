@@ -32,7 +32,7 @@ describe('CaseClosureApprovalService', () => {
     case_owner_user_id: 'user-123',
     status: CaseStatus.STATUS_20_IN_PROGRESS,
     case_type: CaseType.FRAUD,
-    priority: Priority.CRITICAL,
+    priority: Priority.HIGH,
     case_creator_user_id: 'creator-123',
     parent_id: null,
     created_at: new Date(),

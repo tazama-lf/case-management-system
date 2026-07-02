@@ -81,7 +81,7 @@ model IntegrationConfig {
 model Alert {
   alert_id           Int                @id @default(autoincrement())
   tenant_id          String
-  priority           Priority?          @default(NEW)
+  priority           Priority?          @default(LOW)
   priority_score     Float?
   alert_type         CaseType?
   prediction_outcome PredictionOutcome? @default(TRUE_POSITIVE)
@@ -105,7 +105,7 @@ model Case {
   case_owner_user_id   String?              @db.Uuid
   tenant_id            String
   status               CaseStatus
-  priority             Priority             @default(NEW)
+  priority             Priority             @default(LOW)
   created_at           DateTime             @default(now()) @db.Timestamp(6)
   updated_at           DateTime             @updatedAt @db.Timestamp(6)
   final_outcome        CaseStatus?
@@ -239,10 +239,9 @@ model ReferenceId {
 }
 
 enum Priority {
-  NEW
-  URGENT
-  CRITICAL
-  BREACH
+  LOW
+  MEDIUM
+  HIGH
 }
 
 enum CaseStatus {

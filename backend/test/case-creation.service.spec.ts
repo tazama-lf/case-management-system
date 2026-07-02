@@ -27,7 +27,7 @@ describe('CaseCreationService', () => {
     case_creator_user_id: 'user-123',
     case_owner_user_id: 'user-123',
     status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-    priority: Priority.CRITICAL,
+    priority: Priority.HIGH,
     parent_id: null,
     case_type: CaseType.FRAUD,
     case_creation_type: CaseCreationType.AUTOMATIC_SYSTEM,
@@ -80,7 +80,7 @@ describe('CaseCreationService', () => {
     };
 
     const mockCasePriorityUtil = {
-      determinePriority: jest.fn().mockReturnValue(Priority.CRITICAL),
+      determinePriority: jest.fn().mockReturnValue(Priority.HIGH),
     };
 
     const mockAlertRepository = {
@@ -123,7 +123,7 @@ describe('CaseCreationService', () => {
       caseCreatorUserId: 'user-123',
       caseOwnerUserId: 'user-123',
       status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-      priority: Priority.CRITICAL,
+      priority: Priority.HIGH,
       caseType: CaseType.FRAUD,
       caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       parentId: undefined,
@@ -185,7 +185,7 @@ describe('CaseCreationService', () => {
 
     it.each([
       ['status', { status: CaseStatus.STATUS_00_DRAFT }, { status: CaseStatus.STATUS_00_DRAFT }],
-      ['priority', { priority: Priority.URGENT }, { priority: Priority.URGENT }],
+      ['priority', { priority: Priority.MEDIUM }, { priority: Priority.MEDIUM }],
       ['case type', { caseType: CaseType.AML }, { case_type: CaseType.AML }],
       ['creation type', { caseCreationType: CaseCreationType.MANUAL }, { case_creation_type: CaseCreationType.MANUAL }],
     ])('should create case with different %s', async (field, dtoOverride, caseOverride) => {
@@ -231,7 +231,7 @@ describe('CaseCreationService', () => {
         userId,
         tenantId,
         parentCaseId,
-        Priority.CRITICAL,
+        Priority.HIGH,
         CaseCreationType.AUTOMATIC_SYSTEM,
         userRole,
       );
@@ -244,7 +244,7 @@ describe('CaseCreationService', () => {
         caseCreatorUserId: userId,
         caseOwnerUserId: null,
         tenantId,
-        priority: Priority.CRITICAL,
+        priority: Priority.HIGH,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         parentId: parentCaseId,
         caseType: CaseType.FRAUD,
@@ -288,7 +288,7 @@ describe('CaseCreationService', () => {
         userId,
         tenantId,
         parentCaseId,
-        Priority.CRITICAL,
+        Priority.HIGH,
         CaseCreationType.AUTOMATIC_SYSTEM,
         userRole,
       );
@@ -298,10 +298,9 @@ describe('CaseCreationService', () => {
     });
 
     it.each([
-      ['CRITICAL', Priority.CRITICAL],
-      ['URGENT', Priority.URGENT],
-      ['NEW', Priority.NEW],
-      ['BREACH', Priority.BREACH],
+      ['HIGH', Priority.HIGH],
+      ['MEDIUM', Priority.MEDIUM],
+      ['LOW', Priority.LOW],
     ])('should create case with %s priority', async (priorityName, priority) => {
       const customCase = { ...mockCase, priority };
       caseRepository.createCase.mockResolvedValueOnce(customCase);
@@ -333,7 +332,7 @@ describe('CaseCreationService', () => {
           userId,
           tenantId,
           parentCaseId,
-          Priority.CRITICAL,
+          Priority.HIGH,
           CaseCreationType.AUTOMATIC_SYSTEM,
           userRole,
         ),

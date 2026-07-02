@@ -18,7 +18,7 @@ export class GetUserCasesQueryDto {
     description: 'Filter by priority',
     enum: Priority,
     required: false,
-    example: 'URGENT',
+    example: 'MEDIUM',
   })
   @IsOptional()
   @IsEnum(Priority)
@@ -157,7 +157,7 @@ export class CaseWithTasksDto {
   @ApiProperty({
     description: 'Case priority',
     enum: Priority,
-    example: 'URGENT',
+    example: 'MEDIUM',
   })
   priority: Priority;
 

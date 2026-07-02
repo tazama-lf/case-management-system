@@ -24,7 +24,7 @@ describe('TaskService', () => {
   const mockCaseRecord = {
     case_id: 1,
     tenant_id: 'tenant1',
-    priority: 'URGENT' as Priority,
+    priority: 'MEDIUM' as Priority,
     status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
   };
 

@@ -44,7 +44,7 @@ describe('CaseService', () => {
     case_owner_user_id: 'user-123',
     status: CaseStatus.STATUS_20_IN_PROGRESS,
     case_type: CaseType.FRAUD,
-    priority: Priority.CRITICAL,
+    priority: Priority.HIGH,
     parent_id: null,
     created_at: new Date(),
     updated_at: new Date(),
@@ -603,8 +603,8 @@ describe('CaseService', () => {
       {
         method: 'updateCase',
         service: 'caseQueryService',
-        args: [1, { priority: Priority.CRITICAL } as any, 'user-123', mockUser, updateCaseEndpoint, 'tenant-123'],
-        expectedArgs: [1, { priority: Priority.CRITICAL } as any, 'user-123'],
+        args: [1, { priority: Priority.HIGH } as any, 'user-123', mockUser, updateCaseEndpoint, 'tenant-123'],
+        expectedArgs: [1, { priority: Priority.HIGH } as any, 'user-123'],
         setupCase: mockCase, // updateCase can work with any valid status
       },
       {
@@ -646,7 +646,7 @@ describe('CaseService', () => {
 
   describe('completeCaseCreation', () => {
     const updateData = {
-      priority: Priority.CRITICAL,
+      priority: Priority.HIGH,
       caseType: CaseType.FRAUD,
       note: 'Test note',
       priorityScore: 85,
@@ -732,7 +732,7 @@ describe('CaseService', () => {
         'user-123',
         'tenant-123',
         1,
-        Priority.CRITICAL,
+        Priority.HIGH,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
       );
@@ -741,7 +741,7 @@ describe('CaseService', () => {
         'user-123',
         'tenant-123',
         1,
-        Priority.CRITICAL,
+        Priority.HIGH,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
       );
@@ -799,7 +799,7 @@ describe('CaseService', () => {
         100,
         expect.objectContaining({
           priority_score: 85,
-          priority: Priority.CRITICAL,
+          priority: Priority.HIGH,
           alertType: CaseType.FRAUD,
         }),
       );

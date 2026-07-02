@@ -468,13 +468,13 @@ export class ReportsService {
     const openCases = allCases.filter((c) => !ReportsService.CLOSED_STATUSES.includes(c.status)).length;
 
     const lowPriorityCases = allCases.filter(
-      (c) => c.priority === Priority.NEW && !ReportsService.CLOSED_STATUSES.includes(c.status),
+      (c) => c.priority === Priority.LOW && !ReportsService.CLOSED_STATUSES.includes(c.status),
     ).length;
     const mediumPriorityCases = allCases.filter(
-      (c) => (c.priority === Priority.CRITICAL || c.priority === Priority.URGENT) && !ReportsService.CLOSED_STATUSES.includes(c.status),
+      (c) => c.priority === Priority.MEDIUM && !ReportsService.CLOSED_STATUSES.includes(c.status),
     ).length;
     const highPriorityCases = allCases.filter(
-      (c) => c.priority === Priority.BREACH && !ReportsService.CLOSED_STATUSES.includes(c.status),
+      (c) => c.priority === Priority.HIGH && !ReportsService.CLOSED_STATUSES.includes(c.status),
     ).length;
 
     const recentCases = [
