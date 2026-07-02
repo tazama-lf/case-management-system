@@ -27,7 +27,6 @@ describe('CaseReopeningService', () => {
     status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     case_type: CaseType.FRAUD,
     priority: Priority.CRITICAL,
-    parent_id: null,
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -167,14 +166,13 @@ describe('CaseReopeningService', () => {
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
     });
 
-    it('should reopen only the child case when the case has a parent', async () => {
+    it('should reopen the requested case', async () => {
       const role = 'CMS_SUPERVISOR';
-      const caseWithParent = { ...mockCase, parent_id: 100 };
       const txCase = {
-        update: jest.fn().mockResolvedValueOnce({ ...caseWithParent, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
+        update: jest.fn().mockResolvedValueOnce({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
       };
 
-      caseRepository.findCaseById.mockResolvedValueOnce(caseWithParent);
+      caseRepository.findCaseById.mockResolvedValueOnce(mockCase);
       caseRepository.transaction.mockImplementationOnce(async (callback) => {
         const tx = {
           case: txCase,
@@ -321,17 +319,16 @@ describe('CaseReopeningService', () => {
       expect(notificationService.sendGroupNotification).toHaveBeenCalled();
     });
 
-    it('should approve reopening without updating the parent case', async () => {
-      const caseWithParent = {
+    it('should approve reopening by updating the requested case once', async () => {
+      const caseForReopening = {
         ...mockCase,
-        parent_id: 100,
         status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
         tasks: [mockTask],
       };
       const txCase = {
-        update: jest.fn().mockResolvedValueOnce({ ...caseWithParent, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
+        update: jest.fn().mockResolvedValueOnce({ ...caseForReopening, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
       };
-      caseRepository.findCaseForReopening.mockResolvedValue(caseWithParent);
+      caseRepository.findCaseForReopening.mockResolvedValue(caseForReopening);
 
       caseRepository.transaction.mockImplementationOnce(async (callback) => {
         const tx = {

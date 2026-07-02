@@ -109,19 +109,19 @@ export class CaseCreationService {
         userId,
         operation: 'ADDITIONAL_CASE_CREATED',
         entityName: 'CaseCreationService',
-        actionPerformed: `Created ${alertType} case ${newCase.case_id} without a parent. BPMN will create investigation task.`,
+        actionPerformed: `Created ${alertType} case ${newCase.case_id}. BPMN will create investigation task.`,
         outcome: Outcome.SUCCESS,
         tenantId,
       });
 
       this.loggerService.log(
-        `Case ${newCase.case_id} (${alertType}) created without parent. BPMN workflow will create investigation task.`,
+        `Case ${newCase.case_id} (${alertType}) created. BPMN workflow will create investigation task.`,
         CaseCreationService.name,
       );
 
       return {
         caseId: newCase.case_id,
-        message: 'Child case created, BPMN will create investigation task',
+        message: 'Case created, BPMN will create investigation task',
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

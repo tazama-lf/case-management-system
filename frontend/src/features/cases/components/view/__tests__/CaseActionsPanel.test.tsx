@@ -59,7 +59,6 @@ describe('CaseActionsPanel', () => {
     const { container } = render(
       <CaseActionsPanel
         caseData={baseCaseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
       />,
     );
@@ -71,7 +70,6 @@ describe('CaseActionsPanel', () => {
     const { container } = render(
       <CaseActionsPanel
         caseData={baseCaseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
       />,
     );
@@ -84,7 +82,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onComplete={onComplete}
       />,
@@ -106,7 +103,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onCloseCase={onCloseCase}
       />,
@@ -118,31 +114,6 @@ describe('CaseActionsPanel', () => {
     expect(onCloseCase).toHaveBeenCalledWith(caseData);
   });
 
-  it('does not show Close Case for FRAUD_AND_AML based on sub-case closure', async () => {
-    mockHasSupervisorRole.mockReturnValue(true);
-    const onCloseCase = vi.fn();
-    const caseData = {
-      ...baseCaseData,
-      type: 'FRAUD_AND_AML',
-      status: 'STATUS_20_IN_PROGRESS',
-      tasks: [],
-    };
-    const subCases = [
-      { id: 2, status: 'STATUS_82_CLOSED_CONFIRMED' },
-      { id: 3, status: 'STATUS_81_CLOSED_REFUTED' },
-    ] as any[];
-    render(
-      <CaseActionsPanel
-        caseData={caseData}
-        subCasesDetails={subCases}
-        canManageSupervisorActions={false}
-        onCloseCase={onCloseCase}
-      />,
-    );
-    expect(screen.queryByText('Close Case')).not.toBeInTheDocument();
-    expect(onCloseCase).not.toHaveBeenCalled();
-  });
-
   it('shows Review Case Closure for pending final approval', async () => {
     const onApproveCase = vi.fn();
     const caseData = {
@@ -152,7 +123,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={true}
         onApproveCase={onApproveCase}
       />,
@@ -174,7 +144,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={true}
         onApproveCaseCreation={onApproveCaseCreation}
         onRejectCaseCreation={onRejectCaseCreation}
@@ -200,7 +169,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={true}
         onApproveCaseReopen={onApproveCaseReopen}
         onRejectCaseReopen={onRejectCaseReopen}
@@ -233,7 +201,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onReopenCase={onReopenCase}
       />,
@@ -255,7 +222,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onReopenCase={onReopenCase}
       />,
@@ -282,7 +248,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onReopenCase={onReopenCase}
       />,
@@ -300,7 +265,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onAbandonCase={onAbandonCase}
       />,
@@ -322,7 +286,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onSuspendCase={onSuspendCase}
       />,
@@ -340,7 +303,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onResumeCase={onResumeCase}
       />,
@@ -356,7 +318,6 @@ describe('CaseActionsPanel', () => {
     const { container } = render(
       <CaseActionsPanel
         caseData={baseCaseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
       />,
     );
@@ -370,7 +331,6 @@ describe('CaseActionsPanel', () => {
     const { container } = render(
       <CaseActionsPanel
         caseData={baseCaseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
       />,
     );
@@ -389,7 +349,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onCloseCase={onCloseCase}
       />,
@@ -405,7 +364,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onResumeCase={onResumeCase}
       />,
@@ -426,7 +384,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onCloseCase={vi.fn()}
       />,
@@ -446,7 +403,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onReopenCase={onReopenCase}
       />,
@@ -466,7 +422,6 @@ describe('CaseActionsPanel', () => {
     render(
       <CaseActionsPanel
         caseData={caseData}
-        subCasesDetails={undefined}
         canManageSupervisorActions={false}
         onReopenCase={vi.fn()}
       />,

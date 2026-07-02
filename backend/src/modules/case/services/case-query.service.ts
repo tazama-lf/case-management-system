@@ -32,7 +32,7 @@ export class CaseQueryService {
       case_id: number;
       status: CaseStatus;
       priority: Priority;
-      parent_id: number | null;
+      group_id: number | null;
       case_type: CaseType | null;
       created_at: Date;
       updated_at: Date;
@@ -136,7 +136,7 @@ export class CaseQueryService {
           status: caseItem.status,
           priority: caseItem.priority,
           case_type: caseItem.case_type,
-          parent_id: caseItem.parent_id,
+          group_id: caseItem.group_id,
           created_at: caseItem.created_at,
           updated_at: caseItem.updated_at,
           user_role: userRole,
@@ -207,9 +207,8 @@ export class CaseQueryService {
   }
 
   /**
-   * FRAUD_AND_AML sub-cases have no direct alert relation once the container case's
-   * alert is repointed at the InvestigationGroup (see backfill-investigation-groups.sql).
-   * Resolve their alert via group_id in a single batch instead of per-row queries.
+   * Grouped FRAUD/AML cases can resolve alert details through InvestigationGroup.
+   * Resolve alerts via group_id in a single batch instead of per-row queries.
    */
   private async getGroupAlertMap(
     caseItems: Array<{ case_id: number; alert: unknown; group_id: number | null }>,
@@ -288,7 +287,7 @@ export class CaseQueryService {
         transaction: JsonValue;
         confidence_per: number;
       } | null;
-      parent_id: number | null;
+      group_id: number | null;
       assigned_to:
         | {
             user_id: string | null;
@@ -664,7 +663,7 @@ export class CaseQueryService {
           completed_tasks: taskCounts.completed,
           pending_tasks: taskCounts.pending,
           alert: caseItem.alert ?? groupAlertMap.get(caseItem.case_id) ?? null,
-          parent_id: caseItem.parent_id,
+          group_id: caseItem.group_id,
           assigned_to:
             assignedUsers.length > 0
               ? { user_id: caseItem.case_owner_user_id ?? assignedUsers[0], task_count: assignedUsers.length }
@@ -882,15 +881,6 @@ export class CaseQueryService {
       this.logger.error('Error checking case access', { error, caseId, investigatorUserId, tenantId });
       return false;
     }
-  }
-
-  async getSubCasesDetails(caseId: number): Promise<Case[]> {
-    const subCases = await this.prismaService.case.findMany({
-      where: {
-        parent_id: caseId,
-      },
-    });
-    return subCases;
   }
 
   async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string): Promise<Case> {

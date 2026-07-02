@@ -710,7 +710,7 @@ export class CaseService {
         transaction: JsonValue;
         confidence_per: number;
       } | null;
-      parent_id: number | null;
+      group_id: number | null;
       assigned_to:
         | {
             user_id: string | null;
@@ -753,7 +753,7 @@ export class CaseService {
       case_id: number;
       status: CaseStatus;
       priority: Priority;
-      parent_id: number | null;
+      group_id: number | null;
       case_type: CaseType | null;
       created_at: Date;
       updated_at: Date;
@@ -1057,10 +1057,6 @@ export class CaseService {
 
   async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean): Promise<Case | null> {
     return await this.caseQueryService.retrieveCase(caseId, tenantId, isComplianceOfficer);
-  }
-
-  async getSubCasesDetails(caseId: number): Promise<Case[]> {
-    return await this.caseQueryService.getSubCasesDetails(caseId);
   }
 
   async checkUserCaseAccess(caseId: number, investigatorUserId: string | undefined, tenantId: string): Promise<boolean> {

@@ -201,16 +201,6 @@ describe('CloseCaseModal', () => {
     expect(mockOnSubmit).toHaveBeenCalled();
   });
 
-  it('does not show sub-cases for FRAUD_AND_AML cases', () => {
-    render(<CloseCaseModal {...defaultProps} caseData={mockFraudAmlCaseData} />);
-
-    expect(
-      screen.queryByText('Sub-Cases Closure Status'),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText('456')).not.toBeInTheDocument();
-    expect(screen.queryByText('789')).not.toBeInTheDocument();
-  });
-
   it('shows standard outcomes for FRAUD_AND_AML case', () => {
     mockIsSupervisor = true;
     render(<CloseCaseModal {...defaultProps} caseData={mockFraudAmlCaseData} />);
