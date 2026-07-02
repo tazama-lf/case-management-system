@@ -141,9 +141,17 @@ END $$;
 -- ---------------------------------------------------------------------------
 -- Step 4: Close all FRAUD_AND_AML container cases.
 -- Rows are NOT deleted — they are retained for audit history.
+-- Any legacy container final_outcome of STATUS_84_COMPLETED is normalized to
+-- inconclusive so retired Fraud & AML containers do not keep a completed
+-- outcome.
 -- ---------------------------------------------------------------------------
 UPDATE cases
-SET status = 'STATUS_83_CLOSED_INCONCLUSIVE'
+SET
+    status = 'STATUS_83_CLOSED_INCONCLUSIVE',
+    final_outcome = CASE
+        WHEN final_outcome = 'STATUS_84_COMPLETED' THEN 'STATUS_83_CLOSED_INCONCLUSIVE'::"CaseStatus"
+        ELSE final_outcome
+    END
 WHERE case_type = 'FRAUD_AND_AML'
   AND parent_id IS NULL;
 
@@ -186,6 +194,12 @@ END $$;
 -- WHERE case_type = 'FRAUD_AND_AML'
 --   AND parent_id IS NULL
 --   AND status != 'STATUS_83_CLOSED_INCONCLUSIVE';
+--
+-- Expected: 0
+-- SELECT count(*) FROM cases
+-- WHERE case_type = 'FRAUD_AND_AML'
+--   AND parent_id IS NULL
+--   AND final_outcome = 'STATUS_84_COMPLETED';
 --
 -- Expected: 0 (no sub-case still chained to a container via parent_id)
 -- SELECT count(*) FROM cases sub
