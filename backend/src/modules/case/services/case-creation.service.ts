@@ -155,12 +155,13 @@ export class CaseCreationService {
     }
 
     const investigationGroup = isFraudNAML ? await this.createInvestigationGroup(dto.alertId, tenantId) : undefined;
+    const primaryCaseType = isFraudNAML ? CaseType.FRAUD : caseType;
     const caseDetail: CreateCaseDto = {
       tenantId,
       caseCreatorUserId: userId,
       caseOwnerUserId: caseOwnerId,
       status: caseStatus,
-      caseType,
+      caseType: primaryCaseType,
       priority,
       caseCreationType: CaseCreationType.MANUAL,
       ...(investigationGroup === undefined ? {} : { groupId: investigationGroup.id }),
@@ -169,6 +170,22 @@ export class CaseCreationService {
     try {
       const createdCase = await this.caseRepository.createCase(caseDetail);
       await this.executeFlowableCaseCreationEvent(createdCase, CaseCreationType.MANUAL, false, userRole);
+
+      const relatedCases = [createdCase];
+      if (isFraudNAML) {
+        const amlCase = await this.caseRepository.createCase({
+          tenantId,
+          caseCreatorUserId: userId,
+          caseOwnerUserId: caseOwnerId,
+          status: caseStatus,
+          caseType: CaseType.AML,
+          priority,
+          caseCreationType: CaseCreationType.MANUAL,
+          ...(investigationGroup === undefined ? {} : { groupId: investigationGroup.id }),
+        });
+        await this.executeFlowableCaseCreationEvent(amlCase, CaseCreationType.MANUAL, false, userRole);
+        relatedCases.push(amlCase);
+      }
 
       const result = await this.caseRepository.transaction(async (tx) => {
         const updatedAlert = await this.alertRepository.updateAlert(
@@ -182,52 +199,25 @@ export class CaseCreationService {
           tx,
         );
 
-        if (needsApproval) {
-          await this.taskService.createTask(
-            {
-              caseId: createdCase.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Approve Case Creation',
-              description: `Manual Case Creation Approval For Case ${createdCase.case_id}`,
-              candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
-            },
-            userId,
-            tenantId,
-            tx,
-          );
-        } else if (isFraudNAML) {
-          await this.createCaseWithInvestigationTask(
-            CaseType.AML,
-            userId,
-            tenantId,
-            priority,
-            CaseCreationType.AUTOMATIC_SYSTEM,
-            userRole,
-            investigationGroup?.id,
-          );
-          await this.createCaseWithInvestigationTask(
-            CaseType.FRAUD,
-            userId,
-            tenantId,
-            priority,
-            CaseCreationType.AUTOMATIC_SYSTEM,
-            userRole,
-            investigationGroup?.id,
-          );
-        } else {
-          await this.taskService.createTask(
-            {
-              caseId: createdCase.case_id,
-              status: TaskStatus.STATUS_01_UNASSIGNED,
-              name: 'Investigate Case',
-              description: `Investigation task for manually created case ${createdCase.case_id}`,
-              candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-            },
-            userId,
-            tenantId,
-            tx,
-          );
-        }
+        await Promise.all(
+          relatedCases.map(
+            async (relatedCase) =>
+              await this.taskService.createTask(
+                {
+                  caseId: relatedCase.case_id,
+                  status: TaskStatus.STATUS_01_UNASSIGNED,
+                  name: needsApproval ? 'Approve Case Creation' : 'Investigate Case',
+                  description: needsApproval
+                    ? `Manual Case Creation Approval For Case ${relatedCase.case_id}`
+                    : `Investigation task for manually created case ${relatedCase.case_id}`,
+                  candidateGroup: needsApproval ? CANDIDATE_GROUPS.SUPERVISORS : CANDIDATE_GROUPS.INVESTIGATIONS,
+                },
+                userId,
+                tenantId,
+                tx,
+              ),
+          ),
+        );
 
         return { alert: updatedAlert };
       });

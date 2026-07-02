@@ -456,18 +456,15 @@ describe('CaseCreationService', () => {
       );
     });
 
-    it('should create FRAUD_AND_AML case with companion AML and FRAUD cases', async () => {
+    it('should create separate FRAUD and AML cases for FRAUD_AND_AML manual creation', async () => {
       const fraudAndAmlDto = { ...manualCaseDto, alertType: CaseType.FRAUD_AND_AML };
-      const fraudAndAmlCase = { ...mockCase, case_type: CaseType.FRAUD_AND_AML };
+      const fraudCase = { ...mockCase, case_type: CaseType.FRAUD };
 
       caseRepository.findAlert.mockResolvedValueOnce(mockAlert);
-      caseRepository.createCase.mockResolvedValueOnce(fraudAndAmlCase);
+      caseRepository.createCase.mockResolvedValueOnce(fraudCase);
       flowableService.handleCaseCreated.mockResolvedValue(undefined);
 
-      // Mock for the two companion cases
-      caseRepository.createCase
-        .mockResolvedValueOnce({ ...mockCase, case_type: CaseType.AML })
-        .mockResolvedValueOnce({ ...mockCase, case_type: CaseType.FRAUD });
+      caseRepository.createCase.mockResolvedValueOnce({ ...mockCase, case_type: CaseType.AML });
 
       caseRepository.transaction.mockImplementationOnce(async (callback) => {
         alertRepository.updateAlert.mockResolvedValueOnce(mockUpdatedAlert);
@@ -481,7 +478,8 @@ describe('CaseCreationService', () => {
       const result = await service.manualCaseCreation(fraudAndAmlDto, userId, tenantId, userRole);
 
       expect(result.success).toBe(true);
-      expect(caseRepository.createCase).toHaveBeenCalledTimes(3);
+      expect(result.case).toEqual(fraudCase);
+      expect(caseRepository.createCase).toHaveBeenCalledTimes(2);
       expect(prismaService.investigationGroup.create).toHaveBeenCalledWith({
         data: {
           alert_id: 1,
@@ -491,7 +489,7 @@ describe('CaseCreationService', () => {
       expect(caseRepository.createCase).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({
-          caseType: CaseType.FRAUD_AND_AML,
+          caseType: CaseType.FRAUD,
           groupId: 123,
         }),
       );
@@ -502,11 +500,9 @@ describe('CaseCreationService', () => {
           groupId: 123,
         }),
       );
-      expect(caseRepository.createCase).toHaveBeenNthCalledWith(
-        3,
+      expect(caseRepository.createCase).not.toHaveBeenCalledWith(
         expect.objectContaining({
-          caseType: CaseType.FRAUD,
-          groupId: 123,
+          caseType: CaseType.FRAUD_AND_AML,
         }),
       );
     });
