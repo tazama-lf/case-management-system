@@ -80,6 +80,7 @@ describe('TriageService', () => {
     case_creator_user_id: 'user-123',
     case_owner_user_id: null,
     parent_id: null,
+    group_id: null,
     status: CaseStatus.STATUS_00_DRAFT,
     priority: Priority.NEW,
     case_creation_type: CaseCreationType.AUTOMATIC_SYSTEM,
