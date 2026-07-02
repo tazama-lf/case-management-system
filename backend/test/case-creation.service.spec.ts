@@ -165,7 +165,7 @@ describe('CaseCreationService', () => {
         creationType: createCaseDto.caseCreationType,
         creatorRole: userRole,
         isReopened: false,
-        createsInvestigationGroup: false,
+        isFraudNAML: false,
       });
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalledWith(
         {

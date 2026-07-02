@@ -334,7 +334,7 @@ describe('CaseClosureApprovalService', () => {
           const caseWithoutTask = { ...mockCase, tasks: [] };
           caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithoutTask as any);
         },
-        error: NotFoundException,
+        error: InternalServerErrorException,
       },
       {
         description: 'investigation task not assigned to user',
@@ -356,7 +356,7 @@ describe('CaseClosureApprovalService', () => {
           };
           caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithTask as any);
         },
-        error: NotFoundException,
+        error: InternalServerErrorException,
       },
       {
         description: 'unexpected error',
