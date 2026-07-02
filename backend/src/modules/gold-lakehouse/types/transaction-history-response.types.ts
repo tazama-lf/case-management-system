@@ -24,12 +24,6 @@ export interface TransactionHistoryResponse {
   };
   timeline: Timeline[];
   cumulative: Cumulative;
-  volumeDistribution: Array<{
-    bucketStart: string;
-    granularity: string;
-    transactionCount: number;
-    totalVolume: number;
-  }>;
   recentTransactions: RecentTransaction[];
   meta: {
     accountId: string;

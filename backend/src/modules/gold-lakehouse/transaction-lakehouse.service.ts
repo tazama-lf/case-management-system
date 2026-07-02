@@ -291,13 +291,6 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-      const volumeDistribution = aggregates.map((a) => ({
-        bucketStart: a.bucket_start,
-        granularity: a.bucket_granularity,
-        transactionCount: parseInt(a.bucket_tx_count, 10) || 0,
-        totalVolume: parseFloat(a.bucket_tx_amount) || 0,
-      }));
-
       const recentTransactions = events.slice(0, 20).map((e) => {
         const counterparty = e.entity_role === 'DEBTOR' ? (e.creditor_name ?? 'Unknown Creditor') : (e.debtor_name ?? 'Unknown Debtor');
 
@@ -343,7 +336,6 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         },
         timeline,
         cumulative,
-        volumeDistribution,
         recentTransactions,
         meta: {
           accountId,
