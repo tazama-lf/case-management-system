@@ -12,6 +12,15 @@ export class CreateCaseDto {
   parentId?: number;
 
   @ApiProperty({
+    description: 'Optional investigation group ID for linked FRAUD/AML cases',
+    example: 456,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  groupId?: number;
+
+  @ApiProperty({
     description: 'Tenant ID associated with the case',
     example: 'tenant-123e4567-e89b-12d3-a456-426614174000',
   })

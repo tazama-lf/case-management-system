@@ -23,6 +23,10 @@ import { LinkDto, TransactionDetailDto, ChargeDto, CreditorDto, DebtorDto } from
 import { setTimeout } from 'node:timers/promises';
 import { TaskRepository } from '../repository/task.repository';
 
+type InvestigationGroupDelegate = {
+  create: (args: { data: { alert_id: number; tenant_id: string } }) => Promise<{ id: number }>;
+};
+
 @Injectable()
 export class TriageService {
   private readonly closableStatuses: CaseStatus[] = [
@@ -361,32 +365,34 @@ export class TriageService {
             updateAlertDto.alertType,
           );
         } else if (alert.alert_type) {
-          await this.caseCreationService.updateCaseStatus(
-            alert.case_id,
-            CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-            userId,
-            tenantId,
-            priority,
-            updateAlertDto.alertType,
-          );
           if (alert.alert_type === CaseType.FRAUD_AND_AML) {
-            await this.caseCreateService.createCaseWithInvestigationTask(
-              CaseType.FRAUD,
+            const investigationGroup = await this.createInvestigationGroup(alert.alert_id, tenantId);
+            await this.caseCreationService.updateCaseStatus(
+              alert.case_id,
+              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
               userId,
               tenantId,
-              alert.case_id,
               priority,
-              CaseCreationType.AUTOMATIC_SYSTEM,
-              'SUPERVISOR',
+              CaseType.FRAUD,
+              investigationGroup.id,
             );
             await this.caseCreateService.createCaseWithInvestigationTask(
               CaseType.AML,
               userId,
               tenantId,
-              alert.case_id,
               priority,
               CaseCreationType.AUTOMATIC_SYSTEM,
               'SUPERVISOR',
+              investigationGroup.id,
+            );
+          } else {
+            await this.caseCreationService.updateCaseStatus(
+              alert.case_id,
+              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+              userId,
+              tenantId,
+              priority,
+              updateAlertDto.alertType,
             );
           }
         }
@@ -466,6 +472,24 @@ export class TriageService {
       await setTimeout(1000 * attempt);
       await this.retry(fn, maxRetries, attempt + 1);
     }
+  }
+
+  private async createInvestigationGroup(alertId: number, tenantId: string): Promise<{ id: number }> {
+    const prismaWithInvestigationGroup = this.prisma as PrismaService & {
+      investigationGroup?: InvestigationGroupDelegate;
+    };
+    const investigationGroupDelegate = prismaWithInvestigationGroup.investigationGroup;
+
+    if (!investigationGroupDelegate) {
+      throw new InternalServerErrorException('InvestigationGroup Prisma model is not available');
+    }
+
+    return await investigationGroupDelegate.create({
+      data: {
+        alert_id: alertId,
+        tenant_id: tenantId,
+      },
+    });
   }
 
   async handleAITriage(alertId: number, caseId: number, dto: IngestAlertDto, userId: string, tenantId: string): Promise<unknown> {
@@ -601,6 +625,7 @@ export class TriageService {
             },
           });
 
+          const investigationGroup = await this.createInvestigationGroup(alertId, tenantId);
           await this.caseCreationService.updateCaseStatus(
             caseId,
             CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
@@ -608,24 +633,25 @@ export class TriageService {
             tenantId,
             priority,
             predictedAlertType,
+            investigationGroup.id,
           );
           await this.caseCreateService.createCaseWithInvestigationTask(
             CaseType.FRAUD,
             userId,
             tenantId,
-            caseId,
             priority,
             CaseCreationType.AUTOMATIC_SYSTEM,
             'SUPERVISOR',
+            investigationGroup.id,
           );
           await this.caseCreateService.createCaseWithInvestigationTask(
             CaseType.AML,
             userId,
             tenantId,
-            caseId,
             priority,
             CaseCreationType.AUTOMATIC_SYSTEM,
             'SUPERVISOR',
+            investigationGroup.id,
           );
 
           return;

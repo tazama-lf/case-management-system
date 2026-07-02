@@ -192,19 +192,19 @@ export class CaseCreationApprovalService {
           CaseType.AML,
           txResult.case.case_creator_user_id,
           tenantId,
-          txResult.case.case_id,
           txResult.case.priority,
           CaseCreationType.AUTOMATIC_SYSTEM,
           'SUPERVISOR',
+          ...(txResult.case.group_id !== null ? [txResult.case.group_id] : []),
         );
         await this.caseCreateService.createCaseWithInvestigationTask(
           CaseType.FRAUD,
           txResult.case.case_creator_user_id,
           tenantId,
-          txResult.case.case_id,
           txResult.case.priority,
           CaseCreationType.AUTOMATIC_SYSTEM,
           'SUPERVISOR',
+          ...(txResult.case.group_id !== null ? [txResult.case.group_id] : []),
         );
       } else {
         await this.taskService.createTask(
@@ -458,6 +458,7 @@ export class CaseCreationApprovalService {
     tenantId: string,
     priority?: Priority,
     caseType?: CaseType,
+    groupId?: number,
   ): Promise<Case> {
     this.loggerService.log(`Start - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
     try {
@@ -466,6 +467,9 @@ export class CaseCreationApprovalService {
         priority,
         case_type: caseType,
       };
+      if (groupId !== undefined) {
+        updateData.group_id = groupId;
+      }
       if (status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
         await this.taskRepository.transaction(async (tx) => {
           // Fetch the case to get the tenant_id
