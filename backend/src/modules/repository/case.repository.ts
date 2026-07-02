@@ -5,6 +5,7 @@ import { BaseRepository } from './base.repository';
 import { CommentRepository } from './comment.repository';
 import { validate as isUuid } from 'uuid';
 import { CaseClosureOutcome } from 'src/utils/enums/case-enum';
+import { SlaPolicyUtil } from '../shared/utils/sla-policy.util';
 
 @Injectable()
 export class CaseRepository extends BaseRepository {
@@ -12,6 +13,7 @@ export class CaseRepository extends BaseRepository {
     private readonly prisma: PrismaService,
     private readonly commentRepository: CommentRepository,
     private readonly logger: Logger,
+    private readonly slaPolicyUtil: SlaPolicyUtil,
   ) {
     super(prisma);
   }
@@ -323,9 +325,19 @@ export class CaseRepository extends BaseRepository {
 
   async updateCase(caseId: number, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient): Promise<Case> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
+    const priorityValue = typeof data.priority === 'string' ? data.priority : data.priority?.set;
+    let slaDueAt: Date | undefined;
+    if (priorityValue) {
+      const existingCase = await client.case.findUniqueOrThrow({
+        where: { case_id: caseId },
+        select: { created_at: true, tenant_id: true },
+      });
+      // Always anchored to created_at (never `now()`), so re-stamping is idempotent regardless of caller.
+      slaDueAt = await this.slaPolicyUtil.calculateSlaDueAt(existingCase.created_at, existingCase.tenant_id, priorityValue);
+    }
     return await client.case.update({
       where: { case_id: caseId },
-      data,
+      data: slaDueAt ? { ...data, sla_due_at: slaDueAt } : data,
     });
   }
 
@@ -535,6 +547,8 @@ export class CaseRepository extends BaseRepository {
 
   async createCase(caseDetail: any, tx?: Prisma.TransactionClient): Promise<Case> {
     const prisma = tx ?? this.prisma;
+    const createdAt = new Date();
+    const slaDueAt = await this.slaPolicyUtil.calculateSlaDueAt(createdAt, caseDetail.tenantId, caseDetail.priority);
     return await prisma.case.create({
       data: {
         tenant_id: caseDetail.tenantId,
@@ -545,12 +559,16 @@ export class CaseRepository extends BaseRepository {
         case_type: caseDetail.caseType,
         case_creation_type: caseDetail.caseCreationType,
         parent_id: caseDetail.parentId,
+        created_at: createdAt,
+        sla_due_at: slaDueAt,
       },
     });
   }
 
   async createDraftCase(caseDetail: any, dto: any, priorityScore: number, priority: any): Promise<{ case: Case; alert: Alert }> {
     return await this.prisma.$transaction(async (prisma) => {
+      const createdAt = new Date();
+      const slaDueAt = await this.slaPolicyUtil.calculateSlaDueAt(createdAt, caseDetail.tenantId, caseDetail.priority);
       // Create case in PostgreSQL only (no BPMN workflow)
       const createdCase = await prisma.case.create({
         data: {
@@ -561,6 +579,8 @@ export class CaseRepository extends BaseRepository {
           priority: caseDetail.priority,
           case_type: caseDetail.caseType,
           case_creation_type: caseDetail.caseCreationType,
+          created_at: createdAt,
+          sla_due_at: slaDueAt,
         },
       });
 
