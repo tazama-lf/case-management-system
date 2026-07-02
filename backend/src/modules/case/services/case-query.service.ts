@@ -295,7 +295,6 @@ export class CaseQueryService {
             'STATUS_81_CLOSED_REFUTED',
             'STATUS_82_CLOSED_CONFIRMED',
             'STATUS_83_CLOSED_INCONCLUSIVE',
-            'STATUS_84_COMPLETED',
             'STATUS_71_AUTOCLOSED_CONFIRMED',
             'STATUS_72_AUTOCLOSED_REFUTED',
           ],
@@ -314,7 +313,6 @@ export class CaseQueryService {
             'STATUS_81_CLOSED_REFUTED',
             'STATUS_82_CLOSED_CONFIRMED',
             'STATUS_83_CLOSED_INCONCLUSIVE',
-            'STATUS_84_COMPLETED',
             'STATUS_71_AUTOCLOSED_CONFIRMED',
             'STATUS_72_AUTOCLOSED_REFUTED',
           );
