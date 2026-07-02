@@ -33,7 +33,6 @@ interface ViewCaseModalProps {
   onRejectCaseCreation?: (row: CaseRow) => void;
   onAfterTaskReassign?: () => void;
   generateReport?: (caseId: number) => void;
-  setSubCasesDetails?: (rows: CaseRow[]) => void;
 }
 
 const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
@@ -54,14 +53,12 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
   onRejectCaseReopen,
   onApproveCaseCreation,
   onRejectCaseCreation,
-  setSubCasesDetails,
 }) => {
   const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
   const [localCaseData, setLocalCaseData] = React.useState<CaseRow | null>(
     null,
   );
-  const [subCases, setSubCases] = React.useState<CaseRow[]>([]);
   const [parentCase, setparentCase] = React.useState<CaseRow | null>(null);
 
   // Initialize local case data when row changes
@@ -106,35 +103,11 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
     }
   }, [row?.id, row?.parentId]);
 
-  const getSubCasesData = React.useCallback(async () => {
-    if (!localCaseData?.type || !localCaseData?.id) return;
-
-    if (localCaseData.type === 'FRAUD_AND_AML') {
-      try {
-        const subCasesDetails = await caseService.getSubCasesDetails(
-          localCaseData.id,
-        );
-        const transformed = subCasesDetails.map((c) =>
-          transformBackendCaseToUI(c as unknown as CaseWithTasksDto),
-        );
-
-        setSubCases(transformed);
-        setSubCasesDetails?.(transformed);
-      } catch (error) {
-        console.error('Failed to fetch subCases data:', error);
-      }
-    } else {
-      setSubCases([]);
-      setSubCasesDetails?.([]);
-    }
-  }, [localCaseData?.type, localCaseData?.id]);
-
   React.useEffect(() => {
     if (open && localCaseData) {
-      getSubCasesData();
       getParentCaseData();
     }
-  }, [open, localCaseData, getSubCasesData, getParentCaseData]);
+  }, [open, localCaseData, getParentCaseData]);
 
   if (!open || !localCaseData) return null;
 
@@ -196,9 +169,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
               {tab === 'details' && (
                 <CaseDetailsTab
                   row={displayData}
-                  subCasesDetails={
-                    displayData.type === 'FRAUD_AND_AML' ? subCases : undefined
-                  }
+                  subCasesDetails={undefined}
                   parentCaseDetails={displayData?.parentId ? parentCase : null}
                   canManageSupervisorActions={canManageSupervisorActions}
                   showActions={false}
@@ -255,10 +226,6 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
           <div className="border-t border-gray-200 bg-white px-6 py-4">
             <CaseActionsPanel
               caseData={displayData}
-              subCasesDetails={
-                displayData.type === 'FRAUD_AND_AML' ? subCases : undefined
-              }
-              parentCaseDetails={displayData?.parentId ? parentCase : null}
               canManageSupervisorActions={canManageSupervisorActions}
               onComplete={onComplete}
               onCloseCase={onCloseCase}

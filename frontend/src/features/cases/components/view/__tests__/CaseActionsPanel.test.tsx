@@ -122,7 +122,7 @@ describe('CaseActionsPanel', () => {
     expect(onCloseCase).toHaveBeenCalledWith(caseData);
   });
 
-  it('shows Close Case for FRAUD_AND_AML when all sub-cases closed', async () => {
+  it('does not show Close Case for FRAUD_AND_AML based on sub-case closure', async () => {
     mockHasSupervisorRole.mockReturnValue(true);
     const onCloseCase = vi.fn();
     const caseData = {
@@ -144,11 +144,8 @@ describe('CaseActionsPanel', () => {
         onCloseCase={onCloseCase}
       />,
     );
-    await waitFor(() => {
-      expect(screen.getByText('Close Case')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByText('Close Case'));
-    expect(onCloseCase).toHaveBeenCalledWith(caseData);
+    expect(screen.queryByText('Close Case')).not.toBeInTheDocument();
+    expect(onCloseCase).not.toHaveBeenCalled();
   });
 
   it('shows Review Case Closure for pending final approval', async () => {
@@ -278,7 +275,15 @@ describe('CaseActionsPanel', () => {
     });
   });
 
-  it('does not show Reopen for FRAUD_AND_AML cases', async () => {
+  it('shows Reopen for closed FRAUD_AND_AML cases when normal reopen rules pass', async () => {
+    mockTasks = [
+      {
+        name: 'SAR/STR Filing',
+        status: TaskStatus.STATUS_30_COMPLETED,
+        task_id: 10,
+      },
+    ];
+    const onReopenCase = vi.fn();
     const caseData = {
       ...baseCaseData,
       status: 'STATUS_82_CLOSED_CONFIRMED',
@@ -290,12 +295,14 @@ describe('CaseActionsPanel', () => {
         subCasesDetails={undefined}
         parentCaseDetails={null}
         canManageSupervisorActions={false}
-        onReopenCase={vi.fn()}
+        onReopenCase={onReopenCase}
       />,
     );
     await waitFor(() => {
-      expect(screen.queryByText('Reopen Case')).not.toBeInTheDocument();
+      expect(screen.getByText('Reopen Case')).toBeInTheDocument();
     });
+    fireEvent.click(screen.getByText('Reopen Case'));
+    expect(onReopenCase).toHaveBeenCalledWith(caseData);
   });
 
   it('shows Abandon Case for draft cases', async () => {

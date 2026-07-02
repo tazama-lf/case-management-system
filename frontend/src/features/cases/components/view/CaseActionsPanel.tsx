@@ -18,14 +18,13 @@ const CLOSED_STATUSES = [
   'STATUS_81_CLOSED_REFUTED',
   'STATUS_82_CLOSED_CONFIRMED',
   'STATUS_83_CLOSED_INCONCLUSIVE',
-  'STATUS_84_COMPLETED',
   'STATUS_71_AUTOCLOSED_CONFIRMED',
 ];
 
 interface CaseActionsPanelProps {
   caseData: CaseRow;
-  subCasesDetails: CaseRow[] | undefined;
-  parentCaseDetails: CaseRow | null;
+  subCasesDetails?: CaseRow[] | undefined;
+  parentCaseDetails?: CaseRow | null;
   canManageSupervisorActions: boolean;
   onComplete?: (row: CaseRow) => void;
   onCloseCase?: (row: CaseRow) => void;
@@ -42,8 +41,6 @@ interface CaseActionsPanelProps {
 
 const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
   caseData,
-  subCasesDetails,
-  parentCaseDetails,
   canManageSupervisorActions,
   onComplete,
   onCloseCase,
@@ -59,7 +56,7 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
 }) => {
   const showSupervisorControls = canManageSupervisorActions;
   const [caseDetails, setCaseDetails] = useState<Case | null>(null);
-  const { hasComplianceOfficerRole, hasSupervisorRole } = useAuth();
+  const { hasComplianceOfficerRole } = useAuth();
   const { tasks, fetchTasks } = useCaseTasks(caseData.id);
 
   useEffect(() => {
@@ -133,28 +130,6 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
       investigateTasks.length > 0 &&
       investigateTasks.length === completedInvestigateTasks.length &&
       isUserCaseOwner()
-    ) {
-      actions.push(
-        <button
-          key="close"
-          onClick={() => {
-            onCloseCase(caseData);
-          }}
-          className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-        >
-          <XCircleIcon className="h-4 w-4" />
-          Close Case
-        </button>,
-      );
-    } else if (
-      onCloseCase &&
-      caseData.type === 'FRAUD_AND_AML' &&
-      (caseData.status === 'STATUS_20_IN_PROGRESS' ||
-        caseData.status.includes('IN PROGRESS')) &&
-      hasSupervisorRole() &&
-      subCasesDetails &&
-      subCasesDetails.length > 0 &&
-      subCasesDetails.every((sub) => CLOSED_STATUSES.includes(sub.status))
     ) {
       actions.push(
         <button
@@ -276,11 +251,7 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
     }
 
     // Reopen Case button - show for closed cases
-    if (
-      onReopenCase &&
-      CLOSED_STATUSES.includes(caseData.status) &&
-      caseData.type !== 'FRAUD_AND_AML'
-    ) {
+    if (onReopenCase && CLOSED_STATUSES.includes(caseData.status)) {
       if (caseData.status === 'STATUS_82_CLOSED_CONFIRMED') {
         if (
           hasCompletedStrTask &&
@@ -314,63 +285,6 @@ const CaseActionsPanel: React.FC<CaseActionsPanelProps> = ({
         );
       }
     }
-
-    // if (onReopenCase && hasCompletedStrTask?.status === TaskStatus.STATUS_30_COMPLETED && CLOSED_STATUSES.includes(caseData.status)) {
-    //   if (caseData.parentId) {
-    //     if (parentCaseDetails && CLOSED_STATUSES.includes(parentCaseDetails.status)) {
-    //       actions.push(
-    //         <button
-    //           key="reopen"
-    //           onClick={() => onReopenCase(caseData)}
-    //           className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-    //         >
-    //           <PlayIcon className="h-4 w-4" />
-    //           Reopen Case
-    //         </button>
-    //       );
-    //     }
-
-    //   } else {
-    //     actions.push(
-    //       <button
-    //         key="reopen"
-    //         onClick={() => onReopenCase(caseData)}
-    //         className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-    //       >
-    //         <PlayIcon className="h-4 w-4" />
-    //         Reopen Case
-    //       </button>
-    //     );
-    //   }
-
-    // } else if (onReopenCase && CLOSED_STATUSES.includes(caseData.status)) {
-    //   if (caseData.parentId) {
-    //     if (parentCaseDetails && CLOSED_STATUSES.includes(parentCaseDetails.status) && !hasCompletedStrTask) {
-    //       actions.push(
-    //         <button
-    //           key="reopen"
-    //           onClick={() => onReopenCase(caseData)}
-    //           className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-    //         >
-    //           <PlayIcon className="h-4 w-4" />
-    //           Reopen Case
-    //         </button>
-    //       );
-    //     }
-
-    //   } else if (caseData.type !== 'FRAUD_AND_AML') {
-    //     actions.push(
-    //       <button
-    //         key="reopen"
-    //         onClick={() => onReopenCase(caseData)}
-    //         className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-    //       >
-    //         <PlayIcon className="h-4 w-4" />
-    //         Reopen Case
-    //       </button>
-    //     );
-    //   }
-    // }
 
     // Abandon Case button - show for draft cases only
     if (onAbandonCase && caseData.status === 'STATUS_00_DRAFT') {

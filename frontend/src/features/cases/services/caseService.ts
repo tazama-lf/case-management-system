@@ -111,8 +111,7 @@ export interface CloseCaseDto {
   recommendedOutcome:
     | 'STATUS_81_CLOSED_REFUTED'
     | 'STATUS_82_CLOSED_CONFIRMED'
-    | 'STATUS_83_CLOSED_INCONCLUSIVE'
-    | 'STATUS_84_COMPLETED';
+    | 'STATUS_83_CLOSED_INCONCLUSIVE';
   finalNotes: string;
   recommendations?: string;
 }
