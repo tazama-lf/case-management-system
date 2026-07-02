@@ -4,14 +4,6 @@ import { IsEnum, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator'
 
 export class CreateCaseDto {
   @ApiProperty({
-    description: 'Optional parent case ID if this case is a sub-case',
-    example: 123,
-  })
-  @IsNumber()
-  @IsOptional()
-  parentId?: number;
-
-  @ApiProperty({
     description: 'Optional investigation group ID for linked FRAUD/AML cases',
     example: 456,
     required: false,

@@ -206,7 +206,7 @@ describe('FlowableService', () => {
         caseStatus: 'OPEN',
         creatorRole: 'ANALYST',
         isReopened: false,
-        isFraudNAML: false,
+        createsInvestigationGroup: false,
       };
       processService.startProcessInstance.mockResolvedValue({ id: 'process-123' });
 

@@ -592,7 +592,7 @@
     },
     "POST /api/v1/task/:taskId/complete": {
       "tier2": {
-        "description": "Marks a task as complete. Only allowed while the parent case is active.",
+        "description": "Marks a task as complete. Only allowed while the case is active.",
         "rolePermissions": {
           "CMS_INVESTIGATOR": {
             "allowedCurrentStatuses": [

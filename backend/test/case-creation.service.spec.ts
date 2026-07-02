@@ -30,7 +30,6 @@ describe('CaseCreationService', () => {
     case_owner_user_id: 'user-123',
     status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
     priority: Priority.CRITICAL,
-    parent_id: null,
     case_type: CaseType.FRAUD,
     case_creation_type: CaseCreationType.AUTOMATIC_SYSTEM,
     created_at: new Date(),
@@ -140,7 +139,6 @@ describe('CaseCreationService', () => {
       priority: Priority.CRITICAL,
       caseType: CaseType.FRAUD,
       caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
-      parentId: undefined,
     };
 
     it('should successfully create a case', async () => {
@@ -167,7 +165,7 @@ describe('CaseCreationService', () => {
         creationType: createCaseDto.caseCreationType,
         creatorRole: userRole,
         isReopened: false,
-        isFraudNAML: false,
+        createsInvestigationGroup: false,
       });
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalledWith(
         {
@@ -181,19 +179,6 @@ describe('CaseCreationService', () => {
         mockCase.case_id,
         tenantId,
       );
-    });
-
-    it('should create a case without persisting parent id', async () => {
-      const createCaseDtoWithParent: CreateCaseDto = { ...createCaseDto, parentId: 100 };
-      const caseWithParent = { ...mockCase, parent_id: 100 };
-      caseRepository.createCase.mockResolvedValueOnce(caseWithParent);
-      flowableService.handleCaseCreated.mockResolvedValueOnce(undefined);
-      loggingOrchestrationService.logActionsWithHistory.mockResolvedValueOnce(undefined);
-
-      const result = await service.createCase(createCaseDtoWithParent, userId, tenantId, userRole);
-
-      expect(result.parent_id).toBe(100);
-      expect(caseRepository.createCase).not.toHaveBeenCalledWith(expect.objectContaining({ parentId: 100 }));
     });
 
     it.each([
@@ -249,7 +234,7 @@ describe('CaseCreationService', () => {
 
       expect(result).toEqual({
         caseId: mockCase.case_id,
-        message: 'Child case created, BPMN will create investigation task',
+        message: 'Case created, BPMN will create investigation task',
       });
       expect(caseRepository.createCase).toHaveBeenCalledWith({
         caseCreatorUserId: userId,
@@ -277,7 +262,7 @@ describe('CaseCreationService', () => {
         tenantId,
         operation: 'ADDITIONAL_CASE_CREATED',
         entityName: 'CaseCreationService',
-        actionPerformed: expect.stringContaining(`Created ${CaseType.FRAUD} case ${mockCase.case_id} without a parent`),
+        actionPerformed: expect.stringContaining(`Created ${CaseType.FRAUD} case ${mockCase.case_id}`),
         outcome: 'SUCCESS',
       });
     });

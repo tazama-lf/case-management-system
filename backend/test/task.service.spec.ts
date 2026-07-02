@@ -178,7 +178,6 @@ describe('TaskService', () => {
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         tenant_id: 'tenant1',
         case_owner_user_id: null,
-        parent_id: null,
       },
     } as any;
 
@@ -264,12 +263,11 @@ describe('TaskService', () => {
       );
     });
 
-    it('should promote only the task case when the case has a parent', async () => {
+    it('should promote only the task case', async () => {
       const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
-      const caseWithParent = {
+      const updatedCase = {
         case_id: 1,
         status: CaseStatus.STATUS_20_IN_PROGRESS,
-        parent_id: 10,
       };
       const txCase = {
         findFirst: jest.fn().mockResolvedValue({
@@ -287,8 +285,8 @@ describe('TaskService', () => {
 
         tx.findTaskWithCase.mockResolvedValue(existingTask);
         tx.updateTask.mockResolvedValue({ ...existingTask, status: TaskStatus.STATUS_20_IN_PROGRESS });
-        tx.findCaseStatus.mockResolvedValue({ ...existingTask.case, parent_id: 10 });
-        tx.updateCase.mockResolvedValue(caseWithParent);
+        tx.findCaseStatus.mockResolvedValue(existingTask.case);
+        tx.updateCase.mockResolvedValue(updatedCase);
 
         return callback(tx);
       });
@@ -334,22 +332,22 @@ describe('TaskService', () => {
       5000,
     );
 
-    it('should ignore parent case lookup errors because parent promotion is not performed', async () => {
+    it('should not query related cases while promoting the task case', async () => {
       const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
 
       taskRepository.transaction.mockImplementation(async (callback) => {
         const tx: any = {
           ...taskRepository,
           case: {
-            findFirst: jest.fn().mockRejectedValue(new Error('Parent case lookup failed')),
+            findFirst: jest.fn().mockRejectedValue(new Error('Related case lookup failed')),
             update: jest.fn(),
           },
         };
 
         tx.findTaskWithCase.mockResolvedValue(existingTask);
         tx.updateTask.mockResolvedValue({ ...existingTask, status: TaskStatus.STATUS_20_IN_PROGRESS });
-        tx.findCaseStatus.mockResolvedValue({ ...existingTask.case, parent_id: 10 });
-        tx.updateCase.mockResolvedValue({ ...existingTask.case, parent_id: 10, status: CaseStatus.STATUS_20_IN_PROGRESS });
+        tx.findCaseStatus.mockResolvedValue(existingTask.case);
+        tx.updateCase.mockResolvedValue({ ...existingTask.case, status: CaseStatus.STATUS_20_IN_PROGRESS });
 
         return callback(tx);
       });
