@@ -99,7 +99,6 @@ const mockCaseWithParent: CaseRow = {
 describe('ViewCaseModal', () => {
   const mockOnClose = vi.fn();
   const mockOnRefreshCases = vi.fn();
-  const mockSetSubCasesDetails = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -266,46 +265,30 @@ describe('ViewCaseModal', () => {
     expect(screen.queryByText('Case Actions Panel')).not.toBeInTheDocument();
   });
 
-  it('fetches sub-cases for FRAUD_AND_AML type', async () => {
-    const subCasesData = [
-      { ...mockCaseData, id: 456, type: 'FRAUD' },
-      { ...mockCaseData, id: 789, type: 'AML' },
-    ];
-    mockGetSubCasesDetails.mockResolvedValue(subCasesData);
-    mockTransformBackendCaseToUI.mockImplementation((c: any) => c);
-
+  it('does not fetch sub-cases for FRAUD_AND_AML type', () => {
     render(
       <ViewCaseModal
         open={true}
         onClose={mockOnClose}
         row={mockFraudAmlCase}
         onRefreshCases={mockOnRefreshCases}
-        setSubCasesDetails={mockSetSubCasesDetails}
       />,
     );
 
-    await waitFor(() => {
-      expect(mockGetSubCasesDetails).toHaveBeenCalledWith(mockFraudAmlCase.id);
-    });
+    expect(mockGetSubCasesDetails).not.toHaveBeenCalled();
   });
 
-  it('does not fetch sub-cases for non FRAUD_AND_AML type', async () => {
+  it('does not fetch sub-cases for non-container case types', () => {
     render(
       <ViewCaseModal
         open={true}
         onClose={mockOnClose}
         row={mockCaseData}
         onRefreshCases={mockOnRefreshCases}
-        setSubCasesDetails={mockSetSubCasesDetails}
       />,
     );
 
-    await waitFor(() => {
-      // getSubCasesDetails should not be called for FRAUD type
-      expect(mockGetSubCasesDetails).not.toHaveBeenCalled();
-    });
-    // setSubCasesDetails should be called with empty
-    expect(mockSetSubCasesDetails).toHaveBeenCalledWith([]);
+    expect(mockGetSubCasesDetails).not.toHaveBeenCalled();
   });
 
   it('fetches parent case details when parentId exists', async () => {
@@ -342,28 +325,6 @@ describe('ViewCaseModal', () => {
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith(
         'Failed to refresh case data:',
-        expect.any(Error),
-      );
-    });
-    consoleSpy.mockRestore();
-  });
-
-  it('handles getSubCasesDetails error gracefully', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-    mockGetSubCasesDetails.mockRejectedValue(new Error('sub-cases failed'));
-
-    render(
-      <ViewCaseModal
-        open={true}
-        onClose={mockOnClose}
-        row={mockFraudAmlCase}
-        onRefreshCases={mockOnRefreshCases}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to fetch subCases data:',
         expect.any(Error),
       );
     });
