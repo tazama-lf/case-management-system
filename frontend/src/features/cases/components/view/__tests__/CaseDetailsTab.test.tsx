@@ -102,8 +102,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -115,8 +113,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -129,8 +125,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -142,8 +136,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -156,8 +148,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={rowWithoutAlert}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -170,8 +160,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -190,8 +178,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -203,47 +189,16 @@ describe('CaseDetailsTab', () => {
     fireEvent.click(screen.getByText('pacs.008.001.09'));
   });
 
-  it('shows parent case info when parentId is set', async () => {
-    const rowWithParent = { ...mockCaseRow, parentId: 100 } as any;
-    const parentCase = {
-      id: 100,
-      status: 'STATUS_20_IN_PROGRESS',
-      statusColor: 'bg-blue-50',
-    } as any;
+  it('shows group info when groupId is set', async () => {
+    const rowWithGroup = { ...mockCaseRow, groupId: 100 } as any;
     render(
       <CaseDetailsTab
-        row={rowWithParent}
-        subCasesDetails={undefined}
-        parentCaseDetails={parentCase}
+        row={rowWithGroup}
       />,
     );
     await waitFor(() => {
-      expect(screen.getByText('Parent Case Information')).toBeInTheDocument();
+      expect(screen.getByText('Group Information')).toBeInTheDocument();
       expect(screen.getByText('100')).toBeInTheDocument();
-    });
-  });
-
-  it('shows sub-cases for FRAUD_AND_AML type', async () => {
-    const famlRow = { ...mockCaseRow, type: 'FRAUD_AND_AML' };
-    const subCases = [
-      {
-        id: 201,
-        type: 'FRAUD',
-        typeColor: 'bg-red-50',
-        status: 'STATUS_20_IN_PROGRESS',
-        statusColor: 'bg-blue-50',
-      },
-    ] as any[];
-    render(
-      <CaseDetailsTab
-        row={famlRow}
-        subCasesDetails={subCases}
-        parentCaseDetails={null}
-      />,
-    );
-    await waitFor(() => {
-      expect(screen.getByText('Sub Case Information')).toBeInTheDocument();
-      expect(screen.getByText('201')).toBeInTheDocument();
     });
   });
 
@@ -251,8 +206,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
 
@@ -277,70 +230,20 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Unassigned')).toBeInTheDocument();
-    });
-  });
-
-  it('hides parent assignee for FRAUD_AND_AML and shows subcase assignees', async () => {
-    const famlRow = { ...mockCaseRow, type: 'FRAUD_AND_AML' };
-    const subCases = [
-      {
-        id: 201,
-        type: 'AML',
-        typeColor: 'bg-purple-50',
-        status: 'STATUS_22_PENDING_FINAL_APPROVAL',
-        statusColor: 'bg-purple-50',
-      },
-      {
-        id: 202,
-        type: 'FRAUD',
-        typeColor: 'bg-red-50',
-        status: 'STATUS_20_IN_PROGRESS',
-        statusColor: 'bg-blue-50',
-      },
-    ] as CaseRow[];
-
-    mockGetInvestigationTaskForCase.mockImplementation(async (caseId) => ({
-      task_id: caseId,
-      case_id: caseId,
-      status: 'STATUS_20_IN_PROGRESS',
-      assigned_user_id: caseId === 201 ? 'user-1' : null,
-      name: 'Investigate Case',
-      created_at: '2024-01-01',
-      updated_at: '2024-01-01',
-    }));
-
-    render(
-      <CaseDetailsTab
-        row={famlRow}
-        subCasesDetails={subCases}
-        parentCaseDetails={null}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(mockGetInvestigationTaskForCase).not.toHaveBeenCalledWith(123);
-      expect(mockGetInvestigationTaskForCase).toHaveBeenCalledWith(201);
-      expect(mockGetInvestigationTaskForCase).toHaveBeenCalledWith(202);
-      expect(screen.getByText('John Doe')).toBeInTheDocument();
       expect(screen.getByText('Unassigned')).toBeInTheDocument();
     });
   });
 
   it('shows loading state when loading reports', async () => {
     const closedRow = { ...mockCaseRow, status: 'STATUS_82_CLOSED_CONFIRMED' };
-    mockGetCaseEvidence.mockImplementation(() => new Promise(() => {}));
+    mockGetCaseEvidence.mockImplementation(() => new Promise(() => { }));
     render(
       <CaseDetailsTab
         row={closedRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -362,8 +265,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={closedRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -375,8 +276,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -391,8 +290,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
         showActions={true}
       />,
     );
@@ -405,8 +302,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
         showActions={false}
       />,
     );
@@ -421,8 +316,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={rowWithoutAlert}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -436,8 +329,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -451,8 +342,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={closedRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -464,8 +353,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -478,8 +365,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={rowNoConf}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -508,8 +393,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={closedRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -544,8 +427,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={closedRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -569,12 +450,10 @@ describe('CaseDetailsTab', () => {
       ],
     });
     mockViewEvidence.mockRejectedValue(new Error('View failed'));
-    vi.spyOn(window, 'alert').mockImplementation(() => {});
+    vi.spyOn(window, 'alert').mockImplementation(() => { });
     render(
       <CaseDetailsTab
         row={closedRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -591,8 +470,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={highScoreRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -607,8 +484,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -639,8 +514,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={closedRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -652,8 +525,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {
@@ -661,3 +532,4 @@ describe('CaseDetailsTab', () => {
     });
   });
 });
+

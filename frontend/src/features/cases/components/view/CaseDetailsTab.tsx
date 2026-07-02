@@ -15,8 +15,6 @@ import useInvestigatorSupervisorList from '../../hooks/useInvestigatorSupervisor
 
 interface CaseDetailsTabProps {
   row: CaseRow;
-  subCasesDetails: CaseRow[] | undefined;
-  parentCaseDetails: CaseRow | null;
   canManageSupervisorActions?: boolean;
   showActions?: boolean;
   onComplete?: (row: CaseRow) => void;
@@ -72,8 +70,6 @@ const shouldShowInvestigationAssignee = (caseType?: string): boolean =>
 
 const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   row,
-  subCasesDetails,
-  parentCaseDetails,
   canManageSupervisorActions = false,
   showActions = true,
   onComplete,
@@ -109,6 +105,23 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   useEffect(() => {
     setLatestReports({});
     setViewingId(null);
+  }, [row.id]);
+
+  useEffect(() => {
+    taskService
+      .getInvestigationTaskForCase(row.id)
+      .then((task) => {
+        setInvestigationAssignees((prev) => ({
+          ...prev,
+          [row.id]: task?.assigned_user_id ?? null,
+        }));
+      })
+      .catch((error) => {
+        console.error(
+          `Failed to fetch investigation task assignee for case ${row.id}:`,
+          error,
+        );
+      });
   }, [row.id]);
 
   // Extract transaction data
@@ -270,70 +283,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     loadReport();
   }, [loadReport]);
 
-  useEffect(() => {
-    const caseRowsToFetch = [row, ...(subCasesDetails ?? [])].filter((caseRow) =>
-      shouldShowInvestigationAssignee(caseRow.type),
-    );
-    const caseIdsToFetch = Array.from(
-      new Set(caseRowsToFetch.map((caseRow) => caseRow.id)),
-    );
 
-    setInvestigationAssignees((previous) => {
-      const next: Record<number, string | null> = {};
-      caseIdsToFetch.forEach((caseId) => {
-        if (Object.hasOwn(previous, caseId)) {
-          next[caseId] = previous[caseId];
-        }
-      });
-      return next;
-    });
-
-    if (caseIdsToFetch.length === 0) {
-      return;
-    }
-
-    let isMounted = true;
-
-    const fetchInvestigationAssignees = async (): Promise<void> => {
-      const results = await Promise.all(
-        caseIdsToFetch.map(async (caseId) => {
-          try {
-            const investigationTask =
-              await taskService.getInvestigationTaskForCase(caseId);
-
-            return {
-              caseId,
-              assigneeId: investigationTask?.assigned_user_id ?? null,
-            };
-          } catch (error) {
-            console.error(
-              `Failed to load investigation assignee for case ${caseId}:`,
-              error,
-            );
-            return { caseId, assigneeId: null };
-          }
-        }),
-      );
-
-      if (!isMounted) {
-        return;
-      }
-
-      setInvestigationAssignees((previous) => {
-        const next = { ...previous };
-        results.forEach(({ caseId, assigneeId }) => {
-          next[caseId] = assigneeId;
-        });
-        return next;
-      });
-    };
-
-    void fetchInvestigationAssignees();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [row, subCasesDetails]);
 
   const renderInvestigationAssignee = (caseId: number): React.ReactNode => {
     const assigneeId = investigationAssignees[caseId];
@@ -510,81 +460,30 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
           </SectionCard>
         </div>
 
-        {/* Parent Case Information */}
-        {row?.parentId && parentCaseDetails && (
+        {row.groupId && (
           <div className="space-y-3">
             <div className="text-sm font-semibold text-gray-700">
-              Parent Case Information
+              Group Information
             </div>
             <SectionCard>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <div>
                   <div className="text-xs text-gray-500 uppercase">
-                    Parent ID
+                    Group ID
                   </div>
                   <div className="font-medium text-gray-900">
-                    {parentCaseDetails.id}
+                    {row.groupId}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 uppercase">Status</div>
-                  <span
-                    className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${parentCaseDetails.statusColor}`}
-                  >
-                    {getCaseStatusBadge(parentCaseDetails.status)}
+                  <div className="text-xs text-gray-500 uppercase">
+                    Group Type
+                  </div>
+                  <span className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 bg-indigo-50 text-indigo-700 ring-indigo-200">
+                    FRAUD_AND_AML
                   </span>
                 </div>
               </div>
-            </SectionCard>
-          </div>
-        )}
-
-        {/* Sub Cases Information */}
-        {row?.type === 'FRAUD_AND_AML' && subCasesDetails && (
-          <div className="space-y-3">
-            <div className="text-sm font-semibold text-gray-700">
-              Sub Case Information
-            </div>
-            <SectionCard>
-              {subCasesDetails.map((subCases) => (
-                <div key={subCases.id} className="mb-4">
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                    <div>
-                      <div className="text-xs text-gray-500 uppercase">
-                        SubCase ID
-                      </div>
-                      <div className="font-medium text-gray-900">
-                        {subCases.id}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-xs text-gray-500 uppercase">
-                        SubCase Type
-                      </div>
-                      <span
-                        className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ${subCases.typeColor}`}
-                      >
-                        {subCases.type || 'N/A'}
-                      </span>
-                    </div>
-
-                    <div>
-                      <div className="text-xs text-gray-500 uppercase">
-                        Status
-                      </div>
-                      <span
-                        className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-gray-200 ${subCases.statusColor}`}
-                      >
-                        {getCaseStatusBadge(subCases.status)}
-                      </span>
-                    </div>
-
-                    {shouldShowInvestigationAssignee(subCases.type) &&
-                      renderInvestigationAssignee(subCases.id)}
-                  </div>
-                </div>
-              ))}
             </SectionCard>
           </div>
         )}
@@ -710,8 +609,6 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
         <div className="col-span-full">
           <CaseActionsPanel
             caseData={row}
-            subCasesDetails={subCasesDetails}
-            parentCaseDetails={parentCaseDetails}
             canManageSupervisorActions={canManageSupervisorActions}
             onComplete={onComplete}
             onCloseCase={onCloseCase}

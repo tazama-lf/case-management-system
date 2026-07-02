@@ -33,7 +33,7 @@ describe('LinkedItemsTab', () => {
     const mockCase = {
       case_id: 123,
       case_type: 'FRAUD',
-      parent_id: null,
+      group_id: null,
       alert: { alert_id: 1 },
     };
     const mockAlert = {
@@ -53,7 +53,7 @@ describe('LinkedItemsTab', () => {
     const mockCase = {
       case_id: 123,
       case_type: 'FRAUD',
-      parent_id: null,
+      group_id: null,
       alert: null,
     };
     (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
@@ -67,7 +67,7 @@ describe('LinkedItemsTab', () => {
     const mockCase = {
       case_id: 123,
       case_type: 'FRAUD',
-      parent_id: null,
+      group_id: null,
       alert: { alert_id: 1 },
     };
     const mockAlert = {
@@ -88,7 +88,7 @@ describe('LinkedItemsTab', () => {
     const mockCase = {
       case_id: 123,
       case_type: 'FRAUD',
-      parent_id: null,
+      group_id: null,
       alert: { alert_id: 1 },
     };
     const mockAlert = {
@@ -112,7 +112,7 @@ describe('LinkedItemsTab', () => {
     const mockCase = {
       case_id: 123,
       case_type: 'FRAUD',
-      parent_id: null,
+      group_id: null,
       alert: { alert_id: 1 },
     };
     const mockAlert = {
@@ -169,7 +169,7 @@ describe('LinkedItemsTab', () => {
   });
 
   it('displays alert label and id', async () => {
-    const mockCase = { case_id: 123, parent_id: null, alert: { alert_id: 1 } };
+    const mockCase = { case_id: 123, group_id: null, alert: { alert_id: 1 } };
     const mockAlert = {
       alert_id: 1,
       message: 'Suspicious Transaction',
@@ -185,3 +185,4 @@ describe('LinkedItemsTab', () => {
     });
   });
 });
+

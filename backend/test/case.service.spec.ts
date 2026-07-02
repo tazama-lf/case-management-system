@@ -600,8 +600,8 @@ describe('CaseService', () => {
       {
         method: 'getUserCases',
         service: 'caseQueryService',
-        args: ['user-123', {} as any, false],
-        expectedArgs: ['user-123', {} as any, false],
+        args: ['user-123', {} as any, 'tenant-123', false],
+        expectedArgs: ['user-123', {} as any, 'tenant-123', false],
         setupCase: null, // No case lookup for this method
       },
       {
