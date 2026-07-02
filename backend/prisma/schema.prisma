@@ -118,6 +118,7 @@ model Case {
   tasks                Task[]
   evidence             Evidence[]
   transactionProfiles  TransactionProfile[]
+  slaEscalationRecords SlaEscalationRecord[]
 
   @@map("cases")
 }
@@ -132,6 +133,24 @@ model SlaPolicy {
 
   @@unique([tenant_id, priority])
   @@map("sla_policies")
+}
+
+enum SlaState {
+  ON_TRACK
+  AT_RISK
+  DUE_SOON
+  BREACHED
+}
+
+model SlaEscalationRecord {
+  id          Int      @id @default(autoincrement())
+  case_id     Int
+  sla_state   SlaState
+  notified_at DateTime @default(now()) @db.Timestamp(6)
+  case        Case     @relation(fields: [case_id], references: [case_id])
+
+  @@unique([case_id, sla_state])
+  @@map("sla_escalation_records")
 }
 
 model Task {

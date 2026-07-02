@@ -520,7 +520,7 @@ describe('CaseQueryService', () => {
 
       const result = await service.retrieveCase(caseId, tenantId);
 
-      expect(result).toEqual(mockCase);
+      expect(result).toEqual({ ...mockCase, sla_state: null });
       expect(caseRepository.findCaseById).toHaveBeenCalledWith(caseId, tenantId);
     });
 
@@ -538,7 +538,7 @@ describe('CaseQueryService', () => {
 
       const result = await service.retrieveCase(caseId, tenantId, true);
 
-      expect(result).toEqual(closedCase);
+      expect(result).toEqual({ ...closedCase, sla_state: null });
     });
 
     // it('should throw ForbiddenException when compliance officer tries to access non-closed case', async () => {
@@ -565,14 +565,6 @@ describe('CaseQueryService', () => {
       expect(result[0].parent_id).toBe(caseId);
     });
 
-    it('should return null when no sub-cases exist', async () => {
-      prismaService.case.findMany.mockResolvedValueOnce(null);
-
-      const result = await service.getSubCasesDetails(caseId);
-
-      expect(result).toBeNull();
-    });
-
     it('should return empty array when no sub-cases found', async () => {
       prismaService.case.findMany.mockResolvedValueOnce([]);
 
@@ -596,7 +588,7 @@ describe('CaseQueryService', () => {
 
       const result = await service.updateCase(caseId, updateData, userId);
 
-      expect(result).toEqual(mockCase);
+      expect(result).toEqual({ ...mockCase, sla_state: null });
       expect(caseRepository.updateCase).toHaveBeenCalledWith(caseId, {
         case_type: updateData.caseType,
         priority: updateData.priority,
@@ -612,7 +604,7 @@ describe('CaseQueryService', () => {
 
       const result = await service.updateCase(caseId, partialUpdate, userId);
 
-      expect(result).toEqual(mockCase);
+      expect(result).toEqual({ ...mockCase, sla_state: null });
       expect(caseRepository.updateCase).toHaveBeenCalledWith(caseId, {
         case_type: undefined,
         priority: Priority.LOW,

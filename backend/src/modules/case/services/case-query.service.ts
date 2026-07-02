@@ -3,7 +3,8 @@ import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
 import { GetAllCasesQueryDto } from '../dto/get-all-cases.dto';
-import { Case, CaseStatus, CaseType, Priority, TaskStatus } from '@prisma/client-cms';
+import { Case, CaseStatus, CaseType, Priority, SlaState, TaskStatus } from '@prisma/client-cms';
+import { computeCaseSlaState } from '../../alert-priority/sla-state.util';
 import { TaskValidationUtil } from '../../shared/utils/task-validation.util';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { Outcome } from '../../../utils/types/outcome';
@@ -35,6 +36,8 @@ export class CaseQueryService {
       case_type: CaseType | null;
       created_at: Date;
       updated_at: Date;
+      sla_due_at: Date | null;
+      sla_state: SlaState | null;
       user_role: 'owner' | 'task_assignee' | 'both';
       user_tasks: Array<{
         task_id: number;
@@ -135,6 +138,8 @@ export class CaseQueryService {
           parent_id: caseItem.parent_id,
           created_at: caseItem.created_at,
           updated_at: caseItem.updated_at,
+          sla_due_at: caseItem.sla_due_at,
+          sla_state: computeCaseSlaState(caseItem),
           user_role: userRole,
           user_tasks: userTasks.map((task) => ({
             task_id: task.task_id,
@@ -218,6 +223,8 @@ export class CaseQueryService {
       case_type: CaseType | null;
       created_at: Date;
       updated_at: Date;
+      sla_due_at: Date | null;
+      sla_state: SlaState | null;
       total_tasks: number;
       tasks: Array<{
         name: string | null;
@@ -606,6 +613,8 @@ export class CaseQueryService {
           case_type: caseItem.case_type,
           created_at: caseItem.created_at,
           updated_at: caseItem.updated_at,
+          sla_due_at: caseItem.sla_due_at,
+          sla_state: computeCaseSlaState(caseItem),
           total_tasks: caseItem.tasks.length,
           tasks: caseItem.tasks,
           completed_tasks: taskCounts.completed,
@@ -774,10 +783,19 @@ export class CaseQueryService {
     }
   }
 
-  async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean): Promise<Case | null> {
+  async retrieveCase(
+    caseId: number,
+    tenantId: string,
+    isComplianceOfficer?: boolean,
+  ): Promise<(Case & { sla_state: SlaState | null }) | null> {
     const retrievedCase = await this.caseRepository.findCaseById(caseId, tenantId);
-
-    return retrievedCase;
+    // findCaseById is typed as never-null (it throws instead), but callers of retrieveCase
+    // rely on a null return for a clean not-found path, so keep this defensive check.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- declared never-null, but retrieveCase's real null-return contract depends on this guard
+    if (!retrievedCase) {
+      return null;
+    }
+    return { ...retrievedCase, sla_state: computeCaseSlaState(retrievedCase) };
   }
 
   /**
@@ -831,16 +849,16 @@ export class CaseQueryService {
     }
   }
 
-  async getSubCasesDetails(caseId: number): Promise<Case[]> {
+  async getSubCasesDetails(caseId: number): Promise<Array<Case & { sla_state: SlaState | null }>> {
     const subCases = await this.prismaService.case.findMany({
       where: {
         parent_id: caseId,
       },
     });
-    return subCases;
+    return subCases.map((subCase) => ({ ...subCase, sla_state: computeCaseSlaState(subCase) }));
   }
 
-  async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string): Promise<Case> {
+  async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string): Promise<Case & { sla_state: SlaState | null }> {
     try {
       const updatedCase = await this.caseRepository.updateCase(caseId, {
         case_type: updateData.caseType,
@@ -862,7 +880,7 @@ export class CaseQueryService {
         updatedCase.tenant_id,
       );
 
-      return updatedCase;
+      return { ...updatedCase, sla_state: computeCaseSlaState(updatedCase) };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;

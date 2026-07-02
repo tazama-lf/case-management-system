@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, InternalServerErrorException, Forbidde
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
-import { Alert, Case, CaseCreationType, CaseStatus, CaseType, Priority, Task, TaskStatus } from '@prisma/client-cms';
+import { Alert, Case, CaseCreationType, CaseStatus, CaseType, Priority, SlaState, Task, TaskStatus } from '@prisma/client-cms';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -858,7 +858,7 @@ export class CaseService {
     user: AuthenticatedUser,
     endpointKey: EndpointKey,
     tenantId: string,
-  ): Promise<Case> {
+  ): Promise<Case & { sla_state: SlaState | null }> {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     const rbacRole = this.rbacService.getRoleFromUser(user);

@@ -6,6 +6,7 @@ import { CommentRepository } from './comment.repository';
 import { validate as isUuid } from 'uuid';
 import { CaseClosureOutcome } from 'src/utils/enums/case-enum';
 import { SlaPolicyUtil } from '../shared/utils/sla-policy.util';
+import { CLOSED_CASE_STATUSES } from '../../constants/case.constants';
 
 @Injectable()
 export class CaseRepository extends BaseRepository {
@@ -338,6 +339,24 @@ export class CaseRepository extends BaseRepository {
     return await client.case.update({
       where: { case_id: caseId },
       data: slaDueAt ? { ...data, sla_due_at: slaDueAt } : data,
+    });
+  }
+
+  async findOpenCasesForSlaCheck(): Promise<
+    Array<Pick<Case, 'case_id' | 'case_type' | 'case_owner_user_id' | 'created_at' | 'sla_due_at'>>
+  > {
+    return await this.prisma.case.findMany({
+      where: {
+        sla_due_at: { not: null },
+        status: { notIn: [...CLOSED_CASE_STATUSES, CaseStatus.STATUS_99_ABANDONED] },
+      },
+      select: {
+        case_id: true,
+        case_type: true,
+        case_owner_user_id: true,
+        created_at: true,
+        sla_due_at: true,
+      },
     });
   }
 
