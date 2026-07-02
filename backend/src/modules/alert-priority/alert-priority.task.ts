@@ -25,7 +25,7 @@ export class AlertPriorityTask implements OnModuleInit {
 
   async handleAlertPriorityUpdate(): Promise<void> {
     this.logger.log('Running alert priority update task...');
-    await this.priorityService.runRecalculation();
+    // await this.priorityService.runRecalculation();
     this.logger.log('Alert priority update task completed.');
   }
 }
