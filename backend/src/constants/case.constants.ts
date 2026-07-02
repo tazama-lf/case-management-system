@@ -3,12 +3,7 @@ import { CaseStatus } from '@prisma/client-cms';
 /**
  * Valid case closure outcomes
  */
-export const CASE_CLOSURE_OUTCOMES = [
-  'STATUS_81_CLOSED_REFUTED',
-  'STATUS_82_CLOSED_CONFIRMED',
-  'STATUS_83_CLOSED_INCONCLUSIVE',
-  'STATUS_84_COMPLETED',
-] as const;
+export const CASE_CLOSURE_OUTCOMES = ['STATUS_81_CLOSED_REFUTED', 'STATUS_82_CLOSED_CONFIRMED', 'STATUS_83_CLOSED_INCONCLUSIVE'] as const;
 
 /**
  * Closed case statuses (final states)
@@ -17,7 +12,6 @@ export const CLOSED_CASE_STATUSES: CaseStatus[] = [
   CaseStatus.STATUS_81_CLOSED_REFUTED,
   CaseStatus.STATUS_82_CLOSED_CONFIRMED,
   CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-  CaseStatus.STATUS_84_COMPLETED,
   CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED,
   CaseStatus.STATUS_72_AUTOCLOSED_REFUTED,
 ];
@@ -40,7 +34,6 @@ export const INACTIVE_CASE_STATUSES: CaseStatus[] = [
   CaseStatus.STATUS_81_CLOSED_REFUTED,
   CaseStatus.STATUS_82_CLOSED_CONFIRMED,
   CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-  CaseStatus.STATUS_84_COMPLETED,
   CaseStatus.STATUS_99_ABANDONED,
 ];
 
