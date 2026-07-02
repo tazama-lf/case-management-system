@@ -25,6 +25,7 @@ export class CaseQueryService {
   async getUserCases(
     userId: string,
     query: GetUserCasesQueryDto,
+    tenantId: string,
     isComplianceOfficer?: boolean,
   ): Promise<{
     cases: Array<{
@@ -121,11 +122,14 @@ export class CaseQueryService {
         orderBy: { [sortBy]: sortOrder },
       });
 
+      const groupAlertMap = await this.getGroupAlertMap(cases, tenantId);
+
       const processedCases = cases.map((caseItem) => {
         const isOwner = caseItem.case_owner_user_id === userId;
         const userTasks = this.taskValidationUtil.getUserAssignedTasks(caseItem.tasks, userId);
         const hasTaskAssignment = userTasks.length > 0;
         const userRole: 'owner' | 'task_assignee' | 'both' = isOwner && hasTaskAssignment ? 'both' : isOwner ? 'owner' : 'task_assignee';
+        const resolvedAlert = caseItem.alert ?? groupAlertMap.get(caseItem.case_id);
 
         return {
           case_id: caseItem.case_id,
@@ -143,12 +147,12 @@ export class CaseQueryService {
             created_at: task.created_at,
           })),
           total_tasks: caseItem.tasks.length,
-          alert: caseItem.alert
+          alert: resolvedAlert
             ? {
-                alert_id: caseItem.alert.alert_id,
-                message: caseItem.alert.message,
-                confidence_per: caseItem.alert.confidence_per,
-                transaction: caseItem.alert.transaction,
+                alert_id: resolvedAlert.alert_id,
+                message: resolvedAlert.message,
+                confidence_per: resolvedAlert.confidence_per,
+                transaction: resolvedAlert.transaction,
               }
             : undefined,
           latest_comment_date: caseItem.comments[0]?.created_at,
@@ -200,6 +204,55 @@ export class CaseQueryService {
       this.logger.error(`Failed to get user cases: ${errorMessage}`, errorStack, CaseQueryService.name);
       throw error;
     }
+  }
+
+  /**
+   * FRAUD_AND_AML sub-cases have no direct alert relation once the container case's
+   * alert is repointed at the InvestigationGroup (see backfill-investigation-groups.sql).
+   * Resolve their alert via group_id in a single batch instead of per-row queries.
+   */
+  private async getGroupAlertMap(
+    caseItems: Array<{ case_id: number; alert: unknown; group_id: number | null }>,
+    tenantId: string,
+  ): Promise<
+    Map<
+      number,
+      {
+        alert_id: number;
+        message: string;
+        confidence_per: number;
+        alert_type: CaseType | null;
+        transaction: JsonValue;
+        priority: Priority | null;
+      }
+    >
+  > {
+    const groupIds = [...new Set(caseItems.filter((c) => !c.alert && c.group_id).map((c) => c.group_id!))];
+    if (groupIds.length === 0) return new Map();
+
+    const groups = await this.prismaService.investigationGroup.findMany({
+      where: { id: { in: groupIds }, tenant_id: tenantId },
+    });
+    const alerts = await this.prismaService.alert.findMany({
+      where: { alert_id: { in: groups.map((g) => g.alert_id) }, tenant_id: tenantId },
+      select: { alert_id: true, message: true, confidence_per: true, alert_type: true, transaction: true, priority: true },
+    });
+    const alertByAlertId = new Map(alerts.map((a) => [a.alert_id, a]));
+    const alertByGroupId = new Map(
+      groups.flatMap((g) => {
+        const alert = alertByAlertId.get(g.alert_id);
+        return alert ? [[g.id, alert] as const] : [];
+      }),
+    );
+
+    const caseIdToAlert = new Map<number, (typeof alerts)[number]>();
+    for (const c of caseItems) {
+      if (!c.alert && c.group_id) {
+        const alert = alertByGroupId.get(c.group_id);
+        if (alert) caseIdToAlert.set(c.case_id, alert);
+      }
+    }
+    return caseIdToAlert;
   }
 
   async getAllCases(
@@ -591,6 +644,8 @@ export class CaseQueryService {
         orderBy: { [sortBy]: sortOrder },
       });
 
+      const groupAlertMap = await this.getGroupAlertMap(cases, tenantId);
+
       const processedCases = cases.map((caseItem) => {
         const taskCounts = this.taskValidationUtil.getTaskStatusCounts(caseItem.tasks);
         const assignedUsers = [...new Set(caseItem.tasks.map((t) => t.assigned_user_id).filter(Boolean))];
@@ -608,7 +663,7 @@ export class CaseQueryService {
           tasks: caseItem.tasks,
           completed_tasks: taskCounts.completed,
           pending_tasks: taskCounts.pending,
-          alert: caseItem.alert,
+          alert: caseItem.alert ?? groupAlertMap.get(caseItem.case_id) ?? null,
           parent_id: caseItem.parent_id,
           assigned_to:
             assignedUsers.length > 0

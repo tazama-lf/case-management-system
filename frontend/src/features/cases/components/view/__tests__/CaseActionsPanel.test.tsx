@@ -60,7 +60,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={baseCaseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
       />,
     );
@@ -73,7 +72,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={baseCaseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
       />,
     );
@@ -87,7 +85,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onComplete={onComplete}
       />,
@@ -110,7 +107,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onCloseCase={onCloseCase}
       />,
@@ -139,7 +135,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={subCases}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onCloseCase={onCloseCase}
       />,
@@ -158,7 +153,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={true}
         onApproveCase={onApproveCase}
       />,
@@ -181,7 +175,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={true}
         onApproveCaseCreation={onApproveCaseCreation}
         onRejectCaseCreation={onRejectCaseCreation}
@@ -208,7 +201,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={true}
         onApproveCaseReopen={onApproveCaseReopen}
         onRejectCaseReopen={onRejectCaseReopen}
@@ -242,7 +234,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onReopenCase={onReopenCase}
       />,
@@ -265,7 +256,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onReopenCase={onReopenCase}
       />,
@@ -293,7 +283,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onReopenCase={onReopenCase}
       />,
@@ -312,7 +301,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onAbandonCase={onAbandonCase}
       />,
@@ -335,7 +323,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onSuspendCase={onSuspendCase}
       />,
@@ -354,7 +341,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onResumeCase={onResumeCase}
       />,
@@ -371,7 +357,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={baseCaseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
       />,
     );
@@ -386,7 +371,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={baseCaseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
       />,
     );
@@ -406,7 +390,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onCloseCase={onCloseCase}
       />,
@@ -423,7 +406,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onResumeCase={onResumeCase}
       />,
@@ -445,7 +427,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onCloseCase={vi.fn()}
       />,
@@ -466,7 +447,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onReopenCase={onReopenCase}
       />,
@@ -487,7 +467,6 @@ describe('CaseActionsPanel', () => {
       <CaseActionsPanel
         caseData={caseData}
         subCasesDetails={undefined}
-        parentCaseDetails={null}
         canManageSupervisorActions={false}
         onReopenCase={vi.fn()}
       />,
@@ -497,3 +476,4 @@ describe('CaseActionsPanel', () => {
     });
   });
 });
+

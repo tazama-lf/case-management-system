@@ -8,8 +8,6 @@ import InvestigationSummaryTab from './view/InvestigationsSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
 import VisualizationsTab from './view/VisualizationsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
-import { caseService } from '../services/caseService';
-import type { Case } from '@/features/alerts/types/triage.types';
 
 type ViewTabKey =
   | 'details'
@@ -27,7 +25,6 @@ interface TaskDetailsModalProps {
   row?: CaseRow | null;
   onRefreshCases?: () => Promise<void>;
   onTaskUpdate?: () => void;
-  onSwitchToCaseDetails?: () => void;
 }
 
 const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
@@ -37,46 +34,14 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   row,
   onRefreshCases: _onRefreshCases,
   onTaskUpdate,
-  onSwitchToCaseDetails,
 }) => {
   const [tab, setTab] = React.useState<ViewTabKey>('details');
   const [showCollaborate, setShowCollaborate] = React.useState(false);
   const [tasks, setTasks] = React.useState<TaskForSupervisor[]>([]);
   const [loadingTasks, setLoadingTasks] = React.useState(false);
-  const [parentAlertId, setParentAlertId] = React.useState<number | undefined>(
-    undefined,
-  );
-  const [parentCaseDetails, setParentCaseDetails] = React.useState<
-    Case | undefined
-  >(undefined);
-  const [isParentCaseLoading, setIsParentCaseLoading] = React.useState(false);
 
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
   const initialCaseIdRef = React.useRef<number | undefined>(undefined);
-
-  React.useEffect(() => {
-    if (row?.parentId) {
-      setIsParentCaseLoading(true);
-      caseService
-        .getCaseDetails(row.parentId)
-        .then((details) => {
-          setParentAlertId(details.alert.alert_id);
-          setParentCaseDetails(details);
-        })
-        .catch((error) => {
-          console.error('Failed to fetch case details for parent case:', error);
-          setParentAlertId(undefined);
-          setParentCaseDetails(undefined);
-        })
-        .finally(() => {
-          setIsParentCaseLoading(false);
-        });
-    } else {
-      setParentAlertId(undefined);
-      setParentCaseDetails(undefined);
-      setIsParentCaseLoading(false);
-    }
-  }, [row?.parentId]);
 
   React.useEffect(() => {
     if (open) {
@@ -121,14 +86,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
   //Extract transaction ID from transaction data
   const transactionId = React.useMemo(() => {
-    if (row?.parentId && isParentCaseLoading) {
-      // Wait for parent details before deciding visibility to avoid tab flicker.
-      return undefined;
-    }
-
-    let transactionData = row?.parentId
-      ? parentCaseDetails?.alert.transaction
-      : row?.transaction;
+    let transactionData = row?.transaction;
 
     if (!transactionData) {
       return undefined;
@@ -164,16 +122,10 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     }
 
     return undefined;
-  }, [row, parentCaseDetails, isParentCaseLoading]);
+  }, [row]);
 
   const shouldShowVisualizations = React.useMemo(() => {
-    if (row?.parentId && isParentCaseLoading) {
-      return false;
-    }
-
-    let transactionData = row?.parentId
-      ? parentCaseDetails?.alert.transaction
-      : row?.transaction;
+    let transactionData = row?.transaction;
 
     if (!transactionData) {
       return false;
@@ -189,7 +141,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
     const transaction = transactionData as Record<string, unknown>;
     return transaction?.FIToFIPmtSts !== undefined;
-  }, [row, parentCaseDetails, isParentCaseLoading]);
+  }, [row]);
 
   React.useEffect(() => {
     if (!shouldShowVisualizations && tab === 'visualizations') {
@@ -286,7 +238,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   }}
                 >
                   <VisualizationsTab
-                    alertId={row?.parentId ? parentAlertId : row?.alertId}
+                    alertId={row?.alertId}
                     caseId={row?.id}
                     transactionId={transactionId}
                   />

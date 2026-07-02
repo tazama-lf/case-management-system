@@ -23,8 +23,6 @@ const CLOSED_STATUSES = [
 
 interface CaseActionsPanelProps {
   caseData: CaseRow;
-  subCasesDetails?: CaseRow[] | undefined;
-  parentCaseDetails?: CaseRow | null;
   canManageSupervisorActions: boolean;
   onComplete?: (row: CaseRow) => void;
   onCloseCase?: (row: CaseRow) => void;

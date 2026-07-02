@@ -29,7 +29,7 @@ export interface CaseRow {
   confidencePercent?: number;
   transaction?: unknown;
   tasks?: TaskDTO[];
-  parentId?: number;
+  groupId?: number;
   sarStrStatus?: string;
 }
 
@@ -139,7 +139,7 @@ export const transformBackendCaseToUI = (
     confidencePercent: alert?.confidence_per,
     transaction: alert?.transaction,
     tasks: backendCase.tasks,
-    parentId: backendCase.parent_id,
+    groupId: backendCase.group_id,
     sarStrStatus,
   };
 };

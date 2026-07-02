@@ -59,7 +59,6 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
   const [localCaseData, setLocalCaseData] = React.useState<CaseRow | null>(
     null,
   );
-  const [parentCase, setparentCase] = React.useState<CaseRow | null>(null);
 
   // Initialize local case data when row changes
   React.useEffect(() => {
@@ -90,24 +89,11 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
     }
   }, [row?.id]);
 
-  const getParentCaseData = React.useCallback(async () => {
-    if (!row?.id || !row?.parentId) return;
-    try {
-      const caseDetails = await caseService.getCaseDetails(row.parentId);
-      const transformedCase = transformBackendCaseToUI(
-        caseDetails as unknown as CaseWithTasksDto,
-      );
-      setparentCase(transformedCase);
-    } catch (error) {
-      console.error('Failed to refresh case data:', error);
-    }
-  }, [row?.id, row?.parentId]);
-
   React.useEffect(() => {
-    if (open && localCaseData) {
-      getParentCaseData();
+    if (open && row?.id) {
+      void refreshCaseData();
     }
-  }, [open, localCaseData, getParentCaseData]);
+  }, [open, row?.id, refreshCaseData]);
 
   if (!open || !localCaseData) return null;
 
@@ -169,8 +155,6 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
               {tab === 'details' && (
                 <CaseDetailsTab
                   row={displayData}
-                  subCasesDetails={undefined}
-                  parentCaseDetails={displayData?.parentId ? parentCase : null}
                   canManageSupervisorActions={canManageSupervisorActions}
                   showActions={false}
                   onComplete={onComplete}

@@ -318,6 +318,27 @@ export class CaseRepository extends BaseRepository {
     if (!caseData) {
       throw new NotFoundException('Case Not Found');
     }
+    if (!caseData.alert && caseData.group_id) {
+      const group = await client.investigationGroup.findFirst({
+        where: {
+          id: caseData.group_id,
+          tenant_id: tenantId,
+        },
+      });
+      const groupAlert = group
+        ? await client.alert.findFirst({
+            where: {
+              alert_id: group.alert_id,
+              tenant_id: tenantId,
+            },
+          })
+        : null;
+
+      return {
+        ...caseData,
+        alert: groupAlert,
+      };
+    }
     return caseData;
   }
 

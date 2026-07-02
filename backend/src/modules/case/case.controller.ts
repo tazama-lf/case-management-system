@@ -442,8 +442,8 @@ export class CaseController {
       casesByPriority: Record<string, number>;
     };
   }> {
-    const { userId, isComplianceOfficer } = extractUserData(req);
-    return await this.caseService.getUserCases(userId, query, isComplianceOfficer);
+    const { userId, tenantId, isComplianceOfficer } = extractUserData(req);
+    return await this.caseService.getUserCases(userId, query, tenantId, isComplianceOfficer);
   }
 
   @Get('user/:userId/assigned')
@@ -509,12 +509,12 @@ export class CaseController {
       casesByPriority: Record<string, number>;
     };
   }> {
-    const { userId: requestingUserId } = extractUserData(req);
+    const { userId: requestingUserId, tenantId } = extractUserData(req);
     if (requestingUserId !== targetUserId) {
       /* empty */
     }
 
-    return await this.caseService.getUserCases(targetUserId, query);
+    return await this.caseService.getUserCases(targetUserId, query, tenantId);
   }
 
   @Get('user/workload')

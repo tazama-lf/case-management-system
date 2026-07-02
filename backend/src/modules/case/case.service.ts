@@ -746,6 +746,7 @@ export class CaseService {
   async getUserCases(
     userId: string,
     query: GetUserCasesQueryDto,
+    tenantId: string,
     isComplianceOfficer?: boolean,
   ): Promise<{
     cases: Array<{
@@ -787,7 +788,7 @@ export class CaseService {
       casesByPriority: Record<string, number>;
     };
   }> {
-    return await this.caseQueryService.getUserCases(userId, query, isComplianceOfficer);
+    return await this.caseQueryService.getUserCases(userId, query, tenantId, isComplianceOfficer);
   }
 
   async getUserWorkloadStats(
