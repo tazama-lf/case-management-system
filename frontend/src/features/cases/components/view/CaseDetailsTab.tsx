@@ -112,6 +112,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
   useEffect(() => {
     setLatestReports({});
     setViewingId(null);
+    setIsAlertModalOpen(false);
   }, [row.id]);
 
   // Extract transaction data
