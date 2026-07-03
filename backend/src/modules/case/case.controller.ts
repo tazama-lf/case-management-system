@@ -1,7 +1,22 @@
-import { Body, Controller, Get, Param, Post, Put, Req, UseGuards, HttpCode, HttpStatus, Query, BadRequestException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  Query,
+  BadRequestException,
+} from '@nestjs/common';
 import { CaseService } from './case.service';
 import { TazamaAuthGuard } from '../../guards/tazama-auth.guard';
 import {
+  RequireAuthenticated,
   RequireInvestigatorOrSupervisorRole,
   RequireInvestigatorOrSupervisorRoleOrComplianceRole,
   RequireSupervisorRole,
@@ -43,6 +58,7 @@ import {
   RejectCaseReopeningResponseDto,
   RejectReopeningBadRequestResponseDto,
   ReturnCaseForReviewResponseDto,
+  ChangeCasePriorityDto,
 } from './dto';
 import { SimpleMessageResponseDto } from 'src/dtos/simple-message-response.dto';
 import { UserWorkloadResponseDto } from './dto/user-workload-response.dto';
@@ -50,6 +66,7 @@ import { Alert, Case, CaseStatus, CaseType, Priority, Task, TaskStatus } from '@
 import { JsonValue } from '@prisma/client-cms/runtime/library';
 import { CaseCreationService } from './services/case-creation.service';
 import { Audit } from '../audit/decorators/audit-log.decorator';
+import { CasePriorityService, PriorityChangeResult } from '../alert-priority/case-priority.service';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -59,6 +76,7 @@ export class CaseController {
   constructor(
     private readonly caseService: CaseService,
     private readonly caseCreationService: CaseCreationService,
+    private readonly casePriorityService: CasePriorityService,
   ) {}
 
   @Put(':caseId/abandon')
@@ -624,6 +642,29 @@ export class CaseController {
   async updateCase(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest): Promise<Case> {
     const { userId, tenantId } = extractUserData(req);
     return await this.caseService.updateCase(caseId, dto, userId, req.user, 'PUT /api/v1/cases/:caseId', tenantId);
+  }
+
+  @Patch(':caseId/priority')
+  @RequireAuthenticated()
+  @Audit()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Change case priority',
+    description:
+      'Supervisor-only endpoint to change a case priority after triage. Recalculates sla_due_at anchored to created_at and audits the change (actor, timestamp, old/new priority, reason) via the audit log.',
+  })
+  @ApiParam({ name: 'caseId', type: Number })
+  @ApiBody({ type: ChangeCasePriorityDto })
+  @ApiResponse({ status: 200, description: 'Priority changed successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - only supervisors can change case priority' })
+  @ApiResponse({ status: 404, description: 'Case not found' })
+  async changeCasePriority(
+    @Param('caseId') caseId: number,
+    @Body() dto: ChangeCasePriorityDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<PriorityChangeResult> {
+    const { userId, tenantId, role } = extractUserData(req);
+    return await this.casePriorityService.changePriority(caseId, dto.newPriority, userId, tenantId, role, dto.reason);
   }
 
   @Post(':caseId/complete-case-creation')
