@@ -56,7 +56,7 @@ describe('triageService', () => {
       } as any);
 
       await triageService.getAlerts({
-        priority: 'URGENT',
+        priority: 'MEDIUM',
         type: 'FRAUD',
         alertType: 'AML',
         source: 'REST API',
@@ -71,7 +71,7 @@ describe('triageService', () => {
       });
 
       expect(mockApi.get).toHaveBeenCalledWith(
-        expect.stringContaining('priority=URGENT'),
+        expect.stringContaining('priority=MEDIUM'),
       );
       expect(mockApi.get).toHaveBeenCalledWith(
         expect.stringContaining('type=FRAUD'),
@@ -162,7 +162,7 @@ describe('triageService', () => {
   describe('getFilterOptions', () => {
     it('fetches filter options successfully', async () => {
       const mockOptions = {
-        priorities: ['NEW', 'URGENT'],
+        priorities: ['LOW', 'MEDIUM'],
         statuses: ['OPEN', 'CLOSED'],
         alertTypes: ['FRAUD', 'AML'],
         sources: ['REST API', 'NATS'],
@@ -190,7 +190,7 @@ describe('triageService', () => {
 
   describe('getAlertById', () => {
     it('fetches alert by id successfully', async () => {
-      const mockAlert = { alert_id: 'ALERT-1', priority: 'URGENT' };
+      const mockAlert = { alert_id: 'ALERT-1', priority: 'MEDIUM' };
       mockApi.get.mockResolvedValueOnce(mockAlert);
 
       const result = await triageService.getAlertById('ALERT-1');
@@ -302,8 +302,8 @@ describe('triageService', () => {
 
   describe('updateAlert', () => {
     it('updates alert successfully', async () => {
-      const mockUpdateData = { priority: 'CRITICAL' };
-      const mockResult = { alert_id: 'ALERT-1', priority: 'CRITICAL' };
+      const mockUpdateData = { priority: 'HIGH' };
+      const mockResult = { alert_id: 'ALERT-1', priority: 'HIGH' };
       mockApi.patch.mockResolvedValueOnce(mockResult);
 
       const result = await triageService.updateAlert('ALERT-1', mockUpdateData);
@@ -320,7 +320,7 @@ describe('triageService', () => {
       mockApi.patch.mockRejectedValueOnce(error);
 
       await expect(
-        triageService.updateAlert('ALERT-1', { priority: 'CRITICAL' }),
+        triageService.updateAlert('ALERT-1', { priority: 'HIGH' }),
       ).rejects.toThrow('Failed to update');
     });
   });

@@ -84,10 +84,9 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
 
   const priorityOptions = [
     { value: '', label: 'All Priorities' },
-    { value: 'NEW', label: 'New' },
-    { value: 'URGENT', label: 'Urgent' },
-    { value: 'CRITICAL', label: 'Critical' },
-    { value: 'BREACH', label: 'Breach' },
+    { value: 'LOW', label: 'Low' },
+    { value: 'MEDIUM', label: 'Medium' },
+    { value: 'HIGH', label: 'High' },
   ];
 
   const sarStrStatusOptions = [

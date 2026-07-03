@@ -281,7 +281,7 @@ export const useAlertFilterOptions = (): {
   error: null;
 } => {
   const filterOptions = {
-    priorities: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
+    priorities: ['LOW', 'MEDIUM', 'HIGH'],
     alertTypes: ['FRAUD', 'AML', 'FRAUD_AND_AML', 'N/A'],
     sources: ['REST API', 'NATS'],
   };

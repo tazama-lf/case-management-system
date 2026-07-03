@@ -34,10 +34,9 @@ import {
 
 describe('Triage Types - Constants', () => {
   it('Priority constants should be defined', () => {
-    expect(Priority.NEW).toBe('NEW');
-    expect(Priority.URGENT).toBe('URGENT');
-    expect(Priority.CRITICAL).toBe('CRITICAL');
-    expect(Priority.BREACH).toBe('BREACH');
+    expect(Priority.LOW).toBe('LOW');
+    expect(Priority.MEDIUM).toBe('MEDIUM');
+    expect(Priority.HIGH).toBe('HIGH');
   });
 
   it('AlertStatus constants should be defined', () => {
@@ -98,7 +97,7 @@ describe('Triage Types - Interfaces', () => {
     const alert: Alert = {
       alert_id: 'alert-1',
       tenant_id: 'tenant-1',
-      priority: Priority.NEW,
+      priority: Priority.LOW,
       alert_type: AlertType.FRAUD,
       source: 'internal',
       txtp: 'transaction-1',
@@ -112,7 +111,7 @@ describe('Triage Types - Interfaces', () => {
     };
     expect(alert).toBeDefined();
     expect(alert.alert_id).toBe('alert-1');
-    expect(alert.priority).toBe(Priority.NEW);
+    expect(alert.priority).toBe(Priority.LOW);
     expect(alert.confidence_per).toBe(85.5);
   });
 
@@ -120,7 +119,7 @@ describe('Triage Types - Interfaces', () => {
     const alert: Alert = {
       alert_id: 'alert-2',
       tenant_id: 'tenant-1',
-      priority: Priority.URGENT,
+      priority: Priority.MEDIUM,
       message: 'Alert with case',
       alert_data: {},
       transaction: {},
@@ -139,7 +138,7 @@ describe('Triage Types - Interfaces', () => {
       case_owner_user_id: 'user-2',
       tenant_id: 'tenant-1',
       status: CaseStatus.STATUS_20_IN_PROGRESS,
-      priority: Priority.URGENT,
+      priority: Priority.MEDIUM,
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-02T00:00:00Z',
       case_type: CaseType.FRAUD,
@@ -157,7 +156,7 @@ describe('Triage Types - Interfaces', () => {
       case_owner_user_id: 'user-2',
       tenant_id: 'tenant-1',
       status: CaseStatus.STATUS_10_ASSIGNED,
-      priority: Priority.NEW,
+      priority: Priority.LOW,
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
       parent_id: 'case-1',
@@ -169,7 +168,7 @@ describe('Triage Types - Interfaces', () => {
 
   it('AlertsFilter should be assignable', () => {
     const filter: AlertsFilter = {
-      priority: 'URGENT',
+      priority: 'MEDIUM',
       status: 'NEW',
       type: 'FRAUD',
       source: 'internal',
@@ -180,7 +179,7 @@ describe('Triage Types - Interfaces', () => {
       sortOrder: 'desc',
     };
     expect(filter).toBeDefined();
-    expect(filter.priority).toBe('URGENT');
+    expect(filter.priority).toBe('MEDIUM');
     expect(filter.page).toBe(1);
   });
 
@@ -202,7 +201,7 @@ describe('Triage Types - Interfaces', () => {
         {
           alert_id: 'alert-1',
           tenant_id: 'tenant-1',
-          priority: Priority.NEW,
+          priority: Priority.LOW,
           message: 'Test alert',
           alert_data: {},
           transaction: {},
@@ -226,7 +225,7 @@ describe('Triage Types - Interfaces', () => {
   it('ManualTriageDto should be assignable', () => {
     const dto: ManualTriageDto = {
       confidence_per: 90,
-      priority: Priority.URGENT,
+      priority: Priority.MEDIUM,
       priorityScore: 85,
       alertType: AlertType.FRAUD,
       predictionOutcome: 'TRUE_POSITIVE',
@@ -241,7 +240,7 @@ describe('Triage Types - Interfaces', () => {
   it('UpdateAlertDto should be assignable', () => {
     const dto: UpdateAlertDto = {
       confidence_per: 75,
-      priority: Priority.CRITICAL,
+      priority: Priority.HIGH,
       alert_type: AlertType.AML,
       note: 'Updated alert',
     };
@@ -252,7 +251,7 @@ describe('Triage Types - Interfaces', () => {
 
   it('ConvertToCaseDto should be assignable', () => {
     const dto: ConvertToCaseDto = {
-      priority: Priority.URGENT,
+      priority: Priority.MEDIUM,
       caseType: 'FRAUD',
       caseOwnerUserId: 'user-1',
       riskCategory: 'high',
@@ -330,14 +329,14 @@ describe('Triage Types - Interfaces', () => {
       caseId: 'case-1',
       assignedTo: 'user-1',
       caseOwnerUserId: 'user-2',
-      priority: Priority.URGENT,
+      priority: Priority.MEDIUM,
       caseType: CaseType.FRAUD,
       linkedCases: ['case-2', 'case-3'],
       notes: 'Conversion notes',
       alertId: 'alert-1',
     };
     expect(data).toBeDefined();
-    expect(data.priority).toBe(Priority.URGENT);
+    expect(data.priority).toBe(Priority.MEDIUM);
     expect(data.linkedCases).toHaveLength(2);
   });
 
@@ -369,7 +368,7 @@ describe('Triage Types - Interfaces', () => {
       query: 'test',
       source: 'internal',
       type: 'FRAUD',
-      priority: 'URGENT',
+      priority: 'MEDIUM',
       status: 'NEW',
       timeRange: '7d',
       startDate: '2024-01-01',
@@ -411,7 +410,7 @@ describe('Triage Types - Interfaces', () => {
       data: {
         alert_id: 'alert-1',
         tenant_id: 'tenant-1',
-        priority: Priority.NEW,
+        priority: Priority.LOW,
         message: 'Test',
         alert_data: {},
         transaction: {},

@@ -11,7 +11,7 @@ describe('ManualTriageModal', () => {
   const mockAlert = {
     alert_id: 'alert-123',
     alert_type: 'FRAUD' as const,
-    priority: 'URGENT' as const,
+    priority: 'MEDIUM' as const,
     confidence_per: 75,
     message: 'Test alert message',
   };
@@ -61,7 +61,7 @@ describe('ManualTriageModal', () => {
       />,
     );
     expect(screen.getByDisplayValue('75')).toBeInTheDocument(); // Confidence
-    expect(screen.getByText('URGENT')).toBeInTheDocument(); // Priority
+    expect(screen.getByText('MEDIUM')).toBeInTheDocument(); // Priority
   });
 
   it('closes modal when close button is clicked', async () => {
@@ -195,8 +195,8 @@ describe('ManualTriageModal', () => {
 
       // Priority should auto-update based on score
       await waitFor(() => {
-        // Should show CRITICAL for score >= 0.66
-        expect(screen.getByText('CRITICAL')).toBeInTheDocument();
+        // Should show HIGH for score >= 0.7
+        expect(screen.getByText('HIGH')).toBeInTheDocument();
       });
     }
   });

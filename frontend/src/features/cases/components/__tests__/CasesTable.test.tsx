@@ -18,6 +18,7 @@ describe('CasesTable', () => {
       action: 'View',
       assignee: 'User 1',
       priority: 'HIGH',
+      slaState: 'BREACHED',
       userRole: 'owner',
       totalTasks: 5,
       alertId: 1,
@@ -35,6 +36,7 @@ describe('CasesTable', () => {
       action: 'Complete',
       assignee: 'Unassigned',
       priority: 'LOW',
+      slaState: 'ON_TRACK',
       userRole: 'none',
       totalTasks: 0,
       alertId: 2,
@@ -58,8 +60,22 @@ describe('CasesTable', () => {
     expect(screen.getByText('Case ID')).toBeInTheDocument();
     expect(screen.getByText('Case Type')).toBeInTheDocument();
     expect(screen.getByText('Status')).toBeInTheDocument();
+    expect(screen.getByText('Priority')).toBeInTheDocument();
+    expect(screen.getByText('SLA')).toBeInTheDocument();
     expect(screen.getByText('Score')).toBeInTheDocument();
     expect(screen.getByText('Created')).toBeInTheDocument();
+  });
+
+  it('should render the correct number of column headers', () => {
+    render(<CasesTable {...defaultProps} />);
+    // Case ID, Case Type, Status, Priority, SLA, Score, Created (no SAR/STR for non-compliance officer)
+    expect(screen.getAllByRole('columnheader')).toHaveLength(7);
+  });
+
+  it('should render an extra column header for compliance officers', () => {
+    render(<CasesTable {...defaultProps} isComplianceOfficer={true} />);
+    // Adds the SAR/STR Status column
+    expect(screen.getAllByRole('columnheader')).toHaveLength(8);
   });
 
   it('should render case rows correctly', () => {
@@ -72,6 +88,32 @@ describe('CasesTable', () => {
     expect(screen.getByText('AML')).toBeInTheDocument();
     expect(screen.getByText('00_DRAFT')).toBeInTheDocument();
     expect(screen.getByText('45%')).toBeInTheDocument();
+  });
+
+  it('should render priority badges for each row', () => {
+    render(<CasesTable {...defaultProps} />);
+    expect(screen.getByText('HIGH')).toBeInTheDocument();
+    expect(screen.getByText('LOW')).toBeInTheDocument();
+  });
+
+  it('should render SLA state badges for each row', () => {
+    render(<CasesTable {...defaultProps} />);
+    expect(screen.getByText('Breached')).toBeInTheDocument();
+    expect(screen.getByText('On Track')).toBeInTheDocument();
+  });
+
+  it('should render the correct colSpan on the empty state row', () => {
+    const { container } = render(<CasesTable {...defaultProps} rows={[]} />);
+    const emptyCell = container.querySelector('td[colspan]');
+    expect(emptyCell).toHaveAttribute('colspan', '7');
+  });
+
+  it('should render the correct colSpan on the empty state row for compliance officers', () => {
+    const { container } = render(
+      <CasesTable {...defaultProps} rows={[]} isComplianceOfficer={true} />,
+    );
+    const emptyCell = container.querySelector('td[colspan]');
+    expect(emptyCell).toHaveAttribute('colspan', '8');
   });
 
   it('should call onView when a row is clicked', () => {

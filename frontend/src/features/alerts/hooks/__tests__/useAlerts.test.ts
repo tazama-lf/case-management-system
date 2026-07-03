@@ -20,12 +20,12 @@ const mockTransformer = transformBackendAlertToUI as vi.Mock;
 
 const backendAlert = {
   alert_id: 'ALERT-1',
-  priority: 'URGENT',
+  priority: 'MEDIUM',
   created_at: '2024-01-01T00:00:00Z',
 };
 const uiAlert = {
   alert_id: 'ALERT-1',
-  priority: 'URGENT',
+  priority: 'MEDIUM',
   created_at: '2024-01-01T00:00:00Z',
   message: 'Test',
   txtp: 'tx-1',
@@ -243,7 +243,7 @@ describe('useAlerts', () => {
   });
 
   it('filters alerts by priority', async () => {
-    const alert1 = { ...uiAlert, priority: 'URGENT' };
+    const alert1 = { ...uiAlert, priority: 'MEDIUM' };
 
     mockService.getAlerts.mockResolvedValue({
       alerts: [backendAlert],
@@ -255,13 +255,13 @@ describe('useAlerts', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     act(() => {
-      result.current.setFilters({ priority: 'URGENT' });
+      result.current.setFilters({ priority: 'MEDIUM' });
     });
 
     // Priority filter is sent server-side
     await waitFor(() => {
       expect(mockService.getAlerts).toHaveBeenCalledWith(
-        expect.objectContaining({ priority: 'URGENT' }),
+        expect.objectContaining({ priority: 'MEDIUM' }),
       );
     });
   });
@@ -415,7 +415,7 @@ describe('useAlerts', () => {
 
     act(() => {
       result.current.setPage(3);
-      result.current.setFilters({ priority: 'URGENT' });
+      result.current.setFilters({ priority: 'MEDIUM' });
     });
 
     expect(result.current.pagination.currentPage).toBe(1);

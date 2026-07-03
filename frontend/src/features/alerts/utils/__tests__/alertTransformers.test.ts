@@ -3,10 +3,9 @@ import { describe, it, expect, vi } from 'vitest';
 
 describe('alertTransformers basic utilities', () => {
   it('maps severity to priority and UI status to backend status', () => {
-    expect(transformers.mapSeverityToPriority('low')).toBe('NEW');
-    expect(transformers.mapSeverityToPriority('medium')).toBe('URGENT');
-    expect(transformers.mapSeverityToPriority('high')).toBe('CRITICAL');
-    expect(transformers.mapSeverityToPriority('critical')).toBe('BREACH');
+    expect(transformers.mapSeverityToPriority('low')).toBe('LOW');
+    expect(transformers.mapSeverityToPriority('medium')).toBe('MEDIUM');
+    expect(transformers.mapSeverityToPriority('high')).toBe('HIGH');
 
     expect(transformers.mapUIStatusToAlertStatus('new')).toBe('NEW');
     expect(transformers.mapUIStatusToAlertStatus('investigating')).toBe(
@@ -19,7 +18,7 @@ describe('alertTransformers basic utilities', () => {
     const backendAlert: any = {
       alert_id: 'a1',
       tenant_id: 't1',
-      priority: 'NEW',
+      priority: 'LOW',
       alert_type: 'AML',
       source: 's1',
       txtp: 'pacs',
@@ -39,6 +38,6 @@ describe('alertTransformers basic utilities', () => {
 
     const back = transformers.transformUIAlertToBackend(ui);
     expect(back.alert_id).toBe('a1');
-    expect(back.priority).toBe('NEW');
+    expect(back.priority).toBe('LOW');
   });
 });

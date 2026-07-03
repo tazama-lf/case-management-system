@@ -1001,8 +1001,6 @@ export class CaseService {
 
         this.logger.log(`[CompleteCaseCreation] Approval task ${nextTask.task_id} created for supervisor review`, CaseService.name);
       } else if (result.case.case_type === CaseType.FRAUD_AND_AML) {
-        // Supervisor: Create investigation task directly
-
         await this.caseCreationService.createCaseWithInvestigationTask(
           CaseType.FRAUD,
           userId,
@@ -1034,11 +1032,6 @@ export class CaseService {
           tenantId,
         );
       }
-
-      // this.logger.log(
-      //   `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
-      //   CaseService.name,
-      // );
 
       const getAlertIdByCaseId = await this.alertRepository.getAlertByCaseId(caseId);
       if (getAlertIdByCaseId) {

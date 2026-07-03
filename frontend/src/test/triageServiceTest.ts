@@ -32,7 +32,7 @@ export const exampleUsage = {
 
   async updateAlert(id: string) {
     return triageService.updateAlert(id, {
-      priority: 'URGENT',
+      priority: 'MEDIUM',
       confidence_per: 85,
     });
   },

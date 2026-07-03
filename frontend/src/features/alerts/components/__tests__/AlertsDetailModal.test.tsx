@@ -74,7 +74,7 @@ const mockOnNavigateToCase = vi.fn();
 const baseAlert = {
   alert_id: 123,
   tenant_id: "DEFAULT",
-  priority: "URGENT",
+  priority: "MEDIUM",
   alert_type: "ALRT",
   source: "REST API",
   txtp: "pacs.008",
@@ -186,7 +186,7 @@ describe("AlertsDetailModal", () => {
       expect(screen.getByText("Alert Details")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("URGENT")).toBeInTheDocument();
+    expect(screen.getByText("MEDIUM")).toBeInTheDocument();
     expect(screen.getAllByText("123").length).toBeGreaterThan(0);
     expect(screen.getByText(/REST API/i)).toBeInTheDocument();
     expect(screen.getByText("85%")).toBeInTheDocument();

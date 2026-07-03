@@ -53,7 +53,7 @@ describe('AlertsSearchAndFilters', () => {
         customDateRange={{ startDate: '', endDate: '' }}
         onCustomDateRangeChange={onCustomDateRangeChange}
         alertTypes={['FRAUD']}
-        priorities={['NEW', 'URGENT']}
+        priorities={['LOW', 'MEDIUM']}
         sources={['System A']}
       />,
     );
@@ -70,14 +70,14 @@ describe('AlertsSearchAndFilters', () => {
         customDateRange={customDateRange}
         onCustomDateRangeChange={onCustomDateRangeChange}
         alertTypes={['FRAUD']}
-        priorities={['NEW', 'URGENT']}
+        priorities={['LOW', 'MEDIUM']}
         sources={['System A']}
       />,
     );
 
   it('shows active badge and clear button when filters are applied', async () => {
     const user = userEvent.setup();
-    renderComponent({ priority: 'URGENT' });
+    renderComponent({ priority: 'MEDIUM' });
 
     await user.click(screen.getByRole('button', { name: /filters/i }));
     expect(screen.getByText(/Active/i)).toBeInTheDocument();
@@ -92,14 +92,14 @@ describe('AlertsSearchAndFilters', () => {
         filter_Id: 1,
         user_filters: JSON.stringify({
           alertType: 'FRAUD',
-          priority: 'URGENT',
+          priority: 'MEDIUM',
           source: 'System A',
           timeRange: 'today',
         }),
       },
     ]);
     const user = userEvent.setup();
-    renderComponent({ priority: 'URGENT' });
+    renderComponent({ priority: 'MEDIUM' });
 
     await user.click(screen.getByRole('button', { name: /filters/i }));
     const savedSelect = await screen.findByDisplayValue(
@@ -150,7 +150,7 @@ describe('AlertsSearchAndFilters', () => {
         customDateRange={{ startDate: '', endDate: '' }}
         onCustomDateRangeChange={onCustomDateRangeChange}
         alertTypes={['FRAUD']}
-        priorities={['NEW', 'URGENT']}
+        priorities={['LOW', 'MEDIUM']}
         sources={['System A']}
       />,
     );
@@ -204,14 +204,14 @@ describe('AlertsSearchAndFilters', () => {
           filter_Id: 7,
           user_filters: JSON.stringify({
             alertType: '',
-            priority: 'URGENT',
+            priority: 'MEDIUM',
             source: '',
             timeRange: '',
           }),
         },
       ]);
 
-    renderComponent({ priority: 'URGENT' });
+    renderComponent({ priority: 'MEDIUM' });
 
     await userEvent.click(screen.getByRole('button', { name: /filters/i }));
     await userEvent.click(
@@ -234,7 +234,7 @@ describe('AlertsSearchAndFilters', () => {
     expect(filterService.getFilters).toHaveBeenCalledTimes(2);
     expect(
       await screen.findByRole('option', {
-        name: /ALL TYPES - URGENT - ALL SOURCES - ALL TIME/i,
+        name: /ALL TYPES - MEDIUM - ALL SOURCES - ALL TIME/i,
       }),
     ).toBeInTheDocument();
   });
@@ -243,7 +243,7 @@ describe('AlertsSearchAndFilters', () => {
     (filterService.createFilter as vi.Mock).mockRejectedValue(
       new Error('Save failed'),
     );
-    renderComponent({ priority: 'URGENT' });
+    renderComponent({ priority: 'MEDIUM' });
 
     await userEvent.click(screen.getByRole('button', { name: /filters/i }));
     await userEvent.click(
@@ -264,7 +264,7 @@ describe('AlertsSearchAndFilters', () => {
         filter_Id: 1,
         user_filters: JSON.stringify({
           alertType: 'FRAUD',
-          priority: 'URGENT',
+          priority: 'MEDIUM',
           source: 'System A',
           timeRange: 'today',
         }),
@@ -290,7 +290,7 @@ describe('AlertsSearchAndFilters', () => {
     await waitFor(
       () => {
         expect(onFilterChange).toHaveBeenCalledWith('type', 'FRAUD');
-        expect(onFilterChange).toHaveBeenCalledWith('priority', 'URGENT');
+        expect(onFilterChange).toHaveBeenCalledWith('priority', 'MEDIUM');
         expect(onFilterChange).toHaveBeenCalledWith('source', 'System A');
       },
       { timeout: 100 },

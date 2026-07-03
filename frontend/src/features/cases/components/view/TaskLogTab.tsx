@@ -12,7 +12,6 @@ import { useToast } from '../../../../shared/providers/ToastProvider';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import TaskDetailsModal from '../TasksDetailsModal';
 import SarStrFilingModal from '../modals/SarStrFilingModal';
-import authService from '@/features/auth/services/authService';
 import { useCaseTasks } from '../../hooks/useCaseTasks';
 import { transformBackendCaseToUI } from '../casesTable.utils';
 import type { CaseRow } from '../casesTable.utils';
@@ -137,7 +136,7 @@ const TaskLogTab: React.FC<TaskLogTabProps> = ({
       assigneeName: getAssigneeFullName(backendTask.assigned_user_id),
       candidateGroup: backendTask.candidateGroup || 'investigations',
       status: mapTaskStatus(effectiveStatus),
-      priority: 'NEW',
+      priority: 'LOW',
       createdAt: backendTask.created_at,
       dueDate: undefined,
       caseId: backendTask.case_id,

@@ -13,7 +13,7 @@ export type PredictionOutcome =
   | 'TRUE_POSITIVE'
   | 'FALSE_NEGATIVE'
   | 'TRUE_NEGATIVE';
-export type Priority = 'NEW' | 'URGENT' | 'CRITICAL' | 'BREACH';
+export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
 export type AlertType = 'FRAUD' | 'AML' | 'FRAUD_AND_AML';
 export type CaseStatus =
   | 'STATUS_00_DRAFT'
@@ -125,7 +125,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     'FALSE_POSITIVE' | 'TRUE_POSITIVE' | 'FALSE_NEGATIVE' | 'TRUE_NEGATIVE'
   >('FALSE_POSITIVE');
   const [note, setNote] = React.useState('');
-  const [priority, setPriority] = React.useState<Priority>('NEW');
+  const [priority, setPriority] = React.useState<Priority>('LOW');
   const [confidence, setConfidence] = React.useState<number>(0);
   const [priorityScore, setPriorityScore] = React.useState<number>(0.33);
   const [alertType, setAlertType] = React.useState<AlertType>('FRAUD');
@@ -135,10 +135,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   >({});
 
   const calculatePriority = (score: number): Priority => {
-    if (score >= 1.0) return 'BREACH';
-    if (score >= 0.66) return 'CRITICAL';
-    if (score >= 0.33) return 'URGENT';
-    return 'NEW';
+    if (score >= 0.7) return 'HIGH';
+    if (score >= 0.4) return 'MEDIUM';
+    return 'LOW';
   };
 
   React.useEffect(() => {
@@ -436,13 +435,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   </label>
                   <div
                     className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
-                      priority === 'BREACH'
+                      priority === 'HIGH'
                         ? 'text-red-600 border-red-200'
-                        : priority === 'CRITICAL'
-                          ? 'text-orange-600 border-orange-200'
-                          : priority === 'URGENT'
-                            ? 'text-yellow-600 border-yellow-200'
-                            : 'text-blue-600 border-blue-200'
+                        : priority === 'MEDIUM'
+                          ? 'text-amber-600 border-amber-200'
+                          : 'text-blue-600 border-blue-200'
                     }`}
                   >
                     {priority}
@@ -504,10 +501,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                       disabled={loading}
                     />
                     <div className="flex justify-between text-xs text-gray-600">
-                      <span>0.0 (NEW)</span>
-                      <span>0.33 (URGENT)</span>
-                      <span>0.66 (CRITICAL)</span>
-                      <span>1.0 (BREACH)</span>
+                      <span>0.0 (LOW)</span>
+                      <span>0.4 (MEDIUM)</span>
+                      <span>0.7 (HIGH)</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <input
@@ -528,13 +524,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                       />
                       <span
                         className={`text-sm font-medium px-2 py-1 rounded ${
-                          priority === 'BREACH'
+                          priority === 'HIGH'
                             ? 'text-red-600 bg-red-50'
-                            : priority === 'CRITICAL'
-                              ? 'text-orange-600 bg-orange-50'
-                              : priority === 'URGENT'
-                                ? 'text-yellow-600 bg-yellow-50'
-                                : 'text-blue-600 bg-blue-50'
+                            : priority === 'MEDIUM'
+                              ? 'text-amber-600 bg-amber-50'
+                              : 'text-blue-600 bg-blue-50'
                         }`}
                       >
                         → {priority}
@@ -763,10 +757,9 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     step={0.01}
                   />
                   <div className="flex justify-between text-xs text-gray-600">
-                    <span>0.0 (NEW)</span>
-                    <span>0.33 (URGENT)</span>
-                    <span>0.66 (CRITICAL)</span>
-                    <span>1.0 (BREACH)</span>
+                    <span>0.0 (LOW)</span>
+                    <span>0.4 (MEDIUM)</span>
+                    <span>0.7 (HIGH)</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <input
@@ -786,13 +779,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     />
                     <span
                       className={`text-sm font-medium px-2 py-1 rounded ${
-                        priority === 'BREACH'
+                        priority === 'HIGH'
                           ? 'text-red-600 bg-red-50'
-                          : priority === 'CRITICAL'
-                            ? 'text-orange-600 bg-orange-50'
-                            : priority === 'URGENT'
-                              ? 'text-yellow-600 bg-yellow-50'
-                              : 'text-blue-600 bg-blue-50'
+                          : priority === 'MEDIUM'
+                            ? 'text-amber-600 bg-amber-50'
+                            : 'text-blue-600 bg-blue-50'
                       }`}
                     >
                       → {priority}
@@ -816,13 +807,11 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                 </label>
                 <div
                   className={`w-full px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium ${
-                    priority === 'BREACH'
+                    priority === 'HIGH'
                       ? 'text-red-600 border-red-200'
-                      : priority === 'CRITICAL'
-                        ? 'text-orange-600 border-orange-200'
-                        : priority === 'URGENT'
-                          ? 'text-yellow-600 border-yellow-200'
-                          : 'text-blue-600 border-blue-200'
+                      : priority === 'MEDIUM'
+                        ? 'text-amber-600 border-amber-200'
+                        : 'text-blue-600 border-blue-200'
                   }`}
                 >
                   {priority}

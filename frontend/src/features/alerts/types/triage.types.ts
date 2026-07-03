@@ -1,10 +1,16 @@
 import type React from 'react';
 
 export const Priority = {
-  NEW: 'NEW',
-  URGENT: 'URGENT',
-  CRITICAL: 'CRITICAL',
-  BREACH: 'BREACH',
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+} as const;
+
+export const SlaState = {
+  ON_TRACK: 'ON_TRACK',
+  AT_RISK: 'AT_RISK',
+  DUE_SOON: 'DUE_SOON',
+  BREACHED: 'BREACHED',
 } as const;
 
 export const AlertStatus = {
@@ -139,6 +145,7 @@ export const CaseCreationType = {
 } as const;
 
 export type Priority = (typeof Priority)[keyof typeof Priority];
+export type SlaState = (typeof SlaState)[keyof typeof SlaState];
 export type AlertStatus = (typeof AlertStatus)[keyof typeof AlertStatus];
 export type AlertType = (typeof AlertType)[keyof typeof AlertType];
 export type CaseStatus = (typeof CaseStatus)[keyof typeof CaseStatus];
@@ -188,6 +195,8 @@ export interface Case {
   tenant_id: string;
   status: CaseStatus;
   priority: Priority;
+  sla_due_at?: string | null;
+  sla_state?: SlaState | null;
   created_at: string;
   updated_at: string;
   parent_id?: number;
@@ -289,7 +298,7 @@ export interface ConvertToCaseData {
   caseId?: number;
   assignedTo?: string;
   caseOwnerUserId?: string;
-  priority: 'new' | 'urgent' | 'critical' | 'breach' | Priority;
+  priority: 'low' | 'medium' | 'high' | Priority;
   caseType: CaseType;
   linkedCases: string[];
   notes: string;

@@ -83,7 +83,7 @@ export const mockCase = (overrides = {}): any => ({
 export const mockAlert = (overrides = {}): any => ({
   alert_id: 'ALERT-001',
   tenant_id: 'tenant-1',
-  priority: 'CRITICAL',
+  priority: 'HIGH',
   source: 'FRAUD',
   alert_type: 'FRAUD',
   message: 'Suspicious transaction detected',
