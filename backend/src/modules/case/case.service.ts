@@ -44,7 +44,7 @@ export class CaseService {
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly investigationGroupService: InvestigationGroupService,
-  ) { }
+  ) {}
 
   async suspendCase(
     caseId: number,
@@ -714,11 +714,11 @@ export class CaseService {
       } | null;
       group_id: number | null;
       assigned_to:
-      | {
-        user_id: string | null;
-        task_count: number;
-      }
-      | undefined;
+        | {
+            user_id: string | null;
+            task_count: number;
+          }
+        | undefined;
     }>;
     pagination: {
       total: number;
@@ -734,12 +734,12 @@ export class CaseService {
       unassignedCases: number;
       averageTasksPerCase: number;
       oldestUnassignedCase:
-      | {
-        case_id: number;
-        created_at: Date;
-        days_old: number;
-      }
-      | undefined;
+        | {
+            case_id: number;
+            created_at: Date;
+            days_old: number;
+          }
+        | undefined;
     };
   }> {
     return await this.caseQueryService.getAllCases(query, tenantId, investigatorUserId, isComplianceOfficer);
@@ -768,13 +768,13 @@ export class CaseService {
       }>;
       total_tasks: number;
       alert:
-      | {
-        alert_id: number;
-        message: string;
-        confidence_per: number;
-        transaction: JsonValue;
-      }
-      | undefined;
+        | {
+            alert_id: number;
+            message: string;
+            confidence_per: number;
+            transaction: JsonValue;
+          }
+        | undefined;
       latest_comment_date: Date;
     }>;
     pagination: {
@@ -894,15 +894,17 @@ export class CaseService {
     );
 
     try {
-      const investigationGroup = isFraudNAML
-        ? await this.investigationGroupService.createInvestigationGroup(await this.alertRepository.getAlertByCaseId(caseId), tenantId)
-        : undefined;
+      let investigationGroup: { id: number } | undefined;
+      if (isSupervisor) {
+        investigationGroup = isFraudNAML
+          ? await this.investigationGroupService.createInvestigationGroup(await this.alertRepository.getAlertByCaseId(caseId), tenantId)
+          : undefined;
+      }
 
       const result = await this.prismaService.$transaction(async (prisma) => {
-        // Update case with provided data and new status
         const caseUpdateData = {
           ...updateData,
-          caseType: isFraudNAML ? CaseType.FRAUD : updateData.caseType,
+          caseType: isFraudNAML && isSupervisor ? CaseType.FRAUD : updateData.caseType,
           status: targetStatus,
         };
         let updatedCase = await this.caseQueryService.updateCase(caseId, caseUpdateData, userId);
@@ -948,7 +950,7 @@ export class CaseService {
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
             autoCloseEligible: isAutoCloseEligible,
-            caseType: isFraudNAML ? CaseType.FRAUD : (updateData.caseType ?? existingCase.case_type!),
+            caseType: isFraudNAML && isSupervisor ? CaseType.FRAUD : (updateData.caseType ?? existingCase.case_type!),
             casePriority: updateData.priority ?? existingCase.priority,
             draftApprovalRequired: isSupervisor ? false : true,
           },
@@ -1014,7 +1016,7 @@ export class CaseService {
         this.logger.log(`[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`, CaseService.name);
       }
 
-      if (isFraudNAML) {
+      if (isFraudNAML && isSupervisor) {
         await this.caseCreationService.createCaseWithInvestigationTask(
           CaseType.AML,
           userId,
@@ -1024,22 +1026,15 @@ export class CaseService {
           role,
           investigationGroup?.id,
         );
-
-
-        await this.alertRepository.updateAlert(
-          getAlertIdByCaseId,
-          {
-            caseId: undefined
-          }
-        );
+        await this.alertRepository.updateAlert(getAlertIdByCaseId, {
+          caseId: undefined,
+        });
       }
 
       // this.logger.log(
       //   `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
       //   CaseService.name,
       // );
-
-
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
