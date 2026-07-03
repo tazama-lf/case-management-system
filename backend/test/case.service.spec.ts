@@ -19,6 +19,7 @@ import { BadRequestException, InternalServerErrorException } from '@nestjs/commo
 import { CaseStatus, TaskStatus, CaseType, Priority, CaseCreationType, PredictionOutcome } from '@prisma/client-cms';
 import { RbacService, EndpointKey } from '../src/utils/rbac/rbacHelper';
 import { AuthenticatedUser } from '../src/utils/types/auth.types';
+import { InvestigationGroupService } from '../src/modules/investigation-group/investigation-group.service';
 
 describe('CaseService', () => {
   let service: CaseService;
@@ -36,6 +37,7 @@ describe('CaseService', () => {
   let caseRepository: jest.Mocked<CaseRepository>;
   let caseCreationService: jest.Mocked<CaseCreationService>;
   let loggingOrchestrationService: jest.Mocked<LoggingOrchestrationService>;
+  let investigationGroupService: jest.Mocked<InvestigationGroupService>;
   let logger: jest.Mocked<LoggerService>;
 
   const mockCase = {
@@ -195,6 +197,10 @@ describe('CaseService', () => {
       logActions: jest.fn().mockResolvedValue({}),
     };
 
+    const mockInvestigationGroupService = {
+      createInvestigationGroup: jest.fn().mockResolvedValue({ id: 123 }),
+    };
+
     const mockLogger = {
       log: jest.fn(),
       error: jest.fn(),
@@ -220,6 +226,7 @@ describe('CaseService', () => {
         { provide: CaseRepository, useValue: mockCaseRepository },
         { provide: CaseCreationService, useValue: mockCaseCreationService },
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
+        { provide: InvestigationGroupService, useValue: mockInvestigationGroupService },
         { provide: RbacService, useValue: mockRbacService },
       ],
     }).compile();
@@ -239,6 +246,7 @@ describe('CaseService', () => {
     caseRepository = module.get(CaseRepository);
     caseCreationService = module.get(CaseCreationService);
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
+    investigationGroupService = module.get(InvestigationGroupService);
     logger = module.get(LoggerService);
 
     // Default: retrieveCase returns a valid case so delegation tests don't hit BadRequestException
@@ -744,12 +752,7 @@ describe('CaseService', () => {
 
       await service.completeCaseCreation(1, fraudAmlData as any, 'user-123', 'tenant-123', 'SUPERVISOR', mockSupervisorUser, completeCaseCreationEndpoint);
 
-      expect(prismaService.investigationGroup.create).toHaveBeenCalledWith({
-        data: {
-          alert_id: 1,
-          tenant_id: 'tenant-123',
-        },
-      });
+      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, 'tenant-123');
       expect(caseQueryService.updateCase).toHaveBeenCalledWith(
         1,
         expect.objectContaining({

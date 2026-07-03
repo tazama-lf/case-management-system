@@ -14,14 +14,7 @@ import { CaseClosureApprovalService } from './services/case-closure-approval.ser
 import { CaseCreationApprovalService } from './services/case-creation-approval.service';
 import { FlowableService } from '../../../src/modules/flowable/flowable.service';
 import { AlertRepository } from '../repository/alert.repository';
-import {
-  CloseCaseDto,
-  ManualCreateCaseDto,
-  GetAllCasesQueryDto,
-  GetUserCasesQueryDto,
-  UpdateCaseDto,
-  InvestigationGroupDelegateDto,
-} from './dto';
+import { CloseCaseDto, ManualCreateCaseDto, GetAllCasesQueryDto, GetUserCasesQueryDto, UpdateCaseDto } from './dto';
 import { CacheService } from '../shared/cache.service';
 import { CaseCreationService } from './services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
@@ -29,6 +22,7 @@ import { JsonValue } from '@prisma/client-cms/runtime/library';
 import { setTimeout as delay } from 'node:timers/promises';
 import { RbacService, EndpointKey } from '../../utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from '../../utils/types/auth.types';
+import { InvestigationGroupService } from '../investigation-group/investigation-group.service';
 
 @Injectable()
 export class CaseService {
@@ -49,6 +43,7 @@ export class CaseService {
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly investigationGroupService: InvestigationGroupService,
   ) {}
 
   async suspendCase(
@@ -900,7 +895,7 @@ export class CaseService {
 
     try {
       const investigationGroup = isFraudNAML
-        ? await this.createInvestigationGroup(await this.alertRepository.getAlertByCaseId(caseId), tenantId)
+        ? await this.investigationGroupService.createInvestigationGroup(await this.alertRepository.getAlertByCaseId(caseId), tenantId)
         : undefined;
 
       const result = await this.prismaService.$transaction(async (prisma) => {
@@ -1081,23 +1076,5 @@ export class CaseService {
 
   async checkUserCaseAccess(caseId: number, investigatorUserId: string | undefined, tenantId: string): Promise<boolean> {
     return await this.caseQueryService.checkUserCaseAccess(caseId, investigatorUserId, tenantId);
-  }
-
-  private async createInvestigationGroup(alertId: number, tenantId: string): Promise<{ id: number }> {
-    const prismaWithInvestigationGroup = this.prismaService as unknown as {
-      investigationGroup?: InvestigationGroupDelegateDto;
-    };
-    const investigationGroupDelegate = prismaWithInvestigationGroup.investigationGroup;
-
-    if (investigationGroupDelegate === undefined) {
-      throw new InternalServerErrorException('InvestigationGroup Prisma model is not available');
-    }
-
-    return await investigationGroupDelegate.create({
-      data: {
-        alert_id: alertId,
-        tenant_id: tenantId,
-      },
-    });
   }
 }

@@ -41,7 +41,6 @@ import { RequestSuspendCaseDto } from './suspend-case.dto';
 import { UpdateCaseDto } from './update-case.dto';
 import { SystemCaseCreationDto } from './system-case-create.dto';
 import { SystemCaseCreatedResponseDto } from './system-case-created-response.dto';
-import { InvestigationGroupDelegateDto } from './investigation-group-delegate.dto';
 
 export {
   CreateCaseDto,
@@ -88,6 +87,5 @@ export {
   RequestSuspendCaseDto,
   SystemCaseCreationDto,
   SystemCaseCreatedResponseDto,
-  InvestigationGroupDelegateDto,
   UpdateCaseDto,
 };

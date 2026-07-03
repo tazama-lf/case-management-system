@@ -6,12 +6,12 @@ import { CaseRepository } from 'src/modules/repository/case.repository';
 import { TaskService } from 'src/modules/task/task.service';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 import { Outcome } from 'src/utils/types/outcome';
-import { CreateCaseDto, ManualCreateCaseDto, InvestigationGroupDelegateDto } from '../dto';
+import { CreateCaseDto, ManualCreateCaseDto } from '../dto';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CasePriorityUtil } from 'src/modules/shared/utils/case-priority.util';
 import { AlertRepository } from 'src/modules/repository/alert.repository';
 import { setTimeout } from 'node:timers/promises';
-import { PrismaService } from 'prisma/prisma.service';
+import { InvestigationGroupService } from 'src/modules/investigation-group/investigation-group.service';
 
 @Injectable()
 export class CaseCreationService {
@@ -23,7 +23,7 @@ export class CaseCreationService {
     private readonly alertRepository: AlertRepository,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
-    private readonly prisma: PrismaService,
+    private readonly investigationGroupService: InvestigationGroupService,
   ) {}
 
   async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string, userRole: string): Promise<Case> {
@@ -150,7 +150,9 @@ export class CaseCreationService {
       throw new BadRequestException('Case Already Exists');
     }
 
-    const investigationGroup = isFraudNAML ? await this.createInvestigationGroup(dto.alertId, tenantId) : undefined;
+    const investigationGroup = isFraudNAML
+      ? await this.investigationGroupService.createInvestigationGroup(dto.alertId, tenantId)
+      : undefined;
     const primaryCaseType = isFraudNAML ? CaseType.FRAUD : caseType;
     const caseDetail: CreateCaseDto = {
       tenantId,
@@ -286,23 +288,5 @@ export class CaseCreationService {
       await setTimeout(1000 * attempt);
       await this.retry(fn, maxRetries, attempt + 1);
     }
-  }
-
-  private async createInvestigationGroup(alertId: number, tenantId: string): Promise<{ id: number }> {
-    const prismaWithInvestigationGroup = this.prisma as unknown as {
-      investigationGroup?: InvestigationGroupDelegateDto;
-    };
-    const investigationGroupDelegate = prismaWithInvestigationGroup.investigationGroup;
-
-    if (!investigationGroupDelegate) {
-      throw new InternalServerErrorException('InvestigationGroup Prisma model is not available');
-    }
-
-    return await investigationGroupDelegate.create({
-      data: {
-        alert_id: alertId,
-        tenant_id: tenantId,
-      },
-    });
   }
 }

@@ -10,7 +10,7 @@ import { CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus } from '@p
 import { CreateCaseDto } from '../src/modules/case/dto';
 import { CasePriorityUtil } from '../src/modules/shared/utils/case-priority.util';
 import { AlertRepository } from '../src/modules/repository/alert.repository';
-import { PrismaService } from '../prisma/prisma.service';
+import { InvestigationGroupService } from '../src/modules/investigation-group/investigation-group.service';
 
 describe('CaseCreationService', () => {
   let service: CaseCreationService;
@@ -21,7 +21,7 @@ describe('CaseCreationService', () => {
   let flowableService: any;
   let casePriorityUtil: any;
   let alertRepository: any;
-  let prismaService: any;
+  let investigationGroupService: any;
 
   const mockCase = {
     case_id: 1,
@@ -88,14 +88,10 @@ describe('CaseCreationService', () => {
       updateAlert: jest.fn(),
     };
 
-    const mockPrismaService = {
-      investigationGroup: {
-        create: jest.fn().mockResolvedValue({
-          id: 123,
-          alert_id: 1,
-          tenant_id: 'tenant-123',
-        }),
-      },
+    const mockInvestigationGroupService = {
+      createInvestigationGroup: jest.fn().mockResolvedValue({
+        id: 123,
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -108,7 +104,7 @@ describe('CaseCreationService', () => {
         { provide: FlowableService, useValue: mockFlowableService },
         { provide: CasePriorityUtil, useValue: mockCasePriorityUtil },
         { provide: AlertRepository, useValue: mockAlertRepository },
-        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: InvestigationGroupService, useValue: mockInvestigationGroupService },
       ],
     }).compile();
 
@@ -120,7 +116,7 @@ describe('CaseCreationService', () => {
     flowableService = module.get(FlowableService);
     casePriorityUtil = module.get(CasePriorityUtil);
     alertRepository = module.get(AlertRepository);
-    prismaService = module.get(PrismaService);
+    investigationGroupService = module.get(InvestigationGroupService);
   });
 
   afterEach(() => {
@@ -465,12 +461,7 @@ describe('CaseCreationService', () => {
       expect(result.success).toBe(true);
       expect(result.case).toEqual(fraudCase);
       expect(caseRepository.createCase).toHaveBeenCalledTimes(2);
-      expect(prismaService.investigationGroup.create).toHaveBeenCalledWith({
-        data: {
-          alert_id: 1,
-          tenant_id: tenantId,
-        },
-      });
+      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, tenantId);
       expect(caseRepository.createCase).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({
