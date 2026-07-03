@@ -112,6 +112,13 @@ describe('CaseService', () => {
         findFirst: jest.fn(),
         update: jest.fn(),
       },
+      investigationGroup: {
+        create: jest.fn().mockResolvedValue({
+          id: 123,
+          alert_id: 1,
+          tenant_id: 'tenant-123',
+        }),
+      },
     };
 
     const mockCaseQueryService = {
@@ -664,7 +671,16 @@ describe('CaseService', () => {
 
     const setupMockTransaction = () => {
       const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {};
+        const mockPrisma = {
+          case: {
+            update: jest.fn().mockResolvedValue({
+              ...mockDraftCase,
+              case_type: CaseType.FRAUD,
+              group_id: 123,
+              priority: Priority.CRITICAL,
+            }),
+          },
+        };
         return await callback(mockPrisma);
       });
       prismaService.$transaction.mockImplementation(mockTransaction);
@@ -723,18 +739,34 @@ describe('CaseService', () => {
       setupMockTransaction();
       caseQueryService.updateCase.mockResolvedValue(updatedCase as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
-      alertRepository.getAlertByCaseId.mockResolvedValue(undefined as any);
+      taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Investigate Case' } as any);
+      alertRepository.getAlertByCaseId.mockResolvedValue(1 as any);
 
       await service.completeCaseCreation(1, fraudAmlData as any, 'user-123', 'tenant-123', 'SUPERVISOR', mockSupervisorUser, completeCaseCreationEndpoint);
 
-      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(2);
-      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
-        CaseType.FRAUD,
+      expect(prismaService.investigationGroup.create).toHaveBeenCalledWith({
+        data: {
+          alert_id: 1,
+          tenant_id: 'tenant-123',
+        },
+      });
+      expect(caseQueryService.updateCase).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          caseType: CaseType.FRAUD,
+          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        }),
         'user-123',
-        'tenant-123',
-        Priority.CRITICAL,
-        CaseCreationType.AUTOMATIC_SYSTEM,
-        'SUPERVISOR',
+      );
+      expect(taskService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'Investigate Case' }), 'user-123', 'tenant-123');
+      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
+      expect(caseCreationService.createCaseWithInvestigationTask).not.toHaveBeenCalledWith(
+        CaseType.FRAUD,
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
       );
       expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
         CaseType.AML,
@@ -743,6 +775,7 @@ describe('CaseService', () => {
         Priority.CRITICAL,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
+        123,
       );
     });
 
