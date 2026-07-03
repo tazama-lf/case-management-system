@@ -384,9 +384,14 @@ export class TriageService {
               investigationGroup.id,
             );
 
-            await this.alertService.updateAlert(alertId, userId, {
-              caseId: undefined,
-            });
+            await this.alertService.updateAlert(
+              alertId,
+              userId,
+              {
+                caseId: null,
+              } as unknown as UpdateAlertDTO,
+              tx,
+            );
           } else {
             await this.caseCreationService.updateCaseStatus(
               alert.case_id,
