@@ -44,7 +44,7 @@ export class CaseService {
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly investigationGroupService: InvestigationGroupService,
-  ) {}
+  ) { }
 
   async suspendCase(
     caseId: number,
@@ -714,11 +714,11 @@ export class CaseService {
       } | null;
       group_id: number | null;
       assigned_to:
-        | {
-            user_id: string | null;
-            task_count: number;
-          }
-        | undefined;
+      | {
+        user_id: string | null;
+        task_count: number;
+      }
+      | undefined;
     }>;
     pagination: {
       total: number;
@@ -734,12 +734,12 @@ export class CaseService {
       unassignedCases: number;
       averageTasksPerCase: number;
       oldestUnassignedCase:
-        | {
-            case_id: number;
-            created_at: Date;
-            days_old: number;
-          }
-        | undefined;
+      | {
+        case_id: number;
+        created_at: Date;
+        days_old: number;
+      }
+      | undefined;
     };
   }> {
     return await this.caseQueryService.getAllCases(query, tenantId, investigatorUserId, isComplianceOfficer);
@@ -768,13 +768,13 @@ export class CaseService {
       }>;
       total_tasks: number;
       alert:
-        | {
-            alert_id: number;
-            message: string;
-            confidence_per: number;
-            transaction: JsonValue;
-          }
-        | undefined;
+      | {
+        alert_id: number;
+        message: string;
+        confidence_per: number;
+        transaction: JsonValue;
+      }
+      | undefined;
       latest_comment_date: Date;
     }>;
     pagination: {
@@ -1000,23 +1000,6 @@ export class CaseService {
         );
       }
 
-      if (isFraudNAML) {
-        await this.caseCreationService.createCaseWithInvestigationTask(
-          CaseType.AML,
-          userId,
-          existingCase.tenant_id,
-          result.case.priority,
-          CaseCreationType.AUTOMATIC_SYSTEM,
-          role,
-          investigationGroup?.id,
-        );
-      }
-
-      // this.logger.log(
-      //   `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
-      //   CaseService.name,
-      // );
-
       const getAlertIdByCaseId = await this.alertRepository.getAlertByCaseId(caseId);
       if (getAlertIdByCaseId) {
         const alertUpdateData = {
@@ -1030,6 +1013,33 @@ export class CaseService {
         await this.alertRepository.updateAlert(getAlertIdByCaseId, alertUpdateData);
         this.logger.log(`[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`, CaseService.name);
       }
+
+      if (isFraudNAML) {
+        await this.caseCreationService.createCaseWithInvestigationTask(
+          CaseType.AML,
+          userId,
+          existingCase.tenant_id,
+          result.case.priority,
+          CaseCreationType.AUTOMATIC_SYSTEM,
+          role,
+          investigationGroup?.id,
+        );
+
+
+        await this.alertRepository.updateAlert(
+          getAlertIdByCaseId,
+          {
+            caseId: undefined
+          }
+        );
+      }
+
+      // this.logger.log(
+      //   `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
+      //   CaseService.name,
+      // );
+
+
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {

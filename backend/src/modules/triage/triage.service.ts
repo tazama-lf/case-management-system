@@ -26,8 +26,6 @@ import { InvestigationGroupService } from '../investigation-group/investigation-
 
 @Injectable()
 export class TriageService {
-  @Inject(InvestigationGroupService)
-  private readonly investigationGroupService: InvestigationGroupService;
 
   private readonly closableStatuses: CaseStatus[] = [
     CaseStatus.STATUS_82_CLOSED_CONFIRMED,
@@ -37,6 +35,7 @@ export class TriageService {
   ];
 
   constructor(
+    private readonly investigationGroupService: InvestigationGroupService,
     private readonly logger: LoggerService,
     private readonly alertRepository: AlertRepository,
     private readonly commentRepository: CommentRepository,
@@ -52,7 +51,7 @@ export class TriageService {
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   async getAlertNavigator(alertId: number, tenantId: string, userId: string): Promise<AlertNavigatorDto> {
     this.logger.log(`Fetching alert navigator for alertId: ${alertId}, tenantId: ${tenantId}, userId: ${userId}`, TriageService.name);
@@ -384,6 +383,14 @@ export class TriageService {
               CaseCreationType.AUTOMATIC_SYSTEM,
               'SUPERVISOR',
               investigationGroup.id,
+            );
+
+            await this.alertService.updateAlert(
+              alertId,
+              userId,
+              {
+                caseId: undefined
+              }
             );
           } else {
             await this.caseCreationService.updateCaseStatus(
