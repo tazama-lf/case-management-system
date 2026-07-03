@@ -10,10 +10,11 @@ import { CommentRepository } from '../src/modules/repository/comment.repository'
 import { CasePriorityUtil } from '../src/modules/shared/utils/case-priority.util';
 import { FlowableService } from '../src/modules/flowable/flowable.service';
 import { CaseQueryService } from '../src/modules/case/services/case-query.service';
-import { CaseCreationService } from '../src/modules/case/services/case-creation.service';
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
+import { InvestigationGroupService } from '../src/modules/investigation-group/investigation-group.service';
 import { BadRequestException, NotFoundException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { CaseStatus, TaskStatus, CaseType, Priority, CaseCreationType } from '@prisma/client-cms';
+import { TASK_NAMES } from '../src/constants/case.constants';
 
 describe('CaseCreationApprovalService', () => {
   let service: CaseCreationApprovalService;
@@ -27,8 +28,8 @@ describe('CaseCreationApprovalService', () => {
   let casePriorityUtil: jest.Mocked<CasePriorityUtil>;
   let flowableService: jest.Mocked<FlowableService>;
   let caseQueryService: jest.Mocked<CaseQueryService>;
-  let caseCreationService: jest.Mocked<CaseCreationService>;
   let loggingOrchestrationService: jest.Mocked<LoggingOrchestrationService>;
+  let investigationGroupService: jest.Mocked<InvestigationGroupService>;
 
   const mockCase = {
     case_id: 1,
@@ -93,12 +94,14 @@ describe('CaseCreationApprovalService', () => {
 
     const mockAlertRepository = {
       updateAlert: jest.fn(),
+      getAlertByCaseId: jest.fn().mockResolvedValue(100),
     };
 
     const mockTaskRepository = {
       transaction: jest.fn(),
       findCaseBasic: jest.fn(),
       createTask: jest.fn(),
+      findTasks: jest.fn().mockResolvedValue([]),
     };
 
     const mockCaseRepository = {
@@ -133,13 +136,13 @@ describe('CaseCreationApprovalService', () => {
       updateCase: jest.fn(),
     };
 
-    const mockCaseCreationService = {
-      createCaseWithInvestigationTask: jest.fn().mockResolvedValue({}),
-    };
-
     const mockLoggingOrchestrationService = {
       logActionsWithHistory: jest.fn().mockResolvedValue({}),
       logActions: jest.fn().mockResolvedValue({}),
+    };
+
+    const mockInvestigationGroupService = {
+      createInvestigationGroup: jest.fn().mockResolvedValue({ id: 55 }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -155,8 +158,8 @@ describe('CaseCreationApprovalService', () => {
         { provide: CasePriorityUtil, useValue: mockCasePriorityUtil },
         { provide: FlowableService, useValue: mockFlowableService },
         { provide: CaseQueryService, useValue: mockCaseQueryService },
-        { provide: CaseCreationService, useValue: mockCaseCreationService },
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
+        { provide: InvestigationGroupService, useValue: mockInvestigationGroupService },
       ],
     }).compile();
 
@@ -171,8 +174,8 @@ describe('CaseCreationApprovalService', () => {
     casePriorityUtil = module.get(CasePriorityUtil);
     flowableService = module.get(FlowableService);
     caseQueryService = module.get(CaseQueryService);
-    caseCreationService = module.get(CaseCreationService);
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
+    investigationGroupService = module.get(InvestigationGroupService);
   });
 
   afterEach(() => {
@@ -267,14 +270,99 @@ describe('CaseCreationApprovalService', () => {
       expect(taskService.createTask).toHaveBeenCalled();
     });
 
-    it('should approve FRAUD_AND_AML case and create both investigation tasks', async () => {
-      const fraudAmlCase = { ...pendingCase, case_type: CaseType.FRAUD_AND_AML };
+    it('should approve FRAUD_AND_AML case by converting it to FRAUD and creating a sibling AML case with a mirrored task history', async () => {
+      const fraudAmlCase = {
+        ...pendingCase,
+        case_type: CaseType.FRAUD_AND_AML,
+        case_id: 1,
+        case_creation_type: CaseCreationType.AUTOMATIC_SYSTEM,
+      };
+      const fraudCase = { ...fraudAmlCase, case_type: CaseType.FRAUD, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, group_id: 55 };
+      const amlCase = { ...fraudCase, case_id: 2, case_type: CaseType.AML };
+
       caseRepository.findCaseWithApprovalTask.mockResolvedValue(fraudAmlCase as any);
       setupSuccessfulTransaction(caseRepository, { ...fraudAmlCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
+      // First updateCase call (inside the transaction) flips status; second call (post-transaction)
+      // converts the case to FRAUD and assigns the investigation group.
+      caseRepository.updateCase.mockResolvedValueOnce({ ...fraudAmlCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT } as any);
+      caseRepository.updateCase.mockResolvedValueOnce(fraudCase as any);
+      caseRepository.createCase.mockResolvedValue(amlCase as any);
+      // Mock the backfill tasks fetched from the FRAUD case to mirror into AML
+      taskRepository.findTasks.mockResolvedValue([
+        { name: TASK_NAMES.COMPLETE_NEW_CASE, assigned_user_id: 'creator-123', candidateGroup: 'INVESTIGATIONS' },
+        { name: TASK_NAMES.APPROVE_CASE_CREATION, assigned_user_id: 'supervisor-123', candidateGroup: 'SUPERVISORS' },
+      ] as any);
+      taskService.createTask.mockImplementation((dto: any) =>
+        Promise.resolve({ task_id: Math.random(), case_id: dto.caseId, name: dto.name, status: dto.status } as any),
+      );
 
-      await service.approveCaseCreation(1, 'supervisor-123', 'tenant-123');
+      const result = await service.approveCaseCreation(1, 'supervisor-123', 'tenant-123');
 
-      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(2);
+      expect(alertRepository.getAlertByCaseId).toHaveBeenCalledWith(1);
+      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(100, 'tenant-123');
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, {
+        case_type: CaseType.FRAUD,
+        group_id: 55,
+      });
+      expect(caseRepository.createCase).toHaveBeenCalledWith({
+        tenantId: fraudCase.tenant_id,
+        caseCreatorUserId: fraudCase.case_creator_user_id,
+        caseOwnerUserId: fraudCase.case_owner_user_id,
+        status: fraudCase.status,
+        priority: fraudCase.priority,
+        caseType: CaseType.AML,
+        caseCreationType: fraudCase.case_creation_type,
+        groupId: 55,
+      });
+
+      // AML gets its own completed "Complete New Case" + "Approve Case Creation" tasks,
+      // mirroring the FRAUD case's history, plus an "Investigate Case" task like FRAUD.
+      expect(taskService.createTask).toHaveBeenCalledTimes(4);
+      expect(taskService.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: amlCase.case_id,
+          name: TASK_NAMES.COMPLETE_NEW_CASE,
+          status: TaskStatus.STATUS_30_COMPLETED,
+        }),
+        'supervisor-123',
+        'tenant-123',
+      );
+      expect(taskService.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: amlCase.case_id,
+          name: TASK_NAMES.APPROVE_CASE_CREATION,
+          status: TaskStatus.STATUS_30_COMPLETED,
+        }),
+        'supervisor-123',
+        'tenant-123',
+      );
+      expect(taskService.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: fraudCase.case_id, name: TASK_NAMES.INVESTIGATE_CASE }),
+        'supervisor-123',
+        'tenant-123',
+      );
+      expect(taskService.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: amlCase.case_id, name: TASK_NAMES.INVESTIGATE_CASE }),
+        'supervisor-123',
+        'tenant-123',
+      );
+
+      // Both the completed AML tasks and the AML status transition are reported to flowable,
+      // in addition to the FRAUD case's own status-changed/task-completed calls.
+      expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledTimes(2);
+      expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledWith({
+        caseId: amlCase.case_id,
+        newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+      });
+      expect(flowableService.handleTaskCompleted).toHaveBeenCalledTimes(3);
+      expect(flowableService.handleTaskCompleted).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: amlCase.case_id, taskName: TASK_NAMES.COMPLETE_NEW_CASE }),
+      );
+      expect(flowableService.handleTaskCompleted).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: amlCase.case_id, taskName: TASK_NAMES.APPROVE_CASE_CREATION }),
+      );
+
+      expect(result.case.case_type).toBe(CaseType.FRAUD);
     });
 
     it.each([
