@@ -242,13 +242,26 @@ describe('CaseCreationService', () => {
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       });
       expect(flowableService.handleCaseCreated).toHaveBeenCalled();
-      expect(taskService.createTask).toHaveBeenCalledWith(
+      expect(taskService.createTask).toHaveBeenNthCalledWith(
+        1,
+        {
+          caseId: mockCase.case_id,
+          status: TaskStatus.STATUS_30_COMPLETED,
+          name: 'Complete New Case',
+          description: `Investigation task for manually created case ${mockCase.case_id}`,
+          candidateGroup: 'investigations',
+        },
+        userId,
+        tenantId,
+      );
+      expect(taskService.createTask).toHaveBeenNthCalledWith(
+        2,
         {
           caseId: mockCase.case_id,
           status: TaskStatus.STATUS_01_UNASSIGNED,
           name: 'Investigate Case',
-          description: `Investigation task for manually created case ${mockCase.case_id}`,
-          candidateGroup: 'investigations',
+          description: `Created for triaging alert for case:${mockCase.case_id}`,
+          candidateGroup: 'investigator',
         },
         userId,
         tenantId,

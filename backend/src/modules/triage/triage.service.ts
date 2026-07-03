@@ -1,4 +1,4 @@
-import { Inject, Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from '../task/task.service';
@@ -26,7 +26,6 @@ import { InvestigationGroupService } from '../investigation-group/investigation-
 
 @Injectable()
 export class TriageService {
-
   private readonly closableStatuses: CaseStatus[] = [
     CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     CaseStatus.STATUS_81_CLOSED_REFUTED,
@@ -51,7 +50,7 @@ export class TriageService {
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
   async getAlertNavigator(alertId: number, tenantId: string, userId: string): Promise<AlertNavigatorDto> {
     this.logger.log(`Fetching alert navigator for alertId: ${alertId}, tenantId: ${tenantId}, userId: ${userId}`, TriageService.name);
@@ -385,13 +384,9 @@ export class TriageService {
               investigationGroup.id,
             );
 
-            await this.alertService.updateAlert(
-              alertId,
-              userId,
-              {
-                caseId: undefined
-              }
-            );
+            await this.alertService.updateAlert(alertId, userId, {
+              caseId: undefined,
+            });
           } else {
             await this.caseCreationService.updateCaseStatus(
               alert.case_id,
