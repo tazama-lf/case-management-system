@@ -195,10 +195,8 @@ export class CaseCreationApprovalService {
         // FRAUD_AND_AML splits into two sibling cases sharing an InvestigationGroup:
         // the already-approved case becomes the FRAUD case, and a new AML case is
         // created alongside it with identical case data and an identical task.
-        const investigationGroup = await this.investigationGroupService.createInvestigationGroup(
-          await this.alertRepository.getAlertByCaseId(caseId),
-          tenantId,
-        );
+        const alertId = await this.alertRepository.getAlertByCaseId(caseId);
+        const investigationGroup = await this.investigationGroupService.createInvestigationGroup(alertId, tenantId);
 
         finalCase = await this.caseRepository.updateCase(caseId, {
           case_type: CaseType.FRAUD,
@@ -307,6 +305,8 @@ export class CaseCreationApprovalService {
             );
           }),
         );
+
+        await this.alertRepository.updateAlert(alertId, { caseId: undefined });
       } else {
         await this.taskService.createTask(
           {
