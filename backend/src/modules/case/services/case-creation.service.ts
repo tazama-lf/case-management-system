@@ -24,7 +24,7 @@ export class CaseCreationService {
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly investigationGroupService: InvestigationGroupService,
-  ) {}
+  ) { }
 
   async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string, userRole: string): Promise<Case> {
     try {
@@ -92,10 +92,22 @@ export class CaseCreationService {
       await this.taskService.createTask(
         {
           caseId: newCase.case_id,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: 'Investigate Case',
+          status: TaskStatus.STATUS_30_COMPLETED,
+          name: 'Complete New Case',
           description: `Investigation task for manually created case ${newCase.case_id}`,
           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+        },
+        userId,
+        tenantId,
+      );
+
+      await this.taskService.createTask(
+        {
+          caseId: newCase.case_id,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          name: 'Investigate Case',
+          description: `Created for triaging alert for case:${newCase.case_id}`,
+          candidateGroup: 'investigator',
         },
         userId,
         tenantId,
@@ -189,7 +201,7 @@ export class CaseCreationService {
         const updatedAlert = await this.alertRepository.updateAlert(
           dto.alertId,
           {
-            caseId: createdCase.case_id,
+            caseId: isFraudNAML ? undefined : createdCase.case_id,
             priority,
             priority_score: priorityScore,
             alertType: dto.alertType,
