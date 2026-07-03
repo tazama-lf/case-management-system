@@ -22,6 +22,7 @@ import { ManualAlertUpdateDTO, IngestAlertDto } from '../src/modules/alert/dto';
 import { Outcome } from '../src/utils/types/outcome';
 import axios from 'axios';
 import * as timersPromises from 'node:timers/promises';
+import { InvestigationGroupService } from '../src/modules/investigation-group/investigation-group.service';
 
 jest.mock('node:timers/promises', () => ({ setTimeout: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('axios');
@@ -204,6 +205,12 @@ describe('TriageService', () => {
       logActionsWithHistory: jest.fn(),
     };
 
+    const mockInvestigationGroupService = {
+      createInvestigationGroup: jest.fn().mockResolvedValue({
+        id: 123,
+      }),
+    };
+
     const mockPrismaService = {
       investigationGroup: {
         create: jest.fn().mockResolvedValue({
@@ -233,6 +240,7 @@ describe('TriageService', () => {
         { provide: CaseCreationService, useValue: mockCaseCreateService },
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: InvestigationGroupService, useValue: mockInvestigationGroupService },
       ],
     }).compile();
 

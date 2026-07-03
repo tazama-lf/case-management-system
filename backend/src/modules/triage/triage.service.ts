@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from '../task/task.service';
@@ -22,10 +22,13 @@ import { AlertNavigatorDto, TypologyDto, RuleDto, BlockStatusDto, RelatedLinksDt
 import { LinkDto, TransactionDetailDto, ChargeDto, CreditorDto, DebtorDto } from './dto/transaction-detail.dto';
 import { setTimeout } from 'node:timers/promises';
 import { TaskRepository } from '../repository/task.repository';
-import { InvestigationGroupDelegateDto } from './dto/investigation-group-delegate.dto';
+import { InvestigationGroupService } from '../investigation-group/investigation-group.service';
 
 @Injectable()
 export class TriageService {
+  @Inject(InvestigationGroupService)
+  private readonly investigationGroupService: InvestigationGroupService;
+
   private readonly closableStatuses: CaseStatus[] = [
     CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     CaseStatus.STATUS_81_CLOSED_REFUTED,
@@ -363,7 +366,7 @@ export class TriageService {
           );
         } else if (alert.alert_type) {
           if (alert.alert_type === CaseType.FRAUD_AND_AML) {
-            const investigationGroup = await this.createInvestigationGroup(alert.alert_id, tenantId);
+            const investigationGroup = await this.investigationGroupService.createInvestigationGroup(alert.alert_id, tenantId);
             await this.caseCreationService.updateCaseStatus(
               alert.case_id,
               CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
@@ -469,24 +472,6 @@ export class TriageService {
       await setTimeout(1000 * attempt);
       await this.retry(fn, maxRetries, attempt + 1);
     }
-  }
-
-  private async createInvestigationGroup(alertId: number, tenantId: string): Promise<{ id: number }> {
-    const prismaWithInvestigationGroup = this.prisma as unknown as {
-      investigationGroup?: InvestigationGroupDelegateDto;
-    };
-    const investigationGroupDelegate = prismaWithInvestigationGroup.investigationGroup;
-
-    if (!investigationGroupDelegate) {
-      throw new InternalServerErrorException('InvestigationGroup Prisma model is not available');
-    }
-
-    return await investigationGroupDelegate.create({
-      data: {
-        alert_id: alertId,
-        tenant_id: tenantId,
-      },
-    });
   }
 
   async handleAITriage(alertId: number, caseId: number, dto: IngestAlertDto, userId: string, tenantId: string): Promise<unknown> {
@@ -622,7 +607,7 @@ export class TriageService {
             },
           });
 
-          const investigationGroup = await this.createInvestigationGroup(alertId, tenantId);
+          const investigationGroup = await this.investigationGroupService.createInvestigationGroup(alertId, tenantId);
           await this.caseCreationService.updateCaseStatus(
             caseId,
             CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
