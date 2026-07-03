@@ -441,6 +441,7 @@ describe('TriageService', () => {
         'SUPERVISOR',
         123,
       );
+      expect(alertService.updateAlert).toHaveBeenLastCalledWith(1, 'user-123', { caseId: null }, expect.anything());
     });
 
     it('should log error and rethrow on failure', async () => {
