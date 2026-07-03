@@ -22,10 +22,7 @@ import { AlertNavigatorDto, TypologyDto, RuleDto, BlockStatusDto, RelatedLinksDt
 import { LinkDto, TransactionDetailDto, ChargeDto, CreditorDto, DebtorDto } from './dto/transaction-detail.dto';
 import { setTimeout } from 'node:timers/promises';
 import { TaskRepository } from '../repository/task.repository';
-
-interface InvestigationGroupDelegate {
-  create: (args: { data: { alert_id: number; tenant_id: string } }) => Promise<{ id: number }>;
-}
+import { InvestigationGroupDelegateDto } from './dto/investigation-group-delegate.dto';
 
 @Injectable()
 export class TriageService {
@@ -476,7 +473,7 @@ export class TriageService {
 
   private async createInvestigationGroup(alertId: number, tenantId: string): Promise<{ id: number }> {
     const prismaWithInvestigationGroup = this.prisma as unknown as {
-      investigationGroup?: InvestigationGroupDelegate;
+      investigationGroup?: InvestigationGroupDelegateDto;
     };
     const investigationGroupDelegate = prismaWithInvestigationGroup.investigationGroup;
 

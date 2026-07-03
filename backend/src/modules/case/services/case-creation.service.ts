@@ -6,16 +6,12 @@ import { CaseRepository } from 'src/modules/repository/case.repository';
 import { TaskService } from 'src/modules/task/task.service';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 import { Outcome } from 'src/utils/types/outcome';
-import { CreateCaseDto, ManualCreateCaseDto } from '../dto';
+import { CreateCaseDto, ManualCreateCaseDto, InvestigationGroupDelegateDto } from '../dto';
 import { FlowableService } from 'src/modules/flowable/flowable.service';
 import { CasePriorityUtil } from 'src/modules/shared/utils/case-priority.util';
 import { AlertRepository } from 'src/modules/repository/alert.repository';
 import { setTimeout } from 'node:timers/promises';
 import { PrismaService } from 'prisma/prisma.service';
-
-interface InvestigationGroupDelegate {
-  create: (args: { data: { alert_id: number; tenant_id: string } }) => Promise<{ id: number }>;
-}
 
 @Injectable()
 export class CaseCreationService {
@@ -294,7 +290,7 @@ export class CaseCreationService {
 
   private async createInvestigationGroup(alertId: number, tenantId: string): Promise<{ id: number }> {
     const prismaWithInvestigationGroup = this.prisma as unknown as {
-      investigationGroup?: InvestigationGroupDelegate;
+      investigationGroup?: InvestigationGroupDelegateDto;
     };
     const investigationGroupDelegate = prismaWithInvestigationGroup.investigationGroup;
 

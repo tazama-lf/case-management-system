@@ -14,7 +14,14 @@ import { CaseClosureApprovalService } from './services/case-closure-approval.ser
 import { CaseCreationApprovalService } from './services/case-creation-approval.service';
 import { FlowableService } from '../../../src/modules/flowable/flowable.service';
 import { AlertRepository } from '../repository/alert.repository';
-import { CloseCaseDto, ManualCreateCaseDto, GetAllCasesQueryDto, GetUserCasesQueryDto, UpdateCaseDto } from './dto';
+import {
+  CloseCaseDto,
+  ManualCreateCaseDto,
+  GetAllCasesQueryDto,
+  GetUserCasesQueryDto,
+  UpdateCaseDto,
+  InvestigationGroupDelegateDto,
+} from './dto';
 import { CacheService } from '../shared/cache.service';
 import { CaseCreationService } from './services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
@@ -872,6 +879,8 @@ export class CaseService {
 
     // Determine the target status based on role
     const targetStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
+    const requestedCaseType = updateData.caseType ?? existingCase.case_type;
+    const isFraudNAML = requestedCaseType === CaseType.FRAUD_AND_AML;
 
     const rbacRole = this.rbacService.getRoleFromUser(user);
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
@@ -890,9 +899,27 @@ export class CaseService {
     );
 
     try {
+      const investigationGroup = isFraudNAML
+        ? await this.createInvestigationGroup(await this.alertRepository.getAlertByCaseId(caseId), tenantId)
+        : undefined;
+
       const result = await this.prismaService.$transaction(async (prisma) => {
         // Update case with provided data and new status
-        const updatedCase = await this.caseQueryService.updateCase(caseId, { ...updateData, status: targetStatus }, userId);
+        const caseUpdateData = {
+          ...updateData,
+          caseType: isFraudNAML ? CaseType.FRAUD : updateData.caseType,
+          status: targetStatus,
+        };
+        let updatedCase = await this.caseQueryService.updateCase(caseId, caseUpdateData, userId);
+        if (investigationGroup !== undefined) {
+          updatedCase = await prisma.case.update({
+            where: { case_id: caseId },
+            data: {
+              group_id: investigationGroup.id,
+              case_type: CaseType.FRAUD,
+            },
+          });
+        }
         await this.flowableService.handleCaseStatusChanged({
           caseId,
           newStatus: targetStatus,
@@ -926,7 +953,7 @@ export class CaseService {
           newStatus: TaskStatus.STATUS_30_COMPLETED,
           completionVariables: {
             autoCloseEligible: isAutoCloseEligible,
-            caseType: updateData.caseType ?? existingCase.case_type!,
+            caseType: isFraudNAML ? CaseType.FRAUD : (updateData.caseType ?? existingCase.case_type!),
             casePriority: updateData.priority ?? existingCase.priority,
             draftApprovalRequired: isSupervisor ? false : true,
           },
@@ -964,25 +991,6 @@ export class CaseService {
         );
 
         this.logger.log(`[CompleteCaseCreation] Approval task ${nextTask.task_id} created for supervisor review`, CaseService.name);
-      } else if (result.case.case_type === CaseType.FRAUD_AND_AML) {
-        // Supervisor: Create investigation task directly
-
-        await this.caseCreationService.createCaseWithInvestigationTask(
-          CaseType.FRAUD,
-          userId,
-          existingCase.tenant_id,
-          result.case.priority,
-          CaseCreationType.AUTOMATIC_SYSTEM,
-          role,
-        );
-        await this.caseCreationService.createCaseWithInvestigationTask(
-          CaseType.AML,
-          userId,
-          existingCase.tenant_id,
-          result.case.priority,
-          CaseCreationType.AUTOMATIC_SYSTEM,
-          role,
-        );
       } else {
         nextTask = await this.taskService.createTask(
           {
@@ -994,6 +1002,18 @@ export class CaseService {
           },
           userId,
           tenantId,
+        );
+      }
+
+      if (isFraudNAML) {
+        await this.caseCreationService.createCaseWithInvestigationTask(
+          CaseType.AML,
+          userId,
+          existingCase.tenant_id,
+          result.case.priority,
+          CaseCreationType.AUTOMATIC_SYSTEM,
+          role,
+          investigationGroup?.id,
         );
       }
 
@@ -1061,5 +1081,23 @@ export class CaseService {
 
   async checkUserCaseAccess(caseId: number, investigatorUserId: string | undefined, tenantId: string): Promise<boolean> {
     return await this.caseQueryService.checkUserCaseAccess(caseId, investigatorUserId, tenantId);
+  }
+
+  private async createInvestigationGroup(alertId: number, tenantId: string): Promise<{ id: number }> {
+    const prismaWithInvestigationGroup = this.prismaService as unknown as {
+      investigationGroup?: InvestigationGroupDelegateDto;
+    };
+    const investigationGroupDelegate = prismaWithInvestigationGroup.investigationGroup;
+
+    if (investigationGroupDelegate === undefined) {
+      throw new InternalServerErrorException('InvestigationGroup Prisma model is not available');
+    }
+
+    return await investigationGroupDelegate.create({
+      data: {
+        alert_id: alertId,
+        tenant_id: tenantId,
+      },
+    });
   }
 }
