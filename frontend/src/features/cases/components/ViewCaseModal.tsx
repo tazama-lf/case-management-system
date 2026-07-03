@@ -11,8 +11,15 @@ import CaseActionsPanel from './view/CaseActionsPanel';
 import { caseService, type CaseWithTasksDto } from '../services/caseService';
 import { transformBackendCaseToUI } from './casesTable.utils';
 import LinkedItemsTab from './view/LinkedItemsTab';
+import VisualizationsTab from './view/VisualizationsTab';
 
-type ViewTabKey = 'details' | 'tasks' | 'linked' | 'history' | 'comments';
+type ViewTabKey =
+  | 'details'
+  | 'tasks'
+  | 'linked'
+  | 'visualizations'
+  | 'history'
+  | 'comments';
 
 interface ViewCaseModalProps {
   open: boolean;
@@ -34,6 +41,28 @@ interface ViewCaseModalProps {
   onAfterTaskReassign?: () => void;
   generateReport?: (caseId: number) => void;
 }
+
+const getTransactionRecord = (
+  transactionData: unknown,
+): Record<string, unknown> | undefined => {
+  if (!transactionData) {
+    return undefined;
+  }
+
+  if (typeof transactionData === 'string') {
+    try {
+      return JSON.parse(transactionData) as Record<string, unknown>;
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (typeof transactionData === 'object') {
+    return transactionData as Record<string, unknown>;
+  }
+
+  return undefined;
+};
 
 const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
   open,
@@ -95,6 +124,33 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
     }
   }, [open, row?.id, refreshCaseData]);
 
+  const transaction = React.useMemo(
+    () => getTransactionRecord(localCaseData?.transaction),
+    [localCaseData?.transaction],
+  );
+  const fiToFIPmtSts = transaction?.FIToFIPmtSts as
+    | Record<string, unknown>
+    | undefined;
+  const txInfAndSts = fiToFIPmtSts?.TxInfAndSts as
+    | Record<string, unknown>
+    | undefined;
+  const extractedTransactionId =
+    txInfAndSts?.OrgnlEndToEndId ??
+    txInfAndSts?.EndToEndId ??
+    transaction?.transaction_id ??
+    transaction?.transactionId;
+  const transactionId =
+    typeof extractedTransactionId === 'string'
+      ? extractedTransactionId
+      : undefined;
+  const shouldShowVisualizations = fiToFIPmtSts !== undefined;
+
+  React.useEffect(() => {
+    if (!shouldShowVisualizations && tab === 'visualizations') {
+      setTab('details');
+    }
+  }, [shouldShowVisualizations, tab]);
+
   if (!open || !localCaseData) return null;
 
   const displayData = localCaseData;
@@ -126,6 +182,14 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                 { key: 'details', label: 'Case Details' },
                 { key: 'tasks', label: 'Task Log' },
                 { key: 'linked', label: 'Linked Items' },
+                ...(shouldShowVisualizations
+                  ? ([
+                    {
+                      key: 'visualizations',
+                      label: 'Visualizations',
+                    },
+                  ] as const)
+                  : []),
                 { key: 'history', label: 'Case History' },
                 { key: 'comments', label: 'Comments History' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
@@ -186,13 +250,19 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                   onApproveCaseCreation={onApproveCaseCreation}
                   onRejectCaseCreation={onRejectCaseCreation}
                   onAbandonCase={onAbandonCase}
-                  onSwitchToCaseDetails={() => { setTab('details'); }}
                 />
               )}
 
               {tab === 'linked' && (
                 <LinkedItemsTab
                   caseId={displayData.id}
+                />
+              )}
+              {tab === 'visualizations' && shouldShowVisualizations && (
+                <VisualizationsTab
+                  alertId={displayData.alertId}
+                  caseId={displayData.id}
+                  transactionId={transactionId}
                 />
               )}
               {tab === 'comments' && (

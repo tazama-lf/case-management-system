@@ -60,6 +60,11 @@ vi.mock('../view/CommentHistoryTab', () => ({
 vi.mock('../view/CaseActionsPanel', () => ({
   default: () => <div>Case Actions Panel</div>,
 }));
+vi.mock('../view/VisualizationsTab', () => ({
+  default: ({ transactionId }: any) => (
+    <div>Visualizations Tab {transactionId && `txn:${transactionId}`}</div>
+  ),
+}));
 
 import ViewCaseModal from '../ViewCaseModal';
 
@@ -79,6 +84,13 @@ const mockCaseData: CaseRow = {
   userRole: 'owner',
   totalTasks: 1,
   alertId: 1,
+  transaction: JSON.stringify({
+    FIToFIPmtSts: {
+      TxInfAndSts: {
+        OrgnlEndToEndId: 'TXN-12345',
+      },
+    },
+  }),
 };
 
 const mockCaseWithGroup: CaseRow = {
@@ -92,7 +104,7 @@ describe('ViewCaseModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetCaseDetails.mockResolvedValue({});
+    mockGetCaseDetails.mockResolvedValue(mockCaseData);
     mockTransformBackendCaseToUI.mockImplementation((c: any) => c);
     mockOnRefreshCases.mockResolvedValue(undefined);
   });
@@ -172,6 +184,7 @@ describe('ViewCaseModal', () => {
     );
     expect(screen.getByText('Task Log')).toBeInTheDocument();
     expect(screen.getByText('Linked Items')).toBeInTheDocument();
+    expect(screen.getByText('Visualizations')).toBeInTheDocument();
     expect(screen.getByText('Case History')).toBeInTheDocument();
     expect(screen.getByText('Comments History')).toBeInTheDocument();
   });
@@ -203,6 +216,70 @@ describe('ViewCaseModal', () => {
     );
     await user.click(screen.getByText('Linked Items'));
     expect(screen.getByText('Linked Items Tab')).toBeInTheDocument();
+  });
+
+  it('switches to Visualizations tab', async () => {
+    const user = userEvent.setup();
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    await user.click(screen.getByText('Visualizations'));
+    expect(screen.getByText(/Visualizations Tab/)).toBeInTheDocument();
+    expect(screen.getByText(/txn:TXN-12345/)).toBeInTheDocument();
+  });
+
+  it('hides Visualizations tab for non-pacs002 transactions', () => {
+    const caseWithNonPacs002: CaseRow = {
+      ...mockCaseData,
+      transaction: JSON.stringify({
+        TxTp: 'pacs.008.001.10',
+      }),
+    };
+    mockGetCaseDetails.mockResolvedValue(caseWithNonPacs002);
+
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={caseWithNonPacs002}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
+  });
+
+  it('extracts transactionId from EndToEndId field for Visualizations', async () => {
+    const user = userEvent.setup();
+    const caseWithEndToEnd: CaseRow = {
+      ...mockCaseData,
+      transaction: JSON.stringify({
+        FIToFIPmtSts: {
+          TxInfAndSts: {
+            EndToEndId: 'E2E-TXN-001',
+          },
+        },
+      }),
+    };
+    mockGetCaseDetails.mockResolvedValue(caseWithEndToEnd);
+
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={caseWithEndToEnd}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    await user.click(screen.getByText('Visualizations'));
+    expect(screen.getByText(/txn:E2E-TXN-001/)).toBeInTheDocument();
   });
 
   it('switches to Case History tab', async () => {
