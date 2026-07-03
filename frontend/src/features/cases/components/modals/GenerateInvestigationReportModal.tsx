@@ -295,7 +295,7 @@ const GenerateInvestigationReportModal: React.FC<
   );
   const [keyFindings, setKeyFindings] = useState(investigationNotes ?? '');
   const [recommendations, setRecommendations] = useState(
-    "Based on the investigation findings and evidence review:\n\n1. Review investigator's recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure.",
+    'Based on the investigation findings and evidence review:\n\n1. Review investigator\'s recommended outcome.\n2. Verify all evidence is properly documented.\n3. Follow organizational protocols for case closure.',
   );
   const [supervisorFeedback, setSupervisorFeedback] = useState(
     supervisorComments?.[0]?.note ?? '',
@@ -612,7 +612,7 @@ const GenerateInvestigationReportModal: React.FC<
   ): Promise<File> =>
     await new Promise((resolve, reject) => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const pdfDoc = pdfMake.createPdf(docDefinition);
 
         pdfDoc.getBlob((blob: Blob) => {

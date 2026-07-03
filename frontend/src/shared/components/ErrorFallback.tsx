@@ -39,7 +39,7 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
         error.message.includes('403') ||
         error.message.includes('Forbidden')
       ) {
-        return "You don't have permission to perform this action.";
+        return 'You don\'t have permission to perform this action.';
       }
       if (
         error.message.includes('404') ||
