@@ -231,10 +231,11 @@ describe('CaseCreationService', () => {
       expect(result).toEqual({
         caseId: mockCase.case_id,
         message: 'Case created, BPMN will create investigation task',
+        taskId: 1,
       });
       expect(caseRepository.createCase).toHaveBeenCalledWith({
         caseCreatorUserId: userId,
-        caseOwnerUserId: null,
+        caseOwnerUserId: undefined,
         tenantId,
         priority: Priority.CRITICAL,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
@@ -271,9 +272,9 @@ describe('CaseCreationService', () => {
         {
           userId,
           tenantId,
-          operation: 'ADDITIONAL_CASE_CREATED',
+          operation: 'createCase',
           entityName: 'CaseCreationService',
-          actionPerformed: expect.stringContaining(`Created ${CaseType.FRAUD} case ${mockCase.case_id}`),
+          actionPerformed: `Case ${mockCase.case_id} created successfully`,
           outcome: 'SUCCESS',
         },
         mockCase.case_id,

@@ -6,14 +6,14 @@ describe('InvestigationGroupService', () => {
   let service: InvestigationGroupService;
   let prismaService: {
     investigationGroup: {
-      create: jest.Mock;
+      upsert: jest.Mock;
     };
   };
 
   beforeEach(async () => {
     prismaService = {
       investigationGroup: {
-        create: jest.fn(),
+        upsert: jest.fn(),
       },
     };
 
@@ -34,26 +34,37 @@ describe('InvestigationGroupService', () => {
 
   describe('createInvestigationGroup', () => {
     it('should create an investigation group record', async () => {
-      prismaService.investigationGroup.create.mockResolvedValue({ id: 123 });
+      prismaService.investigationGroup.upsert.mockResolvedValue({ id: 123 });
 
       const result = await service.createInvestigationGroup(1, 'tenant-123');
 
       expect(result).toEqual({ id: 123 });
-      expect(prismaService.investigationGroup.create).toHaveBeenCalledTimes(1);
-      expect(prismaService.investigationGroup.create).toHaveBeenCalledWith({
-        data: {
+      expect(prismaService.investigationGroup.upsert).toHaveBeenCalledTimes(1);
+      expect(prismaService.investigationGroup.upsert).toHaveBeenCalledWith({
+        where: { alert_id: 1 },
+        create: {
           alert_id: 1,
           tenant_id: 'tenant-123',
         },
+        update: {},
         select: {
           id: true,
         },
       });
     });
 
+    it('should return existing group if one already exists for the alert (upsert)', async () => {
+      prismaService.investigationGroup.upsert.mockResolvedValue({ id: 999 });
+
+      const result = await service.createInvestigationGroup(1, 'tenant-123');
+
+      expect(result).toEqual({ id: 999 });
+      expect(prismaService.investigationGroup.upsert).toHaveBeenCalledTimes(1);
+    });
+
     it('should propagate Prisma errors', async () => {
       const error = new Error('Database error');
-      prismaService.investigationGroup.create.mockRejectedValue(error);
+      prismaService.investigationGroup.upsert.mockRejectedValue(error);
 
       await expect(service.createInvestigationGroup(1, 'tenant-123')).rejects.toThrow(error);
     });
