@@ -562,4 +562,46 @@ describe("AlertsDetailModal", () => {
       ).toBeInTheDocument();
     });
   });
+
+  it("shows both FRAUD and AML case ids for a FRAUD_AND_AML alert and only navigates to the one the user can access", async () => {
+    mockUseCase.mockReturnValue({
+      data: {
+        case_id: 999,
+        status: "STATUS_02_READY_FOR_ASSIGNMENT",
+      },
+      isLoading: false,
+    });
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      case_id: 999,
+      related_case_id: 1000,
+      related_case_type: "AML",
+    });
+    mockCheckCaseAccess.mockImplementation(async (caseId: number) => caseId === 1000);
+
+    renderModal({ onNavigateToCase: mockOnNavigateToCase });
+
+    await waitFor(() => {
+      expect(screen.getByText("Case ID (FRAUD):")).toBeInTheDocument();
+      expect(screen.getByText("Case ID (AML):")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByTitle("You don't have permission to view this case"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("999")).toBeInTheDocument();
+    expect(screen.getByText("1000")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        screen.getByTitle("View related case details"),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle("View related case details"));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/cases/1000");
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+    expect(mockOnNavigateToCase).toHaveBeenCalledTimes(1);
+  });
 });

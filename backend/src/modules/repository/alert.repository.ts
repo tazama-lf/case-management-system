@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { Alert, Priority, Prisma, TransactionData } from '@prisma/client-cms';
+import { Alert, CaseType, Priority, Prisma, TransactionData } from '@prisma/client-cms';
 import { CreateAlertDTO, UpdateAlertDTO } from '../alert/dto';
 import { extractReferenceId } from './utils/extractReferenceId';
 import { TransactionDTO } from 'src/dtos/Transaction.dto';
@@ -94,6 +94,31 @@ export class AlertRepository extends BaseRepository {
       throw new NotFoundException(`Alert with Case ID ${caseId} not found`);
     }
     return alert.alert_id;
+  }
+
+  /**
+   * FRAUD_AND_AML alerts spawn two cases (FRAUD + AML) linked through a shared
+   * InvestigationGroup instead of alerts.case_id, so that column stays null for them.
+   * Resolve every case in the alert's group instead of just one.
+   */
+  async getGroupedCasesForAlert(
+    alertId: number,
+    tenantId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Array<{ case_id: number; case_type: CaseType | null }>> {
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
+    const group = await client.investigationGroup.findFirst({
+      where: { alert_id: alertId, tenant_id: tenantId },
+    });
+    if (!group) {
+      return [];
+    }
+
+    return await client.case.findMany({
+      where: { group_id: group.id, tenant_id: tenantId },
+      select: { case_id: true, case_type: true },
+      orderBy: { case_id: 'asc' },
+    });
   }
 
   async updateAlert(alertId: number, updateData: UpdateAlertDTO, tx?: Prisma.TransactionClient): Promise<Alert> {

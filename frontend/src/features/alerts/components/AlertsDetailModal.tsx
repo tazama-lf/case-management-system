@@ -247,6 +247,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [isCompleteNewCaseCompleted, setIsCompleteNewCaseCompleted] =
     useState(false);
   const [hasCaseAccess, setHasCaseAccess] = useState<boolean>(false);
+  const [hasRelatedCaseAccess, setHasRelatedCaseAccess] =
+    useState<boolean>(false);
   const [activeDataTab, setActiveDataTab] = useState<"transaction" | "alert">(
     "transaction",
   );
@@ -374,6 +376,27 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
     checkCaseAccess();
   }, [alert?.case_id]);
+
+  useEffect(() => {
+    const checkRelatedCaseAccess = async () => {
+      if (!alert?.related_case_id) {
+        setHasRelatedCaseAccess(false);
+        return;
+      }
+
+      try {
+        const hasAccess = await caseService.checkCaseAccess(
+          alert.related_case_id,
+        );
+        setHasRelatedCaseAccess(hasAccess);
+      } catch (error) {
+        console.error('Failed to check related case access:', error);
+        setHasRelatedCaseAccess(false); // Deny access on error
+      }
+    };
+
+    checkRelatedCaseAccess();
+  }, [alert?.related_case_id]);
 
   if (!isOpen) {
     return null;
@@ -613,7 +636,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       {caseDetails?.case_id && (
                         <div>
                           <span className="text-sm font-medium text-gray-500">
-                            Case ID:
+                            {alert.related_case_id
+                              ? 'Case ID (FRAUD):'
+                              : 'Case ID:'}
                           </span>
                           {hasCaseAccess ? (
                             <button
@@ -634,6 +659,36 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                               title="You don't have permission to view this case"
                             >
                               <span>{alert.case_id}</span>
+                              <ArrowTopRightOnSquareIcon className="w-4 h-4 opacity-50" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {alert.related_case_id && (
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">
+                            Case ID ({alert.related_case_type ?? 'Related'}):
+                          </span>
+                          {hasRelatedCaseAccess ? (
+                            <button
+                              onClick={() => {
+                                navigate(`/cases/${alert.related_case_id}`);
+                                onClose();
+                                onNavigateToCase?.();
+                              }}
+                              className="flex items-center gap-1 text-sm text-gray-900 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                              title="View related case details"
+                            >
+                              <span>{alert.related_case_id}</span>
+                              <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <div
+                              className="flex items-center gap-1 text-sm text-gray-500 cursor-not-allowed"
+                              title="You don't have permission to view this case"
+                            >
+                              <span>{alert.related_case_id}</span>
                               <ArrowTopRightOnSquareIcon className="w-4 h-4 opacity-50" />
                             </div>
                           )}
