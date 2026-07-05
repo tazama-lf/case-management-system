@@ -1027,7 +1027,7 @@ export class CaseService {
           investigationGroup?.id,
         );
         await this.alertRepository.updateAlert(getAlertIdByCaseId, {
-          caseId: undefined,
+          caseId: null as unknown as number,
         });
       }
 

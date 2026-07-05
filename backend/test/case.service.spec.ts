@@ -780,6 +780,9 @@ describe('CaseService', () => {
         'SUPERVISOR',
         123,
       );
+      expect(alertRepository.updateAlert).toHaveBeenLastCalledWith(1, {
+        caseId: null,
+      });
     });
 
     it.each([

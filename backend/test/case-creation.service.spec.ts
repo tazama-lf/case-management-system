@@ -247,6 +247,7 @@ describe('CaseCreationService', () => {
         {
           caseId: mockCase.case_id,
           status: TaskStatus.STATUS_30_COMPLETED,
+          assignedUserId: userId,
           name: 'Complete New Case',
           description: `Investigation task for manually created case ${mockCase.case_id}`,
           candidateGroup: 'investigations',

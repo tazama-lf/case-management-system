@@ -93,6 +93,7 @@ export class CaseCreationService {
         {
           caseId: newCase.case_id,
           status: TaskStatus.STATUS_30_COMPLETED,
+          assignedUserId: userId,
           name: 'Complete New Case',
           description: `Investigation task for manually created case ${newCase.case_id}`,
           candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
