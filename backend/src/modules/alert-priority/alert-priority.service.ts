@@ -6,6 +6,7 @@ import { CaseRepository } from '../repository/case.repository';
 import { NotificationService } from '../notification/notification.service';
 import { CANDIDATE_GROUPS } from '../../constants/case.constants';
 import { determineSlaState } from './sla-state.util';
+import { SlaPolicyUtil, type SlaEscalationRatios } from '../shared/utils/sla-policy.util';
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 const MS_PER_HOUR = 60 * 60 * 1000;
@@ -16,6 +17,7 @@ interface SlaCheckCase {
   case_owner_user_id: string | null;
   created_at: Date;
   sla_due_at: Date | null;
+  tenant_id: string;
 }
 
 @Injectable()
@@ -26,6 +28,7 @@ export class AlertPriorityService {
     private readonly prisma: PrismaService,
     private readonly caseRepository: CaseRepository,
     private readonly notificationService: NotificationService,
+    private readonly slaPolicyUtil: SlaPolicyUtil,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -34,21 +37,32 @@ export class AlertPriorityService {
     const openCases = await this.caseRepository.findOpenCasesForSlaCheck();
     const now = new Date();
 
+    // Resolve each distinct tenant's ratios once (not per case) to avoid an
+    // N+1 lookup across a cron batch that may span many tenants.
+    const tenantIds = [...new Set(openCases.map((c) => c.tenant_id))];
+    const ratiosByTenant = new Map<string, SlaEscalationRatios>(
+      await Promise.all(
+        tenantIds.map(
+          async (tenantId): Promise<[string, SlaEscalationRatios]> => [tenantId, await this.slaPolicyUtil.getEscalationRatios(tenantId)],
+        ),
+      ),
+    );
+
     await Promise.all(
       openCases.map(async (caseRecord) => {
-        await this.checkCase(caseRecord, now);
+        await this.checkCase(caseRecord, now, ratiosByTenant.get(caseRecord.tenant_id)!);
       }),
     );
 
     this.logger.log(`SLA escalation check complete. Evaluated ${openCases.length} open case(s).`);
   }
 
-  private async checkCase(caseRecord: SlaCheckCase, now: Date): Promise<void> {
+  private async checkCase(caseRecord: SlaCheckCase, now: Date, ratios: SlaEscalationRatios): Promise<void> {
     if (!caseRecord.sla_due_at) {
       return;
     }
 
-    const state = determineSlaState(caseRecord.created_at, caseRecord.sla_due_at, now);
+    const state = determineSlaState(caseRecord.created_at, caseRecord.sla_due_at, now, ratios);
     const isUnclaimed = !caseRecord.case_owner_user_id;
 
     if (isUnclaimed && state === SlaState.AT_RISK) {

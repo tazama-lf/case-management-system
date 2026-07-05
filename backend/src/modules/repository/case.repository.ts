@@ -343,7 +343,7 @@ export class CaseRepository extends BaseRepository {
   }
 
   async findOpenCasesForSlaCheck(): Promise<
-    Array<Pick<Case, 'case_id' | 'case_type' | 'case_owner_user_id' | 'created_at' | 'sla_due_at'>>
+    Array<Pick<Case, 'case_id' | 'case_type' | 'case_owner_user_id' | 'created_at' | 'sla_due_at' | 'tenant_id'>>
   > {
     return await this.prisma.case.findMany({
       where: {
@@ -356,6 +356,7 @@ export class CaseRepository extends BaseRepository {
         case_owner_user_id: true,
         created_at: true,
         sla_due_at: true,
+        tenant_id: true,
       },
     });
   }

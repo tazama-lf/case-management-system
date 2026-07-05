@@ -135,6 +135,22 @@ model SlaPolicy {
   @@map("sla_policies")
 }
 
+// Priority-agnostic per-tenant thresholds for classifying AT_RISK/DUE_SOON (see
+// sla-state.util.ts): one row per tenant, not per (tenant, priority), because the
+// same ratios are meant to apply across LOW/MEDIUM/HIGH regardless of each
+// priority's total SLA window. BREACHED needs no threshold — it's just
+// sla_due_at having passed.
+model SlaEscalationThreshold {
+  id             Int      @id @default(autoincrement())
+  tenant_id      String   @unique
+  due_soon_ratio Float
+  at_risk_ratio  Float
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+  updated_at     DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("sla_escalation_thresholds")
+}
+
 enum SlaState {
   ON_TRACK
   AT_RISK

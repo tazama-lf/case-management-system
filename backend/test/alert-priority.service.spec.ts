@@ -3,6 +3,7 @@ import { AlertPriorityService } from '../src/modules/alert-priority/alert-priori
 import { PrismaService } from '../prisma/prisma.service';
 import { CaseRepository } from '../src/modules/repository/case.repository';
 import { NotificationService } from '../src/modules/notification/notification.service';
+import { SlaPolicyUtil } from '../src/modules/shared/utils/sla-policy.util';
 import { CANDIDATE_GROUPS } from '../src/constants/case.constants';
 import { CaseType, Prisma, SlaState } from '@prisma/client-cms';
 
@@ -11,6 +12,7 @@ describe('AlertPriorityService', () => {
   let prismaService: { slaEscalationRecord: { findUnique: jest.Mock; create: jest.Mock } };
   let caseRepository: jest.Mocked<CaseRepository>;
   let notificationService: jest.Mocked<NotificationService>;
+  let slaPolicyUtil: jest.Mocked<SlaPolicyUtil>;
 
   const HOUR = 60 * 60 * 1000;
 
@@ -18,6 +20,7 @@ describe('AlertPriorityService', () => {
     case_id: 1,
     case_type: CaseType.FRAUD,
     case_owner_user_id: null,
+    tenant_id: 'tenant-1',
     created_at: new Date('2026-01-01T00:00:00.000Z'),
     sla_due_at: new Date('2026-01-03T00:00:00.000Z'), // 48h total budget
     ...overrides,
@@ -39,6 +42,10 @@ describe('AlertPriorityService', () => {
     sendGroupNotification: jest.fn(),
   });
 
+  const createMockSlaPolicyUtil = () => ({
+    getEscalationRatios: jest.fn().mockResolvedValue({ dueSoonRatio: 0.2, atRiskRatio: 0.5 }),
+  });
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -46,6 +53,7 @@ describe('AlertPriorityService', () => {
         { provide: PrismaService, useValue: createMockPrismaService() },
         { provide: CaseRepository, useValue: createMockCaseRepository() },
         { provide: NotificationService, useValue: createMockNotificationService() },
+        { provide: SlaPolicyUtil, useValue: createMockSlaPolicyUtil() },
       ],
     }).compile();
 
@@ -53,6 +61,7 @@ describe('AlertPriorityService', () => {
     prismaService = module.get(PrismaService);
     caseRepository = module.get(CaseRepository);
     notificationService = module.get(NotificationService);
+    slaPolicyUtil = module.get(SlaPolicyUtil);
   });
 
   afterEach(() => {
@@ -219,6 +228,43 @@ describe('AlertPriorityService', () => {
 
       expect(notificationService.sendGroupNotification).not.toHaveBeenCalled();
       expect(notificationService.sendNotification).not.toHaveBeenCalled();
+    });
+
+    it("uses the case's tenant-specific escalation ratios instead of the global default", async () => {
+      // 48h budget, now = created_at + 30h -> remaining 18h -> ratio 0.375.
+      // Default ratios (0.2/0.5) would classify this as AT_RISK (0.2 < 0.375 <= 0.5),
+      // but this tenant's widened due-soon ratio (0.4) should push it to DUE_SOON instead.
+      const now = new Date('2026-01-02T06:00:00.000Z');
+      jest.useFakeTimers().setSystemTime(now);
+      const caseRecord = buildCase({ case_owner_user_id: 'owner-123', tenant_id: 'tenant-strict' });
+      caseRepository.findOpenCasesForSlaCheck.mockResolvedValue([caseRecord] as any);
+      prismaService.slaEscalationRecord.findUnique.mockResolvedValue(null);
+      slaPolicyUtil.getEscalationRatios.mockResolvedValue({ dueSoonRatio: 0.4, atRiskRatio: 0.5 });
+
+      await service.runSlaEscalationCheck();
+
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith('tenant-strict');
+      expect(notificationService.sendNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: expect.objectContaining({ slaState: SlaState.DUE_SOON }) }),
+      );
+      jest.useRealTimers();
+    });
+
+    it('resolves ratios once per distinct tenant, not once per case', async () => {
+      const now = new Date('2026-01-01T06:00:00.000Z'); // ON_TRACK for all — no notification side effects to assert on
+      jest.useFakeTimers().setSystemTime(now);
+      caseRepository.findOpenCasesForSlaCheck.mockResolvedValue([
+        buildCase({ case_id: 1, tenant_id: 'tenant-a' }),
+        buildCase({ case_id: 2, tenant_id: 'tenant-a' }),
+        buildCase({ case_id: 3, tenant_id: 'tenant-b' }),
+      ] as any);
+
+      await service.runSlaEscalationCheck();
+
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledTimes(2);
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith('tenant-a');
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith('tenant-b');
+      jest.useRealTimers();
     });
   });
 });

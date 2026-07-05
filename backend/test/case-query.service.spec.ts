@@ -5,6 +5,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CaseRepository } from '../src/modules/repository/case.repository';
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
 import { TaskValidationUtil } from '../src/modules/shared/utils/task-validation.util';
+import { SlaPolicyUtil } from '../src/modules/shared/utils/sla-policy.util';
 import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CaseStatus, TaskStatus, CaseType, Priority } from '@prisma/client-cms';
 import { GetUserCasesQueryDto } from '../src/modules/case/dto/get-user-cases.dto';
@@ -17,6 +18,7 @@ describe('CaseQueryService', () => {
   let caseRepository: any;
   let loggingOrchestrationService: any;
   let taskValidationUtil: any;
+  let slaPolicyUtil: any;
 
   const mockCase = {
     case_id: 1,
@@ -126,6 +128,10 @@ describe('CaseQueryService', () => {
       getTaskStatusCounts: jest.fn().mockReturnValue({ total: 0, completed: 0, in_progress: 0, unassigned: 0, pending: 0 }),
     } as any;
 
+    const mockSlaPolicyUtil = {
+      getEscalationRatios: jest.fn().mockResolvedValue({ dueSoonRatio: 0.2, atRiskRatio: 0.5 }),
+    } as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CaseQueryService,
@@ -134,6 +140,7 @@ describe('CaseQueryService', () => {
         { provide: CaseRepository, useValue: mockCaseRepository },
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
         { provide: TaskValidationUtil, useValue: mockTaskValidationUtil },
+        { provide: SlaPolicyUtil, useValue: mockSlaPolicyUtil },
       ],
     }).compile();
 
@@ -143,6 +150,7 @@ describe('CaseQueryService', () => {
     caseRepository = module.get(CaseRepository);
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
     taskValidationUtil = module.get(TaskValidationUtil);
+    slaPolicyUtil = module.get(SlaPolicyUtil);
   });
 
   afterEach(() => {
@@ -277,6 +285,27 @@ describe('CaseQueryService', () => {
 
       await expect(service.getUserCases(userId, queryWithOwned)).rejects.toThrow('Database error');
       expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('resolves SLA escalation ratios once per distinct tenant across the returned cases', async () => {
+      const queryWithOwned: GetUserCasesQueryDto = { ...query, includeOwnedCases: true };
+      const caseTenantA1 = { ...mockCase, case_id: 1, tenant_id: 'tenant-a' };
+      const caseTenantA2 = { ...mockCase, case_id: 2, tenant_id: 'tenant-a' };
+      const caseTenantB = { ...mockCase, case_id: 3, tenant_id: 'tenant-b' };
+
+      prismaService.case.count.mockResolvedValueOnce(3);
+      prismaService.case.findMany.mockResolvedValueOnce([caseTenantA1, caseTenantA2, caseTenantB]);
+      prismaService.case.count.mockResolvedValueOnce(3).mockResolvedValueOnce(0);
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: mockCase.status, _count: { case_id: 3 } }])
+        .mockResolvedValueOnce([{ priority: mockCase.priority, _count: { case_id: 3 } }]);
+
+      const result = await service.getUserCases(userId, queryWithOwned);
+
+      expect(result.cases).toHaveLength(3);
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledTimes(2);
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith('tenant-a');
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith('tenant-b');
     });
   });
 
@@ -438,6 +467,25 @@ describe('CaseQueryService', () => {
       await expect(service.getAllCases(query, tenantId)).rejects.toThrow('Database error');
       expect(logger.error).toHaveBeenCalled();
     });
+
+    it("computes sla_state using the requested tenant's escalation ratios", async () => {
+      const now = new Date('2024-01-01T18:00:00.000Z'); // 18h into a 24h budget -> remaining ratio 0.25
+      jest.useFakeTimers().setSystemTime(now);
+      const caseWithSla = {
+        ...mockCase,
+        created_at: new Date('2024-01-01T00:00:00.000Z'),
+        sla_due_at: new Date('2024-01-02T00:00:00.000Z'),
+      };
+      setupGetAllCasesMocks(caseWithSla);
+      // Default ratios (0.2/0.5) would put remaining ratio 0.25 in AT_RISK; widen due-soon so it's DUE_SOON instead.
+      slaPolicyUtil.getEscalationRatios.mockResolvedValueOnce({ dueSoonRatio: 0.3, atRiskRatio: 0.5 });
+
+      const result = await service.getAllCases(query, tenantId);
+
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith(tenantId);
+      expect(result.cases[0].sla_state).toBe('DUE_SOON');
+      jest.useRealTimers();
+    });
   });
 
   describe('getUserWorkloadStats', () => {
@@ -530,6 +578,15 @@ describe('CaseQueryService', () => {
       const result = await service.retrieveCase(caseId, tenantId);
 
       expect(result).toBeNull();
+      expect(slaPolicyUtil.getEscalationRatios).not.toHaveBeenCalled();
+    });
+
+    it('resolves escalation ratios for the requested tenant', async () => {
+      caseRepository.findCaseById.mockResolvedValueOnce(mockCase as any);
+
+      await service.retrieveCase(caseId, tenantId);
+
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith(tenantId);
     });
 
     it('should allow compliance officer to access STATUS_82_CLOSED_CONFIRMED case', async () => {
@@ -570,6 +627,21 @@ describe('CaseQueryService', () => {
 
       const result = await service.getSubCasesDetails(caseId);
       expect(result).toEqual([]);
+      expect(slaPolicyUtil.getEscalationRatios).not.toHaveBeenCalled();
+    });
+
+    it('resolves escalation ratios once per distinct tenant among the sub-cases', async () => {
+      const mockSubCases = [
+        { ...mockCase, case_id: 2, parent_id: caseId, tenant_id: 'tenant-a' },
+        { ...mockCase, case_id: 3, parent_id: caseId, tenant_id: 'tenant-a' },
+      ];
+      prismaService.case.findMany.mockResolvedValueOnce(mockSubCases as any);
+
+      const result = await service.getSubCasesDetails(caseId);
+
+      expect(result).toHaveLength(2);
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledTimes(1);
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith('tenant-a');
     });
   });
 
@@ -618,6 +690,15 @@ describe('CaseQueryService', () => {
 
       await expect(service.updateCase(caseId, updateData, userId)).rejects.toThrow('Update failed');
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Error updating case'), expect.any(String), 'CaseQueryService');
+    });
+
+    it("resolves escalation ratios using the updated case's own tenant", async () => {
+      const updatedCase = { ...mockCase, tenant_id: 'tenant-updated' };
+      caseRepository.updateCase.mockResolvedValueOnce(updatedCase as any);
+
+      await service.updateCase(caseId, updateData, userId);
+
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith('tenant-updated');
     });
   });
 });
