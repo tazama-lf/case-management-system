@@ -374,7 +374,8 @@ export class TriageService {
               CaseType.FRAUD,
               investigationGroup.id,
             );
-            await this.caseCreateService.createCaseWithInvestigationTask(
+
+            const amlCase = await this.caseCreateService.createCaseWithInvestigationTask(
               CaseType.AML,
               userId,
               tenantId,
@@ -382,6 +383,17 @@ export class TriageService {
               CaseCreationType.AUTOMATIC_SYSTEM,
               'SUPERVISOR',
               investigationGroup.id,
+            );
+
+            await this.commentRepository.createComment(
+              userId,
+              {
+                caseId: amlCase.caseId,
+                taskId: amlCase.taskId,
+                tenantId,
+                note: updateAlertDto.note,
+              },
+              tx,
             );
 
             await this.alertService.updateAlert(

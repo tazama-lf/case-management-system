@@ -74,22 +74,23 @@ export class CaseCreationService {
     caseCreationType: CaseCreationType = CaseCreationType.AUTOMATIC_SYSTEM,
     userRole: string,
     groupId?: number,
-  ): Promise<unknown> {
+  ): Promise<{ caseId: number; message: string; taskId?: number }> {
     try {
-      const newCase = await this.caseRepository.createCase({
-        caseCreatorUserId: userId,
-        caseOwnerUserId: null, // Owner assigned when investigation task is assigned
+      const createCaseDTO: CreateCaseDto = {
         tenantId,
-        priority,
+        caseCreatorUserId: userId,
+        caseOwnerUserId: undefined, // Owner assigned when investigation task is assigned
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        priority,
         caseType: alertType,
         caseCreationType,
         ...(groupId === undefined ? {} : { groupId }),
-      });
+      };
+      const newCase = await this.createCase(createCaseDTO, userId, tenantId, userRole);
 
       await this.executeFlowableCaseCreationEvent(newCase, caseCreationType, true, userRole);
 
-      await this.taskService.createTask(
+      const completeTask = await this.taskService.createTask(
         {
           caseId: newCase.case_id,
           status: TaskStatus.STATUS_30_COMPLETED,
@@ -114,15 +115,6 @@ export class CaseCreationService {
         tenantId,
       );
 
-      await this.loggingOrchestrationService.logActions({
-        userId,
-        operation: 'ADDITIONAL_CASE_CREATED',
-        entityName: 'CaseCreationService',
-        actionPerformed: `Created ${alertType} case ${newCase.case_id}. BPMN will create investigation task.`,
-        outcome: Outcome.SUCCESS,
-        tenantId,
-      });
-
       this.loggerService.log(
         `Case ${newCase.case_id} (${alertType}) created. BPMN workflow will create investigation task.`,
         CaseCreationService.name,
@@ -131,6 +123,7 @@ export class CaseCreationService {
       return {
         caseId: newCase.case_id,
         message: 'Case created, BPMN will create investigation task',
+        taskId: completeTask.task_id,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -179,12 +172,13 @@ export class CaseCreationService {
     };
 
     try {
-      const createdCase = await this.caseRepository.createCase(caseDetail);
+      const createdCase = await this.createCase(caseDetail, userId, tenantId, userRole);
       await this.executeFlowableCaseCreationEvent(createdCase, CaseCreationType.MANUAL, false, userRole);
 
       const relatedCases = [createdCase];
+      let amlCase: Case | undefined;
       if (isFraudNAML) {
-        const amlCase = await this.caseRepository.createCase({
+        const createCaseDTO: CreateCaseDto = {
           tenantId,
           caseCreatorUserId: userId,
           caseOwnerUserId: caseOwnerId,
@@ -193,7 +187,8 @@ export class CaseCreationService {
           priority,
           caseCreationType: CaseCreationType.MANUAL,
           ...(investigationGroup === undefined ? {} : { groupId: investigationGroup.id }),
-        });
+        };
+        amlCase = await this.createCase(createCaseDTO, userId, tenantId, userRole);
         await this.executeFlowableCaseCreationEvent(amlCase, CaseCreationType.MANUAL, false, userRole);
         relatedCases.push(amlCase);
       }
@@ -233,18 +228,14 @@ export class CaseCreationService {
         return { alert: updatedAlert };
       });
 
-      await this.loggingOrchestrationService.logActionsWithHistory(
-        {
-          userId,
-          actionPerformed: `Manual case ${createdCase.case_id} created for alert ${dto.alertId}`,
-          entityName: CaseCreationService.name,
-          operation: 'createManualCase',
-          outcome: Outcome.SUCCESS,
-          tenantId,
-        },
-        createdCase.case_id,
+      await this.loggingOrchestrationService.logActions({
+        userId,
+        actionPerformed: `Manual case ${isFraudNAML ? `FRAUD: ${createdCase.case_id} AML: ${amlCase?.case_id}` : createdCase.case_id} created for alert ${dto.alertId}`,
+        entityName: CaseCreationService.name,
+        operation: 'createManualCase',
+        outcome: Outcome.SUCCESS,
         tenantId,
-      );
+      });
 
       this.loggerService.log(
         `End - Manual Case Creation. Case ${createdCase.case_id} created for alert ${dto.alertId}`,

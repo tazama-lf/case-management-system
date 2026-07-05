@@ -83,7 +83,11 @@ export class CaseCreationApprovalService {
         creationType: CaseCreationType.MANUAL,
         creatorRole: role,
         isReopened: false,
-        isFraudNAML: caseType === CaseType.FRAUD_AND_AML,
+        // isFraudNAML routes the BPMN process straight to "Investigate Case", skipping
+        // "Complete New Case"/"Approve Case Creation" - that's only correct for the
+        // already-split single-type (FRAUD/AML) sibling cases, not this FRAUD_AND_AML
+        // draft, which still needs to go through the full draft/approval flow.
+        isFraudNAML: false,
       });
 
       const completeCaseTask = await this.taskService.createTask(
@@ -214,17 +218,33 @@ export class CaseCreationApprovalService {
           groupId: investigationGroup.id,
         });
 
+        // isFraudNAML: true routes the BPMN process straight to "Investigate Case" -
+        // correct here since, like createCaseWithInvestigationTask's cases, the AML
+        // case is a resolved single-type case created directly ready-for-assignment.
+        await this.flowableService.handleCaseCreated({
+          caseId: amlCase.case_id,
+          tenantId: amlCase.tenant_id,
+          caseStatus: amlCase.status,
+          creationType: amlCase.case_creation_type,
+          creatorRole: 'SUPERVISOR',
+          isReopened: false,
+          isFraudNAML: true,
+        });
+
         // The AML case is created directly at READY_FOR_ASSIGNMENT, skipping the
         // draft/approval stages the FRAUD case actually went through. Backfill the
         // same "Complete New Case" and "Approve Case Creation" task history (both
         // already completed) so the AML case's timeline mirrors the FRAUD case's.
+        // BPMN never creates these tasks on the isFraudNAML=true route (it jumps
+        // straight to Investigate Case), so there's no matching Flowable task to
+        // complete for them - these are Postgres-only historical stubs.
         const tasksToBackfill = await this.taskRepository.findTasks(
           { case_id: finalCase.case_id, name: { in: [TASK_NAMES.COMPLETE_NEW_CASE, TASK_NAMES.APPROVE_CASE_CREATION] } },
           tenantId,
           false,
         );
 
-        const amlCompleteNewCaseTask = await this.taskService.createTask(
+        await this.taskService.createTask(
           {
             caseId: amlCase.case_id,
             status: TaskStatus.STATUS_30_COMPLETED,
@@ -237,19 +257,8 @@ export class CaseCreationApprovalService {
           supervisorId,
           tenantId,
         );
-        await this.flowableService.handleTaskCompleted({
-          caseId: amlCase.case_id,
-          newStatus: TaskStatus.STATUS_30_COMPLETED,
-          taskName: amlCompleteNewCaseTask.name!,
-          completionVariables: {
-            autoCloseEligible: false,
-            CaseType: amlCase.case_type,
-            casePriority: amlCase.priority,
-            draftApprovalRequired: true,
-          },
-        });
 
-        const amlApproveCaseCreationTask = await this.taskService.createTask(
+        await this.taskService.createTask(
           {
             caseId: amlCase.case_id,
             status: TaskStatus.STATUS_30_COMPLETED,
@@ -266,15 +275,6 @@ export class CaseCreationApprovalService {
         await this.flowableService.handleCaseStatusChanged({
           caseId: amlCase.case_id,
           newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-        });
-        await this.flowableService.handleTaskCompleted({
-          caseId: amlCase.case_id,
-          newStatus: TaskStatus.STATUS_30_COMPLETED,
-          taskName: amlApproveCaseCreationTask.name!,
-          completionVariables: {
-            creationApproval: 'approve',
-            creationComments: 'Case creation approved by supervisor',
-          },
         });
 
         await Promise.all(
