@@ -38,6 +38,8 @@ interface AlertsDetailModalProps {
   onAlertUpdated?: () => void;
   onManualTriage?: (alert: LegacyAlert) => void;
   onNavigateToCase?: () => void;
+  /** Increment to force a re-fetch of alert details (e.g. after triage). */
+  refreshTrigger?: number;
 }
 
 interface AlertedRuleResultResponse {
@@ -230,6 +232,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   onAlertUpdated,
   onManualTriage,
   onNavigateToCase,
+  refreshTrigger = 0,
 }) => {
   const { isManualMode, isDisabledMode, isAIMode } = useSystemConfig();
   const queryClient = useQueryClient();
@@ -254,6 +257,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   );
 
   const { data: caseDetails } = useCase(alert?.case_id);
+  const { data: relatedCaseDetails } = useCase(alert?.related_case_id ?? undefined);
 
   const canPerformActions = canActOnCase(caseDetails?.status);
 
@@ -302,9 +306,15 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         const alertDetails = await triageService.getAlertById(alertId);
         setAlert(alertDetails);
 
+        // Invalidate case queries for both primary and related cases
         if (alertDetails.case_id) {
           queryClient.invalidateQueries({
             queryKey: ['case', alertDetails.case_id],
+          });
+        }
+        if (alertDetails.related_case_id) {
+          queryClient.invalidateQueries({
+            queryKey: ['case', alertDetails.related_case_id],
           });
         }
 
@@ -327,7 +337,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     };
 
     fetchAlertDetails();
-  }, [alertId, isOpen, queryClient]);
+  }, [alertId, isOpen, queryClient, refreshTrigger]);
 
   useEffect(() => {
     const checkCompleteNewCaseStatus = async () => {
@@ -493,6 +503,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 queryKey: ['case', alert.case_id],
               });
             }
+            if (alert?.related_case_id) {
+              queryClient.invalidateQueries({
+                queryKey: ['case', alert.related_case_id],
+              });
+            }
             onAlertUpdated?.();
             onClose();
           }}
@@ -506,6 +521,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 if (alert?.case_id) {
                   queryClient.invalidateQueries({
                     queryKey: ['case', alert.case_id],
+                  });
+                }
+                if (alert?.related_case_id) {
+                  queryClient.invalidateQueries({
+                    queryKey: ['case', alert.related_case_id],
                   });
                 }
                 onAlertUpdated?.();
@@ -629,11 +649,22 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           Case Status:
                         </span>
                         <p className="text-sm text-gray-900">
-                          {caseDetails?.status}
+                          {caseDetails?.status ?? '—'}
                         </p>
                       </div>
 
-                      {caseDetails?.case_id && (
+                      {alert.related_case_id && (
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">
+                            Related Case Status:
+                          </span>
+                          <p className="text-sm text-gray-900">
+                            {relatedCaseDetails?.status ?? '—'}
+                          </p>
+                        </div>
+                      )}
+
+                      {alert.case_id && (
                         <div>
                           <span className="text-sm font-medium text-gray-500">
                             {alert.related_case_id
@@ -702,8 +733,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       <button
                         onClick={() => setActiveDataTab("transaction")}
                         className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeDataTab === "transaction"
-                            ? "text-blue-600 border-b-2 border-blue-600"
-                            : "text-gray-600 hover:text-gray-900"
+                          ? "text-blue-600 border-b-2 border-blue-600"
+                          : "text-gray-600 hover:text-gray-900"
                           }`}
                       >
                         Transaction Data
@@ -711,8 +742,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                       <button
                         onClick={() => setActiveDataTab("alert")}
                         className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeDataTab === "alert"
-                            ? "text-blue-600 border-b-2 border-blue-600"
-                            : "text-gray-600 hover:text-gray-900"
+                          ? "text-blue-600 border-b-2 border-blue-600"
+                          : "text-gray-600 hover:text-gray-900"
                           }`}
                       >
                         Evaluation Response Data

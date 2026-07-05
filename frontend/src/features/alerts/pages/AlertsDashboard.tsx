@@ -77,6 +77,8 @@ const AlertsDashboard: React.FC = () => {
   const { filterOptions } = useAlertFilterOptions();
   const { success, error: showError } = useToast();
 
+  const [modalRefreshTrigger, setModalRefreshTrigger] = useState(0);
+
   const handleManualTriage = async (
     alert: Alert,
     triageData: ManualTriageDto,
@@ -94,7 +96,9 @@ const AlertsDashboard: React.FC = () => {
 
       // Close the manual triage modal
       setShowManualTriageModal(false);
-      // Refresh the alert details and show the detail modal
+      // Force the detail modal to re-fetch alert details (picks up new case_id, related_case_id, status)
+      setModalRefreshTrigger((prev) => prev + 1);
+      // Show the detail modal
       setShowModal(true);
     } catch (error) {
       console.error('Failed to perform manual triage:', error);
@@ -170,7 +174,7 @@ const AlertsDashboard: React.FC = () => {
         return 'text-gray-600 bg-gray-50';
     }
   };
-  
+
   const columns: Array<AlertsTableColumn<Alert>> = [
     {
       key: 'alert_id',
@@ -405,6 +409,7 @@ const AlertsDashboard: React.FC = () => {
           isOpen={showModal}
           onClose={handleCloseModal}
           onAlertUpdated={refreshAlerts}
+          refreshTrigger={modalRefreshTrigger}
           onManualTriage={(alert: Alert) => {
             setSelectedAlert(alert);
             setShowModal(false);

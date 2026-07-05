@@ -243,6 +243,20 @@ describe('CaseCreationApprovalService', () => {
 
       await expect(service.saveCaseAsDraft(createDto as any, 'user-123', 'tenant-123', 'investigator')).rejects.toThrow(error);
     });
+
+    it('starts the Flowable process with isFraudNAML: false for a FRAUD_AND_AML draft, so it still routes through Complete New Case / Approve Case Creation instead of jumping straight to Investigate Case', async () => {
+      caseRepository.findAlert.mockResolvedValue(mockAlert as any);
+      const draftCase = { ...mockCase, status: CaseStatus.STATUS_00_DRAFT, case_type: CaseType.FRAUD_AND_AML };
+      caseRepository.createDraftCase.mockResolvedValue({
+        case: draftCase,
+        alert: { ...mockAlert, case_id: 1 },
+      } as any);
+      taskService.createTask.mockResolvedValue({ task_id: 1, name: 'Complete New Case' } as any);
+
+      await service.saveCaseAsDraft({ ...createDto, alertType: 'FRAUD_AND_AML' } as any, 'user-123', 'tenant-123', 'investigator');
+
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledWith(expect.objectContaining({ isFraudNAML: false }));
+    });
   });
 
   describe('approveCaseCreation', () => {
@@ -347,19 +361,23 @@ describe('CaseCreationApprovalService', () => {
         'tenant-123',
       );
 
-      // Both the completed AML tasks and the AML status transition are reported to flowable,
-      // in addition to the FRAUD case's own status-changed/task-completed calls.
+      // AML gets its own Flowable process (isFraudNAML: true routes it straight to
+      // Investigate Case, same as createCaseWithInvestigationTask's cases) and its
+      // own status-changed call, in addition to the FRAUD case's own calls.
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: amlCase.case_id, isFraudNAML: true }),
+      );
       expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledTimes(2);
       expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledWith({
         caseId: amlCase.case_id,
         newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
       });
-      expect(flowableService.handleTaskCompleted).toHaveBeenCalledTimes(3);
+      // No handleTaskCompleted for AML's backfilled "Complete New Case"/"Approve Case
+      // Creation" tasks - BPMN never creates those tasks on the isFraudNAML=true route,
+      // so there's nothing in Flowable to complete for them.
+      expect(flowableService.handleTaskCompleted).toHaveBeenCalledTimes(1);
       expect(flowableService.handleTaskCompleted).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: amlCase.case_id, taskName: TASK_NAMES.COMPLETE_NEW_CASE }),
-      );
-      expect(flowableService.handleTaskCompleted).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: amlCase.case_id, taskName: TASK_NAMES.APPROVE_CASE_CREATION }),
+        expect.objectContaining({ caseId: 1, taskName: 'Approve Case Creation' }),
       );
 
       expect(result.case.case_type).toBe(CaseType.FRAUD);

@@ -956,11 +956,17 @@ export class CaseService {
           },
         });
 
-        const createCommentDto = new CreateCommentDto();
-        createCommentDto.caseId = caseId;
-        createCommentDto.taskId = completeNewCaseTask.task_id;
-        createCommentDto.note = updateData.note ?? 'Completed case creation';
-        createCommentDto.tenantId = tenantId;
+        const createCommentDto: {
+          caseId: number;
+          taskId: number;
+          note: string;
+          tenantId: string;
+        } = {
+          caseId,
+          taskId: completeNewCaseTask.task_id,
+          note: updateData.note ?? 'Completed case creation',
+          tenantId,
+        };
 
         await this.commentService.addComment(createCommentDto, userId);
         return { case: updatedCase, completedTask };
@@ -1016,8 +1022,13 @@ export class CaseService {
         this.logger.log(`[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`, CaseService.name);
       }
 
+      let amlCase: {
+        caseId: number;
+        message: string;
+        taskId?: number | undefined;
+      } | null = null;
       if (isFraudNAML && isSupervisor) {
-        await this.caseCreationService.createCaseWithInvestigationTask(
+        amlCase = await this.caseCreationService.createCaseWithInvestigationTask(
           CaseType.AML,
           userId,
           existingCase.tenant_id,
@@ -1029,6 +1040,19 @@ export class CaseService {
         await this.alertRepository.updateAlert(getAlertIdByCaseId, {
           caseId: null as unknown as number,
         });
+
+        await this.loggingOrchestrationService.logActionsWithHistory(
+          {
+            userId,
+            operation: 'completeCaseCreation',
+            entityName: CaseService.name,
+            actionPerformed: `Completed draft case FRAUD: ${caseId} & AML: ${amlCase.caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
+            outcome: Outcome.SUCCESS,
+            tenantId: existingCase.tenant_id,
+          },
+          amlCase.caseId,
+          existingCase.tenant_id,
+        );
       }
 
       // this.logger.log(
@@ -1041,7 +1065,7 @@ export class CaseService {
           userId,
           operation: 'completeCaseCreation',
           entityName: CaseService.name,
-          actionPerformed: `Completed draft case ${caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
+          actionPerformed: `Completed draft case ${isFraudNAML ? `FRAUD: ${caseId} & AML: ${amlCase?.caseId}` : caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
           outcome: Outcome.SUCCESS,
           tenantId: existingCase.tenant_id,
         },
