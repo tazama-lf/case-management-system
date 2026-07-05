@@ -115,7 +115,7 @@ describe('CaseService', () => {
         update: jest.fn(),
       },
       investigationGroup: {
-        create: jest.fn().mockResolvedValue({
+        upsert: jest.fn().mockResolvedValue({
           id: 123,
           alert_id: 1,
           tenant_id: 'tenant-123',
@@ -749,6 +749,15 @@ describe('CaseService', () => {
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
       taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Investigate Case' } as any);
       alertRepository.getAlertByCaseId.mockResolvedValue(1 as any);
+      caseCreationService.createCaseWithInvestigationTask.mockResolvedValue({
+        caseId: 2,
+        message: 'Case created, BPMN will create investigation task',
+        taskId: 3,
+      } as any);
+      commentService.addComment.mockResolvedValue(undefined as any);
+      flowableService.handleCaseStatusChanged.mockResolvedValue(undefined as any);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined as any);
+      alertRepository.updateAlert.mockResolvedValue(undefined as any);
 
       await service.completeCaseCreation(1, fraudAmlData as any, 'user-123', 'tenant-123', 'SUPERVISOR', mockSupervisorUser, completeCaseCreationEndpoint);
 
