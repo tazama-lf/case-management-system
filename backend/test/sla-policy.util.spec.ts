@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SlaPolicyUtil, DEFAULT_SLA_TENANT_KEY, FALLBACK_DUE_SOON_RATIO, FALLBACK_AT_RISK_RATIO } from '../src/modules/shared/utils/sla-policy.util';
+import { SlaPolicyUtil, DEFAULT_TENANT_KEY, FALLBACK_DUE_SOON_RATIO, FALLBACK_AT_RISK_RATIO } from '../src/modules/shared/utils/sla-policy.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { Priority } from '@prisma/client-cms';
 
@@ -45,7 +45,7 @@ describe('SlaPolicyUtil', () => {
 
       expect(result).toBe(36);
       expect(prismaService.slaPolicy.findFirst).toHaveBeenNthCalledWith(2, {
-        where: { tenant_id: DEFAULT_SLA_TENANT_KEY, priority: Priority.MEDIUM },
+        where: { tenant_id: DEFAULT_TENANT_KEY, priority: Priority.MEDIUM },
       });
     });
 
@@ -87,7 +87,7 @@ describe('SlaPolicyUtil', () => {
       const result = await service.getEscalationRatios('tenant-1');
 
       expect(result).toEqual({ dueSoonRatio: 0.25, atRiskRatio: 0.55 });
-      expect(prismaService.slaEscalationThreshold.findUnique).toHaveBeenNthCalledWith(2, { where: { tenant_id: DEFAULT_SLA_TENANT_KEY } });
+      expect(prismaService.slaEscalationThreshold.findUnique).toHaveBeenNthCalledWith(2, { where: { tenant_id: DEFAULT_TENANT_KEY } });
     });
 
     it('falls back to the hardcoded constants when neither tenant nor DEFAULT thresholds exist', async () => {

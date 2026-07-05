@@ -67,6 +67,7 @@ import { JsonValue } from '@prisma/client-cms/runtime/library';
 import { CaseCreationService } from './services/case-creation.service';
 import { Audit } from '../audit/decorators/audit-log.decorator';
 import { CasePriorityService, PriorityChangeResult } from '../alert-priority/case-priority.service';
+import { CasePriorityUtil, CasePriorityThresholds } from '../shared/utils/case-priority.util';
 
 @ApiTags('Cases')
 @Controller('api/v1/cases')
@@ -77,6 +78,7 @@ export class CaseController {
     private readonly caseService: CaseService,
     private readonly caseCreationService: CaseCreationService,
     private readonly casePriorityService: CasePriorityService,
+    private readonly casePriorityUtil: CasePriorityUtil,
   ) {}
 
   @Put(':caseId/abandon')
@@ -601,6 +603,19 @@ export class CaseController {
     // Pass userId only if investigator (same as getAllCases)
     const hasAccess = await this.caseService.checkUserCaseAccess(caseId, isInvestigator ? userId : undefined, tenantId);
     return { hasAccess, caseId };
+  }
+
+  @Get('priority-thresholds')
+  @RequireAuthenticated()
+  @ApiOperation({
+    summary: 'Get case priority thresholds',
+    description:
+      "Returns the requesting user's tenant-specific priorityScore cutoffs (falling back to the org-wide default, then a hardcoded value) used to classify a score as LOW/MEDIUM/HIGH, so clients can render an accurate live preview before submission.",
+  })
+  @ApiResponse({ status: 200, description: 'Thresholds retrieved successfully' })
+  async getPriorityThresholds(@Req() req: AuthenticatedRequest): Promise<CasePriorityThresholds> {
+    const { tenantId } = extractUserData(req);
+    return await this.casePriorityUtil.getThresholds(tenantId);
   }
 
   @Get(':caseId')

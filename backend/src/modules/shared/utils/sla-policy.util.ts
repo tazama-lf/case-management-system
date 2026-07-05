@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { Priority } from '@prisma/client-cms';
 
-export const DEFAULT_SLA_TENANT_KEY = 'DEFAULT';
+export const DEFAULT_TENANT_KEY = 'DEFAULT';
 
 const FALLBACK_TARGET_HOURS: Record<Priority, number> = {
   [Priority.HIGH]: 24,
@@ -35,7 +35,7 @@ export class SlaPolicyUtil {
     }
 
     const defaultPolicy = await this.prisma.slaPolicy.findFirst({
-      where: { tenant_id: DEFAULT_SLA_TENANT_KEY, priority },
+      where: { tenant_id: DEFAULT_TENANT_KEY, priority },
     });
     if (defaultPolicy) {
       return defaultPolicy.target_hours;
@@ -58,7 +58,7 @@ export class SlaPolicyUtil {
     }
 
     const defaultThreshold = await this.prisma.slaEscalationThreshold.findUnique({
-      where: { tenant_id: DEFAULT_SLA_TENANT_KEY },
+      where: { tenant_id: DEFAULT_TENANT_KEY },
     });
     if (defaultThreshold) {
       return { dueSoonRatio: defaultThreshold.due_soon_ratio, atRiskRatio: defaultThreshold.at_risk_ratio };

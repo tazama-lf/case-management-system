@@ -80,7 +80,7 @@ describe('CaseCreationService', () => {
     };
 
     const mockCasePriorityUtil = {
-      determinePriority: jest.fn().mockReturnValue(Priority.HIGH),
+      determinePriority: jest.fn().mockResolvedValue(Priority.HIGH),
     };
 
     const mockAlertRepository = {

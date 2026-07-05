@@ -4,8 +4,15 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ManualTriageModal from '../ManualTriageModal';
 import { useSystemConfig } from '@/shared/hooks/useSystemConfig';
+import { caseService } from '@/features/cases/services/caseService';
 
 vi.mock('@/shared/hooks/useSystemConfig');
+
+vi.mock('@/features/cases/services/caseService', () => ({
+  caseService: {
+    getPriorityThresholds: vi.fn().mockResolvedValue({ highThreshold: 0.7, mediumThreshold: 0.4 }),
+  },
+}));
 
 describe('ManualTriageModal', () => {
   const mockAlert = {
@@ -197,6 +204,41 @@ describe('ManualTriageModal', () => {
       await waitFor(() => {
         // Should show HIGH for score >= 0.7
         expect(screen.getByText('HIGH')).toBeInTheDocument();
+      });
+    }
+  });
+
+  it("uses the tenant's real priority thresholds instead of the hardcoded fallback", async () => {
+    (caseService.getPriorityThresholds as vi.Mock).mockResolvedValueOnce({ highThreshold: 0.5, mediumThreshold: 0.3 });
+    const user = userEvent.setup();
+    render(
+      <ManualTriageModal
+        isOpen={true}
+        alert={mockAlert}
+        onClose={mockOnClose}
+        onSubmit={mockOnSubmit}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(caseService.getPriorityThresholds).toHaveBeenCalled();
+    });
+
+    const priorityScoreInputs = screen.getAllByRole('spinbutton');
+    const priorityScoreInput = priorityScoreInputs.find(
+      (input) =>
+        (input as HTMLInputElement).min === '0' &&
+        (input as HTMLInputElement).max === '1',
+    );
+
+    if (priorityScoreInput) {
+      // 0.4 would be LOW under the 0.7/0.4 fallback, but this tenant's lowered
+      // thresholds (0.5 high / 0.3 medium) should classify it as MEDIUM instead.
+      await user.clear(priorityScoreInput);
+      await user.type(priorityScoreInput, '0.4');
+
+      await waitFor(() => {
+        expect(screen.getByText('MEDIUM')).toBeInTheDocument();
       });
     }
   });

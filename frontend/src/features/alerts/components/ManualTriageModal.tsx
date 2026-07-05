@@ -8,6 +8,8 @@ import type {
   CaseStatus,
 } from '../types/triage.types';
 import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
+import { caseService } from '@/features/cases/services/caseService';
+import { FALLBACK_HIGH_THRESHOLD, FALLBACK_MEDIUM_THRESHOLD } from '@/shared/constants/casePriorityThresholds';
 
 interface ManualTriageModalProps {
   isOpen: boolean;
@@ -40,17 +42,39 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
+  const [thresholds, setThresholds] = useState({
+    highThreshold: FALLBACK_HIGH_THRESHOLD,
+    mediumThreshold: FALLBACK_MEDIUM_THRESHOLD,
+  });
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
+    caseService
+      .getPriorityThresholds()
+      .then((result) => {
+        if (isMounted) setThresholds(result);
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to load priority thresholds, using defaults:', error);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]);
 
   const calculatePriority = (score: number): Priority => {
-    if (score >= 0.7) return 'HIGH';
-    if (score >= 0.4) return 'MEDIUM';
+    if (score >= thresholds.highThreshold) return 'HIGH';
+    if (score >= thresholds.mediumThreshold) return 'MEDIUM';
     return 'LOW';
   };
 
   React.useEffect(() => {
     const newPriority = calculatePriority(priorityScore);
     setPriority(newPriority);
-  }, [priorityScore]);
+  }, [priorityScore, thresholds]);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -256,8 +280,8 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({
                     />
                     <div className="flex justify-between text-xs text-gray-600">
                       <span>0.0 (LOW)</span>
-                      <span>0.4 (MEDIUM)</span>
-                      <span>0.7 (HIGH)</span>
+                      <span>{thresholds.mediumThreshold.toFixed(2)} (MEDIUM)</span>
+                      <span>{thresholds.highThreshold.toFixed(2)} (HIGH)</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <input

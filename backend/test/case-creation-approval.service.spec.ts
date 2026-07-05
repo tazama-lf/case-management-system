@@ -118,7 +118,7 @@ describe('CaseCreationApprovalService', () => {
     };
 
     const mockCasePriorityUtil = {
-      determinePriority: jest.fn().mockReturnValue(Priority.HIGH),
+      determinePriority: jest.fn().mockResolvedValue(Priority.HIGH),
     };
 
     const mockFlowableService = {

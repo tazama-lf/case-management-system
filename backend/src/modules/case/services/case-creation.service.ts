@@ -133,7 +133,7 @@ export class CaseCreationService {
   ): Promise<{ success: boolean; case?: Case; alert?: Alert; message?: string }> {
     this.loggerService.log('Start - Manual Case Creation', CaseCreationService.name);
     const { priorityScore } = dto;
-    const priority = this.casePriorityUtil.determinePriority(priorityScore);
+    const priority = await this.casePriorityUtil.determinePriority(priorityScore, tenantId);
     const caseType = dto.alertType;
     const isFraudNAML = caseType === CaseType.FRAUD_AND_AML;
     const needsApproval = userRole !== 'SUPERVISOR';

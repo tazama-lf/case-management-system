@@ -3,11 +3,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CreateCaseModal from '../CreateCaseModal';
 import triageService from '@/features/alerts/services/triageservice';
 import userService from '@/features/cases/services/userService';
+import { caseService } from '@/features/cases/services/caseService';
 
 // Mock services
 vi.mock('@/features/alerts/services/triageservice', () => ({
   default: {
     getNALTAlerts: vi.fn(),
+  },
+}));
+
+vi.mock('@/features/cases/services/caseService', () => ({
+  caseService: {
+    getPriorityThresholds: vi.fn().mockResolvedValue({ highThreshold: 0.7, mediumThreshold: 0.4 }),
   },
 }));
 
@@ -74,6 +81,7 @@ describe('CreateCaseModal', () => {
       },
     });
     (userService.getAllUsers as any).mockResolvedValue(mockUsers);
+    (caseService.getPriorityThresholds as any).mockResolvedValue({ highThreshold: 0.7, mediumThreshold: 0.4 });
   });
 
   it('should not render when open is false', () => {
@@ -757,7 +765,24 @@ describe('CreateCaseModal', () => {
     render(<CreateCaseModal {...defaultProps} />);
     // Verify priority score range labels exist
     expect(screen.getAllByText('0.0 (LOW)').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('0.7 (HIGH)').length).toBeGreaterThan(0);
+    // Defaults to the fallback threshold (0.70) until GET /priority-thresholds resolves.
+    expect(screen.getAllByText('0.70 (HIGH)').length).toBeGreaterThan(0);
+  });
+
+  it('fetches the tenant-specific priority thresholds and uses them for the live preview', async () => {
+    (caseService.getPriorityThresholds as any).mockResolvedValue({ highThreshold: 0.5, mediumThreshold: 0.3 });
+
+    render(<CreateCaseModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(caseService.getPriorityThresholds).toHaveBeenCalled();
+    });
+
+    // Legend labels should reflect this tenant's real thresholds, not the 0.7/0.4 fallback.
+    await waitFor(() => {
+      expect(screen.getAllByText('0.30 (MEDIUM)').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('0.50 (HIGH)').length).toBeGreaterThan(0);
+    });
   });
 
   it('should show alertType validation error in edit mode', async () => {

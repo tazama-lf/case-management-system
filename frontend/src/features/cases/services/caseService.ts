@@ -86,6 +86,11 @@ export interface GetUserCasesResponseDto {
   summary: SummaryStatisticsDto;
 }
 
+export interface CasePriorityThresholdsDto {
+  highThreshold: number;
+  mediumThreshold: number;
+}
+
 export interface UserWorkloadStatsDto {
   totalActiveCases: number;
   totalPendingTasks: number;
@@ -250,6 +255,17 @@ export class CaseService {
       return response;
     } catch (error: unknown) {
       throw this.handleError(error, 'get user workload stats');
+    }
+  }
+
+  async getPriorityThresholds(): Promise<CasePriorityThresholdsDto> {
+    try {
+      const response = await apiClient.get<CasePriorityThresholdsDto>(
+        `${this.baseUrl}/priority-thresholds`,
+      );
+      return response;
+    } catch (error: unknown) {
+      throw this.handleError(error, 'get priority thresholds');
     }
   }
 

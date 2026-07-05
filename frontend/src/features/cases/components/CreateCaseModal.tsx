@@ -7,6 +7,8 @@ import triageService from '@/features/alerts/services/triageservice';
 import type { Alert } from '@/features/alerts/types/triage.types';
 import LinkExistingAlertsTab from './LinkExistingAlerts';
 import authService from '../../auth/services/authService';
+import { caseService } from '../services/caseService';
+import { FALLBACK_HIGH_THRESHOLD, FALLBACK_MEDIUM_THRESHOLD } from '@/shared/constants/casePriorityThresholds';
 
 export type PredictionOutcome =
   | 'FALSE_POSITIVE'
@@ -133,17 +135,39 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const [validationErrors, setValidationErrors] = React.useState<
     Record<string, string>
   >({});
+  const [thresholds, setThresholds] = React.useState({
+    highThreshold: FALLBACK_HIGH_THRESHOLD,
+    mediumThreshold: FALLBACK_MEDIUM_THRESHOLD,
+  });
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    let isMounted = true;
+    caseService
+      .getPriorityThresholds()
+      .then((result) => {
+        if (isMounted) setThresholds(result);
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to load priority thresholds, using defaults:', error);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [open]);
 
   const calculatePriority = (score: number): Priority => {
-    if (score >= 0.7) return 'HIGH';
-    if (score >= 0.4) return 'MEDIUM';
+    if (score >= thresholds.highThreshold) return 'HIGH';
+    if (score >= thresholds.mediumThreshold) return 'MEDIUM';
     return 'LOW';
   };
 
   React.useEffect(() => {
     const newPriority = calculatePriority(priorityScore);
     setPriority(newPriority);
-  }, [priorityScore]);
+  }, [priorityScore, thresholds]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -502,8 +526,8 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                     />
                     <div className="flex justify-between text-xs text-gray-600">
                       <span>0.0 (LOW)</span>
-                      <span>0.4 (MEDIUM)</span>
-                      <span>0.7 (HIGH)</span>
+                      <span>{thresholds.mediumThreshold.toFixed(2)} (MEDIUM)</span>
+                      <span>{thresholds.highThreshold.toFixed(2)} (HIGH)</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <input
@@ -758,8 +782,8 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   />
                   <div className="flex justify-between text-xs text-gray-600">
                     <span>0.0 (LOW)</span>
-                    <span>0.4 (MEDIUM)</span>
-                    <span>0.7 (HIGH)</span>
+                    <span>{thresholds.mediumThreshold.toFixed(2)} (MEDIUM)</span>
+                    <span>{thresholds.highThreshold.toFixed(2)} (HIGH)</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <input

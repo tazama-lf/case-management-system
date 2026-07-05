@@ -151,6 +151,20 @@ model SlaEscalationThreshold {
   @@map("sla_escalation_thresholds")
 }
 
+// Per-tenant cutoffs for bucketing a continuous priorityScore (0-1) into a
+// LOW/MEDIUM/HIGH Priority at triage/case-creation time (see case-priority.util.ts).
+// One row per tenant: there's a single pair of cutoffs, not one per priority.
+model CasePriorityThreshold {
+  id               Int      @id @default(autoincrement())
+  tenant_id        String   @unique
+  high_threshold   Float
+  medium_threshold Float
+  created_at       DateTime @default(now()) @db.Timestamp(6)
+  updated_at       DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("case_priority_thresholds")
+}
+
 enum SlaState {
   ON_TRACK
   AT_RISK

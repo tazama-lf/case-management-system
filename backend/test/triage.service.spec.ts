@@ -256,7 +256,7 @@ describe('TriageService', () => {
   // Helper function to setup common manual triage mocks
   const setupManualTriageMocks = (alertToReturn: any = mockAlert, caseToReturn: any = mockCase) => {
     configService.get.mockReturnValue('MANUAL');
-    casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+    casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
     alertRepository.getAlertById.mockResolvedValue(alertToReturn);
     caseRepository.findCaseById.mockResolvedValue(caseToReturn);
     alertService.updateAlert.mockResolvedValue(alertToReturn);
@@ -285,7 +285,7 @@ describe('TriageService', () => {
   // Helper function to setup AI triage mocks
   const setupAITriageMocks = (confidence: number, priority: number) => {
     taskService.createTask.mockResolvedValue(mockTask as any);
-    casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+    casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
     (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
     mockedAxios.post.mockResolvedValue({
       data: { confidence, priority },
@@ -314,7 +314,7 @@ describe('TriageService', () => {
 
     it('should throw BadRequestException when triage is already complete', async () => {
       configService.get.mockReturnValue('MANUAL');
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
 
       const completedTask = { ...mockTask, status: TaskStatus.STATUS_30_COMPLETED };
       const caseWithCompletedTask = {
@@ -333,7 +333,7 @@ describe('TriageService', () => {
 
     it('should throw InternalServerErrorException when alert case_id is missing', async () => {
       configService.get.mockReturnValue('MANUAL');
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
 
       const alertWithoutCaseId = { ...mockAlert, case_id: null };
 
@@ -349,7 +349,7 @@ describe('TriageService', () => {
 
     it('should throw BadRequestException when case is already closed', async () => {
       configService.get.mockReturnValue('MANUAL');
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
 
       const closedCase = {
         ...mockCase,
@@ -432,7 +432,7 @@ describe('TriageService', () => {
 
     it('should log error and rethrow on failure', async () => {
       configService.get.mockReturnValue('MANUAL');
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
 
       const error = new Error('Transaction failed');
       alertRepository.transaction.mockRejectedValue(error);
@@ -462,7 +462,7 @@ describe('TriageService', () => {
 
     it('should create investigation task when confidence is below threshold', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
       (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
       mockedAxios.post.mockResolvedValue({
         data: { confidence: 0.5, priority: 0.6 },
@@ -484,7 +484,7 @@ describe('TriageService', () => {
 
     it('should auto-close case when confidence is high and predicted false positive', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
       (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
       mockedAxios.post.mockResolvedValue({
         data: { confidence: 0.95, priority: 0.3 },
@@ -509,7 +509,7 @@ describe('TriageService', () => {
 
     it('should handle FRAUD_AND_AML type when true positive', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
       (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
       mockedAxios.post.mockResolvedValue({
         data: { confidence: 0.95, priority: 0.8 },
@@ -559,7 +559,7 @@ describe('TriageService', () => {
 
     it('should create investigation task for AML type when true positive', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
       (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
 
       jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
@@ -584,7 +584,7 @@ describe('TriageService', () => {
 
     it('should auto-close FRAUD case when no transaction occurred', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
 
       const dtoWithInterdiction = {
         ...ingestAlertDto,
@@ -626,7 +626,7 @@ describe('TriageService', () => {
 
     it('should create investigation task for FRAUD when transaction occurred', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
 
       jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
         confidence_per: 95,
@@ -1052,7 +1052,7 @@ describe('TriageService', () => {
   describe('handleManualTriage - edge cases', () => {
     it('should throw BadRequestException when completeNewCaseTask is null', async () => {
       configService.get.mockReturnValue('MANUAL');
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.MEDIUM);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
 
       const caseWithoutTask = {
         ...mockCase,
@@ -1077,7 +1077,7 @@ describe('TriageService', () => {
 
     it('should handle manual triage with undefined priority score', async () => {
       configService.get.mockReturnValue('MANUAL');
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.LOW);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.LOW);
 
       setupManualTriageMocks();
       setupTransactionMock();
@@ -1091,7 +1091,7 @@ describe('TriageService', () => {
       const result = await service.handleManualTriage(1, dtoWithoutPriorityScore, 'user-123', 'tenant-123');
 
       expect(result).toEqual(mockAlert);
-      expect(casePriorityUtil.determinePriority).toHaveBeenCalledWith(0.33);
+      expect(casePriorityUtil.determinePriority).toHaveBeenCalledWith(0.33, 'tenant-123');
     });
   });
 
