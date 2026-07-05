@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma, SlaState } from '@prisma/client-cms';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CaseRepository } from '../repository/case.repository';
@@ -7,6 +8,7 @@ import { NotificationService } from '../notification/notification.service';
 import { CANDIDATE_GROUPS } from '../../constants/case.constants';
 import { determineSlaState } from './sla-state.util';
 import { SlaPolicyUtil, type SlaEscalationRatios } from '../shared/utils/sla-policy.util';
+import { CaseSlaBreachedEvent } from '../events/domain-events';
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 const MS_PER_HOUR = 60 * 60 * 1000;
@@ -29,6 +31,7 @@ export class AlertPriorityService {
     private readonly caseRepository: CaseRepository,
     private readonly notificationService: NotificationService,
     private readonly slaPolicyUtil: SlaPolicyUtil,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -65,14 +68,22 @@ export class AlertPriorityService {
     const state = determineSlaState(caseRecord.created_at, caseRecord.sla_due_at, now, ratios);
     const isUnclaimed = !caseRecord.case_owner_user_id;
 
-    if (isUnclaimed && state === SlaState.AT_RISK) {
+    // BREACHED overrides AT_RISK/DUE_SOON regardless of claim status — a case that's
+    // already missed its deadline needs ops attention whether or not it's been claimed.
+    if (state === SlaState.BREACHED) {
+      await this.escalate(caseRecord, SlaState.BREACHED, now);
+    } else if (isUnclaimed && state === SlaState.AT_RISK) {
       await this.escalate(caseRecord, SlaState.AT_RISK, now);
     } else if (!isUnclaimed && state === SlaState.DUE_SOON) {
       await this.escalate(caseRecord, SlaState.DUE_SOON, now);
     }
   }
 
-  private async escalate(caseRecord: SlaCheckCase, state: typeof SlaState.AT_RISK | typeof SlaState.DUE_SOON, now: Date): Promise<void> {
+  private async escalate(
+    caseRecord: SlaCheckCase,
+    state: typeof SlaState.AT_RISK | typeof SlaState.DUE_SOON | typeof SlaState.BREACHED,
+    now: Date,
+  ): Promise<void> {
     const alreadyNotified = await this.prisma.slaEscalationRecord.findUnique({
       where: { case_id_sla_state: { case_id: caseRecord.case_id, sla_state: state } },
     });
@@ -97,17 +108,37 @@ export class AlertPriorityService {
           message: `Case ${caseRecord.case_id} is at risk of breaching its SLA and is still unclaimed`,
           metadata,
         });
-      } else {
+      } else if (state === SlaState.DUE_SOON) {
         await this.notificationService.sendNotification({
           userId: caseRecord.case_owner_user_id!,
           type: 'CASE_SUPPORT_CHASE',
           message: `Case ${caseRecord.case_id} is due soon`,
           metadata,
         });
+      } else {
+        await this.notificationService.sendGroupNotification({
+          candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+          type: 'CASE_SLA_BREACHED',
+          message: `Case ${caseRecord.case_id} has breached its SLA deadline`,
+          metadata,
+        });
       }
     } catch (error) {
       this.logger.error(`Failed to send ${state} notification for case ${caseRecord.case_id}, will retry next cron tick`, error as Error);
       return;
+    }
+
+    if (state === SlaState.BREACHED) {
+      this.eventEmitter.emit(
+        'case.sla-breached',
+        new CaseSlaBreachedEvent(
+          caseRecord.case_id,
+          caseRecord.tenant_id,
+          caseRecord.case_type,
+          caseRecord.case_owner_user_id,
+          caseRecord.sla_due_at!,
+        ),
+      );
     }
 
     try {

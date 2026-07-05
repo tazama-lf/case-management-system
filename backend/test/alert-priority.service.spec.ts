@@ -1,9 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AlertPriorityService } from '../src/modules/alert-priority/alert-priority.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CaseRepository } from '../src/modules/repository/case.repository';
 import { NotificationService } from '../src/modules/notification/notification.service';
 import { SlaPolicyUtil } from '../src/modules/shared/utils/sla-policy.util';
+import { CaseSlaBreachedEvent } from '../src/modules/events/domain-events';
 import { CANDIDATE_GROUPS } from '../src/constants/case.constants';
 import { CaseType, Prisma, SlaState } from '@prisma/client-cms';
 
@@ -13,6 +15,7 @@ describe('AlertPriorityService', () => {
   let caseRepository: jest.Mocked<CaseRepository>;
   let notificationService: jest.Mocked<NotificationService>;
   let slaPolicyUtil: jest.Mocked<SlaPolicyUtil>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   const HOUR = 60 * 60 * 1000;
 
@@ -46,6 +49,10 @@ describe('AlertPriorityService', () => {
     getEscalationRatios: jest.fn().mockResolvedValue({ dueSoonRatio: 0.2, atRiskRatio: 0.5 }),
   });
 
+  const createMockEventEmitter = () => ({
+    emit: jest.fn(),
+  });
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -54,6 +61,7 @@ describe('AlertPriorityService', () => {
         { provide: CaseRepository, useValue: createMockCaseRepository() },
         { provide: NotificationService, useValue: createMockNotificationService() },
         { provide: SlaPolicyUtil, useValue: createMockSlaPolicyUtil() },
+        { provide: EventEmitter2, useValue: createMockEventEmitter() },
       ],
     }).compile();
 
@@ -62,6 +70,7 @@ describe('AlertPriorityService', () => {
     caseRepository = module.get(CaseRepository);
     notificationService = module.get(NotificationService);
     slaPolicyUtil = module.get(SlaPolicyUtil);
+    eventEmitter = module.get(EventEmitter2);
   });
 
   afterEach(() => {
@@ -247,6 +256,84 @@ describe('AlertPriorityService', () => {
       expect(notificationService.sendNotification).toHaveBeenCalledWith(
         expect.objectContaining({ metadata: expect.objectContaining({ slaState: SlaState.DUE_SOON }) }),
       );
+      jest.useRealTimers();
+    });
+
+    it('sends a supervisor group notification and emits case.sla-breached for an unclaimed BREACHED case', async () => {
+      const now = new Date('2026-01-03T01:00:00.000Z'); // past the 48h sla_due_at -> BREACHED
+      jest.useFakeTimers().setSystemTime(now);
+      const caseRecord = buildCase({ case_owner_user_id: null });
+      caseRepository.findOpenCasesForSlaCheck.mockResolvedValue([caseRecord] as any);
+      prismaService.slaEscalationRecord.findUnique.mockResolvedValue(null);
+
+      await service.runSlaEscalationCheck();
+
+      expect(notificationService.sendGroupNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          candidateGroup: CANDIDATE_GROUPS.SUPERVISORS,
+          type: 'CASE_SLA_BREACHED',
+          metadata: expect.objectContaining({ caseId: 1, slaState: SlaState.BREACHED }),
+        }),
+      );
+      expect(notificationService.sendNotification).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'case.sla-breached',
+        new CaseSlaBreachedEvent(1, 'tenant-1', CaseType.FRAUD, null, caseRecord.sla_due_at),
+      );
+      expect(prismaService.slaEscalationRecord.create).toHaveBeenCalledWith({
+        data: { case_id: 1, sla_state: SlaState.BREACHED },
+      });
+      jest.useRealTimers();
+    });
+
+    it('escalates a BREACHED case even when it is already claimed', async () => {
+      const now = new Date('2026-01-03T01:00:00.000Z');
+      jest.useFakeTimers().setSystemTime(now);
+      const caseRecord = buildCase({ case_owner_user_id: 'owner-123' });
+      caseRepository.findOpenCasesForSlaCheck.mockResolvedValue([caseRecord] as any);
+      prismaService.slaEscalationRecord.findUnique.mockResolvedValue(null);
+
+      await service.runSlaEscalationCheck();
+
+      expect(notificationService.sendGroupNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ candidateGroup: CANDIDATE_GROUPS.SUPERVISORS, type: 'CASE_SLA_BREACHED' }),
+      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith('case.sla-breached', expect.any(CaseSlaBreachedEvent));
+      jest.useRealTimers();
+    });
+
+    it('does not re-notify or re-emit for a case already recorded as BREACHED', async () => {
+      const now = new Date('2026-01-03T01:00:00.000Z');
+      jest.useFakeTimers().setSystemTime(now);
+      const caseRecord = buildCase({ case_owner_user_id: null });
+      caseRepository.findOpenCasesForSlaCheck.mockResolvedValue([caseRecord] as any);
+      prismaService.slaEscalationRecord.findUnique.mockResolvedValue({
+        id: 1,
+        case_id: 1,
+        sla_state: SlaState.BREACHED,
+        notified_at: new Date(),
+      });
+
+      await service.runSlaEscalationCheck();
+
+      expect(notificationService.sendGroupNotification).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
+      expect(prismaService.slaEscalationRecord.create).not.toHaveBeenCalled();
+      jest.useRealTimers();
+    });
+
+    it('does not emit case.sla-breached when the breach notification fails to send', async () => {
+      const now = new Date('2026-01-03T01:00:00.000Z');
+      jest.useFakeTimers().setSystemTime(now);
+      const caseRecord = buildCase({ case_owner_user_id: null });
+      caseRepository.findOpenCasesForSlaCheck.mockResolvedValue([caseRecord] as any);
+      prismaService.slaEscalationRecord.findUnique.mockResolvedValue(null);
+      notificationService.sendGroupNotification.mockRejectedValue(new Error('smtp down'));
+
+      await service.runSlaEscalationCheck();
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
+      expect(prismaService.slaEscalationRecord.create).not.toHaveBeenCalled();
       jest.useRealTimers();
     });
 

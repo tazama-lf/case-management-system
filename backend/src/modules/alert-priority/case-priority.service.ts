@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Case, Priority } from '@prisma/client-cms';
 import { CaseRepository } from '../repository/case.repository';
@@ -22,18 +22,15 @@ export class CasePriorityService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
+  // Supervisor-only access is enforced by @RequireSupervisorRole() on the controller
+  // route — no role check here, so there's a single, guard-level source of truth.
   async changePriority(
     caseId: number,
     newPriority: Priority,
     actorId: string,
     tenantId: string,
-    actorRole: string,
     reason?: string,
   ): Promise<PriorityChangeResult> {
-    if (actorRole !== 'SUPERVISOR') {
-      throw new ForbiddenException('Only supervisors can change case priority');
-    }
-
     const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
     const oldPriority = existingCase.priority;
 

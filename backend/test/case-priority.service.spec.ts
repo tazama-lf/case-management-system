@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CasePriorityService } from '../src/modules/alert-priority/case-priority.service';
 import { CaseRepository } from '../src/modules/repository/case.repository';
@@ -48,22 +47,13 @@ describe('CasePriorityService', () => {
   });
 
   describe('changePriority', () => {
-    it('throws a 403 ForbiddenException when the actor is not a supervisor', async () => {
-      await expect(service.changePriority(1, Priority.HIGH, 'user-1', 'tenant-1', 'INVESTIGATOR', 'reason')).rejects.toThrow(
-        ForbiddenException,
-      );
-
-      expect(caseRepository.updateCase).not.toHaveBeenCalled();
-      expect(eventEmitter.emit).not.toHaveBeenCalled();
-    });
-
     it('updates the case priority and emits a PriorityChanged event with the correct payload', async () => {
       const existingCase = buildCase({ priority: Priority.LOW });
       const updatedCase = buildCase({ priority: Priority.HIGH, sla_due_at: new Date('2026-01-02T00:00:00.000Z') });
       caseRepository.findCaseById.mockResolvedValue(existingCase as any);
       caseRepository.updateCase.mockResolvedValue(updatedCase as any);
 
-      const result = await service.changePriority(1, Priority.HIGH, 'user-1', 'tenant-1', 'SUPERVISOR', 'Escalated per new evidence');
+      const result = await service.changePriority(1, Priority.HIGH, 'user-1', 'tenant-1', 'Escalated per new evidence');
 
       expect(caseRepository.findCaseById).toHaveBeenCalledWith(1, 'tenant-1');
       expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { priority: Priority.HIGH });
@@ -87,7 +77,7 @@ describe('CasePriorityService', () => {
       caseRepository.findCaseById.mockResolvedValue(existingCase as any);
       caseRepository.updateCase.mockResolvedValue(updatedCase as any);
 
-      const result = await service.changePriority(1, Priority.HIGH, 'user-1', 'tenant-1', 'SUPERVISOR');
+      const result = await service.changePriority(1, Priority.HIGH, 'user-1', 'tenant-1');
 
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         'case.priority.changed',

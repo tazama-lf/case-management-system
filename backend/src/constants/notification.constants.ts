@@ -170,6 +170,17 @@ export const EMAIL_TEMPLATES = {
     <p>Regards,<br/>CMS Team</p>
   `,
 
+  caseSlaBreached: (data: Record<string, any>): string => `
+    <p>Hello,</p>
+    <p>Case <strong>${data.caseId}</strong> (${data.caseType ?? 'Unknown type'}) has breached its SLA deadline.</p>
+    <ul>
+      <li><strong>SLA State:</strong> ${data.slaState}</li>
+      <li><strong>Assignee:</strong> ${data.assignee ?? 'Unassigned'}</li>
+    </ul>
+    <p>This case requires immediate attention and escalation.</p>
+    <p>Regards,<br/>CMS Team</p>
+  `,
+
   slaWarning: (data: Record<string, any>): string => {
     const timeRemaining = data.timeUntilDeadline ? `${Math.abs(data.timeUntilDeadline)} minutes` : 'Unknown';
 

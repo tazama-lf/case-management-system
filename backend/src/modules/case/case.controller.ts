@@ -610,7 +610,7 @@ export class CaseController {
   @ApiOperation({
     summary: 'Get case priority thresholds',
     description:
-      "Returns the requesting user's tenant-specific priorityScore cutoffs (falling back to the org-wide default, then a hardcoded value) used to classify a score as LOW/MEDIUM/HIGH, so clients can render an accurate live preview before submission.",
+      'Returns the tenant-specific priorityScore cutoffs for the requesting user (falling back to the org-wide default, then a hardcoded value) used to classify a score as LOW/MEDIUM/HIGH, so clients can render an accurate live preview before submission.',
   })
   @ApiResponse({ status: 200, description: 'Thresholds retrieved successfully' })
   async getPriorityThresholds(@Req() req: AuthenticatedRequest): Promise<CasePriorityThresholds> {
@@ -660,7 +660,7 @@ export class CaseController {
   }
 
   @Patch(':caseId/priority')
-  @RequireAuthenticated()
+  @RequireSupervisorRole()
   @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -671,15 +671,15 @@ export class CaseController {
   @ApiParam({ name: 'caseId', type: Number })
   @ApiBody({ type: ChangeCasePriorityDto })
   @ApiResponse({ status: 200, description: 'Priority changed successfully' })
-  @ApiResponse({ status: 403, description: 'Forbidden - only supervisors can change case priority' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - only supervisors can change case priority' })
   @ApiResponse({ status: 404, description: 'Case not found' })
   async changeCasePriority(
     @Param('caseId') caseId: number,
     @Body() dto: ChangeCasePriorityDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<PriorityChangeResult> {
-    const { userId, tenantId, role } = extractUserData(req);
-    return await this.casePriorityService.changePriority(caseId, dto.newPriority, userId, tenantId, role, dto.reason);
+    const { userId, tenantId } = extractUserData(req);
+    return await this.casePriorityService.changePriority(caseId, dto.newPriority, userId, tenantId, dto.reason);
   }
 
   @Post(':caseId/complete-case-creation')

@@ -95,6 +95,10 @@ export class NotificationService {
       subject: `Action Needed: Case ${d.caseId} Due Soon`,
       html: EMAIL_TEMPLATES.caseSupportChase(d),
     }),
+    CASE_SLA_BREACHED: (d) => ({
+      subject: `URGENT: Case ${d.caseId} Has Breached SLA`,
+      html: EMAIL_TEMPLATES.caseSlaBreached(d),
+    }),
     GENERIC: (d) => ({
       subject: 'CMS Notification',
       html: EMAIL_TEMPLATES.generic(d),

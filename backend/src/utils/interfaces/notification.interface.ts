@@ -17,6 +17,7 @@ export type NotificationType =
   | 'TASK_OVERDUE'
   | 'CASE_CLAIM_CHASE'
   | 'CASE_SUPPORT_CHASE'
+  | 'CASE_SLA_BREACHED'
   | 'GENERIC';
 
 export interface NotificationPayload {

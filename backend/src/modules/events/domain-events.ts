@@ -27,6 +27,16 @@ export class CasePriorityChangedEvent {
   ) {}
 }
 
+export class CaseSlaBreachedEvent {
+  constructor(
+    public readonly caseId: number,
+    public readonly tenantId: string,
+    public readonly caseType: string | null,
+    public readonly assignee: string | null,
+    public readonly slaDueAt: Date,
+  ) {}
+}
+
 export class CaseAbandonedEvent {
   constructor(
     public readonly caseId: number,
