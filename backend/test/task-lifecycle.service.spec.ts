@@ -496,6 +496,25 @@ describe('TaskLifecycleService', () => {
       expect(mockPrisma.task.update).toHaveBeenCalled();
     });
 
+    it('unassignTask SAR/STR Filing: does NOT change case status in Postgres OR Flowable', async () => {
+      const taskId = 1;
+      const actorUserId = 'supervisor1';
+      const sarTask = { ...existingTask, task_id: taskId, name: 'SAR/STR Filing' };
+      mockTaskRepository.findTaskById.mockResolvedValue(sarTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockPrisma.task.update.mockResolvedValue({
+        ...sarTask,
+        assigned_user_id: null,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
+      });
+
+      await service.unassignTask(taskId, actorUserId, 'tenant1', 'switching filer', mockSupervisorUser, testEndpointKey);
+
+      expect(mockPrisma.case.update).not.toHaveBeenCalled();
+      expect(mockFlowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
+      expect(mockFlowableService.handleTaskUnassigned).toHaveBeenCalledWith(expect.objectContaining({ taskId }));
+    });
+
     it('should handle notification errors gracefully', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
