@@ -295,9 +295,9 @@ describe('TriageService', () => {
   };
 
   // Helper function to setup transaction mock that executes the callback
-  const setupTransactionMock = () => {
+  const setupTransactionMock = (tx: Record<string, unknown> = {}) => {
     alertRepository.transaction.mockImplementation(async (callback) => {
-      return await callback({} as any);
+      return await callback(tx as any);
     });
   };
 
@@ -424,16 +424,17 @@ describe('TriageService', () => {
         ...fraudAndAmlAlert,
         case_id: null,
       };
+      const tx = {};
 
       setupManualTriageMocks(fraudAndAmlAlert);
       alertService.updateAlert.mockResolvedValueOnce(fraudAndAmlAlert as any).mockResolvedValueOnce(detachedAlert as any);
       caseCreateService.createCaseWithInvestigationTask.mockResolvedValue(mockCase as any);
-      setupTransactionMock();
+      setupTransactionMock(tx);
 
       const result = await service.handleManualTriage(1, fraudAndAmlDto, 'user-123', 'tenant-123');
 
       expect(result).toEqual(detachedAlert);
-      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, 'tenant-123', expect.anything());
+      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, 'tenant-123', tx);
       expect(caseCreationService.updateCaseStatus).toHaveBeenCalledWith(
         1,
         CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
@@ -442,7 +443,7 @@ describe('TriageService', () => {
         Priority.URGENT,
         CaseType.FRAUD,
         123,
-        expect.anything(),
+        tx,
       );
       expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
       expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
@@ -453,9 +454,9 @@ describe('TriageService', () => {
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
         123,
-        expect.anything(),
+        tx,
       );
-      expect(alertService.updateAlert).toHaveBeenLastCalledWith(1, 'user-123', { caseId: null }, expect.anything());
+      expect(alertService.updateAlert).toHaveBeenLastCalledWith(1, 'user-123', { caseId: null }, tx);
     });
 
     it('should log error and rethrow on failure', async () => {

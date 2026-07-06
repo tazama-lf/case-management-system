@@ -233,12 +233,13 @@ export class TaskLifecycleService {
           where: { case_id: existingTask.case_id },
           data: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null, updated_at: new Date() },
         });
+
+        await this.flowableService.handleCaseStatusChanged({
+          caseId: existingTask.case_id,
+          newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        });
       }
 
-      await this.flowableService.handleCaseStatusChanged({
-        caseId: existingTask.case_id,
-        newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-      });
       await this.flowableService.handleTaskUnassigned({
         taskId,
         caseId: existingTask.case_id,
