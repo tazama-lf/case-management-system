@@ -312,7 +312,7 @@ describe('CaseCreationApprovalService', () => {
 
       const result = await service.approveCaseCreation(1, 'supervisor-123', 'tenant-123');
 
-      expect(alertRepository.getAlertByCaseId).toHaveBeenCalledWith(1);
+      expect(alertRepository.getAlertByCaseId).toHaveBeenCalledWith(1, 'tenant-123');
       expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(100, 'tenant-123');
       expect(caseRepository.updateCase).toHaveBeenCalledWith(1, {
         case_type: CaseType.FRAUD,

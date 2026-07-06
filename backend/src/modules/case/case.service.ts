@@ -897,7 +897,10 @@ export class CaseService {
       let investigationGroup: { id: number } | undefined;
       if (isSupervisor) {
         investigationGroup = isFraudNAML
-          ? await this.investigationGroupService.createInvestigationGroup(await this.alertRepository.getAlertByCaseId(caseId), tenantId)
+          ? await this.investigationGroupService.createInvestigationGroup(
+              await this.alertRepository.getAlertByCaseId(caseId, tenantId),
+              tenantId,
+            )
           : undefined;
       }
 
@@ -1008,7 +1011,7 @@ export class CaseService {
         );
       }
 
-      const getAlertIdByCaseId = await this.alertRepository.getAlertByCaseId(caseId);
+      const getAlertIdByCaseId = await this.alertRepository.getAlertByCaseId(caseId, tenantId);
       if (getAlertIdByCaseId) {
         const alertUpdateData = {
           priority_score: updateData.priorityScore,

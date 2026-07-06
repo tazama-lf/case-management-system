@@ -84,16 +84,35 @@ export class AlertRepository extends BaseRepository {
     return alert;
   }
 
-  async getAlertByCaseId(caseId: number, tx?: Prisma.TransactionClient): Promise<number> {
+  /**
+   * FRAUD_AND_AML cases (and the FRAUD/AML siblings split off from them) never get
+   * alerts.case_id populated - they're linked to their originating alert via a shared
+   * InvestigationGroup (case.group_id -> investigation_groups.id -> alert_id) instead,
+   * so fall back to that path when the direct case_id lookup misses.
+   */
+  async getAlertByCaseId(caseId: number, tenantId: string, tx?: Prisma.TransactionClient): Promise<number> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     const alert = await client.alert.findUnique({
       where: { case_id: caseId },
     });
-
-    if (!alert) {
-      throw new NotFoundException(`Alert with Case ID ${caseId} not found`);
+    if (alert) {
+      return alert.alert_id;
     }
-    return alert.alert_id;
+
+    const caseRecord = await client.case.findUnique({
+      where: { case_id: caseId },
+      select: { group_id: true },
+    });
+    if (caseRecord?.group_id) {
+      const group = await client.investigationGroup.findFirst({
+        where: { id: caseRecord.group_id, tenant_id: tenantId },
+      });
+      if (group) {
+        return group.alert_id;
+      }
+    }
+
+    throw new NotFoundException(`Alert with Case ID ${caseId} not found`);
   }
 
   /**
