@@ -28,22 +28,22 @@ describe('SlaPolicyUtil', () => {
     jest.clearAllMocks();
   });
 
-  describe('getTargetHours', () => {
+  describe('getTargetSeconds', () => {
     it('returns the tenant-specific policy when one exists', async () => {
-      prismaService.slaPolicy.findFirst.mockResolvedValueOnce({ target_hours: 12 });
+      prismaService.slaPolicy.findFirst.mockResolvedValueOnce({ target_seconds: 12 * 3600 });
 
-      const result = await service.getTargetHours('tenant-1', Priority.HIGH);
+      const result = await service.getTargetSeconds('tenant-1', Priority.HIGH);
 
-      expect(result).toBe(12);
+      expect(result).toBe(12 * 3600);
       expect(prismaService.slaPolicy.findFirst).toHaveBeenCalledWith({ where: { tenant_id: 'tenant-1', priority: Priority.HIGH } });
     });
 
     it('falls back to the DEFAULT tenant policy when no tenant-specific row exists', async () => {
-      prismaService.slaPolicy.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ target_hours: 36 });
+      prismaService.slaPolicy.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ target_seconds: 36 * 3600 });
 
-      const result = await service.getTargetHours('tenant-1', Priority.MEDIUM);
+      const result = await service.getTargetSeconds('tenant-1', Priority.MEDIUM);
 
-      expect(result).toBe(36);
+      expect(result).toBe(36 * 3600);
       expect(prismaService.slaPolicy.findFirst).toHaveBeenNthCalledWith(2, {
         where: { tenant_id: DEFAULT_TENANT_KEY, priority: Priority.MEDIUM },
       });
@@ -52,15 +52,15 @@ describe('SlaPolicyUtil', () => {
     it('falls back to the hardcoded constant when neither tenant nor DEFAULT policy exists', async () => {
       prismaService.slaPolicy.findFirst.mockResolvedValue(null);
 
-      expect(await service.getTargetHours('tenant-1', Priority.HIGH)).toBe(24);
-      expect(await service.getTargetHours('tenant-1', Priority.MEDIUM)).toBe(72);
-      expect(await service.getTargetHours('tenant-1', Priority.LOW)).toBe(168);
+      expect(await service.getTargetSeconds('tenant-1', Priority.HIGH)).toBe(24 * 3600);
+      expect(await service.getTargetSeconds('tenant-1', Priority.MEDIUM)).toBe(72 * 3600);
+      expect(await service.getTargetSeconds('tenant-1', Priority.LOW)).toBe(168 * 3600);
     });
   });
 
   describe('calculateSlaDueAt', () => {
-    it('adds the resolved target hours to created_at', async () => {
-      prismaService.slaPolicy.findFirst.mockResolvedValueOnce({ target_hours: 10 });
+    it('adds the resolved target seconds to created_at', async () => {
+      prismaService.slaPolicy.findFirst.mockResolvedValueOnce({ target_seconds: 10 * 3600 });
       const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
       const dueAt = await service.calculateSlaDueAt(createdAt, 'tenant-1', Priority.HIGH);

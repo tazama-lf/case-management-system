@@ -124,12 +124,12 @@ model Case {
 }
 
 model SlaPolicy {
-  id           Int      @id @default(autoincrement())
-  tenant_id    String
-  priority     Priority
-  target_hours Int
-  created_at   DateTime @default(now()) @db.Timestamp(6)
-  updated_at   DateTime @updatedAt @db.Timestamp(6)
+  id             Int      @id @default(autoincrement())
+  tenant_id      String
+  priority       Priority
+  target_seconds Int
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+  updated_at     DateTime @updatedAt @db.Timestamp(6)
 
   @@unique([tenant_id, priority])
   @@map("sla_policies")

@@ -4,10 +4,12 @@ import { Priority } from '@prisma/client-cms';
 
 export const DEFAULT_TENANT_KEY = 'DEFAULT';
 
-const FALLBACK_TARGET_HOURS: Record<Priority, number> = {
-  [Priority.HIGH]: 24,
-  [Priority.MEDIUM]: 72,
-  [Priority.LOW]: 168,
+const SECONDS_PER_HOUR = 60 * 60;
+
+const FALLBACK_TARGET_SECONDS: Record<Priority, number> = {
+  [Priority.HIGH]: 24 * SECONDS_PER_HOUR,
+  [Priority.MEDIUM]: 72 * SECONDS_PER_HOUR,
+  [Priority.LOW]: 168 * SECONDS_PER_HOUR,
 };
 
 // Priority-agnostic: how much of a case's created_at->sla_due_at window may
@@ -15,7 +17,7 @@ const FALLBACK_TARGET_HOURS: Record<Priority, number> = {
 export const FALLBACK_DUE_SOON_RATIO = 0.2;
 export const FALLBACK_AT_RISK_RATIO = 0.5;
 
-const MS_PER_HOUR = 60 * 60 * 1000;
+const MS_PER_SECOND = 1000;
 
 export interface SlaEscalationRatios {
   dueSoonRatio: number;
@@ -26,27 +28,27 @@ export interface SlaEscalationRatios {
 export class SlaPolicyUtil {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getTargetHours(tenantId: string, priority: Priority): Promise<number> {
+  async getTargetSeconds(tenantId: string, priority: Priority): Promise<number> {
     const tenantPolicy = await this.prisma.slaPolicy.findFirst({
       where: { tenant_id: tenantId, priority },
     });
     if (tenantPolicy) {
-      return tenantPolicy.target_hours;
+      return tenantPolicy.target_seconds;
     }
 
     const defaultPolicy = await this.prisma.slaPolicy.findFirst({
       where: { tenant_id: DEFAULT_TENANT_KEY, priority },
     });
     if (defaultPolicy) {
-      return defaultPolicy.target_hours;
+      return defaultPolicy.target_seconds;
     }
 
-    return FALLBACK_TARGET_HOURS[priority];
+    return FALLBACK_TARGET_SECONDS[priority];
   }
 
   async calculateSlaDueAt(createdAt: Date, tenantId: string, priority: Priority): Promise<Date> {
-    const targetHours = await this.getTargetHours(tenantId, priority);
-    return new Date(createdAt.getTime() + targetHours * MS_PER_HOUR);
+    const targetSeconds = await this.getTargetSeconds(tenantId, priority);
+    return new Date(createdAt.getTime() + targetSeconds * MS_PER_SECOND);
   }
 
   async getEscalationRatios(tenantId: string): Promise<SlaEscalationRatios> {
