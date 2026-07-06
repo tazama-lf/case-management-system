@@ -716,6 +716,50 @@ describe('TriageService', () => {
       expect(flowableService.handleTaskCompleted).toHaveBeenCalled();
     });
 
+    it('should log rollback failure and rethrow when rollback itself fails during AML case creation failure', async () => {
+      taskService.createTask.mockResolvedValue(mockTask as any);
+      casePriorityUtil.determinePriority.mockReturnValue(Priority.URGENT);
+      (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
+      mockedAxios.post.mockResolvedValue({
+        data: { confidence: 0.95, priority: 0.8 },
+      });
+      alertService.updateAlert.mockResolvedValue(mockAlert as any);
+      taskService.updateTask.mockResolvedValue(mockTask as any);
+      loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
+      loggingOrchestrationService.logActions.mockResolvedValue(undefined);
+      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
+      flowableService.handleCaseAbandoned.mockResolvedValue(undefined);
+
+      // FRAUD case succeeds, AML case creation fails
+      caseCreateService.createCaseWithInvestigationTask
+        .mockResolvedValueOnce({ caseId: 456, message: 'Case created, BPMN will create investigation task', taskId: 2 })
+        .mockRejectedValueOnce(new InternalServerErrorException('Failed to create AML case'));
+
+      // Rollback itself fails: investigationGroup.delete throws
+      caseRepository.updateCase.mockResolvedValue(mockCase as any);
+      prismaService.investigationGroup.delete.mockRejectedValue(new Error('DB connection lost during rollback'));
+
+      jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
+        confidence_per: 95,
+        alertType: CaseType.FRAUD_AND_AML,
+        isTruePositive: true,
+        priorityScore: 0.8,
+      });
+
+      await expect(service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123')).rejects.toThrow(InternalServerErrorException);
+
+      // Rollback was attempted
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(456, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
+      expect(prismaService.investigationGroup.delete).toHaveBeenCalledWith({ where: { id: 123 } });
+
+      // Rollback failure was logged
+      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLBACK_FAILED' }),
+      );
+    });
+
     it('should throw InternalServerErrorException on failure', async () => {
       taskService.createTask.mockRejectedValue(new Error('Task creation failed'));
 
@@ -1118,6 +1162,32 @@ describe('TriageService', () => {
   });
 
   describe('handleManualTriage - edge cases', () => {
+    it('should throw NotFoundException when alert no longer exists inside the transaction (stale-alert regression)', async () => {
+      configService.get.mockReturnValue('MANUAL');
+      casePriorityUtil.determinePriority.mockReturnValue(Priority.URGENT);
+
+      // Simulate a stale alert: the alert was consumed/deleted between the
+      // outer read and the transactional read, so getAlertById returns null.
+      alertRepository.transaction.mockImplementation(async (callback) => {
+        alertRepository.getAlertById.mockResolvedValue(null);
+        return callback({} as any);
+      });
+
+      await expect(
+        service.handleManualTriage(
+          1,
+          { priorityScore: 0.75, priority: Priority.URGENT, alertType: CaseType.FRAUD, note: 'test' },
+          'user-123',
+          'tenant-123',
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      // No writes should have occurred
+      expect(alertService.updateAlert).not.toHaveBeenCalled();
+      expect(caseCreationService.updateCaseStatus).not.toHaveBeenCalled();
+      expect(commentRepository.createComment).not.toHaveBeenCalled();
+    });
+
     it('should throw BadRequestException when completeNewCaseTask is null', async () => {
       configService.get.mockReturnValue('MANUAL');
       casePriorityUtil.determinePriority.mockReturnValue(Priority.URGENT);
