@@ -59,8 +59,8 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const closeCase = async (): Promise<void> => {
-    if (!validateForm()) return;
+  const closeCase = async (): Promise<boolean> => {
+    if (!validateForm()) return false;
 
     setIsSubmitting(true);
     try {
@@ -72,6 +72,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
         recommendations: '',
       });
       setErrors({});
+      return true;
     } catch (error) {
       console.error('Failed to close case:', error);
       setErrors({
@@ -80,6 +81,7 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
             ? error.message
             : 'Failed to close case. Please try again.',
       });
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -259,9 +261,11 @@ const CloseCaseModal: React.FC<CloseCaseModalProps> = ({
           selectedFinalNotes={formData.finalNotes}
           selectedOutcome={formData.recommendedOutcome}
           onApproved={async () => {
-            await closeCase();
-            setReportApproved(true);
+            const closed = await closeCase();
             setShowReportModal(false);
+            if (closed) {
+              setReportApproved(true);
+            }
           }}
         />
       </Suspense>
