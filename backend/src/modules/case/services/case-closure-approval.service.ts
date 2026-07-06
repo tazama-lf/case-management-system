@@ -103,18 +103,18 @@ export class CaseClosureApprovalService {
         });
       }
 
-      const investigationTask =
-        caseData.tasks
-          .filter(
-            (task) =>
-              task.name === TASK_NAMES.INVESTIGATE_CASE &&
-              (task.status === TaskStatus.STATUS_20_IN_PROGRESS || task.status === TaskStatus.STATUS_30_COMPLETED),
-          )
-          .sort((a, b) => {
-            const aTime = new Date(a.created_at).getTime();
-            const bTime = new Date(b.created_at).getTime();
-            return bTime - aTime;
-          })[0] || null;
+      const investigationTasks = caseData.tasks
+        .filter(
+          (task) =>
+            task.name === TASK_NAMES.INVESTIGATE_CASE &&
+            (task.status === TaskStatus.STATUS_20_IN_PROGRESS || task.status === TaskStatus.STATUS_30_COMPLETED),
+        )
+        .sort((a, b) => {
+          const aTime = new Date(a.created_at).getTime();
+          const bTime = new Date(b.created_at).getTime();
+          return bTime - aTime;
+        });
+      const investigationTask: Task | null = investigationTasks.at(0) ?? null;
 
       if (!investigationTask) {
         throw new NotFoundException({
