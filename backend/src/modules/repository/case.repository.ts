@@ -295,36 +295,20 @@ export class CaseRepository extends BaseRepository {
         case_id: caseId,
         tenant_id: tenantId,
       },
-      include: { alert: true, tasks: true },
+      include: { alert: true, tasks: true, investigationGroup: { include: { alert: true } } },
     });
     if (!caseData) {
       throw new NotFoundException('Case Not Found');
     }
-    if (!caseData.alert && caseData.group_id) {
-      const group = await client.investigationGroup.findFirst({
-        where: {
-          id: caseData.group_id,
-          tenant_id: tenantId,
-        },
-      });
-      const groupAlert = group
-        ? await client.alert.findFirst({
-            where: {
-              alert_id: group.alert_id,
-              tenant_id: tenantId,
-            },
-          })
-        : null;
 
-      return {
-        ...caseData,
-        alert: groupAlert,
-      };
-    }
-    return caseData;
+    const { investigationGroup, ...rest } = caseData;
+    return {
+      ...rest,
+      alert: caseData.alert ?? investigationGroup?.alert ?? null,
+    };
   }
 
-  async updateCase(caseId: number, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient): Promise<Case> {
+  async updateCase(caseId: number, data: Prisma.CaseUncheckedUpdateInput, tx?: Prisma.TransactionClient): Promise<Case> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     return await client.case.update({
       where: { case_id: caseId },
