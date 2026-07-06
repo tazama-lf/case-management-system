@@ -7,8 +7,7 @@ import triageService from '@/features/alerts/services/triageservice';
 import type { Alert } from '@/features/alerts/types/triage.types';
 import LinkExistingAlertsTab from './LinkExistingAlerts';
 import authService from '../../auth/services/authService';
-import { caseService } from '../services/caseService';
-import { FALLBACK_HIGH_THRESHOLD, FALLBACK_MEDIUM_THRESHOLD } from '@/shared/constants/casePriorityThresholds';
+import { usePriorityThresholds } from '@/shared/hooks/usePriorityThresholds';
 
 export type PredictionOutcome =
   | 'FALSE_POSITIVE'
@@ -135,34 +134,7 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
   const [validationErrors, setValidationErrors] = React.useState<
     Record<string, string>
   >({});
-  const [thresholds, setThresholds] = React.useState({
-    highThreshold: FALLBACK_HIGH_THRESHOLD,
-    mediumThreshold: FALLBACK_MEDIUM_THRESHOLD,
-  });
-
-  React.useEffect(() => {
-    if (!open) return;
-
-    let isMounted = true;
-    caseService
-      .getPriorityThresholds()
-      .then((result) => {
-        if (isMounted) setThresholds(result);
-      })
-      .catch((error: unknown) => {
-        console.error('Failed to load priority thresholds, using defaults:', error);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [open]);
-
-  const calculatePriority = (score: number): Priority => {
-    if (score >= thresholds.highThreshold) return 'HIGH';
-    if (score >= thresholds.mediumThreshold) return 'MEDIUM';
-    return 'LOW';
-  };
+  const { thresholds, calculatePriority } = usePriorityThresholds(open);
 
   React.useEffect(() => {
     const newPriority = calculatePriority(priorityScore);

@@ -164,7 +164,7 @@ export const EMAIL_TEMPLATES = {
     <ul>
       <li><strong>SLA State:</strong> ${data.slaState}</li>
       <li><strong>Time Remaining:</strong> ${data.timeRemainingHours} hours</li>
-      <li><strong>Assignee:</strong> ${data.assignee}</li>
+      <li><strong>Assignee:</strong> ${data.assignee ?? 'Unassigned'}</li>
     </ul>
     <p>Please prioritize this case to avoid an SLA breach.</p>
     <p>Regards,<br/>CMS Team</p>

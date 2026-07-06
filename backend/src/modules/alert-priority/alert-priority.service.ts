@@ -51,13 +51,25 @@ export class AlertPriorityService {
       ),
     );
 
-    await Promise.all(
+    const results = await Promise.allSettled(
       openCases.map(async (caseRecord) => {
         await this.checkCase(caseRecord, now, ratiosByTenant.get(caseRecord.tenant_id)!);
       }),
     );
 
+    const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected');
+    for (const failure of failures) {
+      this.logger.error('Unexpected error while checking a case for SLA escalation', failure.reason as Error);
+    }
+
     this.logger.log(`SLA escalation check complete. Evaluated ${openCases.length} open case(s).`);
+
+    // Still surface unexpected failures to the caller (rather than swallowing them) so
+    // the cron tick is visibly marked failed for monitoring, matching escalate()'s
+    // deliberate choice to let non-idempotency-race errors propagate.
+    if (failures.length > 0) {
+      throw failures[0].reason;
+    }
   }
 
   private async checkCase(caseRecord: SlaCheckCase, now: Date, ratios: SlaEscalationRatios): Promise<void> {
