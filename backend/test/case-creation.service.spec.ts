@@ -242,7 +242,13 @@ describe('CaseCreationService', () => {
         caseType: CaseType.FRAUD,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       });
-      expect(flowableService.handleCaseCreated).toHaveBeenCalled();
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledTimes(1);
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: mockCase.case_id,
+          isFraudNAML: true,
+        }),
+      );
       expect(taskService.createTask).toHaveBeenNthCalledWith(
         1,
         {
@@ -422,6 +428,7 @@ describe('CaseCreationService', () => {
         tenantId,
         undefined,
       );
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledTimes(1);
     });
 
     it('should create manual case as investigator (needs approval)', async () => {
@@ -480,6 +487,7 @@ describe('CaseCreationService', () => {
       expect(result.success).toBe(true);
       expect(result.case).toEqual(fraudCase);
       expect(caseRepository.createCase).toHaveBeenCalledTimes(2);
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledTimes(2);
       expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, tenantId);
       expect(caseRepository.createCase).toHaveBeenNthCalledWith(
         1,

@@ -26,7 +26,7 @@ export class CaseCreationService {
     private readonly investigationGroupService: InvestigationGroupService,
   ) {}
 
-  async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string, userRole: string): Promise<Case> {
+  async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string, userRole: string, isFraudNAML = false): Promise<Case> {
     try {
       this.loggerService.log('Start - Create Case', CaseCreationService.name);
 
@@ -41,7 +41,7 @@ export class CaseCreationService {
         ...(createCaseDTO.groupId === undefined ? {} : { groupId: createCaseDTO.groupId }),
       });
 
-      await this.executeFlowableCaseCreationEvent(createdCase, createCaseDTO.caseCreationType, false, userRole);
+      await this.executeFlowableCaseCreationEvent(createdCase, createCaseDTO.caseCreationType, isFraudNAML, userRole);
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
@@ -86,9 +86,7 @@ export class CaseCreationService {
         caseCreationType,
         ...(groupId === undefined ? {} : { groupId }),
       };
-      const newCase = await this.createCase(createCaseDTO, userId, tenantId, userRole);
-
-      await this.executeFlowableCaseCreationEvent(newCase, caseCreationType, true, userRole);
+      const newCase = await this.createCase(createCaseDTO, userId, tenantId, userRole, true);
 
       const completeTask = await this.taskService.createTask(
         {
@@ -173,7 +171,6 @@ export class CaseCreationService {
 
     try {
       const createdCase = await this.createCase(caseDetail, userId, tenantId, userRole);
-      await this.executeFlowableCaseCreationEvent(createdCase, CaseCreationType.MANUAL, false, userRole);
 
       const relatedCases = [createdCase];
       let amlCase: Case | undefined;
@@ -189,7 +186,6 @@ export class CaseCreationService {
           ...(investigationGroup === undefined ? {} : { groupId: investigationGroup.id }),
         };
         amlCase = await this.createCase(createCaseDTO, userId, tenantId, userRole);
-        await this.executeFlowableCaseCreationEvent(amlCase, CaseCreationType.MANUAL, false, userRole);
         relatedCases.push(amlCase);
       }
 
