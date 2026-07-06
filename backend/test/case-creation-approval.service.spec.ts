@@ -100,7 +100,7 @@ describe('CaseCreationApprovalService', () => {
     const mockTaskRepository = {
       transaction: jest.fn(),
       findCaseBasic: jest.fn(),
-      createTask: jest.fn(),
+      createTask: jest.fn().mockResolvedValue({ task_id: 2, name: TASK_NAMES.INVESTIGATE_CASE }),
       findTasks: jest.fn().mockResolvedValue([]),
     };
 
@@ -278,10 +278,21 @@ describe('CaseCreationApprovalService', () => {
 
       expect(result.success).toBe(true);
       expect(result.message).toContain('approved');
-      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, {
-        status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-      });
-      expect(taskService.createTask).toHaveBeenCalled();
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(
+        1,
+        {
+          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        },
+        expect.anything(),
+      );
+      expect(taskService.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: TASK_NAMES.INVESTIGATE_CASE,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+        }),
+        'supervisor-123',
+        'tenant-123',
+      );
     });
 
     it('should approve FRAUD_AND_AML case by converting it to FRAUD and creating a sibling AML case with a mirrored task history', async () => {
@@ -306,60 +317,69 @@ describe('CaseCreationApprovalService', () => {
         { name: TASK_NAMES.COMPLETE_NEW_CASE, assigned_user_id: 'creator-123', candidateGroup: 'INVESTIGATIONS' },
         { name: TASK_NAMES.APPROVE_CASE_CREATION, assigned_user_id: 'supervisor-123', candidateGroup: 'SUPERVISORS' },
       ] as any);
-      taskService.createTask.mockImplementation((dto: any) =>
-        Promise.resolve({ task_id: Math.random(), case_id: dto.caseId, name: dto.name, status: dto.status } as any),
+      taskRepository.createTask.mockImplementation((data: any) =>
+        Promise.resolve({
+          task_id: Math.random(),
+          case_id: data.case.connect.case_id,
+          name: data.name,
+          status: data.status,
+        } as any),
       );
 
       const result = await service.approveCaseCreation(1, 'supervisor-123', 'tenant-123');
 
-      expect(alertRepository.getAlertByCaseId).toHaveBeenCalledWith(1, 'tenant-123');
-      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(100, 'tenant-123');
-      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, {
-        case_type: CaseType.FRAUD,
-        group_id: 55,
-      });
-      expect(caseRepository.createCase).toHaveBeenCalledWith({
-        tenantId: fraudCase.tenant_id,
-        caseCreatorUserId: fraudCase.case_creator_user_id,
-        caseOwnerUserId: fraudCase.case_owner_user_id,
-        status: fraudCase.status,
-        priority: fraudCase.priority,
-        caseType: CaseType.AML,
-        caseCreationType: fraudCase.case_creation_type,
-        groupId: 55,
-      });
+      expect(alertRepository.getAlertByCaseId).toHaveBeenCalledWith(1, 'tenant-123', expect.anything());
+      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(100, 'tenant-123', expect.anything());
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(
+        1,
+        {
+          case_type: CaseType.FRAUD,
+          group_id: 55,
+        },
+        expect.anything(),
+      );
+      expect(caseRepository.createCase).toHaveBeenCalledWith(
+        {
+          tenantId: fraudCase.tenant_id,
+          caseCreatorUserId: fraudCase.case_creator_user_id,
+          caseOwnerUserId: fraudCase.case_owner_user_id,
+          status: fraudCase.status,
+          priority: fraudCase.priority,
+          caseType: CaseType.AML,
+          caseCreationType: fraudCase.case_creation_type,
+          groupId: 55,
+        },
+        expect.anything(),
+      );
 
       // AML gets its own completed "Complete New Case" + "Approve Case Creation" tasks,
       // mirroring the FRAUD case's history, plus an "Investigate Case" task like FRAUD.
-      expect(taskService.createTask).toHaveBeenCalledTimes(4);
-      expect(taskService.createTask).toHaveBeenCalledWith(
+      expect(taskRepository.createTask).toHaveBeenCalledTimes(4);
+      expect(taskRepository.createTask).toHaveBeenCalledWith(
         expect.objectContaining({
-          caseId: amlCase.case_id,
+          case: { connect: { case_id: amlCase.case_id } },
           name: TASK_NAMES.COMPLETE_NEW_CASE,
           status: TaskStatus.STATUS_30_COMPLETED,
         }),
-        'supervisor-123',
-        'tenant-123',
+        expect.anything(),
       );
-      expect(taskService.createTask).toHaveBeenCalledWith(
+      expect(taskRepository.createTask).toHaveBeenCalledWith(
         expect.objectContaining({
-          caseId: amlCase.case_id,
+          case: { connect: { case_id: amlCase.case_id } },
           name: TASK_NAMES.APPROVE_CASE_CREATION,
           status: TaskStatus.STATUS_30_COMPLETED,
         }),
-        'supervisor-123',
-        'tenant-123',
+        expect.anything(),
       );
-      expect(taskService.createTask).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: fraudCase.case_id, name: TASK_NAMES.INVESTIGATE_CASE }),
-        'supervisor-123',
-        'tenant-123',
+      expect(taskRepository.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({ case: { connect: { case_id: fraudCase.case_id } }, name: TASK_NAMES.INVESTIGATE_CASE }),
+        expect.anything(),
       );
-      expect(taskService.createTask).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: amlCase.case_id, name: TASK_NAMES.INVESTIGATE_CASE }),
-        'supervisor-123',
-        'tenant-123',
+      expect(taskRepository.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({ case: { connect: { case_id: amlCase.case_id } }, name: TASK_NAMES.INVESTIGATE_CASE }),
+        expect.anything(),
       );
+      expect(alertRepository.updateAlert).toHaveBeenCalledWith(100, { caseId: null }, expect.anything());
 
       // AML gets its own Flowable process (isFraudNAML: true routes it straight to
       // Investigate Case, same as createCaseWithInvestigationTask's cases) and its
