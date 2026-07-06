@@ -92,15 +92,15 @@ export class AlertRepository extends BaseRepository {
    */
   async getAlertByCaseId(caseId: number, tenantId: string, tx?: Prisma.TransactionClient): Promise<number> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
-    const alert = await client.alert.findUnique({
-      where: { case_id: caseId },
+    const alert = await client.alert.findFirst({
+      where: { case_id: caseId, tenant_id: tenantId },
     });
     if (alert) {
       return alert.alert_id;
     }
 
-    const caseRecord = await client.case.findUnique({
-      where: { case_id: caseId },
+    const caseRecord = await client.case.findFirst({
+      where: { case_id: caseId, tenant_id: tenantId },
       select: { group_id: true },
     });
     if (caseRecord?.group_id) {
