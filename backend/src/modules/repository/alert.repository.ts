@@ -92,24 +92,17 @@ export class AlertRepository extends BaseRepository {
    */
   async getAlertByCaseId(caseId: number, tenantId: string, tx?: Prisma.TransactionClient): Promise<number> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
-    const alert = await client.alert.findFirst({
-      where: { case_id: caseId, tenant_id: tenantId },
-    });
-    if (alert) {
-      return alert.alert_id;
-    }
-
     const caseRecord = await client.case.findFirst({
       where: { case_id: caseId, tenant_id: tenantId },
-      select: { group_id: true },
+      select: {
+        alert: { select: { alert_id: true } },
+        investigationGroup: { select: { alert_id: true } },
+      },
     });
-    if (caseRecord?.group_id) {
-      const group = await client.investigationGroup.findFirst({
-        where: { id: caseRecord.group_id, tenant_id: tenantId },
-      });
-      if (group) {
-        return group.alert_id;
-      }
+
+    const alertId = caseRecord?.alert?.alert_id ?? caseRecord?.investigationGroup?.alert_id;
+    if (alertId) {
+      return alertId;
     }
 
     throw new NotFoundException(`Alert with Case ID ${caseId} not found`);
@@ -128,16 +121,16 @@ export class AlertRepository extends BaseRepository {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     const group = await client.investigationGroup.findFirst({
       where: { alert_id: alertId, tenant_id: tenantId },
+      select: {
+        cases: {
+          where: { tenant_id: tenantId },
+          select: { case_id: true, case_type: true },
+          orderBy: { case_id: 'asc' },
+        },
+      },
     });
-    if (!group) {
-      return [];
-    }
 
-    return await client.case.findMany({
-      where: { group_id: group.id, tenant_id: tenantId },
-      select: { case_id: true, case_type: true },
-      orderBy: { case_id: 'asc' },
-    });
+    return group?.cases ?? [];
   }
 
   /**
