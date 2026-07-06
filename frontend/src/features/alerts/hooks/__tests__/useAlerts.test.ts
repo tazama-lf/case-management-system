@@ -33,6 +33,17 @@ const uiAlert = {
   alert_type: 'FRAUD',
 };
 
+const createDeferred = <T>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+};
+
 describe('useAlerts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -91,19 +102,12 @@ describe('useAlerts', () => {
     expect(result.current.pagination.currentPage).toBe(2);
   });
 
-  it('filters alerts by query string', async () => {
-    const alert1 = {
-      ...uiAlert,
-      alert_id: 'ALERT-1',
-      message: 'Fraud detected',
-    };
-    const alert2 = { ...uiAlert, alert_id: 'ALERT-2', message: 'AML check' };
-
-    mockService.getAlerts.mockResolvedValueOnce({
-      alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
-      pagination: { totalItems: 2, totalPages: 1 },
+  it('sends query search to the server', async () => {
+    mockService.getAlerts.mockResolvedValue({
+      alerts: [backendAlert],
+      pagination: { totalItems: 1, totalPages: 1 },
     });
-    mockTransformer.mockReturnValueOnce(alert1).mockReturnValueOnce(alert2);
+    mockTransformer.mockReturnValue(uiAlert);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -113,11 +117,81 @@ describe('useAlerts', () => {
     });
 
     await waitFor(() => {
-      const filtered = result.current.filteredAlerts;
-      expect(
-        filtered.some((a) => a.message?.toLowerCase().includes('fraud')),
-      ).toBe(true);
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'fraud' }),
+      );
     });
+  });
+
+  it('sends displayed ALERT-prefixed ids to the server', async () => {
+    mockService.getAlerts.mockResolvedValue({
+      alerts: [backendAlert],
+      pagination: { totalItems: 1, totalPages: 1 },
+    });
+    mockTransformer.mockReturnValue(uiAlert);
+
+    const { result } = renderHook(() => useAlerts());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    act(() => {
+      result.current.setFilters({ query: 'ALERT-27' });
+    });
+
+    await waitFor(() => {
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'ALERT-27' }),
+      );
+    });
+  });
+
+  it('ignores stale responses when a filtered request finishes first', async () => {
+    const slowUnfilteredRequest = createDeferred<{
+      alerts: (typeof backendAlert)[];
+      pagination: { totalItems: number; totalPages: number };
+    }>();
+    const fastFilteredRequest = createDeferred<{
+      alerts: (typeof backendAlert)[];
+      pagination: { totalItems: number; totalPages: number };
+    }>();
+
+    const unfilteredAlert = { ...backendAlert, alert_id: 'ALERT-27' };
+    const filteredAlert = { ...backendAlert, alert_id: 'ALERT-24' };
+
+    mockService.getAlerts
+      .mockReturnValueOnce(slowUnfilteredRequest.promise)
+      .mockReturnValueOnce(fastFilteredRequest.promise);
+    mockTransformer.mockImplementation((alert) => alert);
+
+    const { result } = renderHook(() => useAlerts());
+
+    await waitFor(() => expect(mockService.getAlerts).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      result.current.setFilters({ query: '24' });
+    });
+
+    await waitFor(() => expect(mockService.getAlerts).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      fastFilteredRequest.resolve({
+        alerts: [filteredAlert],
+        pagination: { totalItems: 1, totalPages: 1 },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.paginatedAlerts).toEqual([filteredAlert]);
+    });
+
+    await act(async () => {
+      slowUnfilteredRequest.resolve({
+        alerts: [unfilteredAlert],
+        pagination: { totalItems: 10, totalPages: 1 },
+      });
+    });
+
+    expect(result.current.paginatedAlerts).toEqual([filteredAlert]);
+    expect(result.current.pagination.totalItems).toBe(1);
   });
 
   it('filters alerts by source', async () => {
@@ -192,24 +266,12 @@ describe('useAlerts', () => {
     });
   });
 
-  it('filters alerts by time range - today', async () => {
-    const today = new Date();
-    const todayAlert = { ...uiAlert, created_at: today.toISOString() };
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayAlert = {
-      ...uiAlert,
-      alert_id: 'ALERT-2',
-      created_at: yesterday.toISOString(),
-    };
-
-    mockService.getAlerts.mockResolvedValueOnce({
-      alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
-      pagination: { totalItems: 2, totalPages: 1 },
+  it('sends today time range dates to the server', async () => {
+    mockService.getAlerts.mockResolvedValue({
+      alerts: [backendAlert],
+      pagination: { totalItems: 1, totalPages: 1 },
     });
-    mockTransformer
-      .mockReturnValueOnce(todayAlert)
-      .mockReturnValueOnce(yesterdayAlert);
+    mockTransformer.mockReturnValue(uiAlert);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -219,28 +281,33 @@ describe('useAlerts', () => {
     });
 
     await waitFor(() => {
-      const filtered = result.current.filteredAlerts;
-      expect(filtered.length).toBeGreaterThan(0);
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({
+          startDate: expect.any(String),
+          endDate: expect.any(String),
+        }),
+      );
     });
   });
 
-  it('filters alerts by custom date range', async () => {
+  it('sends custom date range to the server', async () => {
     const startDate = '2024-01-01';
     const endDate = '2024-01-31';
-    const inRangeAlert = { ...uiAlert, created_at: '2024-01-15T00:00:00Z' };
-    const outOfRangeAlert = {
-      ...uiAlert,
-      alert_id: 'ALERT-2',
-      created_at: '2024-02-15T00:00:00Z',
-    };
-
-    mockService.getAlerts.mockResolvedValueOnce({
-      alerts: [backendAlert, { ...backendAlert, alert_id: 'ALERT-2' }],
-      pagination: { totalItems: 2, totalPages: 1 },
+    const expectedStartDate = new Date(2024, 0, 1, 0, 0, 0, 0).toISOString();
+    const expectedEndDate = new Date(
+      2024,
+      0,
+      31,
+      23,
+      59,
+      59,
+      999,
+    ).toISOString();
+    mockService.getAlerts.mockResolvedValue({
+      alerts: [backendAlert],
+      pagination: { totalItems: 1, totalPages: 1 },
     });
-    mockTransformer
-      .mockReturnValueOnce(inRangeAlert)
-      .mockReturnValueOnce(outOfRangeAlert);
+    mockTransformer.mockReturnValue(uiAlert);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -253,8 +320,12 @@ describe('useAlerts', () => {
     });
 
     await waitFor(() => {
-      const filtered = result.current.filteredAlerts;
-      expect(filtered.length).toBeGreaterThan(0);
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({
+          startDate: expectedStartDate,
+          endDate: expectedEndDate,
+        }),
+      );
     });
   });
 
@@ -367,18 +438,12 @@ describe('useAlerts', () => {
     expect(result.current.pagination.currentPage).toBe(1);
   });
 
-  it('searches in transaction JSON and network map', async () => {
-    const alertWithTransaction = {
-      ...uiAlert,
-      transaction: { id: 'tx-123', amount: 1000 },
-      network_map: { nodes: [{ id: 'node-1' }] },
-    };
-
-    mockService.getAlerts.mockResolvedValueOnce({
+  it('sends transaction-like search terms to the server', async () => {
+    mockService.getAlerts.mockResolvedValue({
       alerts: [backendAlert],
       pagination: { totalItems: 1, totalPages: 1 },
     });
-    mockTransformer.mockReturnValue(alertWithTransaction);
+    mockTransformer.mockReturnValue(uiAlert);
 
     const { result } = renderHook(() => useAlerts());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -388,8 +453,9 @@ describe('useAlerts', () => {
     });
 
     await waitFor(() => {
-      const filtered = result.current.filteredAlerts;
-      expect(filtered.length).toBeGreaterThan(0);
+      expect(mockService.getAlerts).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'tx-123' }),
+      );
     });
   });
 

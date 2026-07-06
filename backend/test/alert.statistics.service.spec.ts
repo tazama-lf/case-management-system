@@ -152,6 +152,32 @@ describe('AlertStatisticsService', () => {
         ).rejects.toThrow(new BadRequestException('Invalid alertType: INVALID_TYPE'));
       });
 
+      it('should throw BadRequestException when date range values are invalid', async () => {
+        await expect(
+          service.getAlertsForUser({
+            ...defaultParams,
+            startDate: 'not-a-date',
+          }),
+        ).rejects.toThrow(new BadRequestException('Invalid startDate: not-a-date'));
+
+        await expect(
+          service.getAlertsForUser({
+            ...defaultParams,
+            endDate: 'still-not-a-date',
+          }),
+        ).rejects.toThrow(new BadRequestException('Invalid endDate: still-not-a-date'));
+      });
+
+      it('should throw BadRequestException when startDate is after endDate', async () => {
+        await expect(
+          service.getAlertsForUser({
+            ...defaultParams,
+            startDate: '2026-02-01T00:00:00.000Z',
+            endDate: '2026-01-01T00:00:00.000Z',
+          }),
+        ).rejects.toThrow(new BadRequestException('startDate must be before or equal to endDate'));
+      });
+
       it('should accept all valid sortBy fields', async () => {
         alertRepository.findMany.mockResolvedValue(mockAlerts);
         alertRepository.count.mockResolvedValue(2);
@@ -259,6 +285,30 @@ describe('AlertStatisticsService', () => {
       });
     });
 
+    describe('Filter by date range', () => {
+      it('should filter alerts by created_at range', async () => {
+        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
+        alertRepository.count.mockResolvedValue(1);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          startDate: '2026-01-01T00:00:00.000Z',
+          endDate: '2026-01-31T23:59:59.999Z',
+        });
+
+        expect(alertRepository.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              created_at: {
+                gte: new Date('2026-01-01T00:00:00.000Z'),
+                lte: new Date('2026-01-31T23:59:59.999Z'),
+              },
+            }),
+          }),
+        );
+      });
+    });
+
     describe('Filter by reportStatus', () => {
       it('should filter alerts by reportStatus', async () => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
@@ -344,7 +394,38 @@ describe('AlertStatisticsService', () => {
         );
       });
 
-      it('should search by numeric alert_id and case_id', async () => {
+      it('should search by exact transaction id in supported transaction message paths', async () => {
+        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
+        alertRepository.count.mockResolvedValue(1);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search: 'TX-ABC-123',
+        });
+
+        expect(alertRepository.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              OR: expect.arrayContaining([
+                {
+                  transaction: {
+                    path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
+                    equals: 'TX-ABC-123',
+                  },
+                },
+                {
+                  transaction: {
+                    path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
+                    equals: 'TX-ABC-123',
+                  },
+                },
+              ]),
+            }),
+          }),
+        );
+      });
+
+      it('should search by numeric alert_id', async () => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
 
@@ -356,11 +437,74 @@ describe('AlertStatisticsService', () => {
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
-              OR: expect.arrayContaining([{ alert_id: { equals: 123 } }, { case_id: { equals: 123 } }]),
+              OR: expect.arrayContaining([{ alert_id: { equals: 123 } }]),
             }),
           }),
         );
       });
+
+      it('should search by displayed ALERT-prefixed alert id', async () => {
+        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
+        alertRepository.count.mockResolvedValue(1);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search: 'ALERT-123',
+        });
+
+        expect(alertRepository.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              OR: [{ alert_id: { equals: 123 } }],
+            }),
+          }),
+        );
+      });
+
+      it('should search displayed single-digit ALERT-prefixed alert id only by alert_id', async () => {
+        alertRepository.findMany.mockResolvedValue([]);
+        alertRepository.count.mockResolvedValue(0);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search: 'ALERT-1',
+        });
+
+        const callArgs = alertRepository.findMany.mock.calls[0][0];
+        expect(callArgs.where?.OR).toEqual([{ alert_id: { equals: 1 } }]);
+      });
+
+      it.each(['A', 'ALE', 'ALERT', 'ALERT-'])('should not filter when searching displayed alert id prefix %s', async (search) => {
+        alertRepository.findMany.mockResolvedValue(mockAlerts);
+        alertRepository.count.mockResolvedValue(2);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search,
+        });
+
+        const callArgs = alertRepository.findMany.mock.calls[0][0];
+        expect(callArgs.where?.OR).toBeUndefined();
+      });
+
+      it('should not treat non-prefix substrings of displayed alert id prefix as prefix searches', async () => {
+        alertRepository.findMany.mockResolvedValue([]);
+        alertRepository.count.mockResolvedValue(0);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search: 'ERT',
+        });
+
+        const callArgs = alertRepository.findMany.mock.calls[0][0];
+        expect(callArgs.where?.OR).toEqual(
+          expect.arrayContaining([
+            { txtp: { contains: 'ERT', mode: 'insensitive' } },
+            { source: { contains: 'ERT', mode: 'insensitive' } },
+          ]),
+        );
+      });
+
 
       it('should search by priority when search matches priority value', async () => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
@@ -369,6 +513,24 @@ describe('AlertStatisticsService', () => {
         await service.getAlertsForUser({
           ...defaultParams,
           search: 'critical',
+        });
+
+        expect(alertRepository.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              OR: expect.arrayContaining([{ priority: { equals: Priority.CRITICAL } }]),
+            }),
+          }),
+        );
+      });
+
+      it('should search by priority when search partially matches at least 3 characters', async () => {
+        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
+        alertRepository.count.mockResolvedValue(1);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search: 'cri',
         });
 
         expect(alertRepository.findMany).toHaveBeenCalledWith(
@@ -398,6 +560,45 @@ describe('AlertStatisticsService', () => {
         );
       });
 
+      it('should search by alert_type when search partially matches at least 3 characters', async () => {
+        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
+        alertRepository.count.mockResolvedValue(1);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search: 'fra',
+        });
+
+        expect(alertRepository.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              OR: expect.arrayContaining([
+                { alert_type: { equals: CaseType.FRAUD } },
+                { alert_type: { equals: CaseType.FRAUD_AND_AML } },
+              ]),
+            }),
+          }),
+        );
+      });
+
+      it('should not partially search priority or alert_type below 3 characters', async () => {
+        alertRepository.findMany.mockResolvedValue([]);
+        alertRepository.count.mockResolvedValue(0);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          search: 'cr',
+        });
+
+        const callArgs = alertRepository.findMany.mock.calls[0][0];
+        expect(callArgs.where?.OR).toEqual(
+          expect.not.arrayContaining([{ priority: { equals: Priority.CRITICAL } }]),
+        );
+        expect(callArgs.where?.OR).toEqual(
+          expect.not.arrayContaining([{ alert_type: { equals: CaseType.FRAUD } }]),
+        );
+      });
+
       it('should include all search conditions for numeric value', async () => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
@@ -408,18 +609,29 @@ describe('AlertStatisticsService', () => {
         });
 
         const callArgs = alertRepository.findMany.mock.calls[0][0];
-        expect(callArgs.where?.OR).toHaveLength(4); // txtp, source, alert_id, case_id
+        expect(callArgs.where?.OR).toHaveLength(5);
         expect(callArgs.where?.OR).toEqual(
           expect.arrayContaining([
-            { txtp: { contains: 100, mode: 'insensitive' } },
-            { source: { contains: 100, mode: 'insensitive' } },
+            { txtp: { contains: '100', mode: 'insensitive' } },
+            { source: { contains: '100', mode: 'insensitive' } },
+            {
+              transaction: {
+                path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
+                equals: '100',
+              },
+            },
+            {
+              transaction: {
+                path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
+                equals: '100',
+              },
+            },
             { alert_id: { equals: 100 } },
-            { case_id: { equals: 100 } },
           ]),
         );
       });
 
-      it('should handle search with both priority and number matching', async () => {
+      it('should handle numeric search without matching case id', async () => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
 
@@ -429,7 +641,8 @@ describe('AlertStatisticsService', () => {
         });
 
         const callArgs = alertRepository.findMany.mock.calls[0][0];
-        expect(callArgs.where?.OR).toEqual(expect.arrayContaining([{ alert_id: { equals: 456 } }, { case_id: { equals: 456 } }]));
+        expect(callArgs.where?.OR).toEqual(expect.arrayContaining([{ alert_id: { equals: 456 } }]));
+        expect(callArgs.where?.OR).toEqual(expect.not.arrayContaining([{ case_id: { equals: 456 } }]));
       });
     });
 

@@ -108,6 +108,18 @@ export class AlertController {
     description: 'Sort order',
     example: 'desc',
   })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    type: 'string',
+    description: 'Filter alerts created on or after this ISO date/time',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    type: 'string',
+    description: 'Filter alerts created on or before this ISO date/time',
+  })
   @ApiResponse({
     status: 200,
     description: 'Alerts retrieved successfully',
@@ -127,6 +139,8 @@ export class AlertController {
     @Query('nullAlertType') nullAlertType?: string,
     @Query('search') search?: string,
     @Query('source') source?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ): Promise<{
     data: Array<{
       alert_id: number;
@@ -154,6 +168,8 @@ export class AlertController {
       nullAlertType: nullAlertType === 'true',
       search,
       source,
+      startDate,
+      endDate,
       reportStatus,
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),

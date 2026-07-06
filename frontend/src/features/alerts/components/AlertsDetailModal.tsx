@@ -140,15 +140,15 @@ const extractTriggeredTypologies = (
     const rules = ruleResults.map(
       (rule: AlertedRuleResultResponse, ruleIndex): TriggeredRuleDetail => ({
         ruleId: asString(rule.id, `rule-${ruleIndex + 1}`),
-        ruleCfg: asString(rule.cfg, "none"),
+        ruleCfg: asString(rule.cfg, 'none'),
         ruleWeight: asNumber(rule.wght ?? rule.weight, 0),
         subRef: asString(rule.subRuleRef),
         independentVariable: rule.indpdntVarbl ?? rule.independentVariable,
       }),
     );
 
-    const typologyId = asString(source.id, "unknown");
-    const typologyCfg = asString(source.cfg, "Unknown");
+    const typologyId = asString(source.id, 'unknown');
+    const typologyCfg = asString(source.cfg, 'Unknown');
 
     return {
       typologyKey: `${typologyId}::${typologyCfg}::${index}`,
@@ -272,11 +272,9 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       return next;
     });
   };
-  const getAlertStatusColor = (status?: string | null): string => {
-    return status?.toUpperCase() === "ALRT"
-      ? "text-red-600 bg-red-50"
-      : "text-green-600 bg-green-50";
-  };
+  const getAlertStatusColor = (status?: string | null): string => status?.toUpperCase() === 'ALRT'
+      ? 'text-red-600 bg-red-50'
+      : 'text-green-600 bg-green-50';
 
   useEffect(() => {
     if (!alert) {
@@ -486,7 +484,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
       case 'low':
         return 'text-green-600 bg-green-50';
       default:
-        return "text-gray-600 bg-gray-50";
+        return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -595,8 +593,8 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     {alert?.alert_data?.status ?? 'No message available'}
                   </p> */}
                   <p className="text-sm text-gray-500">
-                    Alert ID: {alert.alert_id} • Source:{" "}
-                    {alert.source ?? "N/A"}
+                    Alert ID: {alert.alert_id} • Source:{' '}
+                    {alert.source ?? 'N/A'}
                   </p>
                 </div>
 
@@ -605,7 +603,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     alert?.alert_data?.status,
                   )}`}
                 >
-                  {alert?.alert_data?.status ?? "No message available"}
+                  {alert?.alert_data?.status ?? 'No message available'}
                 </p>
               </div>
 
@@ -751,7 +749,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                     </div>
 
                     <div className="max-h-64 max-w-full overflow-y-auto overflow-x-hidden rounded-lg bg-gray-50 p-4">
-                      {activeDataTab === "transaction" ? (
+                      {activeDataTab === 'transaction' ? (
                         alert.transaction ? (
                           <pre className={jsonPreviewClassName}>{formatJson(alert.transaction)}</pre>
                         ) : (
@@ -793,11 +791,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                             className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
                           >
                             <div
-                              className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${action.outcome === "SUCCESS"
-                                ? "bg-green-100 text-green-600"
-                                : action.outcome === "FAILURE"
-                                  ? "bg-red-100 text-red-600"
-                                  : "bg-blue-100 text-blue-600"
+                              className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-1 ${action.outcome === 'SUCCESS'
+                                ? 'bg-green-100 text-green-600'
+                                : action.outcome === 'FAILURE'
+                                  ? 'bg-red-100 text-red-600'
+                                  : 'bg-blue-100 text-blue-600'
                                 }`}
                             >
                               <ClockIcon className="w-4 h-4" />
