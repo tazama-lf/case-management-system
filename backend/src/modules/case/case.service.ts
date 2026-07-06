@@ -910,7 +910,15 @@ export class CaseService {
           caseType: isFraudNAML && isSupervisor ? CaseType.FRAUD : updateData.caseType,
           status: targetStatus,
         };
-        let updatedCase = await this.caseQueryService.updateCase(caseId, caseUpdateData, userId);
+        let updatedCase = await prisma.case.update({
+          where: { case_id: caseId },
+          data: {
+            case_type: caseUpdateData.caseType,
+            priority: caseUpdateData.priority,
+            status: caseUpdateData.status,
+            case_owner_user_id: caseUpdateData.caseOwnerUserId,
+          },
+        });
         if (investigationGroup !== undefined) {
           updatedCase = await prisma.case.update({
             where: { case_id: caseId },

@@ -678,20 +678,20 @@ describe('CaseService', () => {
     };
 
     const setupMockTransaction = () => {
+      const caseUpdate = jest.fn().mockResolvedValue({
+        ...mockDraftCase,
+        case_type: CaseType.FRAUD,
+        group_id: 123,
+        priority: Priority.CRITICAL,
+      });
       const mockTransaction = jest.fn(async (callback) => {
         const mockPrisma = {
-          case: {
-            update: jest.fn().mockResolvedValue({
-              ...mockDraftCase,
-              case_type: CaseType.FRAUD,
-              group_id: 123,
-              priority: Priority.CRITICAL,
-            }),
-          },
+          case: { update: caseUpdate },
         };
         return await callback(mockPrisma);
       });
       prismaService.$transaction.mockImplementation(mockTransaction);
+      return { caseUpdate };
     };
 
     it('should complete case creation by investigator with approval required', async () => {
@@ -744,7 +744,7 @@ describe('CaseService', () => {
         { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 },
       ] as any);
       const updatedCase = { ...fraudAmlCase, ...fraudAmlData, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT };
-      setupMockTransaction();
+      const { caseUpdate } = setupMockTransaction();
       caseQueryService.updateCase.mockResolvedValue(updatedCase as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
       taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Investigate Case' } as any);
@@ -762,13 +762,26 @@ describe('CaseService', () => {
       await service.completeCaseCreation(1, fraudAmlData as any, 'user-123', 'tenant-123', 'SUPERVISOR', mockSupervisorUser, completeCaseCreationEndpoint);
 
       expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, 'tenant-123');
-      expect(caseQueryService.updateCase).toHaveBeenCalledWith(
+      expect(caseQueryService.updateCase).not.toHaveBeenCalled();
+      expect(caseUpdate).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({
-          caseType: CaseType.FRAUD,
-          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          where: { case_id: 1 },
+          data: expect.objectContaining({
+            case_type: CaseType.FRAUD,
+            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          }),
         }),
-        'user-123',
+      );
+      expect(caseUpdate).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: { case_id: 1 },
+          data: expect.objectContaining({
+            group_id: 123,
+            case_type: CaseType.FRAUD,
+          }),
+        }),
       );
       expect(taskService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'Investigate Case' }), 'user-123', 'tenant-123');
       expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
