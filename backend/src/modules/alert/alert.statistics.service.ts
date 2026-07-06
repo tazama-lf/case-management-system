@@ -61,7 +61,7 @@ export class AlertStatisticsService {
     this.validateSort(sortBy, sortOrder);
 
     const dateRange = this.parseDateRange(params);
-    const whereClause = await this.buildWhereClause(params, dateRange);
+    const whereClause = this.buildWhereClause(params, dateRange);
 
     try {
       const alerts = await this.alertRepository.findMany({
@@ -125,10 +125,10 @@ export class AlertStatisticsService {
     return { parsedStartDate, parsedEndDate };
   }
 
-  private async buildWhereClause(params: GetAlertsForUserParams, dateRange: DateRange): Promise<Prisma.AlertWhereInput> {
+  private buildWhereClause(params: GetAlertsForUserParams, dateRange: DateRange): Prisma.AlertWhereInput {
     const whereClause: Prisma.AlertWhereInput = {
       tenant_id: params.tenantId,
-      ...(await this.getReportStatusFilter(params.reportStatus, params.tenantId)),
+      ...this.getReportStatusFilter(params.reportStatus),
       ...this.getPriorityFilter(params.priority),
       ...this.getAlertTypeFilter(params.alertType, params.nullAlertType),
       ...this.getDirectFilters(params, dateRange),
@@ -138,7 +138,7 @@ export class AlertStatisticsService {
     return whereClause;
   }
 
-  private async getReportStatusFilter(reportStatus: string | undefined, tenantId: string): Promise<Prisma.AlertWhereInput> {
+  private getReportStatusFilter(reportStatus: string | undefined): Prisma.AlertWhereInput {
     if (!reportStatus) return {};
 
     const reportStatusFilter: Prisma.AlertWhereInput = {
@@ -152,10 +152,7 @@ export class AlertStatisticsService {
 
       // FRAUD_AND_AML alerts never get case_id set (they link via InvestigationGroup instead),
       // so without this they'd keep showing up as available even after a case was created.
-      const groupedAlertIds = await this.alertRepository.getAlertIdsWithInvestigationGroup(tenantId);
-      if (groupedAlertIds.length > 0) {
-        reportStatusFilter.alert_id = { notIn: groupedAlertIds };
-      }
+      reportStatusFilter.investigationGroup = null;
     }
 
     return reportStatusFilter;

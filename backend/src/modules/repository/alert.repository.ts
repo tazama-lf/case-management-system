@@ -133,20 +133,6 @@ export class AlertRepository extends BaseRepository {
     return group?.cases ?? [];
   }
 
-  /**
-   * FRAUD_AND_AML alerts never get alerts.case_id populated (see getGroupedCasesForAlert),
-   * so the "no alert linked to a case" (NALT) list query must also exclude alerts that
-   * already have an InvestigationGroup, or they'll keep reappearing after a case is created.
-   */
-  async getAlertIdsWithInvestigationGroup(tenantId: string, tx?: Prisma.TransactionClient): Promise<number[]> {
-    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
-    const groups = await client.investigationGroup.findMany({
-      where: { tenant_id: tenantId },
-      select: { alert_id: true },
-    });
-    return groups.map((group) => group.alert_id);
-  }
-
   async updateAlert(alertId: number, updateData: UpdateAlertDTO, tx?: Prisma.TransactionClient): Promise<Alert> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     const updatedAlert = await client.alert.update({

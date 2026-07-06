@@ -47,7 +47,6 @@ describe('AlertStatisticsService', () => {
   const createMockRepository = () => ({
     findMany: jest.fn(),
     count: jest.fn(),
-    getAlertIdsWithInvestigationGroup: jest.fn().mockResolvedValue([]),
   });
 
   // Helper function to create mock logger
@@ -335,17 +334,15 @@ describe('AlertStatisticsService', () => {
       it.each([
         ['uppercase', 'NALT'],
         ['lowercase', 'nalt'],
-      ])('should add case_id null filter when reportStatus is %s', async (_desc, status) => {
+      ])('should add case_id and investigationGroup null filters when reportStatus is %s', async (_desc, status) => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
-        alertRepository.getAlertIdsWithInvestigationGroup.mockResolvedValue([]);
 
         await service.getAlertsForUser({
           ...defaultParams,
           reportStatus: status,
         });
 
-        expect(alertRepository.getAlertIdsWithInvestigationGroup).toHaveBeenCalledWith(defaultParams.tenantId);
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
@@ -354,35 +351,13 @@ describe('AlertStatisticsService', () => {
                 equals: status,
               },
               case_id: null,
-            }),
-          }),
-        );
-
-        const callArgs = alertRepository.findMany.mock.calls[0][0];
-        expect(callArgs.where?.alert_id).toBeUndefined();
-      });
-
-      it('should exclude alerts that already have an InvestigationGroup when reportStatus is NALT', async () => {
-        alertRepository.findMany.mockResolvedValue([]);
-        alertRepository.count.mockResolvedValue(0);
-        alertRepository.getAlertIdsWithInvestigationGroup.mockResolvedValue([5, 9]);
-
-        await service.getAlertsForUser({
-          ...defaultParams,
-          reportStatus: 'NALT',
-        });
-
-        expect(alertRepository.findMany).toHaveBeenCalledWith(
-          expect.objectContaining({
-            where: expect.objectContaining({
-              case_id: null,
-              alert_id: { notIn: [5, 9] },
+              investigationGroup: null,
             }),
           }),
         );
       });
 
-      it('should not call getAlertIdsWithInvestigationGroup for non-NALT reportStatus', async () => {
+      it('should not add case_id/investigationGroup filters for non-NALT reportStatus', async () => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
 
@@ -391,7 +366,9 @@ describe('AlertStatisticsService', () => {
           reportStatus: 'NEW',
         });
 
-        expect(alertRepository.getAlertIdsWithInvestigationGroup).not.toHaveBeenCalled();
+        const callArgs = alertRepository.findMany.mock.calls[0][0];
+        expect(callArgs.where?.case_id).toBeUndefined();
+        expect(callArgs.where?.investigationGroup).toBeUndefined();
       });
     });
 
