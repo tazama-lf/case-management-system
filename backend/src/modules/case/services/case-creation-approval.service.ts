@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Outcome } from '../../../utils/types/outcome';
-import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, Alert, Task } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, CaseType, CaseCreationType, Priority, Case, Alert, Task, Prisma } from '@prisma/client-cms';
 import { ManualCreateCaseDto, CreateCaseDto } from '../dto';
 import { TaskService } from 'src/modules/task/task.service';
 import { TASK_NAMES, CANDIDATE_GROUPS, CLOSED_CASE_STATUSES } from '../../../constants/case.constants';
@@ -589,6 +589,7 @@ export class CaseCreationApprovalService {
     priority?: Priority,
     caseType?: CaseType,
     groupId?: number,
+    tx?: Prisma.TransactionClient,
   ): Promise<Case> {
     this.loggerService.log(`Start - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
     try {
@@ -601,9 +602,9 @@ export class CaseCreationApprovalService {
         updateData.group_id = groupId;
       }
       if (status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
-        await this.taskRepository.transaction(async (tx) => {
+        const createInvestigationTask = async (taskTx: Prisma.TransactionClient): Promise<void> => {
           // Fetch the case to get the tenant_id
-          const caseRecord = await this.taskRepository.findCaseBasic(caseId, tenantId, tx);
+          const caseRecord = await this.taskRepository.findCaseBasic(caseId, tenantId, taskTx);
           if (!caseRecord) {
             throw new NotFoundException(`Case ${caseId} not found`);
           }
@@ -620,17 +621,23 @@ export class CaseCreationApprovalService {
                 status: TaskStatus.STATUS_01_UNASSIGNED,
                 candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
               },
-              tx,
+              taskTx,
             );
           }
-        });
+        };
+
+        if (tx) {
+          await createInvestigationTask(tx);
+        } else {
+          await this.taskRepository.transaction(createInvestigationTask);
+        }
       }
 
       if (CLOSED_CASE_STATUSES.includes(status)) {
         updateData.case_owner_user_id = userId;
         updateData.final_outcome = status;
       }
-      const updatedCase = await this.caseRepository.updateCase(caseId, updateData);
+      const updatedCase = await this.caseRepository.updateCase(caseId, updateData, tx);
 
       this.flowableService.handleCaseStatusChanged({
         caseId,

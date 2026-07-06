@@ -364,7 +364,7 @@ export class TriageService {
           );
         } else if (alert.alert_type) {
           if (alert.alert_type === CaseType.FRAUD_AND_AML) {
-            const investigationGroup = await this.investigationGroupService.createInvestigationGroup(alert.alert_id, tenantId);
+            const investigationGroup = await this.investigationGroupService.createInvestigationGroup(alert.alert_id, tenantId, tx);
             await this.caseCreationService.updateCaseStatus(
               alert.case_id,
               CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
@@ -373,6 +373,7 @@ export class TriageService {
               priority,
               CaseType.FRAUD,
               investigationGroup.id,
+              tx,
             );
 
             const amlCase = await this.caseCreateService.createCaseWithInvestigationTask(
@@ -383,6 +384,7 @@ export class TriageService {
               CaseCreationType.AUTOMATIC_SYSTEM,
               'SUPERVISOR',
               investigationGroup.id,
+              tx,
             );
 
             await this.commentRepository.createComment(
@@ -396,7 +398,7 @@ export class TriageService {
               tx,
             );
 
-            await this.alertService.updateAlert(
+            const detachedAlert = await this.alertService.updateAlert(
               alertId,
               userId,
               {
@@ -404,6 +406,8 @@ export class TriageService {
               } as unknown as UpdateAlertDTO,
               tx,
             );
+
+            return { alert: detachedAlert, completeNewCaseTask, existingCase };
           } else {
             await this.caseCreationService.updateCaseStatus(
               alert.case_id,

@@ -761,7 +761,7 @@ describe('CaseService', () => {
 
       await service.completeCaseCreation(1, fraudAmlData as any, 'user-123', 'tenant-123', 'SUPERVISOR', mockSupervisorUser, completeCaseCreationEndpoint);
 
-      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, 'tenant-123');
+      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, 'tenant-123', expect.anything());
       expect(caseQueryService.updateCase).not.toHaveBeenCalled();
       expect(caseUpdate).toHaveBeenNthCalledWith(
         1,
@@ -801,10 +801,18 @@ describe('CaseService', () => {
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
         123,
+        expect.anything(),
       );
-      expect(alertRepository.updateAlert).toHaveBeenLastCalledWith(1, {
-        caseId: null,
-      });
+      expect(alertRepository.updateAlert).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          caseId: null,
+          priority_score: 85,
+          priority: Priority.CRITICAL,
+          alertType: CaseType.FRAUD_AND_AML,
+        }),
+        expect.anything(),
+      );
     });
 
     it.each([
@@ -862,6 +870,7 @@ describe('CaseService', () => {
           priority: Priority.CRITICAL,
           alertType: CaseType.FRAUD,
         }),
+        expect.anything(),
       );
     });
 

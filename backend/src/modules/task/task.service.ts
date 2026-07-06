@@ -24,7 +24,9 @@ export class TaskService {
   async createTask(taskDTO: CreateTaskDto, userId: string, tenantId: string, tx?: Prisma.TransactionClient): Promise<Task> {
     this.logger.log('Start - createTask', TaskService.name);
     try {
-      const caseRecord = await this.taskRepository.findCaseBasic(taskDTO.caseId, tenantId);
+      const caseRecord = tx
+        ? await this.taskRepository.findCaseBasic(taskDTO.caseId, tenantId, tx)
+        : await this.taskRepository.findCaseBasic(taskDTO.caseId, tenantId);
       if (!caseRecord) {
         throw new NotFoundException(`Case ${taskDTO.caseId} not found`);
       }
