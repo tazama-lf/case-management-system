@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { caseService } from '@/features/cases/services/caseService';
-import { FALLBACK_HIGH_THRESHOLD, FALLBACK_MEDIUM_THRESHOLD } from '@/shared/constants/casePriorityThresholds';
+import {
+  FALLBACK_HIGH_THRESHOLD,
+  FALLBACK_MEDIUM_THRESHOLD,
+} from '@/shared/constants/casePriorityThresholds';
 
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -30,7 +33,10 @@ export const usePriorityThresholds = (
         if (isMounted) setThresholds(result);
       })
       .catch((error: unknown) => {
-        console.error('Failed to load priority thresholds, using defaults:', error);
+        console.error(
+          'Failed to load priority thresholds, using defaults:',
+          error,
+        );
       });
 
     return () => {
