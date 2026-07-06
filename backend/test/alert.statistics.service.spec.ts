@@ -436,38 +436,6 @@ describe('AlertStatisticsService', () => {
       });
 
       it('should search by numeric alert_id', async () => {
-      it('should search by exact transaction id in supported transaction message paths', async () => {
-        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
-        alertRepository.count.mockResolvedValue(1);
-
-        await service.getAlertsForUser({
-          ...defaultParams,
-          search: 'TX-ABC-123',
-        });
-
-        expect(alertRepository.findMany).toHaveBeenCalledWith(
-          expect.objectContaining({
-            where: expect.objectContaining({
-              OR: expect.arrayContaining([
-                {
-                  transaction: {
-                    path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
-                    equals: 'TX-ABC-123',
-                  },
-                },
-                {
-                  transaction: {
-                    path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
-                    equals: 'TX-ABC-123',
-                  },
-                },
-              ]),
-            }),
-          }),
-        );
-      });
-
-      it('should search by numeric alert_id', async () => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
 

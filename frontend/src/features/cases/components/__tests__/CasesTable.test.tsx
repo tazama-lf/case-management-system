@@ -1,4 +1,4 @@
-﻿import { render, screen } from '../../../../test/testUtils';
+import { render, screen } from '../../../../test/testUtils';
 import { describe, it, expect, vi } from 'vitest';
 import CasesTable from '../CasesTable';
 import type { CaseRow } from '../casesTable.utils';

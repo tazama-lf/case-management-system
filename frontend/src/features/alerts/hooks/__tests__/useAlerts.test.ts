@@ -291,7 +291,6 @@ describe('useAlerts', () => {
   });
 
   it('sends custom date range to the server', async () => {
-  it('sends custom date range to the server', async () => {
     const startDate = '2024-01-01';
     const endDate = '2024-01-31';
     const expectedStartDate = new Date(2024, 0, 1, 0, 0, 0, 0).toISOString();
