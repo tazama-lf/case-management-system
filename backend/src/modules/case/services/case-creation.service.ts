@@ -159,7 +159,7 @@ export class CaseCreationService {
     const investigationGroup = isFraudNAML
       ? await this.investigationGroupService.createInvestigationGroup(dto.alertId, tenantId)
       : undefined;
-    const primaryCaseType = isFraudNAML ? CaseType.FRAUD : caseType;
+    const primaryCaseType = isFraudNAML && !needsApproval ? CaseType.FRAUD : caseType;
     const caseDetail: CreateCaseDto = {
       tenantId,
       caseCreatorUserId: userId,
@@ -177,7 +177,7 @@ export class CaseCreationService {
 
       const relatedCases = [createdCase];
       let amlCase: Case | undefined;
-      if (isFraudNAML) {
+      if (isFraudNAML && !needsApproval) {
         const createCaseDTO: CreateCaseDto = {
           tenantId,
           caseCreatorUserId: userId,
