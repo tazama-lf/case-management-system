@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus, Case, Alert } from '@prisma/client-cms';
+import { CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus, Case, Alert, Prisma } from '@prisma/client-cms';
 import { CANDIDATE_GROUPS } from 'src/constants/case.constants';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { TaskService } from 'src/modules/task/task.service';
@@ -26,11 +26,18 @@ export class CaseCreationService {
     private readonly investigationGroupService: InvestigationGroupService,
   ) {}
 
-  async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string, userRole: string, isFraudNAML = false): Promise<Case> {
+  async createCase(
+    createCaseDTO: CreateCaseDto,
+    userId: string,
+    tenantId: string,
+    userRole: string,
+    isFraudNAML = false,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Case> {
     try {
       this.loggerService.log('Start - Create Case', CaseCreationService.name);
 
-      const createdCase = await this.caseRepository.createCase({
+      const caseDetail = {
         tenantId: createCaseDTO.tenantId,
         caseCreatorUserId: createCaseDTO.caseCreatorUserId,
         caseOwnerUserId: createCaseDTO.caseOwnerUserId,
@@ -39,7 +46,8 @@ export class CaseCreationService {
         caseType: createCaseDTO.caseType,
         caseCreationType: createCaseDTO.caseCreationType,
         ...(createCaseDTO.groupId === undefined ? {} : { groupId: createCaseDTO.groupId }),
-      });
+      };
+      const createdCase = tx ? await this.caseRepository.createCase(caseDetail, tx) : await this.caseRepository.createCase(caseDetail);
 
       await this.executeFlowableCaseCreationEvent(createdCase, createCaseDTO.caseCreationType, isFraudNAML, userRole);
 
@@ -74,6 +82,7 @@ export class CaseCreationService {
     caseCreationType: CaseCreationType = CaseCreationType.AUTOMATIC_SYSTEM,
     userRole: string,
     groupId?: number,
+    tx?: Prisma.TransactionClient,
   ): Promise<{ caseId: number; message: string; taskId?: number }> {
     try {
       const createCaseDTO: CreateCaseDto = {
@@ -86,32 +95,32 @@ export class CaseCreationService {
         caseCreationType,
         ...(groupId === undefined ? {} : { groupId }),
       };
-      const newCase = await this.createCase(createCaseDTO, userId, tenantId, userRole, true);
+      const newCase = await this.createCase(createCaseDTO, userId, tenantId, userRole, true, tx);
 
-      const completeTask = await this.taskService.createTask(
-        {
-          caseId: newCase.case_id,
-          status: TaskStatus.STATUS_30_COMPLETED,
-          assignedUserId: userId,
-          name: 'Complete New Case',
-          description: `Investigation task for manually created case ${newCase.case_id}`,
-          candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-        },
-        userId,
-        tenantId,
-      );
+      const completeTaskDto = {
+        caseId: newCase.case_id,
+        status: TaskStatus.STATUS_30_COMPLETED,
+        assignedUserId: userId,
+        name: 'Complete New Case',
+        description: `Investigation task for manually created case ${newCase.case_id}`,
+        candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+      };
+      const completeTask = tx
+        ? await this.taskService.createTask(completeTaskDto, userId, tenantId, tx)
+        : await this.taskService.createTask(completeTaskDto, userId, tenantId);
 
-      await this.taskService.createTask(
-        {
-          caseId: newCase.case_id,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: 'Investigate Case',
-          description: `Created for triaging alert for case:${newCase.case_id}`,
-          candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-        },
-        userId,
-        tenantId,
-      );
+      const investigationTaskDto = {
+        caseId: newCase.case_id,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
+        name: 'Investigate Case',
+        description: `Created for triaging alert for case:${newCase.case_id}`,
+        candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+      };
+      if (tx) {
+        await this.taskService.createTask(investigationTaskDto, userId, tenantId, tx);
+      } else {
+        await this.taskService.createTask(investigationTaskDto, userId, tenantId);
+      }
 
       this.loggerService.log(
         `Case ${newCase.case_id} (${alertType}) created. BPMN workflow will create investigation task.`,

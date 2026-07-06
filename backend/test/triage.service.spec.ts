@@ -54,6 +54,7 @@ describe('TriageService', () => {
   let featureExtractionService: jest.Mocked<FeatureExtractionService>;
   let caseCreateService: jest.Mocked<CaseCreationService>;
   let loggingOrchestrationService: jest.Mocked<LoggingOrchestrationService>;
+  let investigationGroupService: jest.Mocked<InvestigationGroupService>;
   let prismaService: { investigationGroup: { create: jest.Mock; delete: jest.Mock } };
 
   const mockAlert = {
@@ -263,6 +264,7 @@ describe('TriageService', () => {
     featureExtractionService = module.get(FeatureExtractionService);
     caseCreateService = module.get(CaseCreationService);
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
+    investigationGroupService = module.get(InvestigationGroupService);
     prismaService = module.get(PrismaService) as any;
   });
 
@@ -418,14 +420,20 @@ describe('TriageService', () => {
         ...updateAlertDto,
         alertType: CaseType.FRAUD_AND_AML,
       };
+      const detachedAlert = {
+        ...fraudAndAmlAlert,
+        case_id: null,
+      };
 
       setupManualTriageMocks(fraudAndAmlAlert);
+      alertService.updateAlert.mockResolvedValueOnce(fraudAndAmlAlert as any).mockResolvedValueOnce(detachedAlert as any);
       caseCreateService.createCaseWithInvestigationTask.mockResolvedValue(mockCase as any);
       setupTransactionMock();
 
       const result = await service.handleManualTriage(1, fraudAndAmlDto, 'user-123', 'tenant-123');
 
-      expect(result).toEqual(fraudAndAmlAlert);
+      expect(result).toEqual(detachedAlert);
+      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, 'tenant-123', expect.anything());
       expect(caseCreationService.updateCaseStatus).toHaveBeenCalledWith(
         1,
         CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
@@ -434,6 +442,7 @@ describe('TriageService', () => {
         Priority.URGENT,
         CaseType.FRAUD,
         123,
+        expect.anything(),
       );
       expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
       expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
@@ -444,6 +453,7 @@ describe('TriageService', () => {
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
         123,
+        expect.anything(),
       );
       expect(alertService.updateAlert).toHaveBeenLastCalledWith(1, 'user-123', { caseId: null }, expect.anything());
     });
