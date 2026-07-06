@@ -49,7 +49,9 @@ export class CaseCreationService {
       };
       const createdCase = tx ? await this.caseRepository.createCase(caseDetail, tx) : await this.caseRepository.createCase(caseDetail);
 
-      await this.executeFlowableCaseCreationEvent(createdCase, createCaseDTO.caseCreationType, isFraudNAML, userRole);
+      if(!tx){
+        await this.executeFlowableCaseCreationEvent(createdCase, createCaseDTO.caseCreationType, isFraudNAML, userRole);
+      }
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
