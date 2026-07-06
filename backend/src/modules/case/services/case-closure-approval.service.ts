@@ -116,6 +116,14 @@ export class CaseClosureApprovalService {
             return bTime - aTime;
           })[0] || null;
 
+      if (!investigationTask) {
+        throw new NotFoundException({
+          message: 'Investigation task not found or not in a closeable state',
+          caseId,
+          requiredStatuses: [TaskStatus.STATUS_20_IN_PROGRESS, TaskStatus.STATUS_30_COMPLETED],
+        });
+      }
+
       this.logger.log(
         `Found investigation task userId ${investigationTask.assigned_user_id} and userId ${userId}`,
         CaseClosureApprovalService.name,
@@ -127,15 +135,6 @@ export class CaseClosureApprovalService {
           caseId,
           taskId: investigationTask.task_id,
           assignedTo: investigationTask.assigned_user_id,
-        });
-      }
-
-      if (investigationTask.status !== TaskStatus.STATUS_20_IN_PROGRESS && investigationTask.status !== TaskStatus.STATUS_30_COMPLETED) {
-        throw new ConflictException({
-          message: 'Investigation task must be in progress or completed to close case',
-          currentStatus: investigationTask.status,
-          requiredStatuses: [TaskStatus.STATUS_20_IN_PROGRESS, TaskStatus.STATUS_30_COMPLETED],
-          taskId: investigationTask.task_id,
         });
       }
 
