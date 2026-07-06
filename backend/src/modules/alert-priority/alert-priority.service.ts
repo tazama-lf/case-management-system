@@ -68,7 +68,8 @@ export class AlertPriorityService {
     // the cron tick is visibly marked failed for monitoring, matching escalate()'s
     // deliberate choice to let non-idempotency-race errors propagate.
     if (failures.length > 0) {
-      throw failures[0].reason;
+      const [{ reason }] = failures;
+      throw reason instanceof Error ? reason : new Error(String(reason));
     }
   }
 
