@@ -263,7 +263,7 @@ describe('CaseCreationService', () => {
           status: TaskStatus.STATUS_01_UNASSIGNED,
           name: 'Investigate Case',
           description: `Created for triaging alert for case:${mockCase.case_id}`,
-          candidateGroup: 'investigator',
+          candidateGroup: 'investigations',
         },
         userId,
         tenantId,

@@ -109,7 +109,7 @@ export class CaseCreationService {
           status: TaskStatus.STATUS_01_UNASSIGNED,
           name: 'Investigate Case',
           description: `Created for triaging alert for case:${newCase.case_id}`,
-          candidateGroup: 'investigator',
+          candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
         },
         userId,
         tenantId,
