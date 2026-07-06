@@ -1019,7 +1019,7 @@ export class CaseService {
           alertType: updateData.caseType,
           predictionOutcome: updateData.predictionOutcome,
           confidencePer: updateData.confidence,
-          case_id: caseId,
+          caseId,
         };
         await this.alertRepository.updateAlert(getAlertIdByCaseId, alertUpdateData);
         this.logger.log(`[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`, CaseService.name);
