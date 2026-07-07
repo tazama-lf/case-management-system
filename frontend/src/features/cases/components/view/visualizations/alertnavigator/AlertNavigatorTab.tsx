@@ -51,6 +51,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
         );
 
         setData(result);
+       
 
         // Keep all typologies collapsed initially
         setExpandedTypologyKey(null);
@@ -306,6 +307,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                       {typology.rules.length > 0 ? (
                         typology.rules.map((rule, idx: number) => (
                           <div key={idx} className="flex items-start gap-2">
+                            
                             <div className="flex-shrink-0 mt-1">
                               <div className="h-1.5 w-1.5 rounded-full bg-gray-400" />
                             </div>
@@ -329,6 +331,18 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                                 <div className="text-xs text-gray-500 mt-0.5">
                                   Independent Variable:{' '}
                                   {rule.independentVariable}
+                                </div>
+                              )}
+                              {rule.ruleDesc != null && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  Rule Description: {' '}
+                                  {rule.ruleDesc}
+                                </div>
+                              )}
+                              {rule.matched_band_reason != null && (
+                                <div className="text-xs text-gray-500 mt-0.5">                                  
+                                  Band Reasons: {' '}
+                                  {rule.matched_band_reason}
                                 </div>
                               )}
                             </div>
