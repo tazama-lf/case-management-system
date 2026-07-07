@@ -341,7 +341,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                               )}
                               {rule.matched_band_reason != null && (
                                 <div className="text-xs text-gray-500 mt-0.5">                                  
-                                  Band Reasons: {' '}
+                                  Band Reason: {' '}
                                   {rule.matched_band_reason}
                                 </div>
                               )}
