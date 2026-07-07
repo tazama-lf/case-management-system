@@ -34,7 +34,6 @@ describe('CaseClosureApprovalService', () => {
     case_type: CaseType.FRAUD,
     priority: Priority.CRITICAL,
     case_creator_user_id: 'creator-123',
-    parent_id: null,
     created_at: new Date(),
     updated_at: new Date(),
     tasks: [],
@@ -267,61 +266,55 @@ describe('CaseClosureApprovalService', () => {
       });
     });
 
-    it('should handle FRAUD_AND_AML case closure by supervisor', async () => {
+    it('should close FRAUD_AND_AML typed case through standard supervisor path without sibling gate', async () => {
       const fraudAmlCase = {
         ...mockCase,
         case_type: CaseType.FRAUD_AND_AML as any,
-        tasks: [{ ...mockTask, status: TaskStatus.STATUS_20_IN_PROGRESS }],
+        tasks: [{ ...mockTask, status: TaskStatus.STATUS_20_IN_PROGRESS, assigned_user_id: 'supervisor-123' }],
       };
       caseRepository.findCaseWithPermissionCheck.mockResolvedValue(fraudAmlCase as any);
-      (prismaService.case.findMany as jest.Mock).mockResolvedValue([
-        { ...mockCase, case_id: 2, parent_id: 1, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-        { ...mockCase, case_id: 3, parent_id: 1, status: CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE },
-      ] as any);
       caseRepository.updateCaseStatusAndCompleteTask.mockResolvedValue({
         updatedCase: { ...fraudAmlCase, status: CaseStatus.STATUS_82_CLOSED_CONFIRMED },
-        completedTask: null,
+        completedTask: { ...mockTask, status: TaskStatus.STATUS_30_COMPLETED },
       } as any);
 
       const result = await service.closeCase(1, mockCloseDto, 'supervisor-123', 'tenant-123', 'CMS_SUPERVISOR');
 
       expect(result.supervisor_closure).toBe(true);
-      expect(prismaService.case.findMany as jest.Mock).toHaveBeenCalledWith({
-        where: { parent_id: 1, tenant_id: 'tenant-123' },
-      });
+      expect(prismaService.case.findMany as jest.Mock).not.toHaveBeenCalled();
+      expect(flowableService.handleTaskCompleted).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 1,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+        }),
+      );
+    });
+
+    it('should allow investigator to submit FRAUD_AND_AML typed case closure through standard approval path', async () => {
+      const fraudAmlCase = {
+        ...mockCase,
+        case_type: CaseType.FRAUD_AND_AML as any,
+        tasks: [{ ...mockTask, status: TaskStatus.STATUS_20_IN_PROGRESS, assigned_user_id: 'user-123' }],
+      };
+      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(fraudAmlCase as any);
+      taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Approve Case Closure' } as any);
+      caseRepository.updateCaseStatusAndCompleteTask.mockResolvedValue({
+        updatedCase: { ...fraudAmlCase, status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL },
+        completedTask: { ...mockTask, status: TaskStatus.STATUS_30_COMPLETED },
+      } as any);
+
+      const result = await service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator');
+
+      expect(result.message).toContain('approval');
+      expect(prismaService.case.findMany as jest.Mock).not.toHaveBeenCalled();
+      expect(taskService.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Approve Case Closure' }),
+        'user-123',
+        'tenant-123',
+      );
     });
 
     it.each([
-      {
-        description: 'FRAUD_AND_AML sub cases are not closable',
-        setupMock: () => {
-          const fraudAmlCase = { ...mockCase, case_type: CaseType.FRAUD_AND_AML as any, tasks: [] };
-          caseRepository.findCaseWithPermissionCheck.mockResolvedValue(fraudAmlCase as any);
-          (prismaService.case.findMany as jest.Mock).mockResolvedValue([
-            { ...mockCase, case_id: 2, parent_id: 1, status: CaseStatus.STATUS_20_IN_PROGRESS },
-          ] as any);
-        },
-        role: 'CMS_SUPERVISOR',
-        error: ConflictException,
-      },
-      {
-        description: 'FRAUD_AND_AML sub cases do not exist',
-        setupMock: () => {
-          const fraudAmlCase = { ...mockCase, case_type: CaseType.FRAUD_AND_AML as any, tasks: [] };
-          caseRepository.findCaseWithPermissionCheck.mockResolvedValue(fraudAmlCase as any);
-          (prismaService.case.findMany as jest.Mock).mockResolvedValue([]);
-        },
-        error: BadRequestException,
-      },
-      {
-        description: 'non-supervisor tries to close FRAUD_AND_AML case',
-        setupMock: () => {
-          const fraudAmlCase = { ...mockCase, case_type: CaseType.FRAUD_AND_AML as any, tasks: [] };
-          caseRepository.findCaseWithPermissionCheck.mockResolvedValue(fraudAmlCase as any);
-        },
-        role: 'investigator',
-        error: BadRequestException,
-      },
       {
         description: 'case not found',
         setupMock: () => caseRepository.findCaseWithPermissionCheck.mockResolvedValue(null),
@@ -370,10 +363,10 @@ describe('CaseClosureApprovalService', () => {
         setupMock: () => caseRepository.findCaseWithPermissionCheck.mockRejectedValue(new Error('Database error')),
         error: InternalServerErrorException,
       },
-    ])('should throw $error.name when $description', async ({ setupMock, error, role }) => {
+    ])('should throw $error.name when $description', async ({ setupMock, error }) => {
       setupMock();
 
-      await expect(service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', role || 'investigator')).rejects.toThrow(error);
+      await expect(service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator')).rejects.toThrow(error);
     });
 
     it('should handle investigation task with STATUS_30_COMPLETED', async () => {

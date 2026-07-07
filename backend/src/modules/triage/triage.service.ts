@@ -22,6 +22,7 @@ import { AlertNavigatorDto, TypologyDto, RuleDto, BlockStatusDto, RelatedLinksDt
 import { LinkDto, TransactionDetailDto, ChargeDto, CreditorDto, DebtorDto } from './dto/transaction-detail.dto';
 import { setTimeout } from 'node:timers/promises';
 import { TaskRepository } from '../repository/task.repository';
+import { InvestigationGroupService } from '../investigation-group/investigation-group.service';
 
 @Injectable()
 export class TriageService {
@@ -33,6 +34,7 @@ export class TriageService {
   ];
 
   constructor(
+    private readonly investigationGroupService: InvestigationGroupService,
     private readonly logger: LoggerService,
     private readonly alertRepository: AlertRepository,
     private readonly commentRepository: CommentRepository,
@@ -361,32 +363,38 @@ export class TriageService {
             updateAlertDto.alertType,
           );
         } else if (alert.alert_type) {
-          await this.caseCreationService.updateCaseStatus(
-            alert.case_id,
-            CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-            userId,
-            tenantId,
-            priority,
-            updateAlertDto.alertType,
-          );
           if (alert.alert_type === CaseType.FRAUD_AND_AML) {
-            await this.caseCreateService.createCaseWithInvestigationTask(
-              CaseType.FRAUD,
+            const investigationGroup = await this.investigationGroupService.createInvestigationGroup(alert.alert_id, tenantId);
+            await this.caseCreationService.updateCaseStatus(
+              alert.case_id,
+              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
               userId,
               tenantId,
-              alert.case_id,
               priority,
-              CaseCreationType.AUTOMATIC_SYSTEM,
-              'SUPERVISOR',
+              CaseType.FRAUD,
+              investigationGroup.id,
             );
             await this.caseCreateService.createCaseWithInvestigationTask(
               CaseType.AML,
               userId,
               tenantId,
-              alert.case_id,
               priority,
               CaseCreationType.AUTOMATIC_SYSTEM,
               'SUPERVISOR',
+              investigationGroup.id,
+            );
+
+            await this.alertService.updateAlert(alertId, userId, {
+              caseId: undefined,
+            });
+          } else {
+            await this.caseCreationService.updateCaseStatus(
+              alert.case_id,
+              CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+              userId,
+              tenantId,
+              priority,
+              updateAlertDto.alertType,
             );
           }
         }
@@ -601,6 +609,7 @@ export class TriageService {
             },
           });
 
+          const investigationGroup = await this.investigationGroupService.createInvestigationGroup(alertId, tenantId);
           await this.caseCreationService.updateCaseStatus(
             caseId,
             CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
@@ -608,24 +617,25 @@ export class TriageService {
             tenantId,
             priority,
             predictedAlertType,
+            investigationGroup.id,
           );
           await this.caseCreateService.createCaseWithInvestigationTask(
             CaseType.FRAUD,
             userId,
             tenantId,
-            caseId,
             priority,
             CaseCreationType.AUTOMATIC_SYSTEM,
             'SUPERVISOR',
+            investigationGroup.id,
           );
           await this.caseCreateService.createCaseWithInvestigationTask(
             CaseType.AML,
             userId,
             tenantId,
-            caseId,
             priority,
             CaseCreationType.AUTOMATIC_SYSTEM,
             'SUPERVISOR',
+            investigationGroup.id,
           );
 
           return;

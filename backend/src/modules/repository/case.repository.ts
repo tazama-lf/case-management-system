@@ -184,34 +184,16 @@ export class CaseRepository extends BaseRepository {
     // Otherwise, PostgreSQL will throw an error when trying to parse userId as UUID
     if (isValidUuid) {
       whereCondition.OR = [
+        { case_owner_user_id: userId },
         {
-          case_type: {
-            in: ['FRAUD_AND_AML'],
-          },
-        },
-        {
-          AND: [
-            {
-              case_type: {
-                notIn: ['FRAUD_AND_AML'],
+          tasks: {
+            some: {
+              assigned_user_id: userId,
+              name: {
+                in: ['Investigate Case', 'Investigate case', 'investigate case'],
               },
             },
-            {
-              OR: [
-                { case_owner_user_id: userId },
-                {
-                  tasks: {
-                    some: {
-                      assigned_user_id: userId,
-                      name: {
-                        in: ['Investigate Case', 'Investigate case', 'investigate case'],
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
+          },
         },
       ];
     } else {
@@ -317,6 +299,27 @@ export class CaseRepository extends BaseRepository {
     });
     if (!caseData) {
       throw new NotFoundException('Case Not Found');
+    }
+    if (!caseData.alert && caseData.group_id) {
+      const group = await client.investigationGroup.findFirst({
+        where: {
+          id: caseData.group_id,
+          tenant_id: tenantId,
+        },
+      });
+      const groupAlert = group
+        ? await client.alert.findFirst({
+            where: {
+              alert_id: group.alert_id,
+              tenant_id: tenantId,
+            },
+          })
+        : null;
+
+      return {
+        ...caseData,
+        alert: groupAlert,
+      };
     }
     return caseData;
   }
@@ -535,6 +538,7 @@ export class CaseRepository extends BaseRepository {
 
   async createCase(caseDetail: any, tx?: Prisma.TransactionClient): Promise<Case> {
     const prisma = tx ?? this.prisma;
+
     return await prisma.case.create({
       data: {
         tenant_id: caseDetail.tenantId,
@@ -544,7 +548,7 @@ export class CaseRepository extends BaseRepository {
         priority: caseDetail.priority,
         case_type: caseDetail.caseType,
         case_creation_type: caseDetail.caseCreationType,
-        parent_id: caseDetail.parentId,
+        ...(caseDetail.groupId === undefined ? {} : { group_id: caseDetail.groupId }),
       },
     });
   }

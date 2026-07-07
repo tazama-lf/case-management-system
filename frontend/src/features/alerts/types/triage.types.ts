@@ -190,7 +190,6 @@ export interface Case {
   priority: Priority;
   created_at: string;
   updated_at: string;
-  parent_id?: number;
   case_type: CaseType;
   case_creation_type: CaseCreationType;
 }

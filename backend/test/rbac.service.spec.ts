@@ -268,6 +268,7 @@ import { LoggingOrchestrationService } from '../src/modules/logging-orchestratio
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../prisma/prisma.service';
 import { CaseStatus, CaseType, Priority, TaskStatus } from '@prisma/client-cms';
+import { InvestigationGroupService } from '../src/modules/investigation-group/investigation-group.service';
 
 describe('CaseService — Tier 2 & Tier 3 RBAC guards', () => {
   let service: CaseService;
@@ -282,7 +283,6 @@ describe('CaseService — Tier 2 & Tier 3 RBAC guards', () => {
     status: CaseStatus.STATUS_20_IN_PROGRESS,
     case_type: CaseType.FRAUD,
     priority: Priority.CRITICAL,
-    parent_id: null,
     final_outcome: null,
     created_at: new Date(),
     updated_at: new Date(),
@@ -305,7 +305,6 @@ describe('CaseService — Tier 2 & Tier 3 RBAC guards', () => {
             updateCase: jest.fn(),
             getAllCases: jest.fn(),
             getUserCases: jest.fn(),
-            getSubCasesDetails: jest.fn(),
             getUserWorkloadStats: jest.fn(),
           },
         },
@@ -323,6 +322,7 @@ describe('CaseService — Tier 2 & Tier 3 RBAC guards', () => {
         { provide: LoggingOrchestrationService, useValue: { logActions: jest.fn(), logActionsWithHistory: jest.fn() } },
         { provide: LoggerService, useValue: { log: jest.fn(), warn: jest.fn(), error: jest.fn() } },
         { provide: PrismaService, useValue: { $transaction: jest.fn(), case: { findFirst: jest.fn(), update: jest.fn() } } },
+        { provide: InvestigationGroupService, useValue: { createInvestigationGroup: jest.fn() } },
       ],
     }).compile();
 

@@ -76,17 +76,9 @@ vi.mock('@/shared/providers/ToastProvider', () => ({
 import TasksDetailsModal from '../TasksDetailsModal';
 
 const mockGetTasksByCaseId = vi.fn();
-const mockGetCaseDetails = vi.fn();
-
 vi.mock('../../services/taskService', () => ({
   taskService: {
     getTasksByCaseId: (...args: any[]) => mockGetTasksByCaseId(...args),
-  },
-}));
-
-vi.mock('../../services/caseService', () => ({
-  caseService: {
-    getCaseDetails: (...args: any[]) => mockGetCaseDetails(...args),
   },
 }));
 
@@ -115,11 +107,6 @@ const mockCaseData: CaseRow = {
   }),
 };
 
-const mockCaseWithParent: CaseRow = {
-  ...mockCaseData,
-  parentId: 999,
-};
-
 const mockTasks = [
   {
     task_id: 'TASK-1',
@@ -137,9 +124,6 @@ describe('TasksDetailsModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetTasksByCaseId.mockResolvedValue([]);
-    mockGetCaseDetails.mockResolvedValue({
-      alert: { alert_id: 42, transaction: null },
-    });
   });
 
   const renderModal = (
@@ -253,64 +237,6 @@ describe('TasksDetailsModal', () => {
     expect(screen.getByText('Investigation Summary Tab')).toBeInTheDocument();
   });
 
-  it('fetches parent case details when parentId exists', async () => {
-    mockGetCaseDetails.mockResolvedValue({
-      alert: { alert_id: 42, transaction: '{"data":"test"}' },
-    });
-
-    renderModal({ row: mockCaseWithParent });
-
-    await waitFor(() => {
-      expect(mockGetCaseDetails).toHaveBeenCalledWith(999);
-    });
-  });
-
-  it('defers Visualizations tab visibility until parent case details finish loading', async () => {
-    let resolveParentCase: ((value: unknown) => void) | undefined;
-    mockGetCaseDetails.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveParentCase = resolve;
-        }),
-    );
-
-    renderModal({ row: mockCaseWithParent });
-
-    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
-
-    resolveParentCase?.({
-      alert: {
-        alert_id: 42,
-        transaction: JSON.stringify({
-          FIToFIPmtSts: {
-            TxInfAndSts: {
-              OrgnlEndToEndId: 'PARENT-TXN-001',
-            },
-          },
-        }),
-      },
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('Visualizations')).toBeInTheDocument();
-    });
-  });
-
-  it('handles parent case details fetch error', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-    mockGetCaseDetails.mockRejectedValue(new Error('fetch failed'));
-
-    renderModal({ row: mockCaseWithParent });
-
-    await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to fetch case details for parent case:',
-        expect.any(Error),
-      );
-    });
-    consoleSpy.mockRestore();
-  });
-
   it('handles task fetch error gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     mockGetTasksByCaseId.mockRejectedValue(new Error('task fetch failed'));
@@ -332,33 +258,6 @@ describe('TasksDetailsModal', () => {
 
     await user.click(screen.getByText('Visualizations'));
     expect(screen.getByText(/txn:TXN-12345/)).toBeInTheDocument();
-  });
-
-  it('extracts transactionId from parent case transaction data', async () => {
-    mockGetCaseDetails.mockResolvedValue({
-      alert: {
-        alert_id: 42,
-        transaction: JSON.stringify({
-          FIToFIPmtSts: {
-            TxInfAndSts: {
-              OrgnlEndToEndId: 'PARENT-TXN-001',
-            },
-          },
-        }),
-      },
-    });
-
-    const user = userEvent.setup();
-    renderModal({ row: mockCaseWithParent });
-
-    await waitFor(() => {
-      expect(mockGetCaseDetails).toHaveBeenCalledWith(999);
-    });
-
-    await user.click(screen.getByText('Visualizations'));
-    await waitFor(() => {
-      expect(screen.getByText(/txn:PARENT-TXN-001/)).toBeInTheDocument();
-    });
   });
 
   it('hides Visualizations when transaction data is invalid JSON', () => {

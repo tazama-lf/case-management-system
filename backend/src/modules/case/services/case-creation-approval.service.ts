@@ -11,8 +11,9 @@ import { CaseQueryService } from './case-query.service';
 import { FlowableService } from '../..//flowable/flowable.service';
 import { TaskRepository } from 'src/modules/repository/task.repository';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
-import { CaseCreationService } from './case-creation.service';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
+import { InvestigationGroupService } from 'src/modules/investigation-group/investigation-group.service';
+import { AlertRepository } from 'src/modules/repository/alert.repository';
 
 @Injectable()
 export class CaseCreationApprovalService {
@@ -25,8 +26,9 @@ export class CaseCreationApprovalService {
     private readonly casePriorityUtil: CasePriorityUtil,
     private readonly flowableService: FlowableService,
     private readonly caseQueryService: CaseQueryService,
-    private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly investigationGroupService: InvestigationGroupService,
+    private readonly alertRepository: AlertRepository,
   ) {}
 
   private validateCaseCompletionFields(existingCase: any): string[] {
@@ -187,25 +189,124 @@ export class CaseCreationApprovalService {
         },
       });
 
+      let finalCase = txResult.case;
+
       if (txResult.case.case_type === CaseType.FRAUD_AND_AML) {
-        await this.caseCreateService.createCaseWithInvestigationTask(
-          CaseType.AML,
-          txResult.case.case_creator_user_id,
+        // FRAUD_AND_AML splits into two sibling cases sharing an InvestigationGroup:
+        // the already-approved case becomes the FRAUD case, and a new AML case is
+        // created alongside it with identical case data and an identical task.
+        const alertId = await this.alertRepository.getAlertByCaseId(caseId);
+        const investigationGroup = await this.investigationGroupService.createInvestigationGroup(alertId, tenantId);
+
+        finalCase = await this.caseRepository.updateCase(caseId, {
+          case_type: CaseType.FRAUD,
+          group_id: investigationGroup.id,
+        });
+
+        const amlCase = await this.caseRepository.createCase({
+          tenantId: finalCase.tenant_id,
+          caseCreatorUserId: finalCase.case_creator_user_id,
+          caseOwnerUserId: finalCase.case_owner_user_id,
+          status: finalCase.status,
+          priority: finalCase.priority,
+          caseType: CaseType.AML,
+          caseCreationType: finalCase.case_creation_type,
+          groupId: investigationGroup.id,
+        });
+
+        // The AML case is created directly at READY_FOR_ASSIGNMENT, skipping the
+        // draft/approval stages the FRAUD case actually went through. Backfill the
+        // same "Complete New Case" and "Approve Case Creation" task history (both
+        // already completed) so the AML case's timeline mirrors the FRAUD case's.
+        const tasksToBackfill = await this.taskRepository.findTasks(
+          { case_id: finalCase.case_id, name: { in: [TASK_NAMES.COMPLETE_NEW_CASE, TASK_NAMES.APPROVE_CASE_CREATION] } },
           tenantId,
-          txResult.case.case_id,
-          txResult.case.priority,
-          CaseCreationType.AUTOMATIC_SYSTEM,
-          'SUPERVISOR',
+          false,
         );
-        await this.caseCreateService.createCaseWithInvestigationTask(
-          CaseType.FRAUD,
-          txResult.case.case_creator_user_id,
+
+        const amlCompleteNewCaseTask = await this.taskService.createTask(
+          {
+            caseId: amlCase.case_id,
+            status: TaskStatus.STATUS_30_COMPLETED,
+            assignedUserId: tasksToBackfill.find((t) => t.name === TASK_NAMES.COMPLETE_NEW_CASE)?.assigned_user_id ?? undefined,
+            name: TASK_NAMES.COMPLETE_NEW_CASE,
+            description: 'Complete the draft case by providing all required information',
+            candidateGroup:
+              tasksToBackfill.find((t) => t.name === TASK_NAMES.COMPLETE_NEW_CASE)?.candidateGroup ?? CANDIDATE_GROUPS.INVESTIGATIONS,
+          },
+          supervisorId,
           tenantId,
-          txResult.case.case_id,
-          txResult.case.priority,
-          CaseCreationType.AUTOMATIC_SYSTEM,
-          'SUPERVISOR',
         );
+        await this.flowableService.handleTaskCompleted({
+          caseId: amlCase.case_id,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: amlCompleteNewCaseTask.name!,
+          completionVariables: {
+            autoCloseEligible: false,
+            CaseType: amlCase.case_type,
+            casePriority: amlCase.priority,
+            draftApprovalRequired: true,
+          },
+        });
+
+        const amlApproveCaseCreationTask = await this.taskService.createTask(
+          {
+            caseId: amlCase.case_id,
+            status: TaskStatus.STATUS_30_COMPLETED,
+            assignedUserId: tasksToBackfill.find((t) => t.name === TASK_NAMES.APPROVE_CASE_CREATION)?.assigned_user_id ?? undefined,
+            name: TASK_NAMES.APPROVE_CASE_CREATION,
+            description: `Review and approve case creation for case ${amlCase.case_id}`,
+            candidateGroup:
+              tasksToBackfill.find((t) => t.name === TASK_NAMES.APPROVE_CASE_CREATION)?.candidateGroup ?? CANDIDATE_GROUPS.SUPERVISORS,
+          },
+          supervisorId,
+          tenantId,
+        );
+
+        await this.flowableService.handleCaseStatusChanged({
+          caseId: amlCase.case_id,
+          newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        });
+        await this.flowableService.handleTaskCompleted({
+          caseId: amlCase.case_id,
+          newStatus: TaskStatus.STATUS_30_COMPLETED,
+          taskName: amlApproveCaseCreationTask.name!,
+          completionVariables: {
+            creationApproval: 'approve',
+            creationComments: 'Case creation approved by supervisor',
+          },
+        });
+
+        await Promise.all(
+          [finalCase, amlCase].map(async (relatedCase) => {
+            await this.taskService.createTask(
+              {
+                caseId: relatedCase.case_id,
+                status: TaskStatus.STATUS_01_UNASSIGNED,
+                name: TASK_NAMES.INVESTIGATE_CASE,
+                description: `Investigate case: ${relatedCase.case_id}`,
+                candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+              },
+              supervisorId,
+              tenantId,
+            );
+
+            await this.loggingOrchestrationService.logActionsWithHistory(
+              {
+                userId: supervisorId,
+                operation: 'approveCaseCreation',
+                entityName: CaseCreationApprovalService.name,
+                actionPerformed: `Approved case creation for case ${relatedCase.case_id}`,
+                outcome: Outcome.SUCCESS,
+                tenantId,
+              },
+              relatedCase.case_id,
+              tenantId,
+            );
+          }),
+        );
+
+        await this.alertRepository.updateAlert(alertId, { caseId: undefined });
       } else {
         await this.taskService.createTask(
           {
@@ -218,20 +319,20 @@ export class CaseCreationApprovalService {
           supervisorId,
           tenantId,
         );
-      }
 
-      await this.loggingOrchestrationService.logActionsWithHistory(
-        {
-          userId: supervisorId,
-          operation: 'approveCaseCreation',
-          entityName: CaseCreationApprovalService.name,
-          actionPerformed: `Approved case creation for case ${caseId}`,
-          outcome: Outcome.SUCCESS,
+        await this.loggingOrchestrationService.logActionsWithHistory(
+          {
+            userId: supervisorId,
+            operation: 'approveCaseCreation',
+            entityName: CaseCreationApprovalService.name,
+            actionPerformed: `Approved case creation for case ${caseId}`,
+            outcome: Outcome.SUCCESS,
+            tenantId,
+          },
+          caseId,
           tenantId,
-        },
-        caseId,
-        tenantId,
-      );
+        );
+      }
 
       this.loggerService.log(
         `Case creation approved for case ${caseId}, investigation task(s) created as needed`,
@@ -240,7 +341,7 @@ export class CaseCreationApprovalService {
 
       return {
         success: true,
-        case: txResult.case,
+        case: finalCase,
         message: 'Case creation approved. Investigation task(s) created as needed.',
       };
     } catch (error) {
@@ -458,6 +559,7 @@ export class CaseCreationApprovalService {
     tenantId: string,
     priority?: Priority,
     caseType?: CaseType,
+    groupId?: number,
   ): Promise<Case> {
     this.loggerService.log(`Start - Update Case Status for case ${caseId} to status ${status}`, CaseCreationApprovalService.name);
     try {
@@ -466,6 +568,9 @@ export class CaseCreationApprovalService {
         priority,
         case_type: caseType,
       };
+      if (groupId !== undefined) {
+        updateData.group_id = groupId;
+      }
       if (status === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
         await this.taskRepository.transaction(async (tx) => {
           // Fetch the case to get the tenant_id

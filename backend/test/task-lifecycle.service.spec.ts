@@ -205,7 +205,6 @@ describe('TaskLifecycleService', () => {
       case_id: 1,
       status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
       tenant_id: 'tenant1',
-      parent_id: null,
     };
 
     it('should assign investigation task and update case status', async () => {
@@ -306,11 +305,9 @@ describe('TaskLifecycleService', () => {
       expect(mockCommentRepository.createComment).toHaveBeenCalled();
     });
 
-    it('should handle task assignment with parent case update', async () => {
-      const caseWithParent = { ...existingCase, parent_id: 10 };
-
+    it('should assign task by updating the task case once', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
-      mockCaseRepository.findCaseById.mockResolvedValue(caseWithParent);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
 
       mockPrisma.task.update.mockResolvedValue({
         ...existingTask,
@@ -318,7 +315,7 @@ describe('TaskLifecycleService', () => {
         status: TaskStatus.STATUS_10_ASSIGNED,
       });
       mockPrisma.case.update.mockResolvedValue({
-        ...caseWithParent,
+        ...existingCase,
         status: CaseStatus.STATUS_10_ASSIGNED,
       });
       mockPrisma.case.findFirst.mockResolvedValue({
@@ -329,6 +326,8 @@ describe('TaskLifecycleService', () => {
       await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey);
 
       expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalled();
+      expect(mockPrisma.case.findFirst).not.toHaveBeenCalled();
+      expect(mockPrisma.case.update).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -346,7 +345,6 @@ describe('TaskLifecycleService', () => {
       case_id: 1,
       status: CaseStatus.STATUS_20_IN_PROGRESS,
       tenant_id: 'tenant1',
-      parent_id: null,
     };
 
     it('should reassign task successfully', async () => {
@@ -376,18 +374,16 @@ describe('TaskLifecycleService', () => {
       await expect(service.reassignTask(999, 'supervisor1', 'tenant1', 'user2', 'note', mockSupervisorUser, testEndpointKey)).rejects.toThrow(NotFoundException);
     });
 
-    it('should handle parent case update during reassignment', async () => {
-      const caseWithParent = { ...existingCase, parent_id: 10 };
-
+    it('should reassign task by updating the task case once', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
-      mockCaseRepository.findCaseById.mockResolvedValue(caseWithParent);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
 
       mockPrisma.task.update.mockResolvedValue({
         ...existingTask,
         assigned_user_id: 'user2',
       });
       mockPrisma.case.update.mockResolvedValue({
-        ...caseWithParent,
+        ...existingCase,
         status: CaseStatus.STATUS_10_ASSIGNED,
       });
       mockPrisma.case.findFirst.mockResolvedValue({
@@ -398,6 +394,8 @@ describe('TaskLifecycleService', () => {
       await service.reassignTask(1, 'supervisor1', 'tenant1', 'user2', 'Reassign note', mockSupervisorUser, testEndpointKey);
 
       expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalled();
+      expect(mockPrisma.case.findFirst).not.toHaveBeenCalled();
+      expect(mockPrisma.case.update).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -415,7 +413,6 @@ describe('TaskLifecycleService', () => {
       case_id: 1,
       status: CaseStatus.STATUS_20_IN_PROGRESS,
       tenant_id: 'tenant1',
-      parent_id: null,
     };
 
     it('should unassign task successfully', async () => {
@@ -521,18 +518,16 @@ describe('TaskLifecycleService', () => {
       );
     });
 
-    it('should handle parent case update during unassignment', async () => {
-      const caseWithParent = { ...existingCase, parent_id: 10 };
-
+    it('should unassign task by updating the task case once', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
-      mockCaseRepository.findCaseById.mockResolvedValue(caseWithParent);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
 
       mockPrisma.task.update.mockResolvedValue({
         ...existingTask,
         assigned_user_id: null,
       });
       mockPrisma.case.update.mockResolvedValue({
-        ...caseWithParent,
+        ...existingCase,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
       });
       mockPrisma.case.findFirst.mockResolvedValue({
@@ -543,6 +538,8 @@ describe('TaskLifecycleService', () => {
       await service.unassignTask(1, 'supervisor1', 'tenant1', 'reason', mockSupervisorUser, testEndpointKey);
 
       expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalled();
+      expect(mockPrisma.case.findFirst).not.toHaveBeenCalled();
+      expect(mockPrisma.case.update).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -661,7 +658,6 @@ describe('TaskLifecycleService', () => {
         case_id: 1,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         tenant_id: 'tenant1',
-        parent_id: null,
       };
 
       mockTaskRepository.findTaskById.mockResolvedValue(task);
@@ -709,7 +705,6 @@ describe('TaskLifecycleService', () => {
         case_id: 1,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         tenant_id: 'tenant1',
-        parent_id: null,
       };
 
       mockTaskRepository.findTaskById.mockResolvedValue(task);

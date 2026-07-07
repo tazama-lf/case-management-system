@@ -110,6 +110,7 @@ model Case {
   updated_at           DateTime             @updatedAt @db.Timestamp(6)
   final_outcome        CaseStatus?
   parent_id            Int?
+  group_id             Int?
   case_type            CaseType?
   case_creation_type   CaseCreationType
   alert                Alert?
@@ -261,7 +262,6 @@ enum CaseStatus {
   STATUS_82_CLOSED_CONFIRMED
   STATUS_83_CLOSED_INCONCLUSIVE
   STATUS_99_ABANDONED
-  STATUS_84_COMPLETED
 }
 
 enum TaskStatus {
@@ -488,3 +488,13 @@ model cms_usernames {
 
   @@map("cms_usernames")
 }
+
+model InvestigationGroup {
+  id         Int      @id @default(autoincrement())
+  alert_id   Int      @unique
+  tenant_id  String
+  created_at DateTime @default(now())
+
+  @@map("investigation_groups")
+}
+

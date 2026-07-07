@@ -22,6 +22,7 @@ import { ManualAlertUpdateDTO, IngestAlertDto } from '../src/modules/alert/dto';
 import { Outcome } from '../src/utils/types/outcome';
 import axios from 'axios';
 import * as timersPromises from 'node:timers/promises';
+import { InvestigationGroupService } from '../src/modules/investigation-group/investigation-group.service';
 
 jest.mock('node:timers/promises', () => ({ setTimeout: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('axios');
@@ -79,7 +80,7 @@ describe('TriageService', () => {
     tenant_id: 'tenant-123',
     case_creator_user_id: 'user-123',
     case_owner_user_id: null,
-    parent_id: null,
+    group_id: null,
     status: CaseStatus.STATUS_00_DRAFT,
     priority: Priority.NEW,
     case_creation_type: CaseCreationType.AUTOMATIC_SYSTEM,
@@ -204,8 +205,20 @@ describe('TriageService', () => {
       logActionsWithHistory: jest.fn(),
     };
 
+    const mockInvestigationGroupService = {
+      createInvestigationGroup: jest.fn().mockResolvedValue({
+        id: 123,
+      }),
+    };
+
     const mockPrismaService = {
-      // Add any Prisma methods that might be used in TriageService
+      investigationGroup: {
+        create: jest.fn().mockResolvedValue({
+          id: 123,
+          alert_id: 1,
+          tenant_id: 'tenant-123',
+        }),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -227,6 +240,7 @@ describe('TriageService', () => {
         { provide: CaseCreationService, useValue: mockCaseCreateService },
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: InvestigationGroupService, useValue: mockInvestigationGroupService },
       ],
     }).compile();
 
@@ -357,7 +371,7 @@ describe('TriageService', () => {
 
       alertRepository.transaction.mockImplementation(async (callback) => {
         alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
-        caseRepository.findCaseById.mockResolvedValue(closedCase);
+        caseRepository.findCaseById.mockResolvedValue(closedCase as any);
         return callback({} as any);
       });
 
@@ -408,24 +422,24 @@ describe('TriageService', () => {
       const result = await service.handleManualTriage(1, fraudAndAmlDto, 'user-123', 'tenant-123');
 
       expect(result).toEqual(fraudAndAmlAlert);
-      expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(2);
-      expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
-        CaseType.FRAUD,
+      expect(caseCreationService.updateCaseStatus).toHaveBeenCalledWith(
+        1,
+        CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         'user-123',
         'tenant-123',
-        1,
         Priority.URGENT,
-        CaseCreationType.AUTOMATIC_SYSTEM,
-        'SUPERVISOR',
+        CaseType.FRAUD,
+        123,
       );
+      expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
       expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
         CaseType.AML,
         'user-123',
         'tenant-123',
-        1,
         Priority.URGENT,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
+        123,
       );
     });
 
@@ -540,19 +554,19 @@ describe('TriageService', () => {
         CaseType.FRAUD,
         'user-123',
         'tenant-123',
-        1,
         Priority.URGENT,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
+        123,
       );
       expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
         CaseType.AML,
         'user-123',
         'tenant-123',
-        1,
         Priority.URGENT,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
+        123,
       );
     });
 

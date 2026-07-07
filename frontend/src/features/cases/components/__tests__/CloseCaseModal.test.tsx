@@ -51,21 +51,6 @@ const mockFraudAmlCaseData: CaseRow = {
   type: 'FRAUD_AND_AML',
 };
 
-const mockSubCases: CaseRow[] = [
-  {
-    ...mockCaseData,
-    id: 456,
-    type: 'FRAUD',
-    status: 'STATUS_82_CLOSED_CONFIRMED',
-  },
-  {
-    ...mockCaseData,
-    id: 789,
-    type: 'AML',
-    status: 'STATUS_81_CLOSED_REFUTED',
-  },
-];
-
 describe('CloseCaseModal', () => {
   const mockOnClose = vi.fn();
   const mockOnSubmit = vi.fn();
@@ -216,59 +201,42 @@ describe('CloseCaseModal', () => {
     expect(mockOnSubmit).toHaveBeenCalled();
   });
 
-  it('shows FRAUD_AND_AML sub-cases when provided', () => {
-    render(
-      <CloseCaseModal
-        {...defaultProps}
-        caseData={mockFraudAmlCaseData}
-        subCasesDetails={mockSubCases}
-      />,
-    );
-    expect(screen.getByText('Sub-Cases Closure Status')).toBeInTheDocument();
-    expect(screen.getByText('456')).toBeInTheDocument();
-    expect(screen.getByText('789')).toBeInTheDocument();
-  });
-
-  it('shows COMPLETED outcome for FRAUD_AND_AML case', () => {
-    render(
-      <CloseCaseModal
-        {...defaultProps}
-        caseData={mockFraudAmlCaseData}
-        subCasesDetails={mockSubCases}
-      />,
-    );
-    expect(screen.getByText('COMPLETED')).toBeInTheDocument();
-    expect(screen.getByText('Final Outcome')).toBeInTheDocument();
-  });
-
-  it('shows Close Case button for supervisor with FRAUD_AND_AML', () => {
+  it('shows standard outcomes for FRAUD_AND_AML case', () => {
     mockIsSupervisor = true;
-    render(
-      <CloseCaseModal
-        {...defaultProps}
-        caseData={mockFraudAmlCaseData}
-        subCasesDetails={mockSubCases}
-      />,
-    );
-    expect(
-      screen.getByRole('button', { name: /Close Case/i }),
-    ).toBeInTheDocument();
+    render(<CloseCaseModal {...defaultProps} caseData={mockFraudAmlCaseData} />);
+
+    expect(screen.queryByText('COMPLETED')).not.toBeInTheDocument();
+    expect(screen.getByText('Final Outcome')).toBeInTheDocument();
+    expect(screen.getByText('83 - Closed Inconclusive')).toBeInTheDocument();
+    expect(screen.getByText('81 - Closed Refuted')).toBeInTheDocument();
+    expect(screen.getByText('82 - Closed Confirmed')).toBeInTheDocument();
   });
 
-  it('submits FRAUD_AND_AML supervisor close case', async () => {
+  it('shows Generate Investigation Report for supervisor with FRAUD_AND_AML', () => {
+    mockIsSupervisor = true;
+    render(<CloseCaseModal {...defaultProps} caseData={mockFraudAmlCaseData} />);
+
+    expect(
+      screen.getByRole('button', { name: /Generate Investigation Report/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Close Case/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('submits FRAUD_AND_AML supervisor close case after report approval', async () => {
     mockIsSupervisor = true;
     const user = userEvent.setup();
-    render(
-      <CloseCaseModal
-        {...defaultProps}
-        caseData={mockFraudAmlCaseData}
-        subCasesDetails={mockSubCases}
-      />,
-    );
+    render(<CloseCaseModal {...defaultProps} caseData={mockFraudAmlCaseData} />);
+
     const notesInput = screen.getByPlaceholderText(/provide detailed notes/i);
     await user.type(notesInput, 'Closing fraud and AML case');
-    const closeBtn = screen.getByRole('button', { name: /Close Case/i });
-    await user.click(closeBtn);
+    const reportButton = screen.getByRole('button', {
+      name: /Generate Investigation Report/i,
+    });
+    await user.click(reportButton);
+    await user.click(screen.getByText('Approve Report'));
+
     expect(mockOnSubmit).toHaveBeenCalled();
   });
 
