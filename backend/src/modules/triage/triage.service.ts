@@ -301,7 +301,7 @@ export class TriageService {
     }
     const updateAlertData = updateAlertDto;
     const priorityScore = updateAlertDto.priorityScore ?? 0.33;
-    const priority = this.casePriorityUtil.determinePriority(priorityScore);
+    const priority = await this.casePriorityUtil.determinePriority(priorityScore, tenantId);
     updateAlertData.priority = priority;
 
     try {
@@ -561,7 +561,7 @@ export class TriageService {
         priorityScore: predictedPriorityScore,
       } = prediction;
 
-      const priority = this.casePriorityUtil.determinePriority(predictedPriorityScore);
+      const priority = await this.casePriorityUtil.determinePriority(predictedPriorityScore, tenantId);
 
       await this.updateAlertAndUpdateTriageTask(
         alertId,

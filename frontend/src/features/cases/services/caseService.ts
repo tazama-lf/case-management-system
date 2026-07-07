@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances */
 /* eslint-disable max-lines -- Service handles comprehensive case CRUD operations */
 import apiClient from '../../../shared/services/apiClient';
-import type { Case } from '../../alerts/types/triage.types';
+import type { Case, SlaState } from '../../alerts/types/triage.types';
 
 export interface GetUserCasesQueryDto {
   status?: string;
@@ -46,6 +46,8 @@ export interface CaseWithTasksDto {
   case_id: number;
   status: string;
   priority: string;
+  sla_due_at?: Date | null;
+  sla_state?: SlaState | null;
   case_type: string;
   created_at: Date;
   updated_at: Date;
@@ -82,6 +84,11 @@ export interface GetUserCasesResponseDto {
   cases: CaseWithTasksDto[];
   pagination: PaginationDto;
   summary: SummaryStatisticsDto;
+}
+
+export interface CasePriorityThresholdsDto {
+  highThreshold: number;
+  mediumThreshold: number;
 }
 
 export interface UserWorkloadStatsDto {
@@ -247,6 +254,17 @@ export class CaseService {
       return response;
     } catch (error: unknown) {
       throw this.handleError(error, 'get user workload stats');
+    }
+  }
+
+  async getPriorityThresholds(): Promise<CasePriorityThresholdsDto> {
+    try {
+      const response = await apiClient.get<CasePriorityThresholdsDto>(
+        `${this.baseUrl}/priority-thresholds`,
+      );
+      return response;
+    } catch (error: unknown) {
+      throw this.handleError(error, 'get priority thresholds');
     }
   }
 

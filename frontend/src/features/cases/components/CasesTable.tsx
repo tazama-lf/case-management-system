@@ -4,9 +4,11 @@ import {
   getScoreColor,
   getSarStrStatusColor,
   formatSarStrStatus,
+  getPriorityColor,
 } from './casesTable.utils';
 import { getCaseStatusBadge } from '@/shared/constants/case.constant';
 import { TablePagination, type TablePaginationInfo } from '@/shared';
+import { SlaStateBadge } from '@/shared/components/ui';
 
 interface CasesTableProps {
   rows: CaseRow[];
@@ -53,6 +55,20 @@ const CasesTable: React.FC<CasesTableProps> = ({
               scope="col"
               className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
+              Priority
+            </th>
+
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              SLA
+            </th>
+
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
               <span className="hidden sm:inline">Score</span>
               <span className="sm:hidden">%</span>
             </th>
@@ -80,7 +96,7 @@ const CasesTable: React.FC<CasesTableProps> = ({
           {rows.length === 0 ? (
             <tr>
               <td
-                colSpan={isComplianceOfficer ? 6 : 5}
+                colSpan={isComplianceOfficer ? 8 : 7}
                 className="px-6 py-12 text-center text-gray-500"
               >
                 No cases available.
@@ -109,6 +125,18 @@ const CasesTable: React.FC<CasesTableProps> = ({
                   >
                     {getCaseStatusBadge(c.status)}
                   </span>
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <span
+                    className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ring-1 ${getPriorityColor(c.priority)}`}
+                  >
+                    {c.priority}
+                  </span>
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <SlaStateBadge slaState={c.slaState} />
                 </td>
 
                 <td className="px-6 py-4 whitespace-nowrap text-sm">

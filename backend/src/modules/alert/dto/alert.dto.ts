@@ -18,7 +18,7 @@ export class ManualAlertUpdateDTO {
   @ApiProperty({
     description: 'Alert priority',
     enum: Priority,
-    example: Priority.URGENT,
+    example: Priority.MEDIUM,
     required: false,
     enumName: 'Priority',
   })

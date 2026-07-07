@@ -27,7 +27,7 @@ describe('Alerts Dashboard Types', () => {
       query: 'test',
       source: 'internal',
       type: 'FRAUD',
-      priority: 'URGENT',
+      priority: 'MEDIUM',
       timeRange: '7d',
       startDate: '2024-01-01',
       endDate: '2024-01-07',

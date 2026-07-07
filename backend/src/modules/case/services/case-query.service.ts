@@ -3,8 +3,10 @@ import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
 import { GetAllCasesQueryDto } from '../dto/get-all-cases.dto';
-import { Case, CaseStatus, CaseType, Priority, TaskStatus } from '@prisma/client-cms';
+import { Case, CaseStatus, CaseType, Priority, SlaState, TaskStatus } from '@prisma/client-cms';
+import { computeCaseSlaState } from '../../alert-priority/sla-state.util';
 import { TaskValidationUtil } from '../../shared/utils/task-validation.util';
+import { SlaPolicyUtil, type SlaEscalationRatios } from '../../shared/utils/sla-policy.util';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { Outcome } from '../../../utils/types/outcome';
 import { UpdateCaseDto } from '../dto';
@@ -20,7 +22,24 @@ export class CaseQueryService {
     private readonly caseRepository: CaseRepository,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly taskValidationUtil: TaskValidationUtil,
-  ) {}
+    private readonly slaPolicyUtil: SlaPolicyUtil,
+  ) { }
+
+  /**
+   * Resolves each distinct tenant's SLA escalation ratios once (not per case),
+   * so computing sla_state for a list of cases costs at most one lookup per
+   * distinct tenant in that list, not one per row.
+   */
+  private async resolveRatiosByTenant(tenantIds: string[]): Promise<Map<string, SlaEscalationRatios>> {
+    const uniqueTenantIds = [...new Set(tenantIds)];
+    return new Map(
+      await Promise.all(
+        uniqueTenantIds.map(
+          async (tenantId): Promise<[string, SlaEscalationRatios]> => [tenantId, await this.slaPolicyUtil.getEscalationRatios(tenantId)],
+        ),
+      ),
+    );
+  }
 
   async getUserCases(
     userId: string,
@@ -36,6 +55,8 @@ export class CaseQueryService {
       case_type: CaseType | null;
       created_at: Date;
       updated_at: Date;
+      sla_due_at: Date | null;
+      sla_state: SlaState | null;
       user_role: 'owner' | 'task_assignee' | 'both';
       user_tasks: Array<{
         task_id: number;
@@ -45,13 +66,13 @@ export class CaseQueryService {
       }>;
       total_tasks: number;
       alert:
-        | {
-            alert_id: number;
-            message: string;
-            confidence_per: number;
-            transaction: JsonValue;
-          }
-        | undefined;
+      | {
+        alert_id: number;
+        message: string;
+        confidence_per: number;
+        transaction: JsonValue;
+      }
+      | undefined;
       latest_comment_date: Date;
     }>;
     pagination: {
@@ -129,6 +150,8 @@ export class CaseQueryService {
         orderBy: { [sortBy]: sortOrder },
       });
 
+      const ratiosByTenant = await this.resolveRatiosByTenant(cases.map((caseItem) => caseItem.tenant_id));
+
       const processedCases = cases.map((caseItem) => {
         const isOwner = caseItem.case_owner_user_id === userId;
         const userTasks = this.taskValidationUtil.getUserAssignedTasks(caseItem.tasks, userId);
@@ -144,6 +167,8 @@ export class CaseQueryService {
           group_id: caseItem.group_id,
           created_at: caseItem.created_at,
           updated_at: caseItem.updated_at,
+          sla_due_at: caseItem.sla_due_at,
+          sla_state: computeCaseSlaState(caseItem, ratiosByTenant.get(caseItem.tenant_id)!),
           user_role: userRole,
           user_tasks: userTasks.map((task) => ({
             task_id: task.task_id,
@@ -154,11 +179,11 @@ export class CaseQueryService {
           total_tasks: caseItem.tasks.length,
           alert: resolvedAlert
             ? {
-                alert_id: resolvedAlert.alert_id,
-                message: resolvedAlert.message,
-                confidence_per: resolvedAlert.confidence_per,
-                transaction: resolvedAlert.transaction,
-              }
+              alert_id: resolvedAlert.alert_id,
+              message: resolvedAlert.message,
+              confidence_per: resolvedAlert.confidence_per,
+              transaction: resolvedAlert.transaction,
+            }
             : undefined,
           latest_comment_date: caseItem.comments[0]?.created_at,
         };
@@ -227,6 +252,8 @@ export class CaseQueryService {
       case_type: CaseType | null;
       created_at: Date;
       updated_at: Date;
+      sla_due_at: Date | null;
+      sla_state: SlaState | null;
       total_tasks: number;
       tasks: Array<{
         name: string | null;
@@ -246,11 +273,11 @@ export class CaseQueryService {
       } | null;
       group_id: number | null;
       assigned_to:
-        | {
-            user_id: string | null;
-            task_count: number;
-          }
-        | undefined;
+      | {
+        user_id: string | null;
+        task_count: number;
+      }
+      | undefined;
     }>;
     pagination: {
       total: number;
@@ -266,12 +293,12 @@ export class CaseQueryService {
       unassignedCases: number;
       averageTasksPerCase: number;
       oldestUnassignedCase:
-        | {
-            case_id: number;
-            created_at: Date;
-            days_old: number;
-          }
-        | undefined;
+      | {
+        case_id: number;
+        created_at: Date;
+        days_old: number;
+      }
+      | undefined;
     };
   }> {
     try {
@@ -605,6 +632,8 @@ export class CaseQueryService {
         orderBy: { [sortBy]: sortOrder },
       });
 
+      const escalationRatios = await this.slaPolicyUtil.getEscalationRatios(tenantId);
+
       const processedCases = cases.map((caseItem) => {
         const taskCounts = this.taskValidationUtil.getTaskStatusCounts(caseItem.tasks);
         const assignedUsers = [...new Set(caseItem.tasks.map((t) => t.assigned_user_id).filter(Boolean))];
@@ -618,6 +647,8 @@ export class CaseQueryService {
           case_type: caseItem.case_type,
           created_at: caseItem.created_at,
           updated_at: caseItem.updated_at,
+          sla_due_at: caseItem.sla_due_at,
+          sla_state: computeCaseSlaState(caseItem, escalationRatios),
           total_tasks: caseItem.tasks.length,
           tasks: caseItem.tasks,
           completed_tasks: taskCounts.completed,
@@ -712,15 +743,15 @@ export class CaseQueryService {
       const statusFilter = isComplianceOfficer
         ? { status: CaseStatus.STATUS_82_CLOSED_CONFIRMED }
         : {
-            status: {
-              notIn: [
-                CaseStatus.STATUS_81_CLOSED_REFUTED,
-                CaseStatus.STATUS_82_CLOSED_CONFIRMED,
-                CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-                CaseStatus.STATUS_99_ABANDONED,
-              ],
-            },
-          };
+          status: {
+            notIn: [
+              CaseStatus.STATUS_81_CLOSED_REFUTED,
+              CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+              CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+              CaseStatus.STATUS_99_ABANDONED,
+            ],
+          },
+        };
       const [activeCases, pendingTasks, allUserCases] = await Promise.all([
         this.prismaService.case.count({
           where: {
@@ -786,10 +817,20 @@ export class CaseQueryService {
     }
   }
 
-  async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean): Promise<Case | null> {
+  async retrieveCase(
+    caseId: number,
+    tenantId: string,
+    isComplianceOfficer?: boolean,
+  ): Promise<(Case & { sla_state: SlaState | null }) | null> {
     const retrievedCase = await this.caseRepository.findCaseById(caseId, tenantId);
-
-    return retrievedCase;
+    // findCaseById is typed as never-null (it throws instead), but callers of retrieveCase
+    // rely on a null return for a clean not-found path, so keep this defensive check.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- declared never-null, but retrieveCase's real null-return contract depends on this guard
+    if (!retrievedCase) {
+      return null;
+    }
+    const ratios = await this.slaPolicyUtil.getEscalationRatios(tenantId);
+    return { ...retrievedCase, sla_state: computeCaseSlaState(retrievedCase, ratios) };
   }
 
   /**
@@ -843,7 +884,7 @@ export class CaseQueryService {
     }
   }
 
-  async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string): Promise<Case> {
+  async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string): Promise<Case & { sla_state: SlaState | null }> {
     try {
       const updatedCase = await this.caseRepository.updateCase(caseId, {
         case_type: updateData.caseType,
@@ -865,7 +906,8 @@ export class CaseQueryService {
         updatedCase.tenant_id,
       );
 
-      return updatedCase;
+      const ratios = await this.slaPolicyUtil.getEscalationRatios(updatedCase.tenant_id);
+      return { ...updatedCase, sla_state: computeCaseSlaState(updatedCase, ratios) };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;

@@ -3,11 +3,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CreateCaseModal from '../CreateCaseModal';
 import triageService from '@/features/alerts/services/triageservice';
 import userService from '@/features/cases/services/userService';
+import { caseService } from '@/features/cases/services/caseService';
 
 // Mock services
 vi.mock('@/features/alerts/services/triageservice', () => ({
   default: {
     getNALTAlerts: vi.fn(),
+  },
+}));
+
+vi.mock('@/features/cases/services/caseService', () => ({
+  caseService: {
+    getPriorityThresholds: vi.fn().mockResolvedValue({ highThreshold: 0.7, mediumThreshold: 0.4 }),
   },
 }));
 
@@ -74,6 +81,7 @@ describe('CreateCaseModal', () => {
       },
     });
     (userService.getAllUsers as any).mockResolvedValue(mockUsers);
+    (caseService.getPriorityThresholds as any).mockResolvedValue({ highThreshold: 0.7, mediumThreshold: 0.4 });
   });
 
   it('should not render when open is false', () => {
@@ -123,11 +131,11 @@ describe('CreateCaseModal', () => {
     // Use getByRole for the number input
     const scoreInput = screen.getByRole('spinbutton');
 
-    // Set to High/Critical
+    // Set to High
     await user.clear(scoreInput);
     await user.type(scoreInput, '0.7');
 
-    expect(screen.getAllByText(/CRITICAL/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/HIGH/i).length).toBeGreaterThan(0);
   });
 
   it('should submit form with correct data', async () => {
@@ -200,7 +208,7 @@ describe('CreateCaseModal', () => {
         existingCaseId={1}
         initial={{
           alertType: 'AML',
-          priority: 'URGENT',
+          priority: 'MEDIUM',
           priorityScore: 0.5,
           confidence: 75,
         }}
@@ -376,7 +384,7 @@ describe('CreateCaseModal', () => {
     expect(screen.getByText('Alert Selected')).toBeInTheDocument();
   });
 
-  it('should calculate NEW priority for score < 0.33', async () => {
+  it('should calculate LOW priority for score < 0.4', async () => {
     const user = userEvent.setup();
     render(<CreateCaseModal {...defaultProps} />);
 
@@ -384,18 +392,18 @@ describe('CreateCaseModal', () => {
     await user.clear(scoreInput);
     await user.type(scoreInput, '0.1');
 
-    expect(screen.getAllByText(/NEW/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/LOW/i).length).toBeGreaterThan(0);
   });
 
-  it('should calculate BREACH priority for score >= 1.0', async () => {
+  it('should calculate HIGH priority for score >= 0.7', async () => {
     const user = userEvent.setup();
     render(<CreateCaseModal {...defaultProps} />);
 
     const scoreInput = screen.getByRole('spinbutton');
     await user.clear(scoreInput);
-    await user.type(scoreInput, '1');
+    await user.type(scoreInput, '0.7');
 
-    expect(screen.getAllByText(/BREACH/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/HIGH/i).length).toBeGreaterThan(0);
   });
 
   it('should change confidence in edit mode', async () => {
@@ -449,7 +457,7 @@ describe('CreateCaseModal', () => {
         existingCaseId={1}
         initial={{
           alertType: 'FRAUD',
-          priority: 'URGENT',
+          priority: 'MEDIUM',
           priorityScore: 0.5,
           confidence: 75,
         }}
@@ -520,7 +528,7 @@ describe('CreateCaseModal', () => {
     );
 
     expect(screen.getByText(/Priority Score/)).toBeInTheDocument();
-    expect(screen.getByText('0.0 (NEW)')).toBeInTheDocument();
+    expect(screen.getByText('0.0 (LOW)')).toBeInTheDocument();
   });
 
   it('should render alert type dropdown in create mode', () => {
@@ -564,40 +572,40 @@ describe('CreateCaseModal', () => {
     consoleSpy.mockRestore();
   });
 
-  it('should render BREACH priority styling in edit mode', () => {
+  it('should render HIGH priority styling in edit mode (score 1.0)', () => {
     render(
       <CreateCaseModal
         {...defaultProps}
         mode="edit"
         existingCaseId={1}
-        initial={{ priorityScore: 1.0, priority: 'BREACH' }}
+        initial={{ priorityScore: 1.0, priority: 'HIGH' }}
       />,
     );
-    expect(screen.getByText('BREACH')).toBeInTheDocument();
+    expect(screen.getByText('HIGH')).toBeInTheDocument();
   });
 
-  it('should render CRITICAL priority styling in edit mode', () => {
+  it('should render HIGH priority styling in edit mode (score 0.8)', () => {
     render(
       <CreateCaseModal
         {...defaultProps}
         mode="edit"
         existingCaseId={1}
-        initial={{ priorityScore: 0.8, priority: 'CRITICAL' }}
+        initial={{ priorityScore: 0.8, priority: 'HIGH' }}
       />,
     );
-    expect(screen.getByText('CRITICAL')).toBeInTheDocument();
+    expect(screen.getByText('HIGH')).toBeInTheDocument();
   });
 
-  it('should render NEW priority styling in edit mode', () => {
+  it('should render LOW priority styling in edit mode', () => {
     render(
       <CreateCaseModal
         {...defaultProps}
         mode="edit"
         existingCaseId={1}
-        initial={{ priorityScore: 0.1, priority: 'NEW' }}
+        initial={{ priorityScore: 0.1, priority: 'LOW' }}
       />,
     );
-    expect(screen.getByText('NEW')).toBeInTheDocument();
+    expect(screen.getByText('LOW')).toBeInTheDocument();
   });
 
   it('should show priorityScore validation error', async () => {
@@ -686,7 +694,7 @@ describe('CreateCaseModal', () => {
     expect(screen.getByText('Updating...')).toBeInTheDocument();
   });
 
-  it('should render BREACH priority in create mode', async () => {
+  it('should render priority range slider in create mode', async () => {
     const user = userEvent.setup();
     render(<CreateCaseModal {...defaultProps} />);
 
@@ -756,8 +764,25 @@ describe('CreateCaseModal', () => {
   it('should render priority score validation in create mode', () => {
     render(<CreateCaseModal {...defaultProps} />);
     // Verify priority score range labels exist
-    expect(screen.getAllByText('0.0 (NEW)').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('1.0 (BREACH)').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('0.0 (LOW)').length).toBeGreaterThan(0);
+    // Defaults to the fallback threshold (0.70) until GET /priority-thresholds resolves.
+    expect(screen.getAllByText('0.70 (HIGH)').length).toBeGreaterThan(0);
+  });
+
+  it('fetches the tenant-specific priority thresholds and uses them for the live preview', async () => {
+    (caseService.getPriorityThresholds as any).mockResolvedValue({ highThreshold: 0.5, mediumThreshold: 0.3 });
+
+    render(<CreateCaseModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(caseService.getPriorityThresholds).toHaveBeenCalled();
+    });
+
+    // Legend labels should reflect this tenant's real thresholds, not the 0.7/0.4 fallback.
+    await waitFor(() => {
+      expect(screen.getAllByText('0.30 (MEDIUM)').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('0.50 (HIGH)').length).toBeGreaterThan(0);
+    });
   });
 
   it('should show alertType validation error in edit mode', async () => {

@@ -1,5 +1,6 @@
 import { CreateCaseDto } from './create-case.dto';
 import { RequestAbandonCaseDto } from './abandon-case.dto';
+import { ChangeCasePriorityDto } from './change-case-priority.dto';
 import { ApproveCaseClosureBadRequestResponseDto } from './approve-case-closure-bad-request-response.dto';
 import { ApproveCaseCreationResponseDto } from './approve-case-creation-response.dto';
 import { ApproveCaseReopeningResponseDto } from './approve-case-reopening-response.dto';
@@ -45,6 +46,7 @@ import { SystemCaseCreatedResponseDto } from './system-case-created-response.dto
 export {
   CreateCaseDto,
   RequestAbandonCaseDto,
+  ChangeCasePriorityDto,
   ApproveCaseClosureBadRequestResponseDto,
   ApproveCaseCreationResponseDto,
   ApproveCaseReopeningResponseDto,

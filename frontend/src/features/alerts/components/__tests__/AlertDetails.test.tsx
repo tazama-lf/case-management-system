@@ -8,7 +8,7 @@ const baseAlert = {
   alert_id: 'ALERT-1',
   alert_type: 'FRAUD',
   source: 'System A',
-  priority: 'URGENT',
+  priority: 'MEDIUM',
   message: 'Suspicious transaction detected',
   confidence_per: 72,
   created_at: '2024-01-01T00:00:00Z',
@@ -51,7 +51,7 @@ describe('AlertDetails', () => {
     );
 
     expect(screen.getByText(/Alert Details/i)).toBeInTheDocument();
-    expect(screen.getByText('URGENT')).toBeInTheDocument();
+    expect(screen.getByText('MEDIUM')).toBeInTheDocument();
     expect(
       screen.getByText(/Suspicious transaction detected/),
     ).toBeInTheDocument();

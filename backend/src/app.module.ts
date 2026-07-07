@@ -35,6 +35,7 @@ import { LoggingOrchestrationModule } from './modules/logging-orchestration/logg
 import { GoldLakehouseModule } from './modules/gold-lakehouse/gold-lakehouse.module';
 import { JupyterModule } from './modules/jupyter/jupyter.module';
 import { VoilaProxyModule } from './modules/voila-proxy/voila-proxy.module';
+import { AlertPriorityModule } from './modules/alert-priority/alert-priority.module';
 
 @Module({
   controllers: [AppController],
@@ -74,6 +75,7 @@ import { VoilaProxyModule } from './modules/voila-proxy/voila-proxy.module';
     CaseHistoryModule,
     TaskHistoryModule,
     LoggingOrchestrationModule,
+    AlertPriorityModule,
   ],
   providers: [
     PrismaService,

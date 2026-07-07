@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, InternalServerErrorException, Forbidde
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
-import { Alert, Case, CaseCreationType, CaseStatus, CaseType, Priority, Task, TaskStatus } from '@prisma/client-cms';
+import { Alert, Case, CaseCreationType, CaseStatus, CaseType, Priority, SlaState, Task, TaskStatus } from '@prisma/client-cms';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -45,7 +45,7 @@ export class CaseService {
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly investigationGroupService: InvestigationGroupService,
-  ) {}
+  ) { }
 
   async suspendCase(
     caseId: number,
@@ -715,11 +715,11 @@ export class CaseService {
       } | null;
       group_id: number | null;
       assigned_to:
-        | {
-            user_id: string | null;
-            task_count: number;
-          }
-        | undefined;
+      | {
+        user_id: string | null;
+        task_count: number;
+      }
+      | undefined;
     }>;
     pagination: {
       total: number;
@@ -735,12 +735,12 @@ export class CaseService {
       unassignedCases: number;
       averageTasksPerCase: number;
       oldestUnassignedCase:
-        | {
-            case_id: number;
-            created_at: Date;
-            days_old: number;
-          }
-        | undefined;
+      | {
+        case_id: number;
+        created_at: Date;
+        days_old: number;
+      }
+      | undefined;
     };
   }> {
     return await this.caseQueryService.getAllCases(query, tenantId, investigatorUserId, isComplianceOfficer);
@@ -769,13 +769,13 @@ export class CaseService {
       }>;
       total_tasks: number;
       alert:
-        | {
-            alert_id: number;
-            message: string;
-            confidence_per: number;
-            transaction: JsonValue;
-          }
-        | undefined;
+      | {
+        alert_id: number;
+        message: string;
+        confidence_per: number;
+        transaction: JsonValue;
+      }
+      | undefined;
       latest_comment_date: Date;
     }>;
     pagination: {
@@ -825,7 +825,7 @@ export class CaseService {
     user: AuthenticatedUser,
     endpointKey: EndpointKey,
     tenantId: string,
-  ): Promise<Case> {
+  ): Promise<Case & { sla_state: SlaState | null }> {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     const rbacRole = this.rbacService.getRoleFromUser(user);
@@ -1068,10 +1068,20 @@ export class CaseService {
         );
       }
 
-      // this.logger.log(
-      //   `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
-      //   CaseService.name,
-      // );
+      //review: ibad
+      // const getAlertIdByCaseId = await this.alertRepository.getAlertByCaseId(caseId);
+      // if (getAlertIdByCaseId) {
+      //   const alertUpdateData = {
+      //     priority_score: updateData.priorityScore,
+      //     priority: updateData.priority,
+      //     alertType: updateData.caseType,
+      //     predictionOutcome: updateData.predictionOutcome,
+      //     confidencePer: updateData.confidence,
+      //     case_id: caseId,
+      //   };
+      //   await this.alertRepository.updateAlert(getAlertIdByCaseId, alertUpdateData);
+      //   this.logger.log(`[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`, CaseService.name);
+      // }
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {

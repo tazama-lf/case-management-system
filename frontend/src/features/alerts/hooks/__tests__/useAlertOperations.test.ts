@@ -33,7 +33,7 @@ describe('useAlertOperations', () => {
   it('closes alert successfully and refreshes alerts', async () => {
     const mockAlert = {
       alert_id: 'alert-123',
-      priority: 'URGENT',
+      priority: 'MEDIUM',
     };
     (triageService.closeAlert as vi.Mock).mockResolvedValue(undefined);
 
@@ -58,7 +58,7 @@ describe('useAlertOperations', () => {
   it('tracks closing state during operation', async () => {
     const mockAlert = {
       alert_id: 'alert-123',
-      priority: 'URGENT',
+      priority: 'MEDIUM',
     };
     let resolveClose: () => void;
     const closePromise = new Promise<void>((resolve) => {
@@ -100,7 +100,7 @@ describe('useAlertOperations', () => {
   it('handles error when closing alert fails', async () => {
     const mockAlert = {
       alert_id: 'alert-123',
-      priority: 'URGENT',
+      priority: 'MEDIUM',
     };
     const error = new Error('Failed to close alert');
     (triageService.closeAlert as vi.Mock).mockRejectedValue(error);
@@ -127,7 +127,7 @@ describe('useAlertOperations', () => {
   it('cleans up operation state even on error', async () => {
     const mockAlert = {
       alert_id: 'alert-123',
-      priority: 'URGENT',
+      priority: 'MEDIUM',
     };
     const error = new Error('Failed to close alert');
     (triageService.closeAlert as vi.Mock).mockRejectedValue(error);

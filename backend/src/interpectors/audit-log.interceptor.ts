@@ -202,6 +202,10 @@ export class AuditInterceptor implements NestInterceptor {
         description: 'Updated case details',
         eventType: 'UPDATE_CASE_DETAILS',
       },
+      changeCasePriority: {
+        description: 'Changed case priority',
+        eventType: 'PRIORITY_CHANGED',
+      },
       completeCaseCreation: {
         description: 'Completed case creation',
         eventType: 'COMPLETE_CASE_CREATION',

@@ -12,7 +12,7 @@ export interface DashboardStats {
 export interface Alert {
   id: string;
   type: 'FRAUD' | 'AML' | 'FRAUD_AND_AML';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
   message: string;
   status: 'NEW' | 'ASSIGNED' | 'IN_PROGRESS';
   createdAt: string;
@@ -24,13 +24,15 @@ export interface Case {
   title: string;
   type: 'FRAUD' | 'MONEY_LAUNDERING';
   status: 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'CLOSED';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  slaState?: SlaState;
   assignee: string;
   createdAt: string;
   alertsCount: number;
 }
 
-export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
+export type SlaState = 'ON_TRACK' | 'AT_RISK' | 'DUE_SOON' | 'BREACHED';
 export type AlertStatus = 'NEW' | 'ASSIGNED' | 'IN_PROGRESS';
 export type CaseStatus = 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'CLOSED';
 export type AlertType = 'FRAUD' | 'AML' | 'FRAUD_AND_AML';

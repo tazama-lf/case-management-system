@@ -26,7 +26,12 @@ describe('CaseReopeningService', () => {
     case_owner_user_id: 'user-123',
     status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     case_type: CaseType.FRAUD,
+<<<<<<< HEAD
     priority: Priority.CRITICAL,
+=======
+    priority: Priority.HIGH,
+    parent_id: null,
+>>>>>>> paysys/SLA-task
     created_at: new Date(),
     updated_at: new Date(),
   };

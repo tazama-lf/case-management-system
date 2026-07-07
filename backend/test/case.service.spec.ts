@@ -46,7 +46,12 @@ describe('CaseService', () => {
     case_owner_user_id: 'user-123',
     status: CaseStatus.STATUS_20_IN_PROGRESS,
     case_type: CaseType.FRAUD,
+<<<<<<< HEAD
     priority: Priority.CRITICAL,
+=======
+    priority: Priority.HIGH,
+    parent_id: null,
+>>>>>>> paysys/SLA-task
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -626,8 +631,8 @@ describe('CaseService', () => {
       {
         method: 'updateCase',
         service: 'caseQueryService',
-        args: [1, { priority: Priority.CRITICAL } as any, 'user-123', mockUser, updateCaseEndpoint, 'tenant-123'],
-        expectedArgs: [1, { priority: Priority.CRITICAL } as any, 'user-123'],
+        args: [1, { priority: Priority.HIGH } as any, 'user-123', mockUser, updateCaseEndpoint, 'tenant-123'],
+        expectedArgs: [1, { priority: Priority.HIGH } as any, 'user-123'],
         setupCase: mockCase, // updateCase can work with any valid status
       },
       {
@@ -662,7 +667,7 @@ describe('CaseService', () => {
 
   describe('completeCaseCreation', () => {
     const updateData = {
-      priority: Priority.CRITICAL,
+      priority: Priority.HIGH,
       caseType: CaseType.FRAUD,
       note: 'Test note',
       priorityScore: 85,
@@ -765,6 +770,7 @@ describe('CaseService', () => {
       expect(caseQueryService.updateCase).not.toHaveBeenCalled();
       expect(caseUpdate).toHaveBeenNthCalledWith(
         1,
+<<<<<<< HEAD
         expect.objectContaining({
           where: { case_id: 1 },
           data: expect.objectContaining({
@@ -792,12 +798,22 @@ describe('CaseService', () => {
         expect.anything(),
         expect.anything(),
         expect.anything(),
+=======
+        Priority.HIGH,
+        CaseCreationType.AUTOMATIC_SYSTEM,
+        'SUPERVISOR',
+>>>>>>> paysys/SLA-task
       );
       expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
         CaseType.AML,
         'user-123',
         'tenant-123',
+<<<<<<< HEAD
         Priority.CRITICAL,
+=======
+        1,
+        Priority.HIGH,
+>>>>>>> paysys/SLA-task
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
         123,
@@ -867,7 +883,7 @@ describe('CaseService', () => {
         100,
         expect.objectContaining({
           priority_score: 85,
-          priority: Priority.CRITICAL,
+          priority: Priority.HIGH,
           alertType: CaseType.FRAUD,
         }),
         expect.anything(),

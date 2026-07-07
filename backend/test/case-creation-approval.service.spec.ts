@@ -38,7 +38,7 @@ describe('CaseCreationApprovalService', () => {
     case_owner_user_id: 'owner-123',
     status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
     case_type: CaseType.FRAUD,
-    priority: Priority.CRITICAL,
+    priority: Priority.HIGH,
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -121,7 +121,7 @@ describe('CaseCreationApprovalService', () => {
     };
 
     const mockCasePriorityUtil = {
-      determinePriority: jest.fn().mockReturnValue(Priority.CRITICAL),
+      determinePriority: jest.fn().mockResolvedValue(Priority.HIGH),
     };
 
     const mockFlowableService = {
@@ -264,7 +264,7 @@ describe('CaseCreationApprovalService', () => {
       ...mockCase,
       status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
       case_type: CaseType.FRAUD,
-      priority: Priority.CRITICAL,
+      priority: Priority.HIGH,
       case_creator_user_id: 'creator-123',
       tasks: [mockTask],
     };
@@ -442,7 +442,7 @@ describe('CaseCreationApprovalService', () => {
       ...mockCase,
       status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
       case_type: CaseType.FRAUD,
-      priority: Priority.CRITICAL,
+      priority: Priority.HIGH,
       case_creator_user_id: 'creator-123',
       tasks: [mockTask],
     };
@@ -515,7 +515,7 @@ describe('CaseCreationApprovalService', () => {
       ...mockCase,
       case_id: 1,
       status: CaseStatus.STATUS_00_DRAFT,
-      priority: Priority.CRITICAL,
+      priority: Priority.HIGH,
       case_type: CaseType.FRAUD,
     };
 
@@ -614,7 +614,7 @@ describe('CaseCreationApprovalService', () => {
         CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         'user-123',
         'tenant-123',
-        Priority.CRITICAL,
+        Priority.HIGH,
         CaseType.FRAUD,
       );
 
@@ -635,7 +635,7 @@ describe('CaseCreationApprovalService', () => {
         CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         'user-123',
         'tenant-123',
-        Priority.CRITICAL,
+        Priority.HIGH,
         CaseType.FRAUD_AND_AML,
       );
 
@@ -659,7 +659,7 @@ describe('CaseCreationApprovalService', () => {
       taskRepository.findCaseBasic.mockResolvedValue(null);
 
       await expect(
-        service.updateCaseStatus(1, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, 'user-123', 'tenant-123', Priority.CRITICAL, CaseType.FRAUD),
+        service.updateCaseStatus(1, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, 'user-123', 'tenant-123', Priority.HIGH, CaseType.FRAUD),
       ).rejects.toThrow(NotFoundException);
     });
 

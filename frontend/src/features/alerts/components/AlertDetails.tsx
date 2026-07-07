@@ -97,13 +97,11 @@ const AlertDetailsHeader: React.FC<AlertDetailsHeaderProps> = ({
 
   const getPriorityColor = (priority: string) => {
     switch (priority?.toUpperCase()) {
-      case 'BREACH':
+      case 'HIGH':
         return 'text-red-600 bg-red-100';
-      case 'CRITICAL':
-        return 'text-red-600 bg-red-100';
-      case 'URGENT':
-        return 'text-orange-600 bg-orange-100';
-      case 'NEW':
+      case 'MEDIUM':
+        return 'text-amber-600 bg-amber-100';
+      case 'LOW':
         return 'text-blue-600 bg-blue-100';
       default:
         return 'text-gray-600 bg-gray-100';

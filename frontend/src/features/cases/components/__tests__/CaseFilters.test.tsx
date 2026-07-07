@@ -1,4 +1,4 @@
-﻿import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CaseFilters from '../CaseFilters';
@@ -128,12 +128,9 @@ describe('CaseFilters', () => {
     expect(
       screen.getByRole('option', { name: 'All Priorities' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'New' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Urgent' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('option', { name: 'Critical' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Breach' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Low' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Medium' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'High' })).toBeInTheDocument();
   });
 
   it('should call onPriorityFilterChange when priority is changed', async () => {
@@ -147,8 +144,8 @@ describe('CaseFilters', () => {
     );
     await user.click(screen.getByText('Filters'));
     const prioritySelect = screen.getByDisplayValue('All Priorities');
-    await user.selectOptions(prioritySelect, 'CRITICAL');
-    expect(onPriorityFilterChange).toHaveBeenCalledWith('CRITICAL');
+    await user.selectOptions(prioritySelect, 'HIGH');
+    expect(onPriorityFilterChange).toHaveBeenCalledWith('HIGH');
   });
 
   it('should display selected status filter', async () => {
@@ -162,9 +159,9 @@ describe('CaseFilters', () => {
 
   it('should display selected priority filter', async () => {
     const user = userEvent.setup();
-    render(<CaseFilters {...defaultProps} priorityFilter="CRITICAL" />);
+    render(<CaseFilters {...defaultProps} priorityFilter="HIGH" />);
     await user.click(screen.getByText('Filters'));
-    expect(screen.getByDisplayValue('Critical')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('High')).toBeInTheDocument();
   });
 
   it('should render search icon', () => {
@@ -356,7 +353,7 @@ describe('CaseFilters', () => {
         user_filters: JSON.stringify({
           sortBy: 'recent',
           status: 'STATUS_20_IN_PROGRESS',
-          priority: 'URGENT',
+          priority: 'MEDIUM',
           sarStrStatus: '',
         }),
       },
@@ -366,7 +363,7 @@ describe('CaseFilters', () => {
     await user.click(screen.getByText('Filters'));
     await waitFor(() => {
       expect(
-        screen.getByText('RECENT - STATUS_20_IN_PROGRESS - URGENT'),
+        screen.getByText('RECENT - STATUS_20_IN_PROGRESS - MEDIUM'),
       ).toBeInTheDocument();
     });
   });
@@ -378,7 +375,7 @@ describe('CaseFilters', () => {
         user_filters: JSON.stringify({
           sortBy: 'oldest',
           status: 'STATUS_20_IN_PROGRESS',
-          priority: 'URGENT',
+          priority: 'MEDIUM',
           sarStrStatus: '',
         }),
       },
@@ -400,14 +397,14 @@ describe('CaseFilters', () => {
     await user.click(screen.getByText('Filters'));
     await waitFor(() => {
       expect(
-        screen.getByText('OLDEST - STATUS_20_IN_PROGRESS - URGENT'),
+        screen.getByText('OLDEST - STATUS_20_IN_PROGRESS - MEDIUM'),
       ).toBeInTheDocument();
     });
     const savedFilterSelect = screen.getByDisplayValue('Select a saved filter');
     await user.selectOptions(savedFilterSelect, '1');
     expect(onSortChange).toHaveBeenCalledWith('oldest');
     expect(onStatusFilterChange).toHaveBeenCalledWith('STATUS_20_IN_PROGRESS');
-    expect(onPriorityFilterChange).toHaveBeenCalledWith('URGENT');
+    expect(onPriorityFilterChange).toHaveBeenCalledWith('MEDIUM');
     expect(onSarStrStatusFilterChange).toHaveBeenCalledWith('');
   });
 
@@ -494,7 +491,7 @@ describe('CaseFilters', () => {
   });
 
   it('should show Active badge for priority filter', () => {
-    render(<CaseFilters {...defaultProps} priorityFilter="URGENT" />);
+    render(<CaseFilters {...defaultProps} priorityFilter="MEDIUM" />);
     expect(screen.getByText('Active')).toBeInTheDocument();
   });
 

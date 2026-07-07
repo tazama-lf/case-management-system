@@ -86,7 +86,7 @@ const InvestigationSummaryTab: React.FC<InvestigationSummaryTabProps> = ({
     assigneeName: task.assignedUser?.username ?? task.assigned_user_id,
     candidateGroup: task.candidateGroup ?? 'investigations',
     status: task.status,
-    priority: caseDetails?.priority ?? 'NEW',
+    priority: caseDetails?.priority ?? 'LOW',
     created: task.created_at,
     dueDate: task.sla_deadline ?? undefined,
     caseId: task.case_id,

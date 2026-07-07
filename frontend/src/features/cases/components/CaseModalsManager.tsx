@@ -564,7 +564,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
                 })(),
                 priority:
                   (modalState.selectedRow.priority?.toUpperCase() as Priority) ??
-                  'NEW',
+                  'LOW',
                 priorityScore: 0.33,
               }
             : undefined
