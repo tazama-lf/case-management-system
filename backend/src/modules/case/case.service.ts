@@ -14,6 +14,7 @@ import { CaseClosureApprovalService } from './services/case-closure-approval.ser
 import { CaseCreationApprovalService } from './services/case-creation-approval.service';
 import { FlowableService } from '../../../src/modules/flowable/flowable.service';
 import { AlertRepository } from '../repository/alert.repository';
+import { UpdateAlertDTO } from '../alert/dto';
 import { CloseCaseDto, ManualCreateCaseDto, GetAllCasesQueryDto, GetUserCasesQueryDto, UpdateCaseDto } from './dto';
 import { CacheService } from '../shared/cache.service';
 import { CaseCreationService } from './services/case-creation.service';
@@ -22,6 +23,7 @@ import { JsonValue } from '@prisma/client-cms/runtime/library';
 import { setTimeout as delay } from 'node:timers/promises';
 import { RbacService, EndpointKey } from '../../utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from '../../utils/types/auth.types';
+import { InvestigationGroupService } from '../investigation-group/investigation-group.service';
 
 @Injectable()
 export class CaseService {
@@ -42,6 +44,7 @@ export class CaseService {
     private readonly alertRepository: AlertRepository,
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly investigationGroupService: InvestigationGroupService,
   ) {}
 
   async suspendCase(
@@ -87,24 +90,6 @@ export class CaseService {
       const result = await this.prismaService.$transaction(async (prisma) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_21_SUSPENDED }, userId);
 
-        if (updatedCase.parent_id) {
-          const subCase = await prisma.case.findFirst({
-            where: {
-              parent_id: updatedCase.parent_id,
-              tenant_id: updatedCase.tenant_id,
-              NOT: {
-                case_id: updatedCase.case_id,
-              },
-            },
-          });
-
-          if (updatedCase.status === CaseStatus.STATUS_21_SUSPENDED && subCase?.status === CaseStatus.STATUS_21_SUSPENDED) {
-            await prisma.case.update({
-              where: { case_id: updatedCase.parent_id },
-              data: { status: CaseStatus.STATUS_21_SUSPENDED, updated_at: new Date() },
-            });
-          }
-        }
         const updatedTask = await Promise.all(
           investigateTask.map(
             async (task) => await this.taskService.updateTask(task.task_id, { status: TaskStatus.STATUS_21_BLOCKED }, userId, tenantId),
@@ -226,25 +211,6 @@ export class CaseService {
 
       const result = await this.prismaService.$transaction(async (prisma) => {
         const updatedCase = await this.caseQueryService.updateCase(caseId, { status: CaseStatus.STATUS_20_IN_PROGRESS }, userId);
-        if (updatedCase.parent_id) {
-          const subCase = await prisma.case.findFirst({
-            where: {
-              parent_id: updatedCase.parent_id,
-              tenant_id: updatedCase.tenant_id,
-              NOT: {
-                case_id: updatedCase.case_id,
-              },
-            },
-          });
-
-          if (updatedCase.status === CaseStatus.STATUS_20_IN_PROGRESS && subCase?.status === CaseStatus.STATUS_21_SUSPENDED) {
-            await prisma.case.update({
-              where: { case_id: updatedCase.parent_id },
-              data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
-            });
-          }
-        }
-
         const updatedTask = await Promise.all(
           investigateTask.map(
             async (t) => await this.taskService.updateTask(t.task_id, { status: TaskStatus.STATUS_20_IN_PROGRESS }, userId, tenantId),
@@ -747,7 +713,7 @@ export class CaseService {
         transaction: JsonValue;
         confidence_per: number;
       } | null;
-      parent_id: number | null;
+      group_id: number | null;
       assigned_to:
         | {
             user_id: string | null;
@@ -783,13 +749,14 @@ export class CaseService {
   async getUserCases(
     userId: string,
     query: GetUserCasesQueryDto,
+    tenantId: string,
     isComplianceOfficer?: boolean,
   ): Promise<{
     cases: Array<{
       case_id: number;
       status: CaseStatus;
       priority: Priority;
-      parent_id: number | null;
+      group_id: number | null;
       case_type: CaseType | null;
       created_at: Date;
       updated_at: Date;
@@ -824,7 +791,7 @@ export class CaseService {
       casesByPriority: Record<string, number>;
     };
   }> {
-    return await this.caseQueryService.getUserCases(userId, query, isComplianceOfficer);
+    return await this.caseQueryService.getUserCases(userId, query, tenantId, isComplianceOfficer);
   }
 
   async getUserWorkloadStats(
@@ -908,6 +875,8 @@ export class CaseService {
 
     // Determine the target status based on role
     const targetStatus = needsApproval ? CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL : CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT;
+    const requestedCaseType = updateData.caseType ?? existingCase.case_type;
+    const isFraudNAML = requestedCaseType === CaseType.FRAUD_AND_AML;
 
     const rbacRole = this.rbacService.getRoleFromUser(user);
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
@@ -927,12 +896,35 @@ export class CaseService {
 
     try {
       const result = await this.prismaService.$transaction(async (prisma) => {
-        // Update case with provided data and new status
-        const updatedCase = await this.caseQueryService.updateCase(caseId, { ...updateData, status: targetStatus }, userId);
-        await this.flowableService.handleCaseStatusChanged({
-          caseId,
-          newStatus: targetStatus,
+        let investigationGroup: { id: number } | undefined;
+        if (isSupervisor && isFraudNAML) {
+          const alertId = await this.alertRepository.getAlertByCaseId(caseId, tenantId, prisma);
+          investigationGroup = await this.investigationGroupService.createInvestigationGroup(alertId, tenantId, prisma);
+        }
+
+        const caseUpdateData = {
+          ...updateData,
+          caseType: isFraudNAML && isSupervisor ? CaseType.FRAUD : updateData.caseType,
+          status: targetStatus,
+        };
+        let updatedCase = await prisma.case.update({
+          where: { case_id: caseId },
+          data: {
+            case_type: caseUpdateData.caseType,
+            priority: caseUpdateData.priority,
+            status: caseUpdateData.status,
+            case_owner_user_id: caseUpdateData.caseOwnerUserId,
+          },
         });
+        if (investigationGroup !== undefined) {
+          updatedCase = await prisma.case.update({
+            where: { case_id: caseId },
+            data: {
+              group_id: investigationGroup.id,
+              case_type: CaseType.FRAUD,
+            },
+          });
+        }
 
         const allTasks = await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId);
         const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
@@ -956,26 +948,73 @@ export class CaseService {
         // targetStatus can only be STATUS_02_READY_FOR_ASSIGNMENT or STATUS_01_PENDING_CASE_CREATION_APPROVAL
         // so isAutoCloseEligible is always false
         const isAutoCloseEligible = false;
-        await this.flowableService.handleTaskCompleted({
-          caseId: completedTask.case_id,
-          taskName: completedTask.name!,
-          newStatus: TaskStatus.STATUS_30_COMPLETED,
-          completionVariables: {
-            autoCloseEligible: isAutoCloseEligible,
-            caseType: updateData.caseType ?? existingCase.case_type!,
-            casePriority: updateData.priority ?? existingCase.priority,
-            draftApprovalRequired: isSupervisor ? false : true,
-          },
-        });
 
-        const createCommentDto = new CreateCommentDto();
-        createCommentDto.caseId = caseId;
-        createCommentDto.taskId = completeNewCaseTask.task_id;
-        createCommentDto.note = updateData.note ?? 'Completed case creation';
-        createCommentDto.tenantId = tenantId;
+        const createCommentDto: {
+          caseId: number;
+          taskId: number;
+          note: string;
+          tenantId: string;
+        } = {
+          caseId,
+          taskId: completeNewCaseTask.task_id,
+          note: updateData.note ?? 'Completed case creation',
+          tenantId,
+        };
 
         await this.commentService.addComment(createCommentDto, userId);
-        return { case: updatedCase, completedTask };
+
+        const alertId = await this.alertRepository.getAlertByCaseId(caseId, tenantId, prisma);
+        if (alertId) {
+          await this.alertRepository.updateAlert(
+            alertId,
+            {
+              priority_score: updateData.priorityScore,
+              priority: updateData.priority,
+              alertType: updateData.caseType,
+              predictionOutcome: updateData.predictionOutcome,
+              confidencePer: updateData.confidence,
+              caseId: isFraudNAML && isSupervisor ? null : caseId,
+            } as unknown as UpdateAlertDTO,
+            prisma,
+          );
+        }
+
+        let amlCase: {
+          caseId: number;
+          message: string;
+          taskId?: number | undefined;
+        } | null = null;
+        if (isFraudNAML && isSupervisor) {
+          amlCase = await this.caseCreationService.createCaseWithInvestigationTask(
+            CaseType.AML,
+            userId,
+            existingCase.tenant_id,
+            updatedCase.priority,
+            CaseCreationType.AUTOMATIC_SYSTEM,
+            role,
+            investigationGroup!.id,
+            prisma,
+          );
+        }
+
+        return { case: updatedCase, completedTask, amlCase, investigationGroup, isAutoCloseEligible };
+      });
+
+      await this.flowableService.handleCaseStatusChanged({
+        caseId,
+        newStatus: targetStatus,
+      });
+
+      await this.flowableService.handleTaskCompleted({
+        caseId: result.completedTask.case_id,
+        taskName: result.completedTask.name!,
+        newStatus: TaskStatus.STATUS_30_COMPLETED,
+        completionVariables: {
+          autoCloseEligible: result.isAutoCloseEligible,
+          caseType: isFraudNAML && isSupervisor ? CaseType.FRAUD : (updateData.caseType ?? existingCase.case_type!),
+          casePriority: updateData.priority ?? existingCase.priority,
+          draftApprovalRequired: isSupervisor ? false : true,
+        },
       });
 
       this.logger.log(
@@ -1000,27 +1039,6 @@ export class CaseService {
         );
 
         this.logger.log(`[CompleteCaseCreation] Approval task ${nextTask.task_id} created for supervisor review`, CaseService.name);
-      } else if (result.case.case_type === CaseType.FRAUD_AND_AML) {
-        // Supervisor: Create investigation task directly
-
-        await this.caseCreationService.createCaseWithInvestigationTask(
-          CaseType.FRAUD,
-          userId,
-          existingCase.tenant_id,
-          caseId,
-          result.case.priority,
-          CaseCreationType.AUTOMATIC_SYSTEM,
-          role,
-        );
-        await this.caseCreationService.createCaseWithInvestigationTask(
-          CaseType.AML,
-          userId,
-          existingCase.tenant_id,
-          caseId,
-          result.case.priority,
-          CaseCreationType.AUTOMATIC_SYSTEM,
-          role,
-        );
       } else {
         nextTask = await this.taskService.createTask(
           {
@@ -1035,31 +1053,32 @@ export class CaseService {
         );
       }
 
+      if (result.amlCase) {
+        await this.loggingOrchestrationService.logActionsWithHistory(
+          {
+            userId,
+            operation: 'completeCaseCreation',
+            entityName: CaseService.name,
+            actionPerformed: `Completed draft case FRAUD: ${caseId} & AML: ${result.amlCase.caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
+            outcome: Outcome.SUCCESS,
+            tenantId: existingCase.tenant_id,
+          },
+          result.amlCase.caseId,
+          existingCase.tenant_id,
+        );
+      }
+
       // this.logger.log(
       //   `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,
       //   CaseService.name,
       // );
-
-      const getAlertIdByCaseId = await this.alertRepository.getAlertByCaseId(caseId);
-      if (getAlertIdByCaseId) {
-        const alertUpdateData = {
-          priority_score: updateData.priorityScore,
-          priority: updateData.priority,
-          alertType: updateData.caseType,
-          predictionOutcome: updateData.predictionOutcome,
-          confidencePer: updateData.confidence,
-          case_id: caseId,
-        };
-        await this.alertRepository.updateAlert(getAlertIdByCaseId, alertUpdateData);
-        this.logger.log(`[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`, CaseService.name);
-      }
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
           userId,
           operation: 'completeCaseCreation',
           entityName: CaseService.name,
-          actionPerformed: `Completed draft case ${caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
+          actionPerformed: `Completed draft case ${isFraudNAML ? `FRAUD: ${caseId} & AML: ${result.amlCase?.caseId}` : caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
           outcome: Outcome.SUCCESS,
           tenantId: existingCase.tenant_id,
         },
@@ -1095,10 +1114,6 @@ export class CaseService {
 
   async retrieveCase(caseId: number, tenantId: string, isComplianceOfficer?: boolean): Promise<Case | null> {
     return await this.caseQueryService.retrieveCase(caseId, tenantId, isComplianceOfficer);
-  }
-
-  async getSubCasesDetails(caseId: number): Promise<Case[]> {
-    return await this.caseQueryService.getSubCasesDetails(caseId);
   }
 
   async checkUserCaseAccess(caseId: number, investigatorUserId: string | undefined, tenantId: string): Promise<boolean> {

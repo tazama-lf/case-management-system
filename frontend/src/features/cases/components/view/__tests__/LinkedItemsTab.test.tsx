@@ -33,7 +33,7 @@ describe('LinkedItemsTab', () => {
     const mockCase = {
       case_id: 123,
       case_type: 'FRAUD',
-      parent_id: null,
+      group_id: null,
       alert: { alert_id: 1 },
     };
     const mockAlert = {
@@ -53,7 +53,7 @@ describe('LinkedItemsTab', () => {
     const mockCase = {
       case_id: 123,
       case_type: 'FRAUD',
-      parent_id: null,
+      group_id: null,
       alert: null,
     };
     (caseService.getCaseDetails as vi.Mock).mockResolvedValue(mockCase);
@@ -67,7 +67,7 @@ describe('LinkedItemsTab', () => {
     const mockCase = {
       case_id: 123,
       case_type: 'FRAUD',
-      parent_id: null,
+      group_id: null,
       alert: { alert_id: 1 },
     };
     const mockAlert = {
@@ -88,7 +88,7 @@ describe('LinkedItemsTab', () => {
     const mockCase = {
       case_id: 123,
       case_type: 'FRAUD',
-      parent_id: null,
+      group_id: null,
       alert: { alert_id: 1 },
     };
     const mockAlert = {
@@ -112,7 +112,7 @@ describe('LinkedItemsTab', () => {
     const mockCase = {
       case_id: 123,
       case_type: 'FRAUD',
-      parent_id: null,
+      group_id: null,
       alert: { alert_id: 1 },
     };
     const mockAlert = {
@@ -138,32 +138,23 @@ describe('LinkedItemsTab', () => {
     });
   });
 
-  it('handles parent case with alert', async () => {
-    const childCase = {
+  it('uses the current case alert when present', async () => {
+    const currentCase = {
       case_id: 123,
-      parent_id: 100,
-      alert: { alert_id: null },
-    };
-    const parentCase = {
-      case_id: 100,
-      parent_id: null,
       alert: { alert_id: 5 },
     };
     const mockAlert = {
       alert_id: 5,
-      message: 'Parent Alert',
+      message: 'Current Alert',
       alert_type: 'AML',
     };
-    (caseService.getCaseDetails as vi.Mock).mockImplementation(
-      async (id: number) => {
-        if (id === 123) return childCase;
-        return parentCase;
-      },
-    );
+    (caseService.getCaseDetails as vi.Mock).mockResolvedValue(currentCase);
     (triageService.getAlertById as vi.Mock).mockResolvedValue(mockAlert);
+
     render(<LinkedItemsTab caseId={123} />);
+
     await waitFor(() => {
-      expect(screen.getByText('5 - Parent Alert')).toBeInTheDocument();
+      expect(screen.getByText('5 - Current Alert')).toBeInTheDocument();
     });
   });
 
@@ -178,7 +169,7 @@ describe('LinkedItemsTab', () => {
   });
 
   it('displays alert label and id', async () => {
-    const mockCase = { case_id: 123, parent_id: null, alert: { alert_id: 1 } };
+    const mockCase = { case_id: 123, group_id: null, alert: { alert_id: 1 } };
     const mockAlert = {
       alert_id: 1,
       message: 'Suspicious Transaction',
@@ -194,3 +185,4 @@ describe('LinkedItemsTab', () => {
     });
   });
 });
+

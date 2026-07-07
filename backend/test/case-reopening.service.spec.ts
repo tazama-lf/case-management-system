@@ -27,7 +27,6 @@ describe('CaseReopeningService', () => {
     status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     case_type: CaseType.FRAUD,
     priority: Priority.CRITICAL,
-    parent_id: null,
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -167,19 +166,16 @@ describe('CaseReopeningService', () => {
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
     });
 
-    it('should successfully reopen case with parent case as supervisor', async () => {
+    it('should reopen the requested case', async () => {
       const role = 'CMS_SUPERVISOR';
-      const caseWithParent = { ...mockCase, parent_id: 100 };
+      const txCase = {
+        update: jest.fn().mockResolvedValueOnce({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
+      };
 
-      caseRepository.findCaseById.mockResolvedValueOnce(caseWithParent);
+      caseRepository.findCaseById.mockResolvedValueOnce(mockCase);
       caseRepository.transaction.mockImplementationOnce(async (callback) => {
         const tx = {
-          case: {
-            update: jest
-              .fn()
-              .mockResolvedValueOnce({ ...caseWithParent, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT })
-              .mockResolvedValueOnce({ case_id: 100, status: CaseStatus.STATUS_20_IN_PROGRESS }),
-          },
+          case: txCase,
         };
         return callback(tx);
       });
@@ -193,6 +189,13 @@ describe('CaseReopeningService', () => {
       const result = await service.reopenCase(1, reason, userId, tenantId, role);
 
       expect(result.success).toBe(true);
+      expect(txCase.update).toHaveBeenCalledTimes(1);
+      expect(txCase.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { case_id: 1 },
+          data: expect.objectContaining({ status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
+        }),
+      );
     });
 
     it('should create approval task for non-supervisor investigator', async () => {
@@ -316,23 +319,20 @@ describe('CaseReopeningService', () => {
       expect(notificationService.sendGroupNotification).toHaveBeenCalled();
     });
 
-    it('should approve reopening for case with parent and update parent status', async () => {
-      const caseWithParent = {
+    it('should approve reopening by updating the requested case once', async () => {
+      const caseForReopening = {
         ...mockCase,
-        parent_id: 100,
         status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
         tasks: [mockTask],
       };
-      caseRepository.findCaseForReopening.mockResolvedValue(caseWithParent);
+      const txCase = {
+        update: jest.fn().mockResolvedValueOnce({ ...caseForReopening, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
+      };
+      caseRepository.findCaseForReopening.mockResolvedValue(caseForReopening);
 
       caseRepository.transaction.mockImplementationOnce(async (callback) => {
         const tx = {
-          case: {
-            update: jest
-              .fn()
-              .mockResolvedValueOnce({ ...caseWithParent, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT })
-              .mockResolvedValueOnce({ case_id: 100, status: CaseStatus.STATUS_20_IN_PROGRESS }),
-          },
+          case: txCase,
           task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
         };
         return callback(tx);
@@ -349,6 +349,13 @@ describe('CaseReopeningService', () => {
       const result = await service.approveCaseReopening(1, supervisorId, tenantId);
 
       expect(result.success).toBe(true);
+      expect(txCase.update).toHaveBeenCalledTimes(1);
+      expect(txCase.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { case_id: 1 },
+          data: expect.objectContaining({ status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
+        }),
+      );
     });
 
     it('should handle parse errors in reopening metadata', async () => {

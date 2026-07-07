@@ -26,7 +26,6 @@ describe('CaseQueryService', () => {
     status: CaseStatus.STATUS_20_IN_PROGRESS,
     case_type: CaseType.FRAUD,
     priority: Priority.CRITICAL,
-    parent_id: null,
     created_at: new Date('2024-01-01'),
     updated_at: new Date('2024-01-02'),
     tasks: [
@@ -151,6 +150,7 @@ describe('CaseQueryService', () => {
 
   describe('getUserCases', () => {
     const userId = 'user-123';
+    const tenantId = 'tenant-123';
     const query: GetUserCasesQueryDto = {
       page: 1,
       limit: 20,
@@ -159,7 +159,7 @@ describe('CaseQueryService', () => {
     };
 
     it('should return empty result when no conditions are met', async () => {
-      const result = await service.getUserCases(userId, {});
+      const result = await service.getUserCases(userId, {}, tenantId);
 
       expect(result).toEqual({
         cases: [],
@@ -177,7 +177,7 @@ describe('CaseQueryService', () => {
 
       setupGetUserCasesMocks(caseWithoutTaskAssignment);
 
-      const result = await service.getUserCases(userId, queryWithOwned);
+      const result = await service.getUserCases(userId, queryWithOwned, tenantId);
 
       expect(result.cases).toHaveLength(1);
       expect(result.cases[0].case_id).toBe(1);
@@ -199,7 +199,7 @@ describe('CaseQueryService', () => {
         .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
         .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
 
-      const result = await service.getUserCases(userId, queryWithTasks);
+      const result = await service.getUserCases(userId, queryWithTasks, tenantId);
 
       expect(result.cases).toHaveLength(1);
       expect(result.cases[0].user_role).toBe('task_assignee');
@@ -220,7 +220,7 @@ describe('CaseQueryService', () => {
         .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
         .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
 
-      const result = await service.getUserCases(userId, queryWithBoth);
+      const result = await service.getUserCases(userId, queryWithBoth, tenantId);
 
       expect(result.cases).toHaveLength(1);
       expect(result.cases[0].user_role).toBe('both');
@@ -233,7 +233,7 @@ describe('CaseQueryService', () => {
       const queryWithFilter: GetUserCasesQueryDto = { ...query, includeOwnedCases: true, ...filterValue };
       setupGetUserCasesMocks();
 
-      const result = await service.getUserCases(userId, queryWithFilter);
+      const result = await service.getUserCases(userId, queryWithFilter, tenantId);
 
       expect(result.cases).toHaveLength(1);
     });
@@ -249,7 +249,7 @@ describe('CaseQueryService', () => {
         .mockResolvedValueOnce([{ status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, _count: { case_id: 1 } }])
         .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
 
-      const result = await service.getUserCases(userId, queryWithOwned, true);
+      const result = await service.getUserCases(userId, queryWithOwned, tenantId, true);
 
       expect(result.cases).toHaveLength(1);
     });
@@ -264,7 +264,7 @@ describe('CaseQueryService', () => {
         .mockResolvedValueOnce([{ status: CaseStatus.STATUS_20_IN_PROGRESS, _count: { case_id: 1 } }])
         .mockResolvedValueOnce([{ priority: Priority.CRITICAL, _count: { case_id: 1 } }]);
 
-      const result = await service.getUserCases(userId, queryWithPage);
+      const result = await service.getUserCases(userId, queryWithPage, tenantId);
 
       expect(result.pagination.page).toBe(2);
       expect(result.pagination.limit).toBe(10);
@@ -275,7 +275,7 @@ describe('CaseQueryService', () => {
       const queryWithOwned: GetUserCasesQueryDto = { ...query, includeOwnedCases: true };
       prismaService.case.count.mockRejectedValueOnce(new Error('Database error'));
 
-      await expect(service.getUserCases(userId, queryWithOwned)).rejects.toThrow('Database error');
+      await expect(service.getUserCases(userId, queryWithOwned, tenantId)).rejects.toThrow('Database error');
       expect(logger.error).toHaveBeenCalled();
     });
   });
@@ -546,39 +546,6 @@ describe('CaseQueryService', () => {
 
     //   await expect(service.retrieveCase(caseId, tenantId, true)).rejects.toThrow(ForbiddenException);
     // });
-  });
-
-  describe('getSubCasesDetails', () => {
-    const caseId = 1;
-
-    it('should get sub-cases for a parent case', async () => {
-      const mockSubCases = [
-        { ...mockCase, case_id: 2, parent_id: caseId },
-        { ...mockCase, case_id: 3, parent_id: caseId },
-      ];
-
-      prismaService.case.findMany.mockResolvedValueOnce(mockSubCases as any);
-
-      const result = await service.getSubCasesDetails(caseId);
-
-      expect(result).toHaveLength(2);
-      expect(result[0].parent_id).toBe(caseId);
-    });
-
-    it('should return null when no sub-cases exist', async () => {
-      prismaService.case.findMany.mockResolvedValueOnce(null);
-
-      const result = await service.getSubCasesDetails(caseId);
-
-      expect(result).toBeNull();
-    });
-
-    it('should return empty array when no sub-cases found', async () => {
-      prismaService.case.findMany.mockResolvedValueOnce([]);
-
-      const result = await service.getSubCasesDetails(caseId);
-      expect(result).toEqual([]);
-    });
   });
 
   describe('updateCase', () => {

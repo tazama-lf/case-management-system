@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from '../src/modules/gold-lakehouse/gold-lakehouse.service';
 import { TransactionLakehouseService } from '../src/modules/gold-lakehouse/transaction-lakehouse.service';
 import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { CaseCreationType, CaseStatus, Priority } from '@prisma/client-cms';
+import { CaseCreationType, CaseStatus, CaseType, Priority } from '@prisma/client-cms';
 import { Outcome } from '../src/utils/types/outcome';
 
 describe('AlertService', () => {
@@ -70,6 +70,7 @@ describe('AlertService', () => {
             updateAlert: jest.fn(),
             getAlertById: jest.fn(),
             getReferenceId: jest.fn(),
+            getGroupedCasesForAlert: jest.fn(),
           },
         },
         {
@@ -388,15 +389,69 @@ describe('AlertService', () => {
   describe('getAlertDetails', () => {
     it('returns sanitized alert for matching tenant', async () => {
       alertRepository.getAlertById.mockResolvedValue(mockAlert);
+      alertRepository.getGroupedCasesForAlert.mockResolvedValue([]);
 
       const result = await service.getAlertDetails(1, 'tenant-123', 'user-123');
 
       expect(result).not.toHaveProperty('tenant_id');
       expect(result).toHaveProperty('alert_id', 1);
+      expect(result).toHaveProperty('case_id', mockAlert.case_id);
+      expect(result).toHaveProperty('related_case_id', null);
       expect(loggerService.log).toHaveBeenCalledWith(
         expect.stringContaining('Alert 1 opened by user user-123'),
         AlertService.name,
       );
+    });
+
+    it('resolves related_case_id via investigation group even when alert.case_id is already set to the FRAUD case (case-creation sets alerts.case_id at draft time and never clears it)', async () => {
+      alertRepository.getAlertById.mockResolvedValue({ ...mockAlert, case_id: 42 });
+      alertRepository.getGroupedCasesForAlert.mockResolvedValue([
+        { case_id: 43, case_type: CaseType.AML },
+        { case_id: 42, case_type: CaseType.FRAUD },
+      ]);
+
+      const result = await service.getAlertDetails(1, 'tenant-123', 'user-123');
+
+      expect(alertRepository.getGroupedCasesForAlert).toHaveBeenCalledWith(1, 'tenant-123');
+      expect(result).toHaveProperty('case_id', 42);
+      expect(result).toHaveProperty('related_case_id', 43);
+      expect(result).toHaveProperty('related_case_type', CaseType.AML);
+    });
+
+    it('resolves case_id and related_case_id via investigation group when alert.case_id is null (grouped FRAUD_AND_AML alert)', async () => {
+      alertRepository.getAlertById.mockResolvedValue({ ...mockAlert, case_id: null });
+      alertRepository.getGroupedCasesForAlert.mockResolvedValue([
+        { case_id: 43, case_type: CaseType.AML },
+        { case_id: 42, case_type: CaseType.FRAUD },
+      ]);
+
+      const result = await service.getAlertDetails(1, 'tenant-123', 'user-123');
+
+      expect(alertRepository.getGroupedCasesForAlert).toHaveBeenCalledWith(1, 'tenant-123');
+      expect(result).toHaveProperty('case_id', 42);
+      expect(result).toHaveProperty('related_case_id', 43);
+      expect(result).toHaveProperty('related_case_type', CaseType.AML);
+    });
+
+    it('falls back to the first grouped case as primary when no FRAUD case is present', async () => {
+      alertRepository.getAlertById.mockResolvedValue({ ...mockAlert, case_id: null });
+      alertRepository.getGroupedCasesForAlert.mockResolvedValue([{ case_id: 55, case_type: CaseType.AML }]);
+
+      const result = await service.getAlertDetails(1, 'tenant-123', 'user-123');
+
+      expect(result).toHaveProperty('case_id', 55);
+      expect(result).toHaveProperty('related_case_id', null);
+      expect(result).toHaveProperty('related_case_type', null);
+    });
+
+    it('leaves case_id null when alert has no case and no investigation group', async () => {
+      alertRepository.getAlertById.mockResolvedValue({ ...mockAlert, case_id: null });
+      alertRepository.getGroupedCasesForAlert.mockResolvedValue([]);
+
+      const result = await service.getAlertDetails(1, 'tenant-123', 'user-123');
+
+      expect(result).toHaveProperty('case_id', null);
+      expect(result).toHaveProperty('related_case_id', null);
     });
 
     it('throws NotFoundException when alert not found', async () => {
