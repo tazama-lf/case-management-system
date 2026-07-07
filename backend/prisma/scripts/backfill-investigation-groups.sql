@@ -141,19 +141,43 @@ END $$;
 -- ---------------------------------------------------------------------------
 -- Step 4: Close all FRAUD_AND_AML container cases.
 -- Rows are NOT deleted — they are retained for audit history.
--- Any legacy container final_outcome of STATUS_84_COMPLETED is normalized to
--- inconclusive so retired Fraud & AML containers do not keep a completed
--- outcome.
+-- If this script runs before the STATUS_84_COMPLETED enum value is removed,
+-- normalize that legacy final_outcome to inconclusive. If it runs after the
+-- enum-removal migration, skip that branch because the migration already
+-- normalized existing STATUS_84_COMPLETED values before dropping the enum label.
 -- ---------------------------------------------------------------------------
-UPDATE cases
-SET
-    status = 'STATUS_83_CLOSED_INCONCLUSIVE',
-    final_outcome = CASE
-        WHEN final_outcome = 'STATUS_84_COMPLETED' THEN 'STATUS_83_CLOSED_INCONCLUSIVE'::"CaseStatus"
-        ELSE final_outcome
-    END
-WHERE case_type = 'FRAUD_AND_AML'
-  AND parent_id IS NULL;
+DO $$
+DECLARE
+    completed_status_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1
+        FROM pg_enum e
+        JOIN pg_type t ON t.oid = e.enumtypid
+        WHERE t.typname = 'CaseStatus'
+          AND e.enumlabel = 'STATUS_84_COMPLETED'
+    )
+    INTO completed_status_exists;
+
+    IF completed_status_exists THEN
+        EXECUTE $sql$
+            UPDATE cases
+            SET
+                status = 'STATUS_83_CLOSED_INCONCLUSIVE',
+                final_outcome = CASE
+                    WHEN final_outcome::text = 'STATUS_84_COMPLETED' THEN 'STATUS_83_CLOSED_INCONCLUSIVE'::"CaseStatus"
+                    ELSE final_outcome
+                END
+            WHERE case_type = 'FRAUD_AND_AML'
+              AND parent_id IS NULL
+        $sql$;
+    ELSE
+        UPDATE cases
+        SET status = 'STATUS_83_CLOSED_INCONCLUSIVE'
+        WHERE case_type = 'FRAUD_AND_AML'
+          AND parent_id IS NULL;
+    END IF;
+END $$;
 
 -- ---------------------------------------------------------------------------
 -- Step 5: NULL out alerts.case_id for every alert whose container case has
@@ -199,7 +223,7 @@ END $$;
 -- SELECT count(*) FROM cases
 -- WHERE case_type = 'FRAUD_AND_AML'
 --   AND parent_id IS NULL
---   AND final_outcome = 'STATUS_84_COMPLETED';
+--   AND final_outcome::text = 'STATUS_84_COMPLETED';
 --
 -- Expected: 0 (no sub-case still chained to a container via parent_id)
 -- SELECT count(*) FROM cases sub

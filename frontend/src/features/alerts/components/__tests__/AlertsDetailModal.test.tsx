@@ -10,6 +10,7 @@ import { taskService } from "../../../cases/services/taskService";
 import { canActOnCase, useCase } from "../../../cases/hooks/useCase";
 import { useSystemConfig } from "../../../../shared/hooks/useSystemConfig";
 import { caseService } from "../../../cases/services/caseService";
+import authService from "@/features/auth/services/authService";
 
 const mockNavigate = vi.fn();
 
@@ -57,6 +58,12 @@ vi.mock("../../../../shared/hooks/useSystemConfig", () => ({
 vi.mock("../../../cases/services/caseService", () => ({
   caseService: {
     checkCaseAccess: vi.fn(),
+  },
+}));
+
+vi.mock("@/features/auth/services/authService", () => ({
+  default: {
+    hasCMSComplianceOfficerRole: vi.fn(),
   },
 }));
 
@@ -135,6 +142,8 @@ const mockUseCase = useCase as Mock;
 const mockCanActOnCase = canActOnCase as Mock;
 const mockUseSystemConfig = useSystemConfig as Mock;
 const mockCheckCaseAccess = caseService.checkCaseAccess as Mock;
+const mockHasCMSComplianceOfficerRole =
+  authService.hasCMSComplianceOfficerRole as Mock;
 
 describe("AlertsDetailModal", () => {
   beforeEach(() => {
@@ -157,6 +166,7 @@ describe("AlertsDetailModal", () => {
       isAIMode: false,
     });
     mockCheckCaseAccess.mockResolvedValue(true);
+    mockHasCMSComplianceOfficerRole.mockReturnValue(false);
   });
 
   it("does not render when closed", () => {
@@ -519,6 +529,69 @@ describe("AlertsDetailModal", () => {
       data: {
         case_id: 999,
         status: "STATUS_00_DRAFT",
+      },
+      isLoading: false,
+    });
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      case_id: 999,
+    });
+
+    renderModal({ onNavigateToCase: mockOnNavigateToCase });
+
+    await waitFor(() => {
+      expect(screen.getByTitle("View case details")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle("View case details"));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/cases/999");
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+    expect(mockOnNavigateToCase).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not navigate to a non-closed-confirmed case for compliance officers", async () => {
+    mockHasCMSComplianceOfficerRole.mockReturnValue(true);
+    mockUseCase.mockReturnValue({
+      data: {
+        case_id: 999,
+        status: "STATUS_20_IN_PROGRESS",
+      },
+      isLoading: false,
+    });
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      case_id: 999,
+    });
+
+    renderModal({ onNavigateToCase: mockOnNavigateToCase });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTitle(
+          "Compliance officers can only view closed confirmed cases",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTitle("View case details")).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByTitle(
+        "Compliance officers can only view closed confirmed cases",
+      ),
+    );
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockOnNavigateToCase).not.toHaveBeenCalled();
+  });
+
+  it("allows compliance officers to navigate to closed confirmed cases", async () => {
+    mockHasCMSComplianceOfficerRole.mockReturnValue(true);
+    mockUseCase.mockReturnValue({
+      data: {
+        case_id: 999,
+        status: "STATUS_82_CLOSED_CONFIRMED",
       },
       isLoading: false,
     });

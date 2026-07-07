@@ -25,6 +25,7 @@ import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
 import { formatDate } from '@/shared/utils/dateUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { caseService } from '../../cases/services/caseService';
+import authService from '@/features/auth/services/authService';
 
 interface AlertsDetailModalProps {
   alertId: number | null;
@@ -260,6 +261,17 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const { data: relatedCaseDetails } = useCase(alert?.related_case_id ?? undefined);
 
   const canPerformActions = canActOnCase(caseDetails?.status);
+  const isComplianceOfficer = authService.hasCMSComplianceOfficerRole();
+  const canOpenCase =
+    hasCaseAccess &&
+    (!isComplianceOfficer ||
+      caseDetails?.status === 'STATUS_82_CLOSED_CONFIRMED');
+  const canOpenRelatedCase =
+    hasRelatedCaseAccess &&
+    (!isComplianceOfficer ||
+      relatedCaseDetails?.status === 'STATUS_82_CLOSED_CONFIRMED');
+  const restrictedCaseTitle =
+    "Compliance officers can only view closed confirmed cases";
 
   const toggleTypology = (typologyKey: string) => {
     setExpandedTypologies((prev) => {
@@ -669,7 +681,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                               ? 'Case ID (FRAUD):'
                               : 'Case ID:'}
                           </span>
-                          {hasCaseAccess ? (
+                          {canOpenCase ? (
                             <button
                               onClick={() => {
                                 navigate(`/cases/${alert.case_id}`);
@@ -685,7 +697,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           ) : (
                             <div
                               className="flex items-center gap-1 text-sm text-gray-500 cursor-not-allowed"
-                              title="You don't have permission to view this case"
+                              title={
+                                hasCaseAccess
+                                  ? restrictedCaseTitle
+                                  : "You don't have permission to view this case"
+                              }
                             >
                               <span>{alert.case_id}</span>
                               <ArrowTopRightOnSquareIcon className="w-4 h-4 opacity-50" />
@@ -699,7 +715,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           <span className="text-sm font-medium text-gray-500">
                             Case ID ({alert.related_case_type ?? 'Related'}):
                           </span>
-                          {hasRelatedCaseAccess ? (
+                          {canOpenRelatedCase ? (
                             <button
                               onClick={() => {
                                 navigate(`/cases/${alert.related_case_id}`);
@@ -715,7 +731,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           ) : (
                             <div
                               className="flex items-center gap-1 text-sm text-gray-500 cursor-not-allowed"
-                              title="You don't have permission to view this case"
+                              title={
+                                hasRelatedCaseAccess
+                                  ? restrictedCaseTitle
+                                  : "You don't have permission to view this case"
+                              }
                             >
                               <span>{alert.related_case_id}</span>
                               <ArrowTopRightOnSquareIcon className="w-4 h-4 opacity-50" />
