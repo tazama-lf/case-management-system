@@ -27,12 +27,7 @@ describe('CaseQueryService', () => {
     case_owner_user_id: 'user-123',
     status: CaseStatus.STATUS_20_IN_PROGRESS,
     case_type: CaseType.FRAUD,
-<<<<<<< HEAD
-    priority: Priority.CRITICAL,
-=======
     priority: Priority.HIGH,
-    parent_id: null,
->>>>>>> paysys/SLA-task
     created_at: new Date('2024-01-01'),
     updated_at: new Date('2024-01-02'),
     tasks: [
@@ -305,7 +300,7 @@ describe('CaseQueryService', () => {
         .mockResolvedValueOnce([{ status: mockCase.status, _count: { case_id: 3 } }])
         .mockResolvedValueOnce([{ priority: mockCase.priority, _count: { case_id: 3 } }]);
 
-      const result = await service.getUserCases(userId, queryWithOwned);
+      const result = await service.getUserCases(userId, queryWithOwned, tenantId);
 
       expect(result.cases).toHaveLength(3);
       expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledTimes(2);
@@ -610,49 +605,6 @@ describe('CaseQueryService', () => {
     // });
   });
 
-<<<<<<< HEAD
-=======
-  describe('getSubCasesDetails', () => {
-    const caseId = 1;
-
-    it('should get sub-cases for a parent case', async () => {
-      const mockSubCases = [
-        { ...mockCase, case_id: 2, parent_id: caseId },
-        { ...mockCase, case_id: 3, parent_id: caseId },
-      ];
-
-      prismaService.case.findMany.mockResolvedValueOnce(mockSubCases as any);
-
-      const result = await service.getSubCasesDetails(caseId);
-
-      expect(result).toHaveLength(2);
-      expect(result[0].parent_id).toBe(caseId);
-    });
-
-    it('should return empty array when no sub-cases found', async () => {
-      prismaService.case.findMany.mockResolvedValueOnce([]);
-
-      const result = await service.getSubCasesDetails(caseId);
-      expect(result).toEqual([]);
-      expect(slaPolicyUtil.getEscalationRatios).not.toHaveBeenCalled();
-    });
-
-    it('resolves escalation ratios once per distinct tenant among the sub-cases', async () => {
-      const mockSubCases = [
-        { ...mockCase, case_id: 2, parent_id: caseId, tenant_id: 'tenant-a' },
-        { ...mockCase, case_id: 3, parent_id: caseId, tenant_id: 'tenant-a' },
-      ];
-      prismaService.case.findMany.mockResolvedValueOnce(mockSubCases as any);
-
-      const result = await service.getSubCasesDetails(caseId);
-
-      expect(result).toHaveLength(2);
-      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledTimes(1);
-      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith('tenant-a');
-    });
-  });
-
->>>>>>> paysys/SLA-task
   describe('updateCase', () => {
     const caseId = 1;
     const userId = 'user-123';

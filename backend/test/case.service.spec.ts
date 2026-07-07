@@ -46,12 +46,7 @@ describe('CaseService', () => {
     case_owner_user_id: 'user-123',
     status: CaseStatus.STATUS_20_IN_PROGRESS,
     case_type: CaseType.FRAUD,
-<<<<<<< HEAD
-    priority: Priority.CRITICAL,
-=======
     priority: Priority.HIGH,
-    parent_id: null,
->>>>>>> paysys/SLA-task
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -687,7 +682,7 @@ describe('CaseService', () => {
         ...mockDraftCase,
         case_type: CaseType.FRAUD,
         group_id: 123,
-        priority: Priority.CRITICAL,
+        priority: Priority.HIGH,
       });
       const mockTransaction = jest.fn(async (callback) => {
         const mockPrisma = {
@@ -770,50 +765,16 @@ describe('CaseService', () => {
       expect(caseQueryService.updateCase).not.toHaveBeenCalled();
       expect(caseUpdate).toHaveBeenNthCalledWith(
         1,
-<<<<<<< HEAD
-        expect.objectContaining({
-          where: { case_id: 1 },
-          data: expect.objectContaining({
-            case_type: CaseType.FRAUD,
-            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          }),
-        }),
-      );
-      expect(caseUpdate).toHaveBeenNthCalledWith(
-        2,
-        expect.objectContaining({
-          where: { case_id: 1 },
-          data: expect.objectContaining({
-            group_id: 123,
-            case_type: CaseType.FRAUD,
-          }),
-        }),
-      );
-      expect(taskService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'Investigate Case' }), 'user-123', 'tenant-123');
-      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
-      expect(caseCreationService.createCaseWithInvestigationTask).not.toHaveBeenCalledWith(
-        CaseType.FRAUD,
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-=======
         Priority.HIGH,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
->>>>>>> paysys/SLA-task
       );
       expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
         CaseType.AML,
         'user-123',
         'tenant-123',
-<<<<<<< HEAD
-        Priority.CRITICAL,
-=======
         1,
         Priority.HIGH,
->>>>>>> paysys/SLA-task
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
         123,
@@ -824,7 +785,7 @@ describe('CaseService', () => {
         expect.objectContaining({
           caseId: null,
           priority_score: 85,
-          priority: Priority.CRITICAL,
+          priority: Priority.HIGH,
           alertType: CaseType.FRAUD_AND_AML,
         }),
         expect.anything(),
