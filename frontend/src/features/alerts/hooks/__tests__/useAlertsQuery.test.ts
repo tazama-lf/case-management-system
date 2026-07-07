@@ -426,12 +426,12 @@ describe('useAlertsQuery', () => {
         wrapper: createWrapper(),
       });
 
-      await waitFor(() => {
-        result.current.performManualTriage({
+      const response = await result.current.performManualTriage({
           alertId: 1,
           data: { action: 'APPROVE', notes: 'Looks good' },
-        });
       });
+
+      expect(response).toBe(mockTriageResult);
 
       await waitFor(() => {
         expect(mockTriageService.performManualTriage).toHaveBeenCalledWith(1, {
@@ -449,12 +449,12 @@ describe('useAlertsQuery', () => {
         wrapper: createWrapper(),
       });
 
-      await waitFor(() => {
+      await expect(
         result.current.performManualTriage({
           alertId: 1,
           data: { action: 'APPROVE', notes: 'Looks good' },
-        });
-      });
+        }),
+      ).rejects.toThrow('Failed to triage');
 
       await waitFor(() => {
         expect(mockNotifications.showError).toHaveBeenCalledWith(

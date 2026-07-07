@@ -123,8 +123,6 @@ const ManualTriageModal: React.FC<ManualTriageModalProps> = ({
       };
 
       await onSubmit(triageData);
-      // Don't close here - let the parent handle closing after refresh
-      // onClose();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to perform manual triage',

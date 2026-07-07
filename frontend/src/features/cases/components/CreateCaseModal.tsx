@@ -229,20 +229,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
     };
   }, [alertSearchTerm, open]);
 
-  // React.useEffect(() => {
-  //   const handleClickOutside = (event: MouseEvent) => {
-  //     const target = event.target as Element;
-  //     if (target && !target.closest('[data-alert-dropdown]')) {
-  //       setShowAlertDropdown(false);
-  //     }
-  //   };
-
-  //   document.addEventListener('mousedown', handleClickOutside);
-  //   return () => {
-  //     document.removeEventListener('mousedown', handleClickOutside);
-  //   };
-  // }, []);
-
   const isStatusLocked = alertType === 'AML' || alertType === 'FRAUD_AND_AML';
 
   React.useEffect(() => {
@@ -723,7 +709,6 @@ const CreateCaseModal: React.FC<CreateCaseModalProps> = ({
                   <option value="FRAUD">Fraud</option>
                   <option value="AML">AML</option>
                   <option value="FRAUD_AND_AML">Fraud & AML</option>
-                  {/* <option value="NONE">None</option> */}
                 </select>
                 {validationErrors.alertType && (
                   <p className="text-sm text-red-600 mt-1">

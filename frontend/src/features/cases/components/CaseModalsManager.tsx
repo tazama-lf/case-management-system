@@ -192,7 +192,7 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           ? err.message
           : 'Failed to perform triage. Please try again.';
       error('Triage Failed', errorMessage);
-      throw error;
+      throw err;
     }
   };
 

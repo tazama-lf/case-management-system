@@ -150,7 +150,7 @@ export const useAlertOperations = (): {
   performManualTriage: (variables: {
     alertId: number;
     data: ManualTriageDto;
-  }) => void;
+  }) => Promise<Alert>;
   isClosingAlert: boolean;
   isUpdatingAlert: boolean;
   isPerformingManualTriage: boolean;
@@ -256,7 +256,7 @@ export const useAlertOperations = (): {
   return {
     closeAlert: closeAlertMutation.mutate,
     updateAlert: updateAlertMutation.mutate,
-    performManualTriage: manualTriageMutation.mutate,
+    performManualTriage: manualTriageMutation.mutateAsync,
     isClosingAlert: closeAlertMutation.isPending,
     isUpdatingAlert: updateAlertMutation.isPending,
     isPerformingManualTriage: manualTriageMutation.isPending,
