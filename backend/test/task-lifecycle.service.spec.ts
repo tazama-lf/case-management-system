@@ -9,7 +9,7 @@ import { NotificationService } from '../src/modules/notification/notification.se
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { TaskStatus, CaseStatus } from '@prisma/client-cms';
 import { TASK_NAMES } from '../src/constants/case.constants';
 import { RbacService, EndpointKey } from '../src/utils/rbac/rbacHelper';
@@ -122,6 +122,18 @@ describe('TaskLifecycleService', () => {
     tenantName: 'Test Tenant',
   };
 
+  const mockComplianceOfficerUser: AuthenticatedUser = {
+    token: {} as any,
+    validated: {} as any,
+    validClaims: [],
+    tenantId: 'tenant1',
+    userId: 'compliance1',
+    actorRole: 'CMS_COMPLIANCE_OFFICER',
+    actorName: 'Compliance Officer',
+    actorEmail: 'compliance@test.com',
+    tenantName: 'Test Tenant',
+  };
+
   const testEndpointKey: EndpointKey = 'PATCH /api/v1/task/:taskId/assign' as EndpointKey;
 
   beforeEach(async () => {
@@ -205,7 +217,6 @@ describe('TaskLifecycleService', () => {
       case_id: 1,
       status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
       tenant_id: 'tenant1',
-      parent_id: null,
     };
 
     it('should assign investigation task and update case status', async () => {
@@ -306,11 +317,9 @@ describe('TaskLifecycleService', () => {
       expect(mockCommentRepository.createComment).toHaveBeenCalled();
     });
 
-    it('should handle task assignment with parent case update', async () => {
-      const caseWithParent = { ...existingCase, parent_id: 10 };
-
+    it('should assign task by updating the task case once', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
-      mockCaseRepository.findCaseById.mockResolvedValue(caseWithParent);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
 
       mockPrisma.task.update.mockResolvedValue({
         ...existingTask,
@@ -318,7 +327,7 @@ describe('TaskLifecycleService', () => {
         status: TaskStatus.STATUS_10_ASSIGNED,
       });
       mockPrisma.case.update.mockResolvedValue({
-        ...caseWithParent,
+        ...existingCase,
         status: CaseStatus.STATUS_10_ASSIGNED,
       });
       mockPrisma.case.findFirst.mockResolvedValue({
@@ -329,6 +338,8 @@ describe('TaskLifecycleService', () => {
       await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey);
 
       expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalled();
+      expect(mockPrisma.case.findFirst).not.toHaveBeenCalled();
+      expect(mockPrisma.case.update).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -346,7 +357,6 @@ describe('TaskLifecycleService', () => {
       case_id: 1,
       status: CaseStatus.STATUS_20_IN_PROGRESS,
       tenant_id: 'tenant1',
-      parent_id: null,
     };
 
     it('should reassign task successfully', async () => {
@@ -376,18 +386,16 @@ describe('TaskLifecycleService', () => {
       await expect(service.reassignTask(999, 'supervisor1', 'tenant1', 'user2', 'note', mockSupervisorUser, testEndpointKey)).rejects.toThrow(NotFoundException);
     });
 
-    it('should handle parent case update during reassignment', async () => {
-      const caseWithParent = { ...existingCase, parent_id: 10 };
-
+    it('should reassign task by updating the task case once', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
-      mockCaseRepository.findCaseById.mockResolvedValue(caseWithParent);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
 
       mockPrisma.task.update.mockResolvedValue({
         ...existingTask,
         assigned_user_id: 'user2',
       });
       mockPrisma.case.update.mockResolvedValue({
-        ...caseWithParent,
+        ...existingCase,
         status: CaseStatus.STATUS_10_ASSIGNED,
       });
       mockPrisma.case.findFirst.mockResolvedValue({
@@ -398,6 +406,8 @@ describe('TaskLifecycleService', () => {
       await service.reassignTask(1, 'supervisor1', 'tenant1', 'user2', 'Reassign note', mockSupervisorUser, testEndpointKey);
 
       expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalled();
+      expect(mockPrisma.case.findFirst).not.toHaveBeenCalled();
+      expect(mockPrisma.case.update).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -415,7 +425,6 @@ describe('TaskLifecycleService', () => {
       case_id: 1,
       status: CaseStatus.STATUS_20_IN_PROGRESS,
       tenant_id: 'tenant1',
-      parent_id: null,
     };
 
     it('should unassign task successfully', async () => {
@@ -499,6 +508,25 @@ describe('TaskLifecycleService', () => {
       expect(mockPrisma.task.update).toHaveBeenCalled();
     });
 
+    it('unassignTask SAR/STR Filing: does NOT change case status in Postgres OR Flowable', async () => {
+      const taskId = 1;
+      const actorUserId = 'supervisor1';
+      const sarTask = { ...existingTask, task_id: taskId, name: 'SAR/STR Filing' };
+      mockTaskRepository.findTaskById.mockResolvedValue(sarTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockPrisma.task.update.mockResolvedValue({
+        ...sarTask,
+        assigned_user_id: null,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
+      });
+
+      await service.unassignTask(taskId, actorUserId, 'tenant1', 'switching filer', mockSupervisorUser, testEndpointKey);
+
+      expect(mockPrisma.case.update).not.toHaveBeenCalled();
+      expect(mockFlowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
+      expect(mockFlowableService.handleTaskUnassigned).toHaveBeenCalledWith(expect.objectContaining({ taskId }));
+    });
+
     it('should handle notification errors gracefully', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
@@ -521,18 +549,16 @@ describe('TaskLifecycleService', () => {
       );
     });
 
-    it('should handle parent case update during unassignment', async () => {
-      const caseWithParent = { ...existingCase, parent_id: 10 };
-
+    it('should unassign task by updating the task case once', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
-      mockCaseRepository.findCaseById.mockResolvedValue(caseWithParent);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
 
       mockPrisma.task.update.mockResolvedValue({
         ...existingTask,
         assigned_user_id: null,
       });
       mockPrisma.case.update.mockResolvedValue({
-        ...caseWithParent,
+        ...existingCase,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
       });
       mockPrisma.case.findFirst.mockResolvedValue({
@@ -543,6 +569,8 @@ describe('TaskLifecycleService', () => {
       await service.unassignTask(1, 'supervisor1', 'tenant1', 'reason', mockSupervisorUser, testEndpointKey);
 
       expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalled();
+      expect(mockPrisma.case.findFirst).not.toHaveBeenCalled();
+      expect(mockPrisma.case.update).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -645,6 +673,54 @@ describe('TaskLifecycleService', () => {
       expect(setTimeoutSpy).toHaveBeenCalledTimes(4);
       setTimeoutSpy.mockReset();
     }, 5000);
+
+    it('should throw ForbiddenException when compliance officer completes a non-SAR/STR task', async () => {
+      const nonSarTask = {
+        ...existingTask,
+        name: 'Investigate Case',
+        status: TaskStatus.STATUS_20_IN_PROGRESS,
+      };
+      const existingCase = {
+        case_id: 1,
+        status: CaseStatus.STATUS_20_IN_PROGRESS,
+        tenant_id: 'tenant1',
+      };
+
+      mockTaskRepository.findTaskById.mockResolvedValue(nonSarTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+
+      await expect(
+        service.completeTask(1, 'compliance1', 'tenant1', mockComplianceOfficerUser, testEndpointKey),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(mockTaskRepository.updateTask).not.toHaveBeenCalled();
+    });
+
+    it('should allow compliance officer to complete the SAR/STR Filing task', async () => {
+      const sarTask = {
+        ...existingTask,
+        name: TASK_NAMES.SAR_STR_FILING,
+        status: TaskStatus.STATUS_20_IN_PROGRESS,
+      };
+      const existingCase = {
+        case_id: 1,
+        status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+        tenant_id: 'tenant1',
+      };
+
+      mockTaskRepository.findTaskById.mockResolvedValue(sarTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockTaskRepository.updateTask.mockResolvedValue({
+        ...sarTask,
+        status: TaskStatus.STATUS_30_COMPLETED,
+      });
+      mockFlowableService.handleTaskCompleted.mockResolvedValue(undefined);
+
+      const result = await service.completeTask(1, 'compliance1', 'tenant1', mockComplianceOfficerUser, testEndpointKey);
+
+      expect(result.status).toBe(TaskStatus.STATUS_30_COMPLETED);
+      expect(mockTaskRepository.updateTask).toHaveBeenCalledWith(1, { status: TaskStatus.STATUS_30_COMPLETED }, expect.anything(), true);
+    });
   });
 
   describe('fetchTaskAndCase (private method coverage)', () => {
@@ -661,7 +737,6 @@ describe('TaskLifecycleService', () => {
         case_id: 1,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         tenant_id: 'tenant1',
-        parent_id: null,
       };
 
       mockTaskRepository.findTaskById.mockResolvedValue(task);
@@ -709,7 +784,6 @@ describe('TaskLifecycleService', () => {
         case_id: 1,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         tenant_id: 'tenant1',
-        parent_id: null,
       };
 
       mockTaskRepository.findTaskById.mockResolvedValue(task);
