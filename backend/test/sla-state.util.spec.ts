@@ -50,11 +50,15 @@ describe('sla-state.util', () => {
 
   describe('computeCaseSlaState', () => {
     it('returns null when the case has no sla_due_at', () => {
-      expect(computeCaseSlaState({ created_at: createdAt, sla_due_at: null }, ratios)).toBeNull();
+      expect(computeCaseSlaState({ sla_started_at: createdAt, sla_due_at: null }, ratios)).toBeNull();
     });
 
-    it('delegates to determineSlaState using the current time when sla_due_at is set', () => {
-      const result = computeCaseSlaState({ created_at: createdAt, sla_due_at: slaDueAt }, ratios);
+    it('returns null when the case has no sla_started_at (not yet READY_FOR_ASSIGNMENT, or legacy row)', () => {
+      expect(computeCaseSlaState({ sla_started_at: null, sla_due_at: slaDueAt }, ratios)).toBeNull();
+    });
+
+    it('delegates to determineSlaState using the current time when both fields are set', () => {
+      const result = computeCaseSlaState({ sla_started_at: createdAt, sla_due_at: slaDueAt }, ratios);
       expect(result).not.toBeNull();
       expect(Object.values(SlaState)).toContain(result);
     });

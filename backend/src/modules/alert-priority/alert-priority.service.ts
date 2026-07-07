@@ -18,6 +18,7 @@ interface SlaCheckCase {
   case_type: string | null;
   case_owner_user_id: string | null;
   created_at: Date;
+  sla_started_at: Date | null;
   sla_due_at: Date | null;
   tenant_id: string;
 }
@@ -74,11 +75,11 @@ export class AlertPriorityService {
   }
 
   private async checkCase(caseRecord: SlaCheckCase, now: Date, ratios: SlaEscalationRatios): Promise<void> {
-    if (!caseRecord.sla_due_at) {
+    if (!caseRecord.sla_due_at || !caseRecord.sla_started_at) {
       return;
     }
 
-    const state = determineSlaState(caseRecord.created_at, caseRecord.sla_due_at, now, ratios);
+    const state = determineSlaState(caseRecord.sla_started_at, caseRecord.sla_due_at, now, ratios);
     const isUnclaimed = !caseRecord.case_owner_user_id;
 
     // BREACHED overrides AT_RISK/DUE_SOON regardless of claim status — a case that's

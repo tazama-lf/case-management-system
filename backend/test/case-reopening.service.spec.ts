@@ -137,13 +137,10 @@ describe('CaseReopeningService', () => {
 
     const setupMockTransaction = () => {
       caseRepository.transaction.mockImplementationOnce(async (callback) => {
-        const tx = {
-          case: {
-            update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
-          },
-        };
+        const tx = { case: { update: jest.fn() } };
         return callback(tx);
       });
+      caseRepository.updateCase.mockResolvedValueOnce({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
     };
 
     it('should successfully reopen case as supervisor', async () => {
@@ -175,14 +172,12 @@ describe('CaseReopeningService', () => {
       caseRepository.transaction.mockImplementationOnce(async (callback) => {
         const tx = {
           case: {
-            update: jest
-              .fn()
-              .mockResolvedValueOnce({ ...caseWithParent, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT })
-              .mockResolvedValueOnce({ case_id: 100, status: CaseStatus.STATUS_20_IN_PROGRESS }),
+            update: jest.fn().mockResolvedValueOnce({ case_id: 100, status: CaseStatus.STATUS_20_IN_PROGRESS }),
           },
         };
         return callback(tx);
       });
+      caseRepository.updateCase.mockResolvedValueOnce({ ...caseWithParent, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
 
       taskService.createTask.mockResolvedValueOnce({
         task_id: 2,
@@ -295,11 +290,12 @@ describe('CaseReopeningService', () => {
 
       caseRepository.transaction.mockImplementationOnce(async (callback) => {
         const tx = {
-          case: { update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }) },
+          case: { update: jest.fn() },
           task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
         };
         return callback(tx);
       });
+      caseRepository.updateCase.mockResolvedValueOnce({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
 
       taskService.createTask.mockResolvedValueOnce({
         task_id: 3,
@@ -328,15 +324,13 @@ describe('CaseReopeningService', () => {
       caseRepository.transaction.mockImplementationOnce(async (callback) => {
         const tx = {
           case: {
-            update: jest
-              .fn()
-              .mockResolvedValueOnce({ ...caseWithParent, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT })
-              .mockResolvedValueOnce({ case_id: 100, status: CaseStatus.STATUS_20_IN_PROGRESS }),
+            update: jest.fn().mockResolvedValueOnce({ case_id: 100, status: CaseStatus.STATUS_20_IN_PROGRESS }),
           },
           task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
         };
         return callback(tx);
       });
+      caseRepository.updateCase.mockResolvedValueOnce({ ...caseWithParent, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
 
       taskService.createTask.mockResolvedValueOnce({
         task_id: 3,
@@ -360,11 +354,12 @@ describe('CaseReopeningService', () => {
 
       caseRepository.transaction.mockImplementationOnce(async (callback) => {
         const tx = {
-          case: { update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }) },
+          case: { update: jest.fn() },
           task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
         };
         return callback(tx);
       });
+      caseRepository.updateCase.mockResolvedValueOnce({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
 
       taskService.createTask.mockResolvedValueOnce({
         task_id: 3,
@@ -402,11 +397,12 @@ describe('CaseReopeningService', () => {
 
       caseRepository.transaction.mockImplementationOnce(async (callback) => {
         const tx = {
-          case: { update: jest.fn().mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }) },
+          case: { update: jest.fn() },
           task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
         };
         return callback(tx);
       });
+      caseRepository.updateCase.mockResolvedValueOnce({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
 
       taskService.createTask.mockResolvedValueOnce({
         task_id: 3,
