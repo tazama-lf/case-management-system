@@ -163,6 +163,7 @@ describe('TriageService', () => {
     };
 
     const mockFlowableService = {
+      handleCaseCreated: jest.fn(),
       handleTaskCompleted: jest.fn(),
       handleCaseStatusChanged: jest.fn(),
       handleCaseAbandoned: jest.fn(),
@@ -279,7 +280,7 @@ describe('TriageService', () => {
     alertRepository.getAlertById.mockResolvedValue(alertToReturn);
     caseRepository.findCaseById.mockResolvedValue(caseToReturn);
     alertService.updateAlert.mockResolvedValue(alertToReturn);
-    taskService.updateTask.mockResolvedValue(mockTask as any);
+    taskRepository.updateTask.mockResolvedValue(mockTask as any);
     commentRepository.createComment.mockResolvedValue({
       comment_id: 1,
       tenant_id: 'tenant-123',
@@ -428,7 +429,7 @@ describe('TriageService', () => {
 
       setupManualTriageMocks(fraudAndAmlAlert);
       alertService.updateAlert.mockResolvedValueOnce(fraudAndAmlAlert as any).mockResolvedValueOnce(detachedAlert as any);
-      caseCreateService.createCaseWithInvestigationTask.mockResolvedValue(mockCase as any);
+      caseCreateService.createCaseWithInvestigationTask.mockResolvedValue({ caseId: 2, message: 'Case created', taskId: 2 });
       setupTransactionMock(tx);
 
       const result = await service.handleManualTriage(1, fraudAndAmlDto, 'user-123', 'tenant-123');
@@ -445,6 +446,12 @@ describe('TriageService', () => {
         123,
         tx,
       );
+      expect(taskRepository.updateTask).toHaveBeenCalledWith(
+        1,
+        { assigned_user_id: 'user-123', status: TaskStatus.STATUS_30_COMPLETED },
+        tx,
+      );
+      expect(taskService.updateTask).not.toHaveBeenCalled();
       expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
       expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
         CaseType.AML,
@@ -456,6 +463,19 @@ describe('TriageService', () => {
         123,
         tx,
       );
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledWith({
+        caseId: 2,
+        tenantId: 'tenant-123',
+        caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        creationType: CaseCreationType.AUTOMATIC_SYSTEM,
+        creatorRole: 'SUPERVISOR',
+        isReopened: false,
+        isFraudNAML: true,
+      });
+      expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledWith({
+        caseId: 2,
+        newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+      });
       expect(alertService.updateAlert).toHaveBeenLastCalledWith(1, 'user-123', { caseId: null }, tx);
     });
 

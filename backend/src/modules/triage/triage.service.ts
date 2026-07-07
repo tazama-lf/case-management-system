@@ -335,11 +335,10 @@ export class TriageService {
           throw new InternalServerErrorException('Alert case_id is missing.');
         }
 
-        await this.taskService.updateTask(
+        await this.taskRepository.updateTask(
           completeNewCaseTask.task_id,
-          { assignedUserId: userId, status: TaskStatus.STATUS_30_COMPLETED },
-          userId,
-          tenantId,
+          { assigned_user_id: userId, status: TaskStatus.STATUS_30_COMPLETED },
+          tx,
         );
 
         await this.commentRepository.createComment(
@@ -407,7 +406,7 @@ export class TriageService {
               tx,
             );
 
-            return { alert: detachedAlert, completeNewCaseTask, existingCase };
+            return { alert: detachedAlert, completeNewCaseTask, existingCase, amlCase };
           } else {
             await this.caseCreationService.updateCaseStatus(
               alert.case_id,
@@ -419,8 +418,25 @@ export class TriageService {
             );
           }
         }
-        return { alert, completeNewCaseTask, existingCase };
+        return { alert, completeNewCaseTask, existingCase, amlCase: null };
       });
+
+      if (transactionResult.amlCase) {
+        await this.flowableService.handleCaseCreated({
+          caseId: transactionResult.amlCase.caseId,
+          tenantId,
+          caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          creationType: CaseCreationType.AUTOMATIC_SYSTEM,
+          creatorRole: 'SUPERVISOR',
+          isReopened: false,
+          isFraudNAML: true,
+        });
+
+        await this.flowableService.handleCaseStatusChanged({
+          caseId: transactionResult.amlCase.caseId,
+          newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        });
+      }
 
       await this.executeFlowableOperations(
         updateAlertData,
