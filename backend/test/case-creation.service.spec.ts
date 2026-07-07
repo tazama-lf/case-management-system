@@ -217,7 +217,7 @@ describe('CaseCreationService', () => {
     it('should successfully create case with investigation task', async () => {
       setupSuccessfulCaseCreation();
       setupSuccessfulTaskCreation();
-      loggingOrchestrationService.logActions.mockResolvedValueOnce(undefined);
+      loggingOrchestrationService.logActionsWithHistory.mockResolvedValueOnce(undefined);
 
       const result = await service.createCaseWithInvestigationTask(
         CaseType.FRAUD,
@@ -231,22 +231,30 @@ describe('CaseCreationService', () => {
       expect(result).toEqual({
         caseId: mockCase.case_id,
         message: 'Case created, BPMN will create investigation task',
+        taskId: 1,
       });
       expect(caseRepository.createCase).toHaveBeenCalledWith({
         caseCreatorUserId: userId,
-        caseOwnerUserId: null,
+        caseOwnerUserId: undefined,
         tenantId,
         priority: Priority.CRITICAL,
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         caseType: CaseType.FRAUD,
         caseCreationType: CaseCreationType.AUTOMATIC_SYSTEM,
       });
-      expect(flowableService.handleCaseCreated).toHaveBeenCalled();
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledTimes(1);
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: mockCase.case_id,
+          isFraudNAML: true,
+        }),
+      );
       expect(taskService.createTask).toHaveBeenNthCalledWith(
         1,
         {
           caseId: mockCase.case_id,
           status: TaskStatus.STATUS_30_COMPLETED,
+          assignedUserId: userId,
           name: 'Complete New Case',
           description: `Investigation task for manually created case ${mockCase.case_id}`,
           candidateGroup: 'investigations',
@@ -261,19 +269,23 @@ describe('CaseCreationService', () => {
           status: TaskStatus.STATUS_01_UNASSIGNED,
           name: 'Investigate Case',
           description: `Created for triaging alert for case:${mockCase.case_id}`,
-          candidateGroup: 'investigator',
+          candidateGroup: 'investigations',
         },
         userId,
         tenantId,
       );
-      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith({
-        userId,
+      expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalledWith(
+        {
+          userId,
+          tenantId,
+          operation: 'createCase',
+          entityName: 'CaseCreationService',
+          actionPerformed: `Case ${mockCase.case_id} created successfully`,
+          outcome: 'SUCCESS',
+        },
+        mockCase.case_id,
         tenantId,
-        operation: 'ADDITIONAL_CASE_CREATED',
-        entityName: 'CaseCreationService',
-        actionPerformed: expect.stringContaining(`Created ${CaseType.FRAUD} case ${mockCase.case_id}`),
-        outcome: 'SUCCESS',
-      });
+      );
     });
 
     it.each([
@@ -285,7 +297,7 @@ describe('CaseCreationService', () => {
       caseRepository.createCase.mockResolvedValueOnce(customCase);
       setupSuccessfulTaskCreation();
       flowableService.handleCaseCreated.mockResolvedValueOnce(undefined);
-      loggingOrchestrationService.logActions.mockResolvedValueOnce(undefined);
+      loggingOrchestrationService.logActionsWithHistory.mockResolvedValueOnce(undefined);
 
       const result = await service.createCaseWithInvestigationTask(
         caseType,
@@ -304,7 +316,7 @@ describe('CaseCreationService', () => {
       caseRepository.createCase.mockResolvedValueOnce({ ...mockCase, group_id: 123 });
       setupSuccessfulTaskCreation();
       flowableService.handleCaseCreated.mockResolvedValueOnce(undefined);
-      loggingOrchestrationService.logActions.mockResolvedValueOnce(undefined);
+      loggingOrchestrationService.logActionsWithHistory.mockResolvedValueOnce(undefined);
 
       const result = await service.createCaseWithInvestigationTask(
         CaseType.AML,
@@ -330,7 +342,7 @@ describe('CaseCreationService', () => {
       caseRepository.createCase.mockResolvedValueOnce(customCase);
       setupSuccessfulTaskCreation();
       flowableService.handleCaseCreated.mockResolvedValueOnce(undefined);
-      loggingOrchestrationService.logActions.mockResolvedValueOnce(undefined);
+      loggingOrchestrationService.logActionsWithHistory.mockResolvedValueOnce(undefined);
 
       const result = await service.createCaseWithInvestigationTask(
         CaseType.FRAUD,
@@ -416,6 +428,7 @@ describe('CaseCreationService', () => {
         tenantId,
         undefined,
       );
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledTimes(1);
     });
 
     it('should create manual case as investigator (needs approval)', async () => {
@@ -474,6 +487,7 @@ describe('CaseCreationService', () => {
       expect(result.success).toBe(true);
       expect(result.case).toEqual(fraudCase);
       expect(caseRepository.createCase).toHaveBeenCalledTimes(2);
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledTimes(2);
       expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, tenantId);
       expect(caseRepository.createCase).toHaveBeenNthCalledWith(
         1,

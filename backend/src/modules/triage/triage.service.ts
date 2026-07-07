@@ -335,11 +335,10 @@ export class TriageService {
           throw new InternalServerErrorException('Alert case_id is missing.');
         }
 
-        await this.taskService.updateTask(
+        await this.taskRepository.updateTask(
           completeNewCaseTask.task_id,
-          { assignedUserId: userId, status: TaskStatus.STATUS_30_COMPLETED },
-          userId,
-          tenantId,
+          { assigned_user_id: userId, status: TaskStatus.STATUS_30_COMPLETED },
+          tx,
         );
 
         await this.commentRepository.createComment(
@@ -364,7 +363,7 @@ export class TriageService {
           );
         } else if (alert.alert_type) {
           if (alert.alert_type === CaseType.FRAUD_AND_AML) {
-            const investigationGroup = await this.investigationGroupService.createInvestigationGroup(alert.alert_id, tenantId);
+            const investigationGroup = await this.investigationGroupService.createInvestigationGroup(alert.alert_id, tenantId, tx);
             await this.caseCreationService.updateCaseStatus(
               alert.case_id,
               CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
@@ -373,8 +372,10 @@ export class TriageService {
               priority,
               CaseType.FRAUD,
               investigationGroup.id,
+              tx,
             );
-            await this.caseCreateService.createCaseWithInvestigationTask(
+
+            const amlCase = await this.caseCreateService.createCaseWithInvestigationTask(
               CaseType.AML,
               userId,
               tenantId,
@@ -382,11 +383,30 @@ export class TriageService {
               CaseCreationType.AUTOMATIC_SYSTEM,
               'SUPERVISOR',
               investigationGroup.id,
+              tx,
             );
 
-            await this.alertService.updateAlert(alertId, userId, {
-              caseId: undefined,
-            });
+            await this.commentRepository.createComment(
+              userId,
+              {
+                caseId: amlCase.caseId,
+                taskId: amlCase.taskId,
+                tenantId,
+                note: updateAlertDto.note,
+              },
+              tx,
+            );
+
+            const detachedAlert = await this.alertService.updateAlert(
+              alertId,
+              userId,
+              {
+                caseId: null,
+              } as unknown as UpdateAlertDTO,
+              tx,
+            );
+
+            return { alert: detachedAlert, completeNewCaseTask, existingCase, amlCase };
           } else {
             await this.caseCreationService.updateCaseStatus(
               alert.case_id,
@@ -398,8 +418,25 @@ export class TriageService {
             );
           }
         }
-        return { alert, completeNewCaseTask, existingCase };
+        return { alert, completeNewCaseTask, existingCase, amlCase: null };
       });
+
+      if (transactionResult.amlCase) {
+        await this.flowableService.handleCaseCreated({
+          caseId: transactionResult.amlCase.caseId,
+          tenantId,
+          caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          creationType: CaseCreationType.AUTOMATIC_SYSTEM,
+          creatorRole: 'SUPERVISOR',
+          isReopened: false,
+          isFraudNAML: true,
+        });
+
+        await this.flowableService.handleCaseStatusChanged({
+          caseId: transactionResult.amlCase.caseId,
+          newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        });
+      }
 
       await this.executeFlowableOperations(
         updateAlertData,
@@ -619,7 +656,7 @@ export class TriageService {
             predictedAlertType,
             investigationGroup.id,
           );
-          await this.caseCreateService.createCaseWithInvestigationTask(
+          const fraudCase = await this.caseCreateService.createCaseWithInvestigationTask(
             CaseType.FRAUD,
             userId,
             tenantId,
@@ -628,15 +665,66 @@ export class TriageService {
             'SUPERVISOR',
             investigationGroup.id,
           );
-          await this.caseCreateService.createCaseWithInvestigationTask(
-            CaseType.AML,
-            userId,
-            tenantId,
-            priority,
-            CaseCreationType.AUTOMATIC_SYSTEM,
-            'SUPERVISOR',
-            investigationGroup.id,
-          );
+          try {
+            await this.caseCreateService.createCaseWithInvestigationTask(
+              CaseType.AML,
+              userId,
+              tenantId,
+              priority,
+              CaseCreationType.AUTOMATIC_SYSTEM,
+              'SUPERVISOR',
+              investigationGroup.id,
+            );
+          } catch (amlError) {
+            const amlErrorMessage = amlError instanceof Error ? amlError.message : String(amlError);
+            this.logger.error(
+              `FRAUD_AND_AML triage for alert ${alertId}: AML case creation failed after FRAUD case ${fraudCase.caseId} (investigation group ${investigationGroup.id}) was already created - rolling back`,
+              amlError instanceof Error ? amlError.stack : undefined,
+              TriageService.name,
+            );
+
+            // Neither Postgres nor Flowable support true distributed rollback, so we can't
+            // "undo" the earlier steps - instead we drive both cases (and their Flowable
+            // process instances) to the same terminal abandoned state the manual abandon
+            // flow uses (see CaseService.abandonCase), and drop the investigation group so
+            // the alert becomes eligible for triage/manual case creation again.
+            const rollbackReason = `FRAUD_AND_AML triage rollback: AML case creation failed for alert ${alertId}: ${amlErrorMessage}`;
+            try {
+              await Promise.all([
+                this.caseRepository.updateCase(caseId, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null }),
+                this.caseRepository.updateCase(fraudCase.caseId, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null }),
+              ]);
+              this.flowableService.handleCaseAbandoned({ caseId, reason: rollbackReason });
+              this.flowableService.handleCaseAbandoned({ caseId: fraudCase.caseId, reason: rollbackReason });
+              await this.prisma.investigationGroup.delete({ where: { id: investigationGroup.id } });
+
+              await this.loggingOrchestrationService.logActions({
+                userId,
+                operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLED_BACK',
+                entityName: 'Case',
+                actionPerformed: `Rolled back FRAUD_AND_AML triage for alert ${alertId}: abandoned case ${caseId} and FRAUD case ${fraudCase.caseId} after AML case creation failed`,
+                outcome: Outcome.FAILURE,
+                tenantId,
+              });
+            } catch (rollbackError) {
+              const rollbackErrorMessage = rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+              this.logger.error(
+                `FRAUD_AND_AML triage rollback itself failed for alert ${alertId} (case ${caseId}, FRAUD case ${fraudCase.caseId}, group ${investigationGroup.id}) - needs manual reconciliation: ${rollbackErrorMessage}`,
+                rollbackError instanceof Error ? rollbackError.stack : undefined,
+                TriageService.name,
+              );
+              await this.loggingOrchestrationService.logActions({
+                userId,
+                operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLBACK_FAILED',
+                entityName: 'Case',
+                actionPerformed: `Rollback failed for alert ${alertId}; case ${caseId} and FRAUD case ${fraudCase.caseId} (group ${investigationGroup.id}) need manual reconciliation`,
+                outcome: Outcome.FAILURE,
+                tenantId,
+              });
+            }
+
+            throw amlError;
+          }
 
           return;
         }

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus, Case, Alert } from '@prisma/client-cms';
+import { CaseCreationType, CaseStatus, CaseType, Priority, TaskStatus, Case, Alert, Prisma } from '@prisma/client-cms';
 import { CANDIDATE_GROUPS } from 'src/constants/case.constants';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { TaskService } from 'src/modules/task/task.service';
@@ -26,11 +26,18 @@ export class CaseCreationService {
     private readonly investigationGroupService: InvestigationGroupService,
   ) {}
 
-  async createCase(createCaseDTO: CreateCaseDto, userId: string, tenantId: string, userRole: string): Promise<Case> {
+  async createCase(
+    createCaseDTO: CreateCaseDto,
+    userId: string,
+    tenantId: string,
+    userRole: string,
+    isFraudNAML = false,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Case> {
     try {
       this.loggerService.log('Start - Create Case', CaseCreationService.name);
 
-      const createdCase = await this.caseRepository.createCase({
+      const caseDetail = {
         tenantId: createCaseDTO.tenantId,
         caseCreatorUserId: createCaseDTO.caseCreatorUserId,
         caseOwnerUserId: createCaseDTO.caseOwnerUserId,
@@ -39,9 +46,12 @@ export class CaseCreationService {
         caseType: createCaseDTO.caseType,
         caseCreationType: createCaseDTO.caseCreationType,
         ...(createCaseDTO.groupId === undefined ? {} : { groupId: createCaseDTO.groupId }),
-      });
+      };
+      const createdCase = tx ? await this.caseRepository.createCase(caseDetail, tx) : await this.caseRepository.createCase(caseDetail);
 
-      await this.executeFlowableCaseCreationEvent(createdCase, createCaseDTO.caseCreationType, false, userRole);
+      if (!tx) {
+        await this.executeFlowableCaseCreationEvent(createdCase, createCaseDTO.caseCreationType, isFraudNAML, userRole);
+      }
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
@@ -74,53 +84,45 @@ export class CaseCreationService {
     caseCreationType: CaseCreationType = CaseCreationType.AUTOMATIC_SYSTEM,
     userRole: string,
     groupId?: number,
-  ): Promise<unknown> {
+    tx?: Prisma.TransactionClient,
+  ): Promise<{ caseId: number; message: string; taskId?: number }> {
     try {
-      const newCase = await this.caseRepository.createCase({
-        caseCreatorUserId: userId,
-        caseOwnerUserId: null, // Owner assigned when investigation task is assigned
+      const createCaseDTO: CreateCaseDto = {
         tenantId,
-        priority,
+        caseCreatorUserId: userId,
+        caseOwnerUserId: undefined, // Owner assigned when investigation task is assigned
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        priority,
         caseType: alertType,
         caseCreationType,
         ...(groupId === undefined ? {} : { groupId }),
-      });
+      };
+      const newCase = await this.createCase(createCaseDTO, userId, tenantId, userRole, true, tx);
 
-      await this.executeFlowableCaseCreationEvent(newCase, caseCreationType, true, userRole);
+      const completeTaskDto = {
+        caseId: newCase.case_id,
+        status: TaskStatus.STATUS_30_COMPLETED,
+        assignedUserId: userId,
+        name: 'Complete New Case',
+        description: `Investigation task for manually created case ${newCase.case_id}`,
+        candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+      };
+      const completeTask = tx
+        ? await this.taskService.createTask(completeTaskDto, userId, tenantId, tx)
+        : await this.taskService.createTask(completeTaskDto, userId, tenantId);
 
-      await this.taskService.createTask(
-        {
-          caseId: newCase.case_id,
-          status: TaskStatus.STATUS_30_COMPLETED,
-          name: 'Complete New Case',
-          description: `Investigation task for manually created case ${newCase.case_id}`,
-          candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
-        },
-        userId,
-        tenantId,
-      );
-
-      await this.taskService.createTask(
-        {
-          caseId: newCase.case_id,
-          status: TaskStatus.STATUS_01_UNASSIGNED,
-          name: 'Investigate Case',
-          description: `Created for triaging alert for case:${newCase.case_id}`,
-          candidateGroup: 'investigator',
-        },
-        userId,
-        tenantId,
-      );
-
-      await this.loggingOrchestrationService.logActions({
-        userId,
-        operation: 'ADDITIONAL_CASE_CREATED',
-        entityName: 'CaseCreationService',
-        actionPerformed: `Created ${alertType} case ${newCase.case_id}. BPMN will create investigation task.`,
-        outcome: Outcome.SUCCESS,
-        tenantId,
-      });
+      const investigationTaskDto = {
+        caseId: newCase.case_id,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
+        name: 'Investigate Case',
+        description: `Created for triaging alert for case:${newCase.case_id}`,
+        candidateGroup: CANDIDATE_GROUPS.INVESTIGATIONS,
+      };
+      if (tx) {
+        await this.taskService.createTask(investigationTaskDto, userId, tenantId, tx);
+      } else {
+        await this.taskService.createTask(investigationTaskDto, userId, tenantId);
+      }
 
       this.loggerService.log(
         `Case ${newCase.case_id} (${alertType}) created. BPMN workflow will create investigation task.`,
@@ -130,6 +132,7 @@ export class CaseCreationService {
       return {
         caseId: newCase.case_id,
         message: 'Case created, BPMN will create investigation task',
+        taskId: completeTask.task_id,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -165,7 +168,7 @@ export class CaseCreationService {
     const investigationGroup = isFraudNAML
       ? await this.investigationGroupService.createInvestigationGroup(dto.alertId, tenantId)
       : undefined;
-    const primaryCaseType = isFraudNAML ? CaseType.FRAUD : caseType;
+    const primaryCaseType = isFraudNAML && !needsApproval ? CaseType.FRAUD : caseType;
     const caseDetail: CreateCaseDto = {
       tenantId,
       caseCreatorUserId: userId,
@@ -178,12 +181,12 @@ export class CaseCreationService {
     };
 
     try {
-      const createdCase = await this.caseRepository.createCase(caseDetail);
-      await this.executeFlowableCaseCreationEvent(createdCase, CaseCreationType.MANUAL, false, userRole);
+      const createdCase = await this.createCase(caseDetail, userId, tenantId, userRole);
 
       const relatedCases = [createdCase];
-      if (isFraudNAML) {
-        const amlCase = await this.caseRepository.createCase({
+      let amlCase: Case | undefined;
+      if (isFraudNAML && !needsApproval) {
+        const createCaseDTO: CreateCaseDto = {
           tenantId,
           caseCreatorUserId: userId,
           caseOwnerUserId: caseOwnerId,
@@ -192,8 +195,8 @@ export class CaseCreationService {
           priority,
           caseCreationType: CaseCreationType.MANUAL,
           ...(investigationGroup === undefined ? {} : { groupId: investigationGroup.id }),
-        });
-        await this.executeFlowableCaseCreationEvent(amlCase, CaseCreationType.MANUAL, false, userRole);
+        };
+        amlCase = await this.createCase(createCaseDTO, userId, tenantId, userRole);
         relatedCases.push(amlCase);
       }
 
@@ -232,18 +235,14 @@ export class CaseCreationService {
         return { alert: updatedAlert };
       });
 
-      await this.loggingOrchestrationService.logActionsWithHistory(
-        {
-          userId,
-          actionPerformed: `Manual case ${createdCase.case_id} created for alert ${dto.alertId}`,
-          entityName: CaseCreationService.name,
-          operation: 'createManualCase',
-          outcome: Outcome.SUCCESS,
-          tenantId,
-        },
-        createdCase.case_id,
+      await this.loggingOrchestrationService.logActions({
+        userId,
+        actionPerformed: `Manual case ${isFraudNAML ? `FRAUD: ${createdCase.case_id} AML: ${amlCase?.case_id}` : createdCase.case_id} created for alert ${dto.alertId}`,
+        entityName: CaseCreationService.name,
+        operation: 'createManualCase',
+        outcome: Outcome.SUCCESS,
         tenantId,
-      );
+      });
 
       this.loggerService.log(
         `End - Manual Case Creation. Case ${createdCase.case_id} created for alert ${dto.alertId}`,

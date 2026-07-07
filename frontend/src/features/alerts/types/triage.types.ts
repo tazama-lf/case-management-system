@@ -176,6 +176,8 @@ export interface Alert extends Record<string, unknown> {
   confidence_per: number;
   created_at: string;
   case_id?: number;
+  related_case_id?: number | null;
+  related_case_type?: string | null;
   prediction_outcome?: string;
   alerted_typologies?: AlertedTypology[];
 }
@@ -206,6 +208,8 @@ export interface AlertsFilter {
   limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface PaginationResponse {

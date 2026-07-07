@@ -100,7 +100,7 @@ describe('CaseCreationApprovalService', () => {
     const mockTaskRepository = {
       transaction: jest.fn(),
       findCaseBasic: jest.fn(),
-      createTask: jest.fn(),
+      createTask: jest.fn().mockResolvedValue({ task_id: 2, name: TASK_NAMES.INVESTIGATE_CASE }),
       findTasks: jest.fn().mockResolvedValue([]),
     };
 
@@ -243,6 +243,20 @@ describe('CaseCreationApprovalService', () => {
 
       await expect(service.saveCaseAsDraft(createDto as any, 'user-123', 'tenant-123', 'investigator')).rejects.toThrow(error);
     });
+
+    it('starts the Flowable process with isFraudNAML: false for a FRAUD_AND_AML draft, so it still routes through Complete New Case / Approve Case Creation instead of jumping straight to Investigate Case', async () => {
+      caseRepository.findAlert.mockResolvedValue(mockAlert as any);
+      const draftCase = { ...mockCase, status: CaseStatus.STATUS_00_DRAFT, case_type: CaseType.FRAUD_AND_AML };
+      caseRepository.createDraftCase.mockResolvedValue({
+        case: draftCase,
+        alert: { ...mockAlert, case_id: 1 },
+      } as any);
+      taskService.createTask.mockResolvedValue({ task_id: 1, name: 'Complete New Case' } as any);
+
+      await service.saveCaseAsDraft({ ...createDto, alertType: 'FRAUD_AND_AML' } as any, 'user-123', 'tenant-123', 'investigator');
+
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledWith(expect.objectContaining({ isFraudNAML: false }));
+    });
   });
 
   describe('approveCaseCreation', () => {
@@ -264,10 +278,21 @@ describe('CaseCreationApprovalService', () => {
 
       expect(result.success).toBe(true);
       expect(result.message).toContain('approved');
-      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, {
-        status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-      });
-      expect(taskService.createTask).toHaveBeenCalled();
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(
+        1,
+        {
+          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        },
+        expect.anything(),
+      );
+      expect(taskService.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: TASK_NAMES.INVESTIGATE_CASE,
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+        }),
+        'supervisor-123',
+        'tenant-123',
+      );
     });
 
     it('should approve FRAUD_AND_AML case by converting it to FRAUD and creating a sibling AML case with a mirrored task history', async () => {
@@ -292,74 +317,87 @@ describe('CaseCreationApprovalService', () => {
         { name: TASK_NAMES.COMPLETE_NEW_CASE, assigned_user_id: 'creator-123', candidateGroup: 'INVESTIGATIONS' },
         { name: TASK_NAMES.APPROVE_CASE_CREATION, assigned_user_id: 'supervisor-123', candidateGroup: 'SUPERVISORS' },
       ] as any);
-      taskService.createTask.mockImplementation((dto: any) =>
-        Promise.resolve({ task_id: Math.random(), case_id: dto.caseId, name: dto.name, status: dto.status } as any),
+      taskRepository.createTask.mockImplementation((data: any) =>
+        Promise.resolve({
+          task_id: Math.random(),
+          case_id: data.case.connect.case_id,
+          name: data.name,
+          status: data.status,
+        } as any),
       );
 
       const result = await service.approveCaseCreation(1, 'supervisor-123', 'tenant-123');
 
-      expect(alertRepository.getAlertByCaseId).toHaveBeenCalledWith(1);
-      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(100, 'tenant-123');
-      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, {
-        case_type: CaseType.FRAUD,
-        group_id: 55,
-      });
-      expect(caseRepository.createCase).toHaveBeenCalledWith({
-        tenantId: fraudCase.tenant_id,
-        caseCreatorUserId: fraudCase.case_creator_user_id,
-        caseOwnerUserId: fraudCase.case_owner_user_id,
-        status: fraudCase.status,
-        priority: fraudCase.priority,
-        caseType: CaseType.AML,
-        caseCreationType: fraudCase.case_creation_type,
-        groupId: 55,
-      });
+      expect(alertRepository.getAlertByCaseId).toHaveBeenCalledWith(1, 'tenant-123', expect.anything());
+      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(100, 'tenant-123', expect.anything());
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(
+        1,
+        {
+          case_type: CaseType.FRAUD,
+          group_id: 55,
+        },
+        expect.anything(),
+      );
+      expect(caseRepository.createCase).toHaveBeenCalledWith(
+        {
+          tenantId: fraudCase.tenant_id,
+          caseCreatorUserId: fraudCase.case_creator_user_id,
+          caseOwnerUserId: fraudCase.case_owner_user_id,
+          status: fraudCase.status,
+          priority: fraudCase.priority,
+          caseType: CaseType.AML,
+          caseCreationType: fraudCase.case_creation_type,
+          groupId: 55,
+        },
+        expect.anything(),
+      );
 
       // AML gets its own completed "Complete New Case" + "Approve Case Creation" tasks,
       // mirroring the FRAUD case's history, plus an "Investigate Case" task like FRAUD.
-      expect(taskService.createTask).toHaveBeenCalledTimes(4);
-      expect(taskService.createTask).toHaveBeenCalledWith(
+      expect(taskRepository.createTask).toHaveBeenCalledTimes(4);
+      expect(taskRepository.createTask).toHaveBeenCalledWith(
         expect.objectContaining({
-          caseId: amlCase.case_id,
+          case: { connect: { case_id: amlCase.case_id } },
           name: TASK_NAMES.COMPLETE_NEW_CASE,
           status: TaskStatus.STATUS_30_COMPLETED,
         }),
-        'supervisor-123',
-        'tenant-123',
+        expect.anything(),
       );
-      expect(taskService.createTask).toHaveBeenCalledWith(
+      expect(taskRepository.createTask).toHaveBeenCalledWith(
         expect.objectContaining({
-          caseId: amlCase.case_id,
+          case: { connect: { case_id: amlCase.case_id } },
           name: TASK_NAMES.APPROVE_CASE_CREATION,
           status: TaskStatus.STATUS_30_COMPLETED,
         }),
-        'supervisor-123',
-        'tenant-123',
+        expect.anything(),
       );
-      expect(taskService.createTask).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: fraudCase.case_id, name: TASK_NAMES.INVESTIGATE_CASE }),
-        'supervisor-123',
-        'tenant-123',
+      expect(taskRepository.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({ case: { connect: { case_id: fraudCase.case_id } }, name: TASK_NAMES.INVESTIGATE_CASE }),
+        expect.anything(),
       );
-      expect(taskService.createTask).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: amlCase.case_id, name: TASK_NAMES.INVESTIGATE_CASE }),
-        'supervisor-123',
-        'tenant-123',
+      expect(taskRepository.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({ case: { connect: { case_id: amlCase.case_id } }, name: TASK_NAMES.INVESTIGATE_CASE }),
+        expect.anything(),
       );
+      expect(alertRepository.updateAlert).toHaveBeenCalledWith(100, { caseId: null }, expect.anything());
 
-      // Both the completed AML tasks and the AML status transition are reported to flowable,
-      // in addition to the FRAUD case's own status-changed/task-completed calls.
+      // AML gets its own Flowable process (isFraudNAML: true routes it straight to
+      // Investigate Case, same as createCaseWithInvestigationTask's cases) and its
+      // own status-changed call, in addition to the FRAUD case's own calls.
+      expect(flowableService.handleCaseCreated).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: amlCase.case_id, isFraudNAML: true }),
+      );
       expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledTimes(2);
       expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledWith({
         caseId: amlCase.case_id,
         newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
       });
-      expect(flowableService.handleTaskCompleted).toHaveBeenCalledTimes(3);
+      // No handleTaskCompleted for AML's backfilled "Complete New Case"/"Approve Case
+      // Creation" tasks - BPMN never creates those tasks on the isFraudNAML=true route,
+      // so there's nothing in Flowable to complete for them.
+      expect(flowableService.handleTaskCompleted).toHaveBeenCalledTimes(1);
       expect(flowableService.handleTaskCompleted).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: amlCase.case_id, taskName: TASK_NAMES.COMPLETE_NEW_CASE }),
-      );
-      expect(flowableService.handleTaskCompleted).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: amlCase.case_id, taskName: TASK_NAMES.APPROVE_CASE_CREATION }),
+        expect.objectContaining({ caseId: 1, taskName: 'Approve Case Creation' }),
       );
 
       expect(result.case.case_type).toBe(CaseType.FRAUD);

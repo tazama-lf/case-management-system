@@ -103,18 +103,26 @@ export class CaseClosureApprovalService {
         });
       }
 
-      const investigationTask =
-        caseData.tasks
-          .filter(
-            (task) =>
-              task.name === TASK_NAMES.INVESTIGATE_CASE &&
-              (task.status === TaskStatus.STATUS_20_IN_PROGRESS || task.status === TaskStatus.STATUS_30_COMPLETED),
-          )
-          .sort((a, b) => {
-            const aTime = new Date(a.created_at).getTime();
-            const bTime = new Date(b.created_at).getTime();
-            return bTime - aTime;
-          })[0] || null;
+      const investigationTasks = caseData.tasks
+        .filter(
+          (task) =>
+            task.name === TASK_NAMES.INVESTIGATE_CASE &&
+            (task.status === TaskStatus.STATUS_20_IN_PROGRESS || task.status === TaskStatus.STATUS_30_COMPLETED),
+        )
+        .sort((a, b) => {
+          const aTime = new Date(a.created_at).getTime();
+          const bTime = new Date(b.created_at).getTime();
+          return bTime - aTime;
+        });
+      const investigationTask: Task | null = investigationTasks.at(0) ?? null;
+
+      if (!investigationTask) {
+        throw new NotFoundException({
+          message: 'Investigation task not found or not in a closeable state',
+          caseId,
+          requiredStatuses: [TaskStatus.STATUS_20_IN_PROGRESS, TaskStatus.STATUS_30_COMPLETED],
+        });
+      }
 
       this.logger.log(
         `Found investigation task userId ${investigationTask.assigned_user_id} and userId ${userId}`,
@@ -127,15 +135,6 @@ export class CaseClosureApprovalService {
           caseId,
           taskId: investigationTask.task_id,
           assignedTo: investigationTask.assigned_user_id,
-        });
-      }
-
-      if (investigationTask.status !== TaskStatus.STATUS_20_IN_PROGRESS && investigationTask.status !== TaskStatus.STATUS_30_COMPLETED) {
-        throw new ConflictException({
-          message: 'Investigation task must be in progress or completed to close case',
-          currentStatus: investigationTask.status,
-          requiredStatuses: [TaskStatus.STATUS_20_IN_PROGRESS, TaskStatus.STATUS_30_COMPLETED],
-          taskId: investigationTask.task_id,
         });
       }
 

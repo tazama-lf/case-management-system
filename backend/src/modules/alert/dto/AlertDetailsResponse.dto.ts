@@ -40,13 +40,31 @@ export class AlertDetailsResponseDTO {
   confidence_per: number;
 
   @ApiProperty({
-    description: 'Associated case ID if case was created',
+    description: 'Associated case ID if case was created. For FRAUD_AND_AML alerts this is the primary (FRAUD) case.',
     example: 987,
     nullable: true,
     required: false,
   })
   @IsNumber()
   case_id?: number;
+
+  @ApiProperty({
+    description: 'For FRAUD_AND_AML alerts, the sibling AML case sharing the same investigation group',
+    example: 988,
+    nullable: true,
+    required: false,
+  })
+  @IsNumber()
+  related_case_id?: number;
+
+  @ApiProperty({
+    description: 'Case type of the related case (e.g. AML)',
+    example: 'AML',
+    nullable: true,
+    required: false,
+  })
+  @IsString()
+  related_case_type?: string;
 
   @ApiProperty({
     description: 'Alert-specific data and metadata',

@@ -9,7 +9,7 @@ import { NotificationService } from '../src/modules/notification/notification.se
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { TaskStatus, CaseStatus } from '@prisma/client-cms';
 import { TASK_NAMES } from '../src/constants/case.constants';
 import { RbacService, EndpointKey } from '../src/utils/rbac/rbacHelper';
@@ -119,6 +119,18 @@ describe('TaskLifecycleService', () => {
     actorRole: 'CMS_INVESTIGATOR',
     actorName: 'Investigator User',
     actorEmail: 'investigator@test.com',
+    tenantName: 'Test Tenant',
+  };
+
+  const mockComplianceOfficerUser: AuthenticatedUser = {
+    token: {} as any,
+    validated: {} as any,
+    validClaims: [],
+    tenantId: 'tenant1',
+    userId: 'compliance1',
+    actorRole: 'CMS_COMPLIANCE_OFFICER',
+    actorName: 'Compliance Officer',
+    actorEmail: 'compliance@test.com',
     tenantName: 'Test Tenant',
   };
 
@@ -496,6 +508,25 @@ describe('TaskLifecycleService', () => {
       expect(mockPrisma.task.update).toHaveBeenCalled();
     });
 
+    it('unassignTask SAR/STR Filing: does NOT change case status in Postgres OR Flowable', async () => {
+      const taskId = 1;
+      const actorUserId = 'supervisor1';
+      const sarTask = { ...existingTask, task_id: taskId, name: 'SAR/STR Filing' };
+      mockTaskRepository.findTaskById.mockResolvedValue(sarTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockPrisma.task.update.mockResolvedValue({
+        ...sarTask,
+        assigned_user_id: null,
+        status: TaskStatus.STATUS_01_UNASSIGNED,
+      });
+
+      await service.unassignTask(taskId, actorUserId, 'tenant1', 'switching filer', mockSupervisorUser, testEndpointKey);
+
+      expect(mockPrisma.case.update).not.toHaveBeenCalled();
+      expect(mockFlowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
+      expect(mockFlowableService.handleTaskUnassigned).toHaveBeenCalledWith(expect.objectContaining({ taskId }));
+    });
+
     it('should handle notification errors gracefully', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
@@ -642,6 +673,54 @@ describe('TaskLifecycleService', () => {
       expect(setTimeoutSpy).toHaveBeenCalledTimes(4);
       setTimeoutSpy.mockReset();
     }, 5000);
+
+    it('should throw ForbiddenException when compliance officer completes a non-SAR/STR task', async () => {
+      const nonSarTask = {
+        ...existingTask,
+        name: 'Investigate Case',
+        status: TaskStatus.STATUS_20_IN_PROGRESS,
+      };
+      const existingCase = {
+        case_id: 1,
+        status: CaseStatus.STATUS_20_IN_PROGRESS,
+        tenant_id: 'tenant1',
+      };
+
+      mockTaskRepository.findTaskById.mockResolvedValue(nonSarTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+
+      await expect(
+        service.completeTask(1, 'compliance1', 'tenant1', mockComplianceOfficerUser, testEndpointKey),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(mockTaskRepository.updateTask).not.toHaveBeenCalled();
+    });
+
+    it('should allow compliance officer to complete the SAR/STR Filing task', async () => {
+      const sarTask = {
+        ...existingTask,
+        name: TASK_NAMES.SAR_STR_FILING,
+        status: TaskStatus.STATUS_20_IN_PROGRESS,
+      };
+      const existingCase = {
+        case_id: 1,
+        status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+        tenant_id: 'tenant1',
+      };
+
+      mockTaskRepository.findTaskById.mockResolvedValue(sarTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockTaskRepository.updateTask.mockResolvedValue({
+        ...sarTask,
+        status: TaskStatus.STATUS_30_COMPLETED,
+      });
+      mockFlowableService.handleTaskCompleted.mockResolvedValue(undefined);
+
+      const result = await service.completeTask(1, 'compliance1', 'tenant1', mockComplianceOfficerUser, testEndpointKey);
+
+      expect(result.status).toBe(TaskStatus.STATUS_30_COMPLETED);
+      expect(mockTaskRepository.updateTask).toHaveBeenCalledWith(1, { status: TaskStatus.STATUS_30_COMPLETED }, expect.anything(), true);
+    });
   });
 
   describe('fetchTaskAndCase (private method coverage)', () => {

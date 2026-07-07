@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useEffect, useMemo } from 'react';
+import { useReducer, useCallback, useEffect, useMemo, useRef } from 'react';
 import triageService from '../services/triageservice';
 import { transformBackendAlertToUI } from '../utils/alertTransformers';
 import type {
@@ -28,6 +28,8 @@ interface AlertsState {
   error: string | null;
   lastUpdated: Date | null;
 }
+
+const MONTH_INDEX_OFFSET = 1;
 
 type Action =
   | { type: 'FETCH_START' }
@@ -67,6 +69,90 @@ const initialState: AlertsState = {
   loading: true,
   error: null,
   lastUpdated: null,
+};
+
+const getEndOfDay = (date: Date): Date => {
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  return end;
+};
+
+const getStartOfDay = (date: Date): Date => {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  return start;
+};
+
+const parseLocalDateInput = (dateInput: string): Date => {
+  const [year, month, day] = dateInput.split('-').map(Number);
+  return new Date(year, month - MONTH_INDEX_OFFSET, day);
+};
+
+const getDateRangeForFilter = (
+  filters: AlertsSearchFilters,
+): { startDate?: string; endDate?: string } => {
+  const now = new Date();
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+
+  switch (filters.timeRange) {
+    case 'today':
+      startDate = getStartOfDay(now);
+      endDate = getEndOfDay(now);
+      break;
+    case 'yesterday': {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      startDate = getStartOfDay(yesterday);
+      endDate = getEndOfDay(yesterday);
+      break;
+    }
+    case 'thisWeek': {
+      const day = now.getDay();
+      const daysSinceMonday = day === 0 ? 6 : day - 1;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - daysSinceMonday);
+      startDate = getStartOfDay(monday);
+      endDate = getEndOfDay(now);
+      break;
+    }
+    case 'last7days':
+      startDate = getStartOfDay(new Date(now));
+      startDate.setDate(startDate.getDate() - 6);
+      endDate = getEndOfDay(now);
+      break;
+    case 'thisMonth':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = getEndOfDay(now);
+      break;
+    case 'last30days':
+      startDate = getStartOfDay(new Date(now));
+      startDate.setDate(startDate.getDate() - 29);
+      endDate = getEndOfDay(now);
+      break;
+    case 'last90days':
+      startDate = getStartOfDay(new Date(now));
+      startDate.setDate(startDate.getDate() - 89);
+      endDate = getEndOfDay(now);
+      break;
+    case 'custom':
+      if (filters.customDateRange?.startDate) {
+        startDate = getStartOfDay(
+          parseLocalDateInput(filters.customDateRange.startDate),
+        );
+      }
+      if (filters.customDateRange?.endDate) {
+        endDate = getEndOfDay(
+          parseLocalDateInput(filters.customDateRange.endDate),
+        );
+      }
+      break;
+  }
+
+  return {
+    ...(startDate && { startDate: startDate.toISOString() }),
+    ...(endDate && { endDate: endDate.toISOString() }),
+  };
 };
 
 const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
@@ -120,24 +206,33 @@ const alertsReducer = (state: AlertsState, action: Action): AlertsState => {
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- Hook return type is inferred
 export const useAlerts = () => {
   const [state, dispatch] = useReducer(alertsReducer, initialState);
+  const latestFetchId = useRef(0);
 
   const fetchAlerts = useCallback(async () => {
+    const fetchId = latestFetchId.current + 1;
+    latestFetchId.current = fetchId;
+
     dispatch({ type: 'FETCH_START' });
     try {
-      // Build the filters object with proper pagination and sorting
-      // Remove search from server-side filters - we'll do client-side search like cases
+      const dateRange = getDateRangeForFilter(state.filters);
+      const searchQuery = state.filters.query.trim();
       const filters = {
         page: state.pagination.currentPage,
         limit: state.pagination.pageSize,
         sortBy: String(state.sort.column),
         sortOrder: state.sort.direction,
-        // Remove search from server-side: ...(state.filters.query && { search: state.filters.query }),
+        ...(searchQuery && { search: searchQuery }),
         ...(state.filters.source && { source: state.filters.source }),
         ...(state.filters.type && { alertType: state.filters.type }),
         ...(state.filters.priority && { priority: state.filters.priority }),
+        ...dateRange,
       };
 
       const response = await triageService.getAlerts(filters);
+      if (fetchId !== latestFetchId.current) {
+        return;
+      }
+
       const transformedAlerts = response.alerts.map(transformBackendAlertToUI);
       dispatch({
         type: 'FETCH_SUCCESS',
@@ -150,6 +245,10 @@ export const useAlerts = () => {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'An unknown error occurred';
+      if (fetchId !== latestFetchId.current) {
+        return;
+      }
+
       dispatch({ type: 'FETCH_FAILURE', payload: errorMessage });
     }
   }, [
@@ -157,9 +256,12 @@ export const useAlerts = () => {
     state.pagination.pageSize,
     state.sort.column,
     state.sort.direction,
+    state.filters.query,
     state.filters.source,
     state.filters.type,
     state.filters.priority,
+    state.filters.timeRange,
+    state.filters.customDateRange,
   ]);
 
   useEffect(() => {
@@ -192,65 +294,14 @@ export const useAlerts = () => {
     dispatch({ type: 'SET_PAGE_SIZE', payload: pageSize });
   };
 
-  // Apply client-side search filter (same logic as cases)
-  const searchFilteredAlerts = useMemo(() => {
-    if (state.filters.query === '') return state.allAlerts;
-    return state.allAlerts.filter((alert) =>
-      [
-        alert.alert_id,
-        alert.txtp,
-        alert.source,
-        alert.message,
-        alert.priority,
-        alert.alert_type,
-        String(alert.confidence_per),
-        alert.case_id,
-        // Add any additional searchable fields
-      ]
-        .filter(Boolean) // Remove null/undefined values
-        .join(' ')
-        .toLowerCase()
-        .includes(state.filters.query.toLowerCase()),
-    );
-  }, [state.allAlerts, state.filters.query]);
-
-  const paginatedAlerts = useMemo(() => {
-    // For client-side search: if there's a search query, paginate the filtered results
-    if (state.filters.query !== '') {
-      const start =
-        (state.pagination.currentPage - 1) * state.pagination.pageSize;
-      const end = start + state.pagination.pageSize;
-      return searchFilteredAlerts.slice(start, end);
-    }
-    // Otherwise, use backend pagination (no search)
-    return state.filteredAlerts;
-  }, [
-    searchFilteredAlerts,
-    state.filteredAlerts,
-    state.pagination.currentPage,
-    state.pagination.pageSize,
-    state.filters.query,
-  ]);
+  const paginatedAlerts = useMemo(
+    () => state.filteredAlerts,
+    [state.filteredAlerts],
+  );
 
   return {
     ...state,
-    // Update pagination info based on whether we're doing client-side search
-    pagination: {
-      ...state.pagination,
-      totalItems:
-        state.filters.query === ''
-          ? state.pagination.totalItems
-          : searchFilteredAlerts.length,
-      totalPages:
-        state.filters.query === ''
-          ? state.pagination.totalPages
-          : Math.max(
-              1,
-              Math.ceil(
-                searchFilteredAlerts.length / state.pagination.pageSize,
-              ),
-            ),
-    },
+    pagination: state.pagination,
     paginatedAlerts,
     setFilters,
     setSort,

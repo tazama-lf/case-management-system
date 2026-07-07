@@ -14,6 +14,7 @@ import { CaseClosureApprovalService } from './services/case-closure-approval.ser
 import { CaseCreationApprovalService } from './services/case-creation-approval.service';
 import { FlowableService } from '../../../src/modules/flowable/flowable.service';
 import { AlertRepository } from '../repository/alert.repository';
+import { UpdateAlertDTO } from '../alert/dto';
 import { CloseCaseDto, ManualCreateCaseDto, GetAllCasesQueryDto, GetUserCasesQueryDto, UpdateCaseDto } from './dto';
 import { CacheService } from '../shared/cache.service';
 import { CaseCreationService } from './services/case-creation.service';
@@ -894,20 +895,27 @@ export class CaseService {
     );
 
     try {
-      let investigationGroup: { id: number } | undefined;
-      if (isSupervisor) {
-        investigationGroup = isFraudNAML
-          ? await this.investigationGroupService.createInvestigationGroup(await this.alertRepository.getAlertByCaseId(caseId), tenantId)
-          : undefined;
-      }
-
       const result = await this.prismaService.$transaction(async (prisma) => {
+        let investigationGroup: { id: number } | undefined;
+        if (isSupervisor && isFraudNAML) {
+          const alertId = await this.alertRepository.getAlertByCaseId(caseId, tenantId, prisma);
+          investigationGroup = await this.investigationGroupService.createInvestigationGroup(alertId, tenantId, prisma);
+        }
+
         const caseUpdateData = {
           ...updateData,
           caseType: isFraudNAML && isSupervisor ? CaseType.FRAUD : updateData.caseType,
           status: targetStatus,
         };
-        let updatedCase = await this.caseQueryService.updateCase(caseId, caseUpdateData, userId);
+        let updatedCase = await prisma.case.update({
+          where: { case_id: caseId },
+          data: {
+            case_type: caseUpdateData.caseType,
+            priority: caseUpdateData.priority,
+            status: caseUpdateData.status,
+            case_owner_user_id: caseUpdateData.caseOwnerUserId,
+          },
+        });
         if (investigationGroup !== undefined) {
           updatedCase = await prisma.case.update({
             where: { case_id: caseId },
@@ -917,10 +925,6 @@ export class CaseService {
             },
           });
         }
-        await this.flowableService.handleCaseStatusChanged({
-          caseId,
-          newStatus: targetStatus,
-        });
 
         const allTasks = await this.taskService.getTasksByCaseId(existingCase.case_id, tenantId);
         const completeNewCaseTask = allTasks.find((t) => t.name === 'Complete New Case');
@@ -944,26 +948,73 @@ export class CaseService {
         // targetStatus can only be STATUS_02_READY_FOR_ASSIGNMENT or STATUS_01_PENDING_CASE_CREATION_APPROVAL
         // so isAutoCloseEligible is always false
         const isAutoCloseEligible = false;
-        await this.flowableService.handleTaskCompleted({
-          caseId: completedTask.case_id,
-          taskName: completedTask.name!,
-          newStatus: TaskStatus.STATUS_30_COMPLETED,
-          completionVariables: {
-            autoCloseEligible: isAutoCloseEligible,
-            caseType: isFraudNAML && isSupervisor ? CaseType.FRAUD : (updateData.caseType ?? existingCase.case_type!),
-            casePriority: updateData.priority ?? existingCase.priority,
-            draftApprovalRequired: isSupervisor ? false : true,
-          },
-        });
 
-        const createCommentDto = new CreateCommentDto();
-        createCommentDto.caseId = caseId;
-        createCommentDto.taskId = completeNewCaseTask.task_id;
-        createCommentDto.note = updateData.note ?? 'Completed case creation';
-        createCommentDto.tenantId = tenantId;
+        const createCommentDto: {
+          caseId: number;
+          taskId: number;
+          note: string;
+          tenantId: string;
+        } = {
+          caseId,
+          taskId: completeNewCaseTask.task_id,
+          note: updateData.note ?? 'Completed case creation',
+          tenantId,
+        };
 
         await this.commentService.addComment(createCommentDto, userId);
-        return { case: updatedCase, completedTask };
+
+        const alertId = await this.alertRepository.getAlertByCaseId(caseId, tenantId, prisma);
+        if (alertId) {
+          await this.alertRepository.updateAlert(
+            alertId,
+            {
+              priority_score: updateData.priorityScore,
+              priority: updateData.priority,
+              alertType: updateData.caseType,
+              predictionOutcome: updateData.predictionOutcome,
+              confidencePer: updateData.confidence,
+              caseId: isFraudNAML && isSupervisor ? null : caseId,
+            } as unknown as UpdateAlertDTO,
+            prisma,
+          );
+        }
+
+        let amlCase: {
+          caseId: number;
+          message: string;
+          taskId?: number | undefined;
+        } | null = null;
+        if (isFraudNAML && isSupervisor) {
+          amlCase = await this.caseCreationService.createCaseWithInvestigationTask(
+            CaseType.AML,
+            userId,
+            existingCase.tenant_id,
+            updatedCase.priority,
+            CaseCreationType.AUTOMATIC_SYSTEM,
+            role,
+            investigationGroup!.id,
+            prisma,
+          );
+        }
+
+        return { case: updatedCase, completedTask, amlCase, investigationGroup, isAutoCloseEligible };
+      });
+
+      await this.flowableService.handleCaseStatusChanged({
+        caseId,
+        newStatus: targetStatus,
+      });
+
+      await this.flowableService.handleTaskCompleted({
+        caseId: result.completedTask.case_id,
+        taskName: result.completedTask.name!,
+        newStatus: TaskStatus.STATUS_30_COMPLETED,
+        completionVariables: {
+          autoCloseEligible: result.isAutoCloseEligible,
+          caseType: isFraudNAML && isSupervisor ? CaseType.FRAUD : (updateData.caseType ?? existingCase.case_type!),
+          casePriority: updateData.priority ?? existingCase.priority,
+          draftApprovalRequired: isSupervisor ? false : true,
+        },
       });
 
       this.logger.log(
@@ -1002,33 +1053,19 @@ export class CaseService {
         );
       }
 
-      const getAlertIdByCaseId = await this.alertRepository.getAlertByCaseId(caseId);
-      if (getAlertIdByCaseId) {
-        const alertUpdateData = {
-          priority_score: updateData.priorityScore,
-          priority: updateData.priority,
-          alertType: updateData.caseType,
-          predictionOutcome: updateData.predictionOutcome,
-          confidencePer: updateData.confidence,
-          case_id: caseId,
-        };
-        await this.alertRepository.updateAlert(getAlertIdByCaseId, alertUpdateData);
-        this.logger.log(`[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`, CaseService.name);
-      }
-
-      if (isFraudNAML && isSupervisor) {
-        await this.caseCreationService.createCaseWithInvestigationTask(
-          CaseType.AML,
-          userId,
+      if (result.amlCase) {
+        await this.loggingOrchestrationService.logActionsWithHistory(
+          {
+            userId,
+            operation: 'completeCaseCreation',
+            entityName: CaseService.name,
+            actionPerformed: `Completed draft case FRAUD: ${caseId} & AML: ${result.amlCase.caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
+            outcome: Outcome.SUCCESS,
+            tenantId: existingCase.tenant_id,
+          },
+          result.amlCase.caseId,
           existingCase.tenant_id,
-          result.case.priority,
-          CaseCreationType.AUTOMATIC_SYSTEM,
-          role,
-          investigationGroup?.id,
         );
-        await this.alertRepository.updateAlert(getAlertIdByCaseId, {
-          caseId: undefined,
-        });
       }
 
       // this.logger.log(
@@ -1041,7 +1078,7 @@ export class CaseService {
           userId,
           operation: 'completeCaseCreation',
           entityName: CaseService.name,
-          actionPerformed: `Completed draft case ${caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
+          actionPerformed: `Completed draft case ${isFraudNAML ? `FRAUD: ${caseId} & AML: ${result.amlCase?.caseId}` : caseId} by ${role}${needsApproval ? ', created approval task' : ', created investigation task'}`,
           outcome: Outcome.SUCCESS,
           tenantId: existingCase.tenant_id,
         },

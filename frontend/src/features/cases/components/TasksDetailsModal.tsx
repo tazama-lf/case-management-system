@@ -144,7 +144,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   }, [row]);
 
   React.useEffect(() => {
-    if (shouldShowVisualizations === false && tab === 'visualizations') {
+    if (!shouldShowVisualizations && tab === 'visualizations') {
       setTab('details');
     }
   }, [shouldShowVisualizations, tab]);
@@ -177,7 +177,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               [
                 { key: 'details', label: 'Task Details' },
                 { key: 'evidence', label: 'Evidence' },
-                ...(shouldShowVisualizations === true
+                ...(shouldShowVisualizations
                   ? ([
                     {
                       key: 'visualizations',
@@ -231,7 +231,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   }}
                 />
               </div>
-              {shouldShowVisualizations === true && (
+              {shouldShowVisualizations && (
                 <div
                   style={{
                     display: tab === 'visualizations' ? 'block' : 'none',

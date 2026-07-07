@@ -334,7 +334,7 @@ describe('CaseClosureApprovalService', () => {
           const caseWithoutTask = { ...mockCase, tasks: [] };
           caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithoutTask as any);
         },
-        error: InternalServerErrorException,
+        error: NotFoundException,
       },
       {
         description: 'investigation task not assigned to user',
@@ -356,7 +356,7 @@ describe('CaseClosureApprovalService', () => {
           };
           caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithTask as any);
         },
-        error: InternalServerErrorException,
+        error: NotFoundException,
       },
       {
         description: 'unexpected error',
@@ -475,7 +475,7 @@ describe('CaseClosureApprovalService', () => {
     it.each([
       {
         description: 'invalid final outcome',
-        mockSetup: () => {},
+        mockSetup: () => { },
         finalOutcome: 'INVALID_OUTCOME',
         error: BadRequestException,
       },
@@ -801,6 +801,69 @@ describe('CaseClosureApprovalService', () => {
       caseRepository.findCaseForReview.mockResolvedValue(pendingCase as any);
 
       await expect(service.returnCaseForReview(1, 'Review needed', 'supervisor-123', 'tenant-123')).rejects.toThrow();
+    });
+  });
+
+  describe('closeCase - missing investigation task regression', () => {
+    it('should throw NotFoundException when investigation task exists but is not in a closeable status', async () => {
+      const caseWithUnassignedInvestigationTask = {
+        ...mockCase,
+        status: CaseStatus.STATUS_20_IN_PROGRESS,
+        tasks: [
+          {
+            ...mockTask,
+            name: 'Investigate Case',
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            assigned_user_id: 'user-123',
+          },
+        ],
+      };
+      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithUnassignedInvestigationTask as any);
+
+      await expect(service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator')).rejects.toThrow(NotFoundException);
+
+      expect(caseRepository.updateCaseStatusAndCompleteTask).not.toHaveBeenCalled();
+      expect(flowableService.handleTaskCompleted).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when case has tasks but none are investigation tasks', async () => {
+      const caseWithNonInvestigationTasks = {
+        ...mockCase,
+        status: CaseStatus.STATUS_20_IN_PROGRESS,
+        tasks: [
+          {
+            ...mockTask,
+            name: 'Review Document',
+            status: TaskStatus.STATUS_20_IN_PROGRESS,
+            assigned_user_id: 'user-123',
+          },
+          {
+            ...mockTask,
+            name: 'Approve Case Closure',
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            assigned_user_id: 'user-123',
+          },
+        ],
+      };
+      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithNonInvestigationTasks as any);
+
+      await expect(service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'investigator')).rejects.toThrow(NotFoundException);
+
+      expect(caseRepository.updateCaseStatusAndCompleteTask).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when investigation task list is empty', async () => {
+      const caseWithNoTasks = {
+        ...mockCase,
+        status: CaseStatus.STATUS_20_IN_PROGRESS,
+        tasks: [],
+      };
+      caseRepository.findCaseWithPermissionCheck.mockResolvedValue(caseWithNoTasks as any);
+
+      await expect(service.closeCase(1, mockCloseDto, 'user-123', 'tenant-123', 'CMS_SUPERVISOR')).rejects.toThrow(NotFoundException);
+
+      expect(caseRepository.updateCaseStatusAndCompleteTask).not.toHaveBeenCalled();
+      expect(flowableService.handleTaskCompleted).not.toHaveBeenCalled();
     });
   });
 

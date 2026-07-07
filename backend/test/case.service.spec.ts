@@ -115,7 +115,7 @@ describe('CaseService', () => {
         update: jest.fn(),
       },
       investigationGroup: {
-        create: jest.fn().mockResolvedValue({
+        upsert: jest.fn().mockResolvedValue({
           id: 123,
           alert_id: 1,
           tenant_id: 'tenant-123',
@@ -678,20 +678,20 @@ describe('CaseService', () => {
     };
 
     const setupMockTransaction = () => {
+      const caseUpdate = jest.fn().mockResolvedValue({
+        ...mockDraftCase,
+        case_type: CaseType.FRAUD,
+        group_id: 123,
+        priority: Priority.CRITICAL,
+      });
       const mockTransaction = jest.fn(async (callback) => {
         const mockPrisma = {
-          case: {
-            update: jest.fn().mockResolvedValue({
-              ...mockDraftCase,
-              case_type: CaseType.FRAUD,
-              group_id: 123,
-              priority: Priority.CRITICAL,
-            }),
-          },
+          case: { update: caseUpdate },
         };
         return await callback(mockPrisma);
       });
       prismaService.$transaction.mockImplementation(mockTransaction);
+      return { caseUpdate };
     };
 
     it('should complete case creation by investigator with approval required', async () => {
@@ -744,22 +744,44 @@ describe('CaseService', () => {
         { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 },
       ] as any);
       const updatedCase = { ...fraudAmlCase, ...fraudAmlData, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT };
-      setupMockTransaction();
+      const { caseUpdate } = setupMockTransaction();
       caseQueryService.updateCase.mockResolvedValue(updatedCase as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
       taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Investigate Case' } as any);
       alertRepository.getAlertByCaseId.mockResolvedValue(1 as any);
+      caseCreationService.createCaseWithInvestigationTask.mockResolvedValue({
+        caseId: 2,
+        message: 'Case created, BPMN will create investigation task',
+        taskId: 3,
+      } as any);
+      commentService.addComment.mockResolvedValue(undefined as any);
+      flowableService.handleCaseStatusChanged.mockResolvedValue(undefined as any);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined as any);
+      alertRepository.updateAlert.mockResolvedValue(undefined as any);
 
       await service.completeCaseCreation(1, fraudAmlData as any, 'user-123', 'tenant-123', 'SUPERVISOR', mockSupervisorUser, completeCaseCreationEndpoint);
 
-      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, 'tenant-123');
-      expect(caseQueryService.updateCase).toHaveBeenCalledWith(
+      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, 'tenant-123', expect.anything());
+      expect(caseQueryService.updateCase).not.toHaveBeenCalled();
+      expect(caseUpdate).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({
-          caseType: CaseType.FRAUD,
-          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          where: { case_id: 1 },
+          data: expect.objectContaining({
+            case_type: CaseType.FRAUD,
+            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          }),
         }),
-        'user-123',
+      );
+      expect(caseUpdate).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: { case_id: 1 },
+          data: expect.objectContaining({
+            group_id: 123,
+            case_type: CaseType.FRAUD,
+          }),
+        }),
       );
       expect(taskService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'Investigate Case' }), 'user-123', 'tenant-123');
       expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
@@ -779,6 +801,17 @@ describe('CaseService', () => {
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
         123,
+        expect.anything(),
+      );
+      expect(alertRepository.updateAlert).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          caseId: null,
+          priority_score: 85,
+          priority: Priority.CRITICAL,
+          alertType: CaseType.FRAUD_AND_AML,
+        }),
+        expect.anything(),
       );
     });
 
@@ -837,6 +870,7 @@ describe('CaseService', () => {
           priority: Priority.CRITICAL,
           alertType: CaseType.FRAUD,
         }),
+        expect.anything(),
       );
     });
 
