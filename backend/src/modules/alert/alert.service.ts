@@ -152,7 +152,6 @@ export class AlertService {
     if (!transactionData.data) {
       throw new InternalServerErrorException(`Transaction history data not found for AlertId ${alertId}`);
     }
-    this.loggerService.log(`Fetched transaction data for Alert ID ${alertId}: ${JSON.stringify(transactionData)}`, AlertService.name);
     return { transactionData };
   }
 

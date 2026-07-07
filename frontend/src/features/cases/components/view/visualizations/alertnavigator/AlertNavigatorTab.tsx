@@ -86,31 +86,6 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
     return 'text-yellow-700';
   };
 
-  const getBandReasonsForRule = ( bandReasonsJson: unknown, subRef: any): string => {
-    try {
-      let reasonsArray: string[] = [];
-      
-      if (Array.isArray(bandReasonsJson)) {
-        reasonsArray = bandReasonsJson;
-      } else if (typeof bandReasonsJson === 'string') {
-        reasonsArray = JSON.parse(bandReasonsJson);
-      } else {
-        return '';
-      }
-
-      if (!Array.isArray(reasonsArray)) return '';
-
-      const filteredReasons = reasonsArray
-        .filter((item: any) => item?.subRuleRef  === subRef)
-        .map((item: any) => item?.reason)
-        .filter(Boolean);
-
-      return filteredReasons.join(', ');
-    } catch {
-      return '';
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
