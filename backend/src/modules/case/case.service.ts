@@ -1017,6 +1017,25 @@ export class CaseService {
         },
       });
 
+      if (result.amlCase) {
+        // createCaseWithInvestigationTask was called with the transaction client above,
+        // so Flowable process creation is deferred until the DB commit succeeds.
+        await this.flowableService.handleCaseCreated({
+          caseId: result.amlCase.caseId,
+          tenantId: existingCase.tenant_id,
+          caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          creationType: CaseCreationType.AUTOMATIC_SYSTEM,
+          creatorRole: role,
+          isReopened: false,
+          isFraudNAML: true,
+        });
+
+        await this.flowableService.handleCaseStatusChanged({
+          caseId: result.amlCase.caseId,
+          newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        });
+      }
+
       this.logger.log(
         `[CompleteCaseCreation] Case ${caseId} updated to ${targetStatus}, Complete New Case task completed`,
         CaseService.name,
