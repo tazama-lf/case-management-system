@@ -765,15 +765,28 @@ describe('CaseService', () => {
       expect(caseQueryService.updateCase).not.toHaveBeenCalled();
       expect(caseUpdate).toHaveBeenNthCalledWith(
         1,
-        Priority.HIGH,
-        CaseCreationType.AUTOMATIC_SYSTEM,
-        'SUPERVISOR',
+        expect.objectContaining({
+          where: { case_id: 1 },
+          data: expect.objectContaining({
+            case_type: CaseType.FRAUD,
+            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          }),
+        }),
+      );
+      expect(caseUpdate).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: { case_id: 1 },
+          data: expect.objectContaining({
+            group_id: 123,
+            case_type: CaseType.FRAUD,
+          }),
+        }),
       );
       expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
         CaseType.AML,
         'user-123',
         'tenant-123',
-        1,
         Priority.HIGH,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',

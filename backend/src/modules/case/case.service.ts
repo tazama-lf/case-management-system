@@ -45,7 +45,7 @@ export class CaseService {
     private readonly caseCreationService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly investigationGroupService: InvestigationGroupService,
-  ) { }
+  ) {}
 
   async suspendCase(
     caseId: number,
@@ -715,11 +715,11 @@ export class CaseService {
       } | null;
       group_id: number | null;
       assigned_to:
-      | {
-        user_id: string | null;
-        task_count: number;
-      }
-      | undefined;
+        | {
+            user_id: string | null;
+            task_count: number;
+          }
+        | undefined;
     }>;
     pagination: {
       total: number;
@@ -735,12 +735,12 @@ export class CaseService {
       unassignedCases: number;
       averageTasksPerCase: number;
       oldestUnassignedCase:
-      | {
-        case_id: number;
-        created_at: Date;
-        days_old: number;
-      }
-      | undefined;
+        | {
+            case_id: number;
+            created_at: Date;
+            days_old: number;
+          }
+        | undefined;
     };
   }> {
     return await this.caseQueryService.getAllCases(query, tenantId, investigatorUserId, isComplianceOfficer);
@@ -769,13 +769,13 @@ export class CaseService {
       }>;
       total_tasks: number;
       alert:
-      | {
-        alert_id: number;
-        message: string;
-        confidence_per: number;
-        transaction: JsonValue;
-      }
-      | undefined;
+        | {
+            alert_id: number;
+            message: string;
+            confidence_per: number;
+            transaction: JsonValue;
+          }
+        | undefined;
       latest_comment_date: Date;
     }>;
     pagination: {
@@ -1016,6 +1016,25 @@ export class CaseService {
           draftApprovalRequired: isSupervisor ? false : true,
         },
       });
+
+      if (result.amlCase) {
+        // createCaseWithInvestigationTask was called with the transaction client above,
+        // so Flowable process creation is deferred until the DB commit succeeds.
+        await this.flowableService.handleCaseCreated({
+          caseId: result.amlCase.caseId,
+          tenantId: existingCase.tenant_id,
+          caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          creationType: CaseCreationType.AUTOMATIC_SYSTEM,
+          creatorRole: role,
+          isReopened: false,
+          isFraudNAML: true,
+        });
+
+        await this.flowableService.handleCaseStatusChanged({
+          caseId: result.amlCase.caseId,
+          newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        });
+      }
 
       this.logger.log(
         `[CompleteCaseCreation] Case ${caseId} updated to ${targetStatus}, Complete New Case task completed`,
