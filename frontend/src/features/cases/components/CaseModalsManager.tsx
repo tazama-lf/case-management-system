@@ -161,8 +161,6 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
       navigate('/cases');
     }
   };
-  const [subCasesDetails, setSubCasesDetails] = React.useState<CaseRow[]>();
-
   const handleManualTriage = async (
     alert: Alert,
     triageData: ManualTriageDto,
@@ -561,9 +559,6 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
                 alertId: modalState.selectedRow.alertId,
                 alertType: ((): AlertType => {
                   const t = (modalState.selectedRow.type ?? '').toUpperCase();
-                  if (t.includes('FRAUD') && t.includes('AML')) {
-                    return 'FRAUD_AND_AML';
-                  }
                   if (t.includes('AML')) return 'AML';
                   return 'FRAUD';
                 })(),
@@ -599,7 +594,6 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
         onRefreshCases={onRefreshCases}
         onAfterTaskReassign={closeViewCaseModal}
         canManageSupervisorActions={permissions.canManageSupervisorActions}
-        setSubCasesDetails={setSubCasesDetails}
         onComplete={(row) => {
           modalActions.setSelectedRow(row);
           if (row.type === null) {
@@ -682,11 +676,6 @@ const CaseModalsManager: React.FC<CaseModalsManagerProps> = ({
           }
           onSubmit={handleCloseCaseSubmit}
           caseData={modalState.selectedRow}
-          subCasesDetails={
-            modalState.selectedRow?.type === 'FRAUD_AND_AML'
-              ? subCasesDetails
-              : undefined
-          }
         />
       </Suspense>
 

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { Alert, Priority, Prisma, TransactionData } from '@prisma/client-cms';
+import { Alert, CaseType, Priority, Prisma, TransactionData } from '@prisma/client-cms';
 import { CreateAlertDTO, UpdateAlertDTO } from '../alert/dto';
 import { extractReferenceId } from './utils/extractReferenceId';
 import { TransactionDTO } from 'src/dtos/Transaction.dto';
@@ -84,16 +84,53 @@ export class AlertRepository extends BaseRepository {
     return alert;
   }
 
-  async getAlertByCaseId(caseId: number, tx?: Prisma.TransactionClient): Promise<number> {
+  /**
+   * FRAUD_AND_AML cases (and the FRAUD/AML siblings split off from them) never get
+   * alerts.case_id populated - they're linked to their originating alert via a shared
+   * InvestigationGroup (case.group_id -> investigation_groups.id -> alert_id) instead,
+   * so fall back to that path when the direct case_id lookup misses.
+   */
+  async getAlertByCaseId(caseId: number, tenantId: string, tx?: Prisma.TransactionClient): Promise<number> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
-    const alert = await client.alert.findUnique({
-      where: { case_id: caseId },
+    const caseRecord = await client.case.findFirst({
+      where: { case_id: caseId, tenant_id: tenantId },
+      select: {
+        alert: { select: { alert_id: true } },
+        investigationGroup: { select: { alert_id: true } },
+      },
     });
 
-    if (!alert) {
-      throw new NotFoundException(`Alert with Case ID ${caseId} not found`);
+    const alertId = caseRecord?.alert?.alert_id ?? caseRecord?.investigationGroup?.alert_id;
+    if (alertId) {
+      return alertId;
     }
-    return alert.alert_id;
+
+    throw new NotFoundException(`Alert with Case ID ${caseId} not found`);
+  }
+
+  /**
+   * FRAUD_AND_AML alerts spawn two cases (FRAUD + AML) linked through a shared
+   * InvestigationGroup instead of alerts.case_id, so that column stays null for them.
+   * Resolve every case in the alert's group instead of just one.
+   */
+  async getGroupedCasesForAlert(
+    alertId: number,
+    tenantId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Array<{ case_id: number; case_type: CaseType | null }>> {
+    const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
+    const group = await client.investigationGroup.findFirst({
+      where: { alert_id: alertId, tenant_id: tenantId },
+      select: {
+        cases: {
+          where: { tenant_id: tenantId },
+          select: { case_id: true, case_type: true },
+          orderBy: { case_id: 'asc' },
+        },
+      },
+    });
+
+    return group?.cases ?? [];
   }
 
   async updateAlert(alertId: number, updateData: UpdateAlertDTO, tx?: Prisma.TransactionClient): Promise<Alert> {

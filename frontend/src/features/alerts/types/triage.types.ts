@@ -176,6 +176,8 @@ export interface Alert extends Record<string, unknown> {
   confidence_per: number;
   created_at: string;
   case_id?: number;
+  related_case_id?: number | null;
+  related_case_type?: string | null;
   prediction_outcome?: string;
   alerted_typologies?: AlertedTypology[];
 }
@@ -190,7 +192,6 @@ export interface Case {
   priority: Priority;
   created_at: string;
   updated_at: string;
-  parent_id?: number;
   case_type: CaseType;
   case_creation_type: CaseCreationType;
 }

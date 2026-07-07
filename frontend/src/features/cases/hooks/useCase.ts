@@ -50,7 +50,6 @@ export const canActOnCase = (caseStatus: string | undefined): boolean => {
     'STATUS_82_CLOSED_CONFIRMED',
     'STATUS_81_CLOSED_REFUTED',
     'STATUS_83_CLOSED_INCONCLUSIVE',
-    'STATUS_84_COMPLETED',
   ];
 
   return !closedStatuses.includes(caseStatus);

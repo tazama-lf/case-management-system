@@ -138,7 +138,7 @@ export class AlertStatisticsService {
     return whereClause;
   }
 
-  private getReportStatusFilter(reportStatus?: string): Prisma.AlertWhereInput {
+  private getReportStatusFilter(reportStatus: string | undefined): Prisma.AlertWhereInput {
     if (!reportStatus) return {};
 
     const reportStatusFilter: Prisma.AlertWhereInput = {
@@ -149,6 +149,10 @@ export class AlertStatisticsService {
     };
     if (reportStatus.toUpperCase() === 'NALT') {
       reportStatusFilter.case_id = null;
+
+      // FRAUD_AND_AML alerts never get case_id set (they link via InvestigationGroup instead),
+      // so without this they'd keep showing up as available even after a case was created.
+      reportStatusFilter.investigationGroup = null;
     }
 
     return reportStatusFilter;
