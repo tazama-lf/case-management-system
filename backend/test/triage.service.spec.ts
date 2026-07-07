@@ -85,6 +85,7 @@ describe('TriageService', () => {
     case_creation_type: CaseCreationType.AUTOMATIC_SYSTEM,
     case_type: CaseType.FRAUD,
     final_outcome: null,
+    sla_started_at: null,
     sla_due_at: null,
     created_at: new Date('2026-01-01'),
     updated_at: new Date('2026-01-01'),

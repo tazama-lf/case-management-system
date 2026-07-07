@@ -666,7 +666,7 @@ export class CaseController {
   @ApiOperation({
     summary: 'Change case priority',
     description:
-      'Supervisor-only endpoint to change a case priority after triage. Recalculates sla_due_at anchored to created_at and audits the change (actor, timestamp, old/new priority, reason) via the audit log.',
+      'Supervisor-only endpoint to change a case priority after triage. Recalculates sla_due_at anchored to sla_started_at (when the case reached READY_FOR_ASSIGNMENT), if the SLA clock has already started, and audits the change (actor, timestamp, old/new priority, reason) via the audit log.',
   })
   @ApiParam({ name: 'caseId', type: Number })
   @ApiBody({ type: ChangeCasePriorityDto })

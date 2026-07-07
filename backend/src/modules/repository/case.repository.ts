@@ -327,24 +327,49 @@ export class CaseRepository extends BaseRepository {
   async updateCase(caseId: number, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient): Promise<Case> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     const priorityValue = typeof data.priority === 'string' ? data.priority : data.priority?.set;
-    let slaDueAt: Date | undefined;
-    if (priorityValue) {
+    const statusValue = typeof data.status === 'string' ? data.status : data.status?.set;
+
+    let slaFields: Partial<Pick<Case, 'sla_started_at' | 'sla_due_at'>> = {};
+    if (statusValue === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
+      // Every entry into READY_FOR_ASSIGNMENT restarts the SLA clock from now — first-time
+      // triage completion and case reopening are both, deliberately, the same rule.
       const existingCase = await client.case.findUniqueOrThrow({
         where: { case_id: caseId },
-        select: { created_at: true, tenant_id: true },
+        select: { priority: true, tenant_id: true },
       });
-      // Always anchored to created_at (never `now()`), so re-stamping is idempotent regardless of caller.
-      slaDueAt = await this.slaPolicyUtil.calculateSlaDueAt(existingCase.created_at, existingCase.tenant_id, priorityValue);
+      const priority = priorityValue ?? existingCase.priority;
+      const slaStartedAt = new Date();
+      slaFields = {
+        sla_started_at: slaStartedAt,
+        sla_due_at: await this.slaPolicyUtil.calculateSlaDueAt(slaStartedAt, existingCase.tenant_id, priority),
+      };
+    } else if (priorityValue) {
+      // Priority changed without a status transition: re-anchor to sla_started_at if the
+      // clock has already started. If it hasn't (pre-RFA, or a legacy case predating this
+      // column), there's nothing safe to recompute — leave sla_due_at exactly as it is.
+      const existingCase = await client.case.findUniqueOrThrow({
+        where: { case_id: caseId },
+        select: { sla_started_at: true, tenant_id: true },
+      });
+      if (existingCase.sla_started_at) {
+        slaFields = {
+          sla_due_at: await this.slaPolicyUtil.calculateSlaDueAt(existingCase.sla_started_at, existingCase.tenant_id, priorityValue),
+        };
+      }
     }
+
     return await client.case.update({
       where: { case_id: caseId },
-      data: slaDueAt ? { ...data, sla_due_at: slaDueAt } : data,
+      data: { ...data, ...slaFields },
     });
   }
 
   async findOpenCasesForSlaCheck(): Promise<
-    Array<Pick<Case, 'case_id' | 'case_type' | 'case_owner_user_id' | 'created_at' | 'sla_due_at' | 'tenant_id'>>
+    Array<Pick<Case, 'case_id' | 'case_type' | 'case_owner_user_id' | 'created_at' | 'sla_started_at' | 'sla_due_at' | 'tenant_id'>>
   > {
+    // sla_due_at is only ever set once a case reaches READY_FOR_ASSIGNMENT (see updateCase/
+    // createCase), so the `not: null` filter already excludes DRAFT/PENDING_CASE_CREATION_APPROVAL
+    // cases without needing an explicit status exclusion for them.
     return await this.prisma.case.findMany({
       where: {
         sla_due_at: { not: null },
@@ -355,6 +380,7 @@ export class CaseRepository extends BaseRepository {
         case_type: true,
         case_owner_user_id: true,
         created_at: true,
+        sla_started_at: true,
         sla_due_at: true,
         tenant_id: true,
       },
@@ -565,10 +591,32 @@ export class CaseRepository extends BaseRepository {
     });
   }
 
+  /**
+   * SLA only starts once a case reaches STATUS_02_READY_FOR_ASSIGNMENT, so this
+   * is a no-op for every other status (DRAFT, PENDING_CASE_CREATION_APPROVAL, ...).
+   */
+  private async computeSlaFieldsIfReadyForAssignment(
+    status: CaseStatus | undefined,
+    priority: Priority,
+    tenantId: string,
+    anchor: Date,
+  ): Promise<Partial<Pick<Case, 'sla_started_at' | 'sla_due_at'>>> {
+    if (status !== CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
+      return {};
+    }
+    const slaDueAt = await this.slaPolicyUtil.calculateSlaDueAt(anchor, tenantId, priority);
+    return { sla_started_at: anchor, sla_due_at: slaDueAt };
+  }
+
   async createCase(caseDetail: any, tx?: Prisma.TransactionClient): Promise<Case> {
     const prisma = tx ?? this.prisma;
     const createdAt = new Date();
-    const slaDueAt = await this.slaPolicyUtil.calculateSlaDueAt(createdAt, caseDetail.tenantId, caseDetail.priority);
+    const slaFields = await this.computeSlaFieldsIfReadyForAssignment(
+      caseDetail.status,
+      caseDetail.priority,
+      caseDetail.tenantId,
+      createdAt,
+    );
     return await prisma.case.create({
       data: {
         tenant_id: caseDetail.tenantId,
@@ -580,7 +628,7 @@ export class CaseRepository extends BaseRepository {
         case_creation_type: caseDetail.caseCreationType,
         parent_id: caseDetail.parentId,
         created_at: createdAt,
-        sla_due_at: slaDueAt,
+        ...slaFields,
       },
     });
   }
@@ -588,7 +636,14 @@ export class CaseRepository extends BaseRepository {
   async createDraftCase(caseDetail: any, dto: any, priorityScore: number, priority: any): Promise<{ case: Case; alert: Alert }> {
     return await this.prisma.$transaction(async (prisma) => {
       const createdAt = new Date();
-      const slaDueAt = await this.slaPolicyUtil.calculateSlaDueAt(createdAt, caseDetail.tenantId, caseDetail.priority);
+      // Drafts are always created in STATUS_00_DRAFT, so this is always a no-op today —
+      // kept for consistency with createCase in case that ever changes.
+      const slaFields = await this.computeSlaFieldsIfReadyForAssignment(
+        caseDetail.status,
+        caseDetail.priority,
+        caseDetail.tenantId,
+        createdAt,
+      );
       // Create case in PostgreSQL only (no BPMN workflow)
       const createdCase = await prisma.case.create({
         data: {
@@ -600,7 +655,7 @@ export class CaseRepository extends BaseRepository {
           case_type: caseDetail.caseType,
           case_creation_type: caseDetail.caseCreationType,
           created_at: createdAt,
-          sla_due_at: slaDueAt,
+          ...slaFields,
         },
       });
 

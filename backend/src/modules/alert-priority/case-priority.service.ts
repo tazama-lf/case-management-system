@@ -34,7 +34,8 @@ export class CasePriorityService {
     const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
     const oldPriority = existingCase.priority;
 
-    // updateCase re-stamps sla_due_at anchored to created_at whenever priority changes.
+    // updateCase re-stamps sla_due_at anchored to sla_started_at whenever priority changes,
+    // but only once the SLA clock has actually started (case has reached READY_FOR_ASSIGNMENT).
     const updatedCase = await this.caseRepository.updateCase(caseId, { priority: newPriority });
 
     this.eventEmitter.emit('case.priority.changed', new CasePriorityChangedEvent(caseId, actorId, oldPriority, newPriority, reason));

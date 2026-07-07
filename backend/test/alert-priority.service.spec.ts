@@ -25,6 +25,7 @@ describe('AlertPriorityService', () => {
     case_owner_user_id: null,
     tenant_id: 'tenant-1',
     created_at: new Date('2026-01-01T00:00:00.000Z'),
+    sla_started_at: new Date('2026-01-01T00:00:00.000Z'),
     sla_due_at: new Date('2026-01-03T00:00:00.000Z'), // 48h total budget
     ...overrides,
   });
