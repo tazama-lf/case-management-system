@@ -25,6 +25,7 @@ import { useSystemConfig } from '../../../shared/hooks/useSystemConfig';
 import { formatDate } from '@/shared/utils/dateUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { caseService } from '../../cases/services/caseService';
+import authService from '@/features/auth/services/authService';
 
 interface AlertsDetailModalProps {
   alertId: number | null;
@@ -38,6 +39,8 @@ interface AlertsDetailModalProps {
   onAlertUpdated?: () => void;
   onManualTriage?: (alert: LegacyAlert) => void;
   onNavigateToCase?: () => void;
+  /** Increment to force a re-fetch of alert details (e.g. after triage). */
+  refreshTrigger?: number;
 }
 
 interface AlertedRuleResultResponse {
@@ -230,6 +233,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   onAlertUpdated,
   onManualTriage,
   onNavigateToCase,
+  refreshTrigger = 0,
 }) => {
   const { isManualMode, isDisabledMode, isAIMode } = useSystemConfig();
   const queryClient = useQueryClient();
@@ -247,13 +251,27 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   const [isCompleteNewCaseCompleted, setIsCompleteNewCaseCompleted] =
     useState(false);
   const [hasCaseAccess, setHasCaseAccess] = useState<boolean>(false);
-  const [activeDataTab, setActiveDataTab] = useState<'transaction' | 'alert'>(
-    'transaction',
+  const [hasRelatedCaseAccess, setHasRelatedCaseAccess] =
+    useState<boolean>(false);
+  const [activeDataTab, setActiveDataTab] = useState<"transaction" | "alert">(
+    "transaction",
   );
 
   const { data: caseDetails } = useCase(alert?.case_id);
+  const { data: relatedCaseDetails } = useCase(alert?.related_case_id ?? undefined);
 
   const canPerformActions = canActOnCase(caseDetails?.status);
+  const isComplianceOfficer = authService.hasCMSComplianceOfficerRole();
+  const canOpenCase =
+    hasCaseAccess &&
+    (!isComplianceOfficer ||
+      caseDetails?.status === 'STATUS_82_CLOSED_CONFIRMED');
+  const canOpenRelatedCase =
+    hasRelatedCaseAccess &&
+    (!isComplianceOfficer ||
+      relatedCaseDetails?.status === 'STATUS_82_CLOSED_CONFIRMED');
+  const restrictedCaseTitle =
+    "Compliance officers can only view closed confirmed cases";
 
   const toggleTypology = (typologyKey: string) => {
     setExpandedTypologies((prev) => {
@@ -298,9 +316,15 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
         const alertDetails = await triageService.getAlertById(alertId);
         setAlert(alertDetails);
 
+        // Invalidate case queries for both primary and related cases
         if (alertDetails.case_id) {
           queryClient.invalidateQueries({
             queryKey: ['case', alertDetails.case_id],
+          });
+        }
+        if (alertDetails.related_case_id) {
+          queryClient.invalidateQueries({
+            queryKey: ['case', alertDetails.related_case_id],
           });
         }
 
@@ -323,7 +347,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
     };
 
     fetchAlertDetails();
-  }, [alertId, isOpen, queryClient]);
+  }, [alertId, isOpen, queryClient, refreshTrigger]);
 
   useEffect(() => {
     const checkCompleteNewCaseStatus = async () => {
@@ -372,6 +396,27 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
 
     checkCaseAccess();
   }, [alert?.case_id]);
+
+  useEffect(() => {
+    const checkRelatedCaseAccess = async () => {
+      if (!alert?.related_case_id) {
+        setHasRelatedCaseAccess(false);
+        return;
+      }
+
+      try {
+        const hasAccess = await caseService.checkCaseAccess(
+          alert.related_case_id,
+        );
+        setHasRelatedCaseAccess(hasAccess);
+      } catch (error) {
+        console.error('Failed to check related case access:', error);
+        setHasRelatedCaseAccess(false); // Deny access on error
+      }
+    };
+
+    checkRelatedCaseAccess();
+  }, [alert?.related_case_id]);
 
   if (!isOpen) {
     return null;
@@ -468,6 +513,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 queryKey: ['case', alert.case_id],
               });
             }
+            if (alert?.related_case_id) {
+              queryClient.invalidateQueries({
+                queryKey: ['case', alert.related_case_id],
+              });
+            }
             onAlertUpdated?.();
             onClose();
           }}
@@ -481,6 +531,11 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                 if (alert?.case_id) {
                   queryClient.invalidateQueries({
                     queryKey: ['case', alert.case_id],
+                  });
+                }
+                if (alert?.related_case_id) {
+                  queryClient.invalidateQueries({
+                    queryKey: ['case', alert.related_case_id],
                   });
                 }
                 onAlertUpdated?.();
@@ -601,16 +656,29 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           Case Status:
                         </span>
                         <p className="text-sm text-gray-900">
-                          {caseDetails?.status}
+                          {caseDetails?.status ?? '—'}
                         </p>
                       </div>
 
-                      {caseDetails?.case_id && (
+                      {alert.related_case_id && (
                         <div>
                           <span className="text-sm font-medium text-gray-500">
-                            Case ID:
+                            Related Case Status:
                           </span>
-                          {hasCaseAccess ? (
+                          <p className="text-sm text-gray-900">
+                            {relatedCaseDetails?.status ?? '—'}
+                          </p>
+                        </div>
+                      )}
+
+                      {alert.case_id && (
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">
+                            {alert.related_case_id
+                              ? 'Case ID (FRAUD):'
+                              : 'Case ID:'}
+                          </span>
+                          {canOpenCase ? (
                             <button
                               onClick={() => {
                                 navigate(`/cases/${alert.case_id}`);
@@ -626,9 +694,47 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                           ) : (
                             <div
                               className="flex items-center gap-1 text-sm text-gray-500 cursor-not-allowed"
-                              title="You don't have permission to view this case"
+                              title={
+                                hasCaseAccess
+                                  ? restrictedCaseTitle
+                                  : "You don't have permission to view this case"
+                              }
                             >
                               <span>{alert.case_id}</span>
+                              <ArrowTopRightOnSquareIcon className="w-4 h-4 opacity-50" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {alert.related_case_id && (
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">
+                            Case ID ({alert.related_case_type ?? 'Related'}):
+                          </span>
+                          {canOpenRelatedCase ? (
+                            <button
+                              onClick={() => {
+                                navigate(`/cases/${alert.related_case_id}`);
+                                onClose();
+                                onNavigateToCase?.();
+                              }}
+                              className="flex items-center gap-1 text-sm text-gray-900 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                              title="View related case details"
+                            >
+                              <span>{alert.related_case_id}</span>
+                              <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <div
+                              className="flex items-center gap-1 text-sm text-gray-500 cursor-not-allowed"
+                              title={
+                                hasRelatedCaseAccess
+                                  ? restrictedCaseTitle
+                                  : "You don't have permission to view this case"
+                              }
+                            >
+                              <span>{alert.related_case_id}</span>
                               <ArrowTopRightOnSquareIcon className="w-4 h-4 opacity-50" />
                             </div>
                           )}
@@ -640,19 +746,19 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
                   <div className="flex-1 lg:max-w-[48%] bg-white rounded-lg">
                     <div className="flex items-center border-b border-gray-200 mb-4">
                       <button
-                        onClick={() => { setActiveDataTab('transaction'); }}
-                        className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeDataTab === 'transaction'
-                            ? 'text-blue-600 border-b-2 border-blue-600'
-                            : 'text-gray-600 hover:text-gray-900'
+                        onClick={() => setActiveDataTab("transaction")}
+                        className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeDataTab === "transaction"
+                          ? "text-blue-600 border-b-2 border-blue-600"
+                          : "text-gray-600 hover:text-gray-900"
                           }`}
                       >
                         Transaction Data
                       </button>
                       <button
-                        onClick={() => { setActiveDataTab('alert'); }}
-                        className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeDataTab === 'alert'
-                            ? 'text-blue-600 border-b-2 border-blue-600'
-                            : 'text-gray-600 hover:text-gray-900'
+                        onClick={() => setActiveDataTab("alert")}
+                        className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeDataTab === "alert"
+                          ? "text-blue-600 border-b-2 border-blue-600"
+                          : "text-gray-600 hover:text-gray-900"
                           }`}
                       >
                         Evaluation Response Data

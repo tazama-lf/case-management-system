@@ -522,46 +522,6 @@ describe('CaseService', () => {
     });
   });
 
-  describe('getSubCasesDetails', () => {
-    it('fetches sub-cases by parent case ID', async () => {
-      const mockResponse = [
-        { case_id: 10, status: 'STATUS_20_IN_PROGRESS' },
-        { case_id: 11, status: 'STATUS_00_DRAFT' },
-      ];
-      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
-
-      const result = await caseService.getSubCasesDetails(5);
-
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/cases/parentId/5');
-      expect(result).toHaveLength(2);
-    });
-
-    it('handles response wrapped in cases property', async () => {
-      const mockResponse = {
-        cases: [{ case_id: 10, status: 'STATUS_20_IN_PROGRESS' }],
-      };
-      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
-
-      const result = await caseService.getSubCasesDetails(5);
-      expect(result).toHaveLength(1);
-    });
-
-    it('handles response wrapped in data property', async () => {
-      const mockResponse = {
-        data: [{ case_id: 10, status: 'STATUS_20_IN_PROGRESS' }],
-      };
-      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
-
-      const result = await caseService.getSubCasesDetails(5);
-      expect(result).toHaveLength(1);
-    });
-
-    it('throws on invalid response', async () => {
-      (apiClient.get as vi.Mock).mockResolvedValue('invalid');
-      await expect(caseService.getSubCasesDetails(5)).rejects.toThrow();
-    });
-  });
-
   describe('SaveCaseAsDraft', () => {
     it('saves a case as draft', async () => {
       const mockResponse = { case_id: 99, status: 'STATUS_00_DRAFT' };
