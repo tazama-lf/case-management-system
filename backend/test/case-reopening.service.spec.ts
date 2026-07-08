@@ -165,19 +165,13 @@ describe('CaseReopeningService', () => {
 
     it('should reopen the requested case', async () => {
       const role = 'CMS_SUPERVISOR';
-      const txCase = {
-        update: jest.fn().mockResolvedValueOnce({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
+      const tx = {
+        case: { update: jest.fn() },
+        task: { update: jest.fn() },
       };
 
       caseRepository.findCaseById.mockResolvedValueOnce(mockCase);
-      caseRepository.transaction.mockImplementationOnce(async (callback) => {
-        const tx = {
-          case: {
-            update: jest.fn().mockResolvedValueOnce({ case_id: 100, status: CaseStatus.STATUS_20_IN_PROGRESS }),
-          },
-        };
-        return callback(tx);
-      });
+      caseRepository.transaction.mockImplementationOnce(async (callback) => callback(tx));
       caseRepository.updateCase.mockResolvedValueOnce({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
 
       taskService.createTask.mockResolvedValueOnce({
@@ -189,12 +183,14 @@ describe('CaseReopeningService', () => {
       const result = await service.reopenCase(1, reason, userId, tenantId, role);
 
       expect(result.success).toBe(true);
-      expect(txCase.update).toHaveBeenCalledTimes(1);
-      expect(txCase.update).toHaveBeenCalledWith(
+      expect(caseRepository.updateCase).toHaveBeenCalledTimes(1);
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({
-          where: { case_id: 1 },
-          data: expect.objectContaining({ status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
+          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          updated_at: expect.any(Date),
         }),
+        tx,
       );
     });
 
@@ -326,20 +322,13 @@ describe('CaseReopeningService', () => {
         status: CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL,
         tasks: [mockTask],
       };
-      const txCase = {
-        update: jest.fn().mockResolvedValueOnce({ ...caseForReopening, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
+      const tx = {
+        case: { update: jest.fn() },
+        task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
       };
       caseRepository.findCaseForReopening.mockResolvedValue(caseForReopening);
 
-      caseRepository.transaction.mockImplementationOnce(async (callback) => {
-        const tx = {
-          case: {
-            update: jest.fn().mockResolvedValueOnce({ case_id: 100, status: CaseStatus.STATUS_20_IN_PROGRESS }),
-          },
-          task: { update: jest.fn().mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED }) },
-        };
-        return callback(tx);
-      });
+      caseRepository.transaction.mockImplementationOnce(async (callback) => callback(tx));
       caseRepository.updateCase.mockResolvedValueOnce({ ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
 
       taskService.createTask.mockResolvedValueOnce({
@@ -353,12 +342,14 @@ describe('CaseReopeningService', () => {
       const result = await service.approveCaseReopening(1, supervisorId, tenantId);
 
       expect(result.success).toBe(true);
-      expect(txCase.update).toHaveBeenCalledTimes(1);
-      expect(txCase.update).toHaveBeenCalledWith(
+      expect(caseRepository.updateCase).toHaveBeenCalledTimes(1);
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({
-          where: { case_id: 1 },
-          data: expect.objectContaining({ status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }),
+          status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          updated_at: expect.any(Date),
         }),
+        tx,
       );
     });
 

@@ -453,10 +453,10 @@ describe('TriageService', () => {
         CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         'user-123',
         'tenant-123',
-        1,
         Priority.MEDIUM,
-        CaseCreationType.AUTOMATIC_SYSTEM,
-        'SUPERVISOR',
+        CaseType.FRAUD,
+        123,
+        tx,
       );
       expect(taskService.updateTask).not.toHaveBeenCalled();
       expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
@@ -464,7 +464,6 @@ describe('TriageService', () => {
         CaseType.AML,
         'user-123',
         'tenant-123',
-        1,
         Priority.MEDIUM,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
@@ -612,7 +611,6 @@ describe('TriageService', () => {
         CaseType.AML,
         'user-123',
         'tenant-123',
-        1,
         Priority.MEDIUM,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
@@ -662,7 +660,47 @@ describe('TriageService', () => {
 
    it('should roll back the FRAUD case and investigation group when AML case creation fails', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.URGENT);
+            casePriorityUtil.determinePriority.mockResolvedValue(Priority.HIGH);
+      (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
+      mockedAxios.post.mockResolvedValue({
+        data: { confidence: 0.95, priority: 0.8 },
+      });
+      alertService.updateAlert.mockResolvedValue(mockAlert as any);
+      taskService.updateTask.mockResolvedValue(mockTask as any);
+      loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
+      loggingOrchestrationService.logActions.mockResolvedValue(undefined);
+      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
+      flowableService.handleCaseAbandoned.mockResolvedValue(undefined);
+      caseRepository.updateCase.mockResolvedValue(mockCase as any);
+      prismaService.investigationGroup.delete.mockResolvedValue({ id: 123 });
+
+      caseCreateService.createCaseWithInvestigationTask
+        .mockResolvedValueOnce({ caseId: 456, message: 'Case created, BPMN will create investigation task', taskId: 2 })
+        .mockRejectedValueOnce(new InternalServerErrorException('Failed to create AML case'));
+
+      jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
+        confidence_per: 95,
+        alertType: CaseType.FRAUD_AND_AML,
+        isTruePositive: true,
+        priorityScore: 0.8,
+      });
+
+      await expect(service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123')).rejects.toThrow(InternalServerErrorException);
+
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(456, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
+      expect(flowableService.handleCaseAbandoned).toHaveBeenCalledWith(expect.objectContaining({ caseId: 1 }));
+      expect(flowableService.handleCaseAbandoned).toHaveBeenCalledWith(expect.objectContaining({ caseId: 456 }));
+      expect(prismaService.investigationGroup.delete).toHaveBeenCalledWith({ where: { id: 123 } });
+      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLED_BACK' }),
+      );
+    });
+
+   it('should roll back the FRAUD case and investigation group when AML case creation fails', async () => {
+      taskService.createTask.mockResolvedValue(mockTask as any);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.HIGH);
       (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
       mockedAxios.post.mockResolvedValue({
         data: { confidence: 0.95, priority: 0.8 },
@@ -796,7 +834,7 @@ describe('TriageService', () => {
 
     it('should log rollback failure and rethrow when rollback itself fails during AML case creation failure', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.URGENT);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.HIGH);
       (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
       mockedAxios.post.mockResolvedValue({
         data: { confidence: 0.95, priority: 0.8 },
@@ -1247,7 +1285,7 @@ describe('TriageService', () => {
   describe('handleManualTriage - edge cases', () => {
     it('should throw NotFoundException when alert no longer exists inside the transaction (stale-alert regression)', async () => {
       configService.get.mockReturnValue('MANUAL');
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.URGENT);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.HIGH);
 
       // Simulate a stale alert: the alert was consumed/deleted between the
       // outer read and the transactional read, so getAlertById returns null.
@@ -1259,7 +1297,7 @@ describe('TriageService', () => {
       await expect(
         service.handleManualTriage(
           1,
-          { priorityScore: 0.75, priority: Priority.URGENT, alertType: CaseType.FRAUD, note: 'test' },
+          { priorityScore: 0.75, priority: Priority.HIGH, alertType: CaseType.FRAUD, note: 'test' },
           'user-123',
           'tenant-123',
         ),
