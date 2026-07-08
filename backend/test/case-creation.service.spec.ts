@@ -322,7 +322,7 @@ describe('CaseCreationService', () => {
         CaseType.AML,
         userId,
         tenantId,
-        Priority.CRITICAL,
+        Priority.HIGH,
         CaseCreationType.AUTOMATIC_SYSTEM,
         userRole,
         123,

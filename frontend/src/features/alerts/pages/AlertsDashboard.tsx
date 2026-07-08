@@ -160,23 +160,6 @@ const AlertsDashboard: React.FC = () => {
     setSelectedMessage(null);
   };
 
-  const getPriorityColor = (priority: string): string => {
-    if (!priority) return 'text-gray-600 bg-gray-50';
-    switch (priority.toLowerCase()) {
-      case 'breach':
-        return 'text-red-600 bg-red-50';
-      case 'critical':
-        return 'text-orange-600 bg-orange-50';
-      case 'urgent':
-        return 'text-yellow-600 bg-yellow-50';
-      case 'new':
-        return 'text-blue-600 bg-blue-50';
-      default:
-        return 'text-gray-600 bg-gray-50';
-    }
-  };
-
-
   const columns: Array<AlertsTableColumn<Alert>> = [
     {
       key: 'alert_id',

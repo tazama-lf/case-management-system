@@ -300,7 +300,7 @@ describe('CaseQueryService', () => {
         .mockResolvedValueOnce([{ status: mockCase.status, _count: { case_id: 3 } }])
         .mockResolvedValueOnce([{ priority: mockCase.priority, _count: { case_id: 3 } }]);
 
-      const result = await service.getUserCases(userId, queryWithOwned);
+      const result = await service.getUserCases(userId, queryWithOwned, tenantId);
 
       expect(result.cases).toHaveLength(3);
       expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledTimes(2);

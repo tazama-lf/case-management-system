@@ -443,10 +443,10 @@ describe('TriageService', () => {
         CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         'user-123',
         'tenant-123',
-        1,
         Priority.MEDIUM,
-        CaseCreationType.AUTOMATIC_SYSTEM,
-        'SUPERVISOR',
+        CaseType.FRAUD,
+        123,
+        tx,
       );
       expect(taskService.updateTask).not.toHaveBeenCalled();
       expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
@@ -454,7 +454,6 @@ describe('TriageService', () => {
         CaseType.AML,
         'user-123',
         'tenant-123',
-        1,
         Priority.MEDIUM,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
@@ -588,7 +587,6 @@ describe('TriageService', () => {
         CaseType.FRAUD,
         'user-123',
         'tenant-123',
-        1,
         Priority.MEDIUM,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
@@ -598,7 +596,6 @@ describe('TriageService', () => {
         CaseType.AML,
         'user-123',
         'tenant-123',
-        1,
         Priority.MEDIUM,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
@@ -608,7 +605,7 @@ describe('TriageService', () => {
 
     it('should roll back the FRAUD case and investigation group when AML case creation fails', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.URGENT);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.HIGH);
       (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
       mockedAxios.post.mockResolvedValue({
         data: { confidence: 0.95, priority: 0.8 },
@@ -739,7 +736,7 @@ describe('TriageService', () => {
 
     it('should log rollback failure and rethrow when rollback itself fails during AML case creation failure', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.URGENT);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.HIGH);
       (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
       mockedAxios.post.mockResolvedValue({
         data: { confidence: 0.95, priority: 0.8 },
@@ -1185,7 +1182,7 @@ describe('TriageService', () => {
   describe('handleManualTriage - edge cases', () => {
     it('should throw NotFoundException when alert no longer exists inside the transaction (stale-alert regression)', async () => {
       configService.get.mockReturnValue('MANUAL');
-      casePriorityUtil.determinePriority.mockReturnValue(Priority.URGENT);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.HIGH);
 
       // Simulate a stale alert: the alert was consumed/deleted between the
       // outer read and the transactional read, so getAlertById returns null.
@@ -1197,7 +1194,7 @@ describe('TriageService', () => {
       await expect(
         service.handleManualTriage(
           1,
-          { priorityScore: 0.75, priority: Priority.URGENT, alertType: CaseType.FRAUD, note: 'test' },
+          { priorityScore: 0.75, priority: Priority.HIGH, alertType: CaseType.FRAUD, note: 'test' },
           'user-123',
           'tenant-123',
         ),
