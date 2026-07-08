@@ -51,6 +51,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
         );
 
         setData(result);
+       
 
         // Keep all typologies collapsed initially
         setExpandedTypologyKey(null);
@@ -81,6 +82,31 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
     if (score >= 80) return 'text-red-700';
     if (score >= 60) return 'text-orange-700';
     return 'text-yellow-700';
+  };
+
+  const getBandReasonsForRule = ( bandReasonsJson: unknown, subRef: any): string => {
+    try {
+      let reasonsArray: string[] = [];
+      
+      if (Array.isArray(bandReasonsJson)) {
+        reasonsArray = bandReasonsJson;
+      } else if (typeof bandReasonsJson === 'string') {
+        reasonsArray = JSON.parse(bandReasonsJson);
+      } else {
+        return '';
+      }
+
+      if (!Array.isArray(reasonsArray)) return '';
+
+      const filteredReasons = reasonsArray
+        .filter((item: any) => item?.subRuleRef  === subRef)
+        .map((item: any) => item?.reason)
+        .filter(Boolean);
+
+      return filteredReasons.join(', ');
+    } catch {
+      return '';
+    }
   };
 
   if (loading) {
@@ -306,6 +332,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                       {typology.rules.length > 0 ? (
                         typology.rules.map((rule, idx: number) => (
                           <div key={idx} className="flex items-start gap-2">
+                            
                             <div className="flex-shrink-0 mt-1">
                               <div className="h-1.5 w-1.5 rounded-full bg-gray-400" />
                             </div>
@@ -329,6 +356,18 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                                 <div className="text-xs text-gray-500 mt-0.5">
                                   Independent Variable:{' '}
                                   {rule.independentVariable}
+                                </div>
+                              )}
+                              {rule.ruleDesc != null && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  Rule Description: {' '}
+                                  {rule.ruleDesc}
+                                </div>
+                              )}
+                              {rule.matched_band_reason != null && (
+                                <div className="text-xs text-gray-500 mt-0.5">                                  
+                                  Band Reasons: {' '}
+                                  {rule.matched_band_reason}
                                 </div>
                               )}
                             </div>
