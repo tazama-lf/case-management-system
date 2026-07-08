@@ -223,11 +223,13 @@ describe('AccountLakehouseService', () => {
             },
           ]),
         )
+        .mockReturnValueOnce(okHttp([{ counterparty_id: 'cp1', holder_name: 'CP Name' }]))
         .mockReturnValueOnce(okHttp([{ transactions: 10, total_value: 5000, is_alerted: 0, is_investigated: 0 }]))
         .mockReturnValueOnce(okHttp([{ holder_name: 'CP Name' }]));
       const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT', 'month');
       expect(result.network.rootNodeId).toBe('cp1');
       expect(result.network.nodes.length).toBeGreaterThan(0);
+      expect(result.counterpartyDetails.name).toBe('CP Name');
     });
 
     it('uses MEDIUM velocity when txCount between 10 and 49', async () => {
@@ -244,6 +246,7 @@ describe('AccountLakehouseService', () => {
             },
           ]),
         )
+        .mockReturnValueOnce(okHttp([{ counterparty_id: 'cp1', holder_name: 'CP Name' }]))
         .mockReturnValueOnce(okHttp([{ transactions: 20, total_value: 2000, is_alerted: 0, is_investigated: 0 }]))
         .mockReturnValueOnce(okHttp([{ holder_name: 'CP Name' }]));
       const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT', 'month');
@@ -264,6 +267,7 @@ describe('AccountLakehouseService', () => {
             },
           ]),
         )
+        .mockReturnValueOnce(okHttp([]))
         .mockReturnValueOnce(okHttp([{ transactions: 10, total_value: 5000, is_alerted: 1, is_investigated: 1 }]))
         .mockReturnValueOnce(okHttp([{}]));
       const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT');
@@ -289,10 +293,72 @@ describe('AccountLakehouseService', () => {
             },
           ]),
         )
+        .mockReturnValueOnce(okHttp([{ counterparty_id: 'cp1', holder_name: 'CP Name' }]))
         .mockReturnValueOnce(okHttp([{ transactions: 2, total_value: 500, is_alerted: 0, is_investigated: 0 }]))
         .mockReturnValueOnce(okHttp([{ holder_name: 'CP Name' }]));
       const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT');
       expect(result.network.nodes.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('includes second-degree counterparty edges and timestamps', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              from_counterparty_id: 'cp1',
+              to_counterparty_id: 'cp2',
+              tx_count: 10,
+              total_amount: 5000,
+              currency_hint: 'USD',
+              first_event_ts: '2024-01-01',
+              last_event_ts: '2024-01-31',
+              is_alerted_edge: 0,
+              is_investigated_edge: 0,
+              degree: 1,
+            },
+            {
+              from_counterparty_id: 'cp2',
+              to_counterparty_id: 'cp3',
+              tx_count: 4,
+              total_amount: 900,
+              currency_hint: 'USD',
+              first_event_ts: '2024-02-01',
+              last_event_ts: '2024-02-03',
+              is_alerted_edge: 1,
+              is_investigated_edge: 1,
+              degree: 2,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(
+          okHttp([
+            { counterparty_id: 'cp1', holder_name: 'Center Name' },
+            { counterparty_id: 'cp2', holder_name: 'Direct Name' },
+            { counterparty_id: 'cp3', holder_name: 'Second Name' },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([{ transactions: 10, total_value: 5000, is_alerted: 0, is_investigated: 0 }]))
+        .mockReturnValueOnce(okHttp([{ holder_name: 'Center Name' }]));
+
+      const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT');
+
+      expect(result.network.edges).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source: 'cp2',
+            target: 'cp3',
+            degree: 2,
+            firstEventTs: '2024-02-01',
+            lastEventTs: '2024-02-03',
+            flags: expect.objectContaining({ alerted: true, investigated: true }),
+          }),
+        ]),
+      );
+      expect(result.network.nodes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'cp3', label: 'Second Name', name: 'Second Name', degree: 2 }),
+        ]),
+      );
     });
   });
 

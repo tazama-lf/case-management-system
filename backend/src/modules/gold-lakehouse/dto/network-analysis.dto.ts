@@ -101,6 +101,24 @@ export class NetworkEdgeDto {
 
   @ApiPropertyOptional({ description: 'Total value for this edge' })
   totalValue?: number;
+
+  @ApiPropertyOptional({ description: 'Single transaction identifier for transaction-level edges' })
+  transactionId?: string;
+
+  @ApiPropertyOptional({ description: 'Single transaction amount for transaction-level edges' })
+  amount?: number;
+
+  @ApiPropertyOptional({ description: 'Transaction currency' })
+  currency?: string;
+
+  @ApiPropertyOptional({ description: 'Transaction timestamp' })
+  timestamp?: string;
+
+  @ApiPropertyOptional({ description: 'Whether this transaction edge previously alerted' })
+  hasAlert?: boolean;
+
+  @ApiPropertyOptional({ description: 'Whether this transaction edge is currently or previously investigated' })
+  isInvestigated?: boolean;
 }
 
 export class TransactionNetworkResponseDto {
@@ -124,6 +142,12 @@ export class TransactionNetworkResponseDto {
 
   @ApiProperty({ description: 'Time range used for analysis', example: '30d' })
   timeRange: string;
+
+  @ApiPropertyOptional({ description: 'Selected period start date' })
+  startDate?: string;
+
+  @ApiPropertyOptional({ description: 'Selected period end date' })
+  endDate?: string;
 
   @ApiProperty({ description: 'Tenant identifier' })
   tenantId: string;

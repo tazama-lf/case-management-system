@@ -187,12 +187,12 @@ describe('JupyterProxyService', () => {
   describe('getTransactionNetworkData', () => {
     it('delegates with all parameters', async () => {
       await service.getTransactionNetworkData(MOCK_USER_ID, 'acc1', 'TENANT_A', '90d');
-      expect(transactionSvc.getTransactionNetworkData).toHaveBeenCalledWith('acc1', 'TENANT_A', '90d', MOCK_JWT);
+      expect(transactionSvc.getTransactionNetworkData).toHaveBeenCalledWith('acc1', 'TENANT_A', '90d', undefined, undefined, MOCK_JWT);
     });
 
     it('delegates with given parameters', async () => {
-      await service.getTransactionNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', 'day');
-      expect(transactionSvc.getTransactionNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', 'day', MOCK_JWT);
+      await service.getTransactionNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', 'day', '2024-01-01', '2024-01-31');
+      expect(transactionSvc.getTransactionNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', 'day', '2024-01-01', '2024-01-31', MOCK_JWT);
     });
   });
 

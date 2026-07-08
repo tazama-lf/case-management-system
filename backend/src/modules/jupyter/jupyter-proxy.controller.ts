@@ -213,14 +213,25 @@ export class JupyterProxyController {
   @ApiOperation({ summary: 'Proxy: Get Transaction Network Analysis' })
   @ApiQuery({ name: 'timeRange', required: false })
   @ApiQuery({ name: 'tenantId', required: true })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
   async getTransactionNetwork(
     @Param('accountId') accountId: string,
     @Query('tenantId') tenantId: string,
     @Query('timeRange') timeRange: string,
+    @Query('startDate') startDate: string | undefined,
+    @Query('endDate') endDate: string | undefined,
     @Req() req: AuthenticatedRequest,
   ): Promise<TransactionNetworkResponseDto> {
     const userId = this.getUserId(req);
-    return await this.proxyService.getTransactionNetworkData(userId, accountId, tenantId, timeRange);
+    const dateRegex = /^\d{4}-\d{2}-\d{2}/v;
+    if ((startDate && !endDate) || (!startDate && endDate)) {
+      throw new BadRequestException('Both startDate and endDate must be provided together');
+    }
+    if ((startDate && !dateRegex.test(startDate)) || (endDate && !dateRegex.test(endDate))) {
+      throw new BadRequestException('Invalid date format. Use YYYY-MM-DD or ISO timestamp');
+    }
+    return await this.proxyService.getTransactionNetworkData(userId, accountId, tenantId, timeRange, startDate, endDate);
   }
 
   @Get('network-analysis/entity/:entityId')
