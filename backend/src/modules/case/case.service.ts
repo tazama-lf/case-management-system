@@ -1025,7 +1025,7 @@ export class CaseService {
           caseId: result.amlCase.caseId,
           tenantId: existingCase.tenant_id,
           caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-          creationType: CaseCreationType.AUTOMATIC_SYSTEM,
+          creationType: CaseCreationType.MANUAL,
           creatorRole: role,
           isReopened: false,
           isFraudNAML: true,
