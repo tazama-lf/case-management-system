@@ -19,6 +19,7 @@ import { BadRequestException, InternalServerErrorException } from '@nestjs/commo
 import { CaseStatus, TaskStatus, CaseType, Priority, CaseCreationType, PredictionOutcome } from '@prisma/client-cms';
 import { RbacService, EndpointKey } from '../src/utils/rbac/rbacHelper';
 import { AuthenticatedUser } from '../src/utils/types/auth.types';
+import { InvestigationGroupService } from '../src/modules/investigation-group/investigation-group.service';
 
 describe('CaseService', () => {
   let service: CaseService;
@@ -36,6 +37,7 @@ describe('CaseService', () => {
   let caseRepository: jest.Mocked<CaseRepository>;
   let caseCreationService: jest.Mocked<CaseCreationService>;
   let loggingOrchestrationService: jest.Mocked<LoggingOrchestrationService>;
+  let investigationGroupService: jest.Mocked<InvestigationGroupService>;
   let logger: jest.Mocked<LoggerService>;
 
   const mockCase = {
@@ -45,7 +47,6 @@ describe('CaseService', () => {
     status: CaseStatus.STATUS_20_IN_PROGRESS,
     case_type: CaseType.FRAUD,
     priority: Priority.HIGH,
-    parent_id: null,
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -113,6 +114,13 @@ describe('CaseService', () => {
         findFirst: jest.fn(),
         update: jest.fn(),
       },
+      investigationGroup: {
+        upsert: jest.fn().mockResolvedValue({
+          id: 123,
+          alert_id: 1,
+          tenant_id: 'tenant-123',
+        }),
+      },
     };
 
     const mockCaseQueryService = {
@@ -121,7 +129,6 @@ describe('CaseService', () => {
       getAllCases: jest.fn(),
       getUserCases: jest.fn(),
       getUserWorkloadStats: jest.fn(),
-      getSubCasesDetails: jest.fn(),
     };
 
     const mockTaskService = {
@@ -190,6 +197,10 @@ describe('CaseService', () => {
       logActions: jest.fn().mockResolvedValue({}),
     };
 
+    const mockInvestigationGroupService = {
+      createInvestigationGroup: jest.fn().mockResolvedValue({ id: 123 }),
+    };
+
     const mockLogger = {
       log: jest.fn(),
       error: jest.fn(),
@@ -215,6 +226,7 @@ describe('CaseService', () => {
         { provide: CaseRepository, useValue: mockCaseRepository },
         { provide: CaseCreationService, useValue: mockCaseCreationService },
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
+        { provide: InvestigationGroupService, useValue: mockInvestigationGroupService },
         { provide: RbacService, useValue: mockRbacService },
       ],
     }).compile();
@@ -234,6 +246,7 @@ describe('CaseService', () => {
     caseRepository = module.get(CaseRepository);
     caseCreationService = module.get(CaseCreationService);
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
+    investigationGroupService = module.get(InvestigationGroupService);
     logger = module.get(LoggerService);
 
     // Default: retrieveCase returns a valid case so delegation tests don't hit BadRequestException
@@ -305,17 +318,23 @@ describe('CaseService', () => {
       );
     });
 
-    it('should suspend parent case if both subcases are suspended', async () => {
-      const subCase = { ...mockCase, parent_id: 10 };
-      caseQueryService.retrieveCase.mockResolvedValue(subCase as any);
+    it('should suspend the requested case without touching unrelated cases', async () => {
+      const txCase = {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+      };
+      caseQueryService.retrieveCase.mockResolvedValue(mockCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([mockTask] as any);
-      setupMockTransaction({ ...subCase, status: CaseStatus.STATUS_21_SUSPENDED }, { case_id: 10, status: CaseStatus.STATUS_21_SUSPENDED });
-      caseQueryService.updateCase.mockResolvedValue({ ...subCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
+      prismaService.$transaction.mockImplementationOnce(async (callback) => callback({ case: txCase } as any));
+      caseQueryService.updateCase.mockResolvedValue({ ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED } as any);
 
       await service.suspendCase(1, 'Test reason', [1], 'user-123', 'tenant-123', mockUser, suspendEndpoint);
 
       expect(prismaService.$transaction).toHaveBeenCalled();
+      expect(caseQueryService.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_21_SUSPENDED }, 'user-123');
+      expect(txCase.findFirst).not.toHaveBeenCalled();
+      expect(txCase.update).not.toHaveBeenCalled();
     });
 
     it('should send notification to assigned users when case is suspended', async () => {
@@ -398,20 +417,24 @@ describe('CaseService', () => {
       await expect(service.resumeCase(1, reason, 'user-123', 'tenant-123', {}, mockUser, resumeEndpoint)).rejects.toThrow(message);
     });
 
-    it('should resume parent case if at least one subcase is resumed', async () => {
-      const subCase = { ...mockCase, parent_id: 10, status: CaseStatus.STATUS_21_SUSPENDED };
-      caseQueryService.retrieveCase.mockResolvedValue(subCase as any);
+    it('should resume the requested case without touching unrelated cases', async () => {
+      const suspendedCase = { ...mockCase, status: CaseStatus.STATUS_21_SUSPENDED };
+      const txCase = {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+      };
+      caseQueryService.retrieveCase.mockResolvedValue(suspendedCase as any);
       taskService.getTasksByCaseId.mockResolvedValue([{ ...mockTask, status: TaskStatus.STATUS_21_BLOCKED }] as any);
-      setupMockTransaction(
-        { ...subCase, status: CaseStatus.STATUS_20_IN_PROGRESS },
-        { case_id: 10, status: CaseStatus.STATUS_20_IN_PROGRESS },
-      );
-      caseQueryService.updateCase.mockResolvedValue({ ...subCase, status: CaseStatus.STATUS_20_IN_PROGRESS } as any);
+      prismaService.$transaction.mockImplementationOnce(async (callback) => callback({ case: txCase } as any));
+      caseQueryService.updateCase.mockResolvedValue({ ...suspendedCase, status: CaseStatus.STATUS_20_IN_PROGRESS } as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_10_ASSIGNED } as any);
 
       await service.resumeCase(1, 'Resume reason', 'user-123', 'tenant-123', {}, mockUser, resumeEndpoint);
 
       expect(prismaService.$transaction).toHaveBeenCalled();
+      expect(caseQueryService.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_20_IN_PROGRESS }, 'user-123');
+      expect(txCase.findFirst).not.toHaveBeenCalled();
+      expect(txCase.update).not.toHaveBeenCalled();
     });
 
     it('should send notification to assigned users when case is resumed', async () => {
@@ -589,8 +612,8 @@ describe('CaseService', () => {
       {
         method: 'getUserCases',
         service: 'caseQueryService',
-        args: ['user-123', {} as any, false],
-        expectedArgs: ['user-123', {} as any, false],
+        args: ['user-123', {} as any, 'tenant-123', false],
+        expectedArgs: ['user-123', {} as any, 'tenant-123', false],
         setupCase: null, // No case lookup for this method
       },
       {
@@ -613,13 +636,6 @@ describe('CaseService', () => {
         args: [1, 'tenant-123', false],
         expectedArgs: [1, 'tenant-123', false],
         setupCase: null, // This IS the case retrieval method
-      },
-      {
-        method: 'getSubCasesDetails',
-        service: 'caseQueryService',
-        args: [1],
-        expectedArgs: [1],
-        setupCase: null, // No RBAC check for this method
       },
     ];
 
@@ -662,11 +678,20 @@ describe('CaseService', () => {
     };
 
     const setupMockTransaction = () => {
+      const caseUpdate = jest.fn().mockResolvedValue({
+        ...mockDraftCase,
+        case_type: CaseType.FRAUD,
+        group_id: 123,
+        priority: Priority.HIGH,
+      });
       const mockTransaction = jest.fn(async (callback) => {
-        const mockPrisma = {};
+        const mockPrisma = {
+          case: { update: caseUpdate },
+        };
         return await callback(mockPrisma);
       });
       prismaService.$transaction.mockImplementation(mockTransaction);
+      return { caseUpdate };
     };
 
     it('should complete case creation by investigator with approval required', async () => {
@@ -719,15 +744,48 @@ describe('CaseService', () => {
         { ...mockTask, name: 'Complete New Case', status: TaskStatus.STATUS_10_ASSIGNED, task_id: 1 },
       ] as any);
       const updatedCase = { ...fraudAmlCase, ...fraudAmlData, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT };
-      setupMockTransaction();
+      const { caseUpdate } = setupMockTransaction();
       caseQueryService.updateCase.mockResolvedValue(updatedCase as any);
       taskService.updateTask.mockResolvedValue({ ...mockTask, status: TaskStatus.STATUS_30_COMPLETED } as any);
-      alertRepository.getAlertByCaseId.mockResolvedValue(undefined as any);
+      taskService.createTask.mockResolvedValue({ task_id: 2, name: 'Investigate Case' } as any);
+      alertRepository.getAlertByCaseId.mockResolvedValue(1 as any);
+      caseCreationService.createCaseWithInvestigationTask.mockResolvedValue({
+        caseId: 2,
+        message: 'Case created, BPMN will create investigation task',
+        taskId: 3,
+      } as any);
+      commentService.addComment.mockResolvedValue(undefined as any);
+      flowableService.handleCaseStatusChanged.mockResolvedValue(undefined as any);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined as any);
+      alertRepository.updateAlert.mockResolvedValue(undefined as any);
 
       await service.completeCaseCreation(1, fraudAmlData as any, 'user-123', 'tenant-123', 'SUPERVISOR', mockSupervisorUser, completeCaseCreationEndpoint);
 
-      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(2);
-      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
+      expect(investigationGroupService.createInvestigationGroup).toHaveBeenCalledWith(1, 'tenant-123', expect.anything());
+      expect(caseQueryService.updateCase).not.toHaveBeenCalled();
+      expect(caseUpdate).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          where: { case_id: 1 },
+          data: expect.objectContaining({
+            case_type: CaseType.FRAUD,
+            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          }),
+        }),
+      );
+      expect(caseUpdate).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: { case_id: 1 },
+          data: expect.objectContaining({
+            group_id: 123,
+            case_type: CaseType.FRAUD,
+          }),
+        }),
+      );
+      expect(taskService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'Investigate Case' }), 'user-123', 'tenant-123');
+      expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
+      expect(caseCreationService.createCaseWithInvestigationTask).not.toHaveBeenCalledWith(
         CaseType.FRAUD,
         'user-123',
         'tenant-123',
@@ -744,6 +802,18 @@ describe('CaseService', () => {
         Priority.HIGH,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
+        123,
+        expect.anything(),
+      );
+      expect(alertRepository.updateAlert).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          caseId: null,
+          priority_score: 85,
+          priority: Priority.HIGH,
+          alertType: CaseType.FRAUD_AND_AML,
+        }),
+        expect.anything(),
       );
     });
 
@@ -802,6 +872,7 @@ describe('CaseService', () => {
           priority: Priority.HIGH,
           alertType: CaseType.FRAUD,
         }),
+        expect.anything(),
       );
     });
 

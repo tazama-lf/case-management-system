@@ -2,7 +2,7 @@ import { Injectable, InternalServerErrorException, NotFoundException } from '@ne
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AlertRepository } from '../repository/alert.repository';
 import { IngestAlertDto } from './dto/IngestAlert.dto';
-import { Alert, CaseCreationType, CaseStatus, Priority, Prisma } from '@prisma/client-cms';
+import { Alert, CaseCreationType, CaseStatus, CaseType, Priority, Prisma } from '@prisma/client-cms';
 import { CreateCaseDto } from '../case/dto/create-case.dto';
 import { ConfigService } from '@nestjs/config';
 import { UpdateAlertDTO } from './dto/UpdateAlert.dto';
@@ -217,6 +217,8 @@ export class AlertService {
     network_map: Prisma.JsonValue;
     confidence_per: number;
     case_id: number | null;
+    related_case_id: number | null;
+    related_case_type: CaseType | null;
     alerted_typologies: AlertedTypology[];
   } | null> {
     try {
@@ -234,9 +236,14 @@ export class AlertService {
 
       const alertedTypologies = this.extractAlertedTypologies(alert.alert_data);
 
+      const { caseId, relatedCaseId, relatedCaseType } = await this.resolveCaseIds(alertId, tenantId, alert.case_id);
+
       const { tenant_id: tenantIdDb, ...sanitizedAlert } = alert;
       return {
         ...sanitizedAlert,
+        case_id: caseId,
+        related_case_id: relatedCaseId,
+        related_case_type: relatedCaseType,
         alerted_typologies: alertedTypologies,
       };
     } catch (error) {
@@ -246,6 +253,33 @@ export class AlertService {
       this.loggerService.error(`Failed to fetch alert ${alertId}: ${errorMessage}`, errorStack, AlertService.name);
       throw new InternalServerErrorException('Unable to retrieve alert details');
     }
+  }
+
+  /**
+   * FRAUD_AND_AML alerts have TWO cases (FRAUD + AML) sharing an InvestigationGroup.
+   * alerts.case_id points at one of them directly (set at case-creation time and never
+   * cleared, even after that case is converted to FRAUD on approval), so its presence
+   * doesn't mean there's no sibling - always check the group for a related case.
+   */
+  private async resolveCaseIds(
+    alertId: number,
+    tenantId: string,
+    directCaseId: number | null,
+  ): Promise<{ caseId: number | null; relatedCaseId: number | null; relatedCaseType: CaseType | null }> {
+    const groupedCases = await this.alertRepository.getGroupedCasesForAlert(alertId, tenantId);
+    if (groupedCases.length === 0) {
+      return { caseId: directCaseId, relatedCaseId: null, relatedCaseType: null };
+    }
+
+    const primaryCase =
+      groupedCases.find((c) => c.case_type === CaseType.FRAUD) ?? groupedCases.find((c) => c.case_id === directCaseId) ?? groupedCases[0];
+    const relatedCase = groupedCases.find((c) => c.case_id !== primaryCase.case_id);
+
+    return {
+      caseId: primaryCase.case_id,
+      relatedCaseId: relatedCase?.case_id ?? null,
+      relatedCaseType: relatedCase?.case_type ?? null,
+    };
   }
 
   async getAlertActionHistory(

@@ -178,7 +178,6 @@ describe('TaskService', () => {
         status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         tenant_id: 'tenant1',
         case_owner_user_id: null,
-        parent_id: null,
       },
     } as any;
 
@@ -264,30 +263,30 @@ describe('TaskService', () => {
       );
     });
 
-    it('should handle case with parent when promoting to in-progress', async () => {
+    it('should promote only the task case', async () => {
       const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
-      const caseWithParent = {
+      const updatedCase = {
         case_id: 1,
         status: CaseStatus.STATUS_20_IN_PROGRESS,
-        parent_id: 10,
+      };
+      const txCase = {
+        findFirst: jest.fn().mockResolvedValue({
+          case_id: 2,
+          status: CaseStatus.STATUS_20_IN_PROGRESS,
+        }),
+        update: jest.fn(),
       };
 
       taskRepository.transaction.mockImplementation(async (callback) => {
         const tx: any = {
           ...taskRepository,
-          case: {
-            findFirst: jest.fn().mockResolvedValue({
-              case_id: 2,
-              status: CaseStatus.STATUS_20_IN_PROGRESS,
-            }),
-            update: jest.fn(),
-          },
+          case: txCase,
         };
 
         tx.findTaskWithCase.mockResolvedValue(existingTask);
         tx.updateTask.mockResolvedValue({ ...existingTask, status: TaskStatus.STATUS_20_IN_PROGRESS });
-        tx.findCaseStatus.mockResolvedValue({ ...existingTask.case, parent_id: 10 });
-        tx.updateCase.mockResolvedValue(caseWithParent);
+        tx.findCaseStatus.mockResolvedValue(existingTask.case);
+        tx.updateCase.mockResolvedValue(updatedCase);
 
         return callback(tx);
       });
@@ -297,6 +296,13 @@ describe('TaskService', () => {
       const result = await service.updateTask(1, updateData, 'user1', 'tenant1');
 
       expect(result).toBeDefined();
+      expect(taskRepository.updateCase).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ status: CaseStatus.STATUS_20_IN_PROGRESS }),
+        expect.anything(),
+      );
+      expect(txCase.findFirst).not.toHaveBeenCalled();
+      expect(txCase.update).not.toHaveBeenCalled();
     });
 
     it(
@@ -326,27 +332,27 @@ describe('TaskService', () => {
       5000,
     );
 
-    it('should handle parent case promotion error', async () => {
+    it('should not query related cases while promoting the task case', async () => {
       const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
 
       taskRepository.transaction.mockImplementation(async (callback) => {
         const tx: any = {
           ...taskRepository,
           case: {
-            findFirst: jest.fn().mockRejectedValue(new Error('Parent case lookup failed')),
+            findFirst: jest.fn().mockRejectedValue(new Error('Related case lookup failed')),
             update: jest.fn(),
           },
         };
 
         tx.findTaskWithCase.mockResolvedValue(existingTask);
         tx.updateTask.mockResolvedValue({ ...existingTask, status: TaskStatus.STATUS_20_IN_PROGRESS });
-        tx.findCaseStatus.mockResolvedValue({ ...existingTask.case, parent_id: 10 });
-        tx.updateCase.mockResolvedValue({ ...existingTask.case, parent_id: 10, status: CaseStatus.STATUS_20_IN_PROGRESS });
+        tx.findCaseStatus.mockResolvedValue(existingTask.case);
+        tx.updateCase.mockResolvedValue({ ...existingTask.case, status: CaseStatus.STATUS_20_IN_PROGRESS });
 
         return callback(tx);
       });
 
-      await expect(service.updateTask(1, updateData, 'user1', 'tenant1')).rejects.toThrow();
+      await expect(service.updateTask(1, updateData, 'user1', 'tenant1')).resolves.toBeDefined();
     });
   });
 

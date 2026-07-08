@@ -1079,12 +1079,12 @@ describe('CaseModalsManager', () => {
     );
   });
 
-  it('passes initial with FRAUD_AND_AML type from selectedRow', () => {
+  it('maps legacy FRAUD_AND_AML selectedRow to AML initial type', () => {
     const faaRow = { ...mockRow, type: 'FRAUD_AND_AML' };
     renderManager({ isCreateOpen: true, selectedRow: faaRow });
     expect(mockCreateModal).toHaveBeenCalledWith(
       expect.objectContaining({
-        initial: expect.objectContaining({ alertType: 'FRAUD_AND_AML' }),
+        initial: expect.objectContaining({ alertType: 'AML' }),
       }),
     );
   });
@@ -1236,7 +1236,7 @@ describe('CaseModalsManager', () => {
     expect(screen.getByTestId('close-case-modal')).toBeInTheDocument();
   });
 
-  it('passes subCasesDetails for FRAUD_AND_AML type', () => {
+  it('renders close case modal for legacy FRAUD_AND_AML type without subcase routing', () => {
     const faaRow = { ...mockRow, type: 'FRAUD_AND_AML' };
     renderManager({ isCloseCaseOpen: true, selectedRow: faaRow });
     expect(screen.getByTestId('close-case-modal')).toBeInTheDocument();

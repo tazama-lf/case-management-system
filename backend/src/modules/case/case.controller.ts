@@ -364,7 +364,7 @@ export class CaseController {
         transaction: JsonValue;
         confidence_per: number;
       } | null;
-      parent_id: number | null;
+      group_id: number | null;
       assigned_to:
         | {
             user_id: string | null;
@@ -462,8 +462,8 @@ export class CaseController {
       casesByPriority: Record<string, number>;
     };
   }> {
-    const { userId, isComplianceOfficer } = extractUserData(req);
-    return await this.caseService.getUserCases(userId, query, isComplianceOfficer);
+    const { userId, tenantId, isComplianceOfficer } = extractUserData(req);
+    return await this.caseService.getUserCases(userId, query, tenantId, isComplianceOfficer);
   }
 
   @Get('user/:userId/assigned')
@@ -529,12 +529,12 @@ export class CaseController {
       casesByPriority: Record<string, number>;
     };
   }> {
-    const { userId: requestingUserId } = extractUserData(req);
+    const { userId: requestingUserId, tenantId } = extractUserData(req);
     if (requestingUserId !== targetUserId) {
       /* empty */
     }
 
-    return await this.caseService.getUserCases(targetUserId, query);
+    return await this.caseService.getUserCases(targetUserId, query, tenantId);
   }
 
   @Get('user/workload')
@@ -626,19 +626,6 @@ export class CaseController {
   async getCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<Case | null> {
     const { isComplianceOfficer, tenantId } = extractUserData(req);
     return await this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
-  }
-
-  @Get('parentId/:caseId')
-  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  @ApiOperation({
-    summary: 'Retrieve sub case by parent ID',
-    description: 'Get detailed information about sub cases associated with a parent case',
-  })
-  @ApiResponse({ status: 200, description: 'Case retrieved successfully' })
-  @ApiResponse({ status: 404, description: 'Case not found' })
-  @ApiResponse({ status: 403, description: 'Forbidden - only relevant users can only access cases information' })
-  async getSubCasesDetails(@Param('caseId') caseId: number): Promise<Case[]> {
-    return await this.caseService.getSubCasesDetails(caseId);
   }
 
   @Put(':caseId')

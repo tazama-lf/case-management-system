@@ -78,6 +78,8 @@ const AlertsDashboard: React.FC = () => {
   const { filterOptions } = useAlertFilterOptions();
   const { success, error: showError } = useToast();
 
+  const [modalRefreshTrigger, setModalRefreshTrigger] = useState(0);
+
   const handleManualTriage = async (
     alert: Alert,
     triageData: ManualTriageDto,
@@ -95,7 +97,9 @@ const AlertsDashboard: React.FC = () => {
 
       // Close the manual triage modal
       setShowManualTriageModal(false);
-      // Refresh the alert details and show the detail modal
+      // Force the detail modal to re-fetch alert details (picks up new case_id, related_case_id, status)
+      setModalRefreshTrigger((prev) => prev + 1);
+      // Show the detail modal
       setShowModal(true);
     } catch (error) {
       console.error('Failed to perform manual triage:', error);
@@ -155,6 +159,23 @@ const AlertsDashboard: React.FC = () => {
     setShowMessagePayload(false);
     setSelectedMessage(null);
   };
+
+  const getPriorityColor = (priority: string): string => {
+    if (!priority) return 'text-gray-600 bg-gray-50';
+    switch (priority.toLowerCase()) {
+      case 'breach':
+        return 'text-red-600 bg-red-50';
+      case 'critical':
+        return 'text-orange-600 bg-orange-50';
+      case 'urgent':
+        return 'text-yellow-600 bg-yellow-50';
+      case 'new':
+        return 'text-blue-600 bg-blue-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
+    }
+  };
+
 
   const columns: Array<AlertsTableColumn<Alert>> = [
     {
@@ -315,7 +336,7 @@ const AlertsDashboard: React.FC = () => {
 
   return (
     <PageContainer title="Alerts Dashboard" subtitle={getSubtitle()}>
-      {}
+      { }
       {error && (
         <div className="mb-4">
           <Notification
@@ -326,7 +347,7 @@ const AlertsDashboard: React.FC = () => {
         </div>
       )}
 
-      {}
+      { }
       <AlertsSearchAndFilters
         searchFilters={filters}
         onFilterChange={(key, value) => {
@@ -366,7 +387,7 @@ const AlertsDashboard: React.FC = () => {
         sort={{ column: String(sort.column), direction: sort.direction }}
       />
 
-      {}
+      { }
       <div className="bg-white rounded-lg shadow">
         <AlertsTable
           data={alerts}
@@ -390,6 +411,7 @@ const AlertsDashboard: React.FC = () => {
           isOpen={showModal}
           onClose={handleCloseModal}
           onAlertUpdated={refreshAlerts}
+          refreshTrigger={modalRefreshTrigger}
           onManualTriage={(alert: Alert) => {
             setSelectedAlert(alert);
             setShowModal(false);

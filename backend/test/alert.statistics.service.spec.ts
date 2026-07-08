@@ -344,7 +344,7 @@ describe('AlertStatisticsService', () => {
       it.each([
         ['uppercase', 'NALT'],
         ['lowercase', 'nalt'],
-      ])('should add case_id null filter when reportStatus is %s', async (_desc, status) => {
+      ])('should add case_id and investigationGroup null filters when reportStatus is %s', async (_desc, status) => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
 
@@ -361,9 +361,24 @@ describe('AlertStatisticsService', () => {
                 equals: status,
               },
               case_id: null,
+              investigationGroup: null,
             }),
           }),
         );
+      });
+
+      it('should not add case_id/investigationGroup filters for non-NALT reportStatus', async () => {
+        alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
+        alertRepository.count.mockResolvedValue(1);
+
+        await service.getAlertsForUser({
+          ...defaultParams,
+          reportStatus: 'NEW',
+        });
+
+        const callArgs = alertRepository.findMany.mock.calls[0][0];
+        expect(callArgs.where?.case_id).toBeUndefined();
+        expect(callArgs.where?.investigationGroup).toBeUndefined();
       });
     });
 

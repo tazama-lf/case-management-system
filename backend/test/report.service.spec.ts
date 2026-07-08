@@ -86,6 +86,7 @@ describe('ReportsService', () => {
         count: jest.fn(),
         findMany: jest.fn(),
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
       },
       task: {
         count: jest.fn(),
@@ -362,7 +363,7 @@ describe('ReportsService', () => {
       // Use a date that's definitely within the last 30 days
       const recentDate = new Date();
       recentDate.setDate(recentDate.getDate() - 5); // 5 days ago
-      
+
       eventLogService.getLogs.mockResolvedValue([
         { ...mockEventLog, performed_at: recentDate },
       ]);
@@ -474,7 +475,7 @@ describe('ReportsService', () => {
     };
 
     beforeEach(() => {
-      prismaService.case.findUnique.mockResolvedValue(mockCase);
+      prismaService.case.findFirst.mockResolvedValue(mockCase);
       prismaService.task.findMany.mockResolvedValue([]);
       couchdbService.getDatabase.mockReturnValue({
         find: jest.fn().mockResolvedValue({ docs: [] }),
@@ -501,7 +502,7 @@ describe('ReportsService', () => {
     });
 
     it('should throw error if case not found', async () => {
-      prismaService.case.findUnique.mockResolvedValue(null);
+      prismaService.case.findFirst.mockResolvedValue(null);
 
       await expect(service.generateFraudReport(mockFile, mockDto, 'user-123', 'tenant-123', 'CMS_SUPERVISOR')).rejects.toThrow(
         'Case not found',

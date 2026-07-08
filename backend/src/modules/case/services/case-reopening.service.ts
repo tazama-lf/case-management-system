@@ -69,13 +69,6 @@ export class CaseReopeningService {
             tx,
           );
 
-          if (updatedCase.parent_id) {
-            await tx.case.update({
-              where: { case_id: updatedCase.parent_id },
-              data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
-            });
-          }
-
           const investigationTask = await this.taskService.createTask(
             {
               caseId,
@@ -247,13 +240,6 @@ export class CaseReopeningService {
           },
           tx,
         );
-
-        if (updatedCase.parent_id) {
-          await tx.case.update({
-            where: { case_id: updatedCase.parent_id },
-            data: { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
-          });
-        }
 
         const completedTask = await tx.task.update({
           where: { task_id: reopeningTask.task_id },
