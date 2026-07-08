@@ -7,6 +7,8 @@ import { validate as isUuid } from 'uuid';
 import { CaseClosureOutcome } from 'src/utils/enums/case-enum';
 import { SlaPolicyUtil } from '../shared/utils/sla-policy.util';
 import { CLOSED_CASE_STATUSES } from '../../constants/case.constants';
+import { SlaPolicyUtil } from '../shared/utils/sla-policy.util';
+import { CLOSED_CASE_STATUSES } from '../../constants/case.constants';
 
 @Injectable()
 export class CaseRepository extends BaseRepository {
@@ -187,34 +189,16 @@ export class CaseRepository extends BaseRepository {
     // Otherwise, PostgreSQL will throw an error when trying to parse userId as UUID
     if (isValidUuid) {
       whereCondition.OR = [
+        { case_owner_user_id: userId },
         {
-          case_type: {
-            in: ['FRAUD_AND_AML'],
-          },
-        },
-        {
-          AND: [
-            {
-              case_type: {
-                notIn: ['FRAUD_AND_AML'],
+          tasks: {
+            some: {
+              assigned_user_id: userId,
+              name: {
+                in: ['Investigate Case', 'Investigate case', 'investigate case'],
               },
             },
-            {
-              OR: [
-                { case_owner_user_id: userId },
-                {
-                  tasks: {
-                    some: {
-                      assigned_user_id: userId,
-                      name: {
-                        in: ['Investigate Case', 'Investigate case', 'investigate case'],
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
+          },
         },
       ];
     } else {
@@ -316,15 +300,20 @@ export class CaseRepository extends BaseRepository {
         case_id: caseId,
         tenant_id: tenantId,
       },
-      include: { alert: true, tasks: true },
+      include: { alert: true, tasks: true, investigationGroup: { include: { alert: true } } },
     });
     if (!caseData) {
       throw new NotFoundException('Case Not Found');
     }
-    return caseData;
+
+    const { investigationGroup, ...rest } = caseData;
+    return {
+      ...rest,
+      alert: caseData.alert ?? investigationGroup?.alert ?? null,
+    };
   }
 
-  async updateCase(caseId: number, data: Prisma.CaseUpdateInput, tx?: Prisma.TransactionClient): Promise<Case> {
+  async updateCase(caseId: number, data: Prisma.CaseUncheckedUpdateInput, tx?: Prisma.TransactionClient): Promise<Case> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
     const priorityValue = typeof data.priority === 'string' ? data.priority : data.priority?.set;
     const statusValue = typeof data.status === 'string' ? data.status : data.status?.set;
@@ -626,7 +615,7 @@ export class CaseRepository extends BaseRepository {
         priority: caseDetail.priority,
         case_type: caseDetail.caseType,
         case_creation_type: caseDetail.caseCreationType,
-        parent_id: caseDetail.parentId,
+        ...(caseDetail.groupId === undefined ? {} : { group_id: caseDetail.groupId }),
         created_at: createdAt,
         ...slaFields,
       },
@@ -635,6 +624,15 @@ export class CaseRepository extends BaseRepository {
 
   async createDraftCase(caseDetail: any, dto: any, priorityScore: number, priority: any): Promise<{ case: Case; alert: Alert }> {
     return await this.prisma.$transaction(async (prisma) => {
+      const createdAt = new Date();
+      // Drafts are always created in STATUS_00_DRAFT, so this is always a no-op today —
+      // kept for consistency with createCase in case that ever changes.
+      const slaFields = await this.computeSlaFieldsIfReadyForAssignment(
+        caseDetail.status,
+        caseDetail.priority,
+        caseDetail.tenantId,
+        createdAt,
+      );
       const createdAt = new Date();
       // Drafts are always created in STATUS_00_DRAFT, so this is always a no-op today —
       // kept for consistency with createCase in case that ever changes.
@@ -654,6 +652,8 @@ export class CaseRepository extends BaseRepository {
           priority: caseDetail.priority,
           case_type: caseDetail.caseType,
           case_creation_type: caseDetail.caseCreationType,
+          created_at: createdAt,
+          ...slaFields,
           created_at: createdAt,
           ...slaFields,
         },

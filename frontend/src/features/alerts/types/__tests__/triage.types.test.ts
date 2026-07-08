@@ -149,7 +149,7 @@ describe('Triage Types - Interfaces', () => {
     expect(caseData.status).toBe(CaseStatus.STATUS_20_IN_PROGRESS);
   });
 
-  it('Case with parent_id should be assignable', () => {
+  it('Case should be assignable without a parent field', () => {
     const caseData: Case = {
       case_id: 'case-2',
       case_creator_user_id: 'user-1',
@@ -159,11 +159,10 @@ describe('Triage Types - Interfaces', () => {
       priority: Priority.LOW,
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
-      parent_id: 'case-1',
       case_type: CaseType.AML,
       case_creation_type: CaseCreationType.MANUAL,
     };
-    expect(caseData.parent_id).toBe('case-1');
+    expect(caseData.case_id).toBe('case-2');
   });
 
   it('AlertsFilter should be assignable', () => {
