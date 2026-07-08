@@ -107,6 +107,12 @@ describe('AlertsSearchAndFilters', () => {
     );
     fireEvent.change(savedSelect, { target: { value: '1' } });
     expect(savedSelect).toHaveValue('1');
+    await waitFor(() => {
+      expect(onCustomDateRangeChange).toHaveBeenCalledWith({
+        startDate: '',
+        endDate: '',
+      });
+    });
 
     await user.click(screen.getByRole('button', { name: /clear/i }));
     expect(savedSelect).toHaveValue('');
@@ -161,6 +167,8 @@ describe('AlertsSearchAndFilters', () => {
     const endDateInput = screen
       .getByText('End Date')
       .parentElement?.querySelector('input') as HTMLInputElement;
+
+    onCustomDateRangeChange.mockClear();
     fireEvent.change(startDateInput, {
       target: { value: '2024-01-01' },
     });
@@ -295,6 +303,12 @@ describe('AlertsSearchAndFilters', () => {
       },
       { timeout: 100 },
     );
+    await waitFor(() => {
+      expect(onCustomDateRangeChange).toHaveBeenCalledWith({
+        startDate: '',
+        endDate: '',
+      });
+    });
   });
 
   it('renders filter dropdowns with provided options', async () => {
