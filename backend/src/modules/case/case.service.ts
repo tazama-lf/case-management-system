@@ -3,7 +3,6 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
 import { Alert, Case, CaseCreationType, CaseStatus, CaseType, Priority, SlaState, Task, TaskStatus } from '@prisma/client-cms';
-import { Alert, Case, CaseCreationType, CaseStatus, CaseType, Priority, SlaState, Task, TaskStatus } from '@prisma/client-cms';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -1064,7 +1063,6 @@ export class CaseService {
           CaseType.FRAUD,
           userId,
           existingCase.tenant_id,
-          caseId,
           result.case.priority,
           CaseCreationType.AUTOMATIC_SYSTEM,
           role,
@@ -1073,7 +1071,6 @@ export class CaseService {
           CaseType.AML,
           userId,
           existingCase.tenant_id,
-          caseId,
           result.case.priority,
           CaseCreationType.AUTOMATIC_SYSTEM,
           role,

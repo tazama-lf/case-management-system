@@ -7,8 +7,6 @@ import { validate as isUuid } from 'uuid';
 import { CaseClosureOutcome } from 'src/utils/enums/case-enum';
 import { SlaPolicyUtil } from '../shared/utils/sla-policy.util';
 import { CLOSED_CASE_STATUSES } from '../../constants/case.constants';
-import { SlaPolicyUtil } from '../shared/utils/sla-policy.util';
-import { CLOSED_CASE_STATUSES } from '../../constants/case.constants';
 
 @Injectable()
 export class CaseRepository extends BaseRepository {
@@ -633,15 +631,6 @@ export class CaseRepository extends BaseRepository {
         caseDetail.tenantId,
         createdAt,
       );
-      const createdAt = new Date();
-      // Drafts are always created in STATUS_00_DRAFT, so this is always a no-op today —
-      // kept for consistency with createCase in case that ever changes.
-      const slaFields = await this.computeSlaFieldsIfReadyForAssignment(
-        caseDetail.status,
-        caseDetail.priority,
-        caseDetail.tenantId,
-        createdAt,
-      );
       // Create case in PostgreSQL only (no BPMN workflow)
       const createdCase = await prisma.case.create({
         data: {
@@ -652,8 +641,6 @@ export class CaseRepository extends BaseRepository {
           priority: caseDetail.priority,
           case_type: caseDetail.caseType,
           case_creation_type: caseDetail.caseCreationType,
-          created_at: createdAt,
-          ...slaFields,
           created_at: createdAt,
           ...slaFields,
         },

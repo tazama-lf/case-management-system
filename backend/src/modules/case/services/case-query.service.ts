@@ -5,8 +5,6 @@ import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
 import { GetAllCasesQueryDto } from '../dto/get-all-cases.dto';
 import { Case, CaseStatus, CaseType, Priority, SlaState, TaskStatus } from '@prisma/client-cms';
 import { computeCaseSlaState } from '../../alert-priority/sla-state.util';
-import { Case, CaseStatus, CaseType, Priority, SlaState, TaskStatus } from '@prisma/client-cms';
-import { computeCaseSlaState } from '../../alert-priority/sla-state.util';
 import { TaskValidationUtil } from '../../shared/utils/task-validation.util';
 import { SlaPolicyUtil, type SlaEscalationRatios } from '../../shared/utils/sla-policy.util';
 import { CaseRepository } from 'src/modules/repository/case.repository';
@@ -884,6 +882,21 @@ export class CaseQueryService {
       this.logger.error('Error checking case access', { error, caseId, investigatorUserId, tenantId });
       return false;
     }
+  }
+
+  async getSubCasesDetails(caseId: number): Promise<Array<Case & { sla_state: SlaState | null }>> {
+    const subCases = await this.prismaService.case.findMany({
+      where: {
+        parent_id: caseId,
+      },
+    });
+
+    const ratiosByTenant = await this.resolveRatiosByTenant(subCases.map((caseItem) => caseItem.tenant_id));
+
+    return subCases.map((caseItem) => ({
+      ...caseItem,
+      sla_state: computeCaseSlaState(caseItem, ratiosByTenant.get(caseItem.tenant_id)!),
+    }));
   }
 
   async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string): Promise<Case & { sla_state: SlaState | null }> {

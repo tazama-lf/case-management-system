@@ -6,7 +6,6 @@ import { CaseRepository } from '../src/modules/repository/case.repository';
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
 import { TaskValidationUtil } from '../src/modules/shared/utils/task-validation.util';
 import { SlaPolicyUtil } from '../src/modules/shared/utils/sla-policy.util';
-import { SlaPolicyUtil } from '../src/modules/shared/utils/sla-policy.util';
 import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CaseStatus, TaskStatus, CaseType, Priority } from '@prisma/client-cms';
 import { GetUserCasesQueryDto } from '../src/modules/case/dto/get-user-cases.dto';
