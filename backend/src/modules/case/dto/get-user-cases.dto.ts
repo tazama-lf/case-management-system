@@ -261,8 +261,9 @@ export class SummaryStatisticsDto {
   @ApiProperty({
     description: 'Case counts by priority',
     example: {
-      URGENT: 5,
-      NEW: 3,
+      HIGH: 2,
+      MEDIUM: 5,
+      LOW: 3,
     },
     additionalProperties: {
       type: 'number',
