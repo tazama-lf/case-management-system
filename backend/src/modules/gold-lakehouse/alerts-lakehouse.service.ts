@@ -51,14 +51,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
                         'rule_processing_time_ms',   anr.rule_processing_time_ms,
                         'rule_tenant_id',            anr.rule_tenant_id,
                         'rule_desc',                 anr.rule_desc,
-                        'band_count',                anr.band_count,
-                        'exit_condition_count',      anr.exit_condition_count,
-                        'band_reasons_json',         anr.band_reasons_json,
-                        'band_reasons_with_sub_rule_refs_json', anr.band_reasons_with_sub_rule_refs_json,
-                        'exit_condition_reasons_json', anr.exit_condition_reasons_json,
                         'matched_band_reason', anr.matched_band_reason,
-                        'matched_exit_condition_reasons_json', anr.matched_exit_condition_reason,
-                        'matched_rule_reasons_json', anr.matched_rule_reason 
+                        'matched_rule_reason', anr.matched_rule_reason                       
                     )
                 ) AS rules
             FROM alert_navigator_rules anr
@@ -185,15 +179,9 @@ export class AlertsLakehouseService extends GoldLakehouseService {
               ruleWeight: r.rule_weight,
               subRef: r.rule_sub_ref,
               independentVariable: r.rule_independent_variable,
-              ruleDesc: r.rule_desc,
-              band_reasons_json: r.band_reasons_json,
-              band_reasons_with_sub_rule_refs_json: r.band_reasons_with_sub_rule_refs_json,
-              matched_band_reason: r.matched_band_reason,
-              exit_condition_reasons_json: r.exit_condition_reasons_json,   
-              matched_exit_condition_reason: r.matched_exit_condition_reason,
-              matched_rule_reason: r.matched_rule_reason,
-              band_count: r.band_count,          
-              exit_condition_count: r.exit_condition_count,
+              ruleDesc: r.rule_desc,         
+              matched_band_reason: r.matched_band_reason,                              
+              matched_rule_reason: r.matched_rule_reason,                                   
             
             }));
           const rulesString = JSON.stringify(mappedRules);
