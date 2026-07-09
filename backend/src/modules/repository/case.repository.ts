@@ -5,6 +5,8 @@ import { BaseRepository } from './base.repository';
 import { CommentRepository } from './comment.repository';
 import { validate as isUuid } from 'uuid';
 import { CaseClosureOutcome } from 'src/utils/enums/case-enum';
+import { SlaPolicyUtil } from '../shared/utils/sla-policy.util';
+import { CLOSED_CASE_STATUSES } from '../../constants/case.constants';
 
 @Injectable()
 export class CaseRepository extends BaseRepository {
@@ -12,6 +14,7 @@ export class CaseRepository extends BaseRepository {
     private readonly prisma: PrismaService,
     private readonly commentRepository: CommentRepository,
     private readonly logger: Logger,
+    private readonly slaPolicyUtil: SlaPolicyUtil,
   ) {
     super(prisma);
   }
@@ -310,9 +313,64 @@ export class CaseRepository extends BaseRepository {
 
   async updateCase(caseId: number, data: Prisma.CaseUncheckedUpdateInput, tx?: Prisma.TransactionClient): Promise<Case> {
     const client: Prisma.TransactionClient | PrismaService = tx ?? this.prisma;
+    const priorityValue = typeof data.priority === 'string' ? data.priority : data.priority?.set;
+    const statusValue = typeof data.status === 'string' ? data.status : data.status?.set;
+
+    let slaFields: Partial<Pick<Case, 'sla_started_at' | 'sla_due_at'>> = {};
+    if (statusValue === CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
+      // Every entry into READY_FOR_ASSIGNMENT restarts the SLA clock from now — first-time
+      // triage completion and case reopening are both, deliberately, the same rule.
+      const existingCase = await client.case.findUniqueOrThrow({
+        where: { case_id: caseId },
+        select: { priority: true, tenant_id: true },
+      });
+      const priority = priorityValue ?? existingCase.priority;
+      const slaStartedAt = new Date();
+      slaFields = {
+        sla_started_at: slaStartedAt,
+        sla_due_at: await this.slaPolicyUtil.calculateSlaDueAt(slaStartedAt, existingCase.tenant_id, priority),
+      };
+    } else if (priorityValue) {
+      // Priority changed without a status transition: re-anchor to sla_started_at if the
+      // clock has already started. If it hasn't (pre-RFA, or a legacy case predating this
+      // column), there's nothing safe to recompute — leave sla_due_at exactly as it is.
+      const existingCase = await client.case.findUniqueOrThrow({
+        where: { case_id: caseId },
+        select: { sla_started_at: true, tenant_id: true },
+      });
+      if (existingCase.sla_started_at) {
+        slaFields = {
+          sla_due_at: await this.slaPolicyUtil.calculateSlaDueAt(existingCase.sla_started_at, existingCase.tenant_id, priorityValue),
+        };
+      }
+    }
+
     return await client.case.update({
       where: { case_id: caseId },
-      data,
+      data: { ...data, ...slaFields },
+    });
+  }
+
+  async findOpenCasesForSlaCheck(): Promise<
+    Array<Pick<Case, 'case_id' | 'case_type' | 'case_owner_user_id' | 'created_at' | 'sla_started_at' | 'sla_due_at' | 'tenant_id'>>
+  > {
+    // sla_due_at is only ever set once a case reaches READY_FOR_ASSIGNMENT (see updateCase/
+    // createCase), so the `not: null` filter already excludes DRAFT/PENDING_CASE_CREATION_APPROVAL
+    // cases without needing an explicit status exclusion for them.
+    return await this.prisma.case.findMany({
+      where: {
+        sla_due_at: { not: null },
+        status: { notIn: [...CLOSED_CASE_STATUSES, CaseStatus.STATUS_99_ABANDONED] },
+      },
+      select: {
+        case_id: true,
+        case_type: true,
+        case_owner_user_id: true,
+        created_at: true,
+        sla_started_at: true,
+        sla_due_at: true,
+        tenant_id: true,
+      },
     });
   }
 
@@ -520,9 +578,32 @@ export class CaseRepository extends BaseRepository {
     });
   }
 
+  /**
+   * SLA only starts once a case reaches STATUS_02_READY_FOR_ASSIGNMENT, so this
+   * is a no-op for every other status (DRAFT, PENDING_CASE_CREATION_APPROVAL, ...).
+   */
+  private async computeSlaFieldsIfReadyForAssignment(
+    status: CaseStatus | undefined,
+    priority: Priority,
+    tenantId: string,
+    anchor: Date,
+  ): Promise<Partial<Pick<Case, 'sla_started_at' | 'sla_due_at'>>> {
+    if (status !== CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT) {
+      return {};
+    }
+    const slaDueAt = await this.slaPolicyUtil.calculateSlaDueAt(anchor, tenantId, priority);
+    return { sla_started_at: anchor, sla_due_at: slaDueAt };
+  }
+
   async createCase(caseDetail: any, tx?: Prisma.TransactionClient): Promise<Case> {
     const prisma = tx ?? this.prisma;
-
+    const createdAt = new Date();
+    const slaFields = await this.computeSlaFieldsIfReadyForAssignment(
+      caseDetail.status,
+      caseDetail.priority,
+      caseDetail.tenantId,
+      createdAt,
+    );
     return await prisma.case.create({
       data: {
         tenant_id: caseDetail.tenantId,
@@ -533,12 +614,23 @@ export class CaseRepository extends BaseRepository {
         case_type: caseDetail.caseType,
         case_creation_type: caseDetail.caseCreationType,
         ...(caseDetail.groupId === undefined ? {} : { group_id: caseDetail.groupId }),
+        created_at: createdAt,
+        ...slaFields,
       },
     });
   }
 
   async createDraftCase(caseDetail: any, dto: any, priorityScore: number, priority: any): Promise<{ case: Case; alert: Alert }> {
     return await this.prisma.$transaction(async (prisma) => {
+      const createdAt = new Date();
+      // Drafts are always created in STATUS_00_DRAFT, so this is always a no-op today —
+      // kept for consistency with createCase in case that ever changes.
+      const slaFields = await this.computeSlaFieldsIfReadyForAssignment(
+        caseDetail.status,
+        caseDetail.priority,
+        caseDetail.tenantId,
+        createdAt,
+      );
       // Create case in PostgreSQL only (no BPMN workflow)
       const createdCase = await prisma.case.create({
         data: {
@@ -549,6 +641,8 @@ export class CaseRepository extends BaseRepository {
           priority: caseDetail.priority,
           case_type: caseDetail.caseType,
           case_creation_type: caseDetail.caseCreationType,
+          created_at: createdAt,
+          ...slaFields,
         },
       });
 

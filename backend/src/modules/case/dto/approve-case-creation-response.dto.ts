@@ -7,7 +7,7 @@ class CaseDetails {
   @ApiProperty({ type: 'string', example: 'STATUS_02_READY_FOR_ASSIGNMENT' })
   status: string;
 
-  @ApiProperty({ type: 'string', example: 'URGENT' })
+  @ApiProperty({ type: 'string', example: 'MEDIUM' })
   priority: string;
 
   @ApiProperty({ type: 'string', example: 'FRAUD' })

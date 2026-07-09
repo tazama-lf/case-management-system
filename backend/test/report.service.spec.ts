@@ -231,6 +231,33 @@ describe('ReportsService', () => {
       expect(result.stats.totalCases).toBe(0);
       expect(result.stats.avgResolutionTime).toBe(0);
     });
+
+    it('reconciles totalCases = low + medium + high, counting closed cases in the buckets too', async () => {
+      // 5 cases in scope: mix of open/closed and LOW/MEDIUM/HIGH, so a bug that
+      // excludes closed cases from the buckets would make them undercount totalCases.
+      prismaService.case.count.mockResolvedValue(5);
+      prismaService.case.findMany
+        .mockResolvedValueOnce([
+          { status: CaseStatus.STATUS_20_IN_PROGRESS, priority: 'LOW' },
+          { status: CaseStatus.STATUS_20_IN_PROGRESS, priority: 'MEDIUM' },
+          { status: CaseStatus.STATUS_81_CLOSED_REFUTED, priority: 'MEDIUM' },
+          { status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, priority: 'HIGH' },
+          { status: CaseStatus.STATUS_10_ASSIGNED, priority: 'HIGH' },
+        ])
+        .mockResolvedValueOnce([]); // closedCasesWithTimes
+
+      const result = await service.getCaseStatus('last30', { tenantId: 'tenant-123' });
+
+      expect(result.stats.totalCases).toBe(5);
+      expect(result.recentCases).toEqual([
+        { priority: 'Low', count: 1 },
+        { priority: 'Medium', count: 2 },
+        { priority: 'High', count: 2 },
+      ]);
+      const bucketSum = result.recentCases.reduce((sum, r) => sum + r.count, 0);
+      expect(bucketSum).toBe(result.stats.totalCases);
+      expect(result.stats.highPriorityCases).toBe(2);
+    });
   });
 
   describe('getInvestigatorWorkload', () => {

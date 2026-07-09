@@ -41,7 +41,7 @@ export class AlertController {
     required: false,
     type: 'string',
     description: 'Filter by priority',
-    example: 'URGENT',
+    example: 'MEDIUM',
   })
   @ApiQuery({
     name: 'type',

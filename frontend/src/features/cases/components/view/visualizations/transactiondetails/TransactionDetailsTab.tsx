@@ -259,7 +259,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
               <div className="h-px w-16 bg-gradient-to-r from-blue-400 to-purple-400"></div>
             </div>
             <div className="text-xl font-bold text-gray-900">
-              ${data.transactionFlow.amount.amount.toLocaleString()}
+              {data.transactionFlow.amount.currency} {data.transactionFlow.amount.amount.toLocaleString()}
             </div>
           </div>
 
@@ -479,7 +479,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
                       Original Amount
                     </div>
                     <div className="text-sm text-gray-900">
-                      USD ${amountItem.originalAmount.toLocaleString()}
+                      {amountItem.originalCurrency} {amountItem.originalAmount.toLocaleString()}
                     </div>
                   </div>
                 )}
@@ -501,7 +501,7 @@ const TransactionDetailsTab: React.FC<TransactionDetailsTabProps> = ({
                       Converted Amount
                     </div>
                     <div className="text-sm text-gray-900">
-                      ${amountItem.convertedAmount.toLocaleString()}
+                      {amountItem.convertedCurrency} {amountItem.convertedAmount.toLocaleString()}
                     </div>
                   </div>
                 )}

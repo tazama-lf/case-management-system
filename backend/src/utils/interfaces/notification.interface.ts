@@ -15,6 +15,9 @@ export type NotificationType =
   | 'TASK_SLA_WARNING'
   | 'TASK_SLA_BREACH'
   | 'TASK_OVERDUE'
+  | 'CASE_CLAIM_CHASE'
+  | 'CASE_SUPPORT_CHASE'
+  | 'CASE_SLA_BREACHED'
   | 'GENERIC';
 
 export interface NotificationPayload {
@@ -81,4 +84,12 @@ export interface TaskReassignedPayload extends Omit<TaskEventPayload, 'assignedU
 export interface OverdueTaskPayload extends Omit<SlaEventPayload, 'deadline'> {
   createdAt: string;
   hoursSinceCreation: number;
+}
+
+export interface SlaEscalationPayload {
+  caseId: number;
+  caseType: string | null;
+  slaState: string;
+  timeRemainingHours: number;
+  assignee: string | null;
 }

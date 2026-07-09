@@ -105,33 +105,27 @@ export function transformBackendAlertToUI(backendAlert: TriageAlert): UIAlert {
   return transformedAlert;
 }
 
-function mapPriorityToSeverity(
-  priority: Priority,
-): 'low' | 'medium' | 'high' | 'critical' {
+function mapPriorityToSeverity(priority: Priority): 'low' | 'medium' | 'high' {
   switch (priority) {
-    case 'NEW':
+    case 'LOW':
       return 'low';
-    case 'URGENT':
+    case 'MEDIUM':
       return 'medium';
-    case 'CRITICAL':
+    case 'HIGH':
       return 'high';
-    case 'BREACH':
-      return 'critical';
   }
 }
 
 export function mapSeverityToPriority(
-  severity: 'low' | 'medium' | 'high' | 'critical',
+  severity: 'low' | 'medium' | 'high',
 ): Priority {
   switch (severity) {
     case 'low':
-      return 'NEW';
+      return 'LOW';
     case 'medium':
-      return 'URGENT';
+      return 'MEDIUM';
     case 'high':
-      return 'CRITICAL';
-    case 'critical':
-      return 'BREACH';
+      return 'HIGH';
   }
 }
 

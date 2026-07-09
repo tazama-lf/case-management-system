@@ -102,7 +102,7 @@ vi.mock('@/features/cases/components/CreateCaseModal', () => ({
           onClick={() =>
             props.onCreate({
               alertId: 1,
-              priority: 'URGENT',
+              priority: 'MEDIUM',
               priorityScore: 0.5,
               alertType: 'FRAUD',
             })
@@ -114,7 +114,7 @@ vi.mock('@/features/cases/components/CreateCaseModal', () => ({
           onClick={() =>
             props.onSaveDraft({
               alertId: 1,
-              priority: 'URGENT',
+              priority: 'MEDIUM',
               priorityScore: 0.5,
               alertType: 'FRAUD',
               draft: true,
@@ -128,7 +128,7 @@ vi.mock('@/features/cases/components/CreateCaseModal', () => ({
             <button
               onClick={() =>
                 props.onCompleteCase(props.existingCaseId, {
-                  priority: 'URGENT',
+                  priority: 'MEDIUM',
                   priorityScore: 0.5,
                   alertType: 'FRAUD',
                   confidence: 80,
@@ -142,7 +142,7 @@ vi.mock('@/features/cases/components/CreateCaseModal', () => ({
             <button
               onClick={() =>
                 props.onUpdate(props.existingCaseId, {
-                  priority: 'URGENT',
+                  priority: 'MEDIUM',
                   priorityScore: 0.5,
                   alertType: 'FRAUD',
                 })
@@ -1247,7 +1247,7 @@ describe('CaseModalsManager', () => {
     renderManager({ isCreateOpen: true, selectedRow: noPriorityRow });
     expect(mockCreateModal).toHaveBeenCalledWith(
       expect.objectContaining({
-        initial: expect.objectContaining({ priority: 'NEW' }),
+        initial: expect.objectContaining({ priority: 'LOW' }),
       }),
     );
   });

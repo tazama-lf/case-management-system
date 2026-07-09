@@ -85,9 +85,6 @@ class EnvironmentVariables {
   @IsNumberString()
   DEFAULT_SLA_HOURS!: string;
 
-  @IsString()
-  ALERT_PRIORITY_CRON_SCHEDULE!: string;
-
   @IsOptional()
   @IsString()
   FLOWABLE_URL?: string;

@@ -18,6 +18,7 @@ describe('CaseRepository', () => {
       prismaService as unknown as PrismaService,
       {} as CommentRepository,
       { log: jest.fn() } as unknown as Logger,
+      { calculateSlaDueAt: jest.fn().mockResolvedValue(new Date()) } as any,
     );
   });
 

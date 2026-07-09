@@ -14,7 +14,7 @@ describe('AlertStatisticsService', () => {
     {
       alert_id: 1,
       txtp: 'pacs.002.001.12',
-      priority: Priority.CRITICAL,
+      priority: Priority.HIGH,
       confidence_per: 85.5,
       source: 'system-a',
       alert_type: CaseType.FRAUD,
@@ -25,7 +25,7 @@ describe('AlertStatisticsService', () => {
     {
       alert_id: 2,
       txtp: 'pacs.008.001.10',
-      priority: Priority.URGENT,
+      priority: Priority.MEDIUM,
       confidence_per: 70.0,
       source: 'system-b',
       alert_type: CaseType.AML,
@@ -178,6 +178,16 @@ describe('AlertStatisticsService', () => {
         ).rejects.toThrow(new BadRequestException('startDate must be before or equal to endDate'));
       });
 
+      it('should throw BadRequestException when startDate is after endDate', async () => {
+        await expect(
+          service.getAlertsForUser({
+            ...defaultParams,
+            startDate: '2026-02-01T00:00:00.000Z',
+            endDate: '2026-01-01T00:00:00.000Z',
+          }),
+        ).rejects.toThrow(new BadRequestException('startDate must be before or equal to endDate'));
+      });
+
       it('should accept all valid sortBy fields', async () => {
         alertRepository.findMany.mockResolvedValue(mockAlerts);
         alertRepository.count.mockResolvedValue(2);
@@ -201,8 +211,8 @@ describe('AlertStatisticsService', () => {
 
     describe('Filter by priority', () => {
       it.each([
-        ['lowercase', 'critical', Priority.CRITICAL],
-        ['mixed case', 'UrGeNt', Priority.URGENT],
+        ['lowercase', 'high', Priority.HIGH],
+        ['mixed case', 'MeDiUm', Priority.MEDIUM],
       ])('should filter alerts by priority with %s', async (_desc, input, expected) => {
         alertRepository.findMany.mockResolvedValue([mockAlerts[0]]);
         alertRepository.count.mockResolvedValue(1);
@@ -527,13 +537,13 @@ describe('AlertStatisticsService', () => {
 
         await service.getAlertsForUser({
           ...defaultParams,
-          search: 'critical',
+          search: 'high',
         });
 
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
-              OR: expect.arrayContaining([{ priority: { equals: Priority.CRITICAL } }]),
+              OR: expect.arrayContaining([{ priority: { equals: Priority.HIGH } }]),
             }),
           }),
         );
@@ -545,13 +555,13 @@ describe('AlertStatisticsService', () => {
 
         await service.getAlertsForUser({
           ...defaultParams,
-          search: 'cri',
+          search: 'hig',
         });
 
         expect(alertRepository.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: expect.objectContaining({
-              OR: expect.arrayContaining([{ priority: { equals: Priority.CRITICAL } }]),
+              OR: expect.arrayContaining([{ priority: { equals: Priority.HIGH } }]),
             }),
           }),
         );
@@ -607,7 +617,7 @@ describe('AlertStatisticsService', () => {
 
         const callArgs = alertRepository.findMany.mock.calls[0][0];
         expect(callArgs.where?.OR).toEqual(
-          expect.not.arrayContaining([{ priority: { equals: Priority.CRITICAL } }]),
+          expect.not.arrayContaining([{ priority: { equals: Priority.HIGH } }]),
         );
         expect(callArgs.where?.OR).toEqual(
           expect.not.arrayContaining([{ alert_type: { equals: CaseType.FRAUD } }]),
@@ -668,7 +678,7 @@ describe('AlertStatisticsService', () => {
 
         await service.getAlertsForUser({
           ...defaultParams,
-          priority: 'critical',
+          priority: 'high',
           type: 'pacs.002.001.12',
           source: 'system-a',
           alertType: 'fraud',
@@ -678,7 +688,7 @@ describe('AlertStatisticsService', () => {
           expect.objectContaining({
             where: expect.objectContaining({
               tenant_id: 'tenant-123',
-              priority: Priority.CRITICAL,
+              priority: Priority.HIGH,
               txtp: 'pacs.002.001.12',
               source: 'system-a',
               alert_type: CaseType.FRAUD,
@@ -693,7 +703,7 @@ describe('AlertStatisticsService', () => {
 
         await service.getAlertsForUser({
           ...defaultParams,
-          priority: 'critical',
+          priority: 'high',
           search: 'test',
         });
 
@@ -701,7 +711,7 @@ describe('AlertStatisticsService', () => {
           expect.objectContaining({
             where: expect.objectContaining({
               tenant_id: 'tenant-123',
-              priority: Priority.CRITICAL,
+              priority: Priority.HIGH,
               OR: expect.any(Array),
             }),
           }),
@@ -1001,14 +1011,14 @@ describe('AlertStatisticsService', () => {
         await service.getAlertsForUser({
           ...defaultParams,
           tenantId: 'tenant-xyz',
-          priority: 'critical',
+          priority: 'high',
           alertType: 'fraud',
           search: 'test',
         });
 
         const callArgs = alertRepository.findMany.mock.calls[0][0];
         expect(callArgs.where?.tenant_id).toBe('tenant-xyz');
-        expect(callArgs.where?.priority).toBe(Priority.CRITICAL);
+        expect(callArgs.where?.priority).toBe(Priority.HIGH);
         expect(callArgs.where?.alert_type).toBe(CaseType.FRAUD);
         expect(callArgs.where?.OR).toBeDefined();
       });

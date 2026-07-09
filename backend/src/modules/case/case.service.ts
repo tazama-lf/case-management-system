@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, InternalServerErrorException, Forbidde
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Outcome } from '../../utils/types/outcome';
-import { Alert, Case, CaseCreationType, CaseStatus, CaseType, Priority, Task, TaskStatus } from '@prisma/client-cms';
+import { Alert, Case, CaseCreationType, CaseStatus, CaseType, Priority, SlaState, Task, TaskStatus } from '@prisma/client-cms';
 import { CaseQueryService } from './services/case-query.service';
 import { TaskService } from '../../../src/modules/task/task.service';
 import { CreateCommentDto } from '../comment/dto/create-comment.dto';
@@ -825,7 +825,7 @@ export class CaseService {
     user: AuthenticatedUser,
     endpointKey: EndpointKey,
     tenantId: string,
-  ): Promise<Case> {
+  ): Promise<Case & { sla_state: SlaState | null }> {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);
     const rbacRole = this.rbacService.getRoleFromUser(user);
@@ -1017,6 +1017,25 @@ export class CaseService {
         },
       });
 
+      if (result.amlCase) {
+        // createCaseWithInvestigationTask was called with the transaction client above,
+        // so Flowable process creation is deferred until the DB commit succeeds.
+        await this.flowableService.handleCaseCreated({
+          caseId: result.amlCase.caseId,
+          tenantId: existingCase.tenant_id,
+          caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          creationType: CaseCreationType.MANUAL,
+          creatorRole: role,
+          isReopened: false,
+          isFraudNAML: true,
+        });
+
+        await this.flowableService.handleCaseStatusChanged({
+          caseId: result.amlCase.caseId,
+          newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        });
+      }
+
       this.logger.log(
         `[CompleteCaseCreation] Case ${caseId} updated to ${targetStatus}, Complete New Case task completed`,
         CaseService.name,
@@ -1039,6 +1058,23 @@ export class CaseService {
         );
 
         this.logger.log(`[CompleteCaseCreation] Approval task ${nextTask.task_id} created for supervisor review`, CaseService.name);
+      } else if (result.case.case_type === CaseType.FRAUD_AND_AML) {
+        await this.caseCreationService.createCaseWithInvestigationTask(
+          CaseType.FRAUD,
+          userId,
+          existingCase.tenant_id,
+          result.case.priority,
+          CaseCreationType.AUTOMATIC_SYSTEM,
+          role,
+        );
+        await this.caseCreationService.createCaseWithInvestigationTask(
+          CaseType.AML,
+          userId,
+          existingCase.tenant_id,
+          result.case.priority,
+          CaseCreationType.AUTOMATIC_SYSTEM,
+          role,
+        );
       } else {
         nextTask = await this.taskService.createTask(
           {
@@ -1067,6 +1103,20 @@ export class CaseService {
           existingCase.tenant_id,
         );
       }
+
+      // const getAlertIdByCaseId = await this.alertRepository.getAlertByCaseId(caseId);
+      // if (getAlertIdByCaseId) {
+      //   const alertUpdateData = {
+      //     priority_score: updateData.priorityScore,
+      //     priority: updateData.priority,
+      //     alertType: updateData.caseType,
+      //     predictionOutcome: updateData.predictionOutcome,
+      //     confidencePer: updateData.confidence,
+      //     case_id: caseId,
+      //   };
+      //   await this.alertRepository.updateAlert(getAlertIdByCaseId, alertUpdateData);
+      //   this.logger.log(`[CompleteCaseCreation] Alert ${getAlertIdByCaseId} updated with case ID ${caseId}`, CaseService.name);
+      // }
 
       // this.logger.log(
       //   `[CompleteCaseCreation] Investigation task ${nextTask.task_id} created (auto-approved by supervisor)`,

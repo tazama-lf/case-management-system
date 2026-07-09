@@ -22,6 +22,7 @@ import {
 } from '@/features/alerts/utils/alertTransformers';
 import { extractTransactionIdFromAlert } from '@/features/alerts/utils/transactionUtils';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
+import { getPriorityColor } from '@/features/cases/components/casesTable.utils';
 import {
   useAlertFilterOptions,
   useAlertOperations,
@@ -159,22 +160,6 @@ const AlertsDashboard: React.FC = () => {
     setSelectedMessage(null);
   };
 
-  const getPriorityColor = (priority: string): string => {
-    if (!priority) return 'text-gray-600 bg-gray-50';
-    switch (priority.toLowerCase()) {
-      case 'breach':
-        return 'text-red-600 bg-red-50';
-      case 'critical':
-        return 'text-orange-600 bg-orange-50';
-      case 'urgent':
-        return 'text-yellow-600 bg-yellow-50';
-      case 'new':
-        return 'text-blue-600 bg-blue-50';
-      default:
-        return 'text-gray-600 bg-gray-50';
-    }
-  };
-
   const columns: Array<AlertsTableColumn<Alert>> = [
     {
       key: 'alert_id',
@@ -264,7 +249,7 @@ const AlertsDashboard: React.FC = () => {
         const priority = (value as string) || 'Unknown';
         return (
           <span
-            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(priority)}`}
+            className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ring-1 ${getPriorityColor(priority)}`}
           >
             {priority.toUpperCase()}
           </span>
@@ -334,7 +319,7 @@ const AlertsDashboard: React.FC = () => {
 
   return (
     <PageContainer title="Alerts Dashboard" subtitle={getSubtitle()}>
-      { }
+      {}
       {error && (
         <div className="mb-4">
           <Notification
@@ -345,7 +330,7 @@ const AlertsDashboard: React.FC = () => {
         </div>
       )}
 
-      { }
+      {}
       <AlertsSearchAndFilters
         searchFilters={filters}
         onFilterChange={(key, value) => {
@@ -385,7 +370,7 @@ const AlertsDashboard: React.FC = () => {
         sort={{ column: String(sort.column), direction: sort.direction }}
       />
 
-      { }
+      {}
       <div className="bg-white rounded-lg shadow">
         <AlertsTable
           data={alerts}

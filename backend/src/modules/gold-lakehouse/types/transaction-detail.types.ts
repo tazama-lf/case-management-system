@@ -48,11 +48,14 @@ export interface TransactionDetailDataResponse {
   amountAndCurrency: Array<
     | {
         originalAmount: number;
+        originalCurrency: string;
         exchangeRate: number;
         convertedAmount: number;
+        convertedCurrency: string;
       }
     | {
         totalCharges: number;
+        chargeCurrency: string;
       }
   >;
   settlementDetails: {

@@ -1,4 +1,5 @@
 import { formatDate } from '@/shared/utils/dateUtils';
+import type { SlaState } from '@/features/alerts/types/triage.types';
 import type { CaseWithTasksDto, TaskDTO } from '../services/caseService';
 
 // Score threshold constants
@@ -22,6 +23,7 @@ export interface CaseRow {
   action: 'View' | 'Complete';
   assignee?: string;
   priority: string;
+  slaState?: SlaState | null;
   userRole: 'owner' | 'task_assignee' | 'both' | 'none';
   totalTasks: number;
   alertId?: number;
@@ -60,10 +62,9 @@ export const getTypeColor = (caseType: string): string => {
 
 export const getPriorityColor = (priority: string): string => {
   const priorityColors: Record<string, string> = {
-    NEW: 'bg-blue-50 text-blue-700 ring-blue-200',
-    URGENT: 'bg-yellow-50 text-yellow-700 ring-yellow-200',
-    CRITICAL: 'bg-orange-50 text-orange-700 ring-orange-200',
-    BREACH: 'bg-red-50 text-red-700 ring-red-200',
+    LOW: 'bg-blue-50 text-blue-700 ring-blue-200',
+    MEDIUM: 'bg-amber-50 text-amber-700 ring-amber-200',
+    HIGH: 'bg-red-50 text-red-700 ring-red-200',
   };
   return priorityColors[priority] || 'bg-gray-50 text-gray-700 ring-gray-200';
 };
@@ -132,6 +133,7 @@ export const transformBackendCaseToUI = (
     assignee:
       backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User',
     priority: backendCase.priority,
+    slaState: backendCase.sla_state ?? null,
     userRole: backendCase.user_role ?? 'none',
     totalTasks: backendCase.total_tasks ?? 0,
     alertId: alert?.alert_id ?? undefined,

@@ -14,6 +14,7 @@ import { evidenceService } from '../../services/evidenceService';
 import { taskService } from '../../services/taskService';
 import useInvestigatorSupervisorList from '../../hooks/useInvestigatorSupervisorList';
 import AlertsDetailModal from '@/features/alerts/components/AlertsDetailModal';
+import { SlaStateBadge } from '@/shared/components/ui';
 
 interface CaseDetailsTabProps {
   row: CaseRow;
@@ -46,10 +47,9 @@ const SectionCard: React.FC<{ title?: string; children: React.ReactNode }> = ({
 
 const getPriorityColor = (priority: string): string => {
   const priorityColors: Record<string, string> = {
-    NEW: 'bg-blue-50 text-blue-700 ring-blue-200',
-    URGENT: 'bg-yellow-50 text-yellow-700 ring-yellow-200',
-    CRITICAL: 'bg-orange-50 text-orange-700 ring-orange-200',
-    BREACH: 'bg-red-50 text-red-700 ring-red-200',
+    LOW: 'bg-blue-50 text-blue-700 ring-blue-200',
+    MEDIUM: 'bg-amber-50 text-amber-700 ring-amber-200',
+    HIGH: 'bg-red-50 text-red-700 ring-red-200',
   };
   return priorityColors[priority] ?? 'bg-gray-50 text-gray-700 ring-gray-200';
 };
@@ -450,6 +450,14 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
                   >
                     {row.priority}
                   </span>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 uppercase">
+                  SLA State
+                </div>
+                <div className="inline-flex items-center gap-2">
+                  <SlaStateBadge slaState={row.slaState} />
                 </div>
               </div>
               <div>

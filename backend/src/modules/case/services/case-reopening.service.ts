@@ -57,13 +57,17 @@ export class CaseReopeningService {
             throw new BadRequestException(`Case ${caseId} is not in a valid closed state for reopening`);
           }
 
-          const updatedCase = await tx.case.update({
-            where: { case_id: caseId },
-            data: {
+          // Routed through CaseRepository.updateCase (not a raw tx.case.update) so this
+          // reopening also restarts the SLA clock (sla_started_at/sla_due_at), the same
+          // as every other transition into STATUS_02_READY_FOR_ASSIGNMENT.
+          const updatedCase = await this.caseRepository.updateCase(
+            caseId,
+            {
               status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
               updated_at: new Date(),
             },
-          });
+            tx,
+          );
 
           const investigationTask = await this.taskService.createTask(
             {
@@ -226,13 +230,16 @@ export class CaseReopeningService {
           throw new NotFoundException(`"Approve Case Reopening" task not found for case ${caseId}`);
         }
 
-        const updatedCase = await tx.case.update({
-          where: { case_id: caseId },
-          data: {
+        // Routed through CaseRepository.updateCase (not a raw tx.case.update) so approving
+        // a reopening also restarts the SLA clock, same as reopenCase above.
+        const updatedCase = await this.caseRepository.updateCase(
+          caseId,
+          {
             status: newCaseStatus,
             updated_at: new Date(),
           },
-        });
+          tx,
+        );
 
         const completedTask = await tx.task.update({
           where: { task_id: reopeningTask.task_id },

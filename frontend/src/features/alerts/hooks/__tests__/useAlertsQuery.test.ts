@@ -96,8 +96,8 @@ describe('useAlertsQuery', () => {
   describe('useAlerts', () => {
     it('fetches alerts with filters', async () => {
       const mockAlerts = [
-        { alert_id: 1, priority: 'URGENT' },
-        { alert_id: 2, priority: 'CRITICAL' },
+        { alert_id: 1, priority: 'MEDIUM' },
+        { alert_id: 2, priority: 'HIGH' },
       ];
       const mockPagination = {
         currentPage: 1,
@@ -214,7 +214,7 @@ describe('useAlertsQuery', () => {
 
   describe('useAlertDetails', () => {
     it('fetches alert details when alertId is provided', async () => {
-      const mockAlert = { alert_id: 1, priority: 'URGENT' };
+      const mockAlert = { alert_id: 1, priority: 'MEDIUM' };
       mockTriageService.getAlertById.mockResolvedValueOnce(mockAlert);
 
       const { result } = renderHook(() => useAlertDetails(1), {
@@ -249,7 +249,7 @@ describe('useAlertsQuery', () => {
     });
 
     it('refetches when refetch is called', async () => {
-      const mockAlert = { alert_id: 1, priority: 'URGENT' };
+      const mockAlert = { alert_id: 1, priority: 'MEDIUM' };
       mockTriageService.getAlertById.mockResolvedValue(mockAlert);
 
       const { result } = renderHook(() => useAlertDetails(1), {
@@ -373,7 +373,7 @@ describe('useAlertsQuery', () => {
     });
 
     it('updates alert successfully', async () => {
-      const mockUpdatedAlert = { alert_id: 1, priority: 'CRITICAL' };
+      const mockUpdatedAlert = { alert_id: 1, priority: 'HIGH' };
       mockTriageService.updateAlert.mockResolvedValueOnce(mockUpdatedAlert);
 
       const { result } = renderHook(() => useAlertOperations(), {
@@ -383,13 +383,13 @@ describe('useAlertsQuery', () => {
       await waitFor(() => {
         result.current.updateAlert({
           alertId: 1,
-          data: { priority: 'CRITICAL' },
+          data: { priority: 'HIGH' },
         });
       });
 
       await waitFor(() => {
         expect(mockTriageService.updateAlert).toHaveBeenCalledWith(1, {
-          priority: 'CRITICAL',
+          priority: 'HIGH',
         });
       });
     });
@@ -405,7 +405,7 @@ describe('useAlertsQuery', () => {
       await waitFor(() => {
         result.current.updateAlert({
           alertId: 1,
-          data: { priority: 'CRITICAL' },
+          data: { priority: 'HIGH' },
         });
       });
 
@@ -426,12 +426,12 @@ describe('useAlertsQuery', () => {
         wrapper: createWrapper(),
       });
 
-      await waitFor(() => {
-        result.current.performManualTriage({
-          alertId: 1,
-          data: { action: 'APPROVE', notes: 'Looks good' },
-        });
+      const response = await result.current.performManualTriage({
+        alertId: 1,
+        data: { action: 'APPROVE', notes: 'Looks good' },
       });
+
+      expect(response).toBe(mockTriageResult);
 
       await waitFor(() => {
         expect(mockTriageService.performManualTriage).toHaveBeenCalledWith(1, {
@@ -449,12 +449,12 @@ describe('useAlertsQuery', () => {
         wrapper: createWrapper(),
       });
 
-      await waitFor(() => {
+      await expect(
         result.current.performManualTriage({
           alertId: 1,
           data: { action: 'APPROVE', notes: 'Looks good' },
-        });
-      });
+        }),
+      ).rejects.toThrow('Failed to triage');
 
       await waitFor(() => {
         expect(mockNotifications.showError).toHaveBeenCalledWith(
@@ -499,7 +499,7 @@ describe('useAlertsQuery', () => {
       const { result } = renderHook(() => useAlertFilterOptions());
 
       expect(result.current.filterOptions).toEqual({
-        priorities: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
+        priorities: ['LOW', 'MEDIUM', 'HIGH'],
         alertTypes: ['FRAUD', 'AML', 'FRAUD_AND_AML', 'N/A'],
         sources: ['REST API', 'NATS'],
       });

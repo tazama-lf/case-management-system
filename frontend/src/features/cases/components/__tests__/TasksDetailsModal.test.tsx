@@ -42,12 +42,6 @@ vi.mock('../view/CollaboratePanel', () => ({
   default: () => <div>Collaborate Panel</div>,
 }));
 
-vi.mock('../view/VisualizationsTab', () => ({
-  default: ({ transactionId }: any) => (
-    <div>Visualizations Tab {transactionId && `txn:${transactionId}`}</div>
-  ),
-}));
-
 vi.mock('../view/InvestigationsSummaryTab', () => ({
   default: ({ onTaskUpdate }: any) => (
     <div>
@@ -184,22 +178,8 @@ describe('TasksDetailsModal', () => {
     renderModal({});
     expect(screen.getAllByText('Task Details')[0]).toBeInTheDocument();
     expect(screen.getByText('Evidence')).toBeInTheDocument();
-    expect(screen.getByText('Visualizations')).toBeInTheDocument();
     expect(screen.getByText('Investigation Notes')).toBeInTheDocument();
     expect(screen.getByText('Investigation Summary')).toBeInTheDocument();
-  });
-
-  it('hides Visualizations tab for non-pacs002 transactions', () => {
-    const caseWithNonPacs002: CaseRow = {
-      ...mockCaseData,
-      transaction: JSON.stringify({
-        TxTp: 'pacs.008.001.10',
-      }),
-    };
-
-    renderModal({ row: caseWithNonPacs002 });
-
-    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
   });
 
   it('switches to Evidence tab', async () => {
@@ -209,14 +189,6 @@ describe('TasksDetailsModal', () => {
 
     await user.click(screen.getByText('Evidence'));
     expect(screen.getByText('Task Evidence Tab')).toBeInTheDocument();
-  });
-
-  it('switches to Visualizations tab', async () => {
-    const user = userEvent.setup();
-    renderModal({});
-
-    await user.click(screen.getByText('Visualizations'));
-    expect(screen.getByText(/Visualizations Tab/)).toBeInTheDocument();
   });
 
   it('switches to Investigation Notes tab', async () => {
@@ -252,15 +224,13 @@ describe('TasksDetailsModal', () => {
     consoleSpy.mockRestore();
   });
 
-  it('extracts transactionId from row transaction data', async () => {
-    const user = userEvent.setup();
+  it('does not render Visualizations tab in the task modal', () => {
     renderModal({});
 
-    await user.click(screen.getByText('Visualizations'));
-    expect(screen.getByText(/txn:TXN-12345/)).toBeInTheDocument();
+    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
   });
 
-  it('hides Visualizations when transaction data is invalid JSON', () => {
+  it('does not render Visualizations when transaction data is invalid JSON', () => {
     const caseWithBadTransaction: CaseRow = {
       ...mockCaseData,
       transaction: 'invalid json{{{',
@@ -270,7 +240,7 @@ describe('TasksDetailsModal', () => {
     expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
   });
 
-  it('hides Visualizations when transaction is null', () => {
+  it('does not render Visualizations when transaction is null', () => {
     const caseWithNoTransaction: CaseRow = {
       ...mockCaseData,
       transaction: undefined,
@@ -317,25 +287,7 @@ describe('TasksDetailsModal', () => {
     expect(mockGetTasksByCaseId).toHaveBeenCalledTimes(2); // once on open, once on refresh
   });
 
-  it('extracts transactionId from EndToEndId field', async () => {
-    const user = userEvent.setup();
-    const caseWithEndToEnd: CaseRow = {
-      ...mockCaseData,
-      transaction: JSON.stringify({
-        FIToFIPmtSts: {
-          TxInfAndSts: {
-            EndToEndId: 'E2E-TXN-001',
-          },
-        },
-      }),
-    };
-    renderModal({ row: caseWithEndToEnd });
-
-    await user.click(screen.getByText('Visualizations'));
-    expect(screen.getByText(/txn:E2E-TXN-001/)).toBeInTheDocument();
-  });
-
-  it('hides Visualizations when only transaction_id field is present', () => {
+  it('does not render Visualizations when only transaction_id field is present', () => {
     const caseWithTxnId: CaseRow = {
       ...mockCaseData,
       transaction: JSON.stringify({
@@ -347,7 +299,7 @@ describe('TasksDetailsModal', () => {
     expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
   });
 
-  it('hides Visualizations when only transactionId field is present', () => {
+  it('does not render Visualizations when only transactionId field is present', () => {
     const caseWithTxnId: CaseRow = {
       ...mockCaseData,
       transaction: JSON.stringify({

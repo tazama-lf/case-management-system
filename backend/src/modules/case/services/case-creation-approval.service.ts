@@ -61,7 +61,7 @@ export class CaseCreationApprovalService {
     }
 
     const { priorityScore } = dto;
-    const priority = this.casePriorityUtil.determinePriority(priorityScore);
+    const priority = await this.casePriorityUtil.determinePriority(priorityScore, tenantId);
     const caseType = (CaseType as Record<string, CaseType>)[dto.alertType] ?? null;
 
     try {

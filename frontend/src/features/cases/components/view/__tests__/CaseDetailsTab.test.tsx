@@ -79,6 +79,7 @@ const mockCaseRow: CaseRow = {
   action: 'View',
   assignee: 'John Doe',
   priority: 'HIGH',
+  slaState: 'AT_RISK',
   userRole: 'owner',
   totalTasks: 1,
   alertId: 1,
@@ -131,6 +132,18 @@ describe('CaseDetailsTab', () => {
     await waitFor(() => {
       expect(screen.getByText(/FRAUD/i)).toBeInTheDocument();
       expect(screen.getByText(/HIGH/i)).toBeInTheDocument();
+    });
+  });
+
+  it('displays the SLA state badge next to priority', async () => {
+    render(
+      <CaseDetailsTab
+        row={mockCaseRow}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('SLA State')).toBeInTheDocument();
+      expect(screen.getByText('At Risk')).toBeInTheDocument();
     });
   });
 
