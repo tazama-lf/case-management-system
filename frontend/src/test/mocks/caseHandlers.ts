@@ -42,7 +42,7 @@ export const mockCases: Case[] = [
     tenant_id: 'tenant-1',
     owner_id: 'user-1',
     case_status: 'STATUS_82_CLOSED_CONFIRMED',
-    priority: 'CRITICAL',
+    priority: 'HIGH',
     case_type: 'FRAUD',
     description: 'Confirmed fraud case',
     created_at: '2024-01-10T08:00:00Z',

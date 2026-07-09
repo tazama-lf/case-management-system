@@ -206,7 +206,7 @@ export class ReportsController {
   @ApiQuery({
     name: 'priority',
     required: false,
-    enum: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
+    enum: ['LOW', 'MEDIUM', 'HIGH'],
     description: 'Filter by case priority',
   })
   @ApiQuery({

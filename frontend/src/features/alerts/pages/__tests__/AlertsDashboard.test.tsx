@@ -58,7 +58,7 @@ describe('AlertsDashboard', () => {
       alert_id: 'alert-1',
       alert_type: 'FRAUD',
       source: 'REST API',
-      priority: 'URGENT',
+      priority: 'MEDIUM',
       riskScore: 75,
       confidence_per: 85,
       created_at: '2024-01-01T00:00:00Z',
@@ -70,7 +70,7 @@ describe('AlertsDashboard', () => {
       alert_id: 'alert-2',
       alert_type: 'AML',
       source: 'NATS',
-      priority: 'CRITICAL',
+      priority: 'HIGH',
       riskScore: 90,
       confidence_per: 95,
       created_at: '2024-01-02T00:00:00Z',
@@ -114,7 +114,7 @@ describe('AlertsDashboard', () => {
 
   const mockUseAlertFilterOptions = {
     filterOptions: {
-      priorities: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
+      priorities: ['LOW', 'MEDIUM', 'HIGH'],
       alertTypes: ['FRAUD', 'AML', 'FRAUD_AND_AML'],
       sources: ['REST API', 'NATS'],
     },
@@ -176,7 +176,9 @@ describe('AlertsDashboard', () => {
     expect(
       screen.getByPlaceholderText(/search by alert id/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /filters/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /filters/i }),
+    ).toBeInTheDocument();
   });
 
   it('displays error fallback when error occurs and no alerts', () => {
@@ -199,6 +201,21 @@ describe('AlertsDashboard', () => {
     render(<AlertsDashboard />);
     expect(screen.getByTitle('Alert ID: alert-1')).toBeInTheDocument();
     expect(screen.getByTitle('Alert ID: alert-2')).toBeInTheDocument();
+  });
+
+  it('uses existing priority colors in the alerts table', () => {
+    render(<AlertsDashboard />);
+
+    expect(screen.getByText('MEDIUM')).toHaveClass(
+      'bg-amber-50',
+      'text-amber-700',
+      'ring-amber-200',
+    );
+    expect(screen.getByText('HIGH')).toHaveClass(
+      'bg-red-50',
+      'text-red-700',
+      'ring-red-200',
+    );
   });
 
   it('opens detail modal when a row is clicked', async () => {
@@ -399,7 +416,7 @@ describe('AlertsDashboard', () => {
         query: 'test',
         source: 'REST API',
         type: 'FRAUD',
-        priority: 'URGENT',
+        priority: 'MEDIUM',
         timeRange: 'today',
       },
       setFilters,

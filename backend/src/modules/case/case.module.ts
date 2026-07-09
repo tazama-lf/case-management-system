@@ -21,6 +21,7 @@ import { CaseCreationService } from './services/case-creation.service';
 import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orchestration.module';
 import { TaskValidationUtil } from '../shared/utils/task-validation.util';
 import { InvestigationGroupModule } from '../investigation-group/investigation-group.module';
+import { AlertPriorityModule } from '../alert-priority/alert-priority.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { InvestigationGroupModule } from '../investigation-group/investigation-g
     CaseHistoryModule,
     TaskHistoryModule,
     InvestigationGroupModule,
+    AlertPriorityModule,
   ],
   providers: [
     CaseService,

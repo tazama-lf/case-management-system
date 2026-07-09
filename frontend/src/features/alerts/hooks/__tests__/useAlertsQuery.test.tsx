@@ -210,7 +210,7 @@ describe('useAlertOperations', () => {
     const handleUpdate = () => {
       updateAlert({
         alertId: 'ALERT-001',
-        data: { priority: 'CRITICAL' },
+        data: { priority: 'HIGH' },
       });
     };
 

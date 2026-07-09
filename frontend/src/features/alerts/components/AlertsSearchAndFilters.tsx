@@ -77,7 +77,7 @@ const AlertsSearchAndFilters: React.FC<AlertsSearchAndFiltersProps> = ({
       priorities:
         priorities && priorities.length > 0
           ? priorities
-          : ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
+          : ['LOW', 'MEDIUM', 'HIGH'],
       alertTypes:
         alertTypes && alertTypes.length > 0
           ? alertTypes

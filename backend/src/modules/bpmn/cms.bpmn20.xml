@@ -56,11 +56,10 @@
                     <flowable:value id="AML" name="AML"/>
                     <flowable:value id="FRAUD_AND_AML" name="Fraud and AML"/>
                 </flowable:formProperty>
-                <flowable:formProperty id="casePriority" name="Case Priority" type="enum" default="NEW">
-                    <flowable:value id="NEW" name="New"/>
-                    <flowable:value id="URGENT" name="Urgent"/>
-                    <flowable:value id="CRITICAL" name="Critical"/>
-                    <flowable:value id="BREACH" name="Breach"/>
+                <flowable:formProperty id="casePriority" name="Case Priority" type="enum" default="LOW">
+                    <flowable:value id="LOW" name="Low"/>
+                    <flowable:value id="MEDIUM" name="Medium"/>
+                    <flowable:value id="HIGH" name="High"/>
                 </flowable:formProperty>
                 <flowable:formProperty id="draftApprovalRequired" name="Draft Completion Approval" type="boolean" default="false"/>
             </extensionElements>

@@ -58,9 +58,9 @@ describe('CaseFilters', () => {
     render(<CaseFilters {...defaultProps} />);
 
     const priorityFilter = screen.getByLabelText(/Priority filter/i);
-    await user.selectOptions(priorityFilter, 'URGENT');
+    await user.selectOptions(priorityFilter, 'MEDIUM');
 
-    expect(mockSetPriorityFilter).toHaveBeenCalledWith('URGENT');
+    expect(mockSetPriorityFilter).toHaveBeenCalledWith('MEDIUM');
   });
 
   it('updates sort order when changed', async () => {
@@ -79,7 +79,7 @@ describe('CaseFilters', () => {
         {...defaultProps}
         search="test"
         statusFilter="STATUS_20_IN_PROGRESS"
-        priorityFilter="URGENT"
+        priorityFilter="MEDIUM"
         sortBy="oldest"
       />,
     );
@@ -95,7 +95,7 @@ describe('CaseFilters', () => {
     const sortSelect = screen.getByLabelText(/Sort by/i) as HTMLSelectElement;
 
     expect(statusSelect.value).toBe('STATUS_20_IN_PROGRESS');
-    expect(prioritySelect.value).toBe('URGENT');
+    expect(prioritySelect.value).toBe('MEDIUM');
     expect(sortSelect.value).toBe('oldest');
   });
 });

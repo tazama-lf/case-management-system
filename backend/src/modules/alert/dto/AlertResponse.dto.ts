@@ -12,8 +12,8 @@ export class AlertDto {
 
   @ApiProperty({
     description: 'Alert priority level',
-    example: 'URGENT',
-    enum: ['NEW', 'URGENT', 'CRITICAL', 'BREACH'],
+    example: 'MEDIUM',
+    enum: ['LOW', 'MEDIUM', 'HIGH'],
     nullable: true,
   })
   priority: string | null;

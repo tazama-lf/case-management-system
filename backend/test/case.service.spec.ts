@@ -46,7 +46,7 @@ describe('CaseService', () => {
     case_owner_user_id: 'user-123',
     status: CaseStatus.STATUS_20_IN_PROGRESS,
     case_type: CaseType.FRAUD,
-    priority: Priority.CRITICAL,
+    priority: Priority.HIGH,
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -626,8 +626,8 @@ describe('CaseService', () => {
       {
         method: 'updateCase',
         service: 'caseQueryService',
-        args: [1, { priority: Priority.CRITICAL } as any, 'user-123', mockUser, updateCaseEndpoint, 'tenant-123'],
-        expectedArgs: [1, { priority: Priority.CRITICAL } as any, 'user-123'],
+        args: [1, { priority: Priority.HIGH } as any, 'user-123', mockUser, updateCaseEndpoint, 'tenant-123'],
+        expectedArgs: [1, { priority: Priority.HIGH } as any, 'user-123'],
         setupCase: mockCase, // updateCase can work with any valid status
       },
       {
@@ -662,7 +662,7 @@ describe('CaseService', () => {
 
   describe('completeCaseCreation', () => {
     const updateData = {
-      priority: Priority.CRITICAL,
+      priority: Priority.HIGH,
       caseType: CaseType.FRAUD,
       note: 'Test note',
       priorityScore: 85,
@@ -682,7 +682,7 @@ describe('CaseService', () => {
         ...mockDraftCase,
         case_type: CaseType.FRAUD,
         group_id: 123,
-        priority: Priority.CRITICAL,
+        priority: Priority.HIGH,
       });
       const mockTransaction = jest.fn(async (callback) => {
         const mockPrisma = {
@@ -787,17 +787,32 @@ describe('CaseService', () => {
       expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
       expect(caseCreationService.createCaseWithInvestigationTask).not.toHaveBeenCalledWith(
         CaseType.FRAUD,
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
+        'user-123',
+        'tenant-123',
+        1,
+        expect.objectContaining({
+          where: { case_id: 1 },
+          data: expect.objectContaining({
+            case_type: CaseType.FRAUD,
+            status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+          }),
+        }),
+      );
+      expect(caseUpdate).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: { case_id: 1 },
+          data: expect.objectContaining({
+            group_id: 123,
+            case_type: CaseType.FRAUD,
+          }),
+        }),
       );
       expect(caseCreationService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
         CaseType.AML,
         'user-123',
         'tenant-123',
-        Priority.CRITICAL,
+        Priority.HIGH,
         CaseCreationType.AUTOMATIC_SYSTEM,
         'SUPERVISOR',
         123,
@@ -808,7 +823,7 @@ describe('CaseService', () => {
         expect.objectContaining({
           caseId: null,
           priority_score: 85,
-          priority: Priority.CRITICAL,
+          priority: Priority.HIGH,
           alertType: CaseType.FRAUD_AND_AML,
         }),
         expect.anything(),
@@ -867,7 +882,7 @@ describe('CaseService', () => {
         100,
         expect.objectContaining({
           priority_score: 85,
-          priority: Priority.CRITICAL,
+          priority: Priority.HIGH,
           alertType: CaseType.FRAUD,
         }),
         expect.anything(),

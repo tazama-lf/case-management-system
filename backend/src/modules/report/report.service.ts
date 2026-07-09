@@ -485,15 +485,11 @@ export class ReportsService {
 
     const openCases = allCases.filter((c) => !ReportsService.CLOSED_STATUSES.includes(c.status)).length;
 
-    const lowPriorityCases = allCases.filter(
-      (c) => c.priority === Priority.NEW && !ReportsService.CLOSED_STATUSES.includes(c.status),
-    ).length;
-    const mediumPriorityCases = allCases.filter(
-      (c) => (c.priority === Priority.CRITICAL || c.priority === Priority.URGENT) && !ReportsService.CLOSED_STATUSES.includes(c.status),
-    ).length;
-    const highPriorityCases = allCases.filter(
-      (c) => c.priority === Priority.BREACH && !ReportsService.CLOSED_STATUSES.includes(c.status),
-    ).length;
+    // Counts span all cases in scope (open + closed), matching `totalCases`,
+    // so the report reflects case risk distribution rather than open-queue makeup.
+    const lowPriorityCases = allCases.filter((c) => c.priority === Priority.LOW).length;
+    const mediumPriorityCases = allCases.filter((c) => c.priority === Priority.MEDIUM).length;
+    const highPriorityCases = allCases.filter((c) => c.priority === Priority.HIGH).length;
 
     const recentCases = [
       {

@@ -282,7 +282,7 @@ describe('CaseService — Tier 2 & Tier 3 RBAC guards', () => {
     case_owner_user_id: 'user-1',
     status: CaseStatus.STATUS_20_IN_PROGRESS,
     case_type: CaseType.FRAUD,
-    priority: Priority.CRITICAL,
+    priority: Priority.HIGH,
     final_outcome: null,
     created_at: new Date(),
     updated_at: new Date(),

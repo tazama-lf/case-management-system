@@ -150,9 +150,9 @@ describe('dashboard.types', () => {
 
   describe('Priority type', () => {
     it('defines all Priority values', () => {
-      const priorities: Priority[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+      const priorities: Priority[] = ['LOW', 'MEDIUM', 'HIGH'];
       priorities.forEach((priority) => {
-        expect(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).toContain(priority);
+        expect(['LOW', 'MEDIUM', 'HIGH']).toContain(priority);
       });
     });
 
@@ -163,26 +163,21 @@ describe('dashboard.types', () => {
         priority: 'MEDIUM',
       };
       const highPriorityAlert: Alert = { ...getBaseAlert(), priority: 'HIGH' };
-      const criticalPriorityAlert: Alert = {
-        ...getBaseAlert(),
-        priority: 'CRITICAL',
-      };
 
       expect(lowPriorityAlert.priority).toBe('LOW');
       expect(mediumPriorityAlert.priority).toBe('MEDIUM');
       expect(highPriorityAlert.priority).toBe('HIGH');
-      expect(criticalPriorityAlert.priority).toBe('CRITICAL');
     });
 
     it('can be used with Case', () => {
       const lowPriorityCase: Case = { ...getBaseCase(), priority: 'LOW' };
-      const criticalPriorityCase: Case = {
+      const highPriorityCase: Case = {
         ...getBaseCase(),
-        priority: 'CRITICAL',
+        priority: 'HIGH',
       };
 
       expect(lowPriorityCase.priority).toBe('LOW');
-      expect(criticalPriorityCase.priority).toBe('CRITICAL');
+      expect(highPriorityCase.priority).toBe('HIGH');
     });
   });
 

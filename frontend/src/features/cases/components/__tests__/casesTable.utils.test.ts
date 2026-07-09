@@ -21,7 +21,7 @@ describe('casesTable.utils', () => {
     });
 
     it('should return correct priority color', () => {
-      expect(getPriorityColor('URGENT')).toContain('bg-yellow-50');
+      expect(getPriorityColor('MEDIUM')).toContain('bg-amber-50');
       expect(getPriorityColor('UNKNOWN')).toContain('bg-gray-50');
     });
 

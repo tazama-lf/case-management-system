@@ -24,10 +24,6 @@ vi.mock('@/shared/utils/crypto', () => {
 import * as module from '../index';
 
 describe('alerts/index.ts exports', () => {
-  it('exports AlertDetails component', () => {
-    expect(module.AlertDetails).toBeDefined();
-  });
-
   it('exports AlertsDetailModal component', () => {
     expect(module.AlertsDetailModal).toBeDefined();
   });

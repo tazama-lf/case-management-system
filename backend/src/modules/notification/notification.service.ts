@@ -87,6 +87,18 @@ export class NotificationService {
       subject: `Overdue Task: ${d.taskName} Requires Attention`,
       html: EMAIL_TEMPLATES.taskOverdue(d),
     }),
+    CASE_CLAIM_CHASE: (d) => ({
+      subject: `Action Needed: Case ${d.caseId} At Risk and Unclaimed`,
+      html: EMAIL_TEMPLATES.caseClaimChase(d),
+    }),
+    CASE_SUPPORT_CHASE: (d) => ({
+      subject: `Action Needed: Case ${d.caseId} Due Soon`,
+      html: EMAIL_TEMPLATES.caseSupportChase(d),
+    }),
+    CASE_SLA_BREACHED: (d) => ({
+      subject: `URGENT: Case ${d.caseId} Has Breached SLA`,
+      html: EMAIL_TEMPLATES.caseSlaBreached(d),
+    }),
     GENERIC: (d) => ({
       subject: 'CMS Notification',
       html: EMAIL_TEMPLATES.generic(d),
