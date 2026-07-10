@@ -33,15 +33,29 @@ describe('dashboardService', () => {
           highPriorityCases: 5,
           openCases: 3,
           closedCases: 7,
+          availableCases: 4,
+          openAssignedCases: 6,
+          resolvedThisMonth: 2,
+          overdueCases: 1,
         },
-        recentCases: [{ priority: 'High', count: 5 }],
+        openPriorityCounts: [
+          {
+            priority: 'High',
+            count: 5,
+            description: 'High priority cases requiring attention',
+          },
+        ],
+        openStatusCounts: [
+          { status: 'STATUS_10_ASSIGNED', count: 3 },
+          { status: 'STATUS_20_IN_PROGRESS', count: 2 },
+        ],
         statusDistribution: { assigned: 3, pendingApproval: 2, closed: 1 },
       });
 
       const result = await dashboardService.getDashboardData();
 
       expect(apiClient.get).toHaveBeenCalledWith(
-        '/api/v1/reports/case-status?dateRange=last30',
+        '/api/v1/reports/case-status?dateRange=all',
       );
       expect(result).toEqual({
         stats: {
@@ -49,34 +63,28 @@ describe('dashboardService', () => {
           highPriorityAlerts: 5,
           openCases: 3,
           casesResolvedThisWeek: 7,
+          availableCases: 4,
+          openAssignedCases: 6,
+          resolvedThisMonth: 2,
+          overdueCases: 1,
         },
         recentCases: [
           {
             priority: 'High',
             count: 5,
-            description: 'Breached cases requiring attention',
+            description: 'High priority cases requiring attention',
           },
         ],
         activeCases: [
           {
-            status: 'assigned',
+            status: 'STATUS_10_ASSIGNED',
             count: 3,
-            description: 'cases requiring your action',
+            description: '',
           },
           {
-            status: 'inProgress',
-            count: 0,
-            description: 'cases you are working on',
-          },
-          {
-            status: 'pending',
+            status: 'STATUS_20_IN_PROGRESS',
             count: 2,
-            description: 'cases awaiting your approval',
-          },
-          {
-            status: 'closed',
-            count: 1,
-            description: 'cases resolved recently',
+            description: '',
           },
         ],
       });
@@ -93,6 +101,10 @@ describe('dashboardService', () => {
           highPriorityAlerts: 0,
           openCases: 0,
           casesResolvedThisWeek: 0,
+          availableCases: 0,
+          openAssignedCases: 0,
+          resolvedThisMonth: 0,
+          overdueCases: 0,
         },
         recentCases: [],
         activeCases: [
@@ -142,10 +154,10 @@ describe('dashboardService', () => {
   describe('getDescription', () => {
     it('returns expected description for known priorities', () => {
       expect(dashboardService.getDescription('High')).toBe(
-        'Breached cases requiring attention',
+        'High priority cases requiring attention',
       );
       expect(dashboardService.getDescription('Medium')).toBe(
-        'Critical/Urgent cases requiring attention',
+        'Medium priority cases requiring attention',
       );
       expect(dashboardService.getDescription('Low')).toBe(
         'New cases requiring attention',

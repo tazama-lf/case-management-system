@@ -210,6 +210,67 @@ describe('ReportsService', () => {
       }
     });
 
+    it('should count totalCases from the role-visible scope, not creator-only cases', async () => {
+      prismaService.case.count
+        .mockResolvedValueOnce(12)
+        .mockResolvedValueOnce(4)
+        .mockResolvedValueOnce(3)
+        .mockResolvedValueOnce(7)
+        .mockResolvedValueOnce(2);
+
+      const result = await service.getCaseStatus('all', {
+        tenantId: 'tenant-123',
+        isInvestigator: true,
+        requestingUserId: 'user-123',
+      });
+
+      expect(result.stats.totalCases).toBe(12);
+      expect(prismaService.case.count).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            case_creator_user_id: 'user-123',
+          }),
+        }),
+      );
+    });
+
+    it('should exclude FRAUD_AND_AML container cases from dashboard counts', async () => {
+      const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
+
+      expect(result).toBeDefined();
+      expect(prismaService.case.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            AND: expect.arrayContaining([
+              expect.objectContaining({
+                OR: [{ case_type: null }, { case_type: { not: CaseType.FRAUD_AND_AML } }],
+              }),
+            ]),
+          }),
+        }),
+      );
+    });
+
+    it('should return every non-closed status in openStatusCounts, including zero counts', async () => {
+      prismaService.case.findMany
+        .mockResolvedValueOnce([
+          { status: CaseStatus.STATUS_10_ASSIGNED, priority: 'LOW', sla_due_at: null },
+        ])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
+
+      expect(result.openStatusCounts).toEqual(
+        expect.arrayContaining([
+          { status: CaseStatus.STATUS_10_ASSIGNED, count: 1 },
+          { status: CaseStatus.STATUS_20_IN_PROGRESS, count: 0 },
+        ]),
+      );
+      expect(result.openStatusCounts.some((item) => item.status === CaseStatus.STATUS_81_CLOSED_REFUTED)).toBe(false);
+      expect(result.openStatusCounts.some((item) => item.status === CaseStatus.STATUS_82_CLOSED_CONFIRMED)).toBe(false);
+      expect(result.openStatusCounts.some((item) => item.status === CaseStatus.STATUS_99_ABANDONED)).toBe(false);
+    });
+
     it('should calculate average resolution time correctly', async () => {
       prismaService.case.findMany.mockResolvedValue([
         { created_at: new Date('2026-02-01'), updated_at: new Date('2026-02-11') }, // 10 days
@@ -232,16 +293,14 @@ describe('ReportsService', () => {
       expect(result.stats.avgResolutionTime).toBe(0);
     });
 
-    it('reconciles totalCases = low + medium + high, counting closed cases in the buckets too', async () => {
-      // 5 cases in scope: mix of open/closed and LOW/MEDIUM/HIGH, so a bug that
-      // excludes closed cases from the buckets would make them undercount totalCases.
+    it('builds open priority buckets from non-closed cases only', async () => {
+      // 5 cases in scope: mix of open/closed and LOW/MEDIUM/HIGH. Dashboard
+      // buckets now represent the open queue rather than total case history.
       prismaService.case.count.mockResolvedValue(5);
       prismaService.case.findMany
         .mockResolvedValueOnce([
           { status: CaseStatus.STATUS_20_IN_PROGRESS, priority: 'LOW' },
           { status: CaseStatus.STATUS_20_IN_PROGRESS, priority: 'MEDIUM' },
-          { status: CaseStatus.STATUS_81_CLOSED_REFUTED, priority: 'MEDIUM' },
-          { status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, priority: 'HIGH' },
           { status: CaseStatus.STATUS_10_ASSIGNED, priority: 'HIGH' },
         ])
         .mockResolvedValueOnce([]); // closedCasesWithTimes
@@ -251,12 +310,12 @@ describe('ReportsService', () => {
       expect(result.stats.totalCases).toBe(5);
       expect(result.recentCases).toEqual([
         { priority: 'Low', count: 1 },
-        { priority: 'Medium', count: 2 },
-        { priority: 'High', count: 2 },
+        { priority: 'Medium', count: 1 },
+        { priority: 'High', count: 1 },
       ]);
       const bucketSum = result.recentCases.reduce((sum, r) => sum + r.count, 0);
-      expect(bucketSum).toBe(result.stats.totalCases);
-      expect(result.stats.highPriorityCases).toBe(2);
+      expect(bucketSum).toBe(result.stats.openCases);
+      expect(result.stats.highPriorityCases).toBe(1);
     });
   });
 

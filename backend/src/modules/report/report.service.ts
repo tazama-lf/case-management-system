@@ -27,6 +27,7 @@ export class ReportsService {
     CaseStatus.STATUS_81_CLOSED_REFUTED,
     CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+    CaseStatus.STATUS_99_ABANDONED,
   ];
 
   private static readonly STATUS_DISTRIBUTION_MAP: Partial<Record<CaseStatus, string>> = {
@@ -44,7 +45,7 @@ export class ReportsService {
     [CaseStatus.STATUS_81_CLOSED_REFUTED]: 'closed',
     [CaseStatus.STATUS_82_CLOSED_CONFIRMED]: 'closed',
     [CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE]: 'closed',
-    [CaseStatus.STATUS_99_ABANDONED]: 'abandoned',
+    [CaseStatus.STATUS_99_ABANDONED]: 'closed',
   };
 
   private static readonly NON_CONTAINER_CASE_FILTER: Prisma.CaseWhereInput = {
@@ -408,6 +409,10 @@ export class ReportsService {
       openCases: number;
       avgResolutionTime: number;
       highPriorityCases: number;
+      availableCases: number;
+      openAssignedCases: number;
+      resolvedThisMonth: number;
+      overdueCases: number;
     };
     recentCases: Array<{
       priority: string;
@@ -440,26 +445,72 @@ export class ReportsService {
       casesResolved: number;
     }>;
     statusDetails: statusDetails[];
+    openPriorityCounts: Array<{
+      priority: string;
+      count: number;
+      description: string;
+    }>;
+    openStatusCounts: Array<{
+      status: string;
+      count: number;
+    }>;
   }> {
     const { startDate, endDate } = getDateRange(dateRange);
     const dateWindow = { gte: startDate, lte: endDate };
     // Build the overall scope: date window + filters + (optional) investigator restriction.
     const baseFilters = { created_at: dateWindow, ...this.buildCommonCaseFilters(filters) };
     const whereClause = filters?.isInvestigator ? this.applyInvestigatorScope(baseFilters, filters.requestingUserId) : baseFilters;
+    // "Available" means open AND unowned - a closed/abandoned case with no owner was never
+    // picked up but isn't waiting for anyone to pick it up either, so it must not count here.
+    const availableCasesWhere: Prisma.CaseWhereInput = {
+      ...baseFilters,
+      case_owner_user_id: null,
+      status: { notIn: ReportsService.CLOSED_STATUSES },
+    };
+    const openCasesWhere: Prisma.CaseWhereInput = { ...whereClause, status: { notIn: ReportsService.CLOSED_STATUSES } };
+    // "Open & Assigned" must mean open AND owned - openCasesWhere alone (used above for the
+    // status/priority breakdown, which correctly wants every open case) has no ownership
+    // filter, so without this it silently doubles as "all open cases" and overlaps entirely
+    // with availableCasesWhere instead of being its complement.
+    const openAssignedCasesWhere: Prisma.CaseWhereInput = { ...openCasesWhere, case_owner_user_id: { not: null } };
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const resolvedThisMonthWhere = this.applyInvestigatorScope(
+      {
+        ...this.buildCommonCaseFilters(filters),
+        status: { in: ReportsService.CLOSED_STATUSES },
+        updated_at: { gte: monthStart, lte: now },
+      },
+      filters?.isInvestigator ? filters.requestingUserId : undefined,
+    );
     const closedCasesWhere = this.applyInvestigatorScope(
       { ...baseFilters, status: { in: ReportsService.CLOSED_STATUSES } },
       filters?.requestingUserId,
     );
     // Run all aggregate queries that share these scopes in parallel.
-    const [allCases, statusCounts, typeCounts, totalCases, closedCases, closedCasesWithTimes, outcomeCounts] = await Promise.all([
+    const [
+      openScopedCases,
+      statusCounts,
+      typeCounts,
+      totalCases,
+      closedCases,
+      availableCases,
+      openAssignedCases,
+      resolvedThisMonth,
+      closedCasesWithTimes,
+      outcomeCounts,
+    ] = await Promise.all([
       this.prisma.case.findMany({
-        where: whereClause,
-        select: { status: true, priority: true },
+        where: openCasesWhere,
+        select: { status: true, priority: true, sla_due_at: true },
       }),
       this.prisma.case.groupBy({ by: ['status'], where: whereClause, _count: { case_id: true } }),
       this.prisma.case.groupBy({ by: ['case_type'], where: whereClause, _count: { case_id: true } }),
       this.prisma.case.count({ where: whereClause }),
       this.prisma.case.count({ where: closedCasesWhere }),
+      this.prisma.case.count({ where: availableCasesWhere }),
+      this.prisma.case.count({ where: openAssignedCasesWhere }),
+      this.prisma.case.count({ where: resolvedThisMonthWhere }),
       this.prisma.case.findMany({
         where: closedCasesWhere,
         select: { created_at: true, updated_at: true },
@@ -483,13 +534,20 @@ export class ReportsService {
       this.computeResolutionTrend(filters),
     ]);
 
-    const openCases = allCases.filter((c) => !ReportsService.CLOSED_STATUSES.includes(c.status)).length;
+    const openCases = openScopedCases.length;
 
-    // Counts span all cases in scope (open + closed), matching `totalCases`,
-    // so the report reflects case risk distribution rather than open-queue makeup.
-    const lowPriorityCases = allCases.filter((c) => c.priority === Priority.LOW).length;
-    const mediumPriorityCases = allCases.filter((c) => c.priority === Priority.MEDIUM).length;
-    const highPriorityCases = allCases.filter((c) => c.priority === Priority.HIGH).length;
+    // Counts are based on open in-scope cases so dashboard buckets match the active queue.
+    const lowPriorityCases = openScopedCases.filter((c) => c.priority === Priority.LOW).length;
+    const mediumPriorityCases = openScopedCases.filter((c) => c.priority === Priority.MEDIUM).length;
+    const highPriorityCases = openScopedCases.filter((c) => c.priority === Priority.HIGH).length;
+    const overdueCases = openScopedCases.filter((c) => c.sla_due_at && c.sla_due_at < now).length;
+    const rawStatusCounts = openScopedCases.reduce<Partial<Record<CaseStatus, number>>>(
+      (acc, c) => ({ ...acc, [c.status]: (acc[c.status] ?? 0) + 1 }),
+      {},
+    );
+    const openStatusCounts = Object.values(CaseStatus)
+      .filter((status) => !ReportsService.CLOSED_STATUSES.includes(status))
+      .map((status) => ({ status, count: rawStatusCounts[status] ?? 0 }));
 
     const recentCases = [
       {
@@ -513,6 +571,10 @@ export class ReportsService {
         openCases,
         avgResolutionTime: Math.round(avgResolutionTime),
         highPriorityCases,
+        availableCases,
+        openAssignedCases,
+        resolvedThisMonth,
+        overdueCases,
       },
       recentCases,
       statusDistribution,
@@ -521,6 +583,12 @@ export class ReportsService {
       monthlyTrend,
       resolutionTrend,
       statusDetails,
+      openPriorityCounts: [
+        { priority: 'Low', count: lowPriorityCases, description: 'New cases requiring attention' },
+        { priority: 'Medium', count: mediumPriorityCases, description: 'Medium priority cases requiring attention' },
+        { priority: 'High', count: highPriorityCases, description: 'High priority cases requiring attention' },
+      ],
+      openStatusCounts,
     };
   }
 
