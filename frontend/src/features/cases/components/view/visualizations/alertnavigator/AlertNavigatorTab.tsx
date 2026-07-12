@@ -84,40 +84,6 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
     return 'text-yellow-700';
   };
 
-  const getBandReasonsForRule = ( bandReasonsJson: unknown, subRef: any): string => {
-    try {
-      let reasonsArray: string[] = [];
-      
-      if (Array.isArray(bandReasonsJson)) {
-        reasonsArray = bandReasonsJson;
-      } else if (typeof bandReasonsJson === 'string') {
-        reasonsArray = JSON.parse(bandReasonsJson);
-      } else {
-        return '';
-      }
-
-      if (!Array.isArray(reasonsArray)) return '';
-
-      const filteredReasons = reasonsArray
-        .filter((item: any) => item?.subRuleRef  === subRef)
-        .map((item: any) => item?.reason)
-        .filter(Boolean);
-
-      return filteredReasons.join(', ');
-    } catch {
-      return '';
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
-        <span className="ml-3 text-gray-600">Loading...</span>
-      </div>
-    );
-  }
-
   if (!alertId) {
     return (
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -366,7 +332,7 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                               )}
                               {rule.matched_band_reason != null && (
                                 <div className="text-xs text-gray-500 mt-0.5">                                  
-                                  Band Reasons: {' '}
+                                  Band Reason: {' '}
                                   {rule.matched_band_reason}
                                 </div>
                               )}
