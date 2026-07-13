@@ -52,11 +52,28 @@ export class ReportsService {
     OR: [{ case_type: null }, { case_type: { not: CaseType.FRAUD_AND_AML } }],
   };
 
-  private static withNonContainerCaseFilter(where: Prisma.CaseWhereInput = {}): Prisma.CaseWhereInput {
+  /**
+   * Total Cases is the only dashboard stat that also counts FRAUD_AND_AML
+   * container cases, and only while they're still in DRAFT. Once a container
+   * case moves past DRAFT it's on its way to (or has already) split into its
+   * FRAUD/AML siblings, so it should no longer be counted under this type.
+   */
+  private static readonly TOTAL_CASES_CASE_TYPE_FILTER: Prisma.CaseWhereInput = {
+    OR: [
+      { case_type: null },
+      { case_type: { not: CaseType.FRAUD_AND_AML } },
+      { case_type: CaseType.FRAUD_AND_AML, status: CaseStatus.STATUS_00_DRAFT },
+    ],
+  };
+
+  private static withNonContainerCaseFilter(
+    where: Prisma.CaseWhereInput = {},
+    containerFilter: Prisma.CaseWhereInput = ReportsService.NON_CONTAINER_CASE_FILTER,
+  ): Prisma.CaseWhereInput {
     const andFilters = where.AND ? (Array.isArray(where.AND) ? where.AND : [where.AND]) : [];
     return {
       ...where,
-      AND: [...andFilters, ReportsService.NON_CONTAINER_CASE_FILTER],
+      AND: [...andFilters, containerFilter],
     };
   }
 
@@ -72,19 +89,24 @@ export class ReportsService {
   /**
    * Builds the common Prisma `where` fragments shared by every report query
    * (case type / priority / investigator / tenant scoping via the related alert).
+   * `containerFilter` defaults to excluding FRAUD_AND_AML cases outright; pass
+   * `TOTAL_CASES_CASE_TYPE_FILTER` to let DRAFT ones through instead.
    */
-  private buildCommonCaseFilters(filters?: {
-    caseType?: string;
-    priority?: string;
-    investigator?: string;
-    tenantId?: string;
-  }): Prisma.CaseWhereInput {
+  private buildCommonCaseFilters(
+    filters?: {
+      caseType?: string;
+      priority?: string;
+      investigator?: string;
+      tenantId?: string;
+    },
+    containerFilter?: Prisma.CaseWhereInput,
+  ): Prisma.CaseWhereInput {
     const where: Record<string, any> = {};
     if (filters?.caseType) where.case_type = filters.caseType;
     if (filters?.priority) where.priority = filters.priority;
     if (filters?.investigator) where.case_owner_user_id = filters.investigator;
     if (filters?.tenantId) where.tenant_id = filters.tenantId;
-    return ReportsService.withNonContainerCaseFilter(where);
+    return ReportsService.withNonContainerCaseFilter(where, containerFilter);
   }
 
   /**
@@ -460,6 +482,15 @@ export class ReportsService {
     // Build the overall scope: date window + filters + (optional) investigator restriction.
     const baseFilters = { created_at: dateWindow, ...this.buildCommonCaseFilters(filters) };
     const whereClause = filters?.isInvestigator ? this.applyInvestigatorScope(baseFilters, filters.requestingUserId) : baseFilters;
+    // Total Cases alone also counts FRAUD_AND_AML container cases still in DRAFT
+    // (see TOTAL_CASES_CASE_TYPE_FILTER) - every other stat keeps excluding them outright.
+    const totalCasesBaseFilters = {
+      created_at: dateWindow,
+      ...this.buildCommonCaseFilters(filters, ReportsService.TOTAL_CASES_CASE_TYPE_FILTER),
+    };
+    const totalCasesWhere = filters?.isInvestigator
+      ? this.applyInvestigatorScope(totalCasesBaseFilters, filters.requestingUserId)
+      : totalCasesBaseFilters;
     // "Available" means open AND unowned - a closed/abandoned case with no owner was never
     // picked up but isn't waiting for anyone to pick it up either, so it must not count here.
     const availableCasesWhere: Prisma.CaseWhereInput = {
@@ -493,6 +524,7 @@ export class ReportsService {
       statusCounts,
       typeCounts,
       totalCases,
+      totalCasesForCard,
       closedCases,
       availableCases,
       openAssignedCases,
@@ -507,6 +539,7 @@ export class ReportsService {
       this.prisma.case.groupBy({ by: ['status'], where: whereClause, _count: { case_id: true } }),
       this.prisma.case.groupBy({ by: ['case_type'], where: whereClause, _count: { case_id: true } }),
       this.prisma.case.count({ where: whereClause }),
+      this.prisma.case.count({ where: totalCasesWhere }),
       this.prisma.case.count({ where: closedCasesWhere }),
       this.prisma.case.count({ where: availableCasesWhere }),
       this.prisma.case.count({ where: openAssignedCasesWhere }),
@@ -566,7 +599,7 @@ export class ReportsService {
 
     return {
       stats: {
-        totalCases,
+        totalCases: totalCasesForCard,
         closedCases,
         openCases,
         avgResolutionTime: Math.round(avgResolutionTime),
