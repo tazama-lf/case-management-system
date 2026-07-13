@@ -127,7 +127,8 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
           opt.value === '' ||
           opt.value === 'STATUS_82_CLOSED_CONFIRMED' ||
           opt.value === 'STATUS_83_CLOSED_INCONCLUSIVE' ||
-          opt.value === 'STATUS_81_CLOSED_REFUTED',
+          opt.value === 'STATUS_81_CLOSED_REFUTED' ||
+          opt.value === 'STATUS_99_ABANDONED',
       );
     }
     return statusOptions;
@@ -146,6 +147,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
         'STATUS_82_CLOSED_CONFIRMED',
         'STATUS_83_CLOSED_INCONCLUSIVE',
         'STATUS_81_CLOSED_REFUTED',
+        'STATUS_99_ABANDONED',
       ];
       if (!closedStatuses.includes(statusFilter)) {
         onStatusFilterChange('');

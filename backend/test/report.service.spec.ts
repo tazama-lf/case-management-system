@@ -212,8 +212,7 @@ describe('ReportsService', () => {
 
     it('should count totalCases from the role-visible scope, not creator-only cases', async () => {
       prismaService.case.count
-        .mockResolvedValueOnce(99) // whereClause-scoped total (feeds statusDetails %, not the card)
-        .mockResolvedValueOnce(12) // totalCasesWhere-scoped total (feeds stats.totalCases)
+        .mockResolvedValueOnce(12)
         .mockResolvedValueOnce(4)
         .mockResolvedValueOnce(3)
         .mockResolvedValueOnce(7)
@@ -235,29 +234,15 @@ describe('ReportsService', () => {
       );
     });
 
-    it('should exclude FRAUD_AND_AML container cases from dashboard counts', async () => {
-      const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
-
-      expect(result).toBeDefined();
-      expect(prismaService.case.count).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            AND: expect.arrayContaining([
-              expect.objectContaining({
-                OR: [{ case_type: null }, { case_type: { not: CaseType.FRAUD_AND_AML } }],
-              }),
-            ]),
-          }),
-        }),
-      );
-    });
-
-    it('should count FRAUD_AND_AML cases in Total Cases only while DRAFT or pending case creation approval', async () => {
+    it('should count FRAUD_AND_AML container cases only while DRAFT or pending case creation approval, everywhere', async () => {
       const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
 
       expect(result).toBeDefined();
 
-      // Total Cases' own query lets FRAUD_AND_AML through for DRAFT and PENDING_CASE_CREATION_APPROVAL.
+      // Every case-scoped query (Total Cases, Closed, Available, Open & Assigned,
+      // Resolved This Month, status/type breakdowns) shares this one container
+      // filter now - FRAUD_AND_AML cases count while DRAFT or pending creation
+      // approval, and are excluded in every other status.
       expect(prismaService.case.count).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -271,20 +256,6 @@ describe('ReportsService', () => {
                     status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL] },
                   },
                 ],
-              }),
-            ]),
-          }),
-        }),
-      );
-
-      // Every other card (available/open-assigned/resolved-this-month) keeps
-      // excluding FRAUD_AND_AML outright, regardless of status.
-      expect(prismaService.case.count).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            AND: expect.arrayContaining([
-              expect.objectContaining({
-                OR: [{ case_type: null }, { case_type: { not: CaseType.FRAUD_AND_AML } }],
               }),
             ]),
           }),
