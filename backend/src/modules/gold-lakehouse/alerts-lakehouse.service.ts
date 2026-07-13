@@ -180,9 +180,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
               subRef: r.rule_sub_ref,
               independentVariable: r.rule_independent_variable,
               rule_desc: r.rule_desc,         
-              matched_band_reason: r.matched_band_reason,                              
-                                             
-            
+              matched_band_reason: r.matched_band_reason                                        
             }));
           const rulesString = JSON.stringify(mappedRules);
           const flowProcessorData = flowProcessorRule?.rule_sub_ref ?? undefined;
