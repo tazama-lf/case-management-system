@@ -4,14 +4,10 @@ export interface RuleDetailDto {
   subRef?: string;
   independentVariable?: string;
   data?: unknown;
-  ruleDesc?: string;
-  band_reasons_with_sub_rule_refs_json?: string[];
+  rule_desc?: string | null;  
   matched_band_reason?: string | null;
-  exit_condition_reasons_json?: string[];
-  matched_exit_condition_reason?: string | null;
-  matched_rule_reason?: string | null;
-  band_count?: number | null;
-  exit_condition_count?: number | null;
+  
+ 
 }
 
 export interface TypologyDto {

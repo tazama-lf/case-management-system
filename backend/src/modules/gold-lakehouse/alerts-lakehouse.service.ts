@@ -51,8 +51,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
                         'rule_processing_time_ms',   anr.rule_processing_time_ms,
                         'rule_tenant_id',            anr.rule_tenant_id,
                         'rule_desc',                 anr.rule_desc,
-                        'matched_band_reason', anr.matched_band_reason,
-                        'matched_rule_reason', anr.matched_rule_reason                       
+                        'matched_band_reason', anr.matched_band_reason
+                                             
                     )
                 ) AS rules
             FROM alert_navigator_rules anr
@@ -179,9 +179,9 @@ export class AlertsLakehouseService extends GoldLakehouseService {
               ruleWeight: r.rule_weight,
               subRef: r.rule_sub_ref,
               independentVariable: r.rule_independent_variable,
-              ruleDesc: r.rule_desc,         
+              rule_desc: r.rule_desc,         
               matched_band_reason: r.matched_band_reason,                              
-              matched_rule_reason: r.matched_rule_reason,                                   
+                                             
             
             }));
           const rulesString = JSON.stringify(mappedRules);

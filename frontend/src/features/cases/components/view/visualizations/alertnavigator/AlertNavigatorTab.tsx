@@ -83,6 +83,14 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
     if (score >= 60) return 'text-orange-700';
     return 'text-yellow-700';
   };
+   if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
+        <span className="ml-3 text-gray-600">Loading...</span>
+      </div>
+    );
+  }
 
   if (!alertId) {
     return (
@@ -324,10 +332,10 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                                   {rule.independentVariable}
                                 </div>
                               )}
-                              {rule.ruleDesc != null && (
+                              {rule.rule_desc != null && (
                                 <div className="text-xs text-gray-500 mt-0.5">
                                   Rule Description: {' '}
-                                  {rule.ruleDesc}
+                                  {rule.rule_desc}
                                 </div>
                               )}
                               {rule.matched_band_reason != null && (
