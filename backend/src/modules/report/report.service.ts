@@ -507,7 +507,9 @@ export class ReportsService {
         select: { status: true, priority: true, sla_due_at: true, sla_started_at: true },
       }),
       this.prisma.case.groupBy({ by: ['status'], where: whereClause, _count: { case_id: true } }),
-      this.prisma.case.groupBy({ by: ['case_type'], where: whereClause, _count: { case_id: true } }),
+      // Case Types chart is open-cases-only - closed FRAUD/AML cases shouldn't
+      // inflate a breakdown meant to reflect the current active caseload.
+      this.prisma.case.groupBy({ by: ['case_type'], where: openCasesWhere, _count: { case_id: true } }),
       this.prisma.case.count({ where: whereClause }),
       this.prisma.case.count({ where: closedCasesWhere }),
       this.prisma.case.count({ where: availableCasesWhere }),

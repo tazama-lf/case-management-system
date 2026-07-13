@@ -272,6 +272,20 @@ describe('ReportsService', () => {
       );
     });
 
+    it('excludes closed cases from the Case Types bar chart', async () => {
+      const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
+
+      expect(result).toBeDefined();
+      expect(prismaService.case.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          by: ['case_type'],
+          where: expect.objectContaining({
+            status: { notIn: ReportsService['CLOSED_STATUSES'] },
+          }),
+        }),
+      );
+    });
+
     it('should return every non-closed status in openStatusCounts, including zero counts', async () => {
       prismaService.case.findMany
         .mockResolvedValueOnce([
