@@ -191,6 +191,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
           onChange={handleChange}
           onApply={handleApply}
           onReset={handleReset}
+          showInvestigatorFilter={isSupervisor}
         />
       )}
     </div>

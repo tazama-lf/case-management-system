@@ -73,28 +73,40 @@ class DashboardService {
 
     const statusDist = (response.statusDistribution ?? {}) as Record<
       string,
-      unknown
+      number | undefined
     >;
+    const sum = (...keys: string[]): number =>
+      keys.reduce((total, key) => total + (statusDist[key] ?? 0), 0);
 
     return [
       {
         status: 'assigned',
-        count: (statusDist.assigned ?? 0) as number,
+        count: sum('assigned'),
         description: 'cases requiring your action',
       },
       {
         status: 'inProgress',
-        count: (statusDist.inProgress ?? 0) as number,
+        count: sum('inProgress'),
         description: 'cases you are working on',
       },
       {
         status: 'pending',
-        count: (statusDist.pendingApproval ?? 0) as number,
+        count: sum(
+          'pendingCaseCreationApproval',
+          'pendingFinalApproval',
+          'pendingCaseReopeningApproval',
+        ),
         description: 'cases awaiting your approval',
       },
       {
         status: 'closed',
-        count: (statusDist.closed ?? 0) as number,
+        count: sum(
+          'autoclosedConfirmed',
+          'autoclosedRefuted',
+          'closedRefuted',
+          'closedConfirmed',
+          'closedInconclusive',
+        ),
         description: 'cases resolved recently',
       },
     ];

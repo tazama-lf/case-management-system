@@ -44,7 +44,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({
     { label: 'Status', width: 'w-40', key: 'status' },
     { label: 'Count', width: 'w-24', key: 'count' },
     { label: 'Percentage', width: 'w-32', key: 'percentage' },
-    { label: 'Avg Time in Status', width: 'w-40', key: 'avgTime' },
+    { label: 'Avg Age of Current Cases', width: 'w-40', key: 'avgTime' },
     { label: 'Current Trend Period', width: 'w-48', key: 'trend' },
   ];
 

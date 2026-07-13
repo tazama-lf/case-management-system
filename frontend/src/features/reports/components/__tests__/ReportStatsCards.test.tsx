@@ -103,7 +103,7 @@ describe('ReportStatsCards', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 1100));
 
-    expect(container.textContent).toContain('0 days');
+    expect(container.textContent).toContain('N/A');
   });
 
   it('handles undefined avgResolutionTime', async () => {
@@ -122,7 +122,7 @@ describe('ReportStatsCards', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 1100));
 
-    expect(container.textContent).toContain('0 days');
+    expect(container.textContent).toContain('N/A');
   });
 
   it('handles NaN avgResolutionTime', async () => {
@@ -141,7 +141,7 @@ describe('ReportStatsCards', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 1100));
 
-    expect(container.textContent).toContain('0 days');
+    expect(container.textContent).toContain('N/A');
   });
 
   it('rounds decimal resolution times', async () => {

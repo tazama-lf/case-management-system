@@ -93,6 +93,9 @@ describe('ReportsService', () => {
         count: jest.fn(),
         findMany: jest.fn(),
       },
+      cms_usernames: {
+        findMany: jest.fn(),
+      },
     };
 
     const mockEvidenceService = {
@@ -309,7 +312,7 @@ describe('ReportsService', () => {
       const result = await service.getCaseStatus('last30', { tenantId: 'tenant-123' });
 
       expect(result.stats.totalCases).toBe(0);
-      expect(result.stats.avgResolutionTime).toBe(0);
+      expect(result.stats.avgResolutionTime).toBeNull();
     });
 
     it('builds open priority buckets from non-closed cases only', async () => {
@@ -529,6 +532,7 @@ describe('ReportsService', () => {
         .mockResolvedValueOnce([{ case_type: CaseType.AML }, { case_type: CaseType.FRAUD }])
         .mockResolvedValueOnce([{ priority: 'HIGH' }, { priority: 'MEDIUM' }])
         .mockResolvedValueOnce([{ case_owner_user_id: 'user-123' }]);
+      prismaService.cms_usernames.findMany.mockResolvedValue([{ user_id: 'user-123', name: 'Test Investigator' }]);
     });
 
     it('should return filter options', async () => {
@@ -548,7 +552,7 @@ describe('ReportsService', () => {
       expect(result.caseTypes[0]).toHaveProperty('label');
     });
 
-    it('should handle null case types', async () => {
+    it('should omit null case types from filter options', async () => {
       prismaService.case.findMany
         .mockReset()
         .mockResolvedValueOnce([{ case_type: null }])
@@ -557,7 +561,7 @@ describe('ReportsService', () => {
 
       const result = await service.getFilters();
 
-      expect(result.caseTypes[0].value).toBe('NONE');
+      expect(result.caseTypes).toEqual([]);
     });
   });
 
@@ -816,8 +820,7 @@ describe('ReportsService', () => {
 
     it('should format case status name correctly', () => {
       const formatted = (service as any).formatStatusName(CaseStatus.STATUS_20_IN_PROGRESS);
-      expect(formatted).toBeDefined();
-      expect(typeof formatted).toBe('string');
+      expect(formatted).toBe('20 In Progress');
     });
 
     it('should return Info for SUCCESS outcome', () => {
