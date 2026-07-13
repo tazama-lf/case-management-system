@@ -37,6 +37,7 @@ describe('CaseDashboardContent', () => {
       statusFilter: 'all',
       priorityFilter: 'all',
       sarStrStatusFilter: '',
+      slaStateFilter: '',
       caseTypeFilter: 'all',
     },
     pagination: {
@@ -56,6 +57,7 @@ describe('CaseDashboardContent', () => {
     onStatusFilterChange: vi.fn(),
     onPriorityFilterChange: vi.fn(),
     onSarStrStatusFilterChange: vi.fn(),
+    onSlaStateFilterChange: vi.fn(),
     onCaseTypeFilterChange: vi.fn(),
     onPageChange: vi.fn(),
     onPageSizeChange: vi.fn(),

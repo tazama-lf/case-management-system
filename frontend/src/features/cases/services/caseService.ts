@@ -14,6 +14,7 @@ export interface GetUserCasesQueryDto {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   sarStrStatus?: string;
+  slaState?: string;
   search?: string;
   excludeDraft?: boolean;
   excludeClosed?: boolean;
@@ -596,6 +597,7 @@ export class CaseService {
       if (query?.sarStrStatus) {
         params.append('sarStrStatus', query.sarStrStatus);
       }
+      if (query?.slaState) params.append('slaState', query.slaState);
       if (query?.search) params.append('search', query.search);
       if (query?.page) params.append('page', String(query.page));
       if (query?.limit) params.append('limit', String(query.limit));

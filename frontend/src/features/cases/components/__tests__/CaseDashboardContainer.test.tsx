@@ -56,6 +56,7 @@ const buildMockReturn = () => ({
       statusFilter: '',
       priorityFilter: '',
       sarStrStatusFilter: '',
+      slaStateFilter: '',
       caseTypeFilter: 'all',
     },
     pagination: {
@@ -109,6 +110,7 @@ const buildMockReturn = () => ({
     setStatusFilter: vi.fn(),
     setPriorityFilter: vi.fn(),
     setSarStrStatusFilter: vi.fn(),
+    setSlaStateFilter: vi.fn(),
     setCaseTypeFilter: vi.fn(),
   },
   modalActions: {

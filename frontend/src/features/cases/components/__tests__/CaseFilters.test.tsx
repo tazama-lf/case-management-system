@@ -46,6 +46,8 @@ describe('CaseFilters', () => {
     onPriorityFilterChange: vi.fn(),
     sarStrStatusFilter: '',
     onSarStrStatusFilterChange: vi.fn(),
+    slaStateFilter: '',
+    onSlaStateFilterChange: vi.fn(),
     caseTypeFilter: 'all' as const,
     onCaseTypeFilterChange: vi.fn(),
   };
@@ -59,7 +61,9 @@ describe('CaseFilters', () => {
 
   it('should display search value', () => {
     render(<CaseFilters {...defaultProps} search="test search" />);
-    const searchInput = screen.getByPlaceholderText('Search cases...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search by Case ID, priority, SLA state, or keywords...',
+    );
     expect(searchInput).toHaveValue('test search');
   });
 
@@ -67,7 +71,9 @@ describe('CaseFilters', () => {
     const user = userEvent.setup();
     const onSearchChange = vi.fn();
     render(<CaseFilters {...defaultProps} onSearchChange={onSearchChange} />);
-    const searchInput = screen.getByPlaceholderText('Search cases...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search by Case ID, priority, SLA state, or keywords...',
+    );
     await user.type(searchInput, 'test');
     expect(onSearchChange).toHaveBeenCalled();
     expect(onSearchChange.mock.calls.length).toBeGreaterThanOrEqual(4);
@@ -172,7 +178,9 @@ describe('CaseFilters', () => {
 
   it('should have proper styling classes on search input', () => {
     render(<CaseFilters {...defaultProps} />);
-    const searchInput = screen.getByPlaceholderText('Search cases...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search by Case ID, priority, SLA state, or keywords...',
+    );
     expect(searchInput).toHaveClass('w-full', 'border', 'border-gray-300');
   });
 
@@ -186,7 +194,9 @@ describe('CaseFilters', () => {
         onSearchChange={onSearchChange}
       />,
     );
-    const searchInput = screen.getByPlaceholderText('Search cases...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search by Case ID, priority, SLA state, or keywords...',
+    );
     await user.clear(searchInput);
     expect(onSearchChange).toHaveBeenCalledWith('');
   });
