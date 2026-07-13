@@ -554,7 +554,7 @@ export class ReportsService {
       {},
     );
     const openStatusCounts = Object.values(CaseStatus)
-      .filter((status) => !ReportsService.CLOSED_STATUSES.includes(status))
+      .filter((status) => !ReportsService.CLOSED_STATUSES.includes(status) && status !== CaseStatus.STATUS_03_RETURNED)
       .map((status) => ({ status, count: rawStatusCounts[status] ?? 0 }));
 
     const recentCases = [

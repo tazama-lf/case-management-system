@@ -287,6 +287,7 @@ describe('ReportsService', () => {
       expect(result.openStatusCounts.some((item) => item.status === CaseStatus.STATUS_81_CLOSED_REFUTED)).toBe(false);
       expect(result.openStatusCounts.some((item) => item.status === CaseStatus.STATUS_82_CLOSED_CONFIRMED)).toBe(false);
       expect(result.openStatusCounts.some((item) => item.status === CaseStatus.STATUS_99_ABANDONED)).toBe(false);
+      expect(result.openStatusCounts.some((item) => item.status === CaseStatus.STATUS_03_RETURNED)).toBe(false);
     });
 
     it('should calculate average resolution time correctly', async () => {
