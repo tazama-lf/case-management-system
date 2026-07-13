@@ -51,7 +51,6 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
         );
 
         setData(result);
-       
 
         // Keep all typologies collapsed initially
         setExpandedTypologyKey(null);
@@ -83,7 +82,8 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
     if (score >= 60) return 'text-orange-700';
     return 'text-yellow-700';
   };
-   if (loading) {
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
@@ -306,7 +306,6 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                       {typology.rules.length > 0 ? (
                         typology.rules.map((rule, idx: number) => (
                           <div key={idx} className="flex items-start gap-2">
-                            
                             <div className="flex-shrink-0 mt-1">
                               <div className="h-1.5 w-1.5 rounded-full bg-gray-400" />
                             </div>
@@ -334,14 +333,12 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                               )}
                               {rule.rule_desc != null && (
                                 <div className="text-xs text-gray-500 mt-0.5">
-                                  Rule Description: {' '}
-                                  {rule.rule_desc}
+                                  Rule Description: {rule.rule_desc}
                                 </div>
                               )}
                               {rule.matched_band_reason != null && (
-                                <div className="text-xs text-gray-500 mt-0.5">                                  
-                                  Band Reason: {' '}
-                                  {rule.matched_band_reason}
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  Band Reason: {rule.matched_band_reason}
                                 </div>
                               )}
                             </div>

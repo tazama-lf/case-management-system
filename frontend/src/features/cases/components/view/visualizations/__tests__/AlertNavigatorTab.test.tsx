@@ -484,8 +484,10 @@ describe('AlertNavigatorTab', () => {
       expect(screen.getByText('Typologies Triggered')).toBeInTheDocument();
     });
 
-    const typologiesCard = screen.getByText('Typologies Triggered').closest('div');
-    expect(typologiesCard && within(typologiesCard.parentElement as HTMLElement).getByText('1')).toBeInTheDocument();
+    const typologiesCard = screen
+      .getByText('Typologies Triggered')
+      .closest('div')?.parentElement as HTMLElement;
+    expect(within(typologiesCard).getByText('1')).toBeInTheDocument();
 
     expect(screen.getByText('Rules Passed')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();

@@ -51,8 +51,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
                         'rule_processing_time_ms',   anr.rule_processing_time_ms,
                         'rule_tenant_id',            anr.rule_tenant_id,
                         'rule_desc',                 anr.rule_desc,
-                        'matched_band_reason', anr.matched_band_reason
-                                             
+                        'matched_band_reason',       anr.matched_band_reason
                     )
                 ) AS rules
             FROM alert_navigator_rules anr
@@ -174,14 +173,15 @@ export class AlertsLakehouseService extends GoldLakehouseService {
           const rulesData = this.safeParseArray<RawRuleRow>(t.rules);
           const flowProcessorRule = rulesData.find((r) => r.rule_id === 'EFRuP@1.0.0');
           const triggeredRulesData = rulesData.filter((r) => (r.rule_weight ?? 0) > 0);
+          // rule_desc and matched_band_reason intentionally keep snake_case: they mirror the underlying SQL column names
           const mappedRules = triggeredRulesData.map((r) => ({
-              ruleId: r.rule_id,
-              ruleWeight: r.rule_weight,
-              subRef: r.rule_sub_ref,
-              independentVariable: r.rule_independent_variable,
-              rule_desc: r.rule_desc,         
-              matched_band_reason: r.matched_band_reason                                        
-            }));
+            ruleId: r.rule_id,
+            ruleWeight: r.rule_weight,
+            subRef: r.rule_sub_ref,
+            independentVariable: r.rule_independent_variable,
+            rule_desc: r.rule_desc,
+            matched_band_reason: r.matched_band_reason,
+          }));
           const rulesString = JSON.stringify(mappedRules);
           const flowProcessorData = flowProcessorRule?.rule_sub_ref ?? undefined;
 
