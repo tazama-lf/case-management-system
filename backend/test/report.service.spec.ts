@@ -293,6 +293,14 @@ describe('ReportsService', () => {
       expect(result.openStatusCounts.some((item) => item.status === CaseStatus.STATUS_03_RETURNED)).toBe(false);
     });
 
+    it('excludes STATUS_03_RETURNED from the Case Status Details table too', async () => {
+      const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
+
+      expect(
+        result.statusDetails.some((detail) => detail.status === service['formatStatusName'](CaseStatus.STATUS_03_RETURNED)),
+      ).toBe(false);
+    });
+
     it('should calculate average resolution time correctly', async () => {
       prismaService.case.findMany.mockResolvedValue([
         { created_at: new Date('2026-02-01'), updated_at: new Date('2026-02-11') }, // 10 days

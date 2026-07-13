@@ -52,7 +52,7 @@ export const REPORT_TABLE_HEADERS = [
   'Status',
   'Count',
   'Percentage',
-  'Avg Time in Status',
+  'Avg Age of Current Cases',
   'Current Trend Period',
 ];
 

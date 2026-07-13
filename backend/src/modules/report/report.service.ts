@@ -334,7 +334,7 @@ export class ReportsService {
     );
 
     return Object.values(CaseStatus)
-      .filter((status) => !ReportsService.CLOSED_STATUSES.includes(status))
+      .filter((status) => !ReportsService.CLOSED_STATUSES.includes(status) && status !== CaseStatus.STATUS_03_RETURNED)
       .map((status) => {
         const count = countByStatus.get(status) ?? 0;
         const percentage = totalOpenCases > 0 ? ((count / totalOpenCases) * 100).toFixed(1) : '0.0';
