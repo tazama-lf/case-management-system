@@ -31,7 +31,7 @@ describe('StatsCards component', () => {
     // Verify titles
     expect(screen.getByText('Total Cases')).toBeInTheDocument();
     expect(screen.getByText('Available Cases')).toBeInTheDocument();
-    expect(screen.getByText('Open & Assigned Cases')).toBeInTheDocument();
+    expect(screen.getByText('Open Cases')).toBeInTheDocument();
     expect(screen.getByText('Overdue Cases')).toBeInTheDocument();
     expect(screen.getByText('Resolved This Month')).toBeInTheDocument();
 

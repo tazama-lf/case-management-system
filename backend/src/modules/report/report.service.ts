@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { CaseStatus, TaskStatus, CaseType, Priority, Prisma } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, CaseType, Priority, Prisma, SlaState } from '@prisma/client-cms';
 import { FraudReport, FraudReportOutcome } from './report.model';
 import { NotificationService } from '../notification/notification.service';
 import { CouchdbService } from 'src/modules/couchdb/couchdb.service';
@@ -10,6 +10,8 @@ import { UploadReportDto } from './dto/upload-report.dto';
 import * as crypto from 'node:crypto';
 import { AgeingSummary, monthlyTrend, resolutionTrend, statusDetails } from './types/report.types';
 import getDateRange from './helpers/getDateRange';
+import { SlaPolicyUtil, DEFAULT_TENANT_KEY } from '../shared/utils/sla-policy.util';
+import { computeCaseSlaState } from '../alert-priority/sla-state.util';
 
 @Injectable()
 export class ReportsService {
@@ -19,6 +21,7 @@ export class ReportsService {
     private readonly couchdbService: CouchdbService,
     private readonly notificationService: NotificationService,
     private readonly eventLogService: EventLogService,
+    private readonly slaPolicyUtil: SlaPolicyUtil,
   ) {}
 
   private static readonly CLOSED_STATUSES: CaseStatus[] = [
@@ -502,7 +505,7 @@ export class ReportsService {
     ] = await Promise.all([
       this.prisma.case.findMany({
         where: openCasesWhere,
-        select: { status: true, priority: true, sla_due_at: true },
+        select: { status: true, priority: true, sla_due_at: true, sla_started_at: true },
       }),
       this.prisma.case.groupBy({ by: ['status'], where: whereClause, _count: { case_id: true } }),
       this.prisma.case.groupBy({ by: ['case_type'], where: whereClause, _count: { case_id: true } }),
@@ -528,10 +531,11 @@ export class ReportsService {
     const avgResolutionTime = this.avgResolutionDays(closedCasesWithTimes);
 
     // Trend / detail queries (independent — run in parallel).
-    const [monthlyTrend, statusDetails, resolutionTrend] = await Promise.all([
+    const [monthlyTrend, statusDetails, resolutionTrend, slaEscalationRatios] = await Promise.all([
       this.computeMonthlyTrend(filters),
       this.computeStatusDetails(statusCounts, totalCases, whereClause),
       this.computeResolutionTrend(filters),
+      this.slaPolicyUtil.getEscalationRatios(filters?.tenantId ?? DEFAULT_TENANT_KEY),
     ]);
 
     const openCases = openScopedCases.length;
@@ -540,7 +544,9 @@ export class ReportsService {
     const lowPriorityCases = openScopedCases.filter((c) => c.priority === Priority.LOW).length;
     const mediumPriorityCases = openScopedCases.filter((c) => c.priority === Priority.MEDIUM).length;
     const highPriorityCases = openScopedCases.filter((c) => c.priority === Priority.HIGH).length;
-    const overdueCases = openScopedCases.filter((c) => c.sla_due_at && c.sla_due_at < now).length;
+    // Overdue means SLA state BREACHED - the same derived state shown on the Cases
+    // page (sla-state.util.ts), not just a raw sla_due_at < now comparison.
+    const overdueCases = openScopedCases.filter((c) => computeCaseSlaState(c, slaEscalationRatios) === SlaState.BREACHED).length;
     const rawStatusCounts = openScopedCases.reduce<Partial<Record<CaseStatus, number>>>(
       (acc, c) => ({ ...acc, [c.status]: (acc[c.status] ?? 0) + 1 }),
       {},
@@ -584,7 +590,7 @@ export class ReportsService {
       resolutionTrend,
       statusDetails,
       openPriorityCounts: [
-        { priority: 'Low', count: lowPriorityCases, description: 'New cases requiring attention' },
+        { priority: 'Low', count: lowPriorityCases, description: 'Low priority cases requiring attention' },
         { priority: 'Medium', count: mediumPriorityCases, description: 'Medium priority cases requiring attention' },
         { priority: 'High', count: highPriorityCases, description: 'High priority cases requiring attention' },
       ],

@@ -5,6 +5,7 @@ import { EvidenceService } from '../src/modules/evidence/evidence.service';
 import { CouchdbService } from '../src/modules/couchdb/couchdb.service';
 import { NotificationService } from '../src/modules/notification/notification.service';
 import { EventLogService } from '../src/modules/event_log/eventLog.service';
+import { SlaPolicyUtil } from '../src/modules/shared/utils/sla-policy.util';
 import { BadRequestException } from '@nestjs/common';
 import { CaseStatus, CaseType, TaskStatus } from '@prisma/client-cms';
 import { FraudReportOutcome } from '../src/modules/report/report.model';
@@ -114,6 +115,10 @@ describe('ReportsService', () => {
       getLogs: jest.fn(),
     };
 
+    const mockSlaPolicyUtil = {
+      getEscalationRatios: jest.fn().mockResolvedValue({ dueSoonRatio: 0.2, atRiskRatio: 0.5 }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReportsService,
@@ -122,6 +127,7 @@ describe('ReportsService', () => {
         { provide: CouchdbService, useValue: mockCouchdbService },
         { provide: NotificationService, useValue: mockNotificationService },
         { provide: EventLogService, useValue: mockEventLogService },
+        { provide: SlaPolicyUtil, useValue: mockSlaPolicyUtil },
       ],
     }).compile();
 

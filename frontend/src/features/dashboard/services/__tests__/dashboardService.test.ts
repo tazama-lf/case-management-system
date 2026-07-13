@@ -160,13 +160,13 @@ describe('dashboardService', () => {
         'Medium priority cases requiring attention',
       );
       expect(dashboardService.getDescription('Low')).toBe(
-        'New cases requiring attention',
+        'Low priority cases requiring attention',
       );
     });
 
     it('returns fallback description for unknown priority', () => {
       expect(dashboardService.getDescription('Urgent')).toBe(
-        'urgent cases requiring attention',
+        'urgent priority cases requiring attention',
       );
     });
   });

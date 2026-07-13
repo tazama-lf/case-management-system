@@ -109,10 +109,10 @@ class DashboardService {
         return 'Medium priority cases requiring attention';
 
       case 'Low':
-        return 'low cases requiring attention';
+        return 'Low priority cases requiring attention';
 
       default:
-        return `${priority.toLowerCase()} cases requiring attention`;
+        return `${priority.toLowerCase()} priority cases requiring attention`;
     }
   }
 }
