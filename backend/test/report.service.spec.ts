@@ -335,6 +335,31 @@ describe('ReportsService', () => {
       expect(bucketSum).toBe(result.stats.openCases);
       expect(result.stats.highPriorityCases).toBe(1);
     });
+
+    it('excludes DRAFT cases from Open Cases by Priority, unlike openCases/openStatusCounts', async () => {
+      prismaService.case.count.mockResolvedValue(4);
+      prismaService.case.findMany
+        .mockResolvedValueOnce([
+          { status: CaseStatus.STATUS_00_DRAFT, priority: 'HIGH' },
+          { status: CaseStatus.STATUS_20_IN_PROGRESS, priority: 'HIGH' },
+          { status: CaseStatus.STATUS_10_ASSIGNED, priority: 'LOW' },
+        ])
+        .mockResolvedValueOnce([]); // closedCasesWithTimes
+
+      const result = await service.getCaseStatus('last30', { tenantId: 'tenant-123' });
+
+      // openCases still counts the draft (3 non-closed cases)...
+      expect(result.stats.openCases).toBe(3);
+      // ...but the priority breakdown drops it, so High only reflects the
+      // non-draft case and the bucket sum no longer equals openCases.
+      expect(result.recentCases).toEqual([
+        { priority: 'Low', count: 1 },
+        { priority: 'Medium', count: 0 },
+        { priority: 'High', count: 1 },
+      ]);
+      expect(result.stats.highPriorityCases).toBe(1);
+      expect(result.openStatusCounts.find((s) => s.status === CaseStatus.STATUS_00_DRAFT)?.count).toBe(1);
+    });
   });
 
   describe('getInvestigatorWorkload', () => {

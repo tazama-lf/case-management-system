@@ -540,10 +540,12 @@ export class ReportsService {
 
     const openCases = openScopedCases.length;
 
-    // Counts are based on open in-scope cases so dashboard buckets match the active queue.
-    const lowPriorityCases = openScopedCases.filter((c) => c.priority === Priority.LOW).length;
-    const mediumPriorityCases = openScopedCases.filter((c) => c.priority === Priority.MEDIUM).length;
-    const highPriorityCases = openScopedCases.filter((c) => c.priority === Priority.HIGH).length;
+    // "Open Cases by Priority" excludes closed AND draft cases - a draft hasn't
+    // been triaged yet, so it shouldn't skew the priority breakdown of active work.
+    const priorityScopedCases = openScopedCases.filter((c) => c.status !== CaseStatus.STATUS_00_DRAFT);
+    const lowPriorityCases = priorityScopedCases.filter((c) => c.priority === Priority.LOW).length;
+    const mediumPriorityCases = priorityScopedCases.filter((c) => c.priority === Priority.MEDIUM).length;
+    const highPriorityCases = priorityScopedCases.filter((c) => c.priority === Priority.HIGH).length;
     // Overdue means SLA state BREACHED - the same derived state shown on the Cases
     // page (sla-state.util.ts), not just a raw sla_due_at < now comparison.
     const overdueCases = openScopedCases.filter((c) => computeCaseSlaState(c, slaEscalationRatios) === SlaState.BREACHED).length;
