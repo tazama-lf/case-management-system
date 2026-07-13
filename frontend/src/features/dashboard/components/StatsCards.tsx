@@ -50,7 +50,7 @@ const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => {
       subtitle: 'Cases requiring assignment',
     },
     {
-      title: 'Open & Assigned Cases',
+      title: 'Open Cases',
       value: safeStats.openAssignedCases,
       icon: <FolderOpenIcon className="h-6 w-6" />,
       color: STATS_CARD_COLORS.OPEN_CASES,

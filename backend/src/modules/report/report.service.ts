@@ -54,15 +54,19 @@ export class ReportsService {
 
   /**
    * Total Cases is the only dashboard stat that also counts FRAUD_AND_AML
-   * container cases, and only while they're still in DRAFT. Once a container
-   * case moves past DRAFT it's on its way to (or has already) split into its
-   * FRAUD/AML siblings, so it should no longer be counted under this type.
+   * container cases, and only while they're still DRAFT or pending case
+   * creation approval. Once a container case moves past those two statuses
+   * it's ready for assignment or already split into its FRAUD/AML siblings,
+   * so it should no longer be counted under this type.
    */
   private static readonly TOTAL_CASES_CASE_TYPE_FILTER: Prisma.CaseWhereInput = {
     OR: [
       { case_type: null },
       { case_type: { not: CaseType.FRAUD_AND_AML } },
-      { case_type: CaseType.FRAUD_AND_AML, status: CaseStatus.STATUS_00_DRAFT },
+      {
+        case_type: CaseType.FRAUD_AND_AML,
+        status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL] },
+      },
     ],
   };
 
@@ -114,8 +118,10 @@ export class ReportsService {
    * with the standard "scope to this investigator" OR clause:
    *   - cases they own,
    *   - cases with a task assigned to them,
-   *   - unassigned cases (which they could pick up),
-   *   - cases ready for assignment.
+   *   - every DRAFT case (visible to all investigators, not just its creator),
+   *   - every READY_FOR_ASSIGNMENT case (the claimable pool),
+   *   - unowned PENDING_CASE_CREATION_APPROVAL cases (matches the Cases page's
+   *     "unowned" rule for this status — no creator check).
    *
    * The OR clause is ANDed with the supplied `baseFilters`, so the existing
    * filters (date window, caseType, priority, tenantId, …) are preserved on
@@ -143,27 +149,11 @@ export class ReportsService {
             },
             // DRAFT or READY_FOR_ASSIGNMENT where owner is null or owner is the user
             {
-              AND: [
-                { status: { in: [CaseStatus.STATUS_00_DRAFT] } },
-                {
-                  OR: [{ case_owner_user_id: null }, { case_owner_user_id: requestingUserId }],
-                },
-              ],
+              AND: [{ status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } }],
             },
-            // Pending approval status where creator is the user
+            // Unowned pending-approval cases (matches the Cases page's rule for this status)
             {
-              AND: [
-                {
-                  status: {
-                    in: [
-                      CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-                      CaseStatus.STATUS_99_ABANDONED,
-                      CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-                    ],
-                  },
-                },
-                { case_creator_user_id: requestingUserId },
-              ],
+              AND: [{ status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL }, { case_owner_user_id: null }],
             },
           ],
         },

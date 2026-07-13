@@ -613,7 +613,7 @@ export class CaseQueryService {
                     },
                   },
                   { case_owner_user_id: null },
-                  { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+                  { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
                 ],
               },
             ],
@@ -631,7 +631,7 @@ export class CaseQueryService {
                 },
               },
               { case_owner_user_id: null },
-              { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+              { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
             ],
           });
         }

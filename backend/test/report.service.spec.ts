@@ -252,12 +252,12 @@ describe('ReportsService', () => {
       );
     });
 
-    it('should count FRAUD_AND_AML cases in Total Cases only while still in DRAFT', async () => {
+    it('should count FRAUD_AND_AML cases in Total Cases only while DRAFT or pending case creation approval', async () => {
       const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
 
       expect(result).toBeDefined();
 
-      // Total Cases' own query lets FRAUD_AND_AML through when status is DRAFT.
+      // Total Cases' own query lets FRAUD_AND_AML through for DRAFT and PENDING_CASE_CREATION_APPROVAL.
       expect(prismaService.case.count).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -266,7 +266,10 @@ describe('ReportsService', () => {
                 OR: [
                   { case_type: null },
                   { case_type: { not: CaseType.FRAUD_AND_AML } },
-                  { case_type: CaseType.FRAUD_AND_AML, status: CaseStatus.STATUS_00_DRAFT },
+                  {
+                    case_type: CaseType.FRAUD_AND_AML,
+                    status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL] },
+                  },
                 ],
               }),
             ]),
