@@ -81,15 +81,22 @@ const WorkloadBarChart: React.FC<WorkloadBarChartProps> = ({
       <ResponsiveContainer width="100%" height={height}>
         <BarChart
           data={chartData}
-          margin={{ top: 20, right: 20, bottom: 5, left: 0 }}
+          margin={{ top: 20, right: 20, bottom: 60, left: 0 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-          <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+          <XAxis
+            dataKey="name"
+            tick={{ fontSize: 12 }}
+            angle={-45}
+            textAnchor="end"
+            height={80}
+            interval={0}
+          />
           <YAxis />
           <Tooltip />
           <Legend />
-          <Bar dataKey="Active Cases" fill="#3b82f6" />
-          <Bar dataKey="Pending Tasks" fill="#8b5cf6" />
+          <Bar dataKey="Active Cases" fill="#2a78d6" />
+          <Bar dataKey="Pending Tasks" fill="#eb6834" />
         </BarChart>
       </ResponsiveContainer>
     </div>

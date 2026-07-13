@@ -667,6 +667,8 @@ export class ReportsService {
         if (!caseOwnerUserId) return null;
 
         const [activeCases, pendingTasks] = await Promise.all([
+          // Active means closed AND draft excluded, same as the Dashboard's
+          // "Open & Assigned Cases" - a draft isn't active investigation work yet.
           this.prisma.case.count({
             where: ReportsService.withNonContainerCaseFilter({
               case_owner_user_id: caseOwnerUserId,
@@ -674,7 +676,7 @@ export class ReportsService {
                 gte: startDate,
                 lte: endDate,
               },
-              status: { notIn: ReportsService.CLOSED_STATUSES },
+              status: { notIn: [...ReportsService.CLOSED_STATUSES, CaseStatus.STATUS_00_DRAFT] },
             }),
           }),
           this.prisma.task.count({
@@ -789,12 +791,14 @@ export class ReportsService {
               tenant_id: tenantId,
             }),
           }),
+          // Active means closed AND draft excluded, same as the Dashboard's
+          // "Open & Assigned Cases" - a draft isn't active investigation work yet.
           this.prisma.case.count({
             where: ReportsService.withNonContainerCaseFilter({
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
               tenant_id: tenantId,
-              status: { notIn: ReportsService.CLOSED_STATUSES },
+              status: { notIn: [...ReportsService.CLOSED_STATUSES, CaseStatus.STATUS_00_DRAFT] },
             }),
           }),
           this.prisma.case.count({
