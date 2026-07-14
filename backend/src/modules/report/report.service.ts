@@ -983,8 +983,8 @@ export class ReportsService {
     },
   ): Promise<{
     stats: {
-      avgCaseAge: number;
-      avgResolutionTime: number;
+      avgCaseAge: number | null;
+      avgResolutionTime: number | null;
       casesOver15Days: number;
       casesOver30Days: number;
     };
@@ -1064,7 +1064,7 @@ export class ReportsService {
       return { ...case_, ageDays };
     });
 
-    const avgCaseAge = casesWithAge.length > 0 ? casesWithAge.reduce((sum, case_) => sum + case_.ageDays, 0) / casesWithAge.length : 0;
+    const avgCaseAge = casesWithAge.length > 0 ? casesWithAge.reduce((sum, case_) => sum + case_.ageDays, 0) / casesWithAge.length : null;
 
     const closedCasesWithTimes = casesWithAge.filter((case_) => ReportsService.CLOSED_STATUSES.includes(case_.status as any));
 
@@ -1074,7 +1074,7 @@ export class ReportsService {
             const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
             return sum + resolutionTime;
           }, 0) / closedCasesWithTimes.length
-        : 0;
+        : null;
 
     const casesOver15Days = casesWithAge.filter((c) => c.ageDays > 15).length;
     const casesOver30Days = casesWithAge.filter((c) => c.ageDays >= 30).length;
@@ -1265,8 +1265,8 @@ export class ReportsService {
 
     return {
       stats: {
-        avgCaseAge: Math.round(avgCaseAge),
-        avgResolutionTime: Math.round(avgResolutionTime),
+        avgCaseAge: avgCaseAge === null ? null : Math.round(avgCaseAge),
+        avgResolutionTime: avgResolutionTime === null ? null : Math.round(avgResolutionTime),
         casesOver15Days,
         casesOver30Days,
       },
