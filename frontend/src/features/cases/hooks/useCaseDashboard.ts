@@ -27,6 +27,7 @@ export interface CaseDashboardFilters {
   statusFilter: string;
   priorityFilter: string;
   sarStrStatusFilter: string;
+  slaStateFilter: string;
   caseTypeFilter: 'all' | 'draft' | 'closed';
 }
 
@@ -76,6 +77,7 @@ export const useCaseDashboard = (): {
     setStatusFilter: React.Dispatch<React.SetStateAction<string>>;
     setPriorityFilter: React.Dispatch<React.SetStateAction<string>>;
     setSarStrStatusFilter: React.Dispatch<React.SetStateAction<string>>;
+    setSlaStateFilter: React.Dispatch<React.SetStateAction<string>>;
     setCaseTypeFilter: React.Dispatch<
       React.SetStateAction<'all' | 'draft' | 'closed'>
     >;
@@ -107,6 +109,7 @@ export const useCaseDashboard = (): {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
   const [sarStrStatusFilter, setSarStrStatusFilter] = useState<string>('');
+  const [slaStateFilter, setSlaStateFilter] = useState<string>('');
   const [caseTypeFilter, setCaseTypeFilter] = useState<
     'all' | 'draft' | 'closed'
   >('all');
@@ -166,6 +169,7 @@ export const useCaseDashboard = (): {
         status: finalStatusFilter || undefined,
         priority: priorityFilter || undefined,
         sarStrStatus: sarStrStatusFilter || undefined,
+        slaState: slaStateFilter || undefined,
         sortBy: 'updated_at',
         sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
         page: currentPage,
@@ -198,6 +202,7 @@ export const useCaseDashboard = (): {
     statusFilter,
     priorityFilter,
     sarStrStatusFilter,
+    slaStateFilter,
     sortBy,
     currentPage,
     pageSize,
@@ -256,6 +261,7 @@ export const useCaseDashboard = (): {
     statusFilter,
     priorityFilter,
     sarStrStatusFilter,
+    slaStateFilter,
     sortBy,
   ]);
 
@@ -357,6 +363,7 @@ export const useCaseDashboard = (): {
     setStatusFilter,
     setPriorityFilter,
     setSarStrStatusFilter,
+    setSlaStateFilter,
     setCaseTypeFilter,
   };
 
@@ -415,6 +422,7 @@ export const useCaseDashboard = (): {
       statusFilter,
       priorityFilter,
       sarStrStatusFilter,
+      slaStateFilter,
       caseTypeFilter,
     },
     pagination,

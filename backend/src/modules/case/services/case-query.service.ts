@@ -319,6 +319,7 @@ export class CaseQueryService {
         excludeDraft = false,
         excludeClosed = false,
         closedOnly = false,
+        slaState,
       } = query;
       const whereClause: any = {};
       const baseFilters: any = {};
@@ -375,6 +376,10 @@ export class CaseQueryService {
         const searchTerm = search.trim();
         const searchUpper = searchTerm.toUpperCase();
         const normalizedSearch = searchTerm.toLowerCase().replace(/[\/\s\-_]/gv, ''); // Remove slashes, spaces, dashes, underscores
+        // Enum values are SCREAMING_SNAKE_CASE (e.g. "DUE_SOON", "AT_RISK") but users type them
+        // with spaces or dashes (e.g. "due soon"), so collapse those separators to underscores
+        // before matching against enum literals below.
+        const searchEnumMatch = searchUpper.replace(/[\s\-]+/gv, '_');
         const orConditions: any[] = [];
 
         // SPECIAL CASE: Handle "N/A" search separately (only search for null values)
@@ -406,82 +411,128 @@ export class CaseQueryService {
         } else {
           // Normal search (not N/A)
 
-          // 1. SEARCH by case_id (exact numeric match only)
+          // 1. SEARCH by case_id — supports an explicit "Case"/"CASE-" prefix (e.g. "Case 123",
+          // "CASE-123"), mirroring how Alert ID search strips a leading "Alert" word before
+          // matching on alert_id. A successful prefixed match is unambiguous, so short-circuit
+          // past the other search branches below instead of also treating "123" as e.g. a
+          // confidence score.
+          const caseIdSearch = searchTerm.replace(/^case(?:-|_|\s)*/iv, '');
+          const numericCaseIdSearch = Number(caseIdSearch);
+          const isPrefixedCaseIdSearch = caseIdSearch !== searchTerm && caseIdSearch !== '' && !Number.isNaN(numericCaseIdSearch);
+
           const numericSearch = parseInt(searchTerm, 10);
-          if (!isNaN(numericSearch)) {
-            orConditions.push({ case_id: numericSearch });
-          }
 
-          // 2. PARTIAL SEARCH by case_type (e.g., "fr" matches "FRAUD", "fraud_and" matches "FRAUD_AND_AML")
-          const caseTypeEnums = ['FRAUD', 'AML', 'FRAUD_AND_AML'];
-          const matchingCaseTypes = caseTypeEnums.filter((type) => type.includes(searchUpper));
-          if (matchingCaseTypes.length > 0) {
-            orConditions.push({
-              case_type: { in: matchingCaseTypes },
-            });
-          }
+          if (isPrefixedCaseIdSearch) {
+            orConditions.push({ case_id: numericCaseIdSearch });
+          } else {
+            // SEARCH by case_id (exact numeric match only)
+            if (!isNaN(numericSearch)) {
+              orConditions.push({ case_id: numericSearch });
+            }
 
-          // 3. PARTIAL SEARCH by case status (e.g., "pending" matches all STATUS_*_PENDING_* statuses)
-          const statusEnums = [
-            'STATUS_00_DRAFT',
-            'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
-            'STATUS_02_READY_FOR_ASSIGNMENT',
-            'STATUS_03_RETURNED',
-            'STATUS_10_ASSIGNED',
-            'STATUS_20_IN_PROGRESS',
-            'STATUS_21_SUSPENDED',
-            'STATUS_22_PENDING_FINAL_APPROVAL',
-            'STATUS_31_PENDING_CASE_REOPENING_APPROVAL',
-            'STATUS_71_AUTOCLOSED_CONFIRMED',
-            'STATUS_72_AUTOCLOSED_REFUTED',
-            'STATUS_81_CLOSED_REFUTED',
-            'STATUS_82_CLOSED_CONFIRMED',
-            'STATUS_83_CLOSED_INCONCLUSIVE',
-            'STATUS_99_ABANDONED',
-          ];
-          const matchingStatuses = statusEnums.filter((status) => status.includes(searchUpper));
-          if (matchingStatuses.length > 0) {
-            orConditions.push({
-              status: { in: matchingStatuses },
-            });
-          }
+            // 2. PARTIAL SEARCH by case_type (e.g., "fr" matches "FRAUD", "fraud_and" matches "FRAUD_AND_AML")
+            const caseTypeEnums = ['FRAUD', 'AML', 'FRAUD_AND_AML'];
+            const matchingCaseTypes = caseTypeEnums.filter((type) => type.includes(searchEnumMatch));
+            if (matchingCaseTypes.length > 0) {
+              orConditions.push({
+                case_type: { in: matchingCaseTypes },
+              });
+            }
 
-          // 4. Search by alert message (string field) - skip for pure numbers
-          if (isNaN(numericSearch)) {
-            orConditions.push({
-              alert: {
-                message: { contains: searchTerm, mode: 'insensitive' },
-              },
-            });
-          }
-
-          // 5. SEARCH by confidence score (alert.confidence_per)
-          if (!isNaN(numericSearch)) {
-            orConditions.push({
-              alert: {
-                confidence_per: numericSearch,
-              },
-            });
-          }
-
-          // 6. PARTIAL SEARCH in SAR/STR task status (only for compliance officers)
-          if (isComplianceOfficer) {
-            const taskStatusEnums = [
-              'STATUS_01_UNASSIGNED',
+            // 3. PARTIAL SEARCH by case status (e.g., "pending" matches all STATUS_*_PENDING_* statuses)
+            const statusEnums = [
+              'STATUS_00_DRAFT',
+              'STATUS_01_PENDING_CASE_CREATION_APPROVAL',
+              'STATUS_02_READY_FOR_ASSIGNMENT',
+              'STATUS_03_RETURNED',
               'STATUS_10_ASSIGNED',
               'STATUS_20_IN_PROGRESS',
-              'STATUS_21_BLOCKED',
-              'STATUS_30_COMPLETED',
+              'STATUS_21_SUSPENDED',
+              'STATUS_22_PENDING_FINAL_APPROVAL',
+              'STATUS_31_PENDING_CASE_REOPENING_APPROVAL',
+              'STATUS_71_AUTOCLOSED_CONFIRMED',
+              'STATUS_72_AUTOCLOSED_REFUTED',
+              'STATUS_81_CLOSED_REFUTED',
+              'STATUS_82_CLOSED_CONFIRMED',
+              'STATUS_83_CLOSED_INCONCLUSIVE',
+              'STATUS_99_ABANDONED',
             ];
-            const matchingTaskStatuses = taskStatusEnums.filter((status) => status.includes(searchUpper));
-            if (matchingTaskStatuses.length > 0) {
+            const matchingStatuses = statusEnums.filter((status) => status.includes(searchEnumMatch));
+            if (matchingStatuses.length > 0) {
               orConditions.push({
-                tasks: {
-                  some: {
-                    name: { in: [TASK_NAMES.SAR_STR_FILING] },
-                    status: { in: matchingTaskStatuses },
-                  },
+                status: { in: matchingStatuses },
+              });
+            }
+
+            // 4. Search by alert message (string field) - skip for pure numbers
+            if (isNaN(numericSearch)) {
+              orConditions.push({
+                alert: {
+                  message: { contains: searchTerm, mode: 'insensitive' },
                 },
+              });
+            }
+
+            // 5. SEARCH by confidence score (alert.confidence_per)
+            if (!isNaN(numericSearch)) {
+              orConditions.push({
+                alert: {
+                  confidence_per: numericSearch,
+                },
+              });
+            }
+
+            // 6. PARTIAL SEARCH in SAR/STR task status (only for compliance officers)
+            if (isComplianceOfficer) {
+              const taskStatusEnums = [
+                'STATUS_01_UNASSIGNED',
+                'STATUS_10_ASSIGNED',
+                'STATUS_20_IN_PROGRESS',
+                'STATUS_21_BLOCKED',
+                'STATUS_30_COMPLETED',
+              ];
+              const matchingTaskStatuses = taskStatusEnums.filter((status) => status.includes(searchEnumMatch));
+              if (matchingTaskStatuses.length > 0) {
+                orConditions.push({
+                  tasks: {
+                    some: {
+                      name: { in: [TASK_NAMES.SAR_STR_FILING] },
+                      status: { in: matchingTaskStatuses },
+                    },
+                  },
+                });
+              }
+            }
+
+            // 7. PARTIAL SEARCH by priority (e.g., "hi" matches "HIGH")
+            const priorityEnums = ['LOW', 'MEDIUM', 'HIGH'];
+            const matchingPriorities = priorityEnums.filter((p) => p.includes(searchEnumMatch));
+            if (matchingPriorities.length > 0) {
+              orConditions.push({
+                priority: { in: matchingPriorities },
+              });
+            }
+
+            // 8. PARTIAL SEARCH by SLA state. sla_state isn't a DB column (it's derived at read
+            // time from sla_due_at/sla_started_at), so it can't be matched in the where clause
+            // directly. Only pay for the extra lookup when the term could plausibly match one of
+            // the enum values, then resolve which case_ids currently compute to a matching state.
+            const slaStateEnums = ['ON_TRACK', 'AT_RISK', 'DUE_SOON', 'BREACHED'];
+            const matchingSlaStates = slaStateEnums.filter((state) => state.includes(searchEnumMatch));
+            if (matchingSlaStates.length > 0) {
+              const slaSearchCandidates = await this.prismaService.case.findMany({
+                where: baseFilters,
+                select: { case_id: true, tenant_id: true, sla_due_at: true, sla_started_at: true },
+              });
+              const slaSearchRatiosByTenant = await this.resolveRatiosByTenant(slaSearchCandidates.map((caseItem) => caseItem.tenant_id));
+              const matchingSlaCaseIds = slaSearchCandidates
+                .filter((caseItem) => {
+                  const candidateState = computeCaseSlaState(caseItem, slaSearchRatiosByTenant.get(caseItem.tenant_id)!);
+                  return candidateState !== null && matchingSlaStates.includes(candidateState);
+                })
+                .map((caseItem) => caseItem.case_id);
+              orConditions.push({
+                case_id: { in: matchingSlaCaseIds },
               });
             }
           }
@@ -610,6 +661,22 @@ export class CaseQueryService {
         } else {
           Object.assign(whereClause, baseFilters);
         }
+      }
+
+      // sla_state is derived at read time (not a DB column), so it can't be filtered
+      // in the Prisma where clause directly. Resolve the case_ids matching every other
+      // filter first, compute sla_state for those candidates, then narrow whereClause
+      // to that id set before running the paginated count/findMany below.
+      if (slaState) {
+        const candidateCases = await this.prismaService.case.findMany({
+          where: whereClause,
+          select: { case_id: true, tenant_id: true, sla_due_at: true, sla_started_at: true },
+        });
+        const candidateRatiosByTenant = await this.resolveRatiosByTenant(candidateCases.map((caseItem) => caseItem.tenant_id));
+        const matchingCaseIds = candidateCases
+          .filter((caseItem) => computeCaseSlaState(caseItem, candidateRatiosByTenant.get(caseItem.tenant_id)!) === slaState)
+          .map((caseItem) => caseItem.case_id);
+        whereClause.case_id = { in: matchingCaseIds };
       }
 
       this.logger.log(`Where clause: ${JSON.stringify(whereClause)}`, CaseQueryService.name);
