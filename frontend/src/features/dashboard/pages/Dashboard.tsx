@@ -140,10 +140,16 @@ const Dashboard: React.FC = () => {
                       className={`transition-all duration-300 ${isAnimated ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-2'}`}
                       style={{ transitionDelay: `${600 + index * 100}ms` }}
                     >
-                      <AlertSummaryItem
-                        summary={cases}
-                        maxCount={maxRecentCaseCount}
-                      />
+                      <a
+                        href={`/cases?priority=${encodeURIComponent(cases.priority.toUpperCase())}`}
+                        aria-label={`View open ${cases.priority.toLowerCase()} priority cases`}
+                        className="block rounded-md hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                      >
+                        <AlertSummaryItem
+                          summary={cases}
+                          maxCount={maxRecentCaseCount}
+                        />
+                      </a>
                     </div>
                   ))}
                   {hiddenRecentCaseCount > 0 && (
@@ -155,18 +161,21 @@ const Dashboard: React.FC = () => {
                       +{hiddenRecentCaseCount} more
                     </button>
                   )}
-                  {showAllRecentCases && recentCases.length > MAX_VISIBLE_SUMMARY_ITEMS && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAllRecentCases(false)}
-                      className="block w-full text-center text-sm font-medium text-gray-500 hover:text-gray-700 pt-2.5"
-                    >
-                      Show less
-                    </button>
-                  )}
+                  {showAllRecentCases &&
+                    recentCases.length > MAX_VISIBLE_SUMMARY_ITEMS && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllRecentCases(false)}
+                        className="block w-full text-center text-sm font-medium text-gray-500 hover:text-gray-700 pt-2.5"
+                      >
+                        Show less
+                      </button>
+                    )}
                 </>
               ) : (
-                <p className="text-gray-500 text-sm">No open cases by priority</p>
+                <p className="text-gray-500 text-sm">
+                  No open cases by priority
+                </p>
               )}
             </DashboardSection>
           </div>
@@ -187,10 +196,16 @@ const Dashboard: React.FC = () => {
                       className={`transition-all duration-300 ${isAnimated ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-2'}`}
                       style={{ transitionDelay: `${800 + index * 100}ms` }}
                     >
-                      <CaseSummaryItem
-                        case={caseItem}
-                        maxCount={maxActiveCaseCount}
-                      />
+                      <a
+                        href={`/cases?status=${encodeURIComponent(caseItem.status)}`}
+                        aria-label={`View open cases with status ${caseItem.status}`}
+                        className="block rounded-md hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                      >
+                        <CaseSummaryItem
+                          case={caseItem}
+                          maxCount={maxActiveCaseCount}
+                        />
+                      </a>
                     </div>
                   ))}
                   {hiddenActiveCaseCount > 0 && (
@@ -202,15 +217,16 @@ const Dashboard: React.FC = () => {
                       +{hiddenActiveCaseCount} more
                     </button>
                   )}
-                  {showAllActiveCases && activeCases.length > MAX_VISIBLE_SUMMARY_ITEMS && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAllActiveCases(false)}
-                      className="block w-full text-center text-sm font-medium text-gray-500 hover:text-gray-700 pt-2.5"
-                    >
-                      Show less
-                    </button>
-                  )}
+                  {showAllActiveCases &&
+                    activeCases.length > MAX_VISIBLE_SUMMARY_ITEMS && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllActiveCases(false)}
+                        className="block w-full text-center text-sm font-medium text-gray-500 hover:text-gray-700 pt-2.5"
+                      >
+                        Show less
+                      </button>
+                    )}
                 </>
               ) : (
                 <p className="text-gray-500 text-sm">No open cases by status</p>

@@ -205,6 +205,13 @@ describe('Dashboard', () => {
       const alertSummaries = screen.getAllByTestId('alert-summary');
       expect(alertSummaries.length).toBe(2);
     });
+
+    expect(
+      screen.getByRole('link', { name: 'View open high priority cases' }),
+    ).toHaveAttribute('href', '/cases?priority=HIGH');
+    expect(
+      screen.getByRole('link', { name: 'View open medium priority cases' }),
+    ).toHaveAttribute('href', '/cases?priority=MEDIUM');
   });
 
   it('renders case summary items', async () => {
@@ -234,6 +241,17 @@ describe('Dashboard', () => {
       const caseSummaries = screen.getAllByTestId('case-summary');
       expect(caseSummaries.length).toBe(2);
     });
+
+    expect(
+      screen.getByRole('link', {
+        name: 'View open cases with status assigned',
+      }),
+    ).toHaveAttribute('href', '/cases?status=assigned');
+    expect(
+      screen.getByRole('link', {
+        name: 'View open cases with status pending',
+      }),
+    ).toHaveAttribute('href', '/cases?status=pending');
   });
 
   it('applies animation classes when data is loaded', async () => {
