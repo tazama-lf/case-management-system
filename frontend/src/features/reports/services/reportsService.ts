@@ -63,6 +63,7 @@ class ReportsService {
           totalCases: 0,
           closedCases: 0,
           openCases: 0,
+          openAssignedCases: 0,
           avgResolutionTime: null,
         },
         statusDistribution: {
@@ -232,11 +233,8 @@ class ReportsService {
       const processedResponse: CaseAgeingData = {
         ...response,
         stats: {
-          avgCaseAge: ReportsService.safeFallback(response.stats.avgCaseAge, 0),
-          avgResolutionTime: ReportsService.safeFallback(
-            response.stats.avgResolutionTime,
-            0,
-          ),
+          avgCaseAge: response.stats.avgCaseAge ?? null,
+          avgResolutionTime: response.stats.avgResolutionTime ?? null,
           casesOver15Days: ReportsService.safeFallback(
             response.stats.casesOver15Days,
             0,
@@ -259,8 +257,8 @@ class ReportsService {
 
       return {
         stats: {
-          avgCaseAge: 0,
-          avgResolutionTime: 0,
+          avgCaseAge: null,
+          avgResolutionTime: null,
           casesOver15Days: 0,
           casesOver30Days: 0,
         },

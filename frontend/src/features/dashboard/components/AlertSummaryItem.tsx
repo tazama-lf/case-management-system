@@ -37,19 +37,6 @@ const AlertSummaryItem: React.FC<AlertSummaryItemProps> = ({
     }
   };
 
-  const getPriorityBarColor = (priority: string) => {
-    switch (priority) {
-      case 'High':
-        return 'bg-red-500';
-      case 'Medium':
-        return 'bg-yellow-500';
-      case 'Low':
-        return 'bg-blue-500';
-      default:
-        return 'bg-gray-400';
-    }
-  };
-
   const getPriorityDotColor = (priority: string) => {
     switch (priority) {
       case 'High':
@@ -92,7 +79,7 @@ const AlertSummaryItem: React.FC<AlertSummaryItemProps> = ({
       </div>
       <div className="mt-1.5 ml-3.5 h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-700 ease-out ${getPriorityBarColor(summary.priority)}`}
+          className={`h-full rounded-full transition-all duration-700 ease-out ${getPriorityDotColor(summary.priority)}`}
           style={{ width: `${barWidthPct}%` }}
         />
       </div>

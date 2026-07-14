@@ -161,7 +161,7 @@ export class ReportsService {
             {
               case_owner_user_id: requestingUserId,
             },
-            // DRAFT or READY_FOR_ASSIGNMENT where owner is null or owner is the user
+            // Every DRAFT or READY_FOR_ASSIGNMENT case, regardless of owner.
             {
               AND: [{ status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } }],
             },
@@ -1290,11 +1290,7 @@ export class ReportsService {
   }
 
   private formatStatusName(status: CaseStatus): string {
-    return status
-      .replace(/^STATUS_/v, '')
-      .toLowerCase()
-      .replace(/_/gv, ' ')
-      .replace(/\b\w/gv, (char) => char.toUpperCase());
+    return status.replace('STATUS_', '').replace(/_/gv, ' ');
   }
 
   private getAuditLogType(outcome: string | null | undefined): 'Info' | 'Success' | 'Warning' | 'Error' {

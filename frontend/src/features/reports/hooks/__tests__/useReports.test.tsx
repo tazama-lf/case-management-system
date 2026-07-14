@@ -45,6 +45,7 @@ describe('useReports', () => {
         totalCases: 100,
         closedCases: 60,
         openCases: 40,
+        openAssignedCases: 40,
         avgResolutionTime: 12.5,
       },
       statusDistribution: {
@@ -100,6 +101,7 @@ describe('useReports', () => {
         totalCases: 0,
         closedCases: 0,
         openCases: 0,
+        openAssignedCases: 0,
         avgResolutionTime: 0,
       },
       statusDistribution: {
@@ -170,6 +172,7 @@ describe('useCaseStatusStats', () => {
         totalCases: 100,
         closedCases: 60,
         openCases: 40,
+        openAssignedCases: 40,
         avgResolutionTime: 12.5,
       },
       statusDistribution: {

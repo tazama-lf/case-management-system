@@ -21,6 +21,7 @@ describe('ReportStatsCards', () => {
     totalCases: 100,
     closedCases: 60,
     openCases: 40,
+    openAssignedCases: 40,
     avgResolutionTime: 12.5,
   };
 
@@ -92,6 +93,7 @@ describe('ReportStatsCards', () => {
       totalCases: 100,
       closedCases: 60,
       openCases: 40,
+      openAssignedCases: 40,
       avgResolutionTime: null as any,
     };
 
@@ -111,6 +113,7 @@ describe('ReportStatsCards', () => {
       totalCases: 100,
       closedCases: 60,
       openCases: 40,
+      openAssignedCases: 40,
       avgResolutionTime: undefined as any,
     };
 
@@ -130,6 +133,7 @@ describe('ReportStatsCards', () => {
       totalCases: 100,
       closedCases: 60,
       openCases: 40,
+      openAssignedCases: 40,
       avgResolutionTime: NaN,
     };
 
@@ -149,6 +153,7 @@ describe('ReportStatsCards', () => {
       totalCases: 100,
       closedCases: 60,
       openCases: 40,
+      openAssignedCases: 40,
       avgResolutionTime: 12.7,
     };
 

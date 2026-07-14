@@ -842,7 +842,7 @@ describe('ReportsService', () => {
 
     it('should format case status name correctly', () => {
       const formatted = (service as any).formatStatusName(CaseStatus.STATUS_20_IN_PROGRESS);
-      expect(formatted).toBe('20 In Progress');
+      expect(formatted).toBe('20 IN PROGRESS');
     });
 
     it('should return Info for SUCCESS outcome', () => {

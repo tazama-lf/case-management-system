@@ -36,6 +36,11 @@ import { Audit } from '../audit/decorators/audit-log.decorator';
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
+  /** True when the caller is an investigator and not also a supervisor/admin. */
+  private isInvestigatorOnly(userClaims: string[]): boolean {
+    return userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+  }
+
   // --- Fraud Report Endpoints ---
 
   @Post('fraud/generate')
@@ -193,7 +198,7 @@ export class ReportsController {
   @ApiQuery({
     name: 'dateRange',
     required: false,
-    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
+    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear', 'all'],
     description: 'Time period for the report data',
     example: 'last30',
   })
@@ -277,8 +282,7 @@ export class ReportsController {
     const { userId } = req.user;
     const userClaims = req.user.token.claims;
 
-    const isInvestigator =
-      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+    const isInvestigator = this.isInvestigatorOnly(userClaims);
 
     return await this.reportsService.getCaseStatus(dateRange, {
       caseType,
@@ -299,7 +303,7 @@ export class ReportsController {
   @ApiQuery({
     name: 'dateRange',
     required: false,
-    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
+    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear', 'all'],
     description: 'Time period for the report data',
     example: 'last30',
   })
@@ -349,7 +353,7 @@ export class ReportsController {
   @ApiQuery({
     name: 'dateRange',
     required: false,
-    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
+    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear', 'all'],
     description: 'Time period for the report data',
     example: 'last30',
   })
@@ -403,7 +407,7 @@ export class ReportsController {
   @ApiQuery({
     name: 'dateRange',
     required: false,
-    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
+    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear', 'all'],
     description: 'Time period for the report data',
     example: 'last30',
   })
@@ -459,8 +463,7 @@ export class ReportsController {
     const userClaims = req.user.token.claims;
 
     // Check if user is investigator (not supervisor/admin)
-    const isInvestigator =
-      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+    const isInvestigator = this.isInvestigatorOnly(userClaims);
 
     return await this.reportsService.getCaseAgeing(dateRange, {
       tenantId,
@@ -520,8 +523,7 @@ export class ReportsController {
     const { tenantId } = req.user.token;
     const { userId } = req.user;
     const userClaims = req.user.token.claims;
-    const isInvestigator =
-      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+    const isInvestigator = this.isInvestigatorOnly(userClaims);
 
     return await this.reportsService.getFilters({
       tenantId,

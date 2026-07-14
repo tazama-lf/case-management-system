@@ -46,6 +46,7 @@ describe('Reports Types', () => {
         totalCases: 100,
         closedCases: 60,
         openCases: 40,
+        openAssignedCases: 40,
         avgResolutionTime: 12.5,
       };
       expect(stats.totalCases).toBe(100);
@@ -136,6 +137,7 @@ describe('Reports Types', () => {
           totalCases: 100,
           closedCases: 60,
           openCases: 40,
+          openAssignedCases: 40,
           avgResolutionTime: 12.5,
         },
         statusDistribution: {

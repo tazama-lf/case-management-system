@@ -10,6 +10,13 @@ import authService from '../../auth/services/authService';
 import { useToast } from '@/shared/providers/ToastProvider';
 import { useAuth } from '@/features/auth/components/AuthContext';
 
+const CLOSED_STATUS_VALUES = [
+  'STATUS_82_CLOSED_CONFIRMED',
+  'STATUS_83_CLOSED_INCONCLUSIVE',
+  'STATUS_81_CLOSED_REFUTED',
+  'STATUS_99_ABANDONED',
+];
+
 interface CaseFiltersProps {
   search: string;
   onSearchChange: (value: string) => void;
@@ -123,12 +130,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     if (caseTypeFilter === 'closed') {
       // Only show closed statuses
       return statusOptions.filter(
-        (opt) =>
-          opt.value === '' ||
-          opt.value === 'STATUS_82_CLOSED_CONFIRMED' ||
-          opt.value === 'STATUS_83_CLOSED_INCONCLUSIVE' ||
-          opt.value === 'STATUS_81_CLOSED_REFUTED' ||
-          opt.value === 'STATUS_99_ABANDONED',
+        (opt) => opt.value === '' || CLOSED_STATUS_VALUES.includes(opt.value),
       );
     }
     return statusOptions;
@@ -143,13 +145,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
       onStatusFilterChange('');
     } else if (caseTypeFilter === 'closed' && statusFilter) {
       // Clear if the selected status is not a closed status
-      const closedStatuses = [
-        'STATUS_82_CLOSED_CONFIRMED',
-        'STATUS_83_CLOSED_INCONCLUSIVE',
-        'STATUS_81_CLOSED_REFUTED',
-        'STATUS_99_ABANDONED',
-      ];
-      if (!closedStatuses.includes(statusFilter)) {
+      if (!CLOSED_STATUS_VALUES.includes(statusFilter)) {
         onStatusFilterChange('');
       }
     }
