@@ -46,9 +46,10 @@ export class AlertPriorityService {
     const tenantIds = [...new Set(openCases.map((c) => c.tenant_id))];
     const ratiosByTenant = new Map<string, SlaEscalationRatios>(
       await Promise.all(
-        tenantIds.map(
-          async (tenantId): Promise<[string, SlaEscalationRatios]> => [tenantId, await this.slaPolicyUtil.getEscalationRatios(tenantId)],
-        ),
+        tenantIds.map(async (tenantId): Promise<[string, SlaEscalationRatios]> => [
+          tenantId,
+          await this.slaPolicyUtil.getEscalationRatios(tenantId),
+        ]),
       ),
     );
 
