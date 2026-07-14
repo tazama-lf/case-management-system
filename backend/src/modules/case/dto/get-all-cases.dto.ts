@@ -1,7 +1,7 @@
 import { IsOptional, IsEnum, IsString, IsInt, Min, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { CaseStatus, Priority, CaseType } from '@prisma/client-cms';
+import { CaseStatus, Priority, CaseType, SlaState } from '@prisma/client-cms';
 
 export class GetAllCasesQueryDto {
   @ApiProperty({
@@ -33,6 +33,16 @@ export class GetAllCasesQueryDto {
   @IsOptional()
   @IsString()
   sarStrStatus?: string;
+
+  @ApiProperty({
+    description: 'Filter by SLA state',
+    enum: SlaState,
+    required: false,
+    example: 'AT_RISK',
+  })
+  @IsOptional()
+  @IsEnum(SlaState)
+  slaState?: SlaState;
 
   @ApiProperty({
     description: 'Exclude draft cases from results',

@@ -21,6 +21,8 @@ interface CaseFiltersProps {
   onPriorityFilterChange: (value: string) => void;
   sarStrStatusFilter: string;
   onSarStrStatusFilterChange: (value: string) => void;
+  slaStateFilter: string;
+  onSlaStateFilterChange: (value: string) => void;
   caseTypeFilter: 'all' | 'draft' | 'closed';
   onCaseTypeFilterChange: (value: 'all' | 'draft' | 'closed') => void;
 }
@@ -32,6 +34,7 @@ export interface UserSavedFilter {
   priority: string;
   sortBy: 'recent' | 'oldest';
   sarStrStatus: string;
+  slaState: string;
 }
 
 const CaseFilters: React.FC<CaseFiltersProps> = ({
@@ -45,6 +48,8 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
   onPriorityFilterChange,
   sarStrStatusFilter,
   onSarStrStatusFilterChange,
+  slaStateFilter,
+  onSlaStateFilterChange,
   caseTypeFilter,
   onCaseTypeFilterChange,
 }) => {
@@ -97,10 +102,19 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     { value: 'N/A', label: 'No SAR/STR Task' },
   ];
 
+  const slaStateOptions = [
+    { value: '', label: 'All SLA States' },
+    { value: 'ON_TRACK', label: 'On Track' },
+    { value: 'AT_RISK', label: 'At Risk' },
+    { value: 'DUE_SOON', label: 'Due Soon' },
+    { value: 'BREACHED', label: 'Breached' },
+  ];
+
   const hasActiveFilters =
     !!statusFilter ||
     !!priorityFilter ||
     !!sarStrStatusFilter ||
+    !!slaStateFilter ||
     sortBy !== 'recent' ||
     caseTypeFilter !== 'all';
 
@@ -157,6 +171,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
             parsed.status ? parsed.status.toUpperCase() : null,
             parsed.priority ? parsed.priority.toUpperCase() : null,
             parsed.sarStrStatus ? parsed.sarStrStatus.toUpperCase() : null,
+            parsed.slaState ? parsed.slaState.toUpperCase() : null,
           ]
             .filter(Boolean) // remove null, undefined, or empty strings
             .join(' - '),
@@ -164,6 +179,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
           priority: parsed.priority ?? '',
           sortBy: parsed.sortBy ?? 'recent',
           sarStrStatus: parsed.sarStrStatus ?? '',
+          slaState: parsed.slaState ?? '',
         };
       });
 
@@ -175,6 +191,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
 
   React.useEffect(() => {
     fetchSavedFilters();
+    setSelectedSavedFilterId('');
   }, [fetchSavedFilters]);
 
   const handleSavedFilterSelect = (filterId: string) => {
@@ -187,6 +204,17 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     onPriorityFilterChange(filter.priority);
     onSortChange(filter.sortBy);
     onSarStrStatusFilterChange(filter.sarStrStatus);
+    onSlaStateFilterChange(filter.slaState);
+  };
+
+  const handleClearFilters = (): void => {
+    setSelectedSavedFilterId('');
+    onStatusFilterChange('');
+    onPriorityFilterChange('');
+    onSarStrStatusFilterChange('');
+    onSlaStateFilterChange('');
+    onSortChange('recent');
+    onCaseTypeFilterChange('all');
   };
 
   const handleSaveCurrentFilters = async () => {
@@ -202,6 +230,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
           priority: priorityFilter,
           sortBy,
           sarStrStatus: sarStrStatusFilter,
+          slaState: slaStateFilter,
         }),
       };
 
@@ -212,7 +241,8 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
         `Filter created successfully with status: ${statusFilter},
           priority: ${priorityFilter},
           sortBy: ${sortBy},
-          sarStrStatus: ${sarStrStatusFilter}`,
+          sarStrStatus: ${sarStrStatusFilter},
+          slaState: ${slaStateFilter}`,
       );
 
       // Refresh the saved filters list to show the newly created filter
@@ -242,7 +272,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Search cases..."
+            placeholder="Search by Case ID, priority, SLA state, or keywords..."
             value={search}
             onChange={(e) => {
               onSearchChange(e.target.value);
@@ -296,14 +326,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
         {/* Clear filters */}
         {hasActiveFilters && (
           <button
-            onClick={() => {
-              onStatusFilterChange('');
-              onPriorityFilterChange('');
-              onSarStrStatusFilterChange('');
-              onSortChange('recent');
-              onCaseTypeFilterChange('all');
-              handleSavedFilterSelect('Select a filter');
-            }}
+            onClick={handleClearFilters}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <XMarkIcon className="h-5 w-5 mr-2" />
@@ -393,6 +416,26 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
               ))}
             </select>
           </div>
+
+          {/* SLA State */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              SLA State
+            </label>
+            <select
+              value={slaStateFilter}
+              onChange={(e) => {
+                onSlaStateFilterChange(e.target.value);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              {slaStateOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
           {/* Saved Filters & Save Button */}
 
           <div className="sm:col-span-3 flex flex-col sm:flex-row gap-2 items-end">
@@ -408,7 +451,9 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="">Select a saved filter</option>
+                  <option value="" disabled hidden>
+                    Select a saved filter
+                  </option>
                   {savedFilters.map((f) => (
                     <option key={f.id} value={f.id}>
                       {f.name}
