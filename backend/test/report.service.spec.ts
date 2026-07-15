@@ -243,33 +243,46 @@ describe('ReportsService', () => {
       );
     });
 
+    /**
+     * Every `case.count`/`case.groupBy`/`case.findMany` call made anywhere
+     * during a getCaseStatus invocation (including the nested compute*
+     * helpers) - not just the first one that happens to match. A single
+     * `toHaveBeenCalledWith` only proves *one* invocation matched; it says
+     * nothing about the other case-scoped queries run in parallel.
+     */
+    const getAllCaseWhereClauses = (): any[] => [
+      ...prismaService.case.count.mock.calls.map(([args]: [any]) => args.where),
+      ...prismaService.case.groupBy.mock.calls.map(([args]: [any]) => args.where),
+      ...prismaService.case.findMany.mock.calls.map(([args]: [any]) => args.where),
+    ];
+
     it('should count FRAUD_AND_AML container cases only while DRAFT or pending case creation approval, everywhere', async () => {
       const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
 
       expect(result).toBeDefined();
 
       // Every case-scoped query (Total Cases, Closed, Available, Open & Assigned,
-      // Resolved This Month, status/type breakdowns) shares this one container
-      // filter now - FRAUD_AND_AML cases count while DRAFT or pending creation
-      // approval, and are excluded in every other status.
-      expect(prismaService.case.count).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            AND: expect.arrayContaining([
-              expect.objectContaining({
-                OR: [
-                  { case_type: null },
-                  { case_type: { not: CaseType.FRAUD_AND_AML } },
-                  {
-                    case_type: CaseType.FRAUD_AND_AML,
-                    status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL] },
-                  },
-                ],
-              }),
-            ]),
-          }),
-        }),
-      );
+      // Resolved This Month, status/type breakdowns, monthly/resolution trends)
+      // shares this one container filter now - FRAUD_AND_AML cases count while
+      // DRAFT or pending creation approval, and are excluded in every other status.
+      const whereClauses = getAllCaseWhereClauses();
+      expect(whereClauses.length).toBeGreaterThan(0);
+      whereClauses.forEach((where) => {
+        expect(where.AND).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              OR: [
+                { case_type: null },
+                { case_type: { not: CaseType.FRAUD_AND_AML } },
+                {
+                  case_type: CaseType.FRAUD_AND_AML,
+                  status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL] },
+                },
+              ],
+            }),
+          ]),
+        );
+      });
     });
 
     it('excludes abandoned cases from every case-scoped query, not just the closed-status buckets', async () => {
@@ -281,14 +294,15 @@ describe('ReportsService', () => {
       // filter that excludes FRAUD_AND_AML containers, so Total Cases,
       // Resolved This Month, and every other count treat abandoning a case
       // as making it disappear from reporting entirely - not as a genuine
-      // "closed"/"resolved" outcome.
-      expect(prismaService.case.count).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            AND: expect.arrayContaining([expect.objectContaining({ status: { not: CaseStatus.STATUS_99_ABANDONED } })]),
-          }),
-        }),
-      );
+      // "closed"/"resolved" outcome. Assert every recorded case query, not
+      // just whichever one happens to be the first match.
+      const whereClauses = getAllCaseWhereClauses();
+      expect(whereClauses.length).toBeGreaterThan(0);
+      whereClauses.forEach((where) => {
+        expect(where.AND).toEqual(
+          expect.arrayContaining([expect.objectContaining({ status: { not: CaseStatus.STATUS_99_ABANDONED } })]),
+        );
+      });
     });
 
     it('excludes closed cases from the Case Types bar chart', async () => {
@@ -597,17 +611,19 @@ describe('ReportsService', () => {
       await service.getCaseAgeing('last30', { tenantId: 'tenant-123' });
 
       // The open-backlog query (feeding avgCaseAge, the 15-30/30+ cards, the
-      // by-status bar, the distribution donut, and the details table) shares
-      // withNonContainerCaseFilter with getCaseStatus, so abandoned cases are
-      // excluded from the live backlog entirely - not merely absent from the
-      // closed set used for avgResolutionTime.
-      expect(prismaService.case.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            AND: expect.arrayContaining([expect.objectContaining({ status: { not: CaseStatus.STATUS_99_ABANDONED } })]),
-          }),
-        }),
-      );
+      // by-status bar, the distribution donut, and the details table), the
+      // closed-window query, and the resolution-trend query all share
+      // withNonContainerCaseFilter, so abandoned cases are excluded from
+      // every one of them - not merely absent from the closed set used for
+      // avgResolutionTime. Assert every recorded findMany call, since a
+      // single toHaveBeenCalledWith only proves one of the three matched.
+      const whereClauses = prismaService.case.findMany.mock.calls.map(([args]: [any]) => args.where);
+      expect(whereClauses.length).toBeGreaterThanOrEqual(3);
+      whereClauses.forEach((where) => {
+        expect(where.AND).toEqual(
+          expect.arrayContaining([expect.objectContaining({ status: { not: CaseStatus.STATUS_99_ABANDONED } })]),
+        );
+      });
     });
 
     it('queries the open backlog unwindowed and the closed set windowed on updated_at', async () => {
