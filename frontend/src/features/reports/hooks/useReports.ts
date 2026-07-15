@@ -31,11 +31,12 @@ export const useCaseStatusStats = (): ReturnType<typeof useQuery> =>
 
 export const useInvestigatorWorkload = (
   dateRange?: string,
+  filters?: { caseType: string; priority: string; investigator: string },
 ): ReturnType<typeof useQuery<InvestigatorWorkloadData>> =>
   useQuery<InvestigatorWorkloadData>({
-    queryKey: ['reports', 'investigator-workload', dateRange],
+    queryKey: ['reports', 'investigator-workload', dateRange, filters],
     queryFn: async () =>
-      await reportsService.getInvestigatorWorkloadData(dateRange),
+      await reportsService.getInvestigatorWorkloadData(dateRange, filters),
     staleTime: 1000 * 60 * 10,
     refetchInterval: 1000 * 60 * 10,
     refetchOnWindowFocus: true,
@@ -54,10 +55,12 @@ export const useTaskCompletion = (
 
 export const useCaseAgeing = (
   dateRange?: string,
+  filters?: { caseType: string; priority: string; investigator: string },
 ): ReturnType<typeof useQuery<CaseAgeingData>> =>
   useQuery<CaseAgeingData>({
-    queryKey: ['reports', 'case-ageing', dateRange],
-    queryFn: async () => await reportsService.getCaseAgeingData(dateRange),
+    queryKey: ['reports', 'case-ageing', dateRange, filters],
+    queryFn: async () =>
+      await reportsService.getCaseAgeingData(dateRange, filters),
     staleTime: 1000 * 60 * 10,
     refetchInterval: 1000 * 60 * 10,
     refetchOnWindowFocus: true,
@@ -65,11 +68,12 @@ export const useCaseAgeing = (
 
 export const useEvidenceFindings = (
   dateRange?: string,
+  filters?: { caseType: string; priority: string; investigator: string },
 ): ReturnType<typeof useQuery<EvidenceFindingsData>> =>
   useQuery<EvidenceFindingsData>({
-    queryKey: ['reports', 'evidence-findings', dateRange],
+    queryKey: ['reports', 'evidence-findings', dateRange, filters],
     queryFn: async () =>
-      await reportsService.getEvidenceFindingsData(dateRange),
+      await reportsService.getEvidenceFindingsData(dateRange, filters),
     staleTime: 1000 * 60 * 10,
     refetchInterval: 1000 * 60 * 10,
     refetchOnWindowFocus: true,

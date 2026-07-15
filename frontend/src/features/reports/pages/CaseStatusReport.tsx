@@ -390,19 +390,19 @@ const Reports: React.FC = () => {
 
       {reportType === 'CASE_AGEING' && (
         <Suspense fallback={<div>Loading Case Ageing Report...</div>}>
-          <CaseAgeingReport dateRange={dateRange} />
+          <CaseAgeingReport dateRange={dateRange} filters={filters} />
         </Suspense>
       )}
 
       {isSupervisor && reportType === 'INVESTIGATOR_WORKLOAD' && (
         <Suspense fallback={<div>Loading Investigator Workload Report...</div>}>
-          <InvestigatorWorkloadReport dateRange={dateRange} />
+          <InvestigatorWorkloadReport dateRange={dateRange} filters={filters} />
         </Suspense>
       )}
 
       {reportType === 'EVIDENCE_FINDINGS' && (
         <Suspense fallback={<div>Loading Evidence Findings Report...</div>}>
-          <EvidenceFindingsReport dateRange={dateRange} />
+          <EvidenceFindingsReport dateRange={dateRange} filters={filters} />
         </Suspense>
       )}
     </PageContainer>

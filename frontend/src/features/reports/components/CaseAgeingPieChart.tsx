@@ -8,11 +8,12 @@ interface CaseAgeingPieChartProps {
   size?: number;
 }
 
+/** Same band set and colors as CaseAgeingBarChart - the two must never drift apart. */
 const ageColors = {
   '0-7 days': '#10b981',
-  '8-15 days': '#fbbf24',
-  '16-30 days': '#f97316',
-  '30+ days': '#ef4444',
+  '8-15 days': '#f59e0b',
+  '16-30 days': '#ef4444',
+  '30+ days': '#991b1b',
 };
 
 const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({
@@ -39,6 +40,9 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({
     return {
       ageRange: range,
       count: existing?.count ?? 0,
+      // Percentages come straight from the backend's largest-remainder
+      // reconciliation, so this donut always sums to exactly 100.
+      percentage: existing?.percentage ?? 0,
     };
   });
 
@@ -60,7 +64,7 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({
   const chartData = completeData.map((item) => ({
     name: item.ageRange,
     value: item.count,
-    percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) : '0.0',
+    percentage: item.percentage.toFixed(0),
   }));
 
   const pieData = chartData.filter((item) => item.value > 0);
@@ -77,7 +81,8 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({
             }}
           />
           <span className="text-sm text-gray-700">
-            {item.name}: {item.percentage}%
+            {item.name}: {item.percentage}% · {item.value}{' '}
+            {item.value === 1 ? 'case' : 'cases'}
           </span>
         </div>
       ))}
@@ -86,7 +91,7 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 w-full max-w-full">
-      <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">
+      <h3 className="text-lg sm:text-xl font-semibold text-gray-700">
         {title}
       </h3>
       <ResponsiveContainer width="100%" height={size}>
@@ -97,7 +102,9 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({
             cy="50%"
             labelLine={false}
             label={false}
-            outerRadius="70%"
+            innerRadius="55%"
+            outerRadius="80%"
+            paddingAngle={2}
             fill="#8884d8"
             dataKey="value"
             minAngle={5}
@@ -108,6 +115,8 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({
                 fill={
                   ageColors[entry.name as keyof typeof ageColors] || '#94a3b8'
                 }
+                stroke="#fff"
+                strokeWidth={2}
               />
             ))}
           </Pie>

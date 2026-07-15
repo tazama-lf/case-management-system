@@ -34,16 +34,18 @@ interface EvidenceFindingsReportProps {
   | 'thisMonth'
   | 'lastYear'
   | 'all';
+  filters?: { caseType: string; priority: string; investigator: string };
 }
 
 const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
   dateRange = 'last30',
+  filters,
 }) => {
   const {
     data: evidenceData,
     isLoading,
     error,
-  } = useEvidenceFindings(dateRange);
+  } = useEvidenceFindings(dateRange, filters);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<
     'All' | 'Confirmed' | 'Refuted' | 'Inconclusive'

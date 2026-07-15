@@ -44,6 +44,7 @@ const ReportStatsCards: React.FC<ReportStatsCardsProps> = ({ stats }) => {
     },
     {
       title: 'Avg Resolution Time',
+      subtitle: 'Closed cases only',
       value: formatDays(stats.avgResolutionTime),
       icon: <ClockIcon className="h-6 w-6" />,
       color: 'red' as const,
@@ -61,6 +62,7 @@ const ReportStatsCards: React.FC<ReportStatsCardsProps> = ({ stats }) => {
         >
           <StatsCard
             title={card.title}
+            subtitle={card.subtitle}
             value={card.value}
             icon={card.icon}
             color={card.color}

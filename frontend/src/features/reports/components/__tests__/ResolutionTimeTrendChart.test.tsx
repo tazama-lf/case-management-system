@@ -8,21 +8,24 @@ vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="responsive-container">{children}</div>
   ),
-  LineChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="line-chart">{children}</div>
+  ComposedChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="composed-chart">{children}</div>
   ),
   Line: () => <div data-testid="line" />,
+  Area: () => <div data-testid="area" />,
+  Bar: () => <div data-testid="bar" />,
   XAxis: () => <div data-testid="x-axis" />,
   YAxis: () => <div data-testid="y-axis" />,
   CartesianGrid: () => <div data-testid="cartesian-grid" />,
   Tooltip: () => <div data-testid="tooltip" />,
+  Legend: () => <div data-testid="legend" />,
 }));
 
 describe('ResolutionTimeTrendChart', () => {
   const mockData: ResolutionTrend[] = [
-    { month: '2024-01', avgDays: 12.5 },
-    { month: '2024-02', avgDays: 15.3 },
-    { month: '2024-03', avgDays: 10.0 },
+    { month: '2024-01', median: 12, p25: 8, p75: 16, n: 5 },
+    { month: '2024-02', median: null, p25: null, p75: null, n: 0 },
+    { month: '2024-03', median: 10, p25: 6, p75: 14, n: 3 },
   ];
 
   it('renders chart with data', () => {
@@ -35,7 +38,7 @@ describe('ResolutionTimeTrendChart', () => {
 
     expect(screen.getByText('Resolution Time Trend')).toBeInTheDocument();
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
-    expect(screen.getByTestId('line-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('composed-chart')).toBeInTheDocument();
   });
 
   it('renders empty state when data is empty', () => {
@@ -45,7 +48,7 @@ describe('ResolutionTimeTrendChart', () => {
 
     expect(screen.getByText('Resolution Time Trend')).toBeInTheDocument();
     expect(screen.getByText('No data available')).toBeInTheDocument();
-    expect(screen.queryByTestId('line-chart')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('composed-chart')).not.toBeInTheDocument();
   });
 
   it('renders empty state when data is null', () => {
@@ -94,24 +97,7 @@ describe('ResolutionTimeTrendChart', () => {
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
 
-  it('aggregates data by month', () => {
-    const duplicateMonthData: ResolutionTrend[] = [
-      { month: '2024-01', avgDays: 10 },
-      { month: '2024-01', avgDays: 15 },
-      { month: '2024-02', avgDays: 20 },
-    ];
-
-    render(
-      <ResolutionTimeTrendChart
-        data={duplicateMonthData}
-        title="Resolution Time Trend"
-      />,
-    );
-
-    expect(screen.getByTestId('line-chart')).toBeInTheDocument();
-  });
-
-  it('renders all chart elements', () => {
+  it('keeps every calendar-month bucket, including a null (empty) month', () => {
     render(
       <ResolutionTimeTrendChart
         data={mockData}
@@ -119,11 +105,27 @@ describe('ResolutionTimeTrendChart', () => {
       />,
     );
 
-    expect(screen.getByTestId('line-chart')).toBeInTheDocument();
+    // The null bucket doesn't get dropped from the axis - it renders as a
+    // gap in the line/band, not a missing month.
+    expect(screen.getByTestId('composed-chart')).toBeInTheDocument();
+  });
+
+  it('renders all chart elements: median line, P25-P75 band, and n bars', () => {
+    render(
+      <ResolutionTimeTrendChart
+        data={mockData}
+        title="Resolution Time Trend"
+      />,
+    );
+
+    expect(screen.getByTestId('composed-chart')).toBeInTheDocument();
     expect(screen.getByTestId('line')).toBeInTheDocument();
+    expect(screen.getAllByTestId('area').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('bar')).toBeInTheDocument();
     expect(screen.getByTestId('x-axis')).toBeInTheDocument();
-    expect(screen.getByTestId('y-axis')).toBeInTheDocument();
+    expect(screen.getAllByTestId('y-axis').length).toBeGreaterThan(0);
     expect(screen.getByTestId('cartesian-grid')).toBeInTheDocument();
     expect(screen.getByTestId('tooltip')).toBeInTheDocument();
+    expect(screen.getByTestId('legend')).toBeInTheDocument();
   });
 });

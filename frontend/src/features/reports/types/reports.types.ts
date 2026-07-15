@@ -206,8 +206,14 @@ export interface AgeingByStatus {
 export interface ResolutionTrend {
   /** calendar-month bucket, e.g. "2026-06" */
   month: string;
-  /** null when no cases closed that month (renders as a gap) */
-  avgDays: number | null;
+  /** count of cases closed in this bucket */
+  n: number;
+  /** median days-to-close; null when no cases closed that month (renders as a gap) */
+  median: number | null;
+  /** 25th percentile days-to-close; null when no cases closed that month */
+  p25: number | null;
+  /** 75th percentile days-to-close; null when no cases closed that month */
+  p75: number | null;
 }
 
 export interface AgeingDistribution {
@@ -226,10 +232,12 @@ export interface CaseAgeingDetail {
   caseId: number;
   type: string;
   status: string;
+  /** ISO 8601; localised client-side for display */
   createdDate: string;
   ageDays: number;
   priority: string;
-  investigator: string;
+  /** raw id, surfaced only on hover/export - resolve the display name (and the 'Unassigned' fallback) client-side */
+  investigatorId: string | null;
 }
 
 export interface CaseAgeingData {

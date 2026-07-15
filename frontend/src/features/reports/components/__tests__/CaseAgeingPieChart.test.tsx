@@ -100,15 +100,15 @@ describe('CaseAgeingPieChart', () => {
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
 
-  it('renders custom legend with percentages', () => {
+  it('renders custom legend using the backend-reconciled percentages', () => {
     render(
       <CaseAgeingPieChart data={mockData} title="Case Ageing Distribution" />,
     );
 
-    expect(screen.getByText(/0-7 days: 50\.0%/)).toBeInTheDocument();
-    expect(screen.getByText(/8-15 days: 25\.0%/)).toBeInTheDocument();
-    expect(screen.getByText(/16-30 days: 20\.0%/)).toBeInTheDocument();
-    expect(screen.getByText(/30\+ days: 5\.0%/)).toBeInTheDocument();
+    expect(screen.getByText(/0-7 days: 50% · 20 cases/)).toBeInTheDocument();
+    expect(screen.getByText(/8-15 days: 25% · 10 cases/)).toBeInTheDocument();
+    expect(screen.getByText(/16-30 days: 20% · 8 cases/)).toBeInTheDocument();
+    expect(screen.getByText(/30\+ days: 5% · 2 cases/)).toBeInTheDocument();
   });
 
   it('completes missing age ranges with zero values', () => {

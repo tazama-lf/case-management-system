@@ -338,22 +338,16 @@ export const formatDataForExport = (
           'Age (Days)': item.ageDays ?? item.age_days ?? item.age ?? 0,
           Priority: item.priority ?? 'Normal',
           'User ID': String(
-            item.userId ??
+            item.investigatorId ??
+              item.userId ??
               item.user_id ??
               item.assigneeId ??
               item.assignee_id ??
-              'N/A',
+              'Unassigned',
           ),
-          Investigator:
-            getAssigneeFullName?.(
-              String(
-                item.userId ??
-                  item.user_id ??
-                  item.assigneeId ??
-                  item.assignee_id ??
-                  'N/A',
-              ),
-            ) ?? 'N/A',
+          Investigator: item.investigatorId
+            ? (getAssigneeFullName?.(String(item.investigatorId)) ?? 'N/A')
+            : 'Unassigned',
         };
       });
 

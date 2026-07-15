@@ -18,17 +18,19 @@ import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvesti
 
 interface InvestigatorWorkloadReportProps {
   dateRange: string;
+  filters?: { caseType: string; priority: string; investigator: string };
 }
 
 const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({
   dateRange,
+  filters,
 }) => {
   const { getAssigneeFullName } = useInvestigatorSupervisorList();
   const {
     data: workloadData,
     isLoading,
     error,
-  } = useInvestigatorWorkload(dateRange);
+  } = useInvestigatorWorkload(dateRange, filters);
 
   if (isLoading) {
     return (
