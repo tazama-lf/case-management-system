@@ -88,7 +88,7 @@ const ResolutionEfficiencyChart: React.FC<ResolutionEfficiencyChartProps> = ({
             dataKey="name"
             type="category"
             tick={{ fontSize: 12 }}
-            width={70}
+            width={110}
           />
           <Tooltip
             formatter={(value) =>

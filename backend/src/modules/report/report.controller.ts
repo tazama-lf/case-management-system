@@ -36,6 +36,11 @@ import { Audit } from '../audit/decorators/audit-log.decorator';
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
+  /** True when the caller is an investigator and not also a supervisor/admin. */
+  private isInvestigatorOnly(userClaims: string[]): boolean {
+    return userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+  }
+
   // --- Fraud Report Endpoints ---
 
   @Post('fraud/generate')
@@ -193,7 +198,7 @@ export class ReportsController {
   @ApiQuery({
     name: 'dateRange',
     required: false,
-    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
+    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear', 'all'],
     description: 'Time period for the report data',
     example: 'last30',
   })
@@ -231,13 +236,22 @@ export class ReportsController {
         },
         statusDistribution: {
           type: 'object',
+          description: 'One independent count per CaseStatus — no statuses are folded together.',
           properties: {
+            draft: { type: 'number', example: 10 },
+            pendingCaseCreationApproval: { type: 'number', example: 3 },
+            readyForAssignment: { type: 'number', example: 6 },
             assigned: { type: 'number', example: 25 },
             inProgress: { type: 'number', example: 30 },
-            draft: { type: 'number', example: 10 },
             suspended: { type: 'number', example: 5 },
-            pendingApproval: { type: 'number', example: 8 },
-            closed: { type: 'number', example: 45 },
+            pendingFinalApproval: { type: 'number', example: 4 },
+            pendingCaseReopeningApproval: { type: 'number', example: 1 },
+            autoclosedConfirmed: { type: 'number', example: 12 },
+            autoclosedRefuted: { type: 'number', example: 8 },
+            closedRefuted: { type: 'number', example: 9 },
+            closedConfirmed: { type: 'number', example: 11 },
+            closedInconclusive: { type: 'number', example: 5 },
+            abandoned: { type: 'number', example: 0 },
           },
         },
         caseTypes: {
@@ -268,12 +282,12 @@ export class ReportsController {
     const { userId } = req.user;
     const userClaims = req.user.token.claims;
 
-    const isInvestigator =
-      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+    const isInvestigator = this.isInvestigatorOnly(userClaims);
 
     return await this.reportsService.getCaseStatus(dateRange, {
       caseType,
       priority,
+      investigator: isInvestigator ? undefined : investigator,
       isInvestigator,
       tenantId,
       requestingUserId: isInvestigator ? userId : undefined,
@@ -289,7 +303,7 @@ export class ReportsController {
   @ApiQuery({
     name: 'dateRange',
     required: false,
-    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
+    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear', 'all'],
     description: 'Time period for the report data',
     example: 'last30',
   })
@@ -339,7 +353,7 @@ export class ReportsController {
   @ApiQuery({
     name: 'dateRange',
     required: false,
-    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
+    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear', 'all'],
     description: 'Time period for the report data',
     example: 'last30',
   })
@@ -393,7 +407,7 @@ export class ReportsController {
   @ApiQuery({
     name: 'dateRange',
     required: false,
-    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear'],
+    enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear', 'all'],
     description: 'Time period for the report data',
     example: 'last30',
   })
@@ -449,8 +463,7 @@ export class ReportsController {
     const userClaims = req.user.token.claims;
 
     // Check if user is investigator (not supervisor/admin)
-    const isInvestigator =
-      userClaims.includes('CMS_INVESTIGATOR') && !userClaims.includes('CMS_SUPERVISOR') && !userClaims.includes('CMS_ADMIN');
+    const isInvestigator = this.isInvestigatorOnly(userClaims);
 
     return await this.reportsService.getCaseAgeing(dateRange, {
       tenantId,
@@ -506,7 +519,15 @@ export class ReportsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async getFilters(): Promise<unknown> {
-    return await this.reportsService.getFilters();
+  async getFilters(@Req() req: AuthenticatedRequest): Promise<unknown> {
+    const { tenantId } = req.user.token;
+    const { userId } = req.user;
+    const userClaims = req.user.token.claims;
+    const isInvestigator = this.isInvestigatorOnly(userClaims);
+
+    return await this.reportsService.getFilters({
+      tenantId,
+      requestingUserId: isInvestigator ? userId : undefined,
+    });
   }
 }

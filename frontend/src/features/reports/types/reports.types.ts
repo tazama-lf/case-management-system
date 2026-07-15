@@ -2,17 +2,25 @@ export interface CaseStatusStats {
   totalCases: number;
   closedCases: number;
   openCases: number;
-  avgResolutionTime: number;
+  openAssignedCases: number;
+  avgResolutionTime: number | null;
 }
 
 export interface CaseStatusDistribution {
+  draft: number;
+  pendingCaseCreationApproval: number;
+  readyForAssignment: number;
   assigned: number;
   inProgress: number;
-  abandoned: number;
-  draft: number;
   suspended: number;
-  pendingApproval: number;
-  closed: number;
+  pendingFinalApproval: number;
+  pendingCaseReopeningApproval: number;
+  autoclosedConfirmed: number;
+  autoclosedRefuted: number;
+  closedRefuted: number;
+  closedConfirmed: number;
+  closedInconclusive: number;
+  abandoned: number;
 }
 
 export interface CaseType {
@@ -23,6 +31,7 @@ export interface CaseType {
 
 export interface CaseOutcome {
   resolved: number;
+  refuted?: number;
   confirmed: number;
   inconclusive: number;
   pending: number;
@@ -177,8 +186,11 @@ export interface AuditLog {
 }
 
 export interface CaseAgeingStats {
-  avgCaseAge: number;
-  avgResolutionTime: number;
+  /** null when there are no open cases */
+  avgCaseAge: number | null;
+  /** null when no cases closed in the selected window */
+  avgResolutionTime: number | null;
+  /** open cases aged 16-30 days, non-overlapping with casesOver30Days */
   casesOver15Days: number;
   casesOver30Days: number;
 }
@@ -192,8 +204,10 @@ export interface AgeingByStatus {
 }
 
 export interface ResolutionTrend {
+  /** calendar-month bucket, e.g. "2026-06" */
   month: string;
-  avgDays: number;
+  /** null when no cases closed that month (renders as a gap) */
+  avgDays: number | null;
 }
 
 export interface AgeingDistribution {

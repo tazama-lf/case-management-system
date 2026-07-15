@@ -3,6 +3,10 @@ export interface DashboardStats {
   highPriorityAlerts: number;
   openCases: number;
   casesResolvedThisWeek: number;
+  availableCases?: number;
+  openAssignedCases?: number;
+  resolvedThisMonth?: number;
+  overdueCases?: number;
 }
 
 export interface AlertSummary {
@@ -12,7 +16,7 @@ export interface AlertSummary {
 }
 
 export interface CaseSummary {
-  status: 'assigned' | 'pending' | 'closed' | 'inProgress';
+  status: string;
   count: number;
   description: string;
 }

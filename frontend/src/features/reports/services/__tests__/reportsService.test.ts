@@ -271,7 +271,7 @@ describe('ReportsService', () => {
 
       const result = await reportsService.getCaseAgeingData();
 
-      expect(result.stats.avgCaseAge).toBe(0);
+      expect(result.stats.avgCaseAge).toBe(null);
       expect(result.ageingByStatus).toEqual([]);
     });
 
@@ -280,7 +280,7 @@ describe('ReportsService', () => {
 
       const result = await reportsService.getCaseAgeingData();
 
-      expect(result.stats.avgCaseAge).toBe(0);
+      expect(result.stats.avgCaseAge).toBe(null);
       expect(result.ageingByStatus).toEqual([]);
     });
   });

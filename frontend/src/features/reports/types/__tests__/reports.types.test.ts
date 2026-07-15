@@ -46,6 +46,7 @@ describe('Reports Types', () => {
         totalCases: 100,
         closedCases: 60,
         openCases: 40,
+        openAssignedCases: 40,
         avgResolutionTime: 12.5,
       };
       expect(stats.totalCases).toBe(100);
@@ -58,15 +59,23 @@ describe('Reports Types', () => {
   describe('CaseStatusDistribution', () => {
     it('should define CaseStatusDistribution interface', () => {
       const distribution: CaseStatusDistribution = {
+        draft: 5,
+        pendingCaseCreationApproval: 0,
+        readyForAssignment: 0,
         assigned: 10,
         inProgress: 15,
-        draft: 5,
         suspended: 2,
-        pendingApproval: 8,
-        closed: 60,
+        pendingFinalApproval: 8,
+        pendingCaseReopeningApproval: 0,
+        autoclosedConfirmed: 0,
+        autoclosedRefuted: 0,
+        closedRefuted: 0,
+        closedConfirmed: 60,
+        closedInconclusive: 0,
+        abandoned: 0,
       };
       expect(distribution.assigned).toBe(10);
-      expect(distribution.closed).toBe(60);
+      expect(distribution.closedConfirmed).toBe(60);
     });
   });
 
@@ -128,15 +137,24 @@ describe('Reports Types', () => {
           totalCases: 100,
           closedCases: 60,
           openCases: 40,
+          openAssignedCases: 40,
           avgResolutionTime: 12.5,
         },
         statusDistribution: {
+          draft: 5,
+          pendingCaseCreationApproval: 0,
+          readyForAssignment: 0,
           assigned: 10,
           inProgress: 15,
-          draft: 5,
           suspended: 2,
-          pendingApproval: 8,
-          closed: 60,
+          pendingFinalApproval: 8,
+          pendingCaseReopeningApproval: 0,
+          autoclosedConfirmed: 0,
+          autoclosedRefuted: 0,
+          closedRefuted: 0,
+          closedConfirmed: 60,
+          closedInconclusive: 0,
+          abandoned: 0,
         },
         caseTypes: [],
         outcomes: {

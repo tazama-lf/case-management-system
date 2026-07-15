@@ -82,23 +82,30 @@ const OutcomeDistributionChart: React.FC<OutcomeDistributionChartProps> = ({
       <ResponsiveContainer width="100%" height={height}>
         <BarChart
           data={chartData}
-          margin={{ top: 20, right: 20, bottom: 5, left: 0 }}
+          margin={{ top: 20, right: 20, bottom: 60, left: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-          <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e1e0d9" />
+          <XAxis
+            dataKey="name"
+            tick={{ fontSize: 12 }}
+            angle={-45}
+            textAnchor="end"
+            height={80}
+            interval={0}
+          />
           <YAxis />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#fff',
-              border: '1px solid #e0e0e0',
+              backgroundColor: '#fcfcfb',
+              border: '1px solid rgba(11,11,11,0.10)',
               borderRadius: '8px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             }}
           />
           <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="rect" />
-          <Bar dataKey="Confirmed" fill="#ef4444" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="Refuted" fill="#10b981" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="Inconclusive" fill="#f97316" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="Confirmed" fill="#2a78d6" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="Refuted" fill="#298c8c" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="Inconclusive" fill="#f1a226" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -327,7 +327,7 @@ export class CaseQueryService {
 
       // Handle status filtering with new exclusion/inclusion options
       if (closedOnly) {
-        // Show only closed cases
+        // Show only closed cases (abandoned cases count as closed too)
         baseFilters.status = {
           in: [
             'STATUS_81_CLOSED_REFUTED',
@@ -335,6 +335,7 @@ export class CaseQueryService {
             'STATUS_83_CLOSED_INCONCLUSIVE',
             'STATUS_71_AUTOCLOSED_CONFIRMED',
             'STATUS_72_AUTOCLOSED_REFUTED',
+            'STATUS_99_ABANDONED',
           ],
         };
       } else if (status) {
@@ -353,6 +354,7 @@ export class CaseQueryService {
             'STATUS_83_CLOSED_INCONCLUSIVE',
             'STATUS_71_AUTOCLOSED_CONFIRMED',
             'STATUS_72_AUTOCLOSED_REFUTED',
+            'STATUS_99_ABANDONED',
           );
         }
         if (excludedStatuses.length > 0) {
@@ -614,7 +616,7 @@ export class CaseQueryService {
                     },
                   },
                   { case_owner_user_id: null },
-                  { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+                  { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
                 ],
               },
             ],
@@ -632,7 +634,7 @@ export class CaseQueryService {
                 },
               },
               { case_owner_user_id: null },
-              { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+              { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
             ],
           });
         }

@@ -56,7 +56,7 @@ describe('CaseSummaryItem', () => {
 
     render(<CaseSummaryItem case={caseItem} />);
 
-    expect(screen.getByText('Cases')).toBeInTheDocument();
+    expect(screen.getByText('unknown')).toBeInTheDocument();
   });
 
   it('applies correct color classes for statuses', () => {

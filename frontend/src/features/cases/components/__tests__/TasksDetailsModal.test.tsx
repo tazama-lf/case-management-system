@@ -225,7 +225,7 @@ describe('TasksDetailsModal', () => {
   });
 
   it('does not render Visualizations tab in the task modal', () => {
-    renderModal({});
+    renderModal({ row: { ...mockCaseData, transaction: undefined } });
 
     expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
   });

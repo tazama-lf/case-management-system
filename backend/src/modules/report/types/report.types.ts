@@ -8,7 +8,7 @@ export interface AgeingSummary {
 
 export interface resolutionTrend {
   month: string;
-  avgDays: number;
+  avgDays: number | null;
 }
 
 export interface monthlyTrend {

@@ -21,6 +21,7 @@ describe('ReportStatsCards', () => {
     totalCases: 100,
     closedCases: 60,
     openCases: 40,
+    openAssignedCases: 40,
     avgResolutionTime: 12.5,
   };
 
@@ -92,6 +93,7 @@ describe('ReportStatsCards', () => {
       totalCases: 100,
       closedCases: 60,
       openCases: 40,
+      openAssignedCases: 40,
       avgResolutionTime: null as any,
     };
 
@@ -103,7 +105,7 @@ describe('ReportStatsCards', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 1100));
 
-    expect(container.textContent).toContain('0 days');
+    expect(container.textContent).toContain('N/A');
   });
 
   it('handles undefined avgResolutionTime', async () => {
@@ -111,6 +113,7 @@ describe('ReportStatsCards', () => {
       totalCases: 100,
       closedCases: 60,
       openCases: 40,
+      openAssignedCases: 40,
       avgResolutionTime: undefined as any,
     };
 
@@ -122,7 +125,7 @@ describe('ReportStatsCards', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 1100));
 
-    expect(container.textContent).toContain('0 days');
+    expect(container.textContent).toContain('N/A');
   });
 
   it('handles NaN avgResolutionTime', async () => {
@@ -130,6 +133,7 @@ describe('ReportStatsCards', () => {
       totalCases: 100,
       closedCases: 60,
       openCases: 40,
+      openAssignedCases: 40,
       avgResolutionTime: NaN,
     };
 
@@ -141,7 +145,7 @@ describe('ReportStatsCards', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 1100));
 
-    expect(container.textContent).toContain('0 days');
+    expect(container.textContent).toContain('N/A');
   });
 
   it('rounds decimal resolution times', async () => {
@@ -149,6 +153,7 @@ describe('ReportStatsCards', () => {
       totalCases: 100,
       closedCases: 60,
       openCases: 40,
+      openAssignedCases: 40,
       avgResolutionTime: 12.7,
     };
 

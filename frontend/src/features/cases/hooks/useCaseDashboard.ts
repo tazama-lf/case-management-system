@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   caseService,
   type CaseWithTasksDto,
@@ -90,11 +90,16 @@ export const useCaseDashboard = (): {
 } => {
   const { hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole } = useAuth();
   const { error } = useToast();
-  const { params, navigate } = useDynamicRoute();
+  const { params, navigate, location } = useDynamicRoute();
 
   const [cases, setCases] = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
+  // Guards against out-of-order responses: if filters change while a fetch is
+  // in flight, a slower earlier request could otherwise resolve after (and
+  // overwrite) the result of a newer one - e.g. clearing filters right after
+  // selecting one that returns zero results.
+  const latestRequestIdRef = useRef(0);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(DEFAULT_PAGE);
@@ -106,13 +111,49 @@ export const useCaseDashboard = (): {
 
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [priorityFilter, setPriorityFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>(
+    () => new URLSearchParams(location.search).get('status') ?? '',
+  );
+  const [priorityFilter, setPriorityFilter] = useState<string>(
+    () => new URLSearchParams(location.search).get('priority') ?? '',
+  );
   const [sarStrStatusFilter, setSarStrStatusFilter] = useState<string>('');
   const [slaStateFilter, setSlaStateFilter] = useState<string>('');
   const [caseTypeFilter, setCaseTypeFilter] = useState<
     'all' | 'draft' | 'closed'
   >('all');
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+
+    if (statusFilter) {
+      queryParams.set('status', statusFilter);
+    } else {
+      queryParams.delete('status');
+    }
+
+    if (priorityFilter) {
+      queryParams.set('priority', priorityFilter);
+    } else {
+      queryParams.delete('priority');
+    }
+
+    const nextSearch = queryParams.toString();
+    const currentSearch = location.search.replace(/^\?/u, '');
+
+    if (nextSearch !== currentSearch) {
+      navigate(
+        { pathname: location.pathname, search: nextSearch },
+        { replace: true },
+      );
+    }
+  }, [
+    location.pathname,
+    location.search,
+    navigate,
+    priorityFilter,
+    statusFilter,
+  ]);
 
   // eslint-disable-next-line @typescript-eslint/no-magic-numbers -- 500ms debounce delay is a standard UX pattern
   const debouncedSearch = useDebounce(search, 500);
@@ -140,6 +181,8 @@ export const useCaseDashboard = (): {
   const [createCaseError, setCreateCaseError] = useState<string>('');
 
   const fetchCases = useCallback(async () => {
+    latestRequestIdRef.current += 1;
+    const requestId = latestRequestIdRef.current;
     setLoading(true);
     setErrorState(null);
 
@@ -180,6 +223,13 @@ export const useCaseDashboard = (): {
         closedOnly,
       });
 
+      // A newer request has since been kicked off (e.g. filters changed again
+      // before this one resolved) - drop this response so it can't clobber
+      // the more recent one.
+      if (requestId !== latestRequestIdRef.current) {
+        return;
+      }
+
       const transformedCases = response.cases.map(transformBackendCaseToUI);
       setCases(transformedCases);
 
@@ -193,10 +243,15 @@ export const useCaseDashboard = (): {
         setBackendTotalPages(pagination.totalPages);
       }
     } catch {
+      if (requestId !== latestRequestIdRef.current) {
+        return;
+      }
       setErrorState('Failed to load cases. Please try again.');
       setCases([]);
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [
     statusFilter,
