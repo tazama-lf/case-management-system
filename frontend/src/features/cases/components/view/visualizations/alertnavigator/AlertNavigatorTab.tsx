@@ -331,6 +331,16 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
                                   {rule.independentVariable}
                                 </div>
                               )}
+                              {rule.rule_desc != null && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  Rule Description: {rule.rule_desc}
+                                </div>
+                              )}
+                              {rule.matched_band_reason != null && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  Band Reason: {rule.matched_band_reason}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))
