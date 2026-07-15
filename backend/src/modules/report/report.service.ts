@@ -92,11 +92,23 @@ export class ReportsService {
     ],
   };
 
+  /**
+   * Abandoned cases are excluded from every report/dashboard query, not just
+   * treated as closed - abandoning a case isn't a genuine resolution, so it
+   * shouldn't count toward totals, closed/resolved figures, ageing, or
+   * investigator workload. `CLOSED_STATUSES` still lists STATUS_99_ABANDONED
+   * so it's correctly excluded from "open" breakdowns, but this filter is
+   * what keeps abandoned cases out of every count entirely.
+   */
+  private static readonly EXCLUDE_ABANDONED_FILTER: Prisma.CaseWhereInput = {
+    status: { not: CaseStatus.STATUS_99_ABANDONED },
+  };
+
   private static withNonContainerCaseFilter(where: Prisma.CaseWhereInput = {}): Prisma.CaseWhereInput {
     const andFilters = where.AND ? (Array.isArray(where.AND) ? where.AND : [where.AND]) : [];
     return {
       ...where,
-      AND: [...andFilters, ReportsService.NON_CONTAINER_CASE_FILTER],
+      AND: [...andFilters, ReportsService.NON_CONTAINER_CASE_FILTER, ReportsService.EXCLUDE_ABANDONED_FILTER],
     };
   }
 

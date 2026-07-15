@@ -60,7 +60,8 @@ const Reports: React.FC = () => {
     | 'last90'
     | 'thisMonth'
     | 'lastYear'
-  >('last30');
+    | 'all'
+  >('all');
   const [filters, setFilters] = useState({
     caseType: '',
     priority: '',

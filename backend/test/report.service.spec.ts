@@ -272,6 +272,25 @@ describe('ReportsService', () => {
       );
     });
 
+    it('excludes abandoned cases from every case-scoped query, not just the closed-status buckets', async () => {
+      const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
+
+      expect(result).toBeDefined();
+
+      // Abandoned cases are excluded everywhere via the same AND-composed
+      // filter that excludes FRAUD_AND_AML containers, so Total Cases,
+      // Resolved This Month, and every other count treat abandoning a case
+      // as making it disappear from reporting entirely - not as a genuine
+      // "closed"/"resolved" outcome.
+      expect(prismaService.case.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            AND: expect.arrayContaining([expect.objectContaining({ status: { not: CaseStatus.STATUS_99_ABANDONED } })]),
+          }),
+        }),
+      );
+    });
+
     it('excludes closed cases from the Case Types bar chart', async () => {
       const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
 
