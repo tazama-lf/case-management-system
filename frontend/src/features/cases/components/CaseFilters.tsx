@@ -9,6 +9,7 @@ import type { CreateUserFilters, UserFilters } from '../services/filterService';
 import authService from '../../auth/services/authService';
 import { useToast } from '@/shared/providers/ToastProvider';
 import { useAuth } from '@/features/auth/components/AuthContext';
+import { useInvestigatorSupervisorList } from '../hooks/useInvestigatorSupervisorList';
 
 const CLOSED_STATUS_VALUES = [
   'STATUS_82_CLOSED_CONFIRMED',
@@ -32,6 +33,8 @@ interface CaseFiltersProps {
   onSlaStateFilterChange: (value: string) => void;
   caseTypeFilter: 'all' | 'draft' | 'closed';
   onCaseTypeFilterChange: (value: 'all' | 'draft' | 'closed') => void;
+  assigneeFilter: string;
+  onAssigneeFilterChange: (value: string) => void;
 }
 
 export interface UserSavedFilter {
@@ -59,6 +62,8 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
   onSlaStateFilterChange,
   caseTypeFilter,
   onCaseTypeFilterChange,
+  assigneeFilter,
+  onAssigneeFilterChange,
 }) => {
   const { success, error } = useToast();
   const [showFilters, setShowFilters] = React.useState(false);
@@ -67,6 +72,18 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
 
   const { hasComplianceOfficerRole } = useAuth();
   const isComplianceOfficer = hasComplianceOfficerRole();
+
+  const { investigators, supervisors } = useInvestigatorSupervisorList();
+  const assigneeOptions = React.useMemo(
+    () =>
+      [...investigators, ...supervisors]
+        .map((user) => ({
+          value: user.id,
+          label: `${user.firstName} ${user.lastName}`,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [investigators, supervisors],
+  );
 
   const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -122,6 +139,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     !!priorityFilter ||
     !!sarStrStatusFilter ||
     !!slaStateFilter ||
+    !!assigneeFilter ||
     sortBy !== 'recent' ||
     caseTypeFilter !== 'all';
 
@@ -211,6 +229,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     onPriorityFilterChange('');
     onSarStrStatusFilterChange('');
     onSlaStateFilterChange('');
+    onAssigneeFilterChange('');
     onSortChange('recent');
     onCaseTypeFilterChange('all');
   };
@@ -428,6 +447,27 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
               {slaStateOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Assignee */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Assignee
+            </label>
+            <select
+              value={assigneeFilter}
+              onChange={(e) => {
+                onAssigneeFilterChange(e.target.value);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">All Assignees</option>
+              {assigneeOptions.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
