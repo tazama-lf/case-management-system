@@ -615,6 +615,28 @@ describe('CaseService', () => {
         expect.stringContaining('closedOnly=true'),
       );
     });
+
+    it('includes ownerId param when filtering by assignee', async () => {
+      const mockResponse = { cases: [], pagination: {} };
+      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
+
+      await caseService.getAllCases({ ownerId: 'user-owner-1' });
+
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('ownerId=user-owner-1'),
+      );
+    });
+
+    it('omits ownerId param when not provided', async () => {
+      const mockResponse = { cases: [], pagination: {} };
+      (apiClient.get as vi.Mock).mockResolvedValue(mockResponse);
+
+      await caseService.getAllCases({ search: 'test' });
+
+      expect(apiClient.get).toHaveBeenCalledWith(
+        expect.not.stringContaining('ownerId'),
+      );
+    });
   });
 
   describe('handleError edge cases', () => {

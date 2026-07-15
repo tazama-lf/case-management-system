@@ -21,6 +21,7 @@ export interface CaseRow {
   createdOn: string;
   pickedOn: string;
   action: 'View' | 'Complete';
+  /** Raw case_owner_user_id; resolve to a display name client-side. Unset when unassigned. */
   assignee?: string;
   priority: string;
   slaState?: SlaState | null;
@@ -130,8 +131,9 @@ export const transformBackendCaseToUI = (
         ? new Date(backendCase.updated_at).toLocaleDateString('en-GB')
         : '-',
     action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
-    assignee:
-      backendCase.user_role === 'owner' ? 'Current User' : 'Assigned User',
+    // Raw owner id - resolved to a display name client-side (CasesTable),
+    // same pattern as the Reports feature. undefined means unassigned.
+    assignee: backendCase.case_owner_user_id ?? undefined,
     priority: backendCase.priority,
     slaState: backendCase.sla_state ?? null,
     userRole: backendCase.user_role ?? 'none',

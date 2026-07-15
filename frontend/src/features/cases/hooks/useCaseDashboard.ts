@@ -29,6 +29,7 @@ export interface CaseDashboardFilters {
   sarStrStatusFilter: string;
   slaStateFilter: string;
   caseTypeFilter: 'all' | 'draft' | 'closed';
+  assigneeFilter: string;
 }
 
 export interface PaginationState {
@@ -81,6 +82,7 @@ export const useCaseDashboard = (): {
     setCaseTypeFilter: React.Dispatch<
       React.SetStateAction<'all' | 'draft' | 'closed'>
     >;
+    setAssigneeFilter: React.Dispatch<React.SetStateAction<string>>;
   };
   modalActions: CaseModalActions;
   caseActions: ReturnType<typeof useCaseActions>;
@@ -122,6 +124,7 @@ export const useCaseDashboard = (): {
   const [caseTypeFilter, setCaseTypeFilter] = useState<
     'all' | 'draft' | 'closed'
   >('all');
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('');
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -213,6 +216,7 @@ export const useCaseDashboard = (): {
         priority: priorityFilter || undefined,
         sarStrStatus: sarStrStatusFilter || undefined,
         slaState: slaStateFilter || undefined,
+        ownerId: assigneeFilter || undefined,
         sortBy: 'updated_at',
         sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
         page: currentPage,
@@ -258,6 +262,7 @@ export const useCaseDashboard = (): {
     priorityFilter,
     sarStrStatusFilter,
     slaStateFilter,
+    assigneeFilter,
     sortBy,
     currentPage,
     pageSize,
@@ -317,6 +322,7 @@ export const useCaseDashboard = (): {
     priorityFilter,
     sarStrStatusFilter,
     slaStateFilter,
+    assigneeFilter,
     sortBy,
   ]);
 
@@ -420,6 +426,7 @@ export const useCaseDashboard = (): {
     setSarStrStatusFilter,
     setSlaStateFilter,
     setCaseTypeFilter,
+    setAssigneeFilter,
   };
 
   const modalState: CaseModalState = {
@@ -479,6 +486,7 @@ export const useCaseDashboard = (): {
       sarStrStatusFilter,
       slaStateFilter,
       caseTypeFilter,
+      assigneeFilter,
     },
     pagination,
     permissions: {

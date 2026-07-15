@@ -18,6 +18,7 @@ interface CaseDashboardContentProps {
   onSarStrStatusFilterChange: (sarStrStatus: string) => void;
   onSlaStateFilterChange: (slaState: string) => void;
   onCaseTypeFilterChange: (caseType: 'all' | 'draft' | 'closed') => void;
+  onAssigneeFilterChange: (assignee: string) => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   onCreateNew: () => void;
@@ -33,6 +34,7 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
   onSarStrStatusFilterChange,
   onSlaStateFilterChange,
   onCaseTypeFilterChange,
+  onAssigneeFilterChange,
   onPageChange,
   onPageSizeChange,
   onCreateNew,
@@ -85,6 +87,8 @@ const CaseDashboardContent: React.FC<CaseDashboardContentProps> = ({
             onPriorityFilterChange={onPriorityFilterChange}
             caseTypeFilter={filters.caseTypeFilter}
             onCaseTypeFilterChange={onCaseTypeFilterChange}
+            assigneeFilter={filters.assigneeFilter}
+            onAssigneeFilterChange={onAssigneeFilterChange}
           />
 
           {errorState && (

@@ -174,6 +174,40 @@ describe('useCaseDashboard', () => {
     );
   });
 
+  it('passes assigneeFilter through as the ownerId query param', async () => {
+    const { result } = renderHook(() => useCaseDashboard());
+
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    act(() => {
+      result.current.filterActions.setAssigneeFilter('user-owner-1');
+    });
+
+    await waitFor(() =>
+      expect(result.current.dashboardState.filters.assigneeFilter).toBe(
+        'user-owner-1',
+      ),
+    );
+
+    expect(caseService.getAllCases).toHaveBeenCalledWith(
+      expect.objectContaining({ ownerId: 'user-owner-1' }),
+    );
+  });
+
+  it('omits ownerId when the assignee filter is cleared', async () => {
+    const { result } = renderHook(() => useCaseDashboard());
+
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    expect(caseService.getAllCases).toHaveBeenCalledWith(
+      expect.objectContaining({ ownerId: undefined }),
+    );
+  });
+
   it('removes cleared dashboard filters from the URL', async () => {
     routeMock.location.search =
       '?status=STATUS_20_IN_PROGRESS&priority=HIGH&view=compact';
