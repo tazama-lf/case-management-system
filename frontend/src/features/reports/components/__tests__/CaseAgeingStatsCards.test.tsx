@@ -82,7 +82,7 @@ describe('CaseAgeingStatsCards', () => {
 
     render(<CaseAgeingStatsCards stats={nullStats} />);
 
-    expect(screen.getAllByText('0 days').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('N/A').length).toBeGreaterThan(0);
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
   });
 
@@ -96,7 +96,7 @@ describe('CaseAgeingStatsCards', () => {
 
     render(<CaseAgeingStatsCards stats={undefinedStats} />);
 
-    expect(screen.getAllByText('0 days').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('N/A').length).toBeGreaterThan(0);
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
   });
 
@@ -110,7 +110,7 @@ describe('CaseAgeingStatsCards', () => {
 
     render(<CaseAgeingStatsCards stats={nanStats} />);
 
-    expect(screen.getAllByText('0 days').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('N/A').length).toBeGreaterThan(0);
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
   });
 

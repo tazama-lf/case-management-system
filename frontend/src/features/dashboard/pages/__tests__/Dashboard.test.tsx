@@ -115,6 +115,9 @@ describe('Dashboard', () => {
         highPriorityAlerts: 5,
         openCases: 3,
         casesResolvedThisWeek: 7,
+        availableCases: 2,
+        openAssignedCases: 3,
+        resolvedThisMonth: 1,
       },
       recentCases: [
         { priority: 'High', count: 5, description: 'High priority cases' },
@@ -138,10 +141,10 @@ describe('Dashboard', () => {
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(
-      screen.getByTestId('dashboard-section-recent-cases'),
+      screen.getByTestId('dashboard-section-open-cases-by-priority'),
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('dashboard-section-active-cases'),
+      screen.getByTestId('dashboard-section-open-cases-by-status'),
     ).toBeInTheDocument();
   });
 
@@ -152,6 +155,9 @@ describe('Dashboard', () => {
         highPriorityAlerts: 0,
         openCases: 0,
         casesResolvedThisWeek: 0,
+        availableCases: 0,
+        openAssignedCases: 0,
+        resolvedThisMonth: 0,
       },
       recentCases: [],
       activeCases: [],
@@ -166,10 +172,10 @@ describe('Dashboard', () => {
     render(<Dashboard />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText('No recent cases')).toBeInTheDocument();
+      expect(screen.getByText('No open cases by priority')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('No active cases')).toBeInTheDocument();
+    expect(screen.getByText('No open cases by status')).toBeInTheDocument();
   });
 
   it('renders alert summary items', async () => {
@@ -199,6 +205,13 @@ describe('Dashboard', () => {
       const alertSummaries = screen.getAllByTestId('alert-summary');
       expect(alertSummaries.length).toBe(2);
     });
+
+    expect(
+      screen.getByRole('link', { name: 'View open high priority cases' }),
+    ).toHaveAttribute('href', '/cases?priority=HIGH');
+    expect(
+      screen.getByRole('link', { name: 'View open medium priority cases' }),
+    ).toHaveAttribute('href', '/cases?priority=MEDIUM');
   });
 
   it('renders case summary items', async () => {
@@ -228,6 +241,17 @@ describe('Dashboard', () => {
       const caseSummaries = screen.getAllByTestId('case-summary');
       expect(caseSummaries.length).toBe(2);
     });
+
+    expect(
+      screen.getByRole('link', {
+        name: 'View open cases with status assigned',
+      }),
+    ).toHaveAttribute('href', '/cases?status=assigned');
+    expect(
+      screen.getByRole('link', {
+        name: 'View open cases with status pending',
+      }),
+    ).toHaveAttribute('href', '/cases?status=pending');
   });
 
   it('applies animation classes when data is loaded', async () => {

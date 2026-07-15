@@ -13,6 +13,7 @@ const toastMock = { error: vi.fn() };
 const routeMock = {
   params: {} as Record<string, string>,
   navigate: vi.fn(),
+  location: { pathname: '/cases', search: '' },
 };
 
 const transformBackendCaseToUI = vi.fn((backendCase: any) => ({
@@ -97,6 +98,7 @@ describe('useCaseDashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     routeMock.params = {};
+    routeMock.location.search = '';
     toastMock.error.mockReset();
 
     authMocks.hasInvestigatorRole.mockReturnValue(false);
@@ -149,6 +151,50 @@ describe('useCaseDashboard', () => {
     );
 
     expect(result.current.dashboardState.cases[0].id).toBe(200);
+  });
+
+  it('applies status and priority filters from dashboard query parameters', async () => {
+    routeMock.location.search = '?status=STATUS_20_IN_PROGRESS&priority=HIGH';
+
+    const { result } = renderHook(() => useCaseDashboard());
+
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    expect(result.current.dashboardState.filters.statusFilter).toBe(
+      'STATUS_20_IN_PROGRESS',
+    );
+    expect(result.current.dashboardState.filters.priorityFilter).toBe('HIGH');
+    expect(caseService.getAllCases).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'STATUS_20_IN_PROGRESS',
+        priority: 'HIGH',
+      }),
+    );
+  });
+
+  it('removes cleared dashboard filters from the URL', async () => {
+    routeMock.location.search =
+      '?status=STATUS_20_IN_PROGRESS&priority=HIGH&view=compact';
+
+    const { result } = renderHook(() => useCaseDashboard());
+
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    act(() => {
+      result.current.filterActions.setStatusFilter('');
+      result.current.filterActions.setPriorityFilter('');
+    });
+
+    await waitFor(() =>
+      expect(routeMock.navigate).toHaveBeenCalledWith(
+        { pathname: '/cases', search: 'view=compact' },
+        { replace: true },
+      ),
+    );
   });
 
   it('opens the view modal when a route param matches a case id', async () => {
@@ -580,5 +626,52 @@ describe('useCaseDashboard', () => {
         }),
       ),
     );
+  });
+
+  it('ignores a stale response that resolves after a newer one (e.g. Clear right after selecting a filter)', async () => {
+    const backendCases = [createBackendCase({ case_id: 1 })];
+
+    let resolveFirst: (value: unknown) => void = () => {};
+    const firstCall = new Promise((resolve) => {
+      resolveFirst = resolve;
+    });
+
+    (caseService.getAllCases as unknown as vi.Mock)
+      .mockResolvedValueOnce({
+        cases: [],
+        pagination: { total: 0, totalPages: 1 },
+      }) // initial mount fetch
+      .mockReturnValueOnce(firstCall) // "Suspended" filter - slow, resolves last
+      .mockResolvedValueOnce({
+        cases: backendCases,
+        pagination: { total: 1, totalPages: 1 },
+      }); // "Clear" - fast, resolves first
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    // Select a status filter (slow request kicked off, not yet resolved).
+    act(() => {
+      result.current.filterActions.setStatusFilter('STATUS_21_SUSPENDED');
+    });
+
+    // Immediately clear it (fast request, resolves before the slow one).
+    act(() => {
+      result.current.filterActions.setStatusFilter('');
+    });
+
+    await waitFor(() =>
+      expect(result.current.dashboardState.cases).toHaveLength(1),
+    );
+
+    // The slow "Suspended" request finally resolves with its (now stale) empty result.
+    await act(async () => {
+      resolveFirst({ cases: [], pagination: { total: 0, totalPages: 1 } });
+    });
+
+    // It must not clobber the newer, correct result.
+    expect(result.current.dashboardState.cases).toHaveLength(1);
   });
 });

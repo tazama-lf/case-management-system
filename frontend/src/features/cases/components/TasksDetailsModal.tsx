@@ -6,11 +6,13 @@ import TaskEvidenceTab from './view/TaskEvidenceTab';
 import InvestigationNotesTab from './view/InvestigationNotesTab';
 import InvestigationSummaryTab from './view/InvestigationsSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
+import VisualizationsTab from './view/VisualizationsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
 
 type ViewTabKey =
   | 'details'
   | 'evidence'
+  | 'visualizations'
   | 'tasks'
   | 'notes'
   | 'customer'
@@ -82,6 +84,71 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     }
   }, [row?.id, open, onClose]);
 
+  //Extract transaction ID from transaction data
+  const transactionId = React.useMemo(() => {
+    let transactionData = row?.transaction;
+
+    if (!transactionData) {
+      return undefined;
+    }
+
+    // Check if transaction is a string that needs parsing
+    if (typeof transactionData === 'string') {
+      try {
+        transactionData = JSON.parse(transactionData);
+      } catch (e) {
+        return undefined;
+      }
+    }
+
+    const transaction = transactionData as Record<string, unknown>;
+
+    const fiToFIPmtSts = transaction?.FIToFIPmtSts as
+      | Record<string, unknown>
+      | undefined;
+    const txInfAndSts = fiToFIPmtSts?.TxInfAndSts as
+      | Record<string, unknown>
+      | undefined;
+
+    // Try multiple possible field locations
+    const extractedId =
+      txInfAndSts?.OrgnlEndToEndId ||
+      txInfAndSts?.EndToEndId ||
+      transaction?.transaction_id ||
+      transaction?.transactionId;
+
+    if (extractedId && typeof extractedId === 'string') {
+      return extractedId;
+    }
+
+    return undefined;
+  }, [row]);
+
+  const shouldShowVisualizations = React.useMemo(() => {
+    let transactionData = row?.transaction;
+
+    if (!transactionData) {
+      return false;
+    }
+
+    if (typeof transactionData === 'string') {
+      try {
+        transactionData = JSON.parse(transactionData);
+      } catch (e) {
+        return false;
+      }
+    }
+
+    const transaction = transactionData as Record<string, unknown>;
+    return transaction?.FIToFIPmtSts !== undefined;
+  }, [row]);
+
+  React.useEffect(() => {
+    if (!shouldShowVisualizations && tab === 'visualizations') {
+      setTab('details');
+    }
+  }, [shouldShowVisualizations, tab]);
+
   if (!open || !row) return null;
 
   return (
@@ -110,6 +177,14 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               [
                 { key: 'details', label: 'Task Details' },
                 { key: 'evidence', label: 'Evidence' },
+                ...(shouldShowVisualizations
+                  ? ([
+                    {
+                      key: 'visualizations',
+                      label: 'Visualizations',
+                    },
+                  ] as const)
+                  : []),
                 { key: 'notes', label: 'Investigation Notes' },
                 { key: 'summary', label: 'Investigation Summary' },
               ] satisfies Array<{ key: ViewTabKey; label: string }>
@@ -156,6 +231,19 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   }}
                 />
               </div>
+              {shouldShowVisualizations && (
+                <div
+                  style={{
+                    display: tab === 'visualizations' ? 'block' : 'none',
+                  }}
+                >
+                  <VisualizationsTab
+                    alertId={row?.alertId}
+                    caseId={row?.id}
+                    transactionId={transactionId}
+                  />
+                </div>
+              )}
               <div style={{ display: tab === 'notes' ? 'block' : 'none' }}>
                 <InvestigationNotesTab
                   task={tasks.filter((t) => t.task_id === selectedTask?.id)[0]}

@@ -4,6 +4,9 @@ export default function getDateRange(dateRange?: string): { startDate: Date; end
   let startDate = new Date(now);
 
   switch (dateRange) {
+    case 'all':
+      startDate = new Date(0);
+      break;
     case 'today':
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(23, 59, 59, 999);

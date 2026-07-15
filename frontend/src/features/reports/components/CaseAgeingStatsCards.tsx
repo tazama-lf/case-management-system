@@ -21,7 +21,7 @@ const DaysStatsCard: React.FC<{
 }> = ({ title, days, subtitle, icon, color }) => {
   const formatDays = (value: number | null | undefined): string => {
     if (value === null || value === undefined || isNaN(value)) {
-      return '0 days';
+      return 'N/A';
     }
     return `${Math.round(value)} days`;
   };

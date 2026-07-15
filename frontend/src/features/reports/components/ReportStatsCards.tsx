@@ -18,7 +18,7 @@ interface ReportStatsCardsProps {
 const ReportStatsCards: React.FC<ReportStatsCardsProps> = ({ stats }) => {
   const formatDays = (value: number | null | undefined): string => {
     if (value === null || value === undefined || isNaN(value)) {
-      return '0 days';
+      return 'N/A';
     }
     return `${Math.round(value)} days`;
   };
@@ -38,7 +38,7 @@ const ReportStatsCards: React.FC<ReportStatsCardsProps> = ({ stats }) => {
     },
     {
       title: 'Open Cases',
-      value: stats.openCases,
+      value: stats.openAssignedCases,
       icon: <FolderOpenIcon className="h-6 w-6" />,
       color: 'yellow' as const,
     },

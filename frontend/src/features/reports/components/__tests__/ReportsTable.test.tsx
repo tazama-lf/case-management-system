@@ -121,7 +121,7 @@ describe('ReportsTable', () => {
     expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getByText('Count')).toBeInTheDocument();
     expect(screen.getByText('Percentage')).toBeInTheDocument();
-    expect(screen.getByText('Avg Time in Status')).toBeInTheDocument();
+    expect(screen.getByText('Avg Age of Current Cases')).toBeInTheDocument();
     expect(screen.getByText('Current Trend Period')).toBeInTheDocument();
   });
 
