@@ -126,7 +126,7 @@ const CaseAgeingBarChart: React.FC<CaseAgeingBarChartProps> = ({
           <XAxis
             type="number"
             domain={[0, 100]}
-            tickFormatter={(value: number) => `${value}%`}
+            tickFormatter={(value: number) => `${Math.round(value)}%`}
             tick={{ fontSize: 11 }}
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={false}
