@@ -106,7 +106,7 @@ describe('AlertPriorityService', () => {
         }),
       );
       expect(prismaService.slaEscalationRecord.create).toHaveBeenCalledWith({
-        data: { case_id: 1, sla_state: SlaState.AT_RISK },
+        data: { case_id: 1, tenant_id: 'tenant-1', sla_state: SlaState.AT_RISK },
       });
       jest.useRealTimers();
     });
@@ -148,7 +148,7 @@ describe('AlertPriorityService', () => {
         }),
       );
       expect(prismaService.slaEscalationRecord.create).toHaveBeenCalledWith({
-        data: { case_id: 1, sla_state: SlaState.DUE_SOON },
+        data: { case_id: 1, tenant_id: 'tenant-1', sla_state: SlaState.DUE_SOON },
       });
       jest.useRealTimers();
     });
@@ -282,7 +282,7 @@ describe('AlertPriorityService', () => {
         new CaseSlaBreachedEvent(1, 'tenant-1', CaseType.FRAUD, null, caseRecord.sla_due_at),
       );
       expect(prismaService.slaEscalationRecord.create).toHaveBeenCalledWith({
-        data: { case_id: 1, sla_state: SlaState.BREACHED },
+        data: { case_id: 1, tenant_id: 'tenant-1', sla_state: SlaState.BREACHED },
       });
       jest.useRealTimers();
     });

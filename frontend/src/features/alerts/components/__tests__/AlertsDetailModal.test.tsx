@@ -391,6 +391,64 @@ describe("AlertsDetailModal", () => {
     });
   });
 
+  it("displays the EFRuP subRuleRef as a badge, reading it from unfiltered alert_data even though the typology missed its own alertThreshold", async () => {
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      // No alerted_typologies entry survives server-side filtering (result <
+      // alertThreshold), so the badge must come from the raw tadpResult, not
+      // from alerted_typologies.
+      alerted_typologies: [],
+      alert_data: {
+        tadpResult: {
+          typologyResult: [
+            {
+              id: "typology-1",
+              cfg: "Money Laundering",
+              result: 40,
+              workflow: { alertThreshold: 50, interdictionThreshold: 80 },
+              ruleResults: [
+                { id: "075@1.0.0", cfg: "1.0.0", wght: 100, subRuleRef: ".02" },
+                { id: "EFRuP@1.0.0", cfg: "1.0.0", wght: 0, subRuleRef: "Block" },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText("EFRuP:")).toBeInTheDocument();
+      expect(screen.getByText("Block")).toBeInTheDocument();
+    });
+  });
+
+  it("does not display an EFRuP badge when no rule has id EFRuP@1.0.0", async () => {
+    mockGetAlertById.mockResolvedValue({
+      ...baseAlert,
+      alerted_typologies: [
+        {
+          id: "typology-1",
+          cfg: "Money Laundering",
+          result: 95,
+          alertThreshold: 50,
+          interdictionThreshold: 80,
+          ruleResults: [
+            { id: "075@1.0.0", cfg: "1.0.0", wght: 100, subRuleRef: ".02" },
+          ],
+        },
+      ],
+    });
+
+    renderModal();
+
+    await waitFor(() => {
+      expect(screen.getByText("Triggered Typologies")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("EFRuP:")).not.toBeInTheDocument();
+  });
+
   it("displays all typologies returned by backend alerted_typologies", async () => {
     mockGetAlertById.mockResolvedValue({
       ...baseAlert,

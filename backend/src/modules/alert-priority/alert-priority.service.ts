@@ -158,7 +158,7 @@ export class AlertPriorityService {
 
     try {
       await this.prisma.slaEscalationRecord.create({
-        data: { case_id: caseRecord.case_id, sla_state: state },
+        data: { case_id: caseRecord.case_id, tenant_id: caseRecord.tenant_id, sla_state: state },
       });
     } catch (error) {
       // A concurrent run may have already recorded this — the unique constraint on

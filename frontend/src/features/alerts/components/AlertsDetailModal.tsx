@@ -163,6 +163,36 @@ const extractTriggeredTypologies = (
   });
 };
 
+const EFRUP_RULE_ID = 'EFRuP@1.0.0';
+const extractFlowProcessorData = (
+  alert: AlertWithAlertedTypologies,
+): string | undefined => {
+  const tadpResult = isRecord(alert.alert_data)
+    ? alert.alert_data.tadpResult
+    : undefined;
+  const typologyResult = isRecord(tadpResult)
+    ? tadpResult.typologyResult
+    : undefined;
+  if (!Array.isArray(typologyResult)) {
+    return undefined;
+  }
+
+  for (const typology of typologyResult) {
+    if (!isRecord(typology)) continue;
+    const ruleResults = Array.isArray(typology.ruleResults)
+      ? typology.ruleResults.filter(isRecord)
+      : [];
+    const flowProcessorRule = ruleResults.find(
+      (rule) => rule.id === EFRUP_RULE_ID,
+    );
+    const subRuleRef = flowProcessorRule?.subRuleRef;
+    if (typeof subRuleRef === 'string' && subRuleRef.trim()) {
+      return subRuleRef;
+    }
+  }
+  return undefined;
+};
+
 const formatJson = (value: unknown): string => {
   if (value === null || value === undefined) {
     return 'No data available';
@@ -501,6 +531,7 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
   };
 
   const triggeredTypologies = extractTriggeredTypologies(alert);
+  const flowProcessorData = extractFlowProcessorData(alert);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -835,9 +866,18 @@ const AlertsDetailModal: React.FC<AlertsDetailModalProps> = ({
               </div>
 
               <div className="rounded-lg border border-gray-200 bg-white p-5 mb-4">
-                <h4 className="text-sm font-semibold text-gray-900 mb-4">
-                  Triggered Typologies
-                </h4>
+                <div className="mb-4 grid grid-cols-3 items-center">
+                  <h4 className="text-sm font-semibold text-gray-900">
+                    Triggered Typologies
+                  </h4>
+
+                  {flowProcessorData && (
+                    <div className="justify-self-center text-sm font-semibold">
+                      <span className="text-gray-900">EFRuP:</span>{' '}
+                      <span className="text-red-600">{flowProcessorData}</span>
+                    </div>
+                  )}
+                </div>
 
                 <div className="space-y-3">
                   {triggeredTypologies.length > 0 ? (
