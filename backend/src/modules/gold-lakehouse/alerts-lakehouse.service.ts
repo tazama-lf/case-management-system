@@ -86,7 +86,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             anh.transaction_amount,
             anh.transaction_currency,
             anh.transaction_id,
-            anh.end_to_end_id,
             anh.block_or_override_status,
             anh.alert_date,
             COLLECT_LIST(
@@ -139,7 +138,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             anh.transaction_amount,
             anh.transaction_currency,
             anh.transaction_id,
-            anh.end_to_end_id,
             anh.block_or_override_status,
             anh.alert_date
       `;
