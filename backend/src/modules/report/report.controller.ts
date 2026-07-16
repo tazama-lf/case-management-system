@@ -450,7 +450,7 @@ export class ReportsController {
             casesOver15Days: {
               type: 'number',
               example: 22,
-              description: 'open cases aged 15-30 days, non-overlapping with casesOver30Days',
+              description: 'open cases aged 16-29 days, non-overlapping with casesOver30Days',
             },
             casesOver30Days: { type: 'number', example: 18 },
           },

@@ -610,7 +610,7 @@ describe('ReportsService', () => {
     it('excludes abandoned cases from the ageing dataset, not just from the closed set', async () => {
       await service.getCaseAgeing('last30', { tenantId: 'tenant-123' });
 
-      // The open-backlog query (feeding avgCaseAge, the 15-30/30+ cards, the
+      // The open-backlog query (feeding avgCaseAge, the 16-29/30+ cards, the
       // by-status bar, the distribution donut, and the details table), the
       // closed-window query, and the resolution-trend query all share
       // withNonContainerCaseFilter, so abandoned cases are excluded from
@@ -644,7 +644,7 @@ describe('ReportsService', () => {
       );
     });
 
-    it('puts open cases into exactly one of the 15-30 / 30+ tiers', async () => {
+    it('puts open cases into exactly one of the 16-29 / 30+ tiers', async () => {
       prismaService.case.findMany.mockResolvedValueOnce([
         { case_id: 1, created_at: new Date('2026-03-15T12:00:00Z'), status: CaseStatus.STATUS_20_IN_PROGRESS, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: null }, // age 5
         { case_id: 2, created_at: new Date('2026-03-01T12:00:00Z'), status: CaseStatus.STATUS_20_IN_PROGRESS, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: null }, // age 19

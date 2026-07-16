@@ -1177,7 +1177,7 @@ export class ReportsService {
     const ageingDistribution = ReportsService.reconcilePercentages([
       { ageRange: '0-7 days', count: ageBuckets(openCasesWithAge).age0to7, color: '#10b981' },
       { ageRange: '8-15 days', count: ageBuckets(openCasesWithAge).age8to15, color: '#f59e0b' },
-      { ageRange: '16-30 days', count: ageBuckets(openCasesWithAge).age16to30, color: '#ef4444' },
+      { ageRange: '16-29 days', count: ageBuckets(openCasesWithAge).age16to30, color: '#ef4444' },
       { ageRange: '30+ days', count: ageBuckets(openCasesWithAge).age30Plus, color: '#991b1b' },
     ]);
 

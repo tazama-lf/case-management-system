@@ -12,7 +12,7 @@ interface CaseAgeingPieChartProps {
 const ageColors = {
   '0-7 days': '#10b981',
   '8-15 days': '#f59e0b',
-  '16-30 days': '#ef4444',
+  '16-29 days': '#ef4444',
   '30+ days': '#991b1b',
 };
 
@@ -34,7 +34,7 @@ const CaseAgeingPieChart: React.FC<CaseAgeingPieChartProps> = ({
     );
   }
 
-  const allAgeRanges = ['0-7 days', '8-15 days', '16-30 days', '30+ days'];
+  const allAgeRanges = ['0-7 days', '8-15 days', '16-29 days', '30+ days'];
   const completeData = allAgeRanges.map((range) => {
     const existing = data.find((item) => item.ageRange === range);
     return {

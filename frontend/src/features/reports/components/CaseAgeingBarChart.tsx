@@ -21,10 +21,10 @@ interface CaseAgeingBarChartProps {
 }
 
 /** Same band set and colors as CaseAgeingPieChart - the two must never drift apart. */
-const AGE_BANDS: Array<{ key: '0-7 days' | '8-15 days' | '16-30 days' | '30+ days'; color: string }> = [
+const AGE_BANDS: Array<{ key: '0-7 days' | '8-15 days' | '16-29 days' | '30+ days'; color: string }> = [
   { key: '0-7 days', color: '#10b981' },
   { key: '8-15 days', color: '#f59e0b' },
-  { key: '16-30 days', color: '#ef4444' },
+  { key: '16-29 days', color: '#ef4444' },
   { key: '30+ days', color: '#991b1b' },
 ];
 
@@ -41,7 +41,7 @@ interface ChartRow {
   counts: Record<string, number>;
   '0-7 days': number;
   '8-15 days': number;
-  '16-30 days': number;
+  '16-29 days': number;
   '30+ days': number;
   empty: number;
   emptyLabel: string;
@@ -75,12 +75,12 @@ const CaseAgeingBarChart: React.FC<CaseAgeingBarChartProps> = ({
       counts: {
         '0-7 days': item.age0to7,
         '8-15 days': item.age8to15,
-        '16-30 days': item.age16to30,
+        '16-29 days': item.age16to30,
         '30+ days': item.age30Plus,
       },
       '0-7 days': pct(item.age0to7),
       '8-15 days': pct(item.age8to15),
-      '16-30 days': pct(item.age16to30),
+      '16-29 days': pct(item.age16to30),
       '30+ days': pct(item.age30Plus),
       empty: total === 0 ? 100 : 0,
       emptyLabel: total === 0 ? 'no open cases' : '',

@@ -190,7 +190,7 @@ export interface CaseAgeingStats {
   avgCaseAge: number | null;
   /** null when no cases closed in the selected window */
   avgResolutionTime: number | null;
-  /** open cases aged 16-30 days, non-overlapping with casesOver30Days */
+  /** open cases aged 16-29 days, non-overlapping with casesOver30Days */
   casesOver15Days: number;
   casesOver30Days: number;
 }

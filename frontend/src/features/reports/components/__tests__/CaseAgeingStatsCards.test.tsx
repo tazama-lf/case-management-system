@@ -15,7 +15,7 @@ describe('CaseAgeingStatsCards', () => {
     render(<CaseAgeingStatsCards stats={mockStats} />);
 
     expect(screen.getByText('Avg. Case Age')).toBeInTheDocument();
-    expect(screen.getByText('Cases 15-30 Days')).toBeInTheDocument();
+    expect(screen.getByText('Cases 16-29 Days')).toBeInTheDocument();
     expect(screen.getByText('Cases 30+ Days')).toBeInTheDocument();
     // Avg. Resolution Time moved to the Closed Throughput section - it's not
     // part of this (open-backlog) card row anymore.
@@ -28,11 +28,11 @@ describe('CaseAgeingStatsCards', () => {
     expect(screen.getByText('13 days')).toBeInTheDocument(); // Math.round(12.5) = 13
   });
 
-  it('displays cases in the 15-30 day tier', () => {
+  it('displays cases in the 16-29 day tier', () => {
     render(<CaseAgeingStatsCards stats={mockStats} />);
 
     const card = screen
-      .getByText('Cases 15-30 Days')
+      .getByText('Cases 16-29 Days')
       .closest('div[class*="bg-white"]') as HTMLElement;
     expect(card).toBeInTheDocument();
     expect(card.textContent).toContain('25');

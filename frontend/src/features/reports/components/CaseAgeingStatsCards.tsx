@@ -109,7 +109,7 @@ interface CaseAgeingStatsCardsProps {
 /**
  * Open-backlog stat tiles - a live, as-of-now snapshot of open cases only.
  * `avgCaseAge` is null with an empty open population (rendered as N/A, not 0).
- * The 15-30 / 30+ tiers are non-overlapping: a case counts in exactly one.
+ * The 16-29 / 30+ tiers are non-overlapping: a case counts in exactly one.
  */
 const CaseAgeingStatsCards: React.FC<CaseAgeingStatsCardsProps> = ({
   stats,
@@ -123,7 +123,7 @@ const CaseAgeingStatsCards: React.FC<CaseAgeingStatsCardsProps> = ({
       color="blue"
     />
     <CountStatsCard
-      title="Cases 15-30 Days"
+      title="Cases 16-29 Days"
       subtitle="Open cases only"
       value={stats.casesOver15Days}
       icon={<ExclamationTriangleIcon className="h-6 w-6" />}
