@@ -18,7 +18,7 @@ import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvesti
 
 interface InvestigatorWorkloadReportProps {
   dateRange: string;
-  filters?: { caseType: string; priority: string; investigator: string };
+  filters?: { caseType?: string; priority?: string; investigator?: string };
 }
 
 const InvestigatorWorkloadReport: React.FC<InvestigatorWorkloadReportProps> = ({

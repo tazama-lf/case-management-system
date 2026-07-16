@@ -508,6 +508,28 @@ export class ReportsController {
             },
           },
         },
+        caseDetails: {
+          type: 'array',
+          description:
+            'Per-case rows backing the open-backlog table - same live, as-of-now snapshot as stats/ageingByStatus/ageingDistribution, ignores dateRange.',
+          items: {
+            type: 'object',
+            properties: {
+              caseId: { type: 'number', example: 1234 },
+              type: { type: 'string', example: 'FRAUD' },
+              status: { type: 'string', example: '20 IN PROGRESS' },
+              createdDate: { type: 'string', format: 'date-time', example: '2026-06-01T10:00:00.000Z' },
+              ageDays: { type: 'number', example: 12 },
+              priority: { type: 'string', example: 'HIGH' },
+              investigatorId: {
+                type: 'string',
+                nullable: true,
+                example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                description: 'Raw case owner id, kept for hover/export only; null renders as "Unassigned" client-side',
+              },
+            },
+          },
+        },
       },
     },
   })

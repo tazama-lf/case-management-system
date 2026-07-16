@@ -34,7 +34,7 @@ interface EvidenceFindingsReportProps {
   | 'thisMonth'
   | 'lastYear'
   | 'all';
-  filters?: { caseType: string; priority: string; investigator: string };
+  filters?: { caseType?: string; priority?: string; investigator?: string };
 }
 
 const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({

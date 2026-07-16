@@ -21,7 +21,7 @@ import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvesti
 
 interface CaseAgeingReportProps {
   dateRange: string;
-  filters?: { caseType: string; priority: string; investigator: string };
+  filters?: { caseType?: string; priority?: string; investigator?: string };
 }
 
 const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
