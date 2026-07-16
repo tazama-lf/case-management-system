@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import type { CaseAgeingDetail } from '../types/reports.types';
 import { usePagination } from '../../../shared/hooks/usePagination';
 import TablePagination from '../../../shared/components/TablePagination';
@@ -55,6 +55,14 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
       default:
         return 'text-gray-600';
     }
+  };
+
+  // ISO 8601 from the backend, localised client-side for display (sortable at
+  // the source, still readable here).
+  const formatCreatedDate = (iso: string): string => {
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return iso;
+    return date.toLocaleDateString('en-CA'); // yyyy-mm-dd
   };
 
   return (
@@ -151,7 +159,9 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
                     <div className="break-words">{row.status}</div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    <div className="break-words">{row.createdDate}</div>
+                    <div className="break-words">
+                      {formatCreatedDate(row.createdDate)}
+                    </div>
                   </td>
                   <td
                     className={`px-4 py-3 text-sm font-medium ${getAgeColor(row.ageDays)}`}
@@ -165,25 +175,17 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
                   </td>
                   <td className="px-4 py-3">
                     <div
-                      className="break-all font-mono text-sm"
-                      title={
-                        (row as any).userId ??
-                        (row as any).user_id ??
-                        (row as any).assigneeId ??
-                        (row as any).assignee_id ??
-                        ''
-                      }
+                      className="break-all font-mono text-sm text-gray-900"
+                      title={row.investigatorId ?? ''}
                     >
-                      {(row as any).userId ??
-                        (row as any).user_id ??
-                        (row as any).assigneeId ??
-                        (row as any).assignee_id ??
-                        'N/A'}
+                      {row.investigatorId ?? 'N/A'}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
                     <div className="break-words">
-                      {getAssigneeFullName(row.investigator) || 'Unassigned'}
+                      {row.investigatorId
+                        ? getAssigneeFullName(row.investigatorId)
+                        : 'Unassigned'}
                     </div>
                   </td>
                 </tr>

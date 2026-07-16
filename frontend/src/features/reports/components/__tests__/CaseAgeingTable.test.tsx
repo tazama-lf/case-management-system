@@ -97,28 +97,28 @@ describe('CaseAgeingTable', () => {
       caseId: 'CASE-1',
       type: 'FRAUD',
       status: 'STATUS_20_IN_PROGRESS',
-      createdDate: '2024-01-01',
+      createdDate: '2024-01-01T12:00:00.000Z',
       ageDays: 5,
       priority: 'High',
-      investigator: 'user-1',
+      investigatorId: 'user-1',
     },
     {
       caseId: 'CASE-2',
       type: 'MONEY_LAUNDERING',
       status: 'STATUS_10_ASSIGNED',
-      createdDate: '2024-01-05',
+      createdDate: '2024-01-05T12:00:00.000Z',
       ageDays: 12,
       priority: 'Medium',
-      investigator: 'user-2',
+      investigatorId: 'user-2',
     },
     {
       caseId: 'CASE-3',
       type: 'FRAUD',
       status: 'STATUS_30_CLOSED',
-      createdDate: '2024-01-10',
+      createdDate: '2024-01-10T12:00:00.000Z',
       ageDays: 35,
       priority: 'Low',
-      investigator: 'Unassigned',
+      investigatorId: null,
     },
   ];
 
@@ -193,6 +193,24 @@ describe('CaseAgeingTable', () => {
     render(<CaseAgeingTable data={mockData} title="Case Ageing" />);
 
     expect(screen.getByText('Unassigned')).toBeInTheDocument();
+  });
+
+  it('shows both the raw User ID and the resolved Investigator name as separate columns', async () => {
+    render(<CaseAgeingTable data={mockData} title="Case Ageing" />);
+
+    expect(screen.getByText('user-1')).toBeInTheDocument();
+    expect(screen.getByText('user-2')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+    });
+  });
+
+  it('shows N/A for User ID when the case is unassigned', () => {
+    render(<CaseAgeingTable data={mockData} title="Case Ageing" />);
+
+    expect(screen.getByText('N/A')).toBeInTheDocument();
   });
 
   it('calls onExportExcel when export button is clicked', async () => {
@@ -310,7 +328,7 @@ describe('CaseAgeingTable', () => {
         createdDate: '2024-01-01',
         ageDays: 7, // Exactly 7
         priority: 'High',
-        investigator: 'User user-1',
+        investigatorId: 'user-1',
       },
       {
         caseId: 'CASE-2',
@@ -319,7 +337,7 @@ describe('CaseAgeingTable', () => {
         createdDate: '2024-01-01',
         ageDays: 15, // Exactly 15
         priority: 'High',
-        investigator: 'User user-1',
+        investigatorId: 'user-1',
       },
       {
         caseId: 'CASE-3',
@@ -328,7 +346,7 @@ describe('CaseAgeingTable', () => {
         createdDate: '2024-01-01',
         ageDays: 30, // Exactly 30
         priority: 'High',
-        investigator: 'User user-1',
+        investigatorId: 'user-1',
       },
     ];
 
@@ -353,7 +371,7 @@ describe('CaseAgeingTable', () => {
         createdDate: '2024-01-01',
         ageDays: 5,
         priority: 'HIGH', // Uppercase
-        investigator: 'User user-1',
+        investigatorId: 'user-1',
       },
       {
         caseId: 'CASE-2',
@@ -362,7 +380,7 @@ describe('CaseAgeingTable', () => {
         createdDate: '2024-01-01',
         ageDays: 5,
         priority: 'medium', // Lowercase
-        investigator: 'User user-1',
+        investigatorId: 'user-1',
       },
     ];
 

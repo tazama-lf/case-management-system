@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import CaseAgeingStatsCards from '../CaseAgeingStatsCards';
 import type { CaseAgeingStats } from '../../types/reports.types';
 
@@ -11,13 +11,15 @@ describe('CaseAgeingStatsCards', () => {
     casesOver30Days: 10,
   };
 
-  it('renders all stats cards', () => {
+  it('renders the three open-backlog cards', () => {
     render(<CaseAgeingStatsCards stats={mockStats} />);
 
     expect(screen.getByText('Avg. Case Age')).toBeInTheDocument();
-    expect(screen.getByText('Avg. Resolution Time')).toBeInTheDocument();
-    expect(screen.getByText('Cases > 15 Days')).toBeInTheDocument();
-    expect(screen.getByText('Cases > 30 Days')).toBeInTheDocument();
+    expect(screen.getByText('Cases 16-29 Days')).toBeInTheDocument();
+    expect(screen.getByText('Cases 30+ Days')).toBeInTheDocument();
+    // Avg. Resolution Time moved to the Closed Throughput section - it's not
+    // part of this (open-backlog) card row anymore.
+    expect(screen.queryByText('Avg. Resolution Time')).not.toBeInTheDocument();
   });
 
   it('displays formatted average case age', () => {
@@ -26,64 +28,37 @@ describe('CaseAgeingStatsCards', () => {
     expect(screen.getByText('13 days')).toBeInTheDocument(); // Math.round(12.5) = 13
   });
 
-  it('displays formatted average resolution time', () => {
+  it('displays cases in the 16-29 day tier', () => {
     render(<CaseAgeingStatsCards stats={mockStats} />);
 
-    expect(screen.getByText('18 days')).toBeInTheDocument(); // Math.round(18.3) = 18
-  });
-
-  it('displays cases over 15 days', async () => {
-    render(<CaseAgeingStatsCards stats={mockStats} />);
-
-    // Find the specific card container by its title
     const card = screen
-      .getByText('Cases > 15 Days')
-      .closest('div[class*="bg-white"]');
+      .getByText('Cases 16-29 Days')
+      .closest('div[class*="bg-white"]') as HTMLElement;
     expect(card).toBeInTheDocument();
-
-    // Wait for animation to complete and verify the correct number is displayed in this card
-    // The StatsCard component animates from 0 to the target value over 1000ms
-    await waitFor(
-      () => {
-        const cardElement = card as HTMLElement;
-        expect(within(cardElement).getByText('25')).toBeInTheDocument();
-      },
-      { timeout: 3000, interval: 100 }, // Increased timeout and check interval for animation
-    );
+    expect(card.textContent).toContain('25');
   });
 
-  it('displays cases over 30 days', async () => {
+  it('displays cases in the 30+ day tier', () => {
     render(<CaseAgeingStatsCards stats={mockStats} />);
 
-    // Find the specific card container by its title
     const card = screen
-      .getByText('Cases > 30 Days')
-      .closest('div[class*="bg-white"]');
+      .getByText('Cases 30+ Days')
+      .closest('div[class*="bg-white"]') as HTMLElement;
     expect(card).toBeInTheDocument();
-
-    // Wait for animation to complete and verify the correct number is displayed in this card
-    // The StatsCard component animates from 0 to the target value over 1000ms
-    await waitFor(
-      () => {
-        const cardElement = card as HTMLElement;
-        expect(within(cardElement).getByText('10')).toBeInTheDocument();
-      },
-      { timeout: 3000, interval: 100 }, // Increased timeout and check interval for animation
-    );
+    expect(card.textContent).toContain('10');
   });
 
-  it('handles null values', () => {
+  it('renders N/A for avgCaseAge when there are no open cases (null, not 0)', () => {
     const nullStats: CaseAgeingStats = {
       avgCaseAge: null,
       avgResolutionTime: null,
-      casesOver15Days: null,
-      casesOver30Days: null,
+      casesOver15Days: 0,
+      casesOver30Days: 0,
     };
 
     render(<CaseAgeingStatsCards stats={nullStats} />);
 
-    expect(screen.getAllByText('N/A').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+    expect(screen.getByText('N/A')).toBeInTheDocument();
   });
 
   it('handles undefined values', () => {
@@ -96,7 +71,7 @@ describe('CaseAgeingStatsCards', () => {
 
     render(<CaseAgeingStatsCards stats={undefinedStats} />);
 
-    expect(screen.getAllByText('N/A').length).toBeGreaterThan(0);
+    expect(screen.getByText('N/A')).toBeInTheDocument();
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
   });
 
@@ -110,7 +85,7 @@ describe('CaseAgeingStatsCards', () => {
 
     render(<CaseAgeingStatsCards stats={nanStats} />);
 
-    expect(screen.getAllByText('N/A').length).toBeGreaterThan(0);
+    expect(screen.getByText('N/A')).toBeInTheDocument();
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
   });
 
@@ -125,7 +100,6 @@ describe('CaseAgeingStatsCards', () => {
     render(<CaseAgeingStatsCards stats={decimalStats} />);
 
     expect(screen.getByText('13 days')).toBeInTheDocument(); // Math.round(12.7) = 13
-    expect(screen.getByText('19 days')).toBeInTheDocument(); // Math.round(18.9) = 19
   });
 
   it('handles zero values', () => {
@@ -138,7 +112,7 @@ describe('CaseAgeingStatsCards', () => {
 
     render(<CaseAgeingStatsCards stats={zeroStats} />);
 
-    expect(screen.getAllByText('0 days').length).toBeGreaterThan(0);
+    expect(screen.getByText('0 days')).toBeInTheDocument();
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
   });
 });

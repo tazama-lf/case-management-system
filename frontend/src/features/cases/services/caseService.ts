@@ -19,6 +19,8 @@ export interface GetUserCasesQueryDto {
   excludeDraft?: boolean;
   excludeClosed?: boolean;
   closedOnly?: boolean;
+  /** Filter to a single case owner (assignee) user id. */
+  ownerId?: string;
 }
 
 export interface UserTaskDto {
@@ -601,6 +603,7 @@ export class CaseService {
         params.append('slaState', query.slaState);
       }
       if (query?.search) params.append('search', query.search);
+      if (query?.ownerId) params.append('ownerId', query.ownerId);
       if (query?.page) params.append('page', String(query.page));
       if (query?.limit) params.append('limit', String(query.limit));
       if (query?.sortBy) params.append('sortBy', query.sortBy);

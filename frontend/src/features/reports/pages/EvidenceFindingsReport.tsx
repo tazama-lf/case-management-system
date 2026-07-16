@@ -26,23 +26,26 @@ const PaginationControls = React.lazy(
 
 interface EvidenceFindingsReportProps {
   dateRange?:
-    | 'today'
-    | 'yesterday'
-    | 'last7'
-    | 'last30'
-    | 'last90'
-    | 'thisMonth'
-    | 'lastYear';
+  | 'today'
+  | 'yesterday'
+  | 'last7'
+  | 'last30'
+  | 'last90'
+  | 'thisMonth'
+  | 'lastYear'
+  | 'all';
+  filters?: { caseType?: string; priority?: string; investigator?: string };
 }
 
 const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
   dateRange = 'last30',
+  filters,
 }) => {
   const {
     data: evidenceData,
     isLoading,
     error,
-  } = useEvidenceFindings(dateRange);
+  } = useEvidenceFindings(dateRange, filters);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<
     'All' | 'Confirmed' | 'Refuted' | 'Inconclusive'
@@ -457,10 +460,10 @@ const EvidenceFindingsReport: React.FC<EvidenceFindingsReportProps> = ({
                         onChange={(e) => {
                           setStatusFilter(
                             e.target.value as
-                              | 'All'
-                              | 'Confirmed'
-                              | 'Refuted'
-                              | 'Inconclusive',
+                            | 'All'
+                            | 'Confirmed'
+                            | 'Refuted'
+                            | 'Inconclusive',
                           );
                         }}
                         className="appearance-none bg-white border border-gray-300 rounded-lg py-2 pl-3 pr-8 text-sm leading-5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

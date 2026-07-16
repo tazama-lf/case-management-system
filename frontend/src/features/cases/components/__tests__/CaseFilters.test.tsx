@@ -34,6 +34,18 @@ vi.mock('../../../auth/services/authService', () => ({
   },
 }));
 
+vi.mock('../../hooks/useInvestigatorSupervisorList', () => ({
+  useInvestigatorSupervisorList: () => ({
+    investigators: [
+      { id: 'user-1', name: 'User 1', firstName: 'Jane', lastName: 'Investigator' },
+    ],
+    supervisors: [
+      { id: 'user-2', name: 'User 2', firstName: 'John', lastName: 'Supervisor' },
+    ],
+    getAssigneeFullName: (assignee?: string) => assignee ?? 'N/A',
+  }),
+}));
+
 describe('CaseFilters', () => {
   const defaultProps = {
     search: '',
@@ -50,6 +62,8 @@ describe('CaseFilters', () => {
     onSlaStateFilterChange: vi.fn(),
     caseTypeFilter: 'all' as const,
     onCaseTypeFilterChange: vi.fn(),
+    assigneeFilter: '',
+    onAssigneeFilterChange: vi.fn(),
   };
 
   beforeEach(() => {
@@ -110,6 +124,36 @@ describe('CaseFilters', () => {
     expect(
       screen.getByRole('option', { name: 'Suspended' }),
     ).toBeInTheDocument();
+  });
+
+  it('should render assignee filter options (investigators and supervisors) after opening filters', async () => {
+    const user = userEvent.setup();
+    render(<CaseFilters {...defaultProps} />);
+    await user.click(screen.getByText('Filters'));
+    expect(
+      screen.getByRole('option', { name: 'All Assignees' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'Jane Investigator' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'John Supervisor' }),
+    ).toBeInTheDocument();
+  });
+
+  it('should call onAssigneeFilterChange when assignee is changed', async () => {
+    const user = userEvent.setup();
+    const onAssigneeFilterChange = vi.fn();
+    render(
+      <CaseFilters
+        {...defaultProps}
+        onAssigneeFilterChange={onAssigneeFilterChange}
+      />,
+    );
+    await user.click(screen.getByText('Filters'));
+    const assigneeSelect = screen.getByDisplayValue('All Assignees');
+    await user.selectOptions(assigneeSelect, 'user-1');
+    expect(onAssigneeFilterChange).toHaveBeenCalledWith('user-1');
   });
 
   it('should call onStatusFilterChange when status is changed', async () => {
@@ -282,6 +326,7 @@ describe('CaseFilters', () => {
     expect(onStatusFilterChange).toHaveBeenCalledWith('');
     expect(onPriorityFilterChange).toHaveBeenCalledWith('');
     expect(onSarStrStatusFilterChange).toHaveBeenCalledWith('');
+    expect(defaultProps.onAssigneeFilterChange).toHaveBeenCalledWith('');
     expect(onSortChange).toHaveBeenCalledWith('recent');
     expect(onCaseTypeFilterChange).toHaveBeenCalledWith('all');
   });

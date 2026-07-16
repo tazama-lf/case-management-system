@@ -45,6 +45,7 @@ describe('casesTable.utils', () => {
       total_tasks: 5,
       user_role: 'owner',
       assigned_to: { user_id: 'user-1', username: 'User 1' },
+      case_owner_user_id: 'user-owner-1',
       alert: {
         alert_id: 'ALERT-1',
         confidence_per: 85,
@@ -59,7 +60,9 @@ describe('casesTable.utils', () => {
       expect(result.type).toBe('FRAUD');
       expect(result.status).toBe('STATUS_20_IN_PROGRESS');
       expect(result.score).toBe(85);
-      expect(result.assignee).toBe('Current User');
+      // assignee is the raw case_owner_user_id - resolved to a display name
+      // client-side (CasesTable), not fabricated here.
+      expect(result.assignee).toBe('user-owner-1');
       expect(result.userRole).toBe('owner');
       expect(result.action).toBe('View');
     });
@@ -72,10 +75,14 @@ describe('casesTable.utils', () => {
     });
 
     it('should handle unassigned case', () => {
-      const unassignedCase = { ...mockBackendCase, assigned_to: null };
+      const unassignedCase = {
+        ...mockBackendCase,
+        assigned_to: null,
+        case_owner_user_id: null,
+      };
       const result = transformBackendCaseToUI(unassignedCase as any);
 
-      expect(result.assignee).toBe('Current User'); // Fallback logic in utils
+      expect(result.assignee).toBeUndefined();
     });
   });
 });

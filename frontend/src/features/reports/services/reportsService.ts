@@ -6,6 +6,8 @@ import type {
   UploadReportResponse,
 } from '@/features/cases/services/types/report.types';
 import apiClient from '../../../shared/services/apiClient';
+import getClientDateRange from '../helpers/getClientDateRange';
+import mapEvidenceToTasks from '../helpers/mapEvidenceToTasks';
 import type {
   ReportsData,
   InvestigatorWorkloadData,
@@ -14,10 +16,29 @@ import type {
   EvidenceFindingsData,
 } from '../types/reports.types';
 
+const EMPTY_EVIDENCE_FINDINGS: EvidenceFindingsData = {
+  stats: {
+    totalFindings: 0,
+    evidenceItems: 0,
+    confirmedFindings: 0,
+    refutedFindings: 0,
+    inconclusiveFindings: 0,
+    inProgressFindings: 0,
+  },
+  statusDistribution: {
+    confirmed: 0,
+    refuted: 0,
+    inconclusive: 0,
+    inProgress: 0,
+  },
+  evidenceItems: [],
+  findings: [],
+};
+
 class ReportsService {
   async getReportsData(
     dateRange?: string,
-    filters?: { caseType: string; priority: string; investigator: string },
+    filters?: { caseType?: string; priority?: string; investigator?: string },
   ): Promise<ReportsData> {
     try {
       const params = new URLSearchParams();
@@ -97,10 +118,19 @@ class ReportsService {
 
   async getInvestigatorWorkloadData(
     dateRange?: string,
+    filters?: { caseType?: string; priority?: string; investigator?: string },
   ): Promise<InvestigatorWorkloadData> {
     try {
+      const params = new URLSearchParams();
+      params.append('dateRange', dateRange ?? 'last30');
+      if (filters?.caseType) params.append('caseType', filters.caseType);
+      if (filters?.priority) params.append('priority', filters.priority);
+      if (filters?.investigator) {
+        params.append('investigator', filters.investigator);
+      }
+
       const response = await apiClient.get<InvestigatorWorkloadData>(
-        `/api/v1/reports/investigator-workload?dateRange=${dateRange ?? 'last30'}`,
+        `/api/v1/reports/investigator-workload?${params.toString()}`,
       );
 
       const processedResponse: InvestigatorWorkloadData = {
@@ -224,15 +254,29 @@ class ReportsService {
     }
   }
 
-  async getCaseAgeingData(dateRange?: string): Promise<CaseAgeingData> {
+  async getCaseAgeingData(
+    dateRange?: string,
+    filters?: { caseType?: string; priority?: string; investigator?: string },
+  ): Promise<CaseAgeingData> {
     try {
+      const params = new URLSearchParams();
+      params.append('dateRange', dateRange ?? 'last30');
+      if (filters?.caseType) params.append('caseType', filters.caseType);
+      if (filters?.priority) params.append('priority', filters.priority);
+      if (filters?.investigator) {
+        params.append('investigator', filters.investigator);
+      }
+
       const response = await apiClient.get<CaseAgeingData>(
-        `/api/v1/reports/case-ageing?dateRange=${dateRange ?? 'last30'}`,
+        `/api/v1/reports/case-ageing?${params.toString()}`,
       );
 
       const processedResponse: CaseAgeingData = {
         ...response,
         stats: {
+          // null is a real state here (empty open-case population / no cases
+          // closed in the window), not a fallback-to-0 case - see
+          // CaseAgeingStats jsdoc.
           avgCaseAge: response.stats.avgCaseAge ?? null,
           avgResolutionTime: response.stats.avgResolutionTime ?? null,
           casesOver15Days: ReportsService.safeFallback(
@@ -272,7 +316,8 @@ class ReportsService {
   }
 
   async getEvidenceFindingsData(
-    _dateRange?: string,
+    dateRange?: string,
+    filters?: { caseType?: string; priority?: string; investigator?: string },
   ): Promise<EvidenceFindingsData> {
     try {
       // Fetch all cases first - use correct endpoint
@@ -280,34 +325,43 @@ class ReportsService {
         Record<string, unknown> | Array<Record<string, unknown>>
       >('/api/v1/cases/all');
 
-      const cases = Array.isArray(casesResponse)
+      const allCases = Array.isArray(casesResponse)
         ? casesResponse
         : ((casesResponse.data ?? casesResponse.cases ?? []) as Array<
             Record<string, unknown>
           >);
 
+      // There's no dedicated evidence-findings backend endpoint, so
+      // dateRange/caseType/priority/investigator are applied client-side to
+      // the case population before evidence is fetched per case.
+      const { startDate, endDate } = getClientDateRange(dateRange);
+      const cases = allCases.filter((caseItem) => {
+        const createdAt = caseItem.created_at
+          ? new Date(caseItem.created_at as string)
+          : null;
+        if (createdAt && (createdAt < startDate || createdAt > endDate)) {
+          return false;
+        }
+        if (filters?.caseType && caseItem.case_type !== filters.caseType) {
+          return false;
+        }
+        if (filters?.priority && caseItem.priority !== filters.priority) {
+          return false;
+        }
+        if (
+          filters?.investigator &&
+          caseItem.case_owner_user_id !== filters.investigator
+        ) {
+          return false;
+        }
+        return true;
+      });
+
       if (cases.length === 0) {
         console.warn(
           '[Evidence Report] No cases found, returning empty findings',
         );
-        return {
-          stats: {
-            totalFindings: 0,
-            evidenceItems: 0,
-            confirmedFindings: 0,
-            refutedFindings: 0,
-            inconclusiveFindings: 0,
-            inProgressFindings: 0,
-          },
-          statusDistribution: {
-            confirmed: 0,
-            refuted: 0,
-            inProgress: 0,
-            inconclusive: 0,
-          },
-          evidenceItems: [],
-          findings: [],
-        };
+        return EMPTY_EVIDENCE_FINDINGS;
       }
 
       // Aggregate evidence from all cases
@@ -358,56 +412,7 @@ class ReportsService {
         if (caseEvidence.length > 0) {
           totalEvidenceItems += caseEvidence.length;
 
-          const evidenceByTask: Record<
-            string,
-            Array<Record<string, unknown>>
-          > = {};
-          caseEvidence.forEach((e) => {
-            const rawTaskId = e.taskId ?? e.task_id;
-            const taskId =
-              typeof rawTaskId === 'string' || typeof rawTaskId === 'number'
-                ? String(rawTaskId)
-                : 'unknown_task';
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Dynamic key access may return undefined at runtime
-            evidenceByTask[taskId] ||= [];
-            evidenceByTask[taskId].push(e);
-          });
-
-          const tasks = Object.entries(evidenceByTask).map(
-            ([taskId, evidences]) => ({
-              taskId: taskId === 'unknown_task' ? undefined : Number(taskId),
-              supportingEvidence: evidences.map((e) => {
-                const attachments = e.attachments as
-                  | Array<Record<string, unknown>>
-                  | undefined;
-                const firstAttachment = attachments?.[0];
-
-                return {
-                  id:
-                    ((e.id as string | undefined) ?? '') ||
-                    ((e.evidenceId as string | undefined) ?? '') ||
-                    ((e.evidence_id as string | undefined) ?? '') ||
-                    `unknown_${String(Date.now())}`,
-                  fileName: (e.fileName ??
-                    e.file_name ??
-                    firstAttachment?.fileName ??
-                    'Unknown Document') as string,
-                  fileSize: (e.fileSize ?? firstAttachment?.fileSize) as
-                    | number
-                    | undefined,
-                  mimeType: (e.mimeType ?? firstAttachment?.mimeType) as
-                    | string
-                    | undefined,
-                  evidenceType: e.evidenceType as string | undefined,
-                  uploadedBy: e.uploadedBy as string | undefined,
-                  uploadedByName: e.uploadedByName as string | undefined,
-                  uploadedAt: e.uploadedAt as string | undefined,
-                  description: e.description as string | undefined,
-                  hash: (e.hash ?? firstAttachment?.hash) as string | undefined,
-                };
-              }),
-            }),
-          );
+          const tasks = mapEvidenceToTasks(caseEvidence);
 
           let conclusion:
             | 'Confirmed'
@@ -473,24 +478,7 @@ class ReportsService {
         '[Evidence Report] Error in getEvidenceFindingsData:',
         error,
       );
-      return {
-        stats: {
-          totalFindings: 0,
-          evidenceItems: 0,
-          confirmedFindings: 0,
-          refutedFindings: 0,
-          inconclusiveFindings: 0,
-          inProgressFindings: 0,
-        },
-        statusDistribution: {
-          confirmed: 0,
-          refuted: 0,
-          inconclusive: 0,
-          inProgress: 0,
-        },
-        evidenceItems: [],
-        findings: [],
-      };
+      return EMPTY_EVIDENCE_FINDINGS;
     }
   }
 

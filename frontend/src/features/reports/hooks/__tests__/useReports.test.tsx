@@ -243,6 +243,33 @@ describe('useInvestigatorWorkload', () => {
     expect(result.current.data).toEqual(mockData);
     expect(reportsService.getInvestigatorWorkloadData).toHaveBeenCalledWith(
       'last30',
+      undefined,
+    );
+  });
+
+  it('forwards caseType/priority/investigator filters', async () => {
+    vi.mocked(reportsService.getInvestigatorWorkloadData).mockResolvedValue({
+      stats: { totalInvestigators: 0, avgCasesPerInvestigator: 0, avgResolutionTime: 0, caseClosureRate: 0 },
+      workloadData: [],
+      volumeTrend: [],
+      efficiencyData: [],
+      outcomeData: [],
+      performanceData: [],
+    });
+
+    const filters = { caseType: 'FRAUD', priority: 'HIGH', investigator: 'user-1' };
+    const { result } = renderHook(
+      () => useInvestigatorWorkload('last30', filters),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(reportsService.getInvestigatorWorkloadData).toHaveBeenCalledWith(
+      'last30',
+      filters,
     );
   });
 });
@@ -292,7 +319,35 @@ describe('useCaseAgeing', () => {
     });
 
     expect(result.current.data).toEqual(mockData);
-    expect(reportsService.getCaseAgeingData).toHaveBeenCalledWith('last30');
+    expect(reportsService.getCaseAgeingData).toHaveBeenCalledWith(
+      'last30',
+      undefined,
+    );
+  });
+
+  it('forwards caseType/priority/investigator filters', async () => {
+    vi.mocked(reportsService.getCaseAgeingData).mockResolvedValue({
+      stats: { avgCaseAge: null, avgResolutionTime: null, casesOver15Days: 0, casesOver30Days: 0 },
+      ageingByStatus: [],
+      resolutionTrend: [],
+      ageingDistribution: [],
+      caseTypeResolution: [],
+      caseDetails: [],
+    });
+
+    const filters = { caseType: 'AML', priority: 'LOW', investigator: 'user-2' };
+    const { result } = renderHook(() => useCaseAgeing('last30', filters), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(reportsService.getCaseAgeingData).toHaveBeenCalledWith(
+      'last30',
+      filters,
+    );
   });
 });
 
@@ -321,6 +376,31 @@ describe('useEvidenceFindings', () => {
     expect(result.current.data).toEqual(mockData);
     expect(reportsService.getEvidenceFindingsData).toHaveBeenCalledWith(
       'last30',
+      undefined,
+    );
+  });
+
+  it('forwards caseType/priority/investigator filters', async () => {
+    vi.mocked(reportsService.getEvidenceFindingsData).mockResolvedValue({
+      stats: { totalFindings: 0, evidenceItems: 0, confirmedFindings: 0, refutedFindings: 0, inconclusiveFindings: 0, inProgressFindings: 0 },
+      statusDistribution: { confirmed: 0, refuted: 0, inconclusive: 0, inProgress: 0 },
+      evidenceItems: [],
+      findings: [],
+    });
+
+    const filters = { caseType: 'FRAUD', priority: 'HIGH', investigator: 'user-1' };
+    const { result } = renderHook(
+      () => useEvidenceFindings('last30', filters),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(reportsService.getEvidenceFindingsData).toHaveBeenCalledWith(
+      'last30',
+      filters,
     );
   });
 });
