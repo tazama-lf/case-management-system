@@ -15,6 +15,8 @@ const CLOSED_STATUS_VALUES = [
   'STATUS_82_CLOSED_CONFIRMED',
   'STATUS_83_CLOSED_INCONCLUSIVE',
   'STATUS_81_CLOSED_REFUTED',
+  'STATUS_71_AUTOCLOSED_CONFIRMED',
+  'STATUS_72_AUTOCLOSED_REFUTED',
   'STATUS_99_ABANDONED',
 ];
 
@@ -89,6 +91,8 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     { value: '', label: 'All Statuses' },
     { value: 'STATUS_99_ABANDONED', label: 'Abandoned' },
     { value: 'STATUS_10_ASSIGNED', label: 'Assigned' },
+    { value: 'STATUS_71_AUTOCLOSED_CONFIRMED', label: 'Auto-closed - Confirmed' },
+    { value: 'STATUS_72_AUTOCLOSED_REFUTED', label: 'Auto-closed - Refuted' },
     { value: 'STATUS_82_CLOSED_CONFIRMED', label: 'Closed - Confirmed' },
     { value: 'STATUS_83_CLOSED_INCONCLUSIVE', label: 'Closed - Inconclusive' },
     { value: 'STATUS_81_CLOSED_REFUTED', label: 'Closed - Refuted' },

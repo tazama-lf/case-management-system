@@ -2,6 +2,7 @@ import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { isAxiosError } from 'axios';
 import { QueryRequestDto } from './dto/query-request.dto';
 import { QueryResponseDto } from './dto/query-response.dto';
 
@@ -132,7 +133,12 @@ export class GoldLakehouseService {
       return response.data;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Error running SQL query: ${errorMessage}`);
+
+      if (isAxiosError(error) && error.response?.data !== undefined) {
+        this.logger.error(`Error running SQL query: ${errorMessage} - upstream response: ${JSON.stringify(error.response.data)}`);
+      } else {
+        this.logger.error(`Error running SQL query: ${errorMessage}`);
+      }
 
       if (error instanceof HttpException) {
         throw error;

@@ -114,5 +114,18 @@ describe('GoldLakehouseService', () => {
       http.mockReturnValue(errHttp('conn'));
       await expect(service.runSqlQuery('BAD')).rejects.toThrow('Failed to run SQL query');
     });
+
+    it('logs the upstream response body on an Axios failure', async () => {
+      const axiosError = Object.assign(new Error('Request failed with status code 500'), {
+        isAxiosError: true,
+        response: { data: { error: 'Spark: table not found' }, status: 500 },
+      });
+      http.mockReturnValue(throwError(() => axiosError));
+      const errorSpy = jest.spyOn(service['logger'], 'error');
+
+      await expect(service.runSqlQuery('BAD')).rejects.toThrow(HttpException);
+
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Spark: table not found'));
+    });
   });
 });
