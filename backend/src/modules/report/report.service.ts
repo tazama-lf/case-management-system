@@ -717,6 +717,7 @@ export class ReportsService {
                 gte: startDate,
                 lte: endDate,
               },
+              ...scopeFilters,
               status: { notIn: [...ReportsService.CLOSED_STATUSES, CaseStatus.STATUS_00_DRAFT] },
             }),
           }),

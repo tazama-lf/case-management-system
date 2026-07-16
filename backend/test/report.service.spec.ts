@@ -522,6 +522,16 @@ describe('ReportsService', () => {
         }),
       );
     });
+
+    it('scopes the active-case count by tenant, case type, and priority', async () => {
+      await service.getInvestigatorWorkload('last30', { tenantId: 'tenant-123', caseType: 'AML', priority: 'HIGH' });
+
+      expect(prismaService.case.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ tenant_id: 'tenant-123', case_type: 'AML', priority: 'HIGH' }),
+        }),
+      );
+    });
   });
 
   describe('getEventLogs', () => {

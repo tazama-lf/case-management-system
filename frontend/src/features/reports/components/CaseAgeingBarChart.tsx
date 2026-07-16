@@ -165,6 +165,7 @@ const CaseAgeingBarChart: React.FC<CaseAgeingBarChartProps> = ({
             fill="#e5e7eb"
             barSize={18}
             legendType="none"
+            tooltipType="none"
             isAnimationActive={false}
           >
             <LabelList dataKey="emptyLabel" position="center" fill="#9ca3af" fontSize={11} />
