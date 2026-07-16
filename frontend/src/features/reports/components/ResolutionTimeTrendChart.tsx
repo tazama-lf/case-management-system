@@ -24,6 +24,7 @@ const formatMonthLabel = (bucket: string): string => {
   if (!year || !month) return bucket;
   return new Date(year, month - 1, 1).toLocaleDateString('en-US', {
     month: 'short',
+    year: '2-digit',
   });
 };
 

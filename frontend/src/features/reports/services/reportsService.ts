@@ -38,7 +38,7 @@ const EMPTY_EVIDENCE_FINDINGS: EvidenceFindingsData = {
 class ReportsService {
   async getReportsData(
     dateRange?: string,
-    filters?: { caseType: string; priority: string; investigator: string },
+    filters?: { caseType?: string; priority?: string; investigator?: string },
   ): Promise<ReportsData> {
     try {
       const params = new URLSearchParams();
@@ -118,7 +118,7 @@ class ReportsService {
 
   async getInvestigatorWorkloadData(
     dateRange?: string,
-    filters?: { caseType: string; priority: string; investigator: string },
+    filters?: { caseType?: string; priority?: string; investigator?: string },
   ): Promise<InvestigatorWorkloadData> {
     try {
       const params = new URLSearchParams();
@@ -256,7 +256,7 @@ class ReportsService {
 
   async getCaseAgeingData(
     dateRange?: string,
-    filters?: { caseType: string; priority: string; investigator: string },
+    filters?: { caseType?: string; priority?: string; investigator?: string },
   ): Promise<CaseAgeingData> {
     try {
       const params = new URLSearchParams();
@@ -317,7 +317,7 @@ class ReportsService {
 
   async getEvidenceFindingsData(
     dateRange?: string,
-    filters?: { caseType: string; priority: string; investigator: string },
+    filters?: { caseType?: string; priority?: string; investigator?: string },
   ): Promise<EvidenceFindingsData> {
     try {
       // Fetch all cases first - use correct endpoint

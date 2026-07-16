@@ -10,7 +10,7 @@ import type {
 
 export const useReports = (
   dateRange?: string,
-  filters?: { caseType: string; priority: string; investigator: string },
+  filters?: { caseType?: string; priority?: string; investigator?: string },
 ): ReturnType<typeof useQuery<ReportsData>> =>
   useQuery<ReportsData>({
     queryKey: ['reports', dateRange, filters],
@@ -31,7 +31,7 @@ export const useCaseStatusStats = (): ReturnType<typeof useQuery> =>
 
 export const useInvestigatorWorkload = (
   dateRange?: string,
-  filters?: { caseType: string; priority: string; investigator: string },
+  filters?: { caseType?: string; priority?: string; investigator?: string },
 ): ReturnType<typeof useQuery<InvestigatorWorkloadData>> =>
   useQuery<InvestigatorWorkloadData>({
     queryKey: ['reports', 'investigator-workload', dateRange, filters],
@@ -55,7 +55,7 @@ export const useTaskCompletion = (
 
 export const useCaseAgeing = (
   dateRange?: string,
-  filters?: { caseType: string; priority: string; investigator: string },
+  filters?: { caseType?: string; priority?: string; investigator?: string },
 ): ReturnType<typeof useQuery<CaseAgeingData>> =>
   useQuery<CaseAgeingData>({
     queryKey: ['reports', 'case-ageing', dateRange, filters],
@@ -68,7 +68,7 @@ export const useCaseAgeing = (
 
 export const useEvidenceFindings = (
   dateRange?: string,
-  filters?: { caseType: string; priority: string; investigator: string },
+  filters?: { caseType?: string; priority?: string; investigator?: string },
 ): ReturnType<typeof useQuery<EvidenceFindingsData>> =>
   useQuery<EvidenceFindingsData>({
     queryKey: ['reports', 'evidence-findings', dateRange, filters],

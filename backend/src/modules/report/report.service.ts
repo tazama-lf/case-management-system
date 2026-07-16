@@ -104,6 +104,20 @@ export class ReportsService {
     status: { not: CaseStatus.STATUS_99_ABANDONED },
   };
 
+  private static parseCaseType(value: string): CaseType {
+    if (!Object.values(CaseType).includes(value as CaseType)) {
+      throw new BadRequestException(`Invalid caseType: ${value}`);
+    }
+    return value as CaseType;
+  }
+
+  private static parsePriority(value: string): Priority {
+    if (!Object.values(Priority).includes(value as Priority)) {
+      throw new BadRequestException(`Invalid priority: ${value}`);
+    }
+    return value as Priority;
+  }
+
   private static withNonContainerCaseFilter(where: Prisma.CaseWhereInput = {}): Prisma.CaseWhereInput {
     const andFilters = where.AND ? (Array.isArray(where.AND) ? where.AND : [where.AND]) : [];
     return {
@@ -135,8 +149,8 @@ export class ReportsService {
     tenantId?: string;
   }): Prisma.CaseWhereInput {
     const where: Record<string, any> = {};
-    if (filters?.caseType) where.case_type = filters.caseType;
-    if (filters?.priority) where.priority = filters.priority;
+    if (filters?.caseType) where.case_type = ReportsService.parseCaseType(filters.caseType);
+    if (filters?.priority) where.priority = ReportsService.parsePriority(filters.priority);
     if (filters?.investigator) where.case_owner_user_id = filters.investigator;
     if (filters?.tenantId) where.tenant_id = filters.tenantId;
     return ReportsService.withNonContainerCaseFilter(where);
@@ -668,8 +682,8 @@ export class ReportsService {
     const { startDate, endDate } = getDateRange(dateRange);
 
     const scopeFilters: Prisma.CaseWhereInput = {};
-    if (filters?.caseType) scopeFilters.case_type = filters.caseType as CaseType;
-    if (filters?.priority) scopeFilters.priority = filters.priority as Priority;
+    if (filters?.caseType) scopeFilters.case_type = ReportsService.parseCaseType(filters.caseType);
+    if (filters?.priority) scopeFilters.priority = ReportsService.parsePriority(filters.priority);
     if (filters?.tenantId) scopeFilters.tenant_id = filters.tenantId;
 
     const investigators = await this.prisma.case.findMany({
