@@ -418,7 +418,7 @@ export class ReportsController {
     required: false,
     enum: ['today', 'yesterday', 'last7', 'last30', 'last90', 'thisMonth', 'lastYear', 'all'],
     description:
-      'Time period for the report data - only affects the closed-throughput fields (avgResolutionTime, caseTypeResolution); the open-backlog fields ignore it.',
+      'Time period for the report data - only affects the closed-throughput fields (avgResolutionTime, resolutionTrend, resolutionByOutcome); the open-backlog fields ignore it. caseTypeResolution is windowed by dateRange too but deliberately ignores the caseType filter below.',
     example: 'last30',
   })
   @ApiQuery({ name: 'caseType', required: false, description: 'Filter to a single case type' })
@@ -462,7 +462,7 @@ export class ReportsController {
           items: {
             type: 'object',
             properties: {
-              status: { type: 'string', example: '20 IN PROGRESS' },
+              status: { type: 'string', example: '20 In Progress' },
               age0to7: { type: 'number', example: 15 },
               age8to15: { type: 'number', example: 10 },
               age16to30: { type: 'number', example: 8 },
@@ -485,7 +485,8 @@ export class ReportsController {
         },
         caseTypeResolution: {
           type: 'array',
-          description: 'Avg close time per case type, windowed like avgResolutionTime.',
+          description:
+            'Avg close time per case type, windowed like avgResolutionTime but deliberately unaffected by the caseType filter - always compares every type side by side, even when one type is selected elsewhere on the page.',
           items: {
             type: 'object',
             properties: {
@@ -494,9 +495,22 @@ export class ReportsController {
             },
           },
         },
+        resolutionByOutcome: {
+          type: 'array',
+          description:
+            'Avg close time per closed status (confirmed/refuted/inconclusive/autoclosed variants), same closed-and-windowed set as avgResolutionTime. Abandoned cases never appear here.',
+          items: {
+            type: 'object',
+            properties: {
+              status: { type: 'string', example: '82 Closed Confirmed' },
+              avgDays: { type: 'number', example: 8 },
+            },
+          },
+        },
         resolutionTrend: {
           type: 'array',
-          description: 'Fixed, continuous 6 calendar-month axis (independent of dateRange); a month with no closures renders as a gap.',
+          description:
+            'Calendar-month buckets spanning the dateRange window (not a fixed 6 months), capped at the most recent 24 buckets for very wide ranges; a month with no closures renders as a gap.',
           items: {
             type: 'object',
             properties: {
@@ -517,7 +531,7 @@ export class ReportsController {
             properties: {
               caseId: { type: 'number', example: 1234 },
               type: { type: 'string', example: 'FRAUD' },
-              status: { type: 'string', example: '20 IN PROGRESS' },
+              status: { type: 'string', example: '20 In Progress' },
               createdDate: { type: 'string', format: 'date-time', example: '2026-06-01T10:00:00.000Z' },
               ageDays: { type: 'number', example: 12 },
               priority: { type: 'string', example: 'HIGH' },

@@ -60,10 +60,7 @@ const PieChart: React.FC<PieChartProps> = ({
             className="w-3 h-3 rounded-full"
             style={{ backgroundColor: item.color }}
           ></div>
-          <span className="text-gray-700">{item.label}:</span>
-          <span className="font-medium text-gray-900">
-            {(total > 0 ? (item.value / total) * 100 : 0).toFixed(1)}%
-          </span>
+          <span className="font-medium text-gray-900">{item.label}: {(total > 0 ? (item.value / total) * 100 : 0).toFixed(1)}%</span>
         </div>
       ))}
     </div>

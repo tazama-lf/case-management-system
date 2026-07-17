@@ -228,6 +228,11 @@ export interface CaseTypeResolution {
   avgDays: number;
 }
 
+export interface ResolutionByOutcome {
+  status: string;
+  avgDays: number;
+}
+
 export interface CaseAgeingDetail {
   caseId: number;
   type: string;
@@ -246,6 +251,7 @@ export interface CaseAgeingData {
   resolutionTrend: ResolutionTrend[];
   ageingDistribution: AgeingDistribution[];
   caseTypeResolution: CaseTypeResolution[];
+  resolutionByOutcome: ResolutionByOutcome[];
   caseDetails: CaseAgeingDetail[];
 }
 
