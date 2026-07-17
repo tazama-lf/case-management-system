@@ -204,6 +204,36 @@ export class ReportsService {
     };
   }
 
+  /**
+   * Case Ageing-only scope, narrower than `applyInvestigatorScope` above.
+   *
+   * Every other report shows an investigator the shared "claimable" pool too
+   * (unowned DRAFT/READY_FOR_ASSIGNMENT cases, unowned pending-approval
+   * cases) so they can find work to pick up. Case Ageing is different: its
+   * numbers (average age, over-15/over-30 counts, resolution time) are meant
+   * to describe the investigator's *own* backlog, not the whole tenant's
+   * unclaimed queue - mixing in the claimable pool inflates their apparent
+   * backlog with cases nobody owns. So here an investigator only sees cases
+   * that are explicitly theirs:
+   *   - cases they own,
+   *   - cases with a task assigned to them.
+   * Nothing else. If a `requestingUserId` isn't supplied (supervisor/admin
+   * view), this is a no-op and every case in the tenant is included, same as
+   * before.
+   */
+  private applyOwnedOrAssignedScope(baseFilters: any, requestingUserId?: string): any {
+    if (!requestingUserId) return baseFilters;
+
+    return {
+      AND: [
+        baseFilters,
+        {
+          OR: [{ case_owner_user_id: requestingUserId }, { tasks: { some: { assigned_user_id: requestingUserId } } }],
+        },
+      ],
+    };
+  }
+
   private avgResolutionDays(cases: Array<{ created_at: Date; updated_at: Date }>): number | null {
     if (cases.length === 0) return null;
     const totalDays = cases.reduce((sum, c) => sum + (c.updated_at.getTime() - c.created_at.getTime()) / (1000 * 60 * 60 * 24), 0);
@@ -1070,10 +1100,14 @@ export class ReportsService {
    *   - the "open backlog" (avgCaseAge, the 15-30/30+ tiers, the by-status bar,
    *     the distribution donut, and the details table) is a live, as-of-now
    *     snapshot of open cases and deliberately ignores `dateRange`.
-   *   - "closed throughput" (avgResolutionTime, caseTypeResolution, and
-   *     resolutionTrend) is windowed on `updated_at` - the closest proxy this
-   *     schema has to a `closed_at` timestamp (see the dashboard doc's note on
-   *     `updated_at` standing in for "closed date" elsewhere in this file).
+   *   - "closed throughput" (avgResolutionTime, resolutionTrend, and
+   *     resolutionByOutcome) shares one `dateRange`-windowed query on
+   *     `updated_at` - the closest proxy this schema has to a `closed_at`
+   *     timestamp (see the dashboard doc's note on `updated_at` standing in
+   *     for "closed date" elsewhere in this file). `resolutionTrend` buckets
+   *     that same window by calendar month instead of a hardcoded 6 months.
+   *     `caseTypeResolution` shares the window but deliberately skips the
+   *     caseType filter - see the comment at its query below.
    */
   async getCaseAgeing(
     dateRange?: string,
@@ -1103,6 +1137,10 @@ export class ReportsService {
       caseType: string;
       avgDays: number;
     }>;
+    resolutionByOutcome: Array<{
+      status: string;
+      avgDays: number;
+    }>;
     caseDetails: Array<{
       caseId: number;
       type: string;
@@ -1117,8 +1155,16 @@ export class ReportsService {
     const now = new Date();
 
     // --- Open backlog: live snapshot, as-of-now, ignores dateRange. ---
-    const openWhere = this.applyInvestigatorScope(
-      { ...commonFilters, status: { notIn: ReportsService.CLOSED_STATUSES } },
+    // An unowned draft is excluded too, alongside the closed/abandoned
+    // statuses already excluded by CLOSED_STATUSES - nobody's actively
+    // ageing a case that hasn't even been claimed yet. A draft that already
+    // has an owner is real work-in-progress and still counts.
+    const openWhere = this.applyOwnedOrAssignedScope(
+      {
+        ...commonFilters,
+        status: { notIn: ReportsService.CLOSED_STATUSES },
+        NOT: { status: CaseStatus.STATUS_00_DRAFT, case_owner_user_id: null },
+      },
       filters?.requestingUserId,
     );
 
@@ -1142,11 +1188,6 @@ export class ReportsService {
     const avgCaseAge =
       openCasesWithAge.length > 0 ? openCasesWithAge.reduce((sum, case_) => sum + case_.ageDays, 0) / openCasesWithAge.length : null;
 
-    // Non-overlapping tiers: the 15-30 tier stops short of 30 so a case is
-    // counted in exactly one of the two cards, never both.
-    const casesOver15Days = openCasesWithAge.filter((c) => c.ageDays > 15 && c.ageDays < 30).length;
-    const casesOver30Days = openCasesWithAge.filter((c) => c.ageDays >= 30).length;
-
     const ageBuckets = (cases: typeof openCasesWithAge): { age0to7: number; age8to15: number; age16to30: number; age30Plus: number } => ({
       age0to7: cases.filter((c) => c.ageDays <= 7).length,
       age8to15: cases.filter((c) => c.ageDays > 7 && c.ageDays <= 15).length,
@@ -1154,13 +1195,22 @@ export class ReportsService {
       age30Plus: cases.filter((c) => c.ageDays >= 30).length,
     });
 
+    // Non-overlapping tiers: the 15-30 tier stops short of 30 so a case is
+    // counted in exactly one of the two cards, never both. Reads off the same
+    // ageBuckets() the bar/donut use, instead of a second, separately-written
+    // (if currently consistent) set of boundary literals.
+    const { age16to30: casesOver15Days, age30Plus: casesOver30Days } = ageBuckets(openCasesWithAge);
+
     // The status axis is seeded from every open-eligible CaseStatus (in enum
     // order) rather than derived from the fetched cases, so a status with zero
     // open cases still renders as an empty row instead of vanishing.
     // STATUS_03_RETURNED is excluded from the breakdown to match the Case
     // Status report's per-status table (computeStatusDetails, above) - a
     // returned case still counts in avgCaseAge/the tiers/the donut/the
-    // details table, it just doesn't get its own row here.
+    // details table, it just doesn't get its own row here. STATUS_00_DRAFT
+    // still gets a row - only *unowned* drafts are excluded from
+    // openCasesWithAge (see openWhere above), so an owned draft can still
+    // land here.
     const openStatusOrder = Object.values(CaseStatus).filter(
       (status) => !ReportsService.CLOSED_STATUSES.includes(status) && status !== CaseStatus.STATUS_03_RETURNED,
     );
@@ -1195,9 +1245,23 @@ export class ReportsService {
       investigatorId: case_.case_owner_user_id,
     }));
 
-    // --- Closed throughput: windowed on the closed-at proxy (updated_at). ---
+    // --- Closed throughput: a single close-anchored window (updated_at within
+    // dateRange), shared by avgResolutionTime and resolutionByOutcome below.
+    // Case Type Resolution deliberately uses its own query that skips the
+    // caseType filter - see the comment there.
     const { startDate, endDate } = getDateRange(dateRange);
-    const closedWhere = this.applyInvestigatorScope(
+    const MAX_TREND_BUCKETS = 24;
+    const rangeStartMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const rangeEndMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+    const monthsSpan =
+      (rangeEndMonth.getFullYear() - rangeStartMonth.getFullYear()) * 12 + (rangeEndMonth.getMonth() - rangeStartMonth.getMonth()) + 1;
+    const bucketCount = Math.min(Math.max(monthsSpan, 1), MAX_TREND_BUCKETS);
+    const trendMonths = Array.from(
+      { length: bucketCount },
+      (_, i) => new Date(rangeEndMonth.getFullYear(), rangeEndMonth.getMonth() - (bucketCount - 1 - i), 1),
+    );
+    const earliestTrendBucket = trendMonths[0];
+    const closedWhere = this.applyOwnedOrAssignedScope(
       {
         ...commonFilters,
         status: { in: ReportsService.CLOSED_STATUSES },
@@ -1208,7 +1272,7 @@ export class ReportsService {
 
     const closedCases = await this.prisma.case.findMany({
       where: closedWhere,
-      select: { case_type: true, created_at: true, updated_at: true },
+      select: { case_type: true, status: true, created_at: true, updated_at: true },
     });
 
     const avgResolutionTime =
@@ -1216,12 +1280,58 @@ export class ReportsService {
         ? closedCases.reduce((sum, case_) => sum + ReportsService.resolutionDays(case_), 0) / closedCases.length
         : null;
 
+    // Case Type Resolution is the only widget that compares FRAUD vs AML side by side, so it stays unfiltered by the report-wide
+    // caseType filter - filtering it down to one type would just duplicate
+    // avgResolutionTime above. It still respects priority/investigator/tenant
+    // scope and the same close-anchored window as every other closed widget.
+    // When no caseType filter is active, `closedCases` already covers every
+    // type, so re-querying would just fetch the identical set again.
+    const commonFiltersAllTypes = this.buildCommonCaseFilters({
+      priority: filters?.priority,
+      investigator: filters?.investigator,
+      tenantId: filters?.tenantId,
+    });
+    const closedWhereAllTypes = this.applyOwnedOrAssignedScope(
+      {
+        ...commonFiltersAllTypes,
+        status: { in: ReportsService.CLOSED_STATUSES },
+        updated_at: { gte: startDate, lte: endDate },
+      },
+      filters?.requestingUserId,
+    );
+    const closedCasesAllTypes = filters?.caseType
+      ? await this.prisma.case.findMany({
+          where: closedWhereAllTypes,
+          select: { case_type: true, created_at: true, updated_at: true },
+        })
+      : closedCases;
+
+    // The all-time aggregates above need every closed case in the selected
+    // date range. The trend only renders the most recent 24 monthly buckets,
+    // though, so keep its payload bounded to that visible period instead of
+    // materialising the tenant's complete close history for dateRange=all.
+    // For windows of 24 months or fewer, reuse the aggregate query result.
+    const trendCases =
+      earliestTrendBucket > startDate
+        ? await this.prisma.case.findMany({
+            where: this.applyOwnedOrAssignedScope(
+              {
+                ...commonFilters,
+                status: { in: ReportsService.CLOSED_STATUSES },
+                updated_at: { gte: earliestTrendBucket, lte: endDate },
+              },
+              filters?.requestingUserId,
+            ),
+            select: { created_at: true, updated_at: true },
+          })
+        : closedCases;
+
     // One grouped pass over the already-fetched closed set, instead of one
     // findMany per case type. FRAUD_AND_AML container cases never reach this
     // set (withNonContainerCaseFilter only lets them through while DRAFT or
     // pending approval, neither of which is a closed status).
     const closedDaysByType = new Map<string, number[]>();
-    closedCases.forEach((case_) => {
+    closedCasesAllTypes.forEach((case_) => {
       if (!case_.case_type) return;
       const days = closedDaysByType.get(case_.case_type) ?? [];
       days.push(ReportsService.resolutionDays(case_));
@@ -1232,32 +1342,40 @@ export class ReportsService {
       avgDays: Math.round(days.reduce((sum, d) => sum + d, 0) / days.length),
     }));
 
-    // Resolution trend: a fixed, continuous 6 calendar-month axis (independent
-    // of the requested dateRange) so a month with no closures shows as a
-    // genuine gap rather than disappearing from the axis.
-    const trendMonths = Array.from({ length: 6 }, (_, i) => new Date(now.getFullYear(), now.getMonth() - (5 - i), 1));
-    const trendWhere = this.applyInvestigatorScope(
-      {
-        ...commonFilters,
-        status: { in: ReportsService.CLOSED_STATUSES },
-        updated_at: { gte: trendMonths[0] },
-      },
-      filters?.requestingUserId,
-    );
-    const trendCases = await this.prisma.case.findMany({
-      where: trendWhere,
-      select: { created_at: true, updated_at: true },
+    // Resolution Time by Outcome: mean resolution time per closed status
+    // (confirmed / refuted / inconclusive / autoclosed variants), over the
+    // same closed-and-windowed set as avgResolutionTime. Abandoned cases
+    // never reach `closedCases` in the first place (EXCLUDE_ABANDONED_FILTER
+    // strips them at the query level), so they can't appear here either.
+    const closedDaysByStatus = new Map<CaseStatus, number[]>();
+    closedCases.forEach((case_) => {
+      const days = closedDaysByStatus.get(case_.status) ?? [];
+      days.push(ReportsService.resolutionDays(case_));
+      closedDaysByStatus.set(case_.status, days);
+    });
+    const resolutionByOutcome = Array.from(closedDaysByStatus.entries()).map(([status, days]) => ({
+      status: this.formatStatusName(status),
+      avgDays: Math.round(days.reduce((sum, d) => sum + d, 0) / days.length),
+    }));
+
+    // Resolution trend: calendar-month buckets spanning the same
+    // close-anchored window as the widgets above, capped to the most recent
+    // 24 months. Group the bounded set once rather than filtering every case
+    // separately for each bucket.
+    const trendDaysByMonth = new Map<string, number[]>();
+    trendCases.forEach((case_) => {
+      const month = `${case_.updated_at.getFullYear()}-${String(case_.updated_at.getMonth() + 1).padStart(2, '0')}`;
+      const days = trendDaysByMonth.get(month) ?? [];
+      days.push(ReportsService.resolutionDays(case_));
+      trendDaysByMonth.set(month, days);
     });
 
     const resolutionTrend: resolutionTrend[] = trendMonths.map((bucketStart) => {
-      const bucketEnd = new Date(bucketStart.getFullYear(), bucketStart.getMonth() + 1, 1);
-      const daysInBucket = trendCases
-        .filter((case_) => case_.updated_at >= bucketStart && case_.updated_at < bucketEnd)
-        .map((case_) => ReportsService.resolutionDays(case_))
-        .sort((a, b) => a - b);
+      const month = `${bucketStart.getFullYear()}-${String(bucketStart.getMonth() + 1).padStart(2, '0')}`;
+      const daysInBucket = [...(trendDaysByMonth.get(month) ?? [])].sort((a, b) => a - b);
 
       return {
-        month: `${bucketStart.getFullYear()}-${String(bucketStart.getMonth() + 1).padStart(2, '0')}`,
+        month,
         n: daysInBucket.length,
         median: ReportsService.percentile(daysInBucket, 0.5),
         p25: ReportsService.percentile(daysInBucket, 0.25),
@@ -1276,6 +1394,7 @@ export class ReportsService {
       resolutionTrend,
       ageingDistribution,
       caseTypeResolution,
+      resolutionByOutcome,
       caseDetails,
     };
   }
@@ -1291,8 +1410,17 @@ export class ReportsService {
     }
   }
 
+  /**
+   * "STATUS_02_READY_FOR_ASSIGNMENT" -> "02 Ready For Assignment": keeps the
+   * numeric code (so status is still sortable/scannable by workflow order)
+   * but title-cases the rest instead of shouting it in ALL CAPS. Shared by
+   * every report that renders a CaseStatus - Case Status and Case Ageing both
+   * call this one method, so the two can't drift apart.
+   */
   private formatStatusName(status: CaseStatus): string {
-    return status.replace('STATUS_', '').replace(/_/gv, ' ');
+    const [code, ...words] = status.replace('STATUS_', '').split('_');
+    const titleCased = words.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+    return `${code} ${titleCased}`;
   }
 
   private getAuditLogType(outcome: string | null | undefined): 'Info' | 'Success' | 'Warning' | 'Error' {

@@ -292,6 +292,7 @@ class ReportsService {
         resolutionTrend: response.resolutionTrend,
         ageingDistribution: response.ageingDistribution,
         caseTypeResolution: response.caseTypeResolution,
+        resolutionByOutcome: response.resolutionByOutcome,
         caseDetails: response.caseDetails,
       };
 
@@ -310,6 +311,7 @@ class ReportsService {
         resolutionTrend: [],
         ageingDistribution: [],
         caseTypeResolution: [],
+        resolutionByOutcome: [],
         caseDetails: [],
       };
     }

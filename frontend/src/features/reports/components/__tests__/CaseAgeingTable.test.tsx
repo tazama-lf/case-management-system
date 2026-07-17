@@ -195,22 +195,17 @@ describe('CaseAgeingTable', () => {
     expect(screen.getByText('Unassigned')).toBeInTheDocument();
   });
 
-  it('shows both the raw User ID and the resolved Investigator name as separate columns', async () => {
+  it('does not render a raw User ID column - only the resolved Investigator name', async () => {
     render(<CaseAgeingTable data={mockData} title="Case Ageing" />);
 
-    expect(screen.getByText('user-1')).toBeInTheDocument();
-    expect(screen.getByText('user-2')).toBeInTheDocument();
+    expect(screen.queryByText('User ID')).not.toBeInTheDocument();
+    expect(screen.queryByText('user-1')).not.toBeInTheDocument();
+    expect(screen.queryByText('user-2')).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
       expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     });
-  });
-
-  it('shows N/A for User ID when the case is unassigned', () => {
-    render(<CaseAgeingTable data={mockData} title="Case Ageing" />);
-
-    expect(screen.getByText('N/A')).toBeInTheDocument();
   });
 
   it('calls onExportExcel when export button is clicked', async () => {

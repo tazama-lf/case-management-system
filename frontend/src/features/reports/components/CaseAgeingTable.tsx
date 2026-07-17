@@ -122,9 +122,6 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
                 Priority
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                User ID
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Investigator
               </th>
             </tr>
@@ -132,7 +129,7 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center">
+                <td colSpan={7} className="px-6 py-12 text-center">
                   <div className="text-gray-500">
                     <p className="text-lg font-medium">No data available</p>
                     <p className="mt-1">
@@ -172,14 +169,6 @@ const CaseAgeingTable: React.FC<CaseAgeingTableProps> = ({
                     className={`px-4 py-3 text-sm font-medium ${getPriorityColor(row.priority)}`}
                   >
                     {row.priority}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div
-                      className="break-all font-mono text-sm text-gray-900"
-                      title={row.investigatorId ?? ''}
-                    >
-                      {row.investigatorId ?? 'N/A'}
-                    </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
                     <div className="break-words">

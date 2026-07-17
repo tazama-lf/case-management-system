@@ -27,11 +27,6 @@ vi.mock('../../components/CaseAgeingStatsCards', () => ({
   default: ({ stats }: any) => (
     <div data-testid="case-ageing-stats-cards">{JSON.stringify(stats)}</div>
   ),
-  DaysStatsCard: ({ title, days }: any) => (
-    <div data-testid="days-stats-card">
-      {title}: {days}
-    </div>
-  ),
 }));
 
 vi.mock('../../components/ReportSectionHeader', () => ({
@@ -145,7 +140,9 @@ describe('CaseAgeingReport', () => {
   };
 
   // Stable reference so we can assert it's the exact function threaded through to formatDataForExport
-  const mockGetAssigneeFullName = vi.fn((investigatorId: string) => investigatorId);
+  const mockGetAssigneeFullName = vi.fn(
+    (investigatorId: string) => investigatorId,
+  );
 
   beforeEach(() => {
     vi.clearAllMocks();

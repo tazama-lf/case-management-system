@@ -617,18 +617,37 @@ describe('ReportsService', () => {
       expect(result.stats.avgResolutionTime).toBeNull();
     });
 
+    it('sends a where clause that excludes unowned drafts, while keeping owned drafts and other statuses', async () => {
+      // The mock doesn't apply Prisma's `where` filtering, so this simulates
+      // what a real DB would return after the NOT clause is applied - an
+      // unowned draft (case 1) would never come back. The `where` assertion
+      // below is what actually proves the exclusion is wired correctly.
+      prismaService.case.findMany.mockResolvedValueOnce([
+        { case_id: 2, created_at: new Date('2026-03-01T12:00:00Z'), status: CaseStatus.STATUS_00_DRAFT, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: 'user-123' }, // owned draft - kept
+        { case_id: 3, created_at: new Date('2026-03-01T12:00:00Z'), status: CaseStatus.STATUS_20_IN_PROGRESS, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: 'user-123' },
+      ]);
+
+      const result = await service.getCaseAgeing('last30');
+
+      expect(result.caseDetails).toHaveLength(2);
+      expect(result.caseDetails.map((c) => c.caseId).sort()).toEqual([2, 3]);
+
+      const whereArg = prismaService.case.findMany.mock.calls[0][0].where;
+      expect(whereArg.NOT).toEqual({ status: CaseStatus.STATUS_00_DRAFT, case_owner_user_id: null });
+    });
+
     it('excludes abandoned cases from the ageing dataset, not just from the closed set', async () => {
       await service.getCaseAgeing('last30', { tenantId: 'tenant-123' });
 
       // The open-backlog query (feeding avgCaseAge, the 16-29/30+ cards, the
-      // by-status bar, the distribution donut, and the details table), the
-      // closed-window query, and the resolution-trend query all share
-      // withNonContainerCaseFilter, so abandoned cases are excluded from
-      // every one of them - not merely absent from the closed set used for
-      // avgResolutionTime. Assert every recorded findMany call, since a
-      // single toHaveBeenCalledWith only proves one of the three matched.
+      // by-status bar, the distribution donut, and the details table) and the
+      // closed-window query (feeding avgResolutionTime, resolutionTrend, and
+      // resolutionByOutcome - all three now share this single fetch) both go
+      // through withNonContainerCaseFilter, so abandoned cases are excluded
+      // from every one of them. Assert every recorded findMany call, since a
+      // single toHaveBeenCalledWith only proves one of the two matched.
       const whereClauses = prismaService.case.findMany.mock.calls.map(([args]: [any]) => args.where);
-      expect(whereClauses.length).toBeGreaterThanOrEqual(3);
+      expect(whereClauses.length).toBeGreaterThanOrEqual(2);
       whereClauses.forEach((where) => {
         expect(where.AND).toEqual(
           expect.arrayContaining([expect.objectContaining({ status: { not: CaseStatus.STATUS_99_ABANDONED } })]),
@@ -682,7 +701,7 @@ describe('ReportsService', () => {
     it('excludes STATUS_03_RETURNED from the by-status breakdown, matching the Case Status report', async () => {
       const result = await service.getCaseAgeing('last30');
 
-      expect(result.ageingByStatus.some((row) => row.status.includes('RETURNED'))).toBe(false);
+      expect(result.ageingByStatus.some((row) => row.status.toUpperCase().includes('RETURNED'))).toBe(false);
     });
 
     it('reconciles ageingDistribution percentages to sum to exactly 100', async () => {
@@ -712,17 +731,105 @@ describe('ReportsService', () => {
       expect(result.caseDetails[0]).not.toHaveProperty('investigator');
     });
 
-    it('returns a fixed 6-bucket resolution trend with median/p25/p75/n', async () => {
+    it('buckets the resolution trend by calendar month across the dateRange window, not a fixed 6 months', async () => {
+      // mockDate is 2026-03-20; 'last30' -> startDate 2026-02-18, endDate 2026-03-20,
+      // spanning exactly two calendar months (Feb, Mar).
       const result = await service.getCaseAgeing('last30');
 
-      expect(result.resolutionTrend.length).toBe(6);
-      expect(result.resolutionTrend[5].month).toBe('2026-03');
+      expect(result.resolutionTrend.length).toBe(2);
+      expect(result.resolutionTrend[0].month).toBe('2026-02');
+      expect(result.resolutionTrend[1].month).toBe('2026-03');
       result.resolutionTrend.forEach((bucket) => {
         expect(bucket).toHaveProperty('n');
         expect(bucket).toHaveProperty('median');
         expect(bucket).toHaveProperty('p25');
         expect(bucket).toHaveProperty('p75');
       });
+    });
+
+    it('caps the resolution trend at 24 buckets for a wide dateRange like "all"', async () => {
+      const result = await service.getCaseAgeing('all');
+      expect(result.resolutionTrend.length).toBe(24);
+      expect(result.resolutionTrend[23].month).toBe('2026-03');
+    });
+
+    it('bounds the all-time resolution trend query to its earliest visible bucket', async () => {
+      await service.getCaseAgeing('all');
+
+      const trendQuery = prismaService.case.findMany.mock.calls
+        .map(([args]: [any]) => args)
+        .find((args: any) =>
+          args.where?.status?.in &&
+          args.select?.created_at === true &&
+          args.select?.updated_at === true &&
+          Object.keys(args.select).length === 2,
+        );
+
+      expect(trendQuery).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            updated_at: {
+              gte: new Date(2024, 3, 1),
+              lte: expect.any(Date),
+            },
+          }),
+        }),
+      );
+    });
+
+    it('is a no-op single-month trend for a narrow dateRange like "today"', async () => {
+      const result = await service.getCaseAgeing('today');
+
+      expect(result.resolutionTrend.length).toBe(1);
+      expect(result.resolutionTrend[0].month).toBe('2026-03');
+    });
+
+    it('returns resolutionByOutcome grouped by closed status, sharing the same window as avgResolutionTime', async () => {
+      prismaService.case.findMany.mockResolvedValue([
+        {
+          case_id: 1,
+          created_at: new Date('2026-01-01'),
+          updated_at: new Date('2026-02-01'),
+          status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+          case_type: CaseType.AML,
+          priority: 'HIGH',
+          case_owner_user_id: 'user-123',
+        },
+      ]);
+
+      const result = await service.getCaseAgeing('last30');
+
+      expect(result.resolutionByOutcome).toEqual(
+        expect.arrayContaining([expect.objectContaining({ status: expect.any(String), avgDays: expect.any(Number) })]),
+      );
+    });
+
+    it('caseTypeResolution ignores the caseType filter and still reflects every type', async () => {
+      prismaService.case.findMany.mockResolvedValue([
+        {
+          case_id: 1,
+          created_at: new Date('2026-01-01'),
+          updated_at: new Date('2026-02-01'),
+          status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+          case_type: CaseType.FRAUD,
+          priority: 'HIGH',
+          case_owner_user_id: 'user-123',
+        },
+      ]);
+
+      await service.getCaseAgeing('last30', { caseType: 'AML' });
+
+      // A second closed-window query is issued without the caseType filter,
+      // so caseTypeResolution isn't narrowed down to a single type.
+      const closedCallsWithoutType = prismaService.case.findMany.mock.calls.filter(
+        ([args]: [any]) => args.where?.status?.in && !('case_type' in args.where),
+      );
+      expect(closedCallsWithoutType.length).toBeGreaterThanOrEqual(1);
+      // The type-filtered closed-window query (feeding avgResolutionTime) still exists too.
+      const closedCallsWithType = prismaService.case.findMany.mock.calls.filter(
+        ([args]: [any]) => args.where?.status?.in && args.where?.case_type === 'AML',
+      );
+      expect(closedCallsWithType.length).toBeGreaterThanOrEqual(1);
     });
 
     it.each([
@@ -1047,8 +1154,14 @@ describe('ReportsService', () => {
     });
 
     it('should format case status name correctly', () => {
+      // Code-prefixed title-case, not ALL CAPS - "STATUS_20_IN_PROGRESS" -> "20 In Progress".
       const formatted = (service as any).formatStatusName(CaseStatus.STATUS_20_IN_PROGRESS);
-      expect(formatted).toBe('20 IN PROGRESS');
+      expect(formatted).toBe('20 In Progress');
+    });
+
+    it('title-cases every word of a multi-word status, not just the first', () => {
+      const formatted = (service as any).formatStatusName(CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT);
+      expect(formatted).toBe('02 Ready For Assignment');
     });
 
     it('should return Info for SUCCESS outcome', () => {
