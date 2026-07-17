@@ -163,7 +163,7 @@ const extractTriggeredTypologies = (
   });
 };
 
-const EFRUP_RULE_ID = 'EFRuP@1.0.0';
+const EFRUP_RULE_ID_PREFIX = 'EFRuP@';
 const extractFlowProcessorData = (
   alert: AlertWithAlertedTypologies,
 ): string | undefined => {
@@ -183,7 +183,7 @@ const extractFlowProcessorData = (
       ? typology.ruleResults.filter(isRecord)
       : [];
     const flowProcessorRule = ruleResults.find(
-      (rule) => rule.id === EFRUP_RULE_ID,
+      (rule) => typeof rule.id === 'string' && rule.id.startsWith(EFRUP_RULE_ID_PREFIX),
     );
     const subRuleRef = flowProcessorRule?.subRuleRef;
     if (typeof subRuleRef === 'string' && subRuleRef.trim()) {
