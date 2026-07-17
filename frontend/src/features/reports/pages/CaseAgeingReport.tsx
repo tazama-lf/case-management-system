@@ -1,13 +1,12 @@
 import React from 'react';
-import { ExclamationCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
-import CaseAgeingStatsCards, {
-  DaysStatsCard,
-} from '../components/CaseAgeingStatsCards';
+import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import CaseAgeingStatsCards from '../components/CaseAgeingStatsCards';
 import ReportSectionHeader from '../components/ReportSectionHeader';
 import CaseAgeingBarChart from '../components/CaseAgeingBarChart';
 import ResolutionTimeTrendChart from '../components/ResolutionTimeTrendChart';
 import CaseAgeingPieChart from '../components/CaseAgeingPieChart';
 import CaseTypeResolutionChart from '../components/CaseTypeResolutionChart';
+import ResolutionByOutcomeChart from '../components/ResolutionByOutcomeChart';
 import CaseAgeingTable from '../components/CaseAgeingTable';
 import { useCaseAgeing } from '../hooks/useReports';
 import {
@@ -28,10 +27,11 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
   dateRange,
   filters,
 }) => {
-  const { data: ageingData, isLoading, error } = useCaseAgeing(
-    dateRange,
-    filters,
-  );
+  const {
+    data: ageingData,
+    isLoading,
+    error,
+  } = useCaseAgeing(dateRange, filters);
   const { getAssigneeFullName } = useInvestigatorSupervisorList();
 
   if (isLoading) {
@@ -69,6 +69,7 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
     resolutionTrend,
     ageingDistribution,
     caseTypeResolution,
+    resolutionByOutcome,
     caseDetails,
   } = ageingData ?? {
     stats: {
@@ -81,12 +82,17 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
     resolutionTrend: [],
     ageingDistribution: [],
     caseTypeResolution: [],
+    resolutionByOutcome: [],
     caseDetails: [],
   };
 
   const handleExportExcel = () => {
     try {
-      const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING', getAssigneeFullName);
+      const formattedData = formatDataForExport(
+        caseDetails,
+        'CASE_AGEING',
+        getAssigneeFullName,
+      );
       const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
       exportToExcel(formattedData, filename, 'Case Ageing Report');
     } catch (error) {
@@ -97,7 +103,11 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
 
   const handleExportCSV = () => {
     try {
-      const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING', getAssigneeFullName);
+      const formattedData = formatDataForExport(
+        caseDetails,
+        'CASE_AGEING',
+        getAssigneeFullName,
+      );
       const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
       exportToCSV(formattedData, filename);
     } catch (error) {
@@ -108,7 +118,11 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
 
   const handleExportPDF = () => {
     try {
-      const formattedData = formatDataForExport(caseDetails, 'CASE_AGEING', getAssigneeFullName);
+      const formattedData = formatDataForExport(
+        caseDetails,
+        'CASE_AGEING',
+        getAssigneeFullName,
+      );
       const filename = `case-ageing-report-${new Date().toISOString().split('T')[0]}`;
       const columns = getColumnsForReport('CASE_AGEING');
       exportToPDF(formattedData, filename, 'Case Ageing Report', columns);
@@ -120,13 +134,12 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
 
   return (
     <>
+      <CaseAgeingStatsCards stats={stats} />
       <ReportSectionHeader
         title="Open Backlog"
         badge="Live snapshot · as-of-now"
         badgeColor="green"
       />
-      <CaseAgeingStatsCards stats={stats} />
-
       <div className="flex flex-col md:flex-row md:space-x-8 space-y-8 md:space-y-0 mb-8">
         <div className="flex-1 w-full md:w-1/2">
           <CaseAgeingBarChart
@@ -162,16 +175,13 @@ const CaseAgeingReport: React.FC<CaseAgeingReportProps> = ({
 
       <div className="flex flex-col md:flex-row md:space-x-8 space-y-8 md:space-y-0">
         <div className="flex-1 w-full md:w-1/2 flex flex-col space-y-8">
-          <DaysStatsCard
-            title="Avg. Resolution Time"
-            days={stats.avgResolutionTime}
-            subtitle="Closed cases only"
-            icon={<ClockIcon className="h-6 w-6" />}
-            color="green"
-          />
           <CaseTypeResolutionChart
             data={caseTypeResolution}
             title="Case Type Resolution Time"
+          />
+          <ResolutionByOutcomeChart
+            data={resolutionByOutcome}
+            title="Resolution Time by Outcome"
           />
         </div>
         <div className="flex-1 w-full md:w-1/2">

@@ -48,7 +48,7 @@ const ReportStatsCards: React.FC<ReportStatsCardsProps> = ({ stats }) => {
       value: formatDays(stats.avgResolutionTime),
       icon: <ClockIcon className="h-6 w-6" />,
       color: 'red' as const,
-    },
+    }
   ];
 
   return (
