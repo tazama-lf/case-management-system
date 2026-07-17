@@ -573,7 +573,7 @@ describe('CaseQueryService', () => {
 
     it('applies an assignee filter to investigator-visible cases', async () => {
       const investigatorId = 'investigator-123';
-      const supervisorId = 'supervisor-456';
+      const supervisorId = 'supervisor-457';
       setupGetAllCasesMocks({ ...mockCase, case_owner_user_id: supervisorId });
 
       await service.getAllCases({ ...query, ownerId: supervisorId }, tenantId, investigatorId);
