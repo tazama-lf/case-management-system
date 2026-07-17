@@ -1155,8 +1155,16 @@ export class ReportsService {
     const now = new Date();
 
     // --- Open backlog: live snapshot, as-of-now, ignores dateRange. ---
+    // An unowned draft is excluded too, alongside the closed/abandoned
+    // statuses already excluded by CLOSED_STATUSES - nobody's actively
+    // ageing a case that hasn't even been claimed yet. A draft that already
+    // has an owner is real work-in-progress and still counts.
     const openWhere = this.applyOwnedOrAssignedScope(
-      { ...commonFilters, status: { notIn: ReportsService.CLOSED_STATUSES } },
+      {
+        ...commonFilters,
+        status: { notIn: ReportsService.CLOSED_STATUSES },
+        NOT: { status: CaseStatus.STATUS_00_DRAFT, case_owner_user_id: null },
+      },
       filters?.requestingUserId,
     );
 
@@ -1199,7 +1207,10 @@ export class ReportsService {
     // STATUS_03_RETURNED is excluded from the breakdown to match the Case
     // Status report's per-status table (computeStatusDetails, above) - a
     // returned case still counts in avgCaseAge/the tiers/the donut/the
-    // details table, it just doesn't get its own row here.
+    // details table, it just doesn't get its own row here. STATUS_00_DRAFT
+    // still gets a row - only *unowned* drafts are excluded from
+    // openCasesWithAge (see openWhere above), so an owned draft can still
+    // land here.
     const openStatusOrder = Object.values(CaseStatus).filter(
       (status) => !ReportsService.CLOSED_STATUSES.includes(status) && status !== CaseStatus.STATUS_03_RETURNED,
     );
@@ -1235,10 +1246,21 @@ export class ReportsService {
     }));
 
     // --- Closed throughput: a single close-anchored window (updated_at within
-    // dateRange), shared by avgResolutionTime, resolutionTrend, and
-    // resolutionByOutcome below. Case Type Resolution deliberately uses its
-    // own query that skips the caseType filter - see the comment there.
+    // dateRange), shared by avgResolutionTime and resolutionByOutcome below.
+    // Case Type Resolution deliberately uses its own query that skips the
+    // caseType filter - see the comment there.
     const { startDate, endDate } = getDateRange(dateRange);
+    const MAX_TREND_BUCKETS = 24;
+    const rangeStartMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const rangeEndMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+    const monthsSpan =
+      (rangeEndMonth.getFullYear() - rangeStartMonth.getFullYear()) * 12 + (rangeEndMonth.getMonth() - rangeStartMonth.getMonth()) + 1;
+    const bucketCount = Math.min(Math.max(monthsSpan, 1), MAX_TREND_BUCKETS);
+    const trendMonths = Array.from(
+      { length: bucketCount },
+      (_, i) => new Date(rangeEndMonth.getFullYear(), rangeEndMonth.getMonth() - (bucketCount - 1 - i), 1),
+    );
+    const earliestTrendBucket = trendMonths[0];
     const closedWhere = this.applyOwnedOrAssignedScope(
       {
         ...commonFilters,
@@ -1284,6 +1306,26 @@ export class ReportsService {
         })
       : closedCases;
 
+    // The all-time aggregates above need every closed case in the selected
+    // date range. The trend only renders the most recent 24 monthly buckets,
+    // though, so keep its payload bounded to that visible period instead of
+    // materialising the tenant's complete close history for dateRange=all.
+    // For windows of 24 months or fewer, reuse the aggregate query result.
+    const trendCases =
+      earliestTrendBucket > startDate
+        ? await this.prisma.case.findMany({
+            where: this.applyOwnedOrAssignedScope(
+              {
+                ...commonFilters,
+                status: { in: ReportsService.CLOSED_STATUSES },
+                updated_at: { gte: earliestTrendBucket, lte: endDate },
+              },
+              filters?.requestingUserId,
+            ),
+            select: { created_at: true, updated_at: true },
+          })
+        : closedCases;
+
     // One grouped pass over the already-fetched closed set, instead of one
     // findMany per case type. FRAUD_AND_AML container cases never reach this
     // set (withNonContainerCaseFilter only lets them through while DRAFT or
@@ -1317,33 +1359,23 @@ export class ReportsService {
     }));
 
     // Resolution trend: calendar-month buckets spanning the same
-    // close-anchored window as the widgets above, instead of a hardcoded 6
-    // months - so `dateRange` actually changes what the trend shows. Capped
-    // to the most recent MAX_TREND_BUCKETS months so a very wide window
-    // (e.g. dateRange=all) still renders a readable chart rather than one
-    // point per month since the epoch. Every case in a bucket is already
-    // guaranteed to fall inside [startDate, endDate] because it's drawn from
-    // `closedCases`, which is already bounded to that window.
-    const MAX_TREND_BUCKETS = 24;
-    const rangeStartMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-    const rangeEndMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
-    const monthsSpan =
-      (rangeEndMonth.getFullYear() - rangeStartMonth.getFullYear()) * 12 + (rangeEndMonth.getMonth() - rangeStartMonth.getMonth()) + 1;
-    const bucketCount = Math.min(Math.max(monthsSpan, 1), MAX_TREND_BUCKETS);
-    const trendMonths = Array.from(
-      { length: bucketCount },
-      (_, i) => new Date(rangeEndMonth.getFullYear(), rangeEndMonth.getMonth() - (bucketCount - 1 - i), 1),
-    );
+    // close-anchored window as the widgets above, capped to the most recent
+    // 24 months. Group the bounded set once rather than filtering every case
+    // separately for each bucket.
+    const trendDaysByMonth = new Map<string, number[]>();
+    trendCases.forEach((case_) => {
+      const month = `${case_.updated_at.getFullYear()}-${String(case_.updated_at.getMonth() + 1).padStart(2, '0')}`;
+      const days = trendDaysByMonth.get(month) ?? [];
+      days.push(ReportsService.resolutionDays(case_));
+      trendDaysByMonth.set(month, days);
+    });
 
     const resolutionTrend: resolutionTrend[] = trendMonths.map((bucketStart) => {
-      const bucketEnd = new Date(bucketStart.getFullYear(), bucketStart.getMonth() + 1, 1);
-      const daysInBucket = closedCases
-        .filter((case_) => case_.updated_at >= bucketStart && case_.updated_at < bucketEnd)
-        .map((case_) => ReportsService.resolutionDays(case_))
-        .sort((a, b) => a - b);
+      const month = `${bucketStart.getFullYear()}-${String(bucketStart.getMonth() + 1).padStart(2, '0')}`;
+      const daysInBucket = [...(trendDaysByMonth.get(month) ?? [])].sort((a, b) => a - b);
 
       return {
-        month: `${bucketStart.getFullYear()}-${String(bucketStart.getMonth() + 1).padStart(2, '0')}`,
+        month,
         n: daysInBucket.length,
         median: ReportsService.percentile(daysInBucket, 0.5),
         p25: ReportsService.percentile(daysInBucket, 0.25),

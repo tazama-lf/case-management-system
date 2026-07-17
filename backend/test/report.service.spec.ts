@@ -617,6 +617,25 @@ describe('ReportsService', () => {
       expect(result.stats.avgResolutionTime).toBeNull();
     });
 
+    it('sends a where clause that excludes unowned drafts, while keeping owned drafts and other statuses', async () => {
+      // The mock doesn't apply Prisma's `where` filtering, so this simulates
+      // what a real DB would return after the NOT clause is applied - an
+      // unowned draft (case 1) would never come back. The `where` assertion
+      // below is what actually proves the exclusion is wired correctly.
+      prismaService.case.findMany.mockResolvedValueOnce([
+        { case_id: 2, created_at: new Date('2026-03-01T12:00:00Z'), status: CaseStatus.STATUS_00_DRAFT, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: 'user-123' }, // owned draft - kept
+        { case_id: 3, created_at: new Date('2026-03-01T12:00:00Z'), status: CaseStatus.STATUS_20_IN_PROGRESS, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: 'user-123' },
+      ]);
+
+      const result = await service.getCaseAgeing('last30');
+
+      expect(result.caseDetails).toHaveLength(2);
+      expect(result.caseDetails.map((c) => c.caseId).sort()).toEqual([2, 3]);
+
+      const whereArg = prismaService.case.findMany.mock.calls[0][0].where;
+      expect(whereArg.NOT).toEqual({ status: CaseStatus.STATUS_00_DRAFT, case_owner_user_id: null });
+    });
+
     it('excludes abandoned cases from the ageing dataset, not just from the closed set', async () => {
       await service.getCaseAgeing('last30', { tenantId: 'tenant-123' });
 
@@ -730,9 +749,32 @@ describe('ReportsService', () => {
 
     it('caps the resolution trend at 24 buckets for a wide dateRange like "all"', async () => {
       const result = await service.getCaseAgeing('all');
-
       expect(result.resolutionTrend.length).toBe(24);
       expect(result.resolutionTrend[23].month).toBe('2026-03');
+    });
+
+    it('bounds the all-time resolution trend query to its earliest visible bucket', async () => {
+      await service.getCaseAgeing('all');
+
+      const trendQuery = prismaService.case.findMany.mock.calls
+        .map(([args]: [any]) => args)
+        .find((args: any) =>
+          args.where?.status?.in &&
+          args.select?.created_at === true &&
+          args.select?.updated_at === true &&
+          Object.keys(args.select).length === 2,
+        );
+
+      expect(trendQuery).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            updated_at: {
+              gte: new Date(2024, 3, 1),
+              lte: expect.any(Date),
+            },
+          }),
+        }),
+      );
     });
 
     it('is a no-op single-month trend for a narrow dateRange like "today"', async () => {
