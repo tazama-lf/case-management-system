@@ -204,6 +204,24 @@ export class ReportsService {
     };
   }
 
+  private applyOwnedWorkScope(baseFilters: any, requestingUserId?: string): any {
+    if (!requestingUserId) return baseFilters;
+
+    return {
+      AND: [
+        baseFilters,
+        {
+          OR: [
+            // Tasks assigned to the user
+            { tasks: { some: { assigned_user_id: requestingUserId } } },
+            // Case owner is the user
+            { case_owner_user_id: requestingUserId },
+          ],
+        },
+      ],
+    };
+  }
+
   private avgResolutionDays(cases: Array<{ created_at: Date; updated_at: Date }>): number | null {
     if (cases.length === 0) return null;
     const totalDays = cases.reduce((sum, c) => sum + (c.updated_at.getTime() - c.created_at.getTime()) / (1000 * 60 * 60 * 24), 0);
@@ -1117,7 +1135,7 @@ export class ReportsService {
     const now = new Date();
 
     // --- Open backlog: live snapshot, as-of-now, ignores dateRange. ---
-    const openWhere = this.applyInvestigatorScope(
+    const openWhere = this.applyOwnedWorkScope(
       { ...commonFilters, status: { notIn: ReportsService.CLOSED_STATUSES } },
       filters?.requestingUserId,
     );
@@ -1197,7 +1215,7 @@ export class ReportsService {
 
     // --- Closed throughput: windowed on the closed-at proxy (updated_at). ---
     const { startDate, endDate } = getDateRange(dateRange);
-    const closedWhere = this.applyInvestigatorScope(
+    const closedWhere = this.applyOwnedWorkScope(
       {
         ...commonFilters,
         status: { in: ReportsService.CLOSED_STATUSES },
@@ -1236,7 +1254,7 @@ export class ReportsService {
     // of the requested dateRange) so a month with no closures shows as a
     // genuine gap rather than disappearing from the axis.
     const trendMonths = Array.from({ length: 6 }, (_, i) => new Date(now.getFullYear(), now.getMonth() - (5 - i), 1));
-    const trendWhere = this.applyInvestigatorScope(
+    const trendWhere = this.applyOwnedWorkScope(
       {
         ...commonFilters,
         status: { in: ReportsService.CLOSED_STATUSES },

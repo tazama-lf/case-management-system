@@ -752,6 +752,69 @@ describe('ReportsService', () => {
         }),
       );
     });
+
+    it('scopes an investigator request to exactly the two owned-work arms (no claimable/unowned pool)', async () => {
+      await service.getCaseAgeing('last30', { tenantId: 'tenant-123', requestingUserId: 'user-123' });
+
+      const whereClauses = prismaService.case.findMany.mock.calls.map(([args]: [any]) => args.where);
+      expect(whereClauses.length).toBeGreaterThanOrEqual(3);
+      whereClauses.forEach((where) => {
+        // Wrapped in AND[baseFilters, OR[...]] with exactly two arms.
+        expect(where.AND).toBeDefined();
+        const orClause = where.AND.find((clause: any) => clause.OR !== undefined);
+        expect(orClause).toBeDefined();
+        expect(orClause.OR).toHaveLength(2);
+        expect(orClause.OR).toEqual(
+          expect.arrayContaining([
+            { tasks: { some: { assigned_user_id: 'user-123' } } },
+            { case_owner_user_id: 'user-123' },
+          ]),
+        );
+        // No claimable/unowned arms leak in.
+        const orJson = JSON.stringify(orClause.OR);
+        expect(orJson).not.toContain('STATUS_00_DRAFT');
+        expect(orJson).not.toContain('STATUS_02_READY_FOR_ASSIGNMENT');
+        expect(orJson).not.toContain('STATUS_01_PENDING_CASE_CREATION_APPROVAL');
+      });
+    });
+
+    it('leaves the where-clause unwrapped for a supervisor/admin request (requestingUserId undefined)', async () => {
+      await service.getCaseAgeing('last30', { tenantId: 'tenant-123' });
+
+      const whereClauses = prismaService.case.findMany.mock.calls.map(([args]: [any]) => args.where);
+      expect(whereClauses.length).toBeGreaterThanOrEqual(3);
+      // Supervisor mode returns baseFilters verbatim from applyOwnedWorkScope,
+      // so the owned-work scoping arms (tasks.some.assigned_user_id /
+      // case_owner_user_id equality) must never appear in any where-clause.
+      whereClauses.forEach((where) => {
+        const json = JSON.stringify(where);
+        expect(json).not.toMatch(/"tasks":\s*\{\s*"some":\s*\{\s*"assigned_user_id"/);
+      });
+    });
+
+    it('excludes a STATUS_02_READY_FOR_ASSIGNMENT case owned by another investigator from the investigator result', async () => {
+      // Only the open-backlog query reads open cases; return a claimable
+      // STATUS_02 case that belongs to another investigator. With the narrower
+      // scope the query's where-clause should not match it, so the service
+      // must never see it. We assert via the where-clause shape rather than
+      // the mock result, since prisma mock returns whatever we hand it.
+      prismaService.case.findMany.mockResolvedValue([]);
+
+      await service.getCaseAgeing('last30', { tenantId: 'tenant-123', requestingUserId: 'user-123' });
+
+      // The open-backlog query is the first findMany call in getCaseAgeing.
+      const openCall = prismaService.case.findMany.mock.calls[0];
+      expect(openCall).toBeDefined();
+      const where = (openCall[0] as any).where;
+      const orClause = where.AND.find((clause: any) => clause.OR !== undefined);
+      // The two arms are task-assigned OR case_owner = 'user-123'; a
+      // STATUS_02 case owned by 'other-user' satisfies neither arm, so it
+      // is excluded by construction.
+      expect(orClause.OR).toEqual([
+        { tasks: { some: { assigned_user_id: 'user-123' } } },
+        { case_owner_user_id: 'user-123' },
+      ]);
+    });
   });
 
   describe('getFilters', () => {
