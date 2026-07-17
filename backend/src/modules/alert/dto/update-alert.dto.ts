@@ -1,5 +1,5 @@
 import { Priority, CaseType, PredictionOutcome, CaseStatus } from '@prisma/client-cms';
-import { IsOptional, IsEnum, IsNumber, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsEnum, IsNumber, IsString, MaxLength, MinLength, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ManualAlertUpdateDTO {
@@ -29,14 +29,15 @@ export class ManualAlertUpdateDTO {
   @ApiProperty({
     description: 'Priority score (0-1)',
     example: 0.85,
-    required: false,
+    required: true,
     type: 'number',
     minimum: 0,
     maximum: 1,
   })
-  @IsOptional()
   @IsNumber()
-  priorityScore?: number;
+  @Min(0)
+  @Max(1)
+  priorityScore!: number;
 
   @ApiProperty({
     description: 'Type of alert',
