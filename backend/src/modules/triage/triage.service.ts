@@ -328,9 +328,9 @@ export class TriageService {
           alertId,
           userId,
           {
+            ...JSON.parse(JSON.stringify(updateAlertData)),
             confidencePer: updateAlertData.confidence_per,
             priority_score: priorityScore,
-            ...JSON.parse(JSON.stringify(updateAlertData)),
           },
           tx,
           userName,
