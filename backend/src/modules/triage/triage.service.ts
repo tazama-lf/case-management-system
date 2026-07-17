@@ -300,8 +300,7 @@ export class TriageService {
       throw new BadRequestException(`Cannot update alert ${alertId} when triageType is not MANUAL`);
     }
     const updateAlertData = updateAlertDto;
-    // Fallback when caller omits priorityScore. 0.5 → MEDIUM under default thresholds (0.4/0.7).
-    const priorityScore = updateAlertDto.priorityScore ?? 0.5;
+    const { priorityScore } = updateAlertDto;
     const priority = await this.casePriorityUtil.determinePriority(priorityScore, tenantId);
     updateAlertData.priority = priority;
 

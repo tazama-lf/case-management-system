@@ -1313,104 +1313,6 @@ describe('TriageService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should handle manual triage with undefined priority score — persisted score agrees with bucket (default thresholds)', async () => {
-      // Use the real CasePriorityUtil so thresholds and the default value collide as in production.
-      const mockThresholdPrisma = {
-        casePriorityThreshold: {
-          findUnique: jest.fn().mockResolvedValue(null), // no tenant/default row → fallback thresholds (0.4/0.7)
-        },
-      };
-      const realCasePriorityUtil = new CasePriorityUtil(mockThresholdPrisma as any);
-
-      // Re-bind the service to use the real util for this test
-      (service as any).casePriorityUtil = realCasePriorityUtil;
-
-      configService.get.mockReturnValue('MANUAL');
-      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
-      caseRepository.findCaseById.mockResolvedValue(mockCase as any);
-      alertService.updateAlert.mockResolvedValue(mockAlert as any);
-      taskRepository.updateTask.mockResolvedValue(mockTask as any);
-      commentRepository.createComment.mockResolvedValue({
-        comment_id: 1,
-        tenant_id: 'tenant-123',
-        created_at: new Date(),
-        case_id: 1,
-        updated_at: new Date(),
-        user_id: 'user-123',
-        note: 'test',
-        task_id: null,
-      });
-      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase);
-      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
-      setupTransactionMock();
-
-      const dtoWithoutPriorityScore: ManualAlertUpdateDTO = {
-        priority: Priority.LOW,
-        alertType: CaseType.FRAUD,
-        note: 'test note',
-      };
-
-      const result = await service.handleManualTriage(1, dtoWithoutPriorityScore, 'user-123', 'tenant-123');
-
-      expect(result).toEqual(mockAlert);
-
-      // updateAlert must receive a non-undefined priority_score (the defaulted local, not the raw DTO field)
-      const updateCallArgs = alertService.updateAlert.mock.calls[0];
-      const persistedPayload = updateCallArgs[2];
-      expect(persistedPayload.priority_score).toBeDefined();
-      expect(persistedPayload.priority_score).toBe(0.5);
-
-      // Invariant: bucketOf(persistedScore) === persistedPriority under fallback thresholds (0.4/0.7)
-      // 0.5 >= 0.4 and 0.5 < 0.7 → MEDIUM
-      expect(persistedPayload.priority).toBe(Priority.MEDIUM);
-    });
-
-    it('should handle manual triage with undefined priority score — invariant holds under tenant-configured thresholds', async () => {
-      // Tenant configures medium_threshold = 0.6 → 0.5 < 0.6 → LOW
-      const mockThresholdPrisma = {
-        casePriorityThreshold: {
-          findUnique: jest.fn().mockResolvedValue({
-            tenant_id: 'tenant-123',
-            high_threshold: 0.7,
-            medium_threshold: 0.6,
-          }),
-        },
-      };
-      const realCasePriorityUtil = new CasePriorityUtil(mockThresholdPrisma as any);
-      (service as any).casePriorityUtil = realCasePriorityUtil;
-
-      configService.get.mockReturnValue('MANUAL');
-      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
-      caseRepository.findCaseById.mockResolvedValue(mockCase as any);
-      alertService.updateAlert.mockResolvedValue(mockAlert as any);
-      taskRepository.updateTask.mockResolvedValue(mockTask as any);
-      commentRepository.createComment.mockResolvedValue({
-        comment_id: 1,
-        tenant_id: 'tenant-123',
-        created_at: new Date(),
-        case_id: 1,
-        updated_at: new Date(),
-        user_id: 'user-123',
-        note: 'test',
-        task_id: null,
-      });
-      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase);
-      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
-      setupTransactionMock();
-
-      const dtoWithoutPriorityScore: ManualAlertUpdateDTO = {
-        priority: Priority.LOW,
-        alertType: CaseType.FRAUD,
-        note: 'test note',
-      };
-
-      await service.handleManualTriage(1, dtoWithoutPriorityScore, 'user-123', 'tenant-123');
-
-      const persistedPayload = alertService.updateAlert.mock.calls[0][2];
-      expect(persistedPayload.priority_score).toBe(0.5);
-      expect(persistedPayload.priority).toBe(Priority.LOW);
-    });
-
     it('should handle manual triage with explicit priority score — score and bucket agree (happy path)', async () => {
       const mockThresholdPrisma = {
         casePriorityThreshold: {
@@ -1453,7 +1355,7 @@ describe('TriageService', () => {
       expect(persistedPayload.priority).toBe(Priority.HIGH);
     });
 
-    it('should handle manual triage with priority score 0.0 — falsy-but-defined score is not swallowed by ??', async () => {
+    it('should handle manual triage with priority score 0.0 — boundary LOW', async () => {
       const mockThresholdPrisma = {
         casePriorityThreshold: {
           findUnique: jest.fn().mockResolvedValue(null),
@@ -1493,6 +1395,48 @@ describe('TriageService', () => {
       const persistedPayload = alertService.updateAlert.mock.calls[0][2];
       expect(persistedPayload.priority_score).toBe(0.0);
       expect(persistedPayload.priority).toBe(Priority.LOW);
+    });
+
+    it('should handle manual triage with priority score 1.0 — boundary HIGH', async () => {
+      const mockThresholdPrisma = {
+        casePriorityThreshold: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        },
+      };
+      const realCasePriorityUtil = new CasePriorityUtil(mockThresholdPrisma as any);
+      (service as any).casePriorityUtil = realCasePriorityUtil;
+
+      configService.get.mockReturnValue('MANUAL');
+      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
+      caseRepository.findCaseById.mockResolvedValue(mockCase as any);
+      alertService.updateAlert.mockResolvedValue(mockAlert as any);
+      taskRepository.updateTask.mockResolvedValue(mockTask as any);
+      commentRepository.createComment.mockResolvedValue({
+        comment_id: 1,
+        tenant_id: 'tenant-123',
+        created_at: new Date(),
+        case_id: 1,
+        updated_at: new Date(),
+        user_id: 'user-123',
+        note: 'test',
+        task_id: null,
+      });
+      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
+      setupTransactionMock();
+
+      const dtoWithMaxScore: ManualAlertUpdateDTO = {
+        priorityScore: 1.0,
+        priority: Priority.HIGH,
+        alertType: CaseType.FRAUD,
+        note: 'test note',
+      };
+
+      await service.handleManualTriage(1, dtoWithMaxScore, 'user-123', 'tenant-123');
+
+      const persistedPayload = alertService.updateAlert.mock.calls[0][2];
+      expect(persistedPayload.priority_score).toBe(1.0);
+      expect(persistedPayload.priority).toBe(Priority.HIGH);
     });
   });
 
