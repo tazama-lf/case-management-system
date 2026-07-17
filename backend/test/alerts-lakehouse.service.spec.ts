@@ -151,6 +151,80 @@ describe('AlertsLakehouseService', () => {
       expect(result.meta.tenantId).toBe('DEFAULT');
     });
 
+    it('surfaces flowProcessorData for a bumped EFRuP rule version (EFRuP@2.0.0)', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 4,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: 'typology-004',
+                typology_cfg: '001@1.0.0',
+                rules: [
+                  {
+                    rule_id: 'rule-001',
+                    rule_weight: 250,
+                    rule_sub_ref: '.01',
+                  },
+                  {
+                    rule_id: 'EFRuP@2.0.0',
+                    rule_cfg: 'none',
+                    rule_weight: 0,
+                    rule_independent_variable: 'Block',
+                    rule_sub_ref: 'Block',
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(4, 'DEFAULT');
+
+      expect(result.typologies[0].flowProcessorData).toBe('Block');
+      const parsedRules = JSON.parse(result.typologies[0].rules);
+      expect(parsedRules).toHaveLength(1);
+      expect(parsedRules[0].ruleId).toBe('rule-001');
+    });
+
+    it('excludes EFRuP from triggered rules even if it carries a non-zero weight', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 5,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: 'typology-005',
+                typology_cfg: '001@1.0.0',
+                rules: [
+                  {
+                    rule_id: 'rule-001',
+                    rule_weight: 250,
+                    rule_sub_ref: '.01',
+                  },
+                  {
+                    rule_id: 'EFRuP@1.0.0',
+                    rule_weight: 5,
+                    rule_sub_ref: 'Block',
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(5, 'DEFAULT');
+
+      expect(result.typologies[0].flowProcessorData).toBe('Block');
+      const parsedRules = JSON.parse(result.typologies[0].rules);
+      expect(parsedRules).toHaveLength(1);
+      expect(parsedRules[0].ruleId).toBe('rule-001');
+    });
+
     it('handles null values gracefully', async () => {
       http.mockReturnValue(
         okHttp([

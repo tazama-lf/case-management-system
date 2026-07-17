@@ -571,6 +571,25 @@ describe('CaseQueryService', () => {
       expect(result.cases).toHaveLength(1);
     });
 
+    it('applies an assignee filter to investigator-visible cases', async () => {
+      const investigatorId = 'investigator-123';
+      const supervisorId = 'supervisor-457';
+      setupGetAllCasesMocks({ ...mockCase, case_owner_user_id: supervisorId });
+
+      await service.getAllCases({ ...query, ownerId: supervisorId }, tenantId, investigatorId);
+
+      const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
+      expect(findManyArgs.where.AND).toContainEqual(
+        expect.objectContaining({ case_owner_user_id: supervisorId }),
+      );
+      expect(findManyArgs.where.AND).toContainEqual({
+        OR: expect.arrayContaining([
+          { case_owner_user_id: investigatorId },
+          { tasks: { some: { assigned_user_id: investigatorId } } },
+        ]),
+      });
+    });
+
     it('should calculate average tasks per case', async () => {
       prismaService.case.count.mockResolvedValueOnce(2);
       prismaService.case.findMany.mockResolvedValueOnce([
