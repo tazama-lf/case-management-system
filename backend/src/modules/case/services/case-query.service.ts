@@ -34,10 +34,9 @@ export class CaseQueryService {
     const uniqueTenantIds = [...new Set(tenantIds)];
     return new Map(
       await Promise.all(
-        uniqueTenantIds.map(async (tenantId): Promise<[string, SlaEscalationRatios]> => [
-          tenantId,
-          await this.slaPolicyUtil.getEscalationRatios(tenantId),
-        ]),
+        uniqueTenantIds.map(
+          async (tenantId): Promise<[string, SlaEscalationRatios]> => [tenantId, await this.slaPolicyUtil.getEscalationRatios(tenantId)],
+        ),
       ),
     );
   }
@@ -367,6 +366,12 @@ export class CaseQueryService {
       if (priority) baseFilters.priority = priority;
       if (caseType) baseFilters.case_type = caseType;
       if (tenantId) baseFilters.tenant_id = tenantId;
+      // Assignee filtering applies to every role.  Keeping it in the shared
+      // base filters ensures an investigator's selected assignee narrows the
+      // result set instead of being ignored by the investigator visibility
+      // branch below.
+      if (ownerId) baseFilters.case_owner_user_id = ownerId;
+      if (unassignedOnly) baseFilters.case_owner_user_id = null;
       if (createdAfter ?? createdBefore) {
         baseFilters.created_at = {};
         if (createdAfter) baseFilters.created_at.gte = new Date(createdAfter);
@@ -653,10 +658,6 @@ export class CaseQueryService {
         if (searchFilterCondition) {
           andConditions.push(searchFilterCondition);
         }
-
-        // Apply additional filters to baseFilters if needed
-        if (ownerId) baseFilters.case_owner_user_id = ownerId;
-        if (unassignedOnly) baseFilters.case_owner_user_id = null;
 
         // Only use AND if we have multiple conditions, otherwise use baseFilters directly
         if (andConditions.length > 1) {
