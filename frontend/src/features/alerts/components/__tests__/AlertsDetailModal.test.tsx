@@ -454,7 +454,7 @@ describe("AlertsDetailModal", () => {
     });
   });
 
-  it("does not display an EFRuP badge when no rule has id EFRuP@1.0.0", async () => {
+  it("does not display an EFRuP badge when no rule id starts with EFRuP@", async () => {
     mockGetAlertById.mockResolvedValue({
       ...baseAlert,
       alerted_typologies: [
