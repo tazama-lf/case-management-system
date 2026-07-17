@@ -204,7 +204,15 @@ export class ReportsService {
     };
   }
 
-  private applyOwnedWorkScope(baseFilters: any, requestingUserId?: string): any {
+  /**
+   * Ageing-scoped investigator filter: explicit ownership only.
+   * Drops the claimable/unowned arms of applyInvestigatorScope so the
+   * Case Ageing Report measures how long each investigator's *own* work
+   * has sat. The claimable pool belongs on a separate unassigned-queue
+   * view, not summed into any one investigator's backlog. Do not use
+   * for any other report — those intentionally include the claimable pool.
+   */
+  private applyOwnedWorkScope(baseFilters: Prisma.CaseWhereInput, requestingUserId?: string): Prisma.CaseWhereInput {
     if (!requestingUserId) return baseFilters;
 
     return {
