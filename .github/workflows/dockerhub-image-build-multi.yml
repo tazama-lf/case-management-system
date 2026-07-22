@@ -12,19 +12,21 @@
 # Please do not attempt to edit this flow without the direct consent from the DevOps team. This file is managed centrally.
 
 # This workflow is for repositories that produce multiple Docker images.
-# RC images are tagged with the floating alias "rc" rather than the package version.
+# Each image is built from its matrix entry (context/dockerfile/target) and versioned
+# from the package.json path specified in that entry.
 
-name: Publish Docker images RC
+name: Publish Docker images (multi)
 
 on:
   push:
-    branches: [ "dev" ]
-  workflow_dispatch:
+    branches: [ "main" ]
+  release:
+    types: [published]
 
 jobs:
-  publish_rc_images:
+  publish_images:
     if: github.actor != 'dependabot[bot]' && github.actor != 'dependabot-preview[bot]'
-    name: Push ${{ matrix.image_suffix }} RC Docker image to Docker Hub
+    name: Push ${{ matrix.image_suffix }} Docker image to Docker Hub
     runs-on: ubuntu-latest
 
     strategy:
@@ -35,21 +37,25 @@ jobs:
             context: ./backend
             dockerfile: ./backend/Dockerfile
             target: ""
+            package_json: ./backend/package.json
 
           - image_suffix: migrate
             context: ./backend
             dockerfile: ./backend/Dockerfile
             target: migrate
+            package_json: ./backend/package.json
 
           - image_suffix: frontend
             context: ./frontend
             dockerfile: ./frontend/Dockerfile
             target: ""
+            package_json: ./frontend/package.json
 
           - image_suffix: voila
             context: .
             dockerfile: ./Dockerfile.voila
             target: ""
+            package_json: ./backend/package.json
 
     permissions:
       packages: write
@@ -79,6 +85,10 @@ jobs:
           echo "IMAGE_REPOSITORY=${IMAGE_REPOSITORY}" >> "$GITHUB_ENV"
           echo "IMAGE_URL=${IMAGE_URL}" >> "$GITHUB_ENV"
 
+      - name: Get package version
+        id: pkg_version
+        run: echo "VERSION=$(node -p "require('${{ matrix.package_json }}').version")" >> "$GITHUB_OUTPUT"
+
       - name: Resolve source PR
         id: src_pr
         continue-on-error: true
@@ -96,9 +106,9 @@ jobs:
         with:
           images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
-            type=raw,value=rc
+            type=raw,value=${{ steps.pkg_version.outputs.VERSION }}
 
-      - name: Build and push ${{ matrix.image_suffix }} RC Docker image
+      - name: Build and push ${{ matrix.image_suffix }} Docker image
         id: push
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
         with:
@@ -117,7 +127,7 @@ jobs:
         with:
           subject-name: docker.io/${{ env.IMAGE_REPOSITORY }}
           subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: false
+          push-to-registry: true
 
       - name: Send Slack Notification
         if: always()
@@ -126,6 +136,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SERVICE_NAME: ${{ env.IMAGE_NAME }}
           IMAGE_REPOSITORY: ${{ env.IMAGE_REPOSITORY }}
+          IMAGE_TAG: ${{ steps.pkg_version.outputs.VERSION }}
           IMAGE_URL: ${{ env.IMAGE_URL }}
           PR_URL: ${{ steps.src_pr.outputs.PR_URL }}
           JOB_STATUS: ${{ job.status }}
@@ -135,4 +146,4 @@ jobs:
         run: |
           [ -z "$SLACK_WEBHOOK_URL" ] && echo "SLACK_WEBHOOK_URL is not configured. Skipping Slack notification." && exit 0
           SHORT_SHA="${COMMIT_SHA:0:7}"
-          curl --fail-with-body -sS -X POST -H 'Content-type: application/json' --data "$(jq -n --arg title "$([ "$JOB_STATUS" = "success" ] && echo "DockerHub RC image published :ship:" || echo "DockerHub RC image build failed :x:")" --arg service "$SERVICE_NAME" --arg status "$JOB_STATUS" --arg image "$IMAGE_REPOSITORY:rc" --arg image_url "$IMAGE_URL" --arg branch "$BRANCH_NAME" --arg sha "$SHORT_SHA" --arg pr "$PR_URL" --arg run "$RUN_URL" '{blocks:[{type:"header",text:{type:"plain_text",text:$title,emoji:true}},{type:"section",fields:([{type:"mrkdwn",text:("*Service:*\n"+$service)},{type:"mrkdwn",text:("*Status:*\n"+$status)},{type:"mrkdwn",text:("*Image:*\n`"+$image+"`")},{type:"mrkdwn",text:("*Branch:*\n`"+$branch+"`")},{type:"mrkdwn",text:("*Commit:*\n`"+$sha+"`")},{type:"mrkdwn",text:("*DockerHub:*\n<"+$image_url+"|Open image>")},{type:"mrkdwn",text:("*Workflow Run:*\n<"+$run+"|Open run>")}]+(if $pr != "" then [{type:"mrkdwn",text:("*Source PR:*\n<"+$pr+"|Open PR>")}] else [] end))}]}')" "$SLACK_WEBHOOK_URL"
+          curl --fail-with-body -sS -X POST -H 'Content-type: application/json' --data "$(jq -n --arg title "$([ "$JOB_STATUS" = "success" ] && echo "DockerHub image published :ship:" || echo "DockerHub image build failed :x:")" --arg service "$SERVICE_NAME" --arg status "$JOB_STATUS" --arg image "${IMAGE_REPOSITORY}:${IMAGE_TAG}" --arg image_url "$IMAGE_URL" --arg branch "$BRANCH_NAME" --arg sha "$SHORT_SHA" --arg pr "$PR_URL" --arg run "$RUN_URL" '{blocks:[{type:"header",text:{type:"plain_text",text:$title,emoji:true}},{type:"section",fields:([{type:"mrkdwn",text:("*Service:*\n"+$service)},{type:"mrkdwn",text:("*Status:*\n"+$status)},{type:"mrkdwn",text:("*Image:*\n`"+$image+"`")},{type:"mrkdwn",text:("*Branch:*\n`"+$branch+"`")},{type:"mrkdwn",text:("*Commit:*\n`"+$sha+"`")},{type:"mrkdwn",text:("*DockerHub:*\n<"+$image_url+"|Open image>")},{type:"mrkdwn",text:("*Workflow Run:*\n<"+$run+"|Open run>")}]+(if $pr != "" then [{type:"mrkdwn",text:("*Source PR:*\n<"+$pr+"|Open PR>")}] else [] end))}]}')" "$SLACK_WEBHOOK_URL"
