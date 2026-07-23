@@ -1,0 +1,7 @@
+voila>=0.5.0,<0.6.0
+plotly
+pandas
+requests
+papermill
+jupyter
+ipykernel

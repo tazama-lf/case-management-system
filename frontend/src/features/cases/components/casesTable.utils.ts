@@ -1,0 +1,149 @@
+import { formatDate } from '@/shared/utils/dateUtils';
+import type { SlaState } from '@/features/alerts/types/triage.types';
+import type { CaseWithTasksDto, TaskDTO } from '../services/caseService';
+
+// Score threshold constants
+const SCORE_HIGH_THRESHOLD = 80;
+const SCORE_MEDIUM_THRESHOLD = 60;
+const SCORE_LOW_THRESHOLD = 40;
+const SCORE_MIN = 0;
+const TYPOLOGY_ID_SUBSTRING_START = 0;
+const TYPOLOGY_ID_SUBSTRING_END = 8;
+
+export interface CaseRow {
+  id: number;
+  type: string;
+  typeColor: string;
+  status: string;
+  statusColor: string;
+  typologyId: string;
+  score: number;
+  createdOn: string;
+  pickedOn: string;
+  action: 'View' | 'Complete';
+  /** Raw case_owner_user_id; resolve to a display name client-side. Unset when unassigned. */
+  assignee?: string;
+  priority: string;
+  slaState?: SlaState | null;
+  userRole: 'owner' | 'task_assignee' | 'both' | 'none';
+  totalTasks: number;
+  alertId?: number;
+  alertMessage?: string;
+  confidencePercent?: number;
+  transaction?: unknown;
+  tasks?: TaskDTO[];
+  groupId?: number;
+  sarStrStatus?: string;
+}
+
+export const getStatusColor = (status: string): string => {
+  const statusColors: Record<string, string> = {
+    STATUS_00_DRAFT: 'bg-gray-100 text-gray-700',
+    STATUS_02_READY_FOR_ASSIGNMENT: 'bg-indigo-50 text-indigo-700',
+    STATUS_10_ASSIGNED: 'bg-blue-50 text-blue-700',
+    STATUS_20_IN_PROGRESS: 'bg-yellow-50 text-yellow-700',
+    STATUS_22_PENDING_FINAL_APPROVAL: 'bg-purple-50 text-purple-700',
+    STATUS_31_REOPENED: 'bg-orange-50 text-orange-700',
+    STATUS_81_CLOSED_REFUTED: 'bg-red-50 text-red-700',
+    STATUS_82_CLOSED_CONFIRMED: 'bg-green-50 text-green-700',
+    STATUS_83_CLOSED_INCONCLUSIVE: 'bg-gray-50 text-gray-700',
+    STATUS_71_AUTOCLOSED_CONFIRMED: 'bg-green-50 text-green-700',
+  };
+  return statusColors[status] || 'bg-gray-100 text-gray-700';
+};
+
+export const getTypeColor = (caseType: string): string => {
+  const typeColors: Record<string, string> = {
+    FRAUD: 'bg-red-50 text-red-700 ring-red-200',
+    AML: 'bg-purple-50 text-purple-700 ring-purple-200',
+    FRAUD_AND_AML: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
+  };
+  return typeColors[caseType] || 'bg-gray-50 text-gray-700 ring-gray-200';
+};
+
+export const getPriorityColor = (priority: string): string => {
+  const priorityColors: Record<string, string> = {
+    LOW: 'bg-blue-50 text-blue-700 ring-blue-200',
+    MEDIUM: 'bg-amber-50 text-amber-700 ring-amber-200',
+    HIGH: 'bg-red-50 text-red-700 ring-red-200',
+  };
+  return priorityColors[priority] || 'bg-gray-50 text-gray-700 ring-gray-200';
+};
+
+export const getScoreColor = (score: number): string => {
+  if (score >= SCORE_HIGH_THRESHOLD) return 'text-red-600 bg-red-50';
+  if (score >= SCORE_MEDIUM_THRESHOLD) return 'text-orange-600 bg-orange-50';
+  if (score >= SCORE_LOW_THRESHOLD) return 'text-yellow-600 bg-yellow-50';
+  if (score > SCORE_MIN) return 'text-green-600 bg-green-50';
+  return 'text-gray-600 bg-gray-50';
+};
+
+export const formatStatus = (status: string): string => status;
+
+export const getSarStrStatusColor = (status: string): string => {
+  const statusColors: Record<string, string> = {
+    STATUS_01_UNASSIGNED: 'bg-gray-100 text-gray-700',
+    STATUS_10_ASSIGNED: 'bg-blue-50 text-blue-700',
+    STATUS_20_IN_PROGRESS: 'bg-yellow-50 text-yellow-700',
+    STATUS_30_COMPLETED: 'bg-green-50 text-green-700',
+    'N/A': 'bg-gray-100 text-gray-500',
+  };
+  return statusColors[status] || 'bg-gray-100 text-gray-700';
+};
+
+export const formatSarStrStatus = (status: string): string => {
+  const statusLabels: Record<string, string> = {
+    STATUS_01_UNASSIGNED: 'Unassigned',
+    STATUS_10_ASSIGNED: 'Assigned',
+    STATUS_20_IN_PROGRESS: 'In Progress',
+    STATUS_30_COMPLETED: 'Completed',
+    'N/A': 'N/A',
+  };
+  return statusLabels[status] ?? status;
+};
+
+export const transformBackendCaseToUI = (
+  backendCase: CaseWithTasksDto,
+): CaseRow => {
+  // Find SAR/STR Filing task status
+  const { tasks, alert } = backendCase;
+  const sarStrTask =
+    tasks
+      ?.filter((task) => task.name === 'SAR/STR Filing')
+      .sort((a, b) => b.task_id - a.task_id)[0] ?? null;
+  const sarStrStatus = sarStrTask?.status ?? 'N/A';
+
+  return {
+    id: backendCase.case_id,
+    type: backendCase.case_type,
+    typeColor: getTypeColor(backendCase.case_type),
+    status: formatStatus(backendCase.status),
+    statusColor: getStatusColor(backendCase.status),
+    typologyId:
+      alert?.alert_id
+        .toString()
+        .substring(TYPOLOGY_ID_SUBSTRING_START, TYPOLOGY_ID_SUBSTRING_END) ??
+      'N/A',
+    score: alert?.confidence_per ?? SCORE_MIN,
+    createdOn: formatDate(backendCase.created_at),
+    pickedOn:
+      backendCase.user_role === 'owner'
+        ? new Date(backendCase.updated_at).toLocaleDateString('en-GB')
+        : '-',
+    action: backendCase.status === 'STATUS_00_DRAFT' ? 'Complete' : 'View',
+    // Raw owner id - resolved to a display name client-side (CasesTable),
+    // same pattern as the Reports feature. undefined means unassigned.
+    assignee: backendCase.case_owner_user_id ?? undefined,
+    priority: backendCase.priority,
+    slaState: backendCase.sla_state ?? null,
+    userRole: backendCase.user_role ?? 'none',
+    totalTasks: backendCase.total_tasks ?? 0,
+    alertId: alert?.alert_id ?? undefined,
+    alertMessage: alert?.message,
+    confidencePercent: alert?.confidence_per,
+    transaction: alert?.transaction,
+    tasks: backendCase.tasks,
+    groupId: backendCase.group_id,
+    sarStrStatus,
+  };
+};

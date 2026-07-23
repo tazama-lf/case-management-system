@@ -1,0 +1,854 @@
+{
+  "alerts": [
+    {
+      "id": 1,
+      "description": "NALT Alert - John Smith transaction TXN-001-01",
+      "tenant_id": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+      "priority": "NEW",
+      "source": "NATS",
+      "txtp": "pacs.002.001.12",
+      "message": "Transaction flagged for review - TXN-001-01",
+      "transaction": {
+        "TxTp": "pacs.002.001.12",
+        "TenantId": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+        "FIToFIPmtSts": {
+          "GrpHdr": {
+            "MsgId": "MSG-001-01",
+            "CreDtTm": "2025-11-15T10:30:00.000Z"
+          },
+          "TxInfAndSts": {
+            "OrgnlInstrId": "INSTR-001-01",
+            "OrgnlEndToEndId": "TXN-001-01",
+            "TxSts": "ACCC",
+            "ChrgsInf": [
+              {
+                "Amt": { "Amt": 500.00, "Ccy": "USD" },
+                "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp001" } } }
+              }
+            ],
+            "AccptncDtTm": "2025-11-15T10:30:00.000Z",
+            "InstgAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp001" } } },
+            "InstdAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp001b" } } }
+          }
+        }
+      },
+      "networkMap": {
+        "active": true,
+        "cfg": "1.0.0",
+        "messages": [
+          {
+            "id": "004@1.0.0",
+            "cfg": "1.0.0",
+            "txTp": "pacs.002.001.12",
+            "typologies": [
+              {
+                "id": "typology-processor@1.0.0",
+                "cfg": "999@1.0.0",
+                "rules": [
+                  { "id": "EFRuP@1.0.0", "cfg": "none" },
+                  { "id": "901@1.0.0", "cfg": "1.0.0" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "report": {
+        "evaluationID": "EVAL-001",
+        "metaData": { "prcgTmDP": 1234567, "prcgTmED": 89012 },
+        "status": "NALT",
+        "timestamp": "2025-11-15T10:30:00.000Z",
+        "tadpResult": {
+          "id": "004@1.0.0",
+          "cfg": "1.0.0",
+          "prcgTm": 1936516,
+          "typologyResult": [
+            {
+              "id": "typology-processor@1.0.0",
+              "cfg": "999@1.0.0",
+              "result": 150,
+              "ruleResults": [
+                { "id": "EFRuP@1.0.0", "cfg": "none", "subRuleRef": "none", "prcgTm": 499791, "wght": 0 },
+                { "id": "901@1.0.0", "cfg": "1.0.0", "subRuleRef": ".02", "prcgTm": 2185855, "wght": 150 }
+              ],
+              "prcgTm": 1283670,
+              "review": false,
+              "workflow": {
+                "alertThreshold": 200,
+                "interdictionThreshold": 400
+              }
+            }
+          ]
+        }
+      },
+      "confidence_per": 75.0,
+      "case_id": null,
+      "userId": "test-user-001"
+    },
+    {
+      "id": 2,
+      "description": "NALT Alert - Jane Doe transaction TXN-002-01",
+      "tenant_id": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+      "priority": "NEW",
+      "source": "NATS",
+      "txtp": "pacs.002.001.12",
+      "message": "Transaction flagged for review - TXN-002-01",
+      "transaction": {
+        "TxTp": "pacs.002.001.12",
+        "TenantId": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+        "FIToFIPmtSts": {
+          "GrpHdr": {
+            "MsgId": "MSG-002-01",
+            "CreDtTm": "2025-11-16T14:20:00.000Z"
+          },
+          "TxInfAndSts": {
+            "OrgnlInstrId": "INSTR-002-01",
+            "OrgnlEndToEndId": "TXN-002-01",
+            "TxSts": "ACCC",
+            "ChrgsInf": [
+              {
+                "Amt": { "Amt": 2500.00, "Ccy": "USD" },
+                "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp002" } } }
+              }
+            ],
+            "AccptncDtTm": "2025-11-16T14:20:00.000Z",
+            "InstgAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp002b" } } },
+            "InstdAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp002" } } }
+          }
+        }
+      },
+      "networkMap": {
+        "active": true,
+        "cfg": "1.0.0",
+        "messages": [
+          {
+            "id": "004@1.0.0",
+            "cfg": "1.0.0",
+            "txTp": "pacs.002.001.12",
+            "typologies": [
+              {
+                "id": "typology-processor@1.0.0",
+                "cfg": "999@1.0.0",
+                "rules": [
+                  { "id": "EFRuP@1.0.0", "cfg": "none" },
+                  { "id": "901@1.0.0", "cfg": "1.0.0" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "report": {
+        "evaluationID": "EVAL-002",
+        "metaData": { "prcgTmDP": 2345678, "prcgTmED": 90123 },
+        "status": "NALT",
+        "timestamp": "2025-11-16T14:20:00.000Z",
+        "tadpResult": {
+          "id": "004@1.0.0",
+          "cfg": "1.0.0",
+          "prcgTm": 1936516,
+          "typologyResult": [
+            {
+              "id": "typology-processor@1.0.0",
+              "cfg": "999@1.0.0",
+              "result": 180,
+              "ruleResults": [
+                { "id": "EFRuP@1.0.0", "cfg": "none", "subRuleRef": "none", "prcgTm": 499791, "wght": 0 },
+                { "id": "901@1.0.0", "cfg": "1.0.0", "subRuleRef": ".02", "prcgTm": 2185855, "wght": 180 }
+              ],
+              "prcgTm": 1283670,
+              "review": false,
+              "workflow": {
+                "alertThreshold": 200,
+                "interdictionThreshold": 400
+              }
+            }
+          ]
+        }
+      },
+      "confidence_per": 82.5,
+      "case_id": null,
+      "userId": "test-user-002"
+    },
+    {
+      "id": 3,
+      "description": "NALT Alert - Robert Johnson transaction TXN-003-01",
+      "tenant_id": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+      "priority": "NEW",
+      "source": "NATS",
+      "txtp": "pacs.002.001.12",
+      "message": "Large transaction flagged - TXN-003-01",
+      "transaction": {
+        "TxTp": "pacs.002.001.12",
+        "TenantId": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+        "FIToFIPmtSts": {
+          "GrpHdr": {
+            "MsgId": "MSG-003-01",
+            "CreDtTm": "2025-11-17T09:15:00.000Z"
+          },
+          "TxInfAndSts": {
+            "OrgnlInstrId": "INSTR-003-01",
+            "OrgnlEndToEndId": "TXN-003-01",
+            "TxSts": "ACCC",
+            "ChrgsInf": [
+              {
+                "Amt": { "Amt": 15000.00, "Ccy": "USD" },
+                "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp003" } } }
+              }
+            ],
+            "AccptncDtTm": "2025-11-17T09:15:00.000Z",
+            "InstgAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp003" } } },
+            "InstdAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp003b" } } }
+          }
+        }
+      },
+      "networkMap": {
+        "active": true,
+        "cfg": "1.0.0",
+        "messages": [
+          {
+            "id": "004@1.0.0",
+            "cfg": "1.0.0",
+            "txTp": "pacs.002.001.12",
+            "typologies": [
+              {
+                "id": "typology-processor@1.0.0",
+                "cfg": "999@1.0.0",
+                "rules": [
+                  { "id": "EFRuP@1.0.0", "cfg": "none" },
+                  { "id": "901@1.0.0", "cfg": "1.0.0" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "report": {
+        "evaluationID": "EVAL-003",
+        "metaData": { "prcgTmDP": 3456789, "prcgTmED": 91234 },
+        "status": "NALT",
+        "timestamp": "2025-11-17T09:15:00.000Z",
+        "tadpResult": {
+          "id": "004@1.0.0",
+          "cfg": "1.0.0",
+          "prcgTm": 1936516,
+          "typologyResult": [
+            {
+              "id": "typology-processor@1.0.0",
+              "cfg": "999@1.0.0",
+              "result": 190,
+              "ruleResults": [
+                { "id": "EFRuP@1.0.0", "cfg": "none", "subRuleRef": "none", "prcgTm": 499791, "wght": 0 },
+                { "id": "901@1.0.0", "cfg": "1.0.0", "subRuleRef": ".02", "prcgTm": 2185855, "wght": 190 }
+              ],
+              "prcgTm": 1283670,
+              "review": false,
+              "workflow": {
+                "alertThreshold": 200,
+                "interdictionThreshold": 400
+              }
+            }
+          ]
+        }
+      },
+      "confidence_per": 88.0,
+      "case_id": null,
+      "userId": "test-user-003"
+    },
+    {
+      "id": 4,
+      "description": "NALT Alert - Sarah Williams transaction TXN-004-02",
+      "tenant_id": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+      "priority": "NEW",
+      "source": "NATS",
+      "txtp": "pacs.002.001.12",
+      "message": "Transaction pattern review - TXN-004-02",
+      "transaction": {
+        "TxTp": "pacs.002.001.12",
+        "TenantId": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+        "FIToFIPmtSts": {
+          "GrpHdr": {
+            "MsgId": "MSG-004-02",
+            "CreDtTm": "2025-11-23T16:45:00.000Z"
+          },
+          "TxInfAndSts": {
+            "OrgnlInstrId": "INSTR-004-02",
+            "OrgnlEndToEndId": "TXN-004-02",
+            "TxSts": "ACCC",
+            "ChrgsInf": [
+              {
+                "Amt": { "Amt": 1800.00, "Ccy": "USD" },
+                "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp004" } } }
+              }
+            ],
+            "AccptncDtTm": "2025-11-23T16:45:00.000Z",
+            "InstgAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp004" } } },
+            "InstdAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp004b" } } }
+          }
+        }
+      },
+      "networkMap": {
+        "active": true,
+        "cfg": "1.0.0",
+        "messages": [
+          {
+            "id": "004@1.0.0",
+            "cfg": "1.0.0",
+            "txTp": "pacs.002.001.12",
+            "typologies": [
+              {
+                "id": "typology-processor@1.0.0",
+                "cfg": "999@1.0.0",
+                "rules": [
+                  { "id": "EFRuP@1.0.0", "cfg": "none" },
+                  { "id": "901@1.0.0", "cfg": "1.0.0" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "report": {
+        "evaluationID": "EVAL-004",
+        "metaData": { "prcgTmDP": 4567890, "prcgTmED": 92345 },
+        "status": "NALT",
+        "timestamp": "2025-11-23T16:45:00.000Z",
+        "tadpResult": {
+          "id": "004@1.0.0",
+          "cfg": "1.0.0",
+          "prcgTm": 1936516,
+          "typologyResult": [
+            {
+              "id": "typology-processor@1.0.0",
+              "cfg": "999@1.0.0",
+              "result": 160,
+              "ruleResults": [
+                { "id": "EFRuP@1.0.0", "cfg": "none", "subRuleRef": "none", "prcgTm": 499791, "wght": 0 },
+                { "id": "901@1.0.0", "cfg": "1.0.0", "subRuleRef": ".02", "prcgTm": 2185855, "wght": 160 }
+              ],
+              "prcgTm": 1283670,
+              "review": false,
+              "workflow": {
+                "alertThreshold": 200,
+                "interdictionThreshold": 400
+              }
+            }
+          ]
+        }
+      },
+      "confidence_per": 79.0,
+      "case_id": null,
+      "userId": "test-user-004"
+    },
+    {
+      "id": 5,
+      "description": "NALT Alert - Michael Brown transaction TXN-005-02",
+      "tenant_id": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+      "priority": "NEW",
+      "source": "NATS",
+      "txtp": "pacs.002.001.12",
+      "message": "Business account review - TXN-005-02",
+      "transaction": {
+        "TxTp": "pacs.002.001.12",
+        "TenantId": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+        "FIToFIPmtSts": {
+          "GrpHdr": {
+            "MsgId": "MSG-005-02",
+            "CreDtTm": "2025-11-24T11:30:00.000Z"
+          },
+          "TxInfAndSts": {
+            "OrgnlInstrId": "INSTR-005-02",
+            "OrgnlEndToEndId": "TXN-005-02",
+            "TxSts": "ACCC",
+            "ChrgsInf": [
+              {
+                "Amt": { "Amt": 4500.00, "Ccy": "USD" },
+                "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp005" } } }
+              }
+            ],
+            "AccptncDtTm": "2025-11-24T11:30:00.000Z",
+            "InstgAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp005" } } },
+            "InstdAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp005b" } } }
+          }
+        }
+      },
+      "networkMap": {
+        "active": true,
+        "cfg": "1.0.0",
+        "messages": [
+          {
+            "id": "004@1.0.0",
+            "cfg": "1.0.0",
+            "txTp": "pacs.002.001.12",
+            "typologies": [
+              {
+                "id": "typology-processor@1.0.0",
+                "cfg": "999@1.0.0",
+                "rules": [
+                  { "id": "EFRuP@1.0.0", "cfg": "none" },
+                  { "id": "901@1.0.0", "cfg": "1.0.0" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "report": {
+        "evaluationID": "EVAL-005",
+        "metaData": { "prcgTmDP": 5678901, "prcgTmED": 93456 },
+        "status": "NALT",
+        "timestamp": "2025-11-24T11:30:00.000Z",
+        "tadpResult": {
+          "id": "004@1.0.0",
+          "cfg": "1.0.0",
+          "prcgTm": 1936516,
+          "typologyResult": [
+            {
+              "id": "typology-processor@1.0.0",
+              "cfg": "999@1.0.0",
+              "result": 170,
+              "ruleResults": [
+                { "id": "EFRuP@1.0.0", "cfg": "none", "subRuleRef": "none", "prcgTm": 499791, "wght": 0 },
+                { "id": "901@1.0.0", "cfg": "1.0.0", "subRuleRef": ".02", "prcgTm": 2185855, "wght": 170 }
+              ],
+              "prcgTm": 1283670,
+              "review": false,
+              "workflow": {
+                "alertThreshold": 200,
+                "interdictionThreshold": 400
+              }
+            }
+          ]
+        }
+      },
+      "confidence_per": 81.5,
+      "case_id": null,
+      "userId": "test-user-005"
+    },
+    {
+      "id": 6,
+      "description": "ALRT Alert - John Smith high risk transaction TXN-001-02",
+      "tenant_id": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+      "priority": "URGENT",
+      "source": "NATS",
+      "txtp": "pacs.002.001.12",
+      "message": "ALERT: Suspicious transaction detected - TXN-001-02",
+      "transaction": {
+        "TxTp": "pacs.002.001.12",
+        "TenantId": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+        "FIToFIPmtSts": {
+          "GrpHdr": {
+            "MsgId": "MSG-001-02",
+            "CreDtTm": "2025-11-18T13:00:00.000Z"
+          },
+          "TxInfAndSts": {
+            "OrgnlInstrId": "INSTR-001-02",
+            "OrgnlEndToEndId": "TXN-001-02",
+            "TxSts": "ACCC",
+            "ChrgsInf": [
+              {
+                "Amt": { "Amt": 1200.00, "Ccy": "USD" },
+                "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp001" } } }
+              }
+            ],
+            "AccptncDtTm": "2025-11-18T13:00:00.000Z",
+            "InstgAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp001b" } } },
+            "InstdAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp001" } } }
+          }
+        }
+      },
+      "networkMap": {
+        "active": true,
+        "cfg": "1.0.0",
+        "messages": [
+          {
+            "id": "004@1.0.0",
+            "cfg": "1.0.0",
+            "txTp": "pacs.002.001.12",
+            "typologies": [
+              {
+                "id": "typology-processor@1.0.0",
+                "cfg": "999@1.0.0",
+                "rules": [
+                  { "id": "EFRuP@1.0.0", "cfg": "none" },
+                  { "id": "901@1.0.0", "cfg": "1.0.0" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "report": {
+        "evaluationID": "EVAL-006",
+        "metaData": { "prcgTmDP": 6789012, "prcgTmED": 94567 },
+        "status": "ALRT",
+        "timestamp": "2025-11-18T13:00:00.000Z",
+        "tadpResult": {
+          "id": "004@1.0.0",
+          "cfg": "1.0.0",
+          "prcgTm": 1936516,
+          "typologyResult": [
+            {
+              "id": "typology-processor@1.0.0",
+              "cfg": "999@1.0.0",
+              "result": 550,
+              "ruleResults": [
+                { "id": "EFRuP@1.0.0", "cfg": "none", "subRuleRef": "none", "prcgTm": 499791, "wght": 250 },
+                { "id": "901@1.0.0", "cfg": "1.0.0", "subRuleRef": ".02", "prcgTm": 2185855, "wght": 300 }
+              ],
+              "prcgTm": 1283670,
+              "review": true,
+              "workflow": {
+                "alertThreshold": 200,
+                "interdictionThreshold": 400
+              }
+            }
+          ]
+        }
+      },
+      "confidence_per": 92.0,
+      "case_id": null,
+      "userId": "test-user-001"
+    },
+    {
+      "id": 7,
+      "description": "ALRT Alert - Jane Doe cross-border transaction TXN-002-02",
+      "tenant_id": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+      "priority": "CRITICAL",
+      "source": "NATS",
+      "txtp": "pacs.002.001.12",
+      "message": "CRITICAL: Cross-border suspicious activity - TXN-002-02",
+      "transaction": {
+        "TxTp": "pacs.002.001.12",
+        "TenantId": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+        "FIToFIPmtSts": {
+          "GrpHdr": {
+            "MsgId": "MSG-002-02",
+            "CreDtTm": "2025-11-19T08:30:00.000Z"
+          },
+          "TxInfAndSts": {
+            "OrgnlInstrId": "INSTR-002-02",
+            "OrgnlEndToEndId": "TXN-002-02",
+            "TxSts": "ACCC",
+            "ChrgsInf": [
+              {
+                "Amt": { "Amt": 800.00, "Ccy": "USD" },
+                "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp002" } } }
+              }
+            ],
+            "AccptncDtTm": "2025-11-19T08:30:00.000Z",
+            "InstgAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp002" } } },
+            "InstdAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp002b" } } }
+          }
+        }
+      },
+      "networkMap": {
+        "active": true,
+        "cfg": "1.0.0",
+        "messages": [
+          {
+            "id": "004@1.0.0",
+            "cfg": "1.0.0",
+            "txTp": "pacs.002.001.12",
+            "typologies": [
+              {
+                "id": "typology-processor@1.0.0",
+                "cfg": "999@1.0.0",
+                "rules": [
+                  { "id": "EFRuP@1.0.0", "cfg": "none" },
+                  { "id": "901@1.0.0", "cfg": "1.0.0" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "report": {
+        "evaluationID": "EVAL-007",
+        "metaData": { "prcgTmDP": 7890123, "prcgTmED": 95678 },
+        "status": "ALRT",
+        "timestamp": "2025-11-19T08:30:00.000Z",
+        "tadpResult": {
+          "id": "004@1.0.0",
+          "cfg": "1.0.0",
+          "prcgTm": 1936516,
+          "typologyResult": [
+            {
+              "id": "typology-processor@1.0.0",
+              "cfg": "999@1.0.0",
+              "result": 650,
+              "ruleResults": [
+                { "id": "EFRuP@1.0.0", "cfg": "none", "subRuleRef": "none", "prcgTm": 499791, "wght": 300 },
+                { "id": "901@1.0.0", "cfg": "1.0.0", "subRuleRef": ".02", "prcgTm": 2185855, "wght": 350 }
+              ],
+              "prcgTm": 1283670,
+              "review": true,
+              "workflow": {
+                "alertThreshold": 200,
+                "interdictionThreshold": 400
+              }
+            }
+          ]
+        }
+      },
+      "confidence_per": 95.5,
+      "case_id": null,
+      "userId": "test-user-002"
+    },
+    {
+      "id": 8,
+      "description": "ALRT Alert - Robert Johnson high value TXN-003-02",
+      "tenant_id": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+      "priority": "URGENT",
+      "source": "NATS",
+      "txtp": "pacs.002.001.12",
+      "message": "ALERT: Large value transaction requires review - TXN-003-02",
+      "transaction": {
+        "TxTp": "pacs.002.001.12",
+        "TenantId": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+        "FIToFIPmtSts": {
+          "GrpHdr": {
+            "MsgId": "MSG-003-02",
+            "CreDtTm": "2025-11-22T15:00:00.000Z"
+          },
+          "TxInfAndSts": {
+            "OrgnlInstrId": "INSTR-003-02",
+            "OrgnlEndToEndId": "TXN-003-02",
+            "TxSts": "ACCC",
+            "ChrgsInf": [
+              {
+                "Amt": { "Amt": 3200.00, "Ccy": "USD" },
+                "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp003" } } }
+              }
+            ],
+            "AccptncDtTm": "2025-11-22T15:00:00.000Z",
+            "InstgAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp003b" } } },
+            "InstdAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp003" } } }
+          }
+        }
+      },
+      "networkMap": {
+        "active": true,
+        "cfg": "1.0.0",
+        "messages": [
+          {
+            "id": "004@1.0.0",
+            "cfg": "1.0.0",
+            "txTp": "pacs.002.001.12",
+            "typologies": [
+              {
+                "id": "typology-processor@1.0.0",
+                "cfg": "999@1.0.0",
+                "rules": [
+                  { "id": "EFRuP@1.0.0", "cfg": "none" },
+                  { "id": "901@1.0.0", "cfg": "1.0.0" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "report": {
+        "evaluationID": "EVAL-008",
+        "metaData": { "prcgTmDP": 8901234, "prcgTmED": 96789 },
+        "status": "ALRT",
+        "timestamp": "2025-11-22T15:00:00.000Z",
+        "tadpResult": {
+          "id": "004@1.0.0",
+          "cfg": "1.0.0",
+          "prcgTm": 1936516,
+          "typologyResult": [
+            {
+              "id": "typology-processor@1.0.0",
+              "cfg": "999@1.0.0",
+              "result": 480,
+              "ruleResults": [
+                { "id": "EFRuP@1.0.0", "cfg": "none", "subRuleRef": "none", "prcgTm": 499791, "wght": 200 },
+                { "id": "901@1.0.0", "cfg": "1.0.0", "subRuleRef": ".02", "prcgTm": 2185855, "wght": 280 }
+              ],
+              "prcgTm": 1283670,
+              "review": true,
+              "workflow": {
+                "alertThreshold": 200,
+                "interdictionThreshold": 400
+              }
+            }
+          ]
+        }
+      },
+      "confidence_per": 90.0,
+      "case_id": null,
+      "userId": "test-user-003"
+    },
+    {
+      "id": 9,
+      "description": "ALRT Alert - Sarah Williams unusual pattern TXN-004-03",
+      "tenant_id": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+      "priority": "URGENT",
+      "source": "NATS",
+      "txtp": "pacs.002.001.12",
+      "message": "ALERT: Unusual transaction pattern detected - TXN-004-03",
+      "transaction": {
+        "TxTp": "pacs.002.001.12",
+        "TenantId": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+        "FIToFIPmtSts": {
+          "GrpHdr": {
+            "MsgId": "MSG-004-03",
+            "CreDtTm": "2025-11-26T10:20:00.000Z"
+          },
+          "TxInfAndSts": {
+            "OrgnlInstrId": "INSTR-004-03",
+            "OrgnlEndToEndId": "TXN-004-03",
+            "TxSts": "ACCC",
+            "ChrgsInf": [
+              {
+                "Amt": { "Amt": 950.00, "Ccy": "USD" },
+                "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp004" } } }
+              }
+            ],
+            "AccptncDtTm": "2025-11-26T10:20:00.000Z",
+            "InstgAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp004b" } } },
+            "InstdAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp004" } } }
+          }
+        }
+      },
+      "networkMap": {
+        "active": true,
+        "cfg": "1.0.0",
+        "messages": [
+          {
+            "id": "004@1.0.0",
+            "cfg": "1.0.0",
+            "txTp": "pacs.002.001.12",
+            "typologies": [
+              {
+                "id": "typology-processor@1.0.0",
+                "cfg": "999@1.0.0",
+                "rules": [
+                  { "id": "EFRuP@1.0.0", "cfg": "none" },
+                  { "id": "901@1.0.0", "cfg": "1.0.0" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "report": {
+        "evaluationID": "EVAL-009",
+        "metaData": { "prcgTmDP": 9012345, "prcgTmED": 97890 },
+        "status": "ALRT",
+        "timestamp": "2025-11-26T10:20:00.000Z",
+        "tadpResult": {
+          "id": "004@1.0.0",
+          "cfg": "1.0.0",
+          "prcgTm": 1936516,
+          "typologyResult": [
+            {
+              "id": "typology-processor@1.0.0",
+              "cfg": "999@1.0.0",
+              "result": 420,
+              "ruleResults": [
+                { "id": "EFRuP@1.0.0", "cfg": "none", "subRuleRef": "none", "prcgTm": 499791, "wght": 170 },
+                { "id": "901@1.0.0", "cfg": "1.0.0", "subRuleRef": ".02", "prcgTm": 2185855, "wght": 250 }
+              ],
+              "prcgTm": 1283670,
+              "review": true,
+              "workflow": {
+                "alertThreshold": 200,
+                "interdictionThreshold": 400
+              }
+            }
+          ]
+        }
+      },
+      "confidence_per": 87.5,
+      "case_id": null,
+      "userId": "test-user-004"
+    },
+    {
+      "id": 10,
+      "description": "ALRT Alert - Michael Brown business account TXN-005-01",
+      "tenant_id": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+      "priority": "CRITICAL",
+      "source": "NATS",
+      "txtp": "pacs.002.001.12",
+      "message": "CRITICAL: High value business transaction - TXN-005-01",
+      "transaction": {
+        "TxTp": "pacs.002.001.12",
+        "TenantId": "c950ac85-96f0-4390-8d94-5b8fdec4e863",
+        "FIToFIPmtSts": {
+          "GrpHdr": {
+            "MsgId": "MSG-005-01",
+            "CreDtTm": "2025-11-13T12:00:00.000Z"
+          },
+          "TxInfAndSts": {
+            "OrgnlInstrId": "INSTR-005-01",
+            "OrgnlEndToEndId": "TXN-005-01",
+            "TxSts": "ACCC",
+            "ChrgsInf": [
+              {
+                "Amt": { "Amt": 25000.00, "Ccy": "USD" },
+                "Agt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp005" } } }
+              }
+            ],
+            "AccptncDtTm": "2025-11-13T12:00:00.000Z",
+            "InstgAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp005b" } } },
+            "InstdAgt": { "FinInstnId": { "ClrSysMmbId": { "MmbId": "fsp005" } } }
+          }
+        }
+      },
+      "networkMap": {
+        "active": true,
+        "cfg": "1.0.0",
+        "messages": [
+          {
+            "id": "004@1.0.0",
+            "cfg": "1.0.0",
+            "txTp": "pacs.002.001.12",
+            "typologies": [
+              {
+                "id": "typology-processor@1.0.0",
+                "cfg": "999@1.0.0",
+                "rules": [
+                  { "id": "EFRuP@1.0.0", "cfg": "none" },
+                  { "id": "901@1.0.0", "cfg": "1.0.0" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "report": {
+        "evaluationID": "EVAL-010",
+        "metaData": { "prcgTmDP": 10123456, "prcgTmED": 98901 },
+        "status": "ALRT",
+        "timestamp": "2025-11-13T12:00:00.000Z",
+        "tadpResult": {
+          "id": "004@1.0.0",
+          "cfg": "1.0.0",
+          "prcgTm": 1936516,
+          "typologyResult": [
+            {
+              "id": "typology-processor@1.0.0",
+              "cfg": "999@1.0.0",
+              "result": 750,
+              "ruleResults": [
+                { "id": "EFRuP@1.0.0", "cfg": "none", "subRuleRef": "none", "prcgTm": 499791, "wght": 350 },
+                { "id": "901@1.0.0", "cfg": "1.0.0", "subRuleRef": ".02", "prcgTm": 2185855, "wght": 400 }
+              ],
+              "prcgTm": 1283670,
+              "review": true,
+              "workflow": {
+                "alertThreshold": 200,
+                "interdictionThreshold": 400
+              }
+            }
+          ]
+        }
+      },
+      "confidence_per": 97.0,
+      "case_id": null,
+      "userId": "test-user-005"
+    }
+  ]
+}

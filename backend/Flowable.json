@@ -1,0 +1,298 @@
+{
+  "info": {
+    "name": "Flowable",
+    "description": "",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "addTaskToQueue",
+      "event": [],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/runtime/tasks/40a6285b-9390-11f0-8c2a-367cef1558c5/identitylinks",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "runtime",
+            "tasks",
+            "40a6285b-9390-11f0-8c2a-367cef1558c5",
+            "identitylinks"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"group\": \"investigator\",\n  \"type\": \"candidate\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "addTaskVariables",
+      "event": [],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/runtime/tasks/1a97df61-9523-11f0-9fc9-761ed81ea54b/variables",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "runtime",
+            "tasks",
+            "1a97df61-9523-11f0-9fc9-761ed81ea54b",
+            "variables"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "[\n    {\n      \"name\": \"postgres_task_id\",\n      \"value\": \"de78b8e7-56e1-45a4-8614-65718c7cf173\" \n    },\n    {\n      \"name\": \"task_status\",\n      \"value\": \"STATUS_02_ASSIGNED\"\n    },\n    {\n      \"name\": \"assignee_user_id\",\n      \"value\": \"3a203b24-2d9c-4416-a35c-0a6dd5eb9b64\"\n    },\n    {\n      \"name\": \"postgres_case_id\",\n      \"value\": \"63506bb1-c84b-4636-9dd0-9ea8d7caa5b1\"\n    },\n    {\n      \"name\": \"flowable_case_id\",\n      \"value\": \"\" \n    }\n  ]",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "createCandidateGroup",
+      "event": [],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/identity/groups",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "identity",
+            "groups"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": \"supervisors\",\n  \"name\": \"supervisors\",\n  \"type\": \"candidate\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "createTasks",
+      "event": [],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/runtime/tasks",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "runtime",
+            "tasks"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Investigate Fraud Alert\",\n  \"description\": \"Investigate case ID 10001\",\n  \"tenantId\": \"tenant_123\"\n}\n",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "getAllTasks",
+      "event": [],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/runtime/tasks?includeTaskLocalVariables=true",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "runtime",
+            "tasks?includeTaskLocalVariables=true"
+          ],
+          "query": [
+            {
+              "key": "includeTaskLocalVariables",
+              "value": "true"
+            }
+          ],
+          "variable": []
+        }
+      }
+    },
+    {
+      "name": "getAllWorkQueue",
+      "event": [],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/identity/groups",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "identity",
+            "groups"
+          ],
+          "query": [],
+          "variable": []
+        }
+      }
+    },
+    {
+      "name": "getTaskByQueue",
+      "event": [],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/runtime/tasks?candidateGroup=investigator",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "runtime",
+            "tasks?candidateGroup=investigator"
+          ],
+          "query": [
+            {
+              "key": "candidateGroup",
+              "value": "investigator"
+            }
+          ],
+          "variable": []
+        }
+      }
+    },
+    {
+      "name": "getTaskDetail",
+      "event": [],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/runtime/tasks?taskId=1a97df61-9523-11f0-9fc9-761ed81ea54b",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "runtime",
+            "tasks?taskId=1a97df61-9523-11f0-9fc9-761ed81ea54b"
+          ],
+          "query": [
+            {
+              "key": "taskId",
+              "value": "1a97df61-9523-11f0-9fc9-761ed81ea54b"
+            }
+          ],
+          "variable": []
+        }
+      }
+    },
+    {
+      "name": "getTaskVariables",
+      "event": [],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "{{baseUrl}}/runtime/tasks/1a97df61-9523-11f0-9fc9-761ed81ea54b/variables",
+          "protocol": "",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "runtime",
+            "tasks",
+            "1a97df61-9523-11f0-9fc9-761ed81ea54b",
+            "variables"
+          ],
+          "query": [],
+          "variable": []
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "",
+      "type": "default"
+    }
+  ]
+}

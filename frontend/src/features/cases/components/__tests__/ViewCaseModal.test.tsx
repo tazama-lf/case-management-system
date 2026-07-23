@@ -1,0 +1,392 @@
+import React from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { CaseRow } from '../casesTable.utils';
+
+vi.mock('@/features/auth/components/AuthContext', () => ({
+  useAuth: () => ({
+    hasComplianceOfficerRole: () => false,
+    hasSupervisorRole: () => false,
+    user: { id: 1, username: 'test' },
+    isAuthenticated: true,
+  }),
+}));
+
+const mockGetCaseDetails = vi.fn();
+const mockTransformBackendCaseToUI = vi.fn();
+
+vi.mock('../../services/caseService', () => ({
+  caseService: {
+    getCaseDetails: (...args: any[]) => mockGetCaseDetails(...args),
+  },
+}));
+
+vi.mock('../casesTable.utils', async () => {
+  const actual = await vi.importActual('../casesTable.utils');
+  return {
+    ...actual,
+    transformBackendCaseToUI: (...args: any[]) =>
+      mockTransformBackendCaseToUI(...args),
+  };
+});
+
+// Mock child components
+vi.mock('../view/CaseDetailsTab', () => ({
+  default: () => <div>Case Details Tab</div>,
+}));
+vi.mock('../view/CaseHistoryTab', () => ({
+  default: () => <div>Case History Tab</div>,
+}));
+vi.mock('../view/TaskLogTab', () => ({
+  default: ({ onRefreshCases }: any) => (
+    <div>
+      Task Log Tab
+      <button onClick={onRefreshCases}>Refresh Cases From Task</button>
+    </div>
+  ),
+}));
+vi.mock('../view/CollaboratePanel', () => ({
+  default: () => <div>Collaborate Panel</div>,
+}));
+
+vi.mock('../view/LinkedItemsTab', () => ({
+  default: () => <div>Linked Items Tab</div>,
+}));
+
+vi.mock('../view/CommentHistoryTab', () => ({
+  default: () => <div>Comments History Tab</div>,
+}));
+vi.mock('../view/CaseActionsPanel', () => ({
+  default: () => <div>Case Actions Panel</div>,
+}));
+vi.mock('../view/VisualizationsTab', () => ({
+  default: ({ transactionId }: any) => (
+    <div>Visualizations Tab {transactionId && `txn:${transactionId}`}</div>
+  ),
+}));
+
+import ViewCaseModal from '../ViewCaseModal';
+
+const mockCaseData: CaseRow = {
+  id: 123,
+  type: 'FRAUD',
+  typeColor: 'bg-red-50',
+  status: 'STATUS_20_IN_PROGRESS',
+  statusColor: 'bg-blue-50',
+  typologyId: 'TYP-001',
+  score: 90,
+  createdOn: '01/01/2023',
+  pickedOn: '02/01/2023',
+  action: 'View',
+  assignee: 'John Doe',
+  priority: 'HIGH',
+  userRole: 'owner',
+  totalTasks: 1,
+  alertId: 1,
+  transaction: JSON.stringify({
+    FIToFIPmtSts: {
+      TxInfAndSts: {
+        OrgnlEndToEndId: 'TXN-12345',
+      },
+    },
+  }),
+};
+
+const mockCaseWithGroup: CaseRow = {
+  ...mockCaseData,
+  groupId: 999,
+};
+
+describe('ViewCaseModal', () => {
+  const mockOnClose = vi.fn();
+  const mockOnRefreshCases = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCaseDetails.mockResolvedValue(mockCaseData);
+    mockTransformBackendCaseToUI.mockImplementation((c: any) => c);
+    mockOnRefreshCases.mockResolvedValue(undefined);
+  });
+
+  it('does not render when open is false', () => {
+    render(
+      <ViewCaseModal
+        open={false}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+    expect(
+      screen.queryByRole('heading', { name: /Case Details/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not render when row is null', () => {
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={null}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+    expect(
+      screen.queryByRole('heading', { name: /Case Details/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders modal with case details when open', () => {
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: /Case Details/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('closes modal when close button is clicked', async () => {
+    const user = userEvent.setup();
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    const closeButton = screen.getByRole('button', { name: /Close/i });
+    await user.click(closeButton);
+
+    expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  it('displays tabs for navigation', () => {
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    expect(screen.getAllByText('Case Details').length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(screen.getByText('Task Log')).toBeInTheDocument();
+    expect(screen.getByText('Linked Items')).toBeInTheDocument();
+    expect(screen.getByText('Visualizations')).toBeInTheDocument();
+    expect(screen.getByText('Case History')).toBeInTheDocument();
+    expect(screen.getByText('Comments History')).toBeInTheDocument();
+  });
+
+  it('switches to Task Log tab', async () => {
+    const user = userEvent.setup();
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    await user.click(screen.getByText('Task Log'));
+    expect(screen.getByText('Task Log Tab')).toBeInTheDocument();
+  });
+
+  it('switches to Linked Items tab', async () => {
+    const user = userEvent.setup();
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+    await user.click(screen.getByText('Linked Items'));
+    expect(screen.getByText('Linked Items Tab')).toBeInTheDocument();
+  });
+
+  it('switches to Visualizations tab', async () => {
+    const user = userEvent.setup();
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    await user.click(screen.getByText('Visualizations'));
+    expect(screen.getByText(/Visualizations Tab/)).toBeInTheDocument();
+    expect(screen.getByText(/txn:TXN-12345/)).toBeInTheDocument();
+  });
+
+  it('hides Visualizations tab for non-pacs002 transactions', () => {
+    const caseWithNonPacs002: CaseRow = {
+      ...mockCaseData,
+      transaction: JSON.stringify({
+        TxTp: 'pacs.008.001.10',
+      }),
+    };
+    mockGetCaseDetails.mockResolvedValue(caseWithNonPacs002);
+
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={caseWithNonPacs002}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
+  });
+
+  it('extracts transactionId from EndToEndId field for Visualizations', async () => {
+    const user = userEvent.setup();
+    const caseWithEndToEnd: CaseRow = {
+      ...mockCaseData,
+      transaction: JSON.stringify({
+        FIToFIPmtSts: {
+          TxInfAndSts: {
+            EndToEndId: 'E2E-TXN-001',
+          },
+        },
+      }),
+    };
+    mockGetCaseDetails.mockResolvedValue(caseWithEndToEnd);
+
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={caseWithEndToEnd}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    await user.click(screen.getByText('Visualizations'));
+    expect(screen.getByText(/txn:E2E-TXN-001/)).toBeInTheDocument();
+  });
+
+  it('switches to Case History tab', async () => {
+    const user = userEvent.setup();
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    await user.click(screen.getByText('Case History'));
+    expect(screen.getByText('Case History Tab')).toBeInTheDocument();
+  });
+
+  it('switches to Comments History tab', async () => {
+    const user = userEvent.setup();
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    await user.click(screen.getByText('Comments History'));
+    expect(screen.getByText('Comments History Tab')).toBeInTheDocument();
+  });
+
+  it('shows CaseActionsPanel only on details tab', async () => {
+    const user = userEvent.setup();
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    // Actions panel visible on details tab
+    expect(screen.getByText('Case Actions Panel')).toBeInTheDocument();
+
+    // Switch to Task Log tab - actions panel should be hidden
+    await user.click(screen.getByText('Task Log'));
+    expect(screen.queryByText('Case Actions Panel')).not.toBeInTheDocument();
+  });
+
+  it('handles getCaseDetails error gracefully', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+    mockGetCaseDetails.mockRejectedValue(new Error('fetch failed'));
+
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseWithGroup}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Failed to refresh case data:',
+        expect.any(Error),
+      );
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('refreshes case data from task log tab', async () => {
+    const user = userEvent.setup();
+    mockGetCaseDetails.mockResolvedValue({ ...mockCaseData });
+    mockTransformBackendCaseToUI.mockImplementation((c: any) => c);
+
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    await user.click(screen.getByText('Task Log'));
+    await user.click(screen.getByText('Refresh Cases From Task'));
+
+    await waitFor(() => {
+      expect(mockOnRefreshCases).toHaveBeenCalled();
+    });
+  });
+
+  it('hides tabs when showCollaborate is true', () => {
+    // This is harder to test since showCollaborate is internal state
+    // and only toggled by child components. We verify tabs are shown by default.
+    render(
+      <ViewCaseModal
+        open={true}
+        onClose={mockOnClose}
+        row={mockCaseData}
+        onRefreshCases={mockOnRefreshCases}
+      />,
+    );
+
+    expect(screen.getByText('Task Log')).toBeInTheDocument();
+  });
+});

@@ -1,0 +1,30 @@
+[couchdb]
+single_node=true
+uuid = your-generated-uuid-here
+
+[httpd]
+enable_cors = true
+max_http_request_size = 4294967296
+
+[cors]
+origins = *
+credentials = true
+methods = GET, PUT, POST, HEAD, DELETE
+headers = accept, authorization, content-type, origin, referer, x-csrf-token
+
+[log]
+level = info
+
+[chttpd]
+bind_address = 0.0.0.0
+port = 5984
+
+[admins]
+# Add your admin username and password here
+# Format: username = password
+# CouchDB will automatically hash the password on first startup
+your_username = your_password
+
+[chttpd_auth]
+# Generate a secure random secret string
+secret = your-secret-key-here

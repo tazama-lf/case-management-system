@@ -1,0 +1,17 @@
+# ED-style Prettier ignore
+node_modules/
+dist/
+coverage/
+.prisma/
+.prisma/**
+.build/
+.build/**
+.tmp/
+.tmp/**
+*.log
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.env
+.env.*
+.DS_Store

@@ -1,0 +1,138 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+# GitHub recommends pinning actions to a commit SHA.
+# To get a newer version, you will need to update the SHA.
+# You can also reference a tag or branch, but the action may change without warning.
+
+# Please do not attempt to edit this flow without the direct consent from the DevOps team. This file is managed centrally.
+
+# This workflow is for repositories that produce multiple Docker images.
+# RC images are tagged with the floating alias "rc" rather than the package version.
+
+name: Publish Docker images RC (multi)
+
+on:
+  push:
+    branches: [ "dev" ]
+  workflow_dispatch:
+
+jobs:
+  publish_rc_images:
+    if: github.actor != 'dependabot[bot]' && github.actor != 'dependabot-preview[bot]'
+    name: Push ${{ matrix.image_suffix }} RC Docker image to Docker Hub
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image_suffix: backend
+            context: ./backend
+            dockerfile: ./backend/Dockerfile
+            target: ""
+
+          - image_suffix: migrate
+            context: ./backend
+            dockerfile: ./backend/Dockerfile
+            target: migrate
+
+          - image_suffix: frontend
+            context: ./frontend
+            dockerfile: ./frontend/Dockerfile
+            target: ""
+
+          - image_suffix: voila
+            context: .
+            dockerfile: ./Dockerfile.voila
+            target: ""
+
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set ENV variables
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/}"
+          IMAGE_NAME="${REPO_NAME}-${{ matrix.image_suffix }}"
+          IMAGE_REPOSITORY="tazamaorg/${IMAGE_NAME}"
+          IMAGE_URL="https://hub.docker.com/r/${IMAGE_REPOSITORY}"
+
+          echo "REPO_NAME=${REPO_NAME}" >> "$GITHUB_ENV"
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> "$GITHUB_ENV"
+          echo "IMAGE_REPOSITORY=${IMAGE_REPOSITORY}" >> "$GITHUB_ENV"
+          echo "IMAGE_URL=${IMAGE_URL}" >> "$GITHUB_ENV"
+
+      - name: Resolve source PR
+        id: src_pr
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_URL=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+            --jq '.[0].html_url // empty' 2>/dev/null || true)
+
+          echo "PR_URL=${PR_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Extract metadata tags and labels for Docker
+        id: meta
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf
+        with:
+          images: ${{ env.IMAGE_REPOSITORY }}
+          tags: |
+            type=raw,value=rc
+
+      - name: Build and push ${{ matrix.image_suffix }} RC Docker image
+        id: push
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          secrets: |
+            GH_TOKEN=${{ secrets.GH_TOKEN }}
+
+      - name: Generate artifact attestation
+        if: success()
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
+        with:
+          subject-name: docker.io/${{ env.IMAGE_REPOSITORY }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: false
+
+      - name: Send Slack Notification
+        if: always()
+        continue-on-error: true
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SERVICE_NAME: ${{ env.IMAGE_NAME }}
+          IMAGE_REPOSITORY: ${{ env.IMAGE_REPOSITORY }}
+          IMAGE_URL: ${{ env.IMAGE_URL }}
+          PR_URL: ${{ steps.src_pr.outputs.PR_URL }}
+          JOB_STATUS: ${{ job.status }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -z "$SLACK_WEBHOOK_URL" ] && echo "SLACK_WEBHOOK_URL is not configured. Skipping Slack notification." && exit 0
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          curl --fail-with-body -sS -X POST -H 'Content-type: application/json' --data "$(jq -n --arg title "$([ "$JOB_STATUS" = "success" ] && echo "DockerHub RC image published :ship:" || echo "DockerHub RC image build failed :x:")" --arg service "$SERVICE_NAME" --arg status "$JOB_STATUS" --arg image "$IMAGE_REPOSITORY:rc" --arg image_url "$IMAGE_URL" --arg branch "$BRANCH_NAME" --arg sha "$SHORT_SHA" --arg pr "$PR_URL" --arg run "$RUN_URL" '{blocks:[{type:"header",text:{type:"plain_text",text:$title,emoji:true}},{type:"section",fields:([{type:"mrkdwn",text:("*Service:*\n"+$service)},{type:"mrkdwn",text:("*Status:*\n"+$status)},{type:"mrkdwn",text:("*Image:*\n`"+$image+"`")},{type:"mrkdwn",text:("*Branch:*\n`"+$branch+"`")},{type:"mrkdwn",text:("*Commit:*\n`"+$sha+"`")},{type:"mrkdwn",text:("*DockerHub:*\n<"+$image_url+"|Open image>")},{type:"mrkdwn",text:("*Workflow Run:*\n<"+$run+"|Open run>")}]+(if $pr != "" then [{type:"mrkdwn",text:("*Source PR:*\n<"+$pr+"|Open PR>")}] else [] end))}]}')" "$SLACK_WEBHOOK_URL"

@@ -1,0 +1,61 @@
+import type React from 'react';
+
+import type { TablePaginationInfo } from '@/shared/types/pagination.types';
+
+export type { Alert, Priority, AlertType } from './triage.types';
+
+export interface TransactionMessage {
+  id: number | string;
+  type: string;
+  description: string;
+  timestamp: string;
+  status: 'sent' | 'received' | 'processing' | 'failed';
+}
+
+export interface AlertsSearchFilters {
+  query: string;
+  source: string;
+  type: string;
+  priority: string;
+  timeRange: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface AlertsTableColumn<T> {
+  key: keyof T | string;
+  header: string;
+  sortable?: boolean;
+  render?: (value: unknown, row: T) => React.ReactNode;
+  width?: string;
+  align?: 'left' | 'center' | 'right';
+}
+
+export interface AlertsTableAction<T> {
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  onClick: (row: T) => void;
+  color?: 'blue' | 'green' | 'red' | 'gray';
+  disabled?: (row: T) => boolean;
+}
+
+export interface AlertsTableProps<T> {
+  data: T[];
+  columns: Array<AlertsTableColumn<T>>;
+  actions?: Array<AlertsTableAction<T>>;
+  loading?: boolean;
+  emptyMessage?: string;
+  pagination?: TablePaginationInfo;
+  onSort?: (column: keyof T | string, direction: 'asc' | 'desc') => void;
+  sortColumn?: keyof T | string;
+  sortDirection?: 'asc' | 'desc';
+  selectable?: boolean;
+  selectedRows?: Set<string | number>;
+  onSelectionChange?: (selectedRows: Set<string | number>) => void;
+  rowKey?: keyof T | ((row: T) => string | number);
+  onRowClick?: (row: T) => void;
+}
+
+export interface AlertsDashboardProps {
+  onBack: () => void;
+}

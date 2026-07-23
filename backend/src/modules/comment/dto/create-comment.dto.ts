@@ -1,0 +1,17 @@
+import { IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
+
+export class CreateCommentDto {
+  @IsString()
+  @MaxLength(500)
+  note: string;
+
+  @IsNumber()
+  caseId: number;
+
+  @IsOptional()
+  @IsNumber()
+  taskId?: number;
+
+  @IsString()
+  tenantId: string;
+}

@@ -1,0 +1,637 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { HttpException } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { of, throwError } from 'rxjs';
+import { AlertsLakehouseService } from '../src/modules/gold-lakehouse/alerts-lakehouse.service';
+
+describe('AlertsLakehouseService', () => {
+  let service: AlertsLakehouseService;
+  let http: jest.Mock;
+
+  const okHttp = (rows: any[] = [{}]) =>
+    of({
+      data: { status: 'success', data: rows, code: 200 },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {} as any,
+    });
+
+  const errHttp = (msg = 'fail') => throwError(() => new Error(msg));
+
+  beforeEach(async () => {
+    http = jest.fn().mockReturnValue(okHttp());
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AlertsLakehouseService,
+        { provide: HttpService, useValue: { post: http } },
+        {
+          provide: ConfigService,
+          useValue: {
+            getOrThrow: jest.fn(() => 'http://localhost:5000'),
+            get: jest.fn((key: string, def?: any) => {
+              if (key === 'GOLD_LAKEHOUSE_TIMEOUT') return 30000;
+              if (key === 'ALERT_HISTORY_FALLBACK_E2E_ID') return 'fallback-e2e-id';
+              return def;
+            }),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<AlertsLakehouseService>(AlertsLakehouseService);
+  });
+
+  afterEach(() => jest.clearAllMocks());
+
+  it('should be defined', () => expect(service).toBeDefined());
+
+  // ===================== getAlertNavigatorData =====================
+  describe('getAlertNavigatorData', () => {
+    it('returns alert navigator data with typologies and rules', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 1,
+            tenant_id: 'DEFAULT',
+            case_id: 100,
+            tx_msg_id: 'msg-123',
+            tx_type: 'pacs.008.001.10',
+            alert_timestamp: '2024-01-01T10:00:00Z',
+            alert_reason: 'Suspicious activity',
+            alert_type: 'FRAUD',
+            prediction_outcome: 'TRUE_POSITIVE',
+            priority: 'HIGH',
+            priority_score: 0.85,
+            evaluation_id: 'eval-123',
+            alert_status: 'ALRT',
+            transaction_status: 'ACCC',
+            transaction_amount: 1000,
+            transaction_currency: 'USD',
+            transaction_id: '31',
+            end_to_end_id: 'e2e-123',
+            block_or_override_status: 'NOT_BLOCKED',
+            alert_date: '2024-01-01',
+            typologies: [
+              {
+                typology_id: 'typology-001',
+                typology_cfg: '001@1.0.0',
+                typology_score: 500,
+                typology_review: true,
+                typology_processing_time_ms: 1000,
+                typology_tenant_id: 'DEFAULT',
+                flow_processor: 'EFRuP@1.0.0',
+                alert_threshold: 200,
+                interdiction_threshold: 400,
+                rule_count_in_typology: 2,
+                rules: [
+                  {
+                    rule_id: 'rule-001',
+                    rule_cfg: '1.0.0',
+                    rule_weight: 250,
+                    rule_independent_variable: null,
+                    rule_sub_ref: '.01',
+                    rule_processing_time_ms: 500,
+                    rule_tenant_id: 'DEFAULT',
+                  },
+                  {
+                    rule_id: 'rule-002',
+                    rule_cfg: '1.0.0',
+                    rule_weight: 250,
+                    rule_independent_variable: null,
+                    rule_sub_ref: '.02',
+                    rule_processing_time_ms: 500,
+                    rule_tenant_id: 'DEFAULT',
+                  },
+                  {
+                    rule_id: 'EFRuP@1.0.0',
+                    rule_cfg: 'none',
+                    rule_weight: 0,
+                    rule_independent_variable: 'Block',
+                    rule_sub_ref: 'Block',
+                    rule_processing_time_ms: 500,
+                    rule_tenant_id: 'DEFAULT',
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(1, 'DEFAULT');
+
+      expect(result).toHaveProperty('alertMetadata');
+      expect(result).toHaveProperty('typologies');
+      expect(result).toHaveProperty('statistics');
+      expect(result).toHaveProperty('meta');
+
+      expect(result.alertMetadata.alertId).toBe(1);
+      expect(result.alertMetadata.evaluationId).toBe('eval-123');
+      expect(result.alertMetadata.status).toBe('ALRT');
+      expect(result.alertMetadata.transactionType).toBe('pacs.008.001.10');
+
+      expect(result.typologies).toHaveLength(1);
+      expect(result.typologies[0].typologyId).toBe('typology-001');
+      expect(result.typologies[0].typologyScore).toBe(500);
+
+      // Rules are stringified JSON
+      expect(typeof result.typologies[0].rules).toBe('string');
+      const parsedRules = JSON.parse(result.typologies[0].rules);
+      expect(parsedRules).toHaveLength(2);
+      expect(parsedRules[0].ruleId).toBe('rule-001');
+      expect(result.typologies[0].flowProcessorData).toBe('Block');
+
+      expect(result.statistics.totalTypologies).toBe(1);
+      expect(result.statistics.totalRules).toBe(2);
+
+      expect(result.meta.alertId).toBe(1);
+      expect(result.meta.tenantId).toBe('DEFAULT');
+    });
+
+    it('surfaces flowProcessorData for a bumped EFRuP rule version (EFRuP@2.0.0)', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 4,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: 'typology-004',
+                typology_cfg: '001@1.0.0',
+                rules: [
+                  {
+                    rule_id: 'rule-001',
+                    rule_weight: 250,
+                    rule_sub_ref: '.01',
+                  },
+                  {
+                    rule_id: 'EFRuP@2.0.0',
+                    rule_cfg: 'none',
+                    rule_weight: 0,
+                    rule_independent_variable: 'Block',
+                    rule_sub_ref: 'Block',
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(4, 'DEFAULT');
+
+      expect(result.typologies[0].flowProcessorData).toBe('Block');
+      const parsedRules = JSON.parse(result.typologies[0].rules);
+      expect(parsedRules).toHaveLength(1);
+      expect(parsedRules[0].ruleId).toBe('rule-001');
+    });
+
+    it('excludes EFRuP from triggered rules even if it carries a non-zero weight', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 5,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: 'typology-005',
+                typology_cfg: '001@1.0.0',
+                rules: [
+                  {
+                    rule_id: 'rule-001',
+                    rule_weight: 250,
+                    rule_sub_ref: '.01',
+                  },
+                  {
+                    rule_id: 'EFRuP@1.0.0',
+                    rule_weight: 5,
+                    rule_sub_ref: 'Block',
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(5, 'DEFAULT');
+
+      expect(result.typologies[0].flowProcessorData).toBe('Block');
+      const parsedRules = JSON.parse(result.typologies[0].rules);
+      expect(parsedRules).toHaveLength(1);
+      expect(parsedRules[0].ruleId).toBe('rule-001');
+    });
+
+    it('handles null values gracefully', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 2,
+            tenant_id: 'DEFAULT',
+            tx_type: null,
+            alert_timestamp: null,
+            alert_reason: null,
+            transaction_amount: null,
+            transaction_currency: null,
+            transaction_id: null,
+            evaluation_id: null,
+            typologies: [
+              {
+                typology_id: 'typology-002',
+                typology_cfg: null,
+                typology_score: null,
+                alert_threshold: null,
+                interdiction_threshold: null,
+                rule_count_in_typology: null,
+                rules: [],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(2, 'DEFAULT');
+
+      expect(result.alertMetadata.transactionType).toBe('');
+      expect(result.alertMetadata.amount).toBe(0);
+      expect(result.alertMetadata.evaluationId).toBe('');
+      expect(result.typologies[0].typologyScore).toBe(0);
+    });
+
+    it('filters out null typologies', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 3,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: null,
+                typology_cfg: null,
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(3, 'DEFAULT');
+      expect(result.typologies).toHaveLength(0);
+      expect(result.statistics.totalTypologies).toBe(0);
+      expect(result.statistics.totalRules).toBe(0);
+    });
+
+    it('defaults tenantId to DEFAULT when not provided', async () => {
+      http.mockReturnValue(okHttp([{ alert_id: 8 }]));
+      const result = await service.getAlertNavigatorData(8);
+      expect(result.meta.tenantId).toBe('DEFAULT');
+    });
+
+    it('parses typologies when the lakehouse returns them as a JSON string instead of an array', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 9,
+            tenant_id: 'DEFAULT',
+            typologies: JSON.stringify([
+              {
+                typology_id: 'typology-003',
+                typology_cfg: '003@1.0.0',
+                typology_score: 300,
+                alert_threshold: 100,
+                interdiction_threshold: 200,
+                rule_count_in_typology: 1,
+                rules: [
+                  {
+                    rule_id: 'rule-010',
+                    rule_weight: 100,
+                    rule_sub_ref: '.01',
+                    rule_independent_variable: null,
+                  },
+                ],
+              },
+            ]),
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(9, 'DEFAULT');
+
+      expect(result.typologies).toHaveLength(1);
+      expect(result.typologies[0].typologyId).toBe('typology-003');
+      const parsedRules = JSON.parse(result.typologies[0].rules);
+      expect(parsedRules[0].ruleId).toBe('rule-010');
+    });
+
+    it('parses a typology\'s rules when returned as a JSON string instead of an array', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 10,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: 'typology-004',
+                typology_cfg: '004@1.0.0',
+                typology_score: 400,
+                rule_count_in_typology: 1,
+                rules: JSON.stringify([
+                  { rule_id: 'rule-020', rule_weight: 150, rule_sub_ref: '.02', rule_independent_variable: null },
+                ]),
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(10, 'DEFAULT');
+      const parsedRules = JSON.parse(result.typologies[0].rules);
+      expect(parsedRules).toHaveLength(1);
+      expect(parsedRules[0].ruleId).toBe('rule-020');
+    });
+
+    it('returns an empty typologies array when typologies is a malformed JSON string', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 11,
+            tenant_id: 'DEFAULT',
+            typologies: '[{ this is not valid json',
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(11, 'DEFAULT');
+      expect(result.typologies).toEqual([]);
+      expect(result.statistics.totalTypologies).toBe(0);
+      expect(result.statistics.totalRules).toBe(0);
+    });
+
+    it('throws when alert not found', async () => {
+      http.mockReturnValue(okHttp([]));
+      await expect(service.getAlertNavigatorData(999)).rejects.toThrow(HttpException);
+      await expect(service.getAlertNavigatorData(999)).rejects.toThrow('Alert not found');
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getAlertNavigatorData(1)).rejects.toThrow(HttpException);
+    });
+
+    describe('rule_desc and matched_band_reason columns', () => {
+      it('passes rule_desc and matched_band_reason through for triggered rules', async () => {
+        http.mockReturnValue(
+          okHttp([
+            {
+              alert_id: 12,
+              tenant_id: 'DEFAULT',
+              typologies: [
+                {
+                  typology_id: 'typology-005',
+                  typology_cfg: '005@1.0.0',
+                  typology_score: 500,
+                  rule_count_in_typology: 1,
+                  rules: [
+                    {
+                      rule_id: 'rule-030',
+                      rule_weight: 100,
+                      rule_sub_ref: '.01',
+                      rule_independent_variable: null,
+                      rule_desc: 'Transaction exceeds threshold',
+                      matched_band_reason: 'Amount in high-risk band',
+                    },
+                  ],
+                },
+              ],
+            },
+          ]),
+        );
+
+        const result = await service.getAlertNavigatorData(12, 'DEFAULT');
+        const parsedRules = JSON.parse(result.typologies[0].rules);
+
+        expect(parsedRules).toHaveLength(1);
+        expect(parsedRules[0].rule_desc).toBe('Transaction exceeds threshold');
+        expect(parsedRules[0].matched_band_reason).toBe('Amount in high-risk band');
+      });
+
+      it('defaults rule_desc and matched_band_reason to null/undefined when not provided by the lakehouse', async () => {
+        http.mockReturnValue(
+          okHttp([
+            {
+              alert_id: 13,
+              tenant_id: 'DEFAULT',
+              typologies: [
+                {
+                  typology_id: 'typology-006',
+                  typology_cfg: '006@1.0.0',
+                  typology_score: 500,
+                  rule_count_in_typology: 1,
+                  rules: [
+                    {
+                      rule_id: 'rule-040',
+                      rule_weight: 100,
+                      rule_sub_ref: '.01',
+                      rule_independent_variable: null,
+                      rule_desc: null,
+                      matched_band_reason: null,
+                    },
+                  ],
+                },
+              ],
+            },
+          ]),
+        );
+
+        const result = await service.getAlertNavigatorData(13, 'DEFAULT');
+        const parsedRules = JSON.parse(result.typologies[0].rules);
+
+        expect(parsedRules[0].rule_desc).toBeNull();
+        expect(parsedRules[0].matched_band_reason).toBeNull();
+      });
+
+      it('does not leak rule_desc/matched_band_reason of the flow-processor rule into flowProcessorData', async () => {
+        http.mockReturnValue(
+          okHttp([
+            {
+              alert_id: 14,
+              tenant_id: 'DEFAULT',
+              typologies: [
+                {
+                  typology_id: 'typology-007',
+                  typology_cfg: '007@1.0.0',
+                  typology_score: 500,
+                  rule_count_in_typology: 2,
+                  rules: [
+                    {
+                      rule_id: 'rule-050',
+                      rule_weight: 100,
+                      rule_sub_ref: '.01',
+                      rule_desc: 'Triggered rule description',
+                      matched_band_reason: 'Triggered band reason',
+                    },
+                    {
+                      rule_id: 'EFRuP@1.0.0',
+                      rule_weight: 0,
+                      rule_sub_ref: 'Block',
+                      rule_desc: 'Flow processor description',
+                      matched_band_reason: 'Flow processor band reason',
+                    },
+                  ],
+                },
+              ],
+            },
+          ]),
+        );
+
+        const result = await service.getAlertNavigatorData(14, 'DEFAULT');
+        const parsedRules = JSON.parse(result.typologies[0].rules);
+
+        expect(result.typologies[0].flowProcessorData).toBe('Block');
+        expect(parsedRules).toHaveLength(1);
+        expect(parsedRules[0].ruleId).toBe('rule-050');
+        expect(parsedRules[0].rule_desc).toBe('Triggered rule description');
+        expect(parsedRules[0].matched_band_reason).toBe('Triggered band reason');
+      });
+    });
+  });
+
+  // ===================== getAlertHistorySummary =====================
+  describe('getAlertHistorySummary', () => {
+    it('returns summary with data', async () => {
+      http.mockReturnValue(okHttp([{ total_alerts: 10, cases_opened: 5, investigations: 3, sar_filings: 1, total_value: 50000 }]));
+      const result = await service.getAlertHistorySummary('DEFAULT', 'entity1', 'day');
+      expect(result.totalAlerts).toBe(10);
+    });
+
+    it('returns zeros on empty row', async () => {
+      const result = await service.getAlertHistorySummary('DEFAULT', 'entity1', 'day');
+      expect(result.totalAlerts).toBe(0);
+    });
+
+    it('handles day granularity (matches the switch and zeroes the time-of-day)', async () => {
+      await service.getAlertHistorySummary('DEFAULT', 'entity1', 'day');
+      expect(http).toHaveBeenCalled();
+    });
+
+    it('handles month granularity (matches the switch and resets to the 1st)', async () => {
+      await service.getAlertHistorySummary('DEFAULT', 'entity1', 'month');
+      expect(http).toHaveBeenCalled();
+    });
+
+    it('handles year granularity (matches the switch and resets to Jan 1st)', async () => {
+      await service.getAlertHistorySummary('DEFAULT', 'entity1', 'year');
+      expect(http).toHaveBeenCalled();
+    });
+
+    it('handles an unmatched granularity value gracefully (falls through the switch)', async () => {
+      await service.getAlertHistorySummary('DEFAULT', 'entity1', 'custom');
+      expect(http).toHaveBeenCalled();
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getAlertHistorySummary('DEFAULT', 'entity1', 'day')).rejects.toThrow(
+        'Failed to fetch alert history summary',
+      );
+    });
+  });
+
+  // ===================== getAlertHistoryTimeline =====================
+  describe('getAlertHistoryTimeline', () => {
+    it('returns timeline', async () => {
+      http.mockReturnValue(okHttp([{ date: '2024-01-01', alert_count: 5, case_count: 2, investigation_count: 1, total_value: 1000 }]));
+      const result = await service.getAlertHistoryTimeline('DEFAULT', 'entity1', 'day');
+      expect(result.alertCountOverTime).toHaveLength(1);
+      expect(result.alertCountOverTime[0].alerts).toBe(5);
+    });
+
+    it('returns empty arrays on empty data', async () => {
+      http.mockReturnValue(okHttp([]));
+      const result = await service.getAlertHistoryTimeline('DEFAULT', 'entity1', 'day');
+      expect(result.alertCountOverTime).toEqual([]);
+    });
+
+    it('handles every granularity branch, including ones that fall through the switch', async () => {
+      for (const granularity of ['day', 'month', 'year', 'custom']) {
+        await service.getAlertHistoryTimeline('DEFAULT', 'entity1', granularity);
+      }
+      expect(http).toHaveBeenCalledTimes(4);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getAlertHistoryTimeline('DEFAULT', 'entity1', 'day')).rejects.toThrow(
+        'Failed to fetch alert history timeline',
+      );
+    });
+  });
+
+  // ===================== getAlertHistoryAlerts =====================
+  describe('getAlertHistoryAlerts', () => {
+    const setup = (countRows: any[], alertRows: any[]) => {
+      http.mockReturnValueOnce(okHttp(countRows)).mockReturnValueOnce(okHttp(alertRows));
+    };
+
+    it('returns alerts with Investigating outcome', async () => {
+      setup([{ total: 1 }], [{ alert_id: 1, case_status: 'STATUS_02_ASSIGNED' }]);
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 1, 20);
+      expect(result.pagination.total).toBe(1);
+      expect((result.alerts[0] as any).outcome).toBe('Investigating');
+    });
+
+    it('maps Closed outcome for COMPLETED status', async () => {
+      setup([{ total: 1 }], [{ alert_id: 2, case_status: 'STATUS_99_COMPLETED' }]);
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 1, 20);
+      expect((result.alerts[0] as any).outcome).toBe('Closed');
+    });
+
+    it('maps Draft outcome', async () => {
+      setup([{ total: 1 }], [{ alert_id: 3, case_status: 'STATUS_00_DRAFT' }]);
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 1, 20);
+      expect((result.alerts[0] as any).outcome).toBe('Draft');
+    });
+
+    it('maps Pending outcome for no case_status', async () => {
+      setup([{ total: 1 }], [{ alert_id: 4, case_status: null }]);
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 1, 20);
+      expect((result.alerts[0] as any).outcome).toBe('Pending');
+    });
+
+    it('maps Pending outcome for a status that only contains PROGRESS (the current check only matches ASSIGNED)', async () => {
+      setup([{ total: 1 }], [{ alert_id: 5, case_status: 'STATUS_03_IN_PROGRESS' }]);
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 1, 20);
+      expect((result.alerts[0] as any).outcome).toBe('Pending');
+    });
+
+    it('clamps a page of 0 up to the minimum and a limit above 1000 down to the maximum', async () => {
+      setup([{ total: 1 }], [{ alert_id: 6, case_status: null }]);
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 0, 5000);
+      expect(result.pagination.page).toBe(1);
+      expect(result.pagination.limit).toBe(1000);
+    });
+
+    it('takes the absolute value of a negative page rather than clamping it to the minimum', async () => {
+      setup([{ total: 1 }], [{ alert_id: 7, case_status: null }]);
+      const result = await service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', -5, 20);
+      expect(result.pagination.page).toBe(5);
+    });
+
+    it('handles every granularity branch, including ones that fall through the switch', async () => {
+      for (const granularity of ['day', 'month', 'year', 'custom']) {
+        http.mockReturnValueOnce(okHttp([{ total: 0 }])).mockReturnValueOnce(okHttp([]));
+        await service.getAlertHistoryAlerts('DEFAULT', 'entity1', granularity, 1, 20);
+      }
+      expect(http).toHaveBeenCalledTimes(8);
+    });
+
+    it('throws on error', async () => {
+      http.mockReturnValue(errHttp());
+      await expect(service.getAlertHistoryAlerts('DEFAULT', 'entity1', 'all', 1, 20)).rejects.toThrow(
+        'Failed to fetch alert history alerts',
+      );
+    });
+  });
+});

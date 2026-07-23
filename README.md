@@ -2,136 +2,425 @@
 
 Tazama Case and Investigation Management System is a comprehensive solution for managing cases and investigations efficiently. This project aims to streamline workflows, improve collaboration, and provide robust tools for tracking, reporting, and analyzing case data.
 
+## User Manual and Video Demonstration
+
+- Please refer to the user manual here: https://github.com/tazama-lf/docs/blob/dev/Guides/User%20Manuals%20for%20Downloading/Case%20Management%20System.docx
+
+## Architecture
+
+This is a monorepo containing:
+
+- **Frontend**: React + TypeScript + Vite application with Tailwind CSS
+- **Backend**: NestJS + TypeScript API with PostgreSQL database
+- **Authentication**: Keycloak-based authentication with JWT tokens
+
 ---
-# Tazama Case Management System – Authentication Flow
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- npm 9+
+- PostgreSQL database
+- Keycloak server (for authentication)
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/tazama-lf/case-management-system.git
+cd case-management-system
+```
+
+### 2. Install Dependencies
+
+```bash
+# For Backend
+cd backend
+npm install
+
+# For Frontend
+cd frontend
+npm install
+```
+
+### 3. Environment Setup
+
+```bash
+# Copy environment examples
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+
+# Edit the environment files with your configurations
+# backend/.env - Configure database, auth, and services
+# frontend/.env - Configure API endpoints
+```
+
+### 4. Database Setup
+
+```bash
+# Navigate to backend and run migrations
+cd backend
+npx prisma migrate dev
+npx prisma generate
+```
+
+### 5. Start Development Servers
+
+```bash
+cd backend
+npm run start:dev
+
+cd frontend
+npm run dev
+```
+
+---
+
+# Authentication Flow
 
 ## Overview
 
-This project uses a secure, centralized authentication flow leveraging Keycloak, the Tazama Auth Service, and JWT-based authorization in the CMS backend.  
-Below is a sequence diagram and explanation of how authentication and authorization work in this system.
+This project uses a secure, centralized authentication flow leveraging Keycloak, the Tazama Auth Service, and JWT-based authorization in the CMS backend.
 
 ---
 
-## Authentication Sequence Diagram
+## Project Structure
 
-```mermaid
-sequenceDiagram
-    participant User as User (Frontend/API Client)
-    participant AuthService as Tazama Auth Service
-    participant Keycloak as Keycloak
-    participant CMS as CMS Backend
-
-    User->>AuthService: 1. POST /v1/auth/login (username, password)
-    AuthService->>Keycloak: 2. Validate credentials
-    alt Invalid credentials
-        Keycloak-->>AuthService: Error (invalid)
-        AuthService-->>User: 401 Unauthorized
-    else Valid credentials
-        Keycloak-->>AuthService: Success (user info)
-        AuthService-->>User: 3. JWT Token (Tazama format)
-        User->>CMS: 4. API Request with Authorization: Bearer <JWT>
-        CMS->>CMS: 5. Verify JWT (using public key)
-        CMS->>CMS: 6. Extract claims (role, permissions, tenantId)
-        CMS->>CMS: 7. Enforce RBAC, tenant isolation, audit logging
-        CMS-->>User: 8. Response (data or error)
-    end
+```
+case-management-system/
+├── backend/                        # NestJS API server
+│   ├── src/                        # Source code
+│   │   ├── config/                 # App configuration
+│   │   ├── constants/              # Shared constants
+│   │   ├── decorators/             # Custom decorators
+│   │   ├── dtos/                   # Data transfer objects
+│   │   ├── guards/                 # Auth & access guards
+│   │   ├── interceptors/           # NestJS interceptors
+│   │   ├── logger/                 # Logging utilities
+│   │   ├── modules/                # Feature modules
+│   │   │   ├── admin/
+│   │   │   ├── alert/
+│   │   │   ├── alert-priority/
+│   │   │   ├── async-task/
+│   │   │   ├── audit/
+│   │   │   ├── auth/
+│   │   │   ├── bpmn/
+│   │   │   ├── case/
+│   │   │   ├── case_history/
+│   │   │   ├── comment/
+│   │   │   ├── couchdb/
+│   │   │   ├── events/
+│   │   │   ├── event_log/
+│   │   │   ├── evidence/
+│   │   │   ├── feature-extraction/
+│   │   │   ├── filter/
+│   │   │   ├── flowable/
+│   │   │   ├── gold-lakehouse/
+│   │   │   ├── jupyter/
+│   │   │   ├── logging-orchestration/
+│   │   │   ├── nats/
+│   │   │   ├── notification/
+│   │   │   ├── notification-preferences/
+│   │   │   ├── process-alert/
+│   │   │   ├── report/
+│   │   │   ├── repository/
+│   │   │   ├── shared/
+│   │   │   ├── task/
+│   │   │   ├── task_history/
+│   │   │   ├── triage/
+│   │   │   └── user/
+│   │   └── utils/                  # Utility helpers
+│   ├── prisma/                     # DB schema and migrations
+│   ├── test/                       # Backend unit & e2e tests
+│   └── .env.example                # Environment variables template
+├── frontend/                       # React frontend application
+│   ├── src/                        # Source code
+│   │   ├── features/               # Feature-based modules
+│   │   │   ├── admin/
+│   │   │   ├── alerts/
+│   │   │   ├── auth/
+│   │   │   ├── cases/
+│   │   │   ├── dashboard/
+│   │   │   └── reports/
+│   │   ├── shared/                 # Shared components, hooks, utils
+│   │   │   ├── components/
+│   │   │   ├── config/
+│   │   │   ├── constants/
+│   │   │   ├── hooks/
+│   │   │   ├── interfaces/
+│   │   │   ├── providers/
+│   │   │   ├── services/
+│   │   │   ├── types/
+│   │   │   └── utils/
+│   │   └── router/                 # App routing
+│   ├── public/                     # Static assets
+│   └── .env.example                # Environment variables template
+├── docker/                         # Docker service configs (e.g. CouchDB)
+├── notebooks/                      # Jupyter notebooks for data visualization
+├── docker-compose-cms.yml          # CMS services Docker Compose
+├── docker-compose-infra.yml        # Infrastructure Docker Compose
+├── Dockerfile.viola                # Voilà notebook server Docker image
+└── README.md
 ```
 
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+---
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Development Commands
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+### Backend Commands (from backend/)
 
 ```bash
-$ npm install
+# Development
+npm run start:dev          # Start with hot reload
+npm run start:debug        # Start with debugging
+npm run start:prod         # Production mode
+
+# Database
+npx prisma migrate dev     # Run migrations
+npx prisma generate        # Generate Prisma client
+
+# Testing
+npm run test              # Unit tests
+npm run test:watch        # Unit tests in watch mode
+npm run test:e2e          # End-to-end tests
+npm run test:cov          # Test coverage
+
+# Linting & Formatting
+npm run lint              # Check linting
+npm run fix               # Fix linting issues
+npm run format            # Format code
+
 ```
 
-## Compile and run the project
+### Frontend Commands (from frontend/)
 
 ```bash
-# development
-$ npm run start
+# Development
+npm run dev               # Start development server
+npm run build             # Build for production
+npm run preview           # Preview production build
 
-# watch mode
-$ npm run start:dev
+# Testing
+npm run test              # Run tests in watch mode
+npm run test:run          # Run tests once
+npm run test:ui           # Visual test interface
+npm run test:coverage     # Generate coverage report
 
-# production mode
-$ npm run start:prod
+# Linting
+npm run lint              # Check linting issues
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ npm run test
+## Testing
 
-# e2e tests
-$ npm run test:e2e
+### Backend Testing
 
-# test coverage
-$ npm run test:cov
-```
+- **Unit Tests**: Jest-based tests for services, controllers, and utilities
+- **E2E Tests**: Full application testing with test database
+- **Coverage Reports**: Comprehensive test coverage analysis
+
+### Frontend Testing
+
+- **Unit Tests**: Vitest for component and hook testing
+- **Integration Tests**: API integration and provider testing
+
+---
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Environment Variables
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+#### Backend (.env)
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Database
+POSTGRES_DB=tazama_cms
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=unused
+POSTGRES_HOST=tazama-postgres-1
+POSTGRES_PORT=5432
+DATABASE_URL="postgresql://postgres:unused@tazama-postgres-1:5432/tazama_cms"
+DWH_DATABASE_URL="postgresql://postgres:unused@tazama-postgres-1:5432/tazama_dwh"
+
+# Authentication
+TAZAMA_AUTH_URL=http://localhost:3020/v1/auth
+AUTH_PUBLIC_KEY_PATH=public.pem
+CERT_PATH_PUBLIC=public.pem
+
+# Alert Configuration
+TRIAGE_TYPE=MANUAL                    # AI, MANUAL, or DISABLED
+CONFIDENCE_THRESHOLD=95
+CLIENT_SYSTEM_INTERDICTION_ENABLED=true
+SYSTEM_UUID=a9a8ff94-c7e4-4e6c-b421-e6d5d75a76e1
+
+# Flowable Configuration
+FLOWABLE_URL=http://tazama-cms-flowable:8080/flowable-rest
+FLOWABLE_USERNAME=rest-admin
+FLOWABLE_PASSWORD=test
+SPRING_DATASOURCE_DRIVER=org.postgresql.Driver
+SPRING_DATASOURCE_URL=jdbc:postgresql://tazama-postgres-1:5432/flowable
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=unused
+
+# NATS Messaging
+SERVER_URL=nats://nats:4222
+STARTUP_TYPE=nats
+NODE_ENV=dev
+FUNCTION_NAME=case-management-service
+PRODUCER_STREAM=default
+CONSUMER_STREAM=investigation-service
+
+# Performance
+MAX_CPU=1
+
+# Redis
+REDIS_HOST=tazama-valkey-1
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+
+
+
+# Auto-assignment
+AUTO_ASSIGNMENT_ENABLED=false
+
+# Email Service
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=587
+SMTP_USER="user@example.com"
+SMTP_PASS="your-smtp-password"
+MAIL_FROM="user@example.com"
+
+# CouchDB Configuration
+COUCHDB_URL=http://couchdb:5984
+COUCHDB_DATABASE=cms-evidence
+COUCHDB_USER=admin
+COUCHDB_PASSWORD=password
+
+# Audit / OpenSearch Configuration
+AUDIT_PROVIDER=opensearch
+OPENSEARCH_NODE=http://localhost:9200
+OPENSEARCH_USERNAME=admin
+OPENSEARCH_PASSWORD=admin
+OPENSEARCH_SSL_REJECT_UNAUTHORIZED=false
+OPENSEARCH_REFRESH=false
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+#### Frontend (.env)
 
-## Resources
+```bash
+# API Configuration
+VITE_API_BASE_URL=http://localhost:3000
+VITE_APP_NAME=Tazama Case Management System
+VITE_APP_VERSION=0.0.1
 
-Check out a few resources that may come in handy when working with NestJS:
+# Security
+VITE_CRYPTO_KEY=your-crypto-key
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# Jupyter / Voilà
+VITE_VOILA_BASE_URL=http://localhost:8866
+```
 
-## Support
+### Docker Deployment
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+# Build and start all services
+docker-compose up -d
 
-## Stay in touch
+# Build specific service
+docker-compose build backend
+docker-compose build frontend
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+# View logs
+docker-compose logs -f backend
+docker-compose logs -f frontend
+```
+
+Please refer to the deployment guide here: https://github.com/tazama-lf/docs/blob/dev/Technical/Deployment-Guides/CMS-Deployment-Guide.md
+
+---
+
+## API Documentation
+
+The backend exposes an interactive Swagger UI for exploring and testing all available REST endpoints. To access it, start the backend server as described in the [Quick Start](#quick-start) guide, then navigate to:
+
+**http://localhost:3090/api/docs**
+
+The documentation is automatically generated from the source code and reflects the current state of the API, including request/response schemas, authentication requirements, and available operations.
+
+---
+
+## Features
+
+### Alert Management
+
+- Real-time alert processing and triage
+- Manual and AI-powered decision making
+- Risk scoring and typology analysis
+- Source and time-based filtering
+
+### Case Investigation
+
+- Complete case lifecycle management
+- Task assignment and tracking
+- Comment and documentation system
+- Investigation workflow automation
+
+### Reporting & Analytics
+
+- Comprehensive audit trails
+- Performance metrics and analytics
+- Custom reporting capabilities
+- Data export functionality
+
+---
+
+## Technology Stack
+
+### Frontend
+
+- **React 19** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Utility-first styling
+- **TanStack Query** - Server state management
+- **React Router** - Navigation
+- **Recharts** - Data visualization and analytics charts
+- **Vitest** - Testing framework
+
+### Backend
+
+- **NestJS** - Node.js framework
+- **TypeScript** - Type safety
+- **Prisma** - Database ORM
+- **PostgreSQL** - Primary database
+- **Flowable** - BPMN workflow engine
+- **JWT** - Authentication tokens
+- **Jest** - Testing framework
+
+### Infrastructure
+
+- **Docker** - Containerization
+- **NATS** - Message broker
+- **Redis (Valkey)** - Caching and session storage
+- **CouchDB** - Evidence document storage
+- **OpenSearch** - Audit log storage and search
+- **Keycloak** - Identity provider
+
+---
+
+# For support or questions
+
+- Review existing issues, discussions and pull requests
+- Start a discussion in the **Discussions** tab or create an issue in the **Issues** tab in this repository
+- Join the Tazama Slack workspace and post your question in the **#get-help** channel - :point_right: Join here: https://slack.tazama.org
+
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Copyright LF Charities, Inc. and contributors to the Tazama project
+
+Licensed under [Apache-2.0](LICENSE)

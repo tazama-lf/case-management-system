@@ -1,0 +1,32 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# system packages
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# copy notebooks folder (contains requirements.txt)
+COPY notebooks /app/notebooks
+
+# install python dependencies
+RUN pip install --no-cache-dir -r /app/notebooks/requirements.txt
+
+# expose voila port
+EXPOSE 8866
+
+# Backend URL used by notebooks. Default suits local/host-network dev.
+# In docker-compose, override to the backend service name (e.g. http://backend:3090).
+ENV CASE_MGMT_BACKEND_URL=http://localhost:3090
+ENV VOILA_PORT=8866
+# CMS frontend origins for frame-ancestors CSP (space-separated, can be overridden at runtime)
+# e.g. "http://localhost:5175" or "https://app.example.com https://other.example.com"
+ENV CMS_FRONTEND_ORIGIN="http://localhost:5175"
+
+WORKDIR /app/notebooks
+
+RUN chmod +x /app/notebooks/entrypoint.sh
+
+CMD ["/app/notebooks/entrypoint.sh"]
