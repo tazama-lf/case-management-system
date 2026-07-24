@@ -42,7 +42,7 @@
     "@nestjs/websockets": "^11.1.6",
     "@prisma/client": "^6.18.0",
     "@stylistic/eslint-plugin": "^5.8.0",
-    "@tazama-lf/audit-lib": "1.0.8",
+    "@tazama-lf/audit-lib": "1.0.9-rc.0",
     "@tazama-lf/auth-lib": "4.0.0-rc.5",
     "@tazama-lf/auth-lib-provider-keycloak": "4.0.0-rc.15",
     "@tazama-lf/frms-coe-lib": "8.2.0-rc.6",
