@@ -12,8 +12,9 @@
 # Please do not attempt to edit this flow without the direct consent from the DevOps team. This file is managed centrally.
 
 # This workflow is for repositories that produce multiple Docker images.
-# Each image is built from its matrix entry (context/dockerfile/target) and versioned
-# from the package.json path specified in that entry.
+# Each image is built from its matrix entry (context/dockerfile/target). All images
+# are versioned from the ROOT package.json - the single platform version stamped by
+# the release train.
 
 name: Publish Docker images (multi)
 
@@ -22,6 +23,7 @@ on:
     branches: [ "main" ]
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   publish_images:
@@ -37,25 +39,21 @@ jobs:
             context: ./backend
             dockerfile: ./backend/Dockerfile
             target: ""
-            package_json: ./backend/package.json
 
           - image_suffix: migrate
             context: ./backend
             dockerfile: ./backend/Dockerfile
             target: migrate
-            package_json: ./backend/package.json
 
           - image_suffix: frontend
             context: ./frontend
             dockerfile: ./frontend/Dockerfile
             target: ""
-            package_json: ./frontend/package.json
 
           - image_suffix: voila
             context: .
             dockerfile: ./Dockerfile.voila
             target: ""
-            package_json: ./backend/package.json
 
     permissions:
       packages: write
@@ -87,7 +85,7 @@ jobs:
 
       - name: Get package version
         id: pkg_version
-        run: echo "VERSION=$(node -p "require('${{ matrix.package_json }}').version")" >> "$GITHUB_OUTPUT"
+        run: echo "VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Resolve source PR
         id: src_pr
@@ -107,6 +105,7 @@ jobs:
           images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
             type=raw,value=${{ steps.pkg_version.outputs.VERSION }}
+            type=raw,value=latest
 
       - name: Build and push ${{ matrix.image_suffix }} Docker image
         id: push
