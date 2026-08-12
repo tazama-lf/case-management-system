@@ -93,6 +93,7 @@ model Alert {
   network_map        Json
   confidence_per     Int
   created_at         DateTime            @default(now()) @db.Timestamp(6)
+  updated_at         DateTime            @updatedAt @db.Timestamp(6)
   case_id            Int?                @unique
   case               Case?               @relation(fields: [case_id], references: [case_id])
   investigationGroup InvestigationGroup?
