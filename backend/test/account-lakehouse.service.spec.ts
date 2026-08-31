@@ -441,6 +441,9 @@ describe('AccountLakehouseService', () => {
             degree: 2,
             firstEventTs: '2024-02-01',
             lastEventTs: '2024-02-03',
+            relationship: 'Transaction Flow',
+            // 4 transactions over a 2-day span => 2/day
+            frequency: '2/day',
             flags: expect.objectContaining({ alerted: true, investigated: true }),
           }),
         ]),
@@ -450,6 +453,43 @@ describe('AccountLakehouseService', () => {
           expect.objectContaining({ id: 'cp3', label: 'Second Name', name: 'Second Name', degree: 2 }),
         ]),
       );
+    });
+
+    it('computes a network-level frequency distinct from the velocity bucket', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              from_counterparty_id: 'cp1',
+              to_counterparty_id: 'cp2',
+              tx_count: 10,
+              total_amount: 5000,
+              is_alerted_edge: 0,
+              is_investigated_edge: 0,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([{ counterparty_id: 'cp1', holder_name: 'CP Name' }]))
+        // 10 transactions over a 5-day span => 2/day, but still only MEDIUM velocity
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              transactions: 10,
+              total_value: 5000,
+              is_alerted: 0,
+              is_investigated: 0,
+              first_event_ts: '2024-01-01',
+              last_event_ts: '2024-01-06',
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([{ holder_name: 'CP Name' }]));
+
+      const result = await service.getCounterpartyNodeFullData('cp1', 'DEFAULT', 'month');
+
+      expect(result.counterpartyDetails.velocity).toBe('MEDIUM');
+      expect(result.counterpartyDetails.frequency).toBe('2/day');
+      expect(result.counterpartyDetails.frequency).not.toBe(result.counterpartyDetails.velocity);
     });
   });
 

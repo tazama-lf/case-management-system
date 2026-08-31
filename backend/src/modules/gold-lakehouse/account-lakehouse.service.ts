@@ -186,15 +186,19 @@ export class AccountLakehouseService extends GoldLakehouseService {
       this.upsertNode(nodesMap, fromId, nodeType, r);
       this.upsertNode(nodesMap, toId, nodeType, r);
 
+      const txCount = Number(r.tx_count ?? 0);
+
       edges.push({
         source: fromId,
         target: toId,
-        txCount: Number(r.tx_count ?? 0),
+        txCount,
         totalAmount: Number(r.total_amount ?? 0),
         currency: r.currency_hint,
         firstEventTs: r.first_event_ts,
         lastEventTs: r.last_event_ts,
         degree: Number(r.degree ?? 1),
+        relationship: 'Transaction Flow',
+        frequency: this.formatFrequency(txCount, r.first_event_ts, r.last_event_ts),
         flags: {
           alerted: r.is_alerted_edge === 1,
           investigated: r.is_investigated_edge === 1,
@@ -517,7 +521,9 @@ export class AccountLakehouseService extends GoldLakehouseService {
         SUM(tx_count) AS transactions,
         SUM(total_amount) AS total_value,
         MAX(is_alerted_edge) AS is_alerted,
-        MAX(is_investigated_edge) AS is_investigated
+        MAX(is_investigated_edge) AS is_investigated,
+        MIN(first_event_ts) AS first_event_ts,
+        MAX(last_event_ts) AS last_event_ts
       FROM tx_network_counterparties_edges
       WHERE tenant_id = $1
         AND bucket_granularity = $2
@@ -545,6 +551,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
       const txCount = Number(metrics.transactions ?? 0);
 
       const velocity: 'HIGH' | 'MEDIUM' | 'LOW' = txCount >= 50 ? 'HIGH' : txCount >= 10 ? 'MEDIUM' : 'LOW';
+      const frequency = this.formatFrequency(txCount, metrics.first_event_ts, metrics.last_event_ts);
       const centerNode = nodesMap.get(counterpartyId);
       const centerName = counterpartyNamesMap.get(counterpartyId) ?? nameRow?.holder_name ?? counterpartyId;
 
@@ -566,6 +573,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
           transactions: txCount,
           totalValue: Number(metrics.total_value ?? 0),
           velocity,
+          frequency,
           flags: {
             alerted: metrics.is_alerted === 1,
             investigated: metrics.is_investigated === 1,

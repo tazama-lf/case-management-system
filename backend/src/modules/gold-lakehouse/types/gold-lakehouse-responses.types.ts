@@ -204,7 +204,10 @@ export interface CounterpartyNodeFullDataResponse {
     type: string;
     transactions: number;
     totalValue: number;
+    /** HIGH/MEDIUM/LOW bucket describing transaction volume */
     velocity: 'HIGH' | 'MEDIUM' | 'LOW';
+    /** Transaction occurrence rate, e.g. '3.2/day' - distinct from velocity */
+    frequency: string;
     flags: {
       alerted: boolean;
       investigated: boolean;
