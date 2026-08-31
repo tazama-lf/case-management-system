@@ -363,10 +363,19 @@ export class TransactionLakehouseService extends GoldLakehouseService {
     accountId: string,
     tenantId: string,
     timeRange: string,
+    startDate?: string,
+    endDate?: string,
     userJwt?: string,
   ): Promise<TransactionNetworkResponseDto> {
     try {
       this.logger.log(`Fetching transaction network for account: ${accountId}, timeRange: ${timeRange}`);
+      const periodParams: string[] = [];
+      let periodClause = '';
+
+      if (startDate && endDate) {
+        periodClause = ' AND tx_event_ts >= $3 AND tx_event_ts <= $4';
+        periodParams.push(startDate, endDate);
+      }
 
       const centerAccountSql = `
         SELECT DISTINCT 
@@ -400,6 +409,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         FROM transaction_detail
         WHERE debtor_account_id = $1
           AND tenant_id = $2
+          ${periodClause}
         GROUP BY creditor_account_id, creditor_name
       `;
 
@@ -416,7 +426,40 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         FROM transaction_detail
         WHERE creditor_account_id = $1
           AND tenant_id = $2
+          ${periodClause}
         GROUP BY debtor_account_id, debtor_name
+      `;
+
+      const transactionEdgesSql = `
+        SELECT
+          td.transaction_id,
+          td.debtor_account_id,
+          td.debtor_name,
+          td.creditor_account_id,
+          td.creditor_name,
+          td.interbank_settlement_amount,
+          td.interbank_settlement_currency,
+          td.tx_event_ts,
+          MAX(COALESCE(th.is_alerted, 0)) AS is_alerted,
+          MAX(COALESCE(th.is_investigated, 0)) AS is_investigated
+        FROM transaction_detail td
+        LEFT JOIN transaction_history th
+          ON th.transaction_id = td.transaction_id
+          AND th.tenant_id = td.tenant_id
+          AND th.row_type = 'EVENT'
+        WHERE (td.debtor_account_id = $1 OR td.creditor_account_id = $1)
+          AND td.tenant_id = $2
+          ${periodClause.replaceAll('tx_event_ts', 'td.tx_event_ts')}
+        GROUP BY
+          td.transaction_id,
+          td.debtor_account_id,
+          td.debtor_name,
+          td.creditor_account_id,
+          td.creditor_name,
+          td.interbank_settlement_amount,
+          td.interbank_settlement_currency,
+          td.tx_event_ts
+        ORDER BY td.tx_event_ts ASC
       `;
 
       const alertFlagsSql = `
@@ -429,14 +472,17 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           AND row_type = 'AGG'
       `;
 
-      const [outboundResponse, inboundResponse, alertFlagsResponse] = await Promise.all([
-        this.runSqlQuery(outboundSql, 1000, [accountId, tenantId], userJwt),
-        this.runSqlQuery(inboundSql, 1000, [accountId, tenantId], userJwt),
+      const queryParams = [accountId, tenantId, ...periodParams];
+      const [outboundResponse, inboundResponse, transactionEdgesResponse, alertFlagsResponse] = await Promise.all([
+        this.runSqlQuery(outboundSql, 1000, queryParams, userJwt),
+        this.runSqlQuery(inboundSql, 1000, queryParams, userJwt),
+        this.runSqlQuery(transactionEdgesSql, 1000, queryParams, userJwt),
         this.runSqlQuery(alertFlagsSql, 10, [accountId, tenantId], userJwt),
       ]);
 
       const outboundData = (outboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
       const inboundData = (inboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
+      const transactionEdgesData = (transactionEdgesResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
       const centerAccountFlags = alertFlagsResponse?.data?.[0] ? this.stripHudiMetadata(alertFlagsResponse.data[0]) : null;
       const centerAccountIsAlerted = centerAccountFlags ? centerAccountFlags.is_alerted === 1 : false;
       const centerAccountIsInvestigated = centerAccountFlags ? centerAccountFlags.is_investigated === 1 : false;
@@ -469,14 +515,30 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         };
       });
 
-      const edges: NetworkEdgeDto[] = allConnections.map((conn, index) => ({
-        id: `edge-${index}`,
-        source: conn.flow_direction === 'OUTBOUND' ? accountId : conn.connected_account_id,
-        target: conn.flow_direction === 'OUTBOUND' ? conn.connected_account_id : accountId,
-        type: conn.flow_direction.toLowerCase() as 'inbound' | 'outbound',
-        transactionCount: Number(conn.total_transactions),
-        totalValue: Math.round(Number(conn.total_value) * 100) / 100,
-      }));
+      const edges: NetworkEdgeDto[] =
+        transactionEdgesData.length > 0
+          ? transactionEdgesData.map((tx, index) => ({
+              id: `tx-edge-${tx.transaction_id ?? index}`,
+              source: tx.debtor_account_id,
+              target: tx.creditor_account_id,
+              type: tx.debtor_account_id === accountId ? 'outbound' : 'inbound',
+              transactionId: String(tx.transaction_id ?? ''),
+              transactionCount: 1,
+              totalValue: Math.round(Number(tx.interbank_settlement_amount ?? 0) * 100) / 100,
+              amount: Math.round(Number(tx.interbank_settlement_amount ?? 0) * 100) / 100,
+              currency: tx.interbank_settlement_currency,
+              timestamp: tx.tx_event_ts,
+              hasAlert: tx.is_alerted === 1,
+              isInvestigated: tx.is_investigated === 1,
+            }))
+          : allConnections.map((conn, index) => ({
+              id: `edge-${index}`,
+              source: conn.flow_direction === 'OUTBOUND' ? accountId : conn.connected_account_id,
+              target: conn.flow_direction === 'OUTBOUND' ? conn.connected_account_id : accountId,
+              type: conn.flow_direction.toLowerCase() as 'inbound' | 'outbound',
+              transactionCount: Number(conn.total_transactions),
+              totalValue: Math.round(Number(conn.total_value) * 100) / 100,
+            }));
 
       const outboundCount = outboundData.length;
       const inboundCount = inboundData.length;
@@ -501,6 +563,8 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         edges,
         timeRange,
         tenantId,
+        startDate,
+        endDate,
         queryTimestamp: new Date().toISOString(),
       };
     } catch (error) {

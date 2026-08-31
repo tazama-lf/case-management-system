@@ -134,6 +134,8 @@ export interface NetworkNode {
   id: string;
   type: string;
   label: string;
+  name?: string;
+  degree?: number;
   flags: {
     alerted: boolean;
     investigated: boolean;
@@ -147,6 +149,9 @@ export interface NetworkEdge {
   txCount: number;
   totalAmount: number;
   currency?: string;
+  firstEventTs?: string;
+  lastEventTs?: string;
+  degree?: number;
   flags: {
     alerted: boolean;
     investigated: boolean;

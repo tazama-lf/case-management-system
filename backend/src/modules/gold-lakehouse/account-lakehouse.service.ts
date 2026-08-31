@@ -126,15 +126,19 @@ export class AccountLakehouseService extends GoldLakehouseService {
    * Helper function to add or update a node in the nodes map
    */
   private upsertNode(nodesMap: Map<string, NetworkNode>, id: string, nodeType: string, row: any): void {
+    const rowDegree = Number(row.degree ?? 1);
+
     if (nodesMap.has(id)) {
       const node = nodesMap.get(id)!;
       node.flags.alerted ||= row.is_alerted_edge === 1;
       node.flags.investigated ||= row.is_investigated_edge === 1;
+      node.degree = Math.min(node.degree ?? rowDegree, rowDegree);
     } else {
       nodesMap.set(id, {
         id,
         type: nodeType,
         label: id,
+        degree: rowDegree,
         flags: {
           alerted: row.is_alerted_edge === 1,
           investigated: row.is_investigated_edge === 1,
@@ -166,6 +170,9 @@ export class AccountLakehouseService extends GoldLakehouseService {
         txCount: Number(r.tx_count ?? 0),
         totalAmount: Number(r.total_amount ?? 0),
         currency: r.currency_hint,
+        firstEventTs: r.first_event_ts,
+        lastEventTs: r.last_event_ts,
+        degree: Number(r.degree ?? 1),
         flags: {
           alerted: r.is_alerted_edge === 1,
           investigated: r.is_investigated_edge === 1,
@@ -281,24 +288,47 @@ export class AccountLakehouseService extends GoldLakehouseService {
   ): Promise<CounterpartyNodeFullDataResponse> {
     try {
       const networkSql = `
-      SELECT
-        from_counterparty_id,
-        to_counterparty_id,
-        tx_count,
-        total_amount,
-        currency_hint,
-        first_event_ts,
-        last_event_ts,
-        is_alerted_edge,
-        is_investigated_edge
-      FROM tx_network_counterparties_edges
-      WHERE tenant_id = $1
-        AND bucket_granularity = $2
-        AND (
-          from_counterparty_id = $3
-          OR to_counterparty_id = $3
+        WITH first_degree AS (
+          SELECT
+            CASE
+              WHEN from_counterparty_id = $3 THEN to_counterparty_id
+              ELSE from_counterparty_id
+            END AS counterparty_id
+          FROM tx_network_counterparties_edges
+          WHERE tenant_id = $1
+            AND bucket_granularity = $2
+            AND (
+              from_counterparty_id = $3
+              OR to_counterparty_id = $3
+            )
+        ),
+        network_seeds AS (
+          SELECT $3 AS counterparty_id
+          UNION
+          SELECT counterparty_id FROM first_degree
         )
-    `;
+        SELECT
+          from_counterparty_id,
+          to_counterparty_id,
+          tx_count,
+          total_amount,
+          currency_hint,
+          first_event_ts,
+          last_event_ts,
+          is_alerted_edge,
+          is_investigated_edge,
+          CASE
+            WHEN from_counterparty_id = $3 OR to_counterparty_id = $3 THEN 1
+            ELSE 2
+          END AS degree
+        FROM tx_network_counterparties_edges
+        WHERE tenant_id = $1
+          AND bucket_granularity = $2
+          AND (
+            from_counterparty_id IN (SELECT counterparty_id FROM network_seeds)
+            OR to_counterparty_id IN (SELECT counterparty_id FROM network_seeds)
+          )
+      `;
 
       const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, counterpartyId], userJwt);
       const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
@@ -309,6 +339,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
         id: counterpartyId,
         type: 'COUNTERPARTY',
         label: counterpartyId,
+        degree: 0,
         flags: { alerted: false, investigated: false },
       });
 
@@ -336,6 +367,47 @@ export class AccountLakehouseService extends GoldLakehouseService {
           nodesMap.set(key, value);
         }
       });
+
+      const counterpartyIds = Array.from(nodesMap.keys());
+      const counterpartyNamesMap = new Map<string, string>();
+
+      if (counterpartyIds.length > 0) {
+        const counterpartyPlaceholders = counterpartyIds.map((_, index) => `$${index + 2}`).join(', ');
+        const namesSql = `
+          SELECT DISTINCT
+            cal.counterparty_id,
+            CASE
+              WHEN cal.counterparty_id LIKE 'dbtr_%' THEN td.debtor_name
+              WHEN cal.counterparty_id LIKE 'cdtr_%' THEN td.creditor_name
+              ELSE COALESCE(td.debtor_name, td.creditor_name)
+            END AS holder_name
+          FROM counterparty_account_links cal
+          LEFT JOIN transaction_detail td ON (
+            (cal.counterparty_id LIKE 'dbtr_%' AND td.debtor_account_id = cal.account_id)
+            OR (cal.counterparty_id LIKE 'cdtr_%' AND td.creditor_account_id = cal.account_id)
+          )
+          WHERE cal.tenant_id = $1
+            AND cal.counterparty_id IN (${counterpartyPlaceholders})
+            AND (td.tenant_id = $1 OR td.tenant_id IS NULL)
+        `;
+
+        const namesResp = await this.runSqlQuery(namesSql, 1000, [tenantId, ...counterpartyIds], userJwt);
+        const namesRows = (namesResp.data ?? []).map((r) => this.stripHudiMetadata(r));
+
+        for (const row of namesRows) {
+          if (row.counterparty_id && row.holder_name && !counterpartyNamesMap.has(row.counterparty_id)) {
+            counterpartyNamesMap.set(row.counterparty_id, row.holder_name);
+          }
+        }
+
+        nodesMap.forEach((node, nodeId) => {
+          const name = counterpartyNamesMap.get(nodeId);
+          if (name) {
+            node.name = name;
+            node.label = name;
+          }
+        });
+      }
 
       const metricsSql = `
       SELECT
@@ -370,6 +442,13 @@ export class AccountLakehouseService extends GoldLakehouseService {
       const txCount = Number(metrics.transactions ?? 0);
 
       const velocity: 'HIGH' | 'MEDIUM' | 'LOW' = txCount >= 50 ? 'HIGH' : txCount >= 10 ? 'MEDIUM' : 'LOW';
+      const centerNode = nodesMap.get(counterpartyId);
+      const centerName = counterpartyNamesMap.get(counterpartyId) ?? nameRow?.holder_name ?? counterpartyId;
+
+      if (centerNode) {
+        centerNode.name = centerName;
+        centerNode.label = centerName;
+      }
 
       return {
         network: {
@@ -379,7 +458,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
         },
         counterpartyDetails: {
           counterpartyId,
-          name: nameRow?.holder_name ?? counterpartyId,
+          name: centerName,
           type: 'Business',
           transactions: txCount,
           totalValue: Number(metrics.total_value ?? 0),

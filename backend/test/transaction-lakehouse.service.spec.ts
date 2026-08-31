@@ -178,6 +178,7 @@ describe('TransactionLakehouseService', () => {
           ]),
         )
         .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]))
         .mockReturnValueOnce(okHttp([{ is_alerted: 0, is_investigated: 0 }]));
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
       expect(result.centerAccount.accountId).toBe('acc1');
@@ -200,6 +201,7 @@ describe('TransactionLakehouseService', () => {
           ]),
         )
         .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]))
         .mockReturnValueOnce(okHttp([{ is_alerted: 0, is_investigated: 0 }]));
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day');
       expect(result.connectedAccounts[0].transactionStats.velocity).toBe('HIGH');
@@ -220,6 +222,7 @@ describe('TransactionLakehouseService', () => {
             },
           ]),
         )
+        .mockReturnValueOnce(okHttp([]))
         .mockReturnValueOnce(okHttp([]))
         .mockReturnValueOnce(okHttp([{ is_alerted: 0, is_investigated: 0 }]));
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day');
@@ -243,6 +246,7 @@ describe('TransactionLakehouseService', () => {
           ]),
         )
         .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]))
         .mockReturnValueOnce(okHttp([{ is_alerted: 1, is_investigated: 0 }]));
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
       expect(result.connectedAccounts[0].hasAlert).toBe(true);
@@ -257,6 +261,68 @@ describe('TransactionLakehouseService', () => {
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
       await expect(service.getTransactionNetworkData('acc1', 'DEFAULT', 'day')).rejects.toThrow(HttpException);
+    });
+
+    it('returns transaction-level edges when raw transactions are available', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ account_id: 'acc1', account_name: 'Center' }]))
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              connected_account_id: 'acc2',
+              connected_account_name: 'Other',
+              flow_direction: 'OUTBOUND',
+              total_transactions: 2,
+              total_value: 300,
+              avg_value: 150,
+              duration_days: 1,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              transaction_id: 'tx1',
+              debtor_account_id: 'acc1',
+              creditor_account_id: 'acc2',
+              interbank_settlement_amount: 100,
+              interbank_settlement_currency: 'USD',
+              tx_event_ts: '2024-01-01T10:00:00',
+              is_alerted: 0,
+              is_investigated: 0,
+            },
+            {
+              transaction_id: 'tx2',
+              debtor_account_id: 'acc1',
+              creditor_account_id: 'acc2',
+              interbank_settlement_amount: 200,
+              interbank_settlement_currency: 'USD',
+              tx_event_ts: '2024-01-01T11:00:00',
+              is_alerted: 1,
+              is_investigated: 1,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([{ is_alerted: 0, is_investigated: 0 }]));
+
+      const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day', '2024-01-01', '2024-01-02');
+
+      expect(result.edges).toHaveLength(2);
+      expect(result.edges).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            transactionId: 'tx2',
+            source: 'acc1',
+            target: 'acc2',
+            amount: 200,
+            currency: 'USD',
+            timestamp: '2024-01-01T11:00:00',
+            hasAlert: true,
+            isInvestigated: true,
+          }),
+        ]),
+      );
     });
   });
 

@@ -306,7 +306,7 @@ export class GoldLakehouseController {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
     const userJwt = req ? this.extractJwt(req) : undefined;
-    return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId, timeRange ?? '30d', userJwt);
+    return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId, timeRange ?? '30d', undefined, undefined, userJwt);
   }
 
   @Get('network-analysis/entity-network/:entityId')
