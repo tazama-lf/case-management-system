@@ -602,6 +602,10 @@ export class TransactionLakehouseService extends GoldLakehouseService {
                 totalValue: Math.round(Number(conn.total_value) * 100) / 100,
                 hasAlert: flags.alerted,
                 isInvestigated: flags.investigated,
+                // This aggregated fallback edge represents many individual transactions, so
+                // there's no single transaction timestamp - use the most recent one in the
+                // connection as a best-effort "as of" marker rather than leaving it blank.
+                timestamp: conn.last_tx_date,
               };
             });
 

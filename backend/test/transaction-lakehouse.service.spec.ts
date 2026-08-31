@@ -185,6 +185,8 @@ describe('TransactionLakehouseService', () => {
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
       expect(result.centerAccount.accountId).toBe('acc1');
       expect(result.connectedAccounts).toHaveLength(1);
+      // Fallback (aggregated) edges should still carry a best-effort timestamp instead of leaving it blank
+      expect(result.edges[0].timestamp).toBe('2024-01-31');
     });
 
     it('returns HIGH velocity when tx/day > 0.5', async () => {
