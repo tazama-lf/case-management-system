@@ -13,6 +13,16 @@ import { extractReferenceId } from '../repository/utils/extractReferenceId';
 import { JsonValue } from '../repository/utils/types/JsonValue';
 import { EntityMetadataResponse } from './interfaces/entity-metadata.interfaces';
 
+interface AccountStatsAccumulator {
+  txCount: number;
+  totalAmount: number;
+  currencies: Set<string>;
+  alerted: boolean;
+  investigated: boolean;
+  firstEventTs?: string;
+  lastEventTs?: string;
+}
+
 @Injectable()
 export class AccountLakehouseService extends GoldLakehouseService {
   constructor(
@@ -252,20 +262,9 @@ export class AccountLakehouseService extends GoldLakehouseService {
       // Aggregate each held account's own transaction numbers/values/flags across every
       // transaction it appears in (whether the other side is a sibling account or an external one).
       const heldAccountIds = new Set(cleanedAccountIds);
-      const accountStats = new Map<
-        string,
-        {
-          txCount: number;
-          totalAmount: number;
-          currencies: Set<string>;
-          alerted: boolean;
-          investigated: boolean;
-          firstEventTs?: string;
-          lastEventTs?: string;
-        }
-      >();
+      const accountStats = new Map<string, AccountStatsAccumulator>();
 
-      const getStats = (accountId: string) => {
+      const getStats = (accountId: string): AccountStatsAccumulator => {
         if (!accountStats.has(accountId)) {
           accountStats.set(accountId, { txCount: 0, totalAmount: 0, currencies: new Set(), alerted: false, investigated: false });
         }
@@ -510,8 +509,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
         nodesMap.forEach((node, nodeId) => {
           const name = counterpartyNamesMap.get(nodeId);
           if (name) {
-            node.name = name;
-            node.label = name;
+            nodesMap.set(nodeId, { ...node, name, label: name });
           }
         });
       }

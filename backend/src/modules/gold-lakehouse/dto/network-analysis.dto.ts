@@ -81,7 +81,10 @@ export class CenterAccountDto {
   @ApiProperty({ description: 'Account holder name', example: 'John Smith' })
   accountHolder: string;
 
-  @ApiPropertyOptional({ description: 'Counterparty identifier linked to the center account', example: 'dbtr_590333b8f3e040a0af6678f0390f8286' })
+  @ApiPropertyOptional({
+    description: 'Counterparty identifier linked to the center account',
+    example: 'dbtr_590333b8f3e040a0af6678f0390f8286',
+  })
   counterpartyId?: string;
 
   @ApiProperty({ description: 'Whether the center account itself has current or prior alerts', example: false })

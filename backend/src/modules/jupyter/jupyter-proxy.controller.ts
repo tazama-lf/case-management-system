@@ -225,10 +225,10 @@ export class JupyterProxyController {
   ): Promise<TransactionNetworkResponseDto> {
     const userId = this.getUserId(req);
     const dateRegex = /^\d{4}-\d{2}-\d{2}/v;
-    if ((startDate && !endDate) || (!startDate && endDate)) {
+    if ((startDate && !endDate) ?? (!startDate && endDate)) {
       throw new BadRequestException('Both startDate and endDate must be provided together');
     }
-    if ((startDate && !dateRegex.test(startDate)) || (endDate && !dateRegex.test(endDate))) {
+    if ((startDate && !dateRegex.test(startDate)) ?? (endDate && !dateRegex.test(endDate))) {
       throw new BadRequestException('Invalid date format. Use YYYY-MM-DD or ISO timestamp');
     }
     return await this.proxyService.getTransactionNetworkData(userId, accountId, tenantId, timeRange, startDate, endDate);
