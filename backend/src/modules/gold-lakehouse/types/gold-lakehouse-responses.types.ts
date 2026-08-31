@@ -152,6 +152,10 @@ export interface NetworkEdge {
   firstEventTs?: string;
   lastEventTs?: string;
   degree?: number;
+  /** Nature of the link between the two nodes, e.g. 'Account Holder Relationship' */
+  relationship?: string;
+  /** How often transactions occur, e.g. '3.2/day' - distinct from the HIGH/MEDIUM/LOW velocity bucket */
+  frequency?: string;
   flags: {
     alerted: boolean;
     investigated: boolean;
@@ -171,7 +175,10 @@ export interface AccountNodeFullDataResponse {
     relationship: string;
     transactions: number;
     totalValue: number;
+    /** HIGH/MEDIUM/LOW bucket describing transaction volume */
     velocity: 'HIGH' | 'MEDIUM' | 'LOW';
+    /** Transaction occurrence rate, e.g. '3.2/day' - distinct from velocity */
+    frequency: string;
     flags: {
       alerted: boolean;
       investigated: boolean;

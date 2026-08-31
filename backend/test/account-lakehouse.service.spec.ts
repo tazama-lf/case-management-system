@@ -151,8 +151,8 @@ describe('AccountLakehouseService', () => {
       expect(result.accountDetails.velocity).toBe('MEDIUM');
     });
 
-    it('adds unseen fromId node to network graph', async () => {
-      // Mock account_holder query
+    it('does not add an unheld account (a transaction counterpart) as a node in its own right', async () => {
+      // Mock account_holder query - entity only holds acc1
       http.mockReturnValueOnce(
         okHttp([
           {
@@ -162,19 +162,23 @@ describe('AccountLakehouseService', () => {
           },
         ]),
       );
-      // Mock single network edges query with edge from acc2 to acc1
+      // Mock network edges query with an edge from acc2 (not held) to acc1
       http.mockReturnValueOnce(
         okHttp([
           { from_account_id: 'acc2', to_account_id: 'acc1', tx_count: 2, total_amount: 200, is_alerted_edge: 0, is_investigated_edge: 0 },
         ]),
       );
       const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'year');
-      // Should have entity node + acc1 + acc2 = 3 nodes minimum
-      expect(result.network.nodes.length).toBeGreaterThanOrEqual(3);
+      // Only nodes linked to the counterparty should appear: the counterparty itself + acc1
+      expect(result.network.nodes.map((n) => n.id).sort()).toEqual(['acc1', 'entity1']);
+      // acc1's edge should still reflect the transaction it had with the unheld acc2
+      const acc1Edge = result.network.edges.find((e) => e.target === 'acc1');
+      expect(acc1Edge?.txCount).toBe(2);
+      expect(acc1Edge?.totalAmount).toBe(200);
     });
 
-    it('does not duplicate edges when entity owns multiple accounts that transact with each other', async () => {
-      // Mock account_holder query with 2 accounts
+    it('builds one account-holder edge per held account, with per-account totals that avoid double-counting shared transactions', async () => {
+      // Mock account_holder query with 2 accounts held by the entity
       http.mockReturnValueOnce(
         okHttp([
           {
@@ -189,7 +193,7 @@ describe('AccountLakehouseService', () => {
           },
         ]),
       );
-      // Mock single network edges query that returns edges between acc1 and acc2
+      // Mock network edges query: acc1<->acc2 (both held) and acc2<->acc3 (acc3 not held)
       http.mockReturnValueOnce(
         okHttp([
           { from_account_id: 'acc1', to_account_id: 'acc2', tx_count: 5, total_amount: 500, is_alerted_edge: 0, is_investigated_edge: 0 },
@@ -198,12 +202,99 @@ describe('AccountLakehouseService', () => {
       );
       const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'month');
 
-      // Should have exactly 2 edges (not duplicated)
+      // One "Account Holder Relationship" edge per held account, from the counterparty (root) to that account
       expect(result.network.edges.length).toBe(2);
-      // Total transactions should be 8 (5 + 3)
+      expect(result.network.edges).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ source: 'entity1', target: 'acc1', txCount: 5, totalAmount: 500, relationship: 'Account Holder Relationship' }),
+          expect.objectContaining({ source: 'entity1', target: 'acc2', txCount: 8, totalAmount: 800, relationship: 'Account Holder Relationship' }),
+        ]),
+      );
+      // Counterparty-level totals come from the underlying transactions (deduplicated), not summed
+      // per-account edges - so the acc1<->acc2 transaction is counted once, not twice.
       expect(result.accountDetails.transactions).toBe(8);
-      // Total value should be 800 (500 + 300)
       expect(result.accountDetails.totalValue).toBe(800);
+    });
+
+    it('marks the counterparty root node and its account-holder edges as alerted when a held account was alerted', async () => {
+      http.mockReturnValueOnce(
+        okHttp([
+          {
+            source: 'entity1TAZAMA_EID',
+            destination: 'acc1MSISDNfsp001',
+            tenant_id: 'DEFAULT',
+          },
+        ]),
+      );
+      http.mockReturnValueOnce(
+        okHttp([
+          { from_account_id: 'acc1', to_account_id: 'acc2', tx_count: 4, total_amount: 400, is_alerted_edge: 1, is_investigated_edge: 0 },
+        ]),
+      );
+      const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'month');
+
+      const rootNode = result.network.nodes.find((n) => n.id === 'entity1');
+      const acc1Node = result.network.nodes.find((n) => n.id === 'acc1');
+      expect(rootNode?.flags.alerted).toBe(true);
+      expect(acc1Node?.flags.alerted).toBe(true);
+      expect(result.accountDetails.flags.alerted).toBe(true);
+    });
+
+    it('computes a per-account transaction-rate frequency distinct from the HIGH/MEDIUM/LOW velocity bucket', async () => {
+      http.mockReturnValueOnce(
+        okHttp([
+          {
+            source: 'entity1TAZAMA_EID',
+            destination: 'acc1MSISDNfsp001',
+            tenant_id: 'DEFAULT',
+          },
+        ]),
+      );
+      // 10 transactions spread across a 5-day span => 2/day, but still only MEDIUM velocity (txCount 10-49)
+      http.mockReturnValueOnce(
+        okHttp([
+          {
+            from_account_id: 'acc1',
+            to_account_id: 'acc2',
+            tx_count: 10,
+            total_amount: 1000,
+            first_event_ts: '2024-01-01',
+            last_event_ts: '2024-01-06',
+            is_alerted_edge: 0,
+            is_investigated_edge: 0,
+          },
+        ]),
+      );
+      const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'month');
+
+      expect(result.accountDetails.velocity).toBe('MEDIUM');
+      expect(result.accountDetails.frequency).toBe('2/day');
+
+      const acc1Edge = result.network.edges.find((e) => e.target === 'acc1');
+      expect(acc1Edge?.frequency).toBe('2/day');
+      // Frequency and velocity must be independently meaningful, not the same bucket under two names
+      expect(acc1Edge?.frequency).not.toBe(result.accountDetails.velocity);
+    });
+
+    it('falls back to a single-day window when an account has no distinct first/last event timestamps', async () => {
+      http.mockReturnValueOnce(
+        okHttp([
+          {
+            source: 'entity1TAZAMA_EID',
+            destination: 'acc1MSISDNfsp001',
+            tenant_id: 'DEFAULT',
+          },
+        ]),
+      );
+      http.mockReturnValueOnce(
+        okHttp([
+          { from_account_id: 'acc1', to_account_id: 'acc2', tx_count: 3, total_amount: 300, is_alerted_edge: 0, is_investigated_edge: 0 },
+        ]),
+      );
+      const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'month');
+
+      const acc1Edge = result.network.edges.find((e) => e.target === 'acc1');
+      expect(acc1Edge?.frequency).toBe('3/day');
     });
   });
 

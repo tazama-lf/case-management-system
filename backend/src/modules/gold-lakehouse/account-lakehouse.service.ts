@@ -109,6 +109,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
         transactions: 0,
         totalValue: 0,
         velocity: 'LOW',
+        frequency: '-',
         flags: {
           alerted: false,
           investigated: false,
@@ -120,6 +121,27 @@ export class AccountLakehouseService extends GoldLakehouseService {
         generatedAt: new Date().toISOString(),
       },
     };
+  }
+
+  /**
+   * How often transactions occur, e.g. '3.2/day' - a rate distinct from the HIGH/MEDIUM/LOW
+   * velocity bucket. Falls back to a single-day window when there aren't two distinct
+   * timestamps to measure a span from.
+   */
+  private formatFrequency(txCount: number, firstEventTs?: string, lastEventTs?: string): string {
+    if (!txCount || txCount <= 0) return '-';
+
+    const start = firstEventTs ? new Date(firstEventTs).getTime() : NaN;
+    const end = lastEventTs ? new Date(lastEventTs).getTime() : NaN;
+
+    let days = 1;
+    if (!Number.isNaN(start) && !Number.isNaN(end) && end > start) {
+      days = Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+    }
+
+    const rate = txCount / days;
+    const rounded = rate >= 10 ? Math.round(rate) : Math.round(rate * 10) / 10;
+    return `${rounded}/day`;
   }
 
   /**
@@ -203,50 +225,133 @@ export class AccountLakehouseService extends GoldLakehouseService {
       const accountHolderResp = await this.runSqlQuery(accountHolderSql, 100, [enhancedEntityId, tenantId], userJwt);
       const accountHolderRows = accountHolderResp.data ?? [];
 
-      //Extract and clean account IDs
-      const cleanedAccountIds = accountHolderRows
+      //Extract, clean and de-duplicate account IDs held by this counterparty
+      const rawAccountIds: string[] = accountHolderRows
         .map((row) => row.destination)
-        .filter((accountId) => accountId)
-        .map((accountId) => this.cleanAccountId(accountId));
+        .filter((accountId): accountId is string => Boolean(accountId));
+      const cleanedAccountIds: string[] = Array.from(new Set(rawAccountIds.map((accountId) => this.cleanAccountId(accountId))));
 
       if (cleanedAccountIds.length === 0) {
         this.logger.warn(`No accounts found for entity ${entityId} (enhanced: ${enhancedEntityId})`);
         return this.buildEmptyEntityGraph(entityId, tenantId, granularity);
       }
 
-      //Fetch transactions for each account (parallel queries)
-      const nodesMap = new Map<string, NetworkNode>();
-      const edges: NetworkEdge[] = [];
-
-      // Add entity as root node
-      nodesMap.set(entityId, {
-        id: entityId,
-        type: 'ENTITY',
-        label: entityId,
-        flags: { alerted: false, investigated: false },
-      });
-
+      // Pull every transaction each linked account was party to, so per-account stats reflect
+      // that account's activity across the whole network - not just among the counterparty's own accounts.
       const accountPlaceholders = cleanedAccountIds.map((_, i) => `$${i + 3}`).join(', ');
 
       const networkSql = `SELECT from_account_id, to_account_id, tx_count, total_amount, currency_hint, first_event_ts, last_event_ts, is_alerted_edge, is_investigated_edge FROM tx_network_accounts_edges WHERE tenant_id = $1 AND bucket_granularity = $2 AND ( from_account_id IN (${accountPlaceholders}) OR to_account_id IN (${accountPlaceholders}) )`;
 
-      const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, cleanedAccountIds], userJwt);
+      const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, ...cleanedAccountIds], userJwt);
       const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
-      const result = this.processNetworkRows(networkRows, entityId, 'ACCOUNT', 'from_account_id', 'to_account_id');
 
-      // Add processed nodes and edges
-      result.nodesMap.forEach((value, key) => {
-        nodesMap.set(key, value);
+      // Aggregate each held account's own transaction numbers/values/flags across every
+      // transaction it appears in (whether the other side is a sibling account or an external one).
+      const heldAccountIds = new Set(cleanedAccountIds);
+      const accountStats = new Map<
+        string,
+        {
+          txCount: number;
+          totalAmount: number;
+          currencies: Set<string>;
+          alerted: boolean;
+          investigated: boolean;
+          firstEventTs?: string;
+          lastEventTs?: string;
+        }
+      >();
+
+      const getStats = (accountId: string) => {
+        if (!accountStats.has(accountId)) {
+          accountStats.set(accountId, { txCount: 0, totalAmount: 0, currencies: new Set(), alerted: false, investigated: false });
+        }
+        return accountStats.get(accountId)!;
+      };
+
+      for (const r of networkRows) {
+        const txCount = Number(r.tx_count ?? 0);
+        const totalAmount = Number(r.total_amount ?? 0);
+        const alerted = r.is_alerted_edge === 1;
+        const investigated = r.is_investigated_edge === 1;
+
+        for (const accountId of [r.from_account_id, r.to_account_id]) {
+          if (!heldAccountIds.has(accountId)) continue;
+          const stats = getStats(accountId);
+          stats.txCount += txCount;
+          stats.totalAmount += totalAmount;
+          if (r.currency_hint) stats.currencies.add(r.currency_hint);
+          stats.alerted ||= alerted;
+          stats.investigated ||= investigated;
+          if (r.first_event_ts && (!stats.firstEventTs || r.first_event_ts < stats.firstEventTs)) {
+            stats.firstEventTs = r.first_event_ts;
+          }
+          if (r.last_event_ts && (!stats.lastEventTs || r.last_event_ts > stats.lastEventTs)) {
+            stats.lastEventTs = r.last_event_ts;
+          }
+        }
+      }
+
+      // The counterparty is the root/center node; the "account holder relationship" links below
+      // are what connect it to every account it holds.
+      const rootFlags = { alerted: false, investigated: false };
+      accountStats.forEach((stats) => {
+        rootFlags.alerted ||= stats.alerted;
+        rootFlags.investigated ||= stats.investigated;
       });
-      edges.push(...result.edges);
-      // Calculate aggregate metrics
-      const totalTransactions = edges.reduce((sum, edge) => sum + edge.txCount, 0);
-      const totalValue = edges.reduce((sum, edge) => sum + edge.totalAmount, 0);
+
+      const nodesMap = new Map<string, NetworkNode>();
+      nodesMap.set(entityId, {
+        id: entityId,
+        type: 'ENTITY',
+        label: entityId,
+        flags: rootFlags,
+      });
+
+      const edges: NetworkEdge[] = cleanedAccountIds.map((accountId) => {
+        const stats = accountStats.get(accountId);
+        const currency = stats && stats.currencies.size === 1 ? Array.from(stats.currencies)[0] : undefined;
+        const flags = { alerted: stats?.alerted ?? false, investigated: stats?.investigated ?? false };
+
+        nodesMap.set(accountId, {
+          id: accountId,
+          type: 'ACCOUNT',
+          label: accountId,
+          flags,
+        });
+
+        return {
+          source: entityId,
+          target: accountId,
+          txCount: stats?.txCount ?? 0,
+          totalAmount: stats?.totalAmount ?? 0,
+          currency,
+          firstEventTs: stats?.firstEventTs,
+          lastEventTs: stats?.lastEventTs,
+          relationship: 'Account Holder Relationship',
+          frequency: this.formatFrequency(stats?.txCount ?? 0, stats?.firstEventTs, stats?.lastEventTs),
+          flags,
+        };
+      });
+
+      // Calculate aggregate metrics for the counterparty itself. This is summed from the raw
+      // transaction rows (not the per-account edges above) so a transaction between two of the
+      // counterparty's own accounts is counted once, not twice.
+      const totalTransactions = networkRows.reduce((sum, r) => sum + Number(r.tx_count ?? 0), 0);
+      const totalValue = networkRows.reduce((sum, r) => sum + Number(r.total_amount ?? 0), 0);
+
+      let networkFirstEventTs: string | undefined;
+      let networkLastEventTs: string | undefined;
+      for (const r of networkRows) {
+        if (r.first_event_ts && (!networkFirstEventTs || r.first_event_ts < networkFirstEventTs)) {
+          networkFirstEventTs = r.first_event_ts;
+        }
+        if (r.last_event_ts && (!networkLastEventTs || r.last_event_ts > networkLastEventTs)) {
+          networkLastEventTs = r.last_event_ts;
+        }
+      }
 
       const velocity: 'HIGH' | 'MEDIUM' | 'LOW' = totalTransactions >= 50 ? 'HIGH' : totalTransactions >= 10 ? 'MEDIUM' : 'LOW';
-
-      // Check if any node is alerted or investigated
-      const rootNode = nodesMap.get(entityId);
+      const frequency = this.formatFrequency(totalTransactions, networkFirstEventTs, networkLastEventTs);
 
       return {
         network: {
@@ -256,15 +361,13 @@ export class AccountLakehouseService extends GoldLakehouseService {
         },
         accountDetails: {
           accountId: entityId,
-          accountHolder: 'Entity',
-          relationship: 'Primary Entity',
+          accountHolder: 'Counterparty',
+          relationship: 'Counterparty',
           transactions: totalTransactions,
           totalValue,
           velocity,
-          flags: {
-            alerted: rootNode?.flags.alerted ?? false,
-            investigated: rootNode?.flags.investigated ?? false,
-          },
+          frequency,
+          flags: rootFlags,
         },
         meta: {
           tenantId,
