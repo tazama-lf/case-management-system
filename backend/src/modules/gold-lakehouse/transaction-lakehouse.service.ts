@@ -462,54 +462,113 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         ORDER BY td.tx_event_ts ASC
       `;
 
-      const alertFlagsSql = `
-        SELECT
-          MAX(COALESCE(is_alerted, 0))      as is_alerted,
-          MAX(COALESCE(is_investigated, 0)) as is_investigated
-        FROM transaction_history
-        WHERE entity_id = $1
-          AND tenant_id = $2
-          AND row_type = 'AGG'
-      `;
-
       const queryParams = [accountId, tenantId, ...periodParams];
-      const [outboundResponse, inboundResponse, transactionEdgesResponse, alertFlagsResponse] = await Promise.all([
+      const [outboundResponse, inboundResponse, transactionEdgesResponse] = await Promise.all([
         this.runSqlQuery(outboundSql, 1000, queryParams, userJwt),
         this.runSqlQuery(inboundSql, 1000, queryParams, userJwt),
         this.runSqlQuery(transactionEdgesSql, 1000, queryParams, userJwt),
-        this.runSqlQuery(alertFlagsSql, 10, [accountId, tenantId], userJwt),
       ]);
 
       const outboundData = (outboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
       const inboundData = (inboundResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
       const transactionEdgesData = (transactionEdgesResponse?.data ?? []).map((row) => this.stripHudiMetadata(row));
-      const centerAccountFlags = alertFlagsResponse?.data?.[0] ? this.stripHudiMetadata(alertFlagsResponse.data[0]) : null;
-      const centerAccountIsAlerted = centerAccountFlags ? centerAccountFlags.is_alerted === 1 : false;
-      const centerAccountIsInvestigated = centerAccountFlags ? centerAccountFlags.is_investigated === 1 : false;
-
       const allConnections = [...outboundData, ...inboundData];
 
-      const connectedAccounts: ConnectedAccountDto[] = allConnections.map((conn) => {
-        const velocity = this.calculateVelocity(Number(conn.total_transactions), Math.max(Number(conn.duration_days), 1));
+      // Every account that will appear as a node: the center plus every connected account.
+      const connectedAccountIds: string[] = Array.from(
+        new Set(allConnections.map((conn) => conn.connected_account_id).filter((id): id is string => Boolean(id))),
+      );
+      const allAccountIds: string[] = Array.from(new Set([accountId, ...connectedAccountIds]));
+      const accountPlaceholders = allAccountIds.map((_, i) => `$${i + 2}`).join(', ');
 
-        // Mark connected accounts with hasAlert when the center account has alerts
-        const hasAlert = centerAccountIsAlerted || centerAccountIsInvestigated;
+      // AGG-level alert/investigation history per account - not just the center account.
+      const accountFlagsSql = `
+        SELECT
+          entity_id,
+          MAX(COALESCE(is_alerted, 0))      as is_alerted,
+          MAX(COALESCE(is_investigated, 0)) as is_investigated
+        FROM transaction_history
+        WHERE tenant_id = $1
+          AND row_type = 'AGG'
+          AND entity_id IN (${accountPlaceholders})
+        GROUP BY entity_id
+      `;
+
+      // The counterparty each account is linked to, so nodes can show a counterparty identifier alongside the account ID.
+      const counterpartyLinksSql = `
+        SELECT DISTINCT account_id, counterparty_id
+        FROM counterparty_account_links
+        WHERE tenant_id = $1
+          AND account_id IN (${accountPlaceholders})
+      `;
+
+      const [accountFlagsResponse, counterpartyLinksResponse] = await Promise.all([
+        this.runSqlQuery(accountFlagsSql, allAccountIds.length || 1, [tenantId, ...allAccountIds], userJwt),
+        this.runSqlQuery(counterpartyLinksSql, allAccountIds.length || 1, [tenantId, ...allAccountIds], userJwt),
+      ]);
+
+      const accountFlagsMap = new Map<string, { alerted: boolean; investigated: boolean }>();
+      for (const row of (accountFlagsResponse?.data ?? []).map((r) => this.stripHudiMetadata(r))) {
+        accountFlagsMap.set(row.entity_id, { alerted: row.is_alerted === 1, investigated: row.is_investigated === 1 });
+      }
+
+      const counterpartyIdMap = new Map<string, string>();
+      for (const row of (counterpartyLinksResponse?.data ?? []).map((r) => this.stripHudiMetadata(r))) {
+        if (row.account_id && row.counterparty_id && !counterpartyIdMap.has(row.account_id)) {
+          counterpartyIdMap.set(row.account_id, row.counterparty_id);
+        }
+      }
+
+      // Fall back to the alert/investigation flags carried by each account's own individual
+      // transaction edges, in case the AGG-level record hasn't caught up with recent activity.
+      const edgeDerivedFlags = new Map<string, { alerted: boolean; investigated: boolean }>();
+      for (const tx of transactionEdgesData) {
+        const alerted = tx.is_alerted === 1;
+        const investigated = tx.is_investigated === 1;
+        for (const id of [tx.debtor_account_id, tx.creditor_account_id]) {
+          if (!id) continue;
+          const existing = edgeDerivedFlags.get(id) ?? { alerted: false, investigated: false };
+          existing.alerted ||= alerted;
+          existing.investigated ||= investigated;
+          edgeDerivedFlags.set(id, existing);
+        }
+      }
+
+      const getAccountFlags = (id: string): { alerted: boolean; investigated: boolean } => {
+        const agg = accountFlagsMap.get(id);
+        const edge = edgeDerivedFlags.get(id);
+        return {
+          alerted: Boolean(agg?.alerted) || Boolean(edge?.alerted),
+          investigated: Boolean(agg?.investigated) || Boolean(edge?.investigated),
+        };
+      };
+
+      const connectedAccounts: ConnectedAccountDto[] = allConnections.map((conn) => {
+        const totalTransactions = Number(conn.total_transactions);
+        const days = this.daysBetween(conn.first_tx_date, conn.last_tx_date);
+        const velocity = this.calculateVelocity(totalTransactions, days);
+        const frequency = this.formatFrequency(totalTransactions, days);
+
+        // Own alert/investigation status for this specific connected account - not the center's.
+        const flags = getAccountFlags(conn.connected_account_id);
 
         const stats: TransactionStatsDto = {
-          totalTransactions: Number(conn.total_transactions),
+          totalTransactions,
           totalValue: Math.round(Number(conn.total_value) * 100) / 100,
           averageValue: Math.round(Number(conn.avg_value) * 100) / 100,
           velocity,
+          frequency,
         };
 
         return {
           accountId: conn.connected_account_id,
           accountHolder: conn.connected_account_name,
+          counterpartyId: counterpartyIdMap.get(conn.connected_account_id),
           flowDirection: conn.flow_direction === 'OUTBOUND' ? 'Outbound (Payments To)' : 'Inbound (Payments From)',
           transactionStats: stats,
-          hasAlert,
-          alertMessage:
-            centerAccountIsAlerted || centerAccountIsInvestigated ? 'Center account has alerts — check transaction history' : undefined,
+          hasAlert: flags.alerted,
+          isInvestigated: flags.investigated,
+          alertMessage: flags.alerted ? 'This account has triggered alerts' : undefined,
           firstTransactionDate: conn.first_tx_date,
           lastTransactionDate: conn.last_tx_date,
         };
@@ -531,14 +590,20 @@ export class TransactionLakehouseService extends GoldLakehouseService {
               hasAlert: tx.is_alerted === 1,
               isInvestigated: tx.is_investigated === 1,
             }))
-          : allConnections.map((conn, index) => ({
-              id: `edge-${index}`,
-              source: conn.flow_direction === 'OUTBOUND' ? accountId : conn.connected_account_id,
-              target: conn.flow_direction === 'OUTBOUND' ? conn.connected_account_id : accountId,
-              type: conn.flow_direction.toLowerCase() as 'inbound' | 'outbound',
-              transactionCount: Number(conn.total_transactions),
-              totalValue: Math.round(Number(conn.total_value) * 100) / 100,
-            }));
+          : allConnections.map((conn, index) => {
+              const otherAccountId = conn.connected_account_id;
+              const flags = getAccountFlags(otherAccountId);
+              return {
+                id: `edge-${index}`,
+                source: conn.flow_direction === 'OUTBOUND' ? accountId : otherAccountId,
+                target: conn.flow_direction === 'OUTBOUND' ? otherAccountId : accountId,
+                type: conn.flow_direction.toLowerCase() as 'inbound' | 'outbound',
+                transactionCount: Number(conn.total_transactions),
+                totalValue: Math.round(Number(conn.total_value) * 100) / 100,
+                hasAlert: flags.alerted,
+                isInvestigated: flags.investigated,
+              };
+            });
 
       const outboundCount = outboundData.length;
       const inboundCount = inboundData.length;
@@ -551,9 +616,14 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         accountsWithAlerts,
       };
 
+      const centerFlags = getAccountFlags(accountId);
+
       const centerAccount: CenterAccountDto = {
         accountId,
         accountHolder: centerAccountInfo.account_name,
+        counterpartyId: counterpartyIdMap.get(accountId),
+        hasAlert: centerFlags.alerted,
+        isInvestigated: centerFlags.investigated,
         networkSummary,
       };
 
@@ -573,6 +643,29 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       this.logger.error(`Error fetching transaction network data: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch transaction network data', HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  /**
+   * Days spanned between an account's first and last transaction in this network, floored at 1
+   * so a single-day burst of activity doesn't divide by zero.
+   */
+  private daysBetween(firstTs?: string, lastTs?: string): number {
+    if (!firstTs || !lastTs) return 1;
+    const start = new Date(firstTs).getTime();
+    const end = new Date(lastTs).getTime();
+    if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return 1;
+    return Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+  }
+
+  /**
+   * How often transactions occur, e.g. '3.2/day' - a rate distinct from the HIGH/MEDIUM/LOW
+   * velocity bucket.
+   */
+  private formatFrequency(txCount: number, days: number): string {
+    if (!txCount || txCount <= 0) return '-';
+    const rate = txCount / Math.max(1, days);
+    const rounded = rate >= 10 ? Math.round(rate) : Math.round(rate * 10) / 10;
+    return `${rounded}/day`;
   }
 
   async getCounterpartyNetworkData(
