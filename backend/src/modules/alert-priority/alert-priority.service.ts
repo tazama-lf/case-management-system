@@ -46,9 +46,10 @@ export class AlertPriorityService {
     const tenantIds = [...new Set(openCases.map((c) => c.tenant_id))];
     const ratiosByTenant = new Map<string, SlaEscalationRatios>(
       await Promise.all(
-        tenantIds.map(
-          async (tenantId): Promise<[string, SlaEscalationRatios]> => [tenantId, await this.slaPolicyUtil.getEscalationRatios(tenantId)],
-        ),
+        tenantIds.map(async (tenantId): Promise<[string, SlaEscalationRatios]> => [
+          tenantId,
+          await this.slaPolicyUtil.getEscalationRatios(tenantId),
+        ]),
       ),
     );
 
@@ -157,7 +158,7 @@ export class AlertPriorityService {
 
     try {
       await this.prisma.slaEscalationRecord.create({
-        data: { case_id: caseRecord.case_id, sla_state: state },
+        data: { case_id: caseRecord.case_id, tenant_id: caseRecord.tenant_id, sla_state: state },
       });
     } catch (error) {
       // A concurrent run may have already recorded this — the unique constraint on

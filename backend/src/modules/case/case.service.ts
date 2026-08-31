@@ -1058,6 +1058,23 @@ export class CaseService {
         );
 
         this.logger.log(`[CompleteCaseCreation] Approval task ${nextTask.task_id} created for supervisor review`, CaseService.name);
+      } else if (result.case.case_type === CaseType.FRAUD_AND_AML) {
+        await this.caseCreationService.createCaseWithInvestigationTask(
+          CaseType.FRAUD,
+          userId,
+          existingCase.tenant_id,
+          result.case.priority,
+          CaseCreationType.AUTOMATIC_SYSTEM,
+          role,
+        );
+        await this.caseCreationService.createCaseWithInvestigationTask(
+          CaseType.AML,
+          userId,
+          existingCase.tenant_id,
+          result.case.priority,
+          CaseCreationType.AUTOMATIC_SYSTEM,
+          role,
+        );
       } else {
         nextTask = await this.taskService.createTask(
           {

@@ -45,15 +45,25 @@ describe('useReports', () => {
         totalCases: 100,
         closedCases: 60,
         openCases: 40,
+        openAssignedCases: 40,
         avgResolutionTime: 12.5,
       },
       statusDistribution: {
+        draft: 5,
+        pendingCaseCreationApproval: 0,
+        readyForAssignment: 0,
+        returned: 0,
         assigned: 10,
         inProgress: 15,
-        draft: 5,
         suspended: 2,
-        pendingApproval: 8,
-        closed: 60,
+        pendingFinalApproval: 8,
+        pendingCaseReopeningApproval: 0,
+        autoclosedConfirmed: 0,
+        autoclosedRefuted: 0,
+        closedRefuted: 0,
+        closedConfirmed: 60,
+        closedInconclusive: 0,
+        abandoned: 0,
       },
       caseTypes: [],
       outcomes: {
@@ -91,15 +101,25 @@ describe('useReports', () => {
         totalCases: 0,
         closedCases: 0,
         openCases: 0,
+        openAssignedCases: 0,
         avgResolutionTime: 0,
       },
       statusDistribution: {
+        draft: 0,
+        pendingCaseCreationApproval: 0,
+        readyForAssignment: 0,
+        returned: 0,
         assigned: 0,
         inProgress: 0,
-        draft: 0,
         suspended: 0,
-        pendingApproval: 0,
-        closed: 0,
+        pendingFinalApproval: 0,
+        pendingCaseReopeningApproval: 0,
+        autoclosedConfirmed: 0,
+        autoclosedRefuted: 0,
+        closedRefuted: 0,
+        closedConfirmed: 0,
+        closedInconclusive: 0,
+        abandoned: 0,
       },
       caseTypes: [],
       outcomes: { resolved: 0, confirmed: 0, inconclusive: 0, pending: 0 },
@@ -152,15 +172,25 @@ describe('useCaseStatusStats', () => {
         totalCases: 100,
         closedCases: 60,
         openCases: 40,
+        openAssignedCases: 40,
         avgResolutionTime: 12.5,
       },
       statusDistribution: {
+        draft: 0,
+        pendingCaseCreationApproval: 0,
+        readyForAssignment: 0,
+        returned: 0,
         assigned: 0,
         inProgress: 0,
-        draft: 0,
         suspended: 0,
-        pendingApproval: 0,
-        closed: 0,
+        pendingFinalApproval: 0,
+        pendingCaseReopeningApproval: 0,
+        autoclosedConfirmed: 0,
+        autoclosedRefuted: 0,
+        closedRefuted: 0,
+        closedConfirmed: 0,
+        closedInconclusive: 0,
+        abandoned: 0,
       },
       caseTypes: [],
       outcomes: { resolved: 0, confirmed: 0, inconclusive: 0, pending: 0 },
@@ -213,6 +243,33 @@ describe('useInvestigatorWorkload', () => {
     expect(result.current.data).toEqual(mockData);
     expect(reportsService.getInvestigatorWorkloadData).toHaveBeenCalledWith(
       'last30',
+      undefined,
+    );
+  });
+
+  it('forwards caseType/priority/investigator filters', async () => {
+    vi.mocked(reportsService.getInvestigatorWorkloadData).mockResolvedValue({
+      stats: { totalInvestigators: 0, avgCasesPerInvestigator: 0, avgResolutionTime: 0, caseClosureRate: 0 },
+      workloadData: [],
+      volumeTrend: [],
+      efficiencyData: [],
+      outcomeData: [],
+      performanceData: [],
+    });
+
+    const filters = { caseType: 'FRAUD', priority: 'HIGH', investigator: 'user-1' };
+    const { result } = renderHook(
+      () => useInvestigatorWorkload('last30', filters),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(reportsService.getInvestigatorWorkloadData).toHaveBeenCalledWith(
+      'last30',
+      filters,
     );
   });
 });
@@ -262,7 +319,35 @@ describe('useCaseAgeing', () => {
     });
 
     expect(result.current.data).toEqual(mockData);
-    expect(reportsService.getCaseAgeingData).toHaveBeenCalledWith('last30');
+    expect(reportsService.getCaseAgeingData).toHaveBeenCalledWith(
+      'last30',
+      undefined,
+    );
+  });
+
+  it('forwards caseType/priority/investigator filters', async () => {
+    vi.mocked(reportsService.getCaseAgeingData).mockResolvedValue({
+      stats: { avgCaseAge: null, avgResolutionTime: null, casesOver15Days: 0, casesOver30Days: 0 },
+      ageingByStatus: [],
+      resolutionTrend: [],
+      ageingDistribution: [],
+      caseTypeResolution: [],
+      caseDetails: [],
+    });
+
+    const filters = { caseType: 'AML', priority: 'LOW', investigator: 'user-2' };
+    const { result } = renderHook(() => useCaseAgeing('last30', filters), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(reportsService.getCaseAgeingData).toHaveBeenCalledWith(
+      'last30',
+      filters,
+    );
   });
 });
 
@@ -291,6 +376,31 @@ describe('useEvidenceFindings', () => {
     expect(result.current.data).toEqual(mockData);
     expect(reportsService.getEvidenceFindingsData).toHaveBeenCalledWith(
       'last30',
+      undefined,
+    );
+  });
+
+  it('forwards caseType/priority/investigator filters', async () => {
+    vi.mocked(reportsService.getEvidenceFindingsData).mockResolvedValue({
+      stats: { totalFindings: 0, evidenceItems: 0, confirmedFindings: 0, refutedFindings: 0, inconclusiveFindings: 0, inProgressFindings: 0 },
+      statusDistribution: { confirmed: 0, refuted: 0, inconclusive: 0, inProgress: 0 },
+      evidenceItems: [],
+      findings: [],
+    });
+
+    const filters = { caseType: 'FRAUD', priority: 'HIGH', investigator: 'user-1' };
+    const { result } = renderHook(
+      () => useEvidenceFindings('last30', filters),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(reportsService.getEvidenceFindingsData).toHaveBeenCalledWith(
+      'last30',
+      filters,
     );
   });
 });

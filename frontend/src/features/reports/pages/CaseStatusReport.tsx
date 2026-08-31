@@ -12,7 +12,6 @@ import {
   formatDataForExport,
   getColumnsForReport,
 } from '@/shared/utils/exportUtils';
-import { getCaseTypeColor } from '@/shared/utils/colors';
 import authService from '@/features/auth/services/authService';
 
 const PieChart = lazy(
@@ -39,6 +38,18 @@ type ReportType =
   | 'INVESTIGATOR_WORKLOAD'
   | 'EVIDENCE_FINDINGS';
 
+/** Case Types bar chart: FRAUD/AML share one hue family (light vs. medium blue) rather than the app-wide red/purple badge colors. */
+const getCaseTypeChartColor = (caseType: string | null): string => {
+  switch (caseType) {
+    case 'FRAUD':
+      return '#7dd3fc'; // light blue
+    case 'AML':
+      return '#2563eb'; // medium blue
+    default:
+      return '#93c5fd';
+  }
+};
+
 const Reports: React.FC = () => {
   const [reportType, setReportType] = useState<ReportType>('CASE_STATUS');
   const [dateRange, setDateRange] = useState<
@@ -49,7 +60,8 @@ const Reports: React.FC = () => {
     | 'last90'
     | 'thisMonth'
     | 'lastYear'
-  >('last30');
+    | 'all'
+  >('all');
   const [filters, setFilters] = useState({
     caseType: '',
     priority: '',
@@ -166,7 +178,6 @@ const Reports: React.FC = () => {
 
   const {
     stats,
-    statusDistribution,
     caseTypes,
     outcomes,
     monthlyTrend,
@@ -176,16 +187,24 @@ const Reports: React.FC = () => {
       totalCases: 0,
       closedCases: 0,
       openCases: 0,
-      avgResolutionTime: 0,
+      openAssignedCases: 0,
+      avgResolutionTime: null,
     },
     statusDistribution: {
+      draft: 0,
+      pendingCaseCreationApproval: 0,
+      readyForAssignment: 0,
       assigned: 0,
       inProgress: 0,
-      abandoned: 0,
-      draft: 0,
       suspended: 0,
-      pendingApproval: 0,
-      closed: 0,
+      pendingFinalApproval: 0,
+      pendingCaseReopeningApproval: 0,
+      autoclosedConfirmed: 0,
+      autoclosedRefuted: 0,
+      closedRefuted: 0,
+      closedConfirmed: 0,
+      closedInconclusive: 0,
+      abandoned: 0,
     },
     caseTypes: [],
     outcomes: { resolved: 0, confirmed: 0, inconclusive: 0, pending: 0 },
@@ -193,65 +212,27 @@ const Reports: React.FC = () => {
     statusDetails: [],
   };
 
-  const statusDistributionData = [
-    {
-      label: 'ASSIGNED',
-      value: statusDistribution.assigned,
-      color: '#3B82F6', // Blue
-      percentage: 0,
-    },
-    {
-      label: 'IN PROGRESS',
-      value: statusDistribution.inProgress,
-      color: '#06B6D4', // Cyan
-      percentage: 0,
-    },
-    {
-      label: 'ABANDONED',
-      value: statusDistribution.abandoned,
-      color: '#6B7280', // Gray
-      percentage: 0,
-    },
-    {
-      label: 'DRAFT',
-      value: statusDistribution.draft,
-      color: '#F97316', // Orange
-      percentage: 0,
-    },
-    {
-      label: 'SUSPENDED',
-      value: statusDistribution.suspended,
-      color: '#DC2626', // Red
-      percentage: 0,
-    },
-    {
-      label: 'PENDING APPROVAL',
-      value: statusDistribution.pendingApproval,
-      color: '#A855F7', // Purple
-      percentage: 0,
-    },
-    {
-      label: 'CLOSED',
-      value: statusDistribution.closed,
-      color: '#22C55E', // Green
-      percentage: 0,
-    },
-  ].map((item) => ({
+  const statusColors = ['#94A3B8', '#38BDF8', '#F59E0B', '#A78BFA', '#6366F1', '#FB7185', '#8B5CF6', '#7C3AED'];
+  const statusDistributionData = statusDetails.map((detail, index) => ({
+    label: detail.status,
+    value: detail.count,
+    color: statusColors[index % statusColors.length],
+    percentage: 0,
+  })).map((item) => ({
     ...item,
     percentage:
-      stats.totalCases > 0 ? (item.value / stats.totalCases) * 100 : 0,
+      stats.openCases > 0 ? (item.value / stats.openCases) * 100 : 0,
   }));
 
   // Improved outcome data processing with better fallbacks
   const totalOutcomes =
-    (outcomes?.resolved || 0) +
+    (outcomes?.refuted ?? outcomes?.resolved ?? 0) +
     (outcomes?.confirmed || 0) +
-    (outcomes?.inconclusive || 0) +
-    (outcomes?.pending || 0);
+    (outcomes?.inconclusive || 0);
   const outcomeData = [
     {
       label: 'REFUTED',
-      value: outcomes?.resolved || 0,
+      value: outcomes?.refuted ?? outcomes?.resolved ?? 0,
       color: '#10b981',
       percentage: 0,
     },
@@ -265,12 +246,6 @@ const Reports: React.FC = () => {
       label: 'INCONCLUSIVE',
       value: outcomes?.inconclusive || 0,
       color: '#f59e0b',
-      percentage: 0,
-    },
-    {
-      label: 'PENDING',
-      value: outcomes?.pending || 0,
-      color: '#3b82f6',
       percentage: 0,
     },
   ].map((item) => ({
@@ -321,6 +296,14 @@ const Reports: React.FC = () => {
       {reportType === 'CASE_STATUS' && (
         <>
           <ReportStatsCards stats={stats} />
+          <div className="mb-3 flex items-center gap-3 border-t border-gray-200 pt-4">
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Live Workload
+            </span>
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+              created_at in window
+            </span>
+          </div>
           <div className="grid grid-cols-2 gap-8 mb-8">
             <Suspense
               fallback={
@@ -333,6 +316,7 @@ const Reports: React.FC = () => {
                 data={statusDistributionData}
                 title="Case Status Distribution"
                 isLoading={isLoading}
+                showZeroLegend
               />
             </Suspense>
             <Suspense
@@ -346,12 +330,28 @@ const Reports: React.FC = () => {
                 data={caseTypes.map((type) => ({
                   label: type.name,
                   value: type.count,
-                  color: getCaseTypeColor(type.name),
+                  color: getCaseTypeChartColor(type.name),
                 }))}
                 title="Case Types"
                 isLoading={isLoading}
+                horizontal
               />
             </Suspense>
+          </div>
+          <ReportsTable
+            data={statusDetails}
+            title="Case Status Details"
+            onExportExcel={handleExportExcel}
+            onExportCSV={handleExportCSV}
+            onExportPDF={handleExportPDF}
+          />
+          <div className="my-8 flex items-center gap-3 border-t border-gray-200 pt-4">
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Closed Throughput
+            </span>
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+              closed_at in window
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-8 mb-8">
             <Suspense
@@ -385,31 +385,24 @@ const Reports: React.FC = () => {
               />
             </Suspense>
           </div>
-          <ReportsTable
-            data={statusDetails}
-            title="Case Status Details"
-            onExportExcel={handleExportExcel}
-            onExportCSV={handleExportCSV}
-            onExportPDF={handleExportPDF}
-          />
         </>
       )}
 
       {reportType === 'CASE_AGEING' && (
         <Suspense fallback={<div>Loading Case Ageing Report...</div>}>
-          <CaseAgeingReport dateRange={dateRange} />
+          <CaseAgeingReport dateRange={dateRange} filters={filters} />
         </Suspense>
       )}
 
       {isSupervisor && reportType === 'INVESTIGATOR_WORKLOAD' && (
         <Suspense fallback={<div>Loading Investigator Workload Report...</div>}>
-          <InvestigatorWorkloadReport dateRange={dateRange} />
+          <InvestigatorWorkloadReport dateRange={dateRange} filters={filters} />
         </Suspense>
       )}
 
       {reportType === 'EVIDENCE_FINDINGS' && (
         <Suspense fallback={<div>Loading Evidence Findings Report...</div>}>
-          <EvidenceFindingsReport dateRange={dateRange} />
+          <EvidenceFindingsReport dateRange={dateRange} filters={filters} />
         </Suspense>
       )}
     </PageContainer>

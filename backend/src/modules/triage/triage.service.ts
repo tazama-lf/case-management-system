@@ -136,10 +136,10 @@ export class TriageService {
       alertId: alert.alert_id,
       transactionId,
       timestamp: transactionData?.FIToFIPmtSts?.GrpHdr?.CreDtTm ?? '',
-      transactionType: alert.txtp || '',
+      transactionType: alert.txtp,
       amount,
       status: blockStatusValue ?? '',
-      reason: alert.message || '',
+      reason: alert.message,
       blockReason: blockReasonValue ?? '',
       typologies,
       rules,
@@ -242,7 +242,7 @@ export class TriageService {
     return {
       transactionOverview: {
         transactionId,
-        transactionType: alert.txtp || '',
+        transactionType: alert.txtp,
         timestamp: transactionData?.FIToFIPmtSts?.GrpHdr?.CreDtTm ?? '',
       },
       transactionFlow: {
@@ -300,7 +300,7 @@ export class TriageService {
       throw new BadRequestException(`Cannot update alert ${alertId} when triageType is not MANUAL`);
     }
     const updateAlertData = updateAlertDto;
-    const priorityScore = updateAlertDto.priorityScore ?? 0.33;
+    const { priorityScore } = updateAlertDto;
     const priority = await this.casePriorityUtil.determinePriority(priorityScore, tenantId);
     updateAlertData.priority = priority;
 
@@ -310,7 +310,10 @@ export class TriageService {
         if (!existingAlert) {
           throw new NotFoundException(`Alert with id ${alertId} not found`);
         }
-        const existingCase = await this.caseRepository.findCaseById(existingAlert.case_id!, tenantId);
+        if (!existingAlert.case_id) {
+          throw new BadRequestException(`Alert ${alertId} is not linked to a case`);
+        }
+        const existingCase = await this.caseRepository.findCaseById(existingAlert.case_id, tenantId);
         const completeNewCaseTask = existingCase.tasks.find((t) => t.name === 'Complete New Case');
 
         if (!completeNewCaseTask || completeNewCaseTask.status === TaskStatus.STATUS_30_COMPLETED) {
@@ -324,9 +327,9 @@ export class TriageService {
           alertId,
           userId,
           {
-            confidencePer: updateAlertData.confidence_per,
-            priority_score: updateAlertData.priorityScore,
             ...JSON.parse(JSON.stringify(updateAlertData)),
+            confidencePer: updateAlertData.confidence_per,
+            priority_score: priorityScore,
           },
           tx,
           userName,

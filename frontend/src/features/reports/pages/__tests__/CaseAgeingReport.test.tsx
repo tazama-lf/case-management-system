@@ -29,6 +29,14 @@ vi.mock('../../components/CaseAgeingStatsCards', () => ({
   ),
 }));
 
+vi.mock('../../components/ReportSectionHeader', () => ({
+  default: ({ title, badge }: any) => (
+    <div data-testid="report-section-header">
+      {title} - {badge}
+    </div>
+  ),
+}));
+
 vi.mock('../../components/CaseAgeingBarChart', () => ({
   default: ({ data, title }: any) => (
     <div data-testid="case-ageing-bar-chart">{title}</div>
@@ -111,8 +119,8 @@ describe('CaseAgeingReport', () => {
       },
     ],
     resolutionTrend: [
-      { month: '2024-01', avgDays: 12 },
-      { month: '2024-02', avgDays: 15 },
+      { month: '2024-01', median: 12, p25: 8, p75: 16, n: 4 },
+      { month: '2024-02', median: 15, p25: 10, p75: 20, n: 6 },
     ],
     ageingDistribution: [
       { ageRange: '0-7 days', count: 50, percentage: 50, color: '#3b82f6' },
@@ -120,19 +128,21 @@ describe('CaseAgeingReport', () => {
     caseTypeResolution: [{ caseType: 'FRAUD', avgDays: 10 }],
     caseDetails: [
       {
-        caseId: 'CASE-1',
+        caseId: 1,
         type: 'FRAUD',
         status: 'Assigned',
-        createdDate: '2024-01-01',
+        createdDate: '2024-01-01T00:00:00.000Z',
         ageDays: 15,
         priority: 'High',
-        investigator: 'user-1',
+        investigatorId: 'user-1',
       },
     ],
   };
 
   // Stable reference so we can assert it's the exact function threaded through to formatDataForExport
-  const mockGetAssigneeFullName = vi.fn((investigatorId: string) => investigatorId);
+  const mockGetAssigneeFullName = vi.fn(
+    (investigatorId: string) => investigatorId,
+  );
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -311,6 +321,6 @@ describe('CaseAgeingReport', () => {
       wrapper: createWrapper(),
     });
 
-    expect(useCaseAgeing).toHaveBeenCalledWith('last7');
+    expect(useCaseAgeing).toHaveBeenCalledWith('last7', undefined);
   });
 });

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { CaseStatus, TaskStatus, CaseType, Priority, Prisma } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, CaseType, Priority, Prisma, SlaState } from '@prisma/client-cms';
 import { FraudReport, FraudReportOutcome } from './report.model';
 import { NotificationService } from '../notification/notification.service';
 import { CouchdbService } from 'src/modules/couchdb/couchdb.service';
@@ -10,6 +10,27 @@ import { UploadReportDto } from './dto/upload-report.dto';
 import * as crypto from 'node:crypto';
 import { AgeingSummary, monthlyTrend, resolutionTrend, statusDetails } from './types/report.types';
 import getDateRange from './helpers/getDateRange';
+import { SlaPolicyUtil, DEFAULT_TENANT_KEY } from '../shared/utils/sla-policy.util';
+import { computeCaseSlaState } from '../alert-priority/sla-state.util';
+
+/** One independent count per `CaseStatus` — see `ReportsService.STATUS_DISTRIBUTION_MAP`. */
+export interface ReportStatusDistribution {
+  draft: number;
+  pendingCaseCreationApproval: number;
+  readyForAssignment: number;
+  returned: number;
+  assigned: number;
+  inProgress: number;
+  suspended: number;
+  pendingFinalApproval: number;
+  pendingCaseReopeningApproval: number;
+  autoclosedConfirmed: number;
+  autoclosedRefuted: number;
+  closedRefuted: number;
+  closedConfirmed: number;
+  closedInconclusive: number;
+  abandoned: number;
+}
 
 @Injectable()
 export class ReportsService {
@@ -19,6 +40,7 @@ export class ReportsService {
     private readonly couchdbService: CouchdbService,
     private readonly notificationService: NotificationService,
     private readonly eventLogService: EventLogService,
+    private readonly slaPolicyUtil: SlaPolicyUtil,
   ) {}
 
   private static readonly CLOSED_STATUSES: CaseStatus[] = [
@@ -27,43 +49,91 @@ export class ReportsService {
     CaseStatus.STATUS_81_CLOSED_REFUTED,
     CaseStatus.STATUS_82_CLOSED_CONFIRMED,
     CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
+    CaseStatus.STATUS_99_ABANDONED,
   ];
 
-  private static readonly STATUS_DISTRIBUTION_MAP: Partial<Record<CaseStatus, string>> = {
+  /**
+   * Every `CaseStatus` maps to its own independent bucket — none are folded
+   * together (e.g. STATUS_82_CLOSED_CONFIRMED and STATUS_83_CLOSED_INCONCLUSIVE
+   * are reported separately, not merged into a single "closed" bucket).
+   */
+  private static readonly STATUS_DISTRIBUTION_MAP: Record<CaseStatus, string> = {
+    [CaseStatus.STATUS_00_DRAFT]: 'draft',
+    [CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL]: 'pendingCaseCreationApproval',
+    [CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT]: 'readyForAssignment',
+    [CaseStatus.STATUS_03_RETURNED]: 'returned',
     [CaseStatus.STATUS_10_ASSIGNED]: 'assigned',
     [CaseStatus.STATUS_20_IN_PROGRESS]: 'inProgress',
-    [CaseStatus.STATUS_00_DRAFT]: 'draft',
     [CaseStatus.STATUS_21_SUSPENDED]: 'suspended',
-    [CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL]: 'pendingApproval',
-    [CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL]: 'pendingApproval',
-    [CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT]: 'draft',
-    [CaseStatus.STATUS_03_RETURNED]: 'draft',
-    [CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL]: 'pendingApproval',
-    [CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED]: 'closed',
-    [CaseStatus.STATUS_72_AUTOCLOSED_REFUTED]: 'closed',
-    [CaseStatus.STATUS_81_CLOSED_REFUTED]: 'closed',
-    [CaseStatus.STATUS_82_CLOSED_CONFIRMED]: 'closed',
-    [CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE]: 'closed',
+    [CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL]: 'pendingFinalApproval',
+    [CaseStatus.STATUS_31_PENDING_CASE_REOPENING_APPROVAL]: 'pendingCaseReopeningApproval',
+    [CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED]: 'autoclosedConfirmed',
+    [CaseStatus.STATUS_72_AUTOCLOSED_REFUTED]: 'autoclosedRefuted',
+    [CaseStatus.STATUS_81_CLOSED_REFUTED]: 'closedRefuted',
+    [CaseStatus.STATUS_82_CLOSED_CONFIRMED]: 'closedConfirmed',
+    [CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE]: 'closedInconclusive',
     [CaseStatus.STATUS_99_ABANDONED]: 'abandoned',
   };
 
+  /**
+   * FRAUD_AND_AML container cases are excluded everywhere, except while
+   * they're still DRAFT or pending case creation approval - at that point
+   * they haven't split into their FRAUD/AML siblings yet, so they should
+   * still count under their own type in every report/dashboard query.
+   */
   private static readonly NON_CONTAINER_CASE_FILTER: Prisma.CaseWhereInput = {
-    OR: [{ case_type: null }, { case_type: { not: CaseType.FRAUD_AND_AML } }],
+    OR: [
+      { case_type: null },
+      { case_type: { not: CaseType.FRAUD_AND_AML } },
+      {
+        case_type: CaseType.FRAUD_AND_AML,
+        status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL] },
+      },
+    ],
   };
+
+  /**
+   * Abandoned cases are excluded from every report/dashboard query, not just
+   * treated as closed - abandoning a case isn't a genuine resolution, so it
+   * shouldn't count toward totals, closed/resolved figures, ageing, or
+   * investigator workload. `CLOSED_STATUSES` still lists STATUS_99_ABANDONED
+   * so it's correctly excluded from "open" breakdowns, but this filter is
+   * what keeps abandoned cases out of every count entirely.
+   */
+  private static readonly EXCLUDE_ABANDONED_FILTER: Prisma.CaseWhereInput = {
+    status: { not: CaseStatus.STATUS_99_ABANDONED },
+  };
+
+  private static parseCaseType(value: string): CaseType {
+    if (!Object.values(CaseType).includes(value as CaseType)) {
+      throw new BadRequestException(`Invalid caseType: ${value}`);
+    }
+    return value as CaseType;
+  }
+
+  private static parsePriority(value: string): Priority {
+    if (!Object.values(Priority).includes(value as Priority)) {
+      throw new BadRequestException(`Invalid priority: ${value}`);
+    }
+    return value as Priority;
+  }
 
   private static withNonContainerCaseFilter(where: Prisma.CaseWhereInput = {}): Prisma.CaseWhereInput {
     const andFilters = where.AND ? (Array.isArray(where.AND) ? where.AND : [where.AND]) : [];
     return {
       ...where,
-      AND: [...andFilters, ReportsService.NON_CONTAINER_CASE_FILTER],
+      AND: [...andFilters, ReportsService.NON_CONTAINER_CASE_FILTER, ReportsService.EXCLUDE_ABANDONED_FILTER],
     };
   }
 
-  private static withNonContainerTaskCaseFilter(where: Prisma.TaskWhereInput = {}): Prisma.TaskWhereInput {
+  private static withNonContainerTaskCaseFilter(
+    where: Prisma.TaskWhereInput = {},
+    caseWhere: Prisma.CaseWhereInput = {},
+  ): Prisma.TaskWhereInput {
     return {
       ...where,
       case: {
-        is: ReportsService.withNonContainerCaseFilter(),
+        is: ReportsService.withNonContainerCaseFilter(caseWhere),
       },
     };
   }
@@ -79,8 +149,8 @@ export class ReportsService {
     tenantId?: string;
   }): Prisma.CaseWhereInput {
     const where: Record<string, any> = {};
-    if (filters?.caseType) where.case_type = filters.caseType;
-    if (filters?.priority) where.priority = filters.priority;
+    if (filters?.caseType) where.case_type = ReportsService.parseCaseType(filters.caseType);
+    if (filters?.priority) where.priority = ReportsService.parsePriority(filters.priority);
     if (filters?.investigator) where.case_owner_user_id = filters.investigator;
     if (filters?.tenantId) where.tenant_id = filters.tenantId;
     return ReportsService.withNonContainerCaseFilter(where);
@@ -91,8 +161,10 @@ export class ReportsService {
    * with the standard "scope to this investigator" OR clause:
    *   - cases they own,
    *   - cases with a task assigned to them,
-   *   - unassigned cases (which they could pick up),
-   *   - cases ready for assignment.
+   *   - every DRAFT case (visible to all investigators, not just its creator),
+   *   - every READY_FOR_ASSIGNMENT case (the claimable pool),
+   *   - unowned PENDING_CASE_CREATION_APPROVAL cases (matches the Cases page's
+   *     "unowned" rule for this status — no creator check).
    *
    * The OR clause is ANDed with the supplied `baseFilters`, so the existing
    * filters (date window, caseType, priority, tenantId, …) are preserved on
@@ -118,29 +190,13 @@ export class ReportsService {
             {
               case_owner_user_id: requestingUserId,
             },
-            // DRAFT or READY_FOR_ASSIGNMENT where owner is null or owner is the user
+            // Every DRAFT or READY_FOR_ASSIGNMENT case, regardless of owner.
             {
-              AND: [
-                { status: { in: [CaseStatus.STATUS_00_DRAFT] } },
-                {
-                  OR: [{ case_owner_user_id: null }, { case_owner_user_id: requestingUserId }],
-                },
-              ],
+              AND: [{ status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } }],
             },
-            // Pending approval status where creator is the user
+            // Unowned pending-approval cases (matches the Cases page's rule for this status)
             {
-              AND: [
-                {
-                  status: {
-                    in: [
-                      CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL,
-                      CaseStatus.STATUS_99_ABANDONED,
-                      CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-                    ],
-                  },
-                },
-                { case_creator_user_id: requestingUserId },
-              ],
+              AND: [{ status: CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL }, { case_owner_user_id: null }],
             },
           ],
         },
@@ -148,40 +204,53 @@ export class ReportsService {
     };
   }
 
-  private avgResolutionDays(cases: Array<{ created_at: Date; updated_at: Date }>): number {
-    if (cases.length === 0) return 0;
+  /**
+   * Case Ageing-only scope, narrower than `applyInvestigatorScope` above.
+   *
+   * Every other report shows an investigator the shared "claimable" pool too
+   * (unowned DRAFT/READY_FOR_ASSIGNMENT cases, unowned pending-approval
+   * cases) so they can find work to pick up. Case Ageing is different: its
+   * numbers (average age, over-15/over-30 counts, resolution time) are meant
+   * to describe the investigator's *own* backlog, not the whole tenant's
+   * unclaimed queue - mixing in the claimable pool inflates their apparent
+   * backlog with cases nobody owns. So here an investigator only sees cases
+   * that are explicitly theirs:
+   *   - cases they own,
+   *   - cases with a task assigned to them.
+   * Nothing else. If a `requestingUserId` isn't supplied (supervisor/admin
+   * view), this is a no-op and every case in the tenant is included, same as
+   * before.
+   */
+  private applyOwnedOrAssignedScope(baseFilters: any, requestingUserId?: string): any {
+    if (!requestingUserId) return baseFilters;
+
+    return {
+      AND: [
+        baseFilters,
+        {
+          OR: [{ case_owner_user_id: requestingUserId }, { tasks: { some: { assigned_user_id: requestingUserId } } }],
+        },
+      ],
+    };
+  }
+
+  private avgResolutionDays(cases: Array<{ created_at: Date; updated_at: Date }>): number | null {
+    if (cases.length === 0) return null;
     const totalDays = cases.reduce((sum, c) => sum + (c.updated_at.getTime() - c.created_at.getTime()) / (1000 * 60 * 60 * 24), 0);
     return totalDays / cases.length;
   }
 
-  /** Folds a `groupBy(status)` result into the public status-distribution shape. */
-  private computeStatusDistribution(statusCounts: Array<{ status: CaseStatus; _count: { case_id: number } }>): {
-    assigned: number;
-    inProgress: number;
-    draft: number;
-    suspended: number;
-    pendingApproval: number;
-    closed: number;
-    abandoned: number;
-  } {
-    const distribution = {
-      assigned: 0,
-      inProgress: 0,
-      draft: 0,
-      suspended: 0,
-      pendingApproval: 0,
-      closed: 0,
-      abandoned: 0,
-    };
+  /** Folds a `groupBy(status)` result into the public status-distribution shape, one independent bucket per `CaseStatus`. */
+  private computeStatusDistribution(statusCounts: Array<{ status: CaseStatus; _count: { case_id: number } }>): ReportStatusDistribution {
+    const distribution = Object.values(ReportsService.STATUS_DISTRIBUTION_MAP).reduce<Record<string, number>>(
+      (acc, key) => ({ ...acc, [key]: 0 }),
+      {},
+    ) as unknown as ReportStatusDistribution;
 
     statusCounts.forEach(({ status, _count }) => {
-      if (ReportsService.CLOSED_STATUSES.includes(status)) {
-        distribution.closed += _count.case_id;
-        return;
-      }
       const mapped = ReportsService.STATUS_DISTRIBUTION_MAP[status];
       if (mapped) {
-        (distribution as Record<string, number>)[mapped] += _count.case_id;
+        (distribution as unknown as Record<string, number>)[mapped] += _count.case_id;
       }
     });
 
@@ -191,25 +260,29 @@ export class ReportsService {
   private computeCaseTypes(
     typeCounts: Array<{ case_type: CaseType | null; _count: { case_id: number } }>,
   ): Array<{ name: string; count: number; color: string }> {
-    return typeCounts.map(({ case_type: caseType, _count }) => ({
-      name: caseType ?? 'NONE',
-      count: _count.case_id,
-      color: this.getCaseTypeColor(caseType),
-    }));
+    return typeCounts
+      .filter((item): item is { case_type: CaseType; _count: { case_id: number } } => item.case_type !== null)
+      .map(({ case_type: caseType, _count }) => ({
+        name: caseType,
+        count: _count.case_id,
+        color: this.getCaseTypeColor(caseType),
+      }));
   }
 
   private computeOutcomes(outcomeCounts: Array<{ status: CaseStatus; _count: { case_id: number } }>): {
     resolved: number;
+    refuted: number;
     confirmed: number;
     inconclusive: number;
     pending: number;
   } {
-    const outcomes = { resolved: 0, confirmed: 0, inconclusive: 0, pending: 0 };
+    const outcomes = { resolved: 0, refuted: 0, confirmed: 0, inconclusive: 0, pending: 0 };
 
     outcomeCounts.forEach(({ status, _count }) => {
       if (status === CaseStatus.STATUS_82_CLOSED_CONFIRMED || status === CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED) {
         outcomes.confirmed += _count.case_id;
       } else if (status === CaseStatus.STATUS_81_CLOSED_REFUTED || status === CaseStatus.STATUS_72_AUTOCLOSED_REFUTED) {
+        outcomes.refuted += _count.case_id;
         outcomes.resolved += _count.case_id;
       } else if (status === CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE) {
         outcomes.inconclusive += _count.case_id;
@@ -225,49 +298,35 @@ export class ReportsService {
    * cases they own or have a task assigned to (NOT unassigned / ready-for-
    * assignment cases) — the trend should reflect only the user's own work.
    */
-  private async computeMonthlyTrend(filters?: {
-    caseType?: string;
-    priority?: string;
-    investigator?: string;
-    tenantId?: string;
-    requestingUserId?: string;
-  }): Promise<monthlyTrend[]> {
-    const now = new Date();
-    const trendStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  private async computeMonthlyTrend(
+    filters?: {
+      caseType?: string;
+      priority?: string;
+      investigator?: string;
+      tenantId?: string;
+      requestingUserId?: string;
+    },
+    dateRange?: string,
+  ): Promise<monthlyTrend[]> {
+    const { startDate, endDate } = getDateRange(dateRange);
+    const dateWindow = { gte: startDate, lte: endDate };
+    const commonFilters = this.buildCommonCaseFilters(filters);
+    const createdWhere = this.applyInvestigatorScope({ ...commonFilters, created_at: dateWindow }, filters?.requestingUserId);
+    const closedWhere = this.applyInvestigatorScope(
+      { ...commonFilters, updated_at: dateWindow, status: { in: ReportsService.CLOSED_STATUSES } },
+      filters?.requestingUserId,
+    );
 
-    const base: any = {
-      created_at: { gte: trendStartDate },
-      ...this.buildCommonCaseFilters(filters),
-    };
-
-    const where = filters?.requestingUserId
-      ? {
-          AND: [
-            base,
-            {
-              OR: [
-                { case_owner_user_id: filters.requestingUserId },
-                {
-                  tasks: {
-                    some: {
-                      assigned_user_id: filters.requestingUserId,
-                    },
-                  },
-                },
-              ],
-            },
-          ],
-        }
-      : base;
-
-    const recentCases = await this.prisma.case.findMany({
-      where,
-      select: {
-        created_at: true,
-        updated_at: true,
-        status: true,
-      },
-    });
+    const [createdCases, closedCases] = await Promise.all([
+      this.prisma.case.findMany({
+        where: createdWhere,
+        select: { created_at: true },
+      }),
+      this.prisma.case.findMany({
+        where: closedWhere,
+        select: { updated_at: true },
+      }),
+    ]);
 
     const casesByDate = new Map<string, { created: number; closed: number }>();
 
@@ -278,8 +337,7 @@ export class ReportsService {
         year: 'numeric',
       });
 
-    // Count created cases by created_at date
-    recentCases.forEach((c) => {
+    createdCases.forEach((c) => {
       const createdDate = formatDate(c.created_at);
 
       if (!casesByDate.has(createdDate)) {
@@ -293,12 +351,7 @@ export class ReportsService {
       }
     });
 
-    // Count closed cases by updated_at date
-    recentCases.forEach((c) => {
-      if (!ReportsService.CLOSED_STATUSES.includes(c.status)) {
-        return;
-      }
-
+    closedCases.forEach((c) => {
       const closedDate = formatDate(c.updated_at);
 
       if (!casesByDate.has(closedDate)) {
@@ -323,33 +376,40 @@ export class ReportsService {
 
   private async computeStatusDetails(
     statusCounts: Array<{ status: CaseStatus; _count: { case_id: number } }>,
-    totalCases: number,
+    totalOpenCases: number,
     whereClause: any,
   ): Promise<statusDetails[]> {
-    return await Promise.all(
-      statusCounts.map(async ({ status, _count }) => {
-        const percentage = totalCases > 0 ? ((_count.case_id / totalCases) * 100).toFixed(1) : '0.0';
+    const countByStatus = new Map(statusCounts.map(({ status, _count }) => [status, _count.case_id]));
+    const casesInOpenStatuses = await this.prisma.case.findMany({
+      where: whereClause,
+      select: { status: true, created_at: true, updated_at: true },
+    });
+    const casesByStatus = casesInOpenStatuses.reduce<Partial<Record<CaseStatus, Array<{ created_at: Date; updated_at: Date }>>>>(
+      (acc, caseItem) => ({
+        ...acc,
+        [caseItem.status]: [...(acc[caseItem.status] ?? []), caseItem],
+      }),
+      {},
+    );
 
-        const casesInStatus = await this.prisma.case.findMany({
-          where: { ...whereClause, status },
-          select: { created_at: true, updated_at: true },
-        });
-
-        let avgTimeInStatus = 'N/A';
-        if (casesInStatus.length > 0) {
-          const avgDays = Math.round(this.avgResolutionDays(casesInStatus));
-          avgTimeInStatus = avgDays === 0 ? '< 1 day' : `${avgDays} ${avgDays === 1 ? 'day' : 'days'}`;
-        }
+    return Object.values(CaseStatus)
+      .filter((status) => !ReportsService.CLOSED_STATUSES.includes(status) && status !== CaseStatus.STATUS_03_RETURNED)
+      .map((status) => {
+        const count = countByStatus.get(status) ?? 0;
+        const percentage = totalOpenCases > 0 ? ((count / totalOpenCases) * 100).toFixed(1) : '0.0';
+        const avgAgeDays = this.avgResolutionDays(casesByStatus[status] ?? []);
+        const roundedAgeDays = avgAgeDays === null ? null : Math.round(avgAgeDays);
+        const avgTimeInStatus =
+          roundedAgeDays === null ? 'N/A' : roundedAgeDays === 0 ? '< 1 day' : `${roundedAgeDays} ${roundedAgeDays === 1 ? 'day' : 'days'}`;
 
         return {
           status: this.formatStatusName(status),
-          count: _count.case_id,
+          count,
           percentage: `${percentage}%`,
           avgTimeInStatus,
-          currentTrendPeriod: '+0%',
+          currentTrendPeriod: '0',
         };
-      }),
-    );
+      });
   }
 
   private async computeResolutionTrend(filters?: {
@@ -385,7 +445,7 @@ export class ReportsService {
 
         return {
           month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
-          avgResolutionTime: Math.round(this.avgResolutionDays(monthClosedCases)),
+          avgResolutionTime: Math.round(this.avgResolutionDays(monthClosedCases) ?? 0),
           casesResolved: monthClosedCases.length,
         };
       }),
@@ -397,6 +457,7 @@ export class ReportsService {
     filters?: {
       caseType?: string;
       priority?: string;
+      investigator?: string;
       isInvestigator?: boolean;
       tenantId: string;
       requestingUserId?: string;
@@ -406,22 +467,18 @@ export class ReportsService {
       totalCases: number;
       closedCases: number;
       openCases: number;
-      avgResolutionTime: number;
+      avgResolutionTime: number | null;
       highPriorityCases: number;
+      availableCases: number;
+      openAssignedCases: number;
+      resolvedThisMonth: number;
+      overdueCases: number;
     };
     recentCases: Array<{
       priority: string;
       count: number;
     }>;
-    statusDistribution: {
-      assigned: number;
-      inProgress: number;
-      draft: number;
-      suspended: number;
-      pendingApproval: number;
-      closed: number;
-      abandoned: number;
-    };
+    statusDistribution: ReportStatusDistribution;
     caseTypes: Array<{
       name: string;
       count: number;
@@ -429,6 +486,7 @@ export class ReportsService {
     }>;
     outcomes: {
       resolved: number;
+      refuted: number;
       confirmed: number;
       inconclusive: number;
       pending: number;
@@ -440,26 +498,82 @@ export class ReportsService {
       casesResolved: number;
     }>;
     statusDetails: statusDetails[];
+    openPriorityCounts: Array<{
+      priority: string;
+      count: number;
+      description: string;
+    }>;
+    openStatusCounts: Array<{
+      status: string;
+      count: number;
+    }>;
   }> {
     const { startDate, endDate } = getDateRange(dateRange);
     const dateWindow = { gte: startDate, lte: endDate };
     // Build the overall scope: date window + filters + (optional) investigator restriction.
     const baseFilters = { created_at: dateWindow, ...this.buildCommonCaseFilters(filters) };
     const whereClause = filters?.isInvestigator ? this.applyInvestigatorScope(baseFilters, filters.requestingUserId) : baseFilters;
+    // "Available" means ready for assignment - the specific claimable pool, not
+    // every unowned case in any open status.
+    const availableCasesWhere: Prisma.CaseWhereInput = {
+      ...baseFilters,
+      status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+    };
+    const openCasesWhere: Prisma.CaseWhereInput = { ...whereClause, status: { notIn: ReportsService.CLOSED_STATUSES } };
+    // "Open & Assigned" excludes closed AND draft cases - a draft isn't being
+    // actively investigated yet, so it shouldn't count as open & assigned work,
+    // even though it still shows up in the general open status/priority breakdown.
+    const openAssignedCasesWhere: Prisma.CaseWhereInput = {
+      ...whereClause,
+      status: { notIn: [...ReportsService.CLOSED_STATUSES, CaseStatus.STATUS_00_DRAFT] },
+    };
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const resolvedThisMonthWhere = this.applyInvestigatorScope(
+      {
+        ...this.buildCommonCaseFilters(filters),
+        status: { in: ReportsService.CLOSED_STATUSES },
+        updated_at: { gte: monthStart, lte: now },
+      },
+      filters?.isInvestigator ? filters.requestingUserId : undefined,
+    );
+    const closedWindowFilters = {
+      updated_at: dateWindow,
+      ...this.buildCommonCaseFilters(filters),
+    };
+    // Closed Cases is role-scoped like every other stat - Investigators see their
+    // own closed cases, Supervisors see all. The Dashboard's own "closed this
+    // month" concept is resolvedThisMonthWhere above, scoped the same way.
     const closedCasesWhere = this.applyInvestigatorScope(
-      { ...baseFilters, status: { in: ReportsService.CLOSED_STATUSES } },
+      { ...closedWindowFilters, status: { in: ReportsService.CLOSED_STATUSES } },
       filters?.requestingUserId,
     );
     // Run all aggregate queries that share these scopes in parallel.
-    const [allCases, statusCounts, typeCounts, totalCases, closedCases, closedCasesWithTimes, outcomeCounts] = await Promise.all([
+    const [
+      openScopedCases,
+      statusCounts,
+      typeCounts,
+      totalCases,
+      closedCases,
+      availableCases,
+      openAssignedCases,
+      resolvedThisMonth,
+      closedCasesWithTimes,
+      outcomeCounts,
+    ] = await Promise.all([
       this.prisma.case.findMany({
-        where: whereClause,
-        select: { status: true, priority: true },
+        where: openCasesWhere,
+        select: { status: true, priority: true, sla_due_at: true, sla_started_at: true },
       }),
       this.prisma.case.groupBy({ by: ['status'], where: whereClause, _count: { case_id: true } }),
-      this.prisma.case.groupBy({ by: ['case_type'], where: whereClause, _count: { case_id: true } }),
+      // Case Types chart is open-cases-only - closed FRAUD/AML cases shouldn't
+      // inflate a breakdown meant to reflect the current active caseload.
+      this.prisma.case.groupBy({ by: ['case_type'], where: openCasesWhere, _count: { case_id: true } }),
       this.prisma.case.count({ where: whereClause }),
       this.prisma.case.count({ where: closedCasesWhere }),
+      this.prisma.case.count({ where: availableCasesWhere }),
+      this.prisma.case.count({ where: openAssignedCasesWhere }),
+      this.prisma.case.count({ where: resolvedThisMonthWhere }),
       this.prisma.case.findMany({
         where: closedCasesWhere,
         select: { created_at: true, updated_at: true },
@@ -477,19 +591,31 @@ export class ReportsService {
     const avgResolutionTime = this.avgResolutionDays(closedCasesWithTimes);
 
     // Trend / detail queries (independent — run in parallel).
-    const [monthlyTrend, statusDetails, resolutionTrend] = await Promise.all([
+    const [monthlyTrend, statusDetails, resolutionTrend, slaEscalationRatios] = await Promise.all([
       this.computeMonthlyTrend(filters),
       this.computeStatusDetails(statusCounts, totalCases, whereClause),
       this.computeResolutionTrend(filters),
+      this.slaPolicyUtil.getEscalationRatios(filters?.tenantId ?? DEFAULT_TENANT_KEY),
     ]);
 
-    const openCases = allCases.filter((c) => !ReportsService.CLOSED_STATUSES.includes(c.status)).length;
+    const openCases = openScopedCases.length;
 
-    // Counts span all cases in scope (open + closed), matching `totalCases`,
-    // so the report reflects case risk distribution rather than open-queue makeup.
-    const lowPriorityCases = allCases.filter((c) => c.priority === Priority.LOW).length;
-    const mediumPriorityCases = allCases.filter((c) => c.priority === Priority.MEDIUM).length;
-    const highPriorityCases = allCases.filter((c) => c.priority === Priority.HIGH).length;
+    // "Open Cases by Priority" excludes closed AND draft cases - a draft hasn't
+    // been triaged yet, so it shouldn't skew the priority breakdown of active work.
+    const priorityScopedCases = openScopedCases.filter((c) => c.status !== CaseStatus.STATUS_00_DRAFT);
+    const lowPriorityCases = priorityScopedCases.filter((c) => c.priority === Priority.LOW).length;
+    const mediumPriorityCases = priorityScopedCases.filter((c) => c.priority === Priority.MEDIUM).length;
+    const highPriorityCases = priorityScopedCases.filter((c) => c.priority === Priority.HIGH).length;
+    // Overdue means SLA state BREACHED - the same derived state shown on the Cases
+    // page (sla-state.util.ts), not just a raw sla_due_at < now comparison.
+    const overdueCases = openScopedCases.filter((c) => computeCaseSlaState(c, slaEscalationRatios) === SlaState.BREACHED).length;
+    const rawStatusCounts = openScopedCases.reduce<Partial<Record<CaseStatus, number>>>(
+      (acc, c) => ({ ...acc, [c.status]: (acc[c.status] ?? 0) + 1 }),
+      {},
+    );
+    const openStatusCounts = Object.values(CaseStatus)
+      .filter((status) => !ReportsService.CLOSED_STATUSES.includes(status) && status !== CaseStatus.STATUS_03_RETURNED)
+      .map((status) => ({ status, count: rawStatusCounts[status] ?? 0 }));
 
     const recentCases = [
       {
@@ -511,8 +637,12 @@ export class ReportsService {
         totalCases,
         closedCases,
         openCases,
-        avgResolutionTime: Math.round(avgResolutionTime),
+        avgResolutionTime: avgResolutionTime === null ? null : Math.round(avgResolutionTime),
         highPriorityCases,
+        availableCases,
+        openAssignedCases,
+        resolvedThisMonth,
+        overdueCases,
       },
       recentCases,
       statusDistribution,
@@ -521,12 +651,23 @@ export class ReportsService {
       monthlyTrend,
       resolutionTrend,
       statusDetails,
+      openPriorityCounts: [
+        { priority: 'Low', count: lowPriorityCases, description: 'Low priority cases requiring attention' },
+        { priority: 'Medium', count: mediumPriorityCases, description: 'Medium priority cases requiring attention' },
+        { priority: 'High', count: highPriorityCases, description: 'High priority cases requiring attention' },
+      ],
+      openStatusCounts,
     };
   }
 
   async getInvestigatorWorkload(
     dateRange?: string,
-    tenantId?: string,
+    filters?: {
+      tenantId: string;
+      caseType?: string;
+      priority?: string;
+      investigator?: string;
+    },
   ): Promise<{
     stats: {
       totalInvestigators: number;
@@ -570,14 +711,21 @@ export class ReportsService {
   }> {
     const { startDate, endDate } = getDateRange(dateRange);
 
+    const scopeFilters: Prisma.CaseWhereInput = {};
+    if (filters?.caseType) scopeFilters.case_type = ReportsService.parseCaseType(filters.caseType);
+    if (filters?.priority) scopeFilters.priority = ReportsService.parsePriority(filters.priority);
+    if (filters?.tenantId) scopeFilters.tenant_id = filters.tenantId;
+
     const investigators = await this.prisma.case.findMany({
       where: ReportsService.withNonContainerCaseFilter({
         created_at: {
           gte: startDate,
           lte: endDate,
         },
-        case_owner_user_id: { not: null },
-        tenant_id: tenantId,
+        // Restrict to a single investigator's row when the filter is set,
+        // otherwise every case owner (the report's normal, unfiltered scope).
+        case_owner_user_id: filters?.investigator ?? { not: null },
+        ...scopeFilters,
       }),
       select: {
         case_owner_user_id: true,
@@ -590,6 +738,8 @@ export class ReportsService {
         if (!caseOwnerUserId) return null;
 
         const [activeCases, pendingTasks] = await Promise.all([
+          // Active means closed AND draft excluded, same as the Dashboard's
+          // "Open & Assigned Cases" - a draft isn't active investigation work yet.
           this.prisma.case.count({
             where: ReportsService.withNonContainerCaseFilter({
               case_owner_user_id: caseOwnerUserId,
@@ -597,16 +747,20 @@ export class ReportsService {
                 gte: startDate,
                 lte: endDate,
               },
-              status: { notIn: ReportsService.CLOSED_STATUSES },
+              ...scopeFilters,
+              status: { notIn: [...ReportsService.CLOSED_STATUSES, CaseStatus.STATUS_00_DRAFT] },
             }),
           }),
           this.prisma.task.count({
-            where: ReportsService.withNonContainerTaskCaseFilter({
-              assigned_user_id: caseOwnerUserId,
-              status: {
-                in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
+            where: ReportsService.withNonContainerTaskCaseFilter(
+              {
+                assigned_user_id: caseOwnerUserId,
+                status: {
+                  in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
+                },
               },
-            }),
+              scopeFilters,
+            ),
           }),
         ]);
 
@@ -632,7 +786,7 @@ export class ReportsService {
               gte: startDate,
               lte: endDate,
             },
-            tenant_id: tenantId,
+            ...scopeFilters,
             status: { in: ReportsService.CLOSED_STATUSES },
           }),
           select: {
@@ -665,7 +819,7 @@ export class ReportsService {
             where: ReportsService.withNonContainerCaseFilter({
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
-              tenant_id: tenantId,
+              ...scopeFilters,
               status: {
                 in: [CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED, CaseStatus.STATUS_82_CLOSED_CONFIRMED],
               },
@@ -675,7 +829,7 @@ export class ReportsService {
             where: ReportsService.withNonContainerCaseFilter({
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
-              tenant_id: tenantId,
+              ...scopeFilters,
               status: {
                 in: [CaseStatus.STATUS_72_AUTOCLOSED_REFUTED, CaseStatus.STATUS_81_CLOSED_REFUTED],
               },
@@ -686,7 +840,7 @@ export class ReportsService {
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
               status: CaseStatus.STATUS_83_CLOSED_INCONCLUSIVE,
-              tenant_id: tenantId,
+              ...scopeFilters,
             }),
           }),
         ]);
@@ -709,39 +863,43 @@ export class ReportsService {
             where: ReportsService.withNonContainerCaseFilter({
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
-              tenant_id: tenantId,
+              ...scopeFilters,
+            }),
+          }),
+          // Active means closed AND draft excluded, same as the Dashboard's
+          // "Open & Assigned Cases" - a draft isn't active investigation work yet.
+          this.prisma.case.count({
+            where: ReportsService.withNonContainerCaseFilter({
+              case_owner_user_id: caseOwnerUserId,
+              created_at: { gte: startDate, lte: endDate },
+              ...scopeFilters,
+              status: { notIn: [...ReportsService.CLOSED_STATUSES, CaseStatus.STATUS_00_DRAFT] },
             }),
           }),
           this.prisma.case.count({
             where: ReportsService.withNonContainerCaseFilter({
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
-              tenant_id: tenantId,
-              status: { notIn: ReportsService.CLOSED_STATUSES },
-            }),
-          }),
-          this.prisma.case.count({
-            where: ReportsService.withNonContainerCaseFilter({
-              case_owner_user_id: caseOwnerUserId,
-              created_at: { gte: startDate, lte: endDate },
-              tenant_id: tenantId,
+              ...scopeFilters,
               status: { in: ReportsService.CLOSED_STATUSES },
             }),
           }),
           this.prisma.task.count({
-            where: ReportsService.withNonContainerTaskCaseFilter({
-              assigned_user_id: caseOwnerUserId,
-              tenant_id: tenantId,
-              status: {
-                in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
+            where: ReportsService.withNonContainerTaskCaseFilter(
+              {
+                assigned_user_id: caseOwnerUserId,
+                status: {
+                  in: [TaskStatus.STATUS_10_ASSIGNED, TaskStatus.STATUS_20_IN_PROGRESS],
+                },
               },
-            }),
+              scopeFilters,
+            ),
           }),
           this.prisma.case.findMany({
             where: ReportsService.withNonContainerCaseFilter({
               case_owner_user_id: caseOwnerUserId,
               created_at: { gte: startDate, lte: endDate },
-              tenant_id: tenantId,
+              ...scopeFilters,
               status: { in: ReportsService.CLOSED_STATUSES },
             }),
             select: {
@@ -796,7 +954,7 @@ export class ReportsService {
                   gte: monthStart,
                   lte: monthEnd,
                 },
-                tenant_id: tenantId,
+                ...scopeFilters,
               }),
             });
 
@@ -894,16 +1052,76 @@ export class ReportsService {
     };
   }
 
+  /**
+   * Largest-remainder (Hamilton) rounding: floor every share, then hand the
+   * leftover points to the entries with the biggest fractional remainder, so
+   * the reported percentages always sum to exactly 100 instead of drifting
+   * from independently-rounded shares.
+   */
+  private static reconcilePercentages<T extends { count: number }>(buckets: T[]): Array<T & { percentage: number }> {
+    const total = buckets.reduce((sum, bucket) => sum + bucket.count, 0);
+    if (total === 0) {
+      return buckets.map((bucket) => ({ ...bucket, percentage: 0 }));
+    }
+
+    const shares = buckets.map((bucket) => (bucket.count / total) * 100);
+    const floors = shares.map((share) => Math.floor(share));
+    const remainder = 100 - floors.reduce((sum, floor) => sum + floor, 0);
+    const byRemainder = shares.map((share, index) => ({ index, fraction: share - floors[index] })).sort((a, b) => b.fraction - a.fraction);
+
+    const percentages = [...floors];
+    for (let i = 0; i < remainder; i += 1) {
+      percentages[byRemainder[i].index] += 1;
+    }
+
+    return buckets.map((bucket, index) => ({ ...bucket, percentage: percentages[index] }));
+  }
+
+  /** Linear-interpolation percentile over an already-sorted array; null for an empty sample. */
+  private static percentile(sortedValues: number[], p: number): number | null {
+    if (sortedValues.length === 0) return null;
+    if (sortedValues.length === 1) return Math.round(sortedValues[0]);
+
+    const index = p * (sortedValues.length - 1);
+    const lower = Math.floor(index);
+    const upper = Math.ceil(index);
+    if (lower === upper) return Math.round(sortedValues[lower]);
+
+    const weight = index - lower;
+    return Math.round(sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight);
+  }
+
+  private static resolutionDays(case_: { created_at: Date; updated_at: Date }): number {
+    return (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
+  }
+
+  /**
+   * Case Ageing is fed by two lifecycle-scoped datasets, not one shared query:
+   *   - the "open backlog" (avgCaseAge, the 15-30/30+ tiers, the by-status bar,
+   *     the distribution donut, and the details table) is a live, as-of-now
+   *     snapshot of open cases and deliberately ignores `dateRange`.
+   *   - "closed throughput" (avgResolutionTime, resolutionTrend, and
+   *     resolutionByOutcome) shares one `dateRange`-windowed query on
+   *     `updated_at` - the closest proxy this schema has to a `closed_at`
+   *     timestamp (see the dashboard doc's note on `updated_at` standing in
+   *     for "closed date" elsewhere in this file). `resolutionTrend` buckets
+   *     that same window by calendar month instead of a hardcoded 6 months.
+   *     `caseTypeResolution` shares the window but deliberately skips the
+   *     caseType filter - see the comment at its query below.
+   */
   async getCaseAgeing(
     dateRange?: string,
     filters?: {
-      tenantId: string;
       requestingUserId?: string;
+      caseType?: string;
+      priority?: string;
+      investigator?: string;
+      tenantId?: string;
     },
   ): Promise<{
     stats: {
-      avgCaseAge: number;
-      avgResolutionTime: number;
+      avgCaseAge: number | null;
+      avgResolutionTime: number | null;
       casesOver15Days: number;
       casesOver30Days: number;
     };
@@ -916,7 +1134,11 @@ export class ReportsService {
       color: string;
     }>;
     caseTypeResolution: Array<{
-      caseType: 'FRAUD' | 'AML';
+      caseType: string;
+      avgDays: number;
+    }>;
+    resolutionByOutcome: Array<{
+      status: string;
       avgDays: number;
     }>;
     caseDetails: Array<{
@@ -926,273 +1148,253 @@ export class ReportsService {
       createdDate: string;
       ageDays: number;
       priority: Priority;
-      userId: string | null;
-      investigator: string;
+      investigatorId: string | null;
     }>;
   }> {
-    let baseFilters: any = {};
+    const commonFilters = this.buildCommonCaseFilters(filters);
+    const now = new Date();
 
-    if (filters?.tenantId) {
-      baseFilters.tenant_id = filters.tenantId;
-    }
-    baseFilters = ReportsService.withNonContainerCaseFilter(baseFilters);
+    // --- Open backlog: live snapshot, as-of-now, ignores dateRange. ---
+    // An unowned draft is excluded too, alongside the closed/abandoned
+    // statuses already excluded by CLOSED_STATUSES - nobody's actively
+    // ageing a case that hasn't even been claimed yet. A draft that already
+    // has an owner is real work-in-progress and still counts.
+    const openWhere = this.applyOwnedOrAssignedScope(
+      {
+        ...commonFilters,
+        status: { notIn: ReportsService.CLOSED_STATUSES },
+        NOT: { status: CaseStatus.STATUS_00_DRAFT, case_owner_user_id: null },
+      },
+      filters?.requestingUserId,
+    );
 
-    let whereClause: any;
-
-    // If requestingUserId is provided (investigator), filter to show only unassigned, ready for assignment, or assigned to them
-    if (filters?.requestingUserId) {
-      whereClause = {
-        AND: [
-          baseFilters,
-          {
-            OR: [
-              { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
-              {
-                tasks: {
-                  some: {
-                    assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
-                  },
-                },
-              },
-              { case_owner_user_id: null }, // Unassigned cases
-              { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
-            ],
-          },
-        ],
-      };
-    } else {
-      whereClause = baseFilters;
-    }
-
-    const cases = await this.prisma.case.findMany({
-      where: whereClause,
+    const openCases = await this.prisma.case.findMany({
+      where: openWhere,
       select: {
         case_id: true,
         status: true,
         case_type: true,
         created_at: true,
-        updated_at: true,
         priority: true,
         case_owner_user_id: true,
       },
     });
 
-    const now = new Date();
-    const casesWithAge = cases.map((case_) => {
-      const ageDays = Math.floor((now.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24));
-      return { ...case_, ageDays };
-    });
-
-    const avgCaseAge = casesWithAge.length > 0 ? casesWithAge.reduce((sum, case_) => sum + case_.ageDays, 0) / casesWithAge.length : 0;
-
-    const closedCasesWithTimes = casesWithAge.filter((case_) => ReportsService.CLOSED_STATUSES.includes(case_.status as any));
-
-    const avgResolutionTime =
-      closedCasesWithTimes.length > 0
-        ? closedCasesWithTimes.reduce((sum, case_) => {
-            const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-            return sum + resolutionTime;
-          }, 0) / closedCasesWithTimes.length
-        : 0;
-
-    const casesOver15Days = casesWithAge.filter((c) => c.ageDays > 15).length;
-    const casesOver30Days = casesWithAge.filter((c) => c.ageDays >= 30).length;
-
-    const ageingByStatus: AgeingSummary[] = [];
-    const statusGroups = casesWithAge.reduce<Record<string, typeof casesWithAge>>((acc, case_) => {
-      const { status } = case_;
-      const existingCases = acc[status] ?? [];
-      return {
-        ...acc,
-        [status]: [...existingCases, case_],
-      };
-    }, {});
-
-    Object.entries(statusGroups).forEach(([status, cases]) => {
-      ageingByStatus.push({
-        status: this.formatStatusName(status as CaseStatus),
-        age0to7: cases.filter((c) => c.ageDays <= 7).length,
-        age8to15: cases.filter((c) => c.ageDays > 7 && c.ageDays <= 15).length,
-        age16to30: cases.filter((c) => c.ageDays > 15 && c.ageDays < 30).length,
-        age30Plus: cases.filter((c) => c.ageDays >= 30).length,
-      });
-    });
-
-    const ageingDistribution = [
-      { ageRange: '0-7 days', count: casesWithAge.filter((c) => c.ageDays <= 7).length, percentage: 0, color: '#10b981' },
-      {
-        ageRange: '8-15 days',
-        count: casesWithAge.filter((c) => c.ageDays > 7 && c.ageDays <= 15).length,
-        percentage: 0,
-        color: '#f59e0b',
-      },
-      {
-        ageRange: '16-30 days',
-        count: casesWithAge.filter((c) => c.ageDays > 15 && c.ageDays < 30).length,
-        percentage: 0,
-        color: '#ef4444',
-      },
-      { ageRange: '30+ days', count: casesWithAge.filter((c) => c.ageDays >= 30).length, percentage: 0, color: '#7c2d12' },
-    ];
-
-    const total = ageingDistribution.reduce((sum, item) => sum + item.count, 0);
-    const ageingDistributionWithPercentage = ageingDistribution.map((item) => ({
-      ...item,
-      percentage: total > 0 ? Math.round((item.count / total) * 100) : 0,
+    const openCasesWithAge = openCases.map((case_) => ({
+      ...case_,
+      ageDays: Math.floor((now.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24)),
     }));
 
-    const caseTypeResolution = await Promise.all(
-      Object.values(CaseType)
-        .filter((type) => type !== CaseType.FRAUD_AND_AML)
-        .map(async (type) => {
-          let caseTypeBaseFilters: any = {
-            status: {
-              in: ReportsService.CLOSED_STATUSES,
-            },
-            case_type: type,
-          };
+    const avgCaseAge =
+      openCasesWithAge.length > 0 ? openCasesWithAge.reduce((sum, case_) => sum + case_.ageDays, 0) / openCasesWithAge.length : null;
 
-          if (filters?.tenantId) {
-            caseTypeBaseFilters.tenant_id = filters.tenantId;
-          }
-          caseTypeBaseFilters = ReportsService.withNonContainerCaseFilter(caseTypeBaseFilters);
+    const ageBuckets = (cases: typeof openCasesWithAge): { age0to7: number; age8to15: number; age16to30: number; age30Plus: number } => ({
+      age0to7: cases.filter((c) => c.ageDays <= 7).length,
+      age8to15: cases.filter((c) => c.ageDays > 7 && c.ageDays <= 15).length,
+      age16to30: cases.filter((c) => c.ageDays > 15 && c.ageDays < 30).length,
+      age30Plus: cases.filter((c) => c.ageDays >= 30).length,
+    });
 
-          let caseTypeWhereClause: any;
+    // Non-overlapping tiers: the 15-30 tier stops short of 30 so a case is
+    // counted in exactly one of the two cards, never both. Reads off the same
+    // ageBuckets() the bar/donut use, instead of a second, separately-written
+    // (if currently consistent) set of boundary literals.
+    const { age16to30: casesOver15Days, age30Plus: casesOver30Days } = ageBuckets(openCasesWithAge);
 
-          // Apply the same user filtering logic
-          if (filters?.requestingUserId) {
-            caseTypeWhereClause = {
-              AND: [
-                caseTypeBaseFilters,
-                {
-                  OR: [
-                    { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
-                    {
-                      tasks: {
-                        some: {
-                          assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
-                        },
-                      },
-                    },
-                    { case_owner_user_id: null }, // Unassigned cases
-                    { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
-                  ],
-                },
-              ],
-            };
-          } else {
-            caseTypeWhereClause = caseTypeBaseFilters;
-          }
-
-          const closedCasesOfType = await this.prisma.case.findMany({
-            where: caseTypeWhereClause,
-            select: {
-              created_at: true,
-              updated_at: true,
-            },
-          });
-
-          if (closedCasesOfType.length === 0) {
-            return null;
-          }
-
-          const avgResolutionTime =
-            closedCasesOfType.reduce((sum, case_) => {
-              const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-              return sum + resolutionTime;
-            }, 0) / closedCasesOfType.length;
-
-          return {
-            caseType: type,
-            avgDays: Math.round(avgResolutionTime),
-          };
-        }),
-    ).then((results) => results.filter((item) => item !== null));
-
-    const resolutionTrend: resolutionTrend[] = [];
-    const currentDate = new Date();
-    const trendStartDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1);
-
-    let recentClosedBaseFilters: any = {
-      updated_at: {
-        gte: trendStartDate,
-      },
-      status: { in: ReportsService.CLOSED_STATUSES },
-    };
-
-    if (filters?.tenantId) {
-      recentClosedBaseFilters.tenant_id = filters.tenantId;
-    }
-    recentClosedBaseFilters = ReportsService.withNonContainerCaseFilter(recentClosedBaseFilters);
-
-    let recentClosedWhereClause: any;
-
-    // Apply the same user filtering logic
-    if (filters?.requestingUserId) {
-      recentClosedWhereClause = {
-        AND: [
-          recentClosedBaseFilters,
-          {
-            OR: [
-              { case_owner_user_id: filters.requestingUserId }, // Cases owned by this investigator
-              {
-                tasks: {
-                  some: {
-                    assigned_user_id: filters.requestingUserId, // Cases with tasks assigned to this investigator
-                  },
-                },
-              },
-              { case_owner_user_id: null }, // Unassigned cases
-              { status: 'STATUS_02_READY_FOR_ASSIGNMENT' }, // Cases ready for assignment
-            ],
-          },
-        ],
+    // The status axis is seeded from every open-eligible CaseStatus (in enum
+    // order) rather than derived from the fetched cases, so a status with zero
+    // open cases still renders as an empty row instead of vanishing.
+    // STATUS_03_RETURNED is excluded from the breakdown to match the Case
+    // Status report's per-status table (computeStatusDetails, above) - a
+    // returned case still counts in avgCaseAge/the tiers/the donut/the
+    // details table, it just doesn't get its own row here. STATUS_00_DRAFT
+    // still gets a row - only *unowned* drafts are excluded from
+    // openCasesWithAge (see openWhere above), so an owned draft can still
+    // land here.
+    const openStatusOrder = Object.values(CaseStatus).filter(
+      (status) => !ReportsService.CLOSED_STATUSES.includes(status) && status !== CaseStatus.STATUS_03_RETURNED,
+    );
+    const ageingByStatus: AgeingSummary[] = openStatusOrder.map((status) => {
+      const casesInStatus = openCasesWithAge.filter((c) => c.status === status);
+      return {
+        status: this.formatStatusName(status),
+        ...ageBuckets(casesInStatus),
       };
-    } else {
-      recentClosedWhereClause = recentClosedBaseFilters;
-    }
-
-    const recentClosedCases = await this.prisma.case.findMany({
-      where: recentClosedWhereClause,
-      select: {
-        created_at: true,
-        updated_at: true,
-      },
-      orderBy: {
-        updated_at: 'asc',
-      },
     });
 
-    recentClosedCases.forEach((case_) => {
-      const resolutionTime = (case_.updated_at.getTime() - case_.created_at.getTime()) / (1000 * 60 * 60 * 24);
-      resolutionTrend.push({
-        month: case_.updated_at.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }),
-        avgDays: Math.round(resolutionTime),
-      });
-    });
+    // The donut shares the exact same band set as the bar (so the two can
+    // never drift), and percentages are reconciled with the largest-remainder
+    // method so they sum to exactly 100.
+    const ageingDistribution = ReportsService.reconcilePercentages([
+      { ageRange: '0-7 days', count: ageBuckets(openCasesWithAge).age0to7, color: '#10b981' },
+      { ageRange: '8-15 days', count: ageBuckets(openCasesWithAge).age8to15, color: '#f59e0b' },
+      { ageRange: '16-29 days', count: ageBuckets(openCasesWithAge).age16to30, color: '#ef4444' },
+      { ageRange: '30+ days', count: ageBuckets(openCasesWithAge).age30Plus, color: '#991b1b' },
+    ]);
 
-    const caseDetails = casesWithAge.map((case_) => ({
+    // ISO 8601 so the frontend can sort/localise it client-side; the raw
+    // investigator id is kept for hover/export only - the display name is
+    // resolved client-side, including the 'Unassigned' label for a null id.
+    const caseDetails = openCasesWithAge.map((case_) => ({
       caseId: case_.case_id,
       type: case_.case_type ?? 'NONE',
       status: this.formatStatusName(case_.status),
-      createdDate: case_.created_at.toLocaleDateString('en-US'),
+      createdDate: case_.created_at.toISOString(),
       ageDays: case_.ageDays,
       priority: case_.priority,
-      userId: case_.case_owner_user_id ?? null,
-      investigator: case_.case_owner_user_id ?? 'Unassigned',
+      investigatorId: case_.case_owner_user_id,
     }));
+
+    // --- Closed throughput: a single close-anchored window (updated_at within
+    // dateRange), shared by avgResolutionTime and resolutionByOutcome below.
+    // Case Type Resolution deliberately uses its own query that skips the
+    // caseType filter - see the comment there.
+    const { startDate, endDate } = getDateRange(dateRange);
+    const MAX_TREND_BUCKETS = 24;
+    const rangeStartMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const rangeEndMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+    const monthsSpan =
+      (rangeEndMonth.getFullYear() - rangeStartMonth.getFullYear()) * 12 + (rangeEndMonth.getMonth() - rangeStartMonth.getMonth()) + 1;
+    const bucketCount = Math.min(Math.max(monthsSpan, 1), MAX_TREND_BUCKETS);
+    const trendMonths = Array.from(
+      { length: bucketCount },
+      (_, i) => new Date(rangeEndMonth.getFullYear(), rangeEndMonth.getMonth() - (bucketCount - 1 - i), 1),
+    );
+    const earliestTrendBucket = trendMonths[0];
+    const closedWhere = this.applyOwnedOrAssignedScope(
+      {
+        ...commonFilters,
+        status: { in: ReportsService.CLOSED_STATUSES },
+        updated_at: { gte: startDate, lte: endDate },
+      },
+      filters?.requestingUserId,
+    );
+
+    const closedCases = await this.prisma.case.findMany({
+      where: closedWhere,
+      select: { case_type: true, status: true, created_at: true, updated_at: true },
+    });
+
+    const avgResolutionTime =
+      closedCases.length > 0
+        ? closedCases.reduce((sum, case_) => sum + ReportsService.resolutionDays(case_), 0) / closedCases.length
+        : null;
+
+    // Case Type Resolution is the only widget that compares FRAUD vs AML side by side, so it stays unfiltered by the report-wide
+    // caseType filter - filtering it down to one type would just duplicate
+    // avgResolutionTime above. It still respects priority/investigator/tenant
+    // scope and the same close-anchored window as every other closed widget.
+    // When no caseType filter is active, `closedCases` already covers every
+    // type, so re-querying would just fetch the identical set again.
+    const commonFiltersAllTypes = this.buildCommonCaseFilters({
+      priority: filters?.priority,
+      investigator: filters?.investigator,
+      tenantId: filters?.tenantId,
+    });
+    const closedWhereAllTypes = this.applyOwnedOrAssignedScope(
+      {
+        ...commonFiltersAllTypes,
+        status: { in: ReportsService.CLOSED_STATUSES },
+        updated_at: { gte: startDate, lte: endDate },
+      },
+      filters?.requestingUserId,
+    );
+    const closedCasesAllTypes = filters?.caseType
+      ? await this.prisma.case.findMany({
+          where: closedWhereAllTypes,
+          select: { case_type: true, created_at: true, updated_at: true },
+        })
+      : closedCases;
+
+    // The all-time aggregates above need every closed case in the selected
+    // date range. The trend only renders the most recent 24 monthly buckets,
+    // though, so keep its payload bounded to that visible period instead of
+    // materialising the tenant's complete close history for dateRange=all.
+    // For windows of 24 months or fewer, reuse the aggregate query result.
+    const trendCases =
+      earliestTrendBucket > startDate
+        ? await this.prisma.case.findMany({
+            where: this.applyOwnedOrAssignedScope(
+              {
+                ...commonFilters,
+                status: { in: ReportsService.CLOSED_STATUSES },
+                updated_at: { gte: earliestTrendBucket, lte: endDate },
+              },
+              filters?.requestingUserId,
+            ),
+            select: { created_at: true, updated_at: true },
+          })
+        : closedCases;
+
+    // One grouped pass over the already-fetched closed set, instead of one
+    // findMany per case type. FRAUD_AND_AML container cases never reach this
+    // set (withNonContainerCaseFilter only lets them through while DRAFT or
+    // pending approval, neither of which is a closed status).
+    const closedDaysByType = new Map<string, number[]>();
+    closedCasesAllTypes.forEach((case_) => {
+      if (!case_.case_type) return;
+      const days = closedDaysByType.get(case_.case_type) ?? [];
+      days.push(ReportsService.resolutionDays(case_));
+      closedDaysByType.set(case_.case_type, days);
+    });
+    const caseTypeResolution = Array.from(closedDaysByType.entries()).map(([caseType, days]) => ({
+      caseType,
+      avgDays: Math.round(days.reduce((sum, d) => sum + d, 0) / days.length),
+    }));
+
+    // Resolution Time by Outcome: mean resolution time per closed status
+    // (confirmed / refuted / inconclusive / autoclosed variants), over the
+    // same closed-and-windowed set as avgResolutionTime. Abandoned cases
+    // never reach `closedCases` in the first place (EXCLUDE_ABANDONED_FILTER
+    // strips them at the query level), so they can't appear here either.
+    const closedDaysByStatus = new Map<CaseStatus, number[]>();
+    closedCases.forEach((case_) => {
+      const days = closedDaysByStatus.get(case_.status) ?? [];
+      days.push(ReportsService.resolutionDays(case_));
+      closedDaysByStatus.set(case_.status, days);
+    });
+    const resolutionByOutcome = Array.from(closedDaysByStatus.entries()).map(([status, days]) => ({
+      status: this.formatStatusName(status),
+      avgDays: Math.round(days.reduce((sum, d) => sum + d, 0) / days.length),
+    }));
+
+    // Resolution trend: calendar-month buckets spanning the same
+    // close-anchored window as the widgets above, capped to the most recent
+    // 24 months. Group the bounded set once rather than filtering every case
+    // separately for each bucket.
+    const trendDaysByMonth = new Map<string, number[]>();
+    trendCases.forEach((case_) => {
+      const month = `${case_.updated_at.getFullYear()}-${String(case_.updated_at.getMonth() + 1).padStart(2, '0')}`;
+      const days = trendDaysByMonth.get(month) ?? [];
+      days.push(ReportsService.resolutionDays(case_));
+      trendDaysByMonth.set(month, days);
+    });
+
+    const resolutionTrend: resolutionTrend[] = trendMonths.map((bucketStart) => {
+      const month = `${bucketStart.getFullYear()}-${String(bucketStart.getMonth() + 1).padStart(2, '0')}`;
+      const daysInBucket = [...(trendDaysByMonth.get(month) ?? [])].sort((a, b) => a - b);
+
+      return {
+        month,
+        n: daysInBucket.length,
+        median: ReportsService.percentile(daysInBucket, 0.5),
+        p25: ReportsService.percentile(daysInBucket, 0.25),
+        p75: ReportsService.percentile(daysInBucket, 0.75),
+      };
+    });
 
     return {
       stats: {
-        avgCaseAge: Math.round(avgCaseAge),
-        avgResolutionTime: Math.round(avgResolutionTime),
+        avgCaseAge: avgCaseAge === null ? null : Math.round(avgCaseAge),
+        avgResolutionTime: avgResolutionTime === null ? null : Math.round(avgResolutionTime),
         casesOver15Days,
         casesOver30Days,
       },
       ageingByStatus,
       resolutionTrend,
-      ageingDistribution: ageingDistributionWithPercentage,
+      ageingDistribution,
       caseTypeResolution,
+      resolutionByOutcome,
       caseDetails,
     };
   }
@@ -1208,8 +1410,17 @@ export class ReportsService {
     }
   }
 
+  /**
+   * "STATUS_02_READY_FOR_ASSIGNMENT" -> "02 Ready For Assignment": keeps the
+   * numeric code (so status is still sortable/scannable by workflow order)
+   * but title-cases the rest instead of shouting it in ALL CAPS. Shared by
+   * every report that renders a CaseStatus - Case Status and Case Ageing both
+   * call this one method, so the two can't drift apart.
+   */
   private formatStatusName(status: CaseStatus): string {
-    return status.replace('STATUS_', '').replace(/_/gv, ' ');
+    const [code, ...words] = status.replace('STATUS_', '').split('_');
+    const titleCased = words.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+    return `${code} ${titleCased}`;
   }
 
   private getAuditLogType(outcome: string | null | undefined): 'Info' | 'Success' | 'Warning' | 'Error' {
@@ -1221,7 +1432,7 @@ export class ReportsService {
     return 'Info';
   }
 
-  async getFilters(): Promise<{
+  async getFilters(filters?: { tenantId?: string; requestingUserId?: string }): Promise<{
     caseTypes: Array<{
       value: string;
       label: string;
@@ -1236,35 +1447,49 @@ export class ReportsService {
     }>;
   }> {
     const caseTypes = await this.prisma.case.findMany({
-      where: ReportsService.withNonContainerCaseFilter(),
+      where: ReportsService.withNonContainerCaseFilter(filters?.tenantId ? { tenant_id: filters.tenantId } : {}),
       select: { case_type: true },
       distinct: ['case_type'],
     });
 
     const priorities = await this.prisma.case.findMany({
-      where: ReportsService.withNonContainerCaseFilter(),
+      where: ReportsService.withNonContainerCaseFilter(filters?.tenantId ? { tenant_id: filters.tenantId } : {}),
       select: { priority: true },
       distinct: ['priority'],
     });
 
     const investigators = await this.prisma.case.findMany({
-      where: ReportsService.withNonContainerCaseFilter({ case_owner_user_id: { not: null } }),
+      where: ReportsService.withNonContainerCaseFilter({
+        ...(filters?.tenantId ? { tenant_id: filters.tenantId } : {}),
+        ...(filters?.requestingUserId ? { case_owner_user_id: filters.requestingUserId } : { case_owner_user_id: { not: null } }),
+      }),
       select: { case_owner_user_id: true },
       distinct: ['case_owner_user_id'],
     });
+    const investigatorIds = investigators.map((i) => i.case_owner_user_id).filter((userId): userId is string => Boolean(userId));
+    const usernames = await this.prisma.cms_usernames.findMany({
+      where: {
+        ...(filters?.tenantId ? { tenant_id: filters.tenantId } : {}),
+        user_id: { in: investigatorIds },
+      },
+      select: { user_id: true, name: true },
+    });
+    const nameByUserId = new Map(usernames.map((user) => [user.user_id, user.name]));
 
     return {
-      caseTypes: caseTypes.map((ct) => ({
-        value: ct.case_type ?? 'NONE',
-        label: ct.case_type ?? 'None',
-      })),
+      caseTypes: caseTypes
+        .filter((ct): ct is { case_type: CaseType } => ct.case_type !== null)
+        .map((ct) => ({
+          value: ct.case_type,
+          label: ct.case_type,
+        })),
       priorities: priorities.map((p) => ({
         value: p.priority,
         label: p.priority,
       })),
       investigators: investigators.map((i) => ({
         value: i.case_owner_user_id ?? '',
-        label: i.case_owner_user_id ? `User ${i.case_owner_user_id.slice(0, 8)}` : 'Unassigned',
+        label: i.case_owner_user_id ? (nameByUserId.get(i.case_owner_user_id) ?? i.case_owner_user_id) : 'Unassigned',
       })),
     };
   }

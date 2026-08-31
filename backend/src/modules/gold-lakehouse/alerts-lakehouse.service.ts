@@ -10,6 +10,8 @@ import type { RawTypologyRow } from './types/raw-typologies-row.types';
 
 @Injectable()
 export class AlertsLakehouseService extends GoldLakehouseService {
+  private static readonly EFRUP_RULE_ID_PREFIX = 'EFRuP@';
+
   // eslint-disable-next-line @typescript-eslint/no-useless-constructor -- Required for NestJS dependency injection in subclasses
   constructor(httpService: HttpService, configService: ConfigService) {
     super(httpService, configService);
@@ -49,7 +51,9 @@ export class AlertsLakehouseService extends GoldLakehouseService {
                         'rule_independent_variable', anr.rule_independent_variable,
                         'rule_sub_ref',              anr.rule_sub_ref,
                         'rule_processing_time_ms',   anr.rule_processing_time_ms,
-                        'rule_tenant_id',            anr.rule_tenant_id
+                        'rule_tenant_id',            anr.rule_tenant_id,
+                        'rule_desc',                 anr.rule_desc,
+                        'matched_band_reason',       anr.matched_band_reason
                     )
                 ) AS rules
             FROM alert_navigator_rules anr
@@ -57,7 +61,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
               AND anr.tenant_id = '${safeTenantId}'
               AND (
                 anr.rule_weight > 0
-                OR anr.rule_id = 'EFRuP@1.0.0'
+                OR anr.rule_id LIKE '${AlertsLakehouseService.EFRUP_RULE_ID_PREFIX}%'
               )
             GROUP BY
                 anr.alert_id,
@@ -84,7 +88,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             anh.transaction_amount,
             anh.transaction_currency,
             anh.transaction_id,
-            anh.end_to_end_id,
             anh.block_or_override_status,
             anh.alert_date,
             COLLECT_LIST(
@@ -137,7 +140,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             anh.transaction_amount,
             anh.transaction_currency,
             anh.transaction_id,
-            anh.end_to_end_id,
             anh.block_or_override_status,
             anh.alert_date
       `;
@@ -169,16 +171,20 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         .filter((t) => t.typology_id !== null)
         .map((t) => {
           const rulesData = this.safeParseArray<RawRuleRow>(t.rules);
-          const flowProcessorRule = rulesData.find((r) => r.rule_id === 'EFRuP@1.0.0');
-          const triggeredRulesData = rulesData.filter((r) => (r.rule_weight ?? 0) > 0);
-          const rulesString = JSON.stringify(
-            triggeredRulesData.map((r) => ({
-              ruleId: r.rule_id,
-              ruleWeight: r.rule_weight,
-              subRef: r.rule_sub_ref,
-              independentVariable: r.rule_independent_variable,
-            })),
+          const flowProcessorRule = rulesData.find((r) => r.rule_id?.startsWith(AlertsLakehouseService.EFRUP_RULE_ID_PREFIX));
+          const triggeredRulesData = rulesData.filter(
+            (r) => (r.rule_weight ?? 0) > 0 && !r.rule_id?.startsWith(AlertsLakehouseService.EFRUP_RULE_ID_PREFIX),
           );
+          // rule_desc and matched_band_reason intentionally keep snake_case: they mirror the underlying SQL column names
+          const mappedRules = triggeredRulesData.map((r) => ({
+            ruleId: r.rule_id,
+            ruleWeight: r.rule_weight,
+            subRef: r.rule_sub_ref,
+            independentVariable: r.rule_independent_variable,
+            rule_desc: r.rule_desc,
+            matched_band_reason: r.matched_band_reason,
+          }));
+          const rulesString = JSON.stringify(mappedRules);
           const flowProcessorData = flowProcessorRule?.rule_sub_ref ?? undefined;
 
           return {

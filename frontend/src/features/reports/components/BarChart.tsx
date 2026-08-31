@@ -21,6 +21,8 @@ interface BarChartProps {
   title: string;
   height?: number;
   isLoading?: boolean;
+  /** Render thin horizontal bars (category axis on the left) instead of vertical columns. */
+  horizontal?: boolean;
 }
 
 const BarChart: React.FC<BarChartProps> = ({
@@ -28,6 +30,7 @@ const BarChart: React.FC<BarChartProps> = ({
   title,
   height = 350,
   isLoading = false,
+  horizontal = false,
 }) => {
   if (isLoading) {
     return (
@@ -69,13 +72,28 @@ const BarChart: React.FC<BarChartProps> = ({
       <ResponsiveContainer width="100%" height={height}>
         <ReBarChart
           data={chartData}
-          margin={{ top: 20, right: 20, bottom: 5, left: 0 }}
+          layout={horizontal ? 'vertical' : 'horizontal'}
+          margin={{ top: 20, right: 20, bottom: 5, left: horizontal ? 10 : 0 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-          <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-          <YAxis />
+          {horizontal ? (
+            <>
+              <XAxis type="number" tick={{ fontSize: 12 }} allowDecimals={false} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={120} />
+            </>
+          ) : (
+            <>
+              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+              <YAxis allowDecimals={false} />
+            </>
+          )}
           <Tooltip />
-          <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+          <Bar
+            dataKey="count"
+            fill="#3b82f6"
+            barSize={horizontal ? 40 : undefined}
+            radius={horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]}
+          >
             {chartData.map((entry, index) => (
               <Cell
                 key={`${entry.name}-${entry.count}-${index}`}

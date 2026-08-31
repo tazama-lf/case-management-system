@@ -25,7 +25,9 @@ const CaseDashboardContainer: React.FC = () => {
         onStatusFilterChange={filterActions.setStatusFilter}
         onPriorityFilterChange={filterActions.setPriorityFilter}
         onSarStrStatusFilterChange={filterActions.setSarStrStatusFilter}
+        onSlaStateFilterChange={filterActions.setSlaStateFilter}
         onCaseTypeFilterChange={filterActions.setCaseTypeFilter}
+        onAssigneeFilterChange={filterActions.setAssigneeFilter}
         onPageChange={setCurrentPage}
         onPageSizeChange={setPageSize}
         onCreateNew={dashboardActions.handleCreateNew}

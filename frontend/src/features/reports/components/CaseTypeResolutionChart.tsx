@@ -19,7 +19,7 @@ interface CaseTypeResolutionChartProps {
 const CaseTypeResolutionChart: React.FC<CaseTypeResolutionChartProps> = ({
   data,
   title,
-  height = 350,
+  height = 220,
 }) => {
   if (!data || data.length === 0) {
     return (
@@ -46,7 +46,7 @@ const CaseTypeResolutionChart: React.FC<CaseTypeResolutionChartProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 w-full max-w-full">
-      <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4">
+      <h3 className="text-lg sm:text-xl font-semibold text-gray-700">
         {title}
       </h3>
       <ResponsiveContainer width="100%" height={height}>
@@ -73,9 +73,10 @@ const CaseTypeResolutionChart: React.FC<CaseTypeResolutionChartProps> = ({
           />
           <Bar
             dataKey="averageDays"
-            fill="#8b5cf6"
+            fill="#7dd3fc"
             name="Days to Resolution"
             minPointSize={5}
+            barSize={28}
           />
         </BarChart>
       </ResponsiveContainer>

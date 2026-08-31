@@ -87,6 +87,7 @@ describe('TriageService', () => {
     priority: Priority.LOW,
     case_creation_type: CaseCreationType.AUTOMATIC_SYSTEM,
     case_type: CaseType.FRAUD,
+    parent_id: null,
     final_outcome: null,
     sla_started_at: null,
     sla_due_at: null,
@@ -605,6 +606,46 @@ describe('TriageService', () => {
 
     it('should roll back the FRAUD case and investigation group when AML case creation fails', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
+      (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
+      mockedAxios.post.mockResolvedValue({
+        data: { confidence: 0.95, priority: 0.8 },
+      });
+      alertService.updateAlert.mockResolvedValue(mockAlert as any);
+      taskService.updateTask.mockResolvedValue(mockTask as any);
+      loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
+      loggingOrchestrationService.logActions.mockResolvedValue(undefined);
+      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
+      flowableService.handleCaseAbandoned.mockResolvedValue(undefined);
+      caseRepository.updateCase.mockResolvedValue(mockCase as any);
+      prismaService.investigationGroup.delete.mockResolvedValue({ id: 123 });
+
+      caseCreateService.createCaseWithInvestigationTask
+        .mockResolvedValueOnce({ caseId: 456, message: 'Case created, BPMN will create investigation task', taskId: 2 })
+        .mockRejectedValueOnce(new InternalServerErrorException('Failed to create AML case'));
+
+      jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
+        confidence_per: 95,
+        alertType: CaseType.FRAUD_AND_AML,
+        isTruePositive: true,
+        priorityScore: 0.8,
+      });
+
+      await expect(service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123')).rejects.toThrow(InternalServerErrorException);
+
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(456, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
+      expect(flowableService.handleCaseAbandoned).toHaveBeenCalledWith(expect.objectContaining({ caseId: 1 }));
+      expect(flowableService.handleCaseAbandoned).toHaveBeenCalledWith(expect.objectContaining({ caseId: 456 }));
+      expect(prismaService.investigationGroup.delete).toHaveBeenCalledWith({ where: { id: 123 } });
+      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLED_BACK' }),
+      );
+    });
+
+    it('should roll back the FRAUD case and investigation group when AML case creation fails', async () => {
+      taskService.createTask.mockResolvedValue(mockTask as any);
       casePriorityUtil.determinePriority.mockResolvedValue(Priority.HIGH);
       (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
       mockedAxios.post.mockResolvedValue({
@@ -619,6 +660,47 @@ describe('TriageService', () => {
       flowableService.handleCaseAbandoned.mockResolvedValue(undefined);
       caseRepository.updateCase.mockResolvedValue(mockCase as any);
       prismaService.investigationGroup.delete.mockResolvedValue({ id: 123 });
+
+      caseCreateService.createCaseWithInvestigationTask
+        .mockResolvedValueOnce({ caseId: 456, message: 'Case created, BPMN will create investigation task', taskId: 2 })
+        .mockRejectedValueOnce(new InternalServerErrorException('Failed to create AML case'));
+
+      jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
+        confidence_per: 95,
+        alertType: CaseType.FRAUD_AND_AML,
+        isTruePositive: true,
+        priorityScore: 0.8,
+      });
+
+      await expect(service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123')).rejects.toThrow(InternalServerErrorException);
+
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
+      expect(caseRepository.updateCase).toHaveBeenCalledWith(456, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
+      expect(flowableService.handleCaseAbandoned).toHaveBeenCalledWith(expect.objectContaining({ caseId: 1 }));
+      expect(flowableService.handleCaseAbandoned).toHaveBeenCalledWith(expect.objectContaining({ caseId: 456 }));
+      expect(prismaService.investigationGroup.delete).toHaveBeenCalledWith({ where: { id: 123 } });
+      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLED_BACK' }),
+      );
+    });
+
+    it('should roll back the FRAUD case and investigation group when AML case creation fails', async () => {
+      taskService.createTask.mockResolvedValue(mockTask as any);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.HIGH);
+      (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
+      mockedAxios.post.mockResolvedValue({
+        data: { confidence: 0.95, priority: 0.8 },
+      });
+      alertService.updateAlert.mockResolvedValue(mockAlert as any);
+      taskService.updateTask.mockResolvedValue(mockTask as any);
+      loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
+      loggingOrchestrationService.logActions.mockResolvedValue(undefined);
+      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
+      flowableService.handleCaseAbandoned.mockResolvedValue(undefined);
+      caseRepository.updateCase.mockResolvedValue(mockCase as any);
+      prismaService.investigationGroup.delete.mockResolvedValue({ id: 123 });
+
 
       caseCreateService.createCaseWithInvestigationTask
         .mockResolvedValueOnce({ caseId: 456, message: 'Case created, BPMN will create investigation task', taskId: 2 })
@@ -1231,23 +1313,130 @@ describe('TriageService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should handle manual triage with undefined priority score', async () => {
-      configService.get.mockReturnValue('MANUAL');
-      casePriorityUtil.determinePriority.mockResolvedValue(Priority.LOW);
+    it('should handle manual triage with explicit priority score — score and bucket agree (happy path)', async () => {
+      const mockThresholdPrisma = {
+        casePriorityThreshold: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        },
+      };
+      const realCasePriorityUtil = new CasePriorityUtil(mockThresholdPrisma as any);
+      (service as any).casePriorityUtil = realCasePriorityUtil;
 
-      setupManualTriageMocks();
+      configService.get.mockReturnValue('MANUAL');
+      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
+      caseRepository.findCaseById.mockResolvedValue(mockCase as any);
+      alertService.updateAlert.mockResolvedValue(mockAlert as any);
+      taskRepository.updateTask.mockResolvedValue(mockTask as any);
+      commentRepository.createComment.mockResolvedValue({
+        comment_id: 1,
+        tenant_id: 'tenant-123',
+        created_at: new Date(),
+        case_id: 1,
+        updated_at: new Date(),
+        user_id: 'user-123',
+        note: 'test',
+        task_id: null,
+      });
+      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
       setupTransactionMock();
 
-      const dtoWithoutPriorityScore: ManualAlertUpdateDTO = {
+      const dtoWithScore: ManualAlertUpdateDTO = {
+        priorityScore: 0.85,
+        priority: Priority.HIGH,
+        alertType: CaseType.FRAUD,
+        note: 'test note',
+      };
+
+      await service.handleManualTriage(1, dtoWithScore, 'user-123', 'tenant-123');
+
+      const persistedPayload = alertService.updateAlert.mock.calls[0][2];
+      expect(persistedPayload.priority_score).toBe(0.85);
+      expect(persistedPayload.priority).toBe(Priority.HIGH);
+    });
+
+    it('should handle manual triage with priority score 0.0 — boundary LOW', async () => {
+      const mockThresholdPrisma = {
+        casePriorityThreshold: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        },
+      };
+      const realCasePriorityUtil = new CasePriorityUtil(mockThresholdPrisma as any);
+      (service as any).casePriorityUtil = realCasePriorityUtil;
+
+      configService.get.mockReturnValue('MANUAL');
+      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
+      caseRepository.findCaseById.mockResolvedValue(mockCase as any);
+      alertService.updateAlert.mockResolvedValue(mockAlert as any);
+      taskRepository.updateTask.mockResolvedValue(mockTask as any);
+      commentRepository.createComment.mockResolvedValue({
+        comment_id: 1,
+        tenant_id: 'tenant-123',
+        created_at: new Date(),
+        case_id: 1,
+        updated_at: new Date(),
+        user_id: 'user-123',
+        note: 'test',
+        task_id: null,
+      });
+      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
+      setupTransactionMock();
+
+      const dtoWithZeroScore: ManualAlertUpdateDTO = {
+        priorityScore: 0.0,
         priority: Priority.LOW,
         alertType: CaseType.FRAUD,
         note: 'test note',
       };
 
-      const result = await service.handleManualTriage(1, dtoWithoutPriorityScore, 'user-123', 'tenant-123');
+      await service.handleManualTriage(1, dtoWithZeroScore, 'user-123', 'tenant-123');
 
-      expect(result).toEqual(mockAlert);
-      expect(casePriorityUtil.determinePriority).toHaveBeenCalledWith(0.33, 'tenant-123');
+      const persistedPayload = alertService.updateAlert.mock.calls[0][2];
+      expect(persistedPayload.priority_score).toBe(0.0);
+      expect(persistedPayload.priority).toBe(Priority.LOW);
+    });
+
+    it('should handle manual triage with priority score 1.0 — boundary HIGH', async () => {
+      const mockThresholdPrisma = {
+        casePriorityThreshold: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        },
+      };
+      const realCasePriorityUtil = new CasePriorityUtil(mockThresholdPrisma as any);
+      (service as any).casePriorityUtil = realCasePriorityUtil;
+
+      configService.get.mockReturnValue('MANUAL');
+      alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
+      caseRepository.findCaseById.mockResolvedValue(mockCase as any);
+      alertService.updateAlert.mockResolvedValue(mockAlert as any);
+      taskRepository.updateTask.mockResolvedValue(mockTask as any);
+      commentRepository.createComment.mockResolvedValue({
+        comment_id: 1,
+        tenant_id: 'tenant-123',
+        created_at: new Date(),
+        case_id: 1,
+        updated_at: new Date(),
+        user_id: 'user-123',
+        note: 'test',
+        task_id: null,
+      });
+      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
+      setupTransactionMock();
+
+      const dtoWithMaxScore: ManualAlertUpdateDTO = {
+        priorityScore: 1.0,
+        priority: Priority.HIGH,
+        alertType: CaseType.FRAUD,
+        note: 'test note',
+      };
+
+      await service.handleManualTriage(1, dtoWithMaxScore, 'user-123', 'tenant-123');
+
+      const persistedPayload = alertService.updateAlert.mock.calls[0][2];
+      expect(persistedPayload.priority_score).toBe(1.0);
+      expect(persistedPayload.priority).toBe(Priority.HIGH);
     });
   });
 

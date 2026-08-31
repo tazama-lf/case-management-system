@@ -3,6 +3,15 @@ import { describe, it, expect, vi } from 'vitest';
 import CasesTable from '../CasesTable';
 import type { CaseRow } from '../casesTable.utils';
 
+vi.mock('@/features/cases/hooks/useInvestigatorSupervisorList', () => ({
+  useInvestigatorSupervisorList: () => ({
+    getAssigneeFullName: (assignee?: string) => {
+      if (assignee === 'user-owner-1') return 'John Doe';
+      return assignee ?? 'N/A';
+    },
+  }),
+}));
+
 describe('CasesTable', () => {
   const mockRows: CaseRow[] = [
     {
@@ -16,7 +25,7 @@ describe('CasesTable', () => {
       createdOn: '2023-01-01',
       pickedOn: '2023-01-02',
       action: 'View',
-      assignee: 'User 1',
+      assignee: 'user-owner-1',
       priority: 'HIGH',
       slaState: 'BREACHED',
       userRole: 'owner',
@@ -34,7 +43,7 @@ describe('CasesTable', () => {
       createdOn: '2023-01-03',
       pickedOn: '-',
       action: 'Complete',
-      assignee: 'Unassigned',
+      assignee: undefined,
       priority: 'LOW',
       slaState: 'ON_TRACK',
       userRole: 'none',
@@ -63,19 +72,26 @@ describe('CasesTable', () => {
     expect(screen.getByText('Priority')).toBeInTheDocument();
     expect(screen.getByText('SLA')).toBeInTheDocument();
     expect(screen.getByText('Score')).toBeInTheDocument();
+    expect(screen.getByText('Assignee')).toBeInTheDocument();
     expect(screen.getByText('Created')).toBeInTheDocument();
   });
 
   it('should render the correct number of column headers', () => {
     render(<CasesTable {...defaultProps} />);
-    // Case ID, Case Type, Status, Priority, SLA, Score, Created (no SAR/STR for non-compliance officer)
-    expect(screen.getAllByRole('columnheader')).toHaveLength(7);
+    // Case ID, Case Type, Status, Priority, SLA, Score, Assignee, Created (no SAR/STR for non-compliance officer)
+    expect(screen.getAllByRole('columnheader')).toHaveLength(8);
   });
 
   it('should render an extra column header for compliance officers', () => {
     render(<CasesTable {...defaultProps} isComplianceOfficer={true} />);
     // Adds the SAR/STR Status column
-    expect(screen.getAllByRole('columnheader')).toHaveLength(8);
+    expect(screen.getAllByRole('columnheader')).toHaveLength(9);
+  });
+
+  it('should render the resolved assignee name, with N/A for unassigned cases', () => {
+    render(<CasesTable {...defaultProps} />);
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    expect(screen.getByText('N/A')).toBeInTheDocument();
   });
 
   it('should render case rows correctly', () => {
@@ -105,7 +121,7 @@ describe('CasesTable', () => {
   it('should render the correct colSpan on the empty state row', () => {
     const { container } = render(<CasesTable {...defaultProps} rows={[]} />);
     const emptyCell = container.querySelector('td[colspan]');
-    expect(emptyCell).toHaveAttribute('colspan', '7');
+    expect(emptyCell).toHaveAttribute('colspan', '8');
   });
 
   it('should render the correct colSpan on the empty state row for compliance officers', () => {
@@ -113,7 +129,7 @@ describe('CasesTable', () => {
       <CasesTable {...defaultProps} rows={[]} isComplianceOfficer={true} />,
     );
     const emptyCell = container.querySelector('td[colspan]');
-    expect(emptyCell).toHaveAttribute('colspan', '8');
+    expect(emptyCell).toHaveAttribute('colspan', '9');
   });
 
   it('should call onView when a row is clicked', () => {

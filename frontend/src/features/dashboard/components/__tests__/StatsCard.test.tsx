@@ -57,12 +57,15 @@ describe('StatsCard component', () => {
       />,
     );
 
-    // The outer card should contain the hover background class for yellow
+    // The outer card should contain the hover background and left accent
+    // border classes for yellow
     const card = container.querySelector('div.bg-white');
     expect(card).toHaveClass('hover:bg-yellow-50');
+    expect(card).toHaveClass('border-l-yellow-500');
 
-    // The icon wrapper should have the correct background color class
-    const iconWrapper = container.querySelector('div.p-3');
-    expect(iconWrapper).toHaveClass('bg-yellow-500');
+    // The icon wrapper should have the correct soft badge color classes
+    const iconWrapper = container.querySelector('div.p-2\\.5');
+    expect(iconWrapper).toHaveClass('bg-yellow-50');
+    expect(iconWrapper).toHaveClass('text-yellow-600');
   });
 });

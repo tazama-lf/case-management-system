@@ -44,7 +44,7 @@ describe('EvidenceFindingsStatsCards', () => {
 
     // Verify that StatsCard components are rendered (they will display the values)
     // The exact value formatting is handled by the StatsCard component
-    const cards = document.querySelectorAll('.bg-white.rounded-lg.shadow-sm');
+    const cards = document.querySelectorAll('.bg-white.rounded-xl.shadow-sm');
     expect(cards.length).toBe(6);
   });
 

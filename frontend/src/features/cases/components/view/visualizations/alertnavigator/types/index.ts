@@ -4,6 +4,9 @@ export interface RuleDetailDto {
   subRef?: string;
   independentVariable?: string;
   data?: unknown;
+  // rule_desc and matched_band_reason intentionally keep snake_case: they mirror the underlying SQL column names
+  rule_desc?: string | null;
+  matched_band_reason?: string | null;
 }
 
 export interface TypologyDto {

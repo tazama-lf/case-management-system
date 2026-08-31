@@ -20,6 +20,7 @@ interface PieChartProps {
   title: string;
   size?: number;
   isLoading?: boolean;
+  showZeroLegend?: boolean;
 }
 
 const PieChart: React.FC<PieChartProps> = ({
@@ -27,6 +28,7 @@ const PieChart: React.FC<PieChartProps> = ({
   title,
   size = 350,
   isLoading = false,
+  showZeroLegend = false,
 }) => {
   if (isLoading) {
     return (
@@ -49,6 +51,20 @@ const PieChart: React.FC<PieChartProps> = ({
 
   const validData = data.filter((item) => item.value > 0);
   const total = validData.reduce((sum, item) => sum + item.value, 0);
+  const legendData = showZeroLegend ? data : validData;
+  const renderLegend = () => (
+    <div className="mt-6 grid grid-cols-2 gap-2 text-sm">
+      {legendData.map((item, index) => (
+        <div key={index} className="flex items-center gap-2">
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: item.color }}
+          ></div>
+          <span className="font-medium text-gray-900">{item.label}: {(total > 0 ? (item.value / total) * 100 : 0).toFixed(1)}%</span>
+        </div>
+      ))}
+    </div>
+  );
 
   if (total === 0) {
     return (
@@ -62,6 +78,7 @@ const PieChart: React.FC<PieChartProps> = ({
         >
           <p className="text-gray-500">No data available</p>
         </div>
+        {showZeroLegend && legendData.length > 0 && renderLegend()}
       </div>
     );
   }
@@ -86,6 +103,7 @@ const PieChart: React.FC<PieChartProps> = ({
             data={chartData}
             cx="50%"
             cy="50%"
+            innerRadius="42%"
             labelLine={false}
             label={renderLabel}
             outerRadius="70%"
@@ -100,20 +118,7 @@ const PieChart: React.FC<PieChartProps> = ({
           <Legend />
         </ReChart>
       </ResponsiveContainer>
-      <div className="mt-6 grid grid-cols-2 gap-2 text-sm">
-        {data.map((item, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: item.color }}
-            ></div>
-            <span className="text-gray-700">{item.label}:</span>
-            <span className="font-medium text-gray-900">
-              {(total > 0 ? (item.value / total) * 100 : 0).toFixed(1)}%
-            </span>
-          </div>
-        ))}
-      </div>
+      {renderLegend()}
     </div>
   );
 };

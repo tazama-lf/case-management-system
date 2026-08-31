@@ -5,6 +5,7 @@ import { EvidenceService } from '../src/modules/evidence/evidence.service';
 import { CouchdbService } from '../src/modules/couchdb/couchdb.service';
 import { NotificationService } from '../src/modules/notification/notification.service';
 import { EventLogService } from '../src/modules/event_log/eventLog.service';
+import { SlaPolicyUtil } from '../src/modules/shared/utils/sla-policy.util';
 import { BadRequestException } from '@nestjs/common';
 import { CaseStatus, CaseType, TaskStatus } from '@prisma/client-cms';
 import { FraudReportOutcome } from '../src/modules/report/report.model';
@@ -92,6 +93,9 @@ describe('ReportsService', () => {
         count: jest.fn(),
         findMany: jest.fn(),
       },
+      cms_usernames: {
+        findMany: jest.fn(),
+      },
     };
 
     const mockEvidenceService = {
@@ -114,6 +118,10 @@ describe('ReportsService', () => {
       getLogs: jest.fn(),
     };
 
+    const mockSlaPolicyUtil = {
+      getEscalationRatios: jest.fn().mockResolvedValue({ dueSoonRatio: 0.2, atRiskRatio: 0.5 }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReportsService,
@@ -122,6 +130,7 @@ describe('ReportsService', () => {
         { provide: CouchdbService, useValue: mockCouchdbService },
         { provide: NotificationService, useValue: mockNotificationService },
         { provide: EventLogService, useValue: mockEventLogService },
+        { provide: SlaPolicyUtil, useValue: mockSlaPolicyUtil },
       ],
     }).compile();
 
@@ -210,6 +219,135 @@ describe('ReportsService', () => {
       }
     });
 
+    it('should count totalCases from the role-visible scope, not creator-only cases', async () => {
+      prismaService.case.count
+        .mockResolvedValueOnce(12)
+        .mockResolvedValueOnce(4)
+        .mockResolvedValueOnce(3)
+        .mockResolvedValueOnce(7)
+        .mockResolvedValueOnce(2);
+
+      const result = await service.getCaseStatus('all', {
+        tenantId: 'tenant-123',
+        isInvestigator: true,
+        requestingUserId: 'user-123',
+      });
+
+      expect(result.stats.totalCases).toBe(12);
+      expect(prismaService.case.count).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            case_creator_user_id: 'user-123',
+          }),
+        }),
+      );
+    });
+
+    /**
+     * Every `case.count`/`case.groupBy`/`case.findMany` call made anywhere
+     * during a getCaseStatus invocation (including the nested compute*
+     * helpers) - not just the first one that happens to match. A single
+     * `toHaveBeenCalledWith` only proves *one* invocation matched; it says
+     * nothing about the other case-scoped queries run in parallel.
+     */
+    const getAllCaseWhereClauses = (): any[] => [
+      ...prismaService.case.count.mock.calls.map(([args]: [any]) => args.where),
+      ...prismaService.case.groupBy.mock.calls.map(([args]: [any]) => args.where),
+      ...prismaService.case.findMany.mock.calls.map(([args]: [any]) => args.where),
+    ];
+
+    it('should count FRAUD_AND_AML container cases only while DRAFT or pending case creation approval, everywhere', async () => {
+      const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
+
+      expect(result).toBeDefined();
+
+      // Every case-scoped query (Total Cases, Closed, Available, Open & Assigned,
+      // Resolved This Month, status/type breakdowns, monthly/resolution trends)
+      // shares this one container filter now - FRAUD_AND_AML cases count while
+      // DRAFT or pending creation approval, and are excluded in every other status.
+      const whereClauses = getAllCaseWhereClauses();
+      expect(whereClauses.length).toBeGreaterThan(0);
+      whereClauses.forEach((where) => {
+        expect(where.AND).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              OR: [
+                { case_type: null },
+                { case_type: { not: CaseType.FRAUD_AND_AML } },
+                {
+                  case_type: CaseType.FRAUD_AND_AML,
+                  status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_01_PENDING_CASE_CREATION_APPROVAL] },
+                },
+              ],
+            }),
+          ]),
+        );
+      });
+    });
+
+    it('excludes abandoned cases from every case-scoped query, not just the closed-status buckets', async () => {
+      const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
+
+      expect(result).toBeDefined();
+
+      // Abandoned cases are excluded everywhere via the same AND-composed
+      // filter that excludes FRAUD_AND_AML containers, so Total Cases,
+      // Resolved This Month, and every other count treat abandoning a case
+      // as making it disappear from reporting entirely - not as a genuine
+      // "closed"/"resolved" outcome. Assert every recorded case query, not
+      // just whichever one happens to be the first match.
+      const whereClauses = getAllCaseWhereClauses();
+      expect(whereClauses.length).toBeGreaterThan(0);
+      whereClauses.forEach((where) => {
+        expect(where.AND).toEqual(
+          expect.arrayContaining([expect.objectContaining({ status: { not: CaseStatus.STATUS_99_ABANDONED } })]),
+        );
+      });
+    });
+
+    it('excludes closed cases from the Case Types bar chart', async () => {
+      const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
+
+      expect(result).toBeDefined();
+      expect(prismaService.case.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          by: ['case_type'],
+          where: expect.objectContaining({
+            status: { notIn: ReportsService['CLOSED_STATUSES'] },
+          }),
+        }),
+      );
+    });
+
+    it('should return every non-closed status in openStatusCounts, including zero counts', async () => {
+      prismaService.case.findMany
+        .mockResolvedValueOnce([
+          { status: CaseStatus.STATUS_10_ASSIGNED, priority: 'LOW', sla_due_at: null },
+        ])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
+
+      expect(result.openStatusCounts).toEqual(
+        expect.arrayContaining([
+          { status: CaseStatus.STATUS_10_ASSIGNED, count: 1 },
+          { status: CaseStatus.STATUS_20_IN_PROGRESS, count: 0 },
+        ]),
+      );
+      expect(result.openStatusCounts.some((item) => item.status === CaseStatus.STATUS_81_CLOSED_REFUTED)).toBe(false);
+      expect(result.openStatusCounts.some((item) => item.status === CaseStatus.STATUS_82_CLOSED_CONFIRMED)).toBe(false);
+      expect(result.openStatusCounts.some((item) => item.status === CaseStatus.STATUS_99_ABANDONED)).toBe(false);
+      expect(result.openStatusCounts.some((item) => item.status === CaseStatus.STATUS_03_RETURNED)).toBe(false);
+    });
+
+    it('excludes STATUS_03_RETURNED from the Case Status Details table too', async () => {
+      const result = await service.getCaseStatus('all', { tenantId: 'tenant-123' });
+
+      expect(
+        result.statusDetails.some((detail) => detail.status === service['formatStatusName'](CaseStatus.STATUS_03_RETURNED)),
+      ).toBe(false);
+    });
+
     it('should calculate average resolution time correctly', async () => {
       prismaService.case.findMany.mockResolvedValue([
         { created_at: new Date('2026-02-01'), updated_at: new Date('2026-02-11') }, // 10 days
@@ -229,19 +367,17 @@ describe('ReportsService', () => {
       const result = await service.getCaseStatus('last30', { tenantId: 'tenant-123' });
 
       expect(result.stats.totalCases).toBe(0);
-      expect(result.stats.avgResolutionTime).toBe(0);
+      expect(result.stats.avgResolutionTime).toBeNull();
     });
 
-    it('reconciles totalCases = low + medium + high, counting closed cases in the buckets too', async () => {
-      // 5 cases in scope: mix of open/closed and LOW/MEDIUM/HIGH, so a bug that
-      // excludes closed cases from the buckets would make them undercount totalCases.
+    it('builds open priority buckets from non-closed cases only', async () => {
+      // 5 cases in scope: mix of open/closed and LOW/MEDIUM/HIGH. Dashboard
+      // buckets now represent the open queue rather than total case history.
       prismaService.case.count.mockResolvedValue(5);
       prismaService.case.findMany
         .mockResolvedValueOnce([
           { status: CaseStatus.STATUS_20_IN_PROGRESS, priority: 'LOW' },
           { status: CaseStatus.STATUS_20_IN_PROGRESS, priority: 'MEDIUM' },
-          { status: CaseStatus.STATUS_81_CLOSED_REFUTED, priority: 'MEDIUM' },
-          { status: CaseStatus.STATUS_82_CLOSED_CONFIRMED, priority: 'HIGH' },
           { status: CaseStatus.STATUS_10_ASSIGNED, priority: 'HIGH' },
         ])
         .mockResolvedValueOnce([]); // closedCasesWithTimes
@@ -251,12 +387,37 @@ describe('ReportsService', () => {
       expect(result.stats.totalCases).toBe(5);
       expect(result.recentCases).toEqual([
         { priority: 'Low', count: 1 },
-        { priority: 'Medium', count: 2 },
-        { priority: 'High', count: 2 },
+        { priority: 'Medium', count: 1 },
+        { priority: 'High', count: 1 },
       ]);
       const bucketSum = result.recentCases.reduce((sum, r) => sum + r.count, 0);
-      expect(bucketSum).toBe(result.stats.totalCases);
-      expect(result.stats.highPriorityCases).toBe(2);
+      expect(bucketSum).toBe(result.stats.openCases);
+      expect(result.stats.highPriorityCases).toBe(1);
+    });
+
+    it('excludes DRAFT cases from Open Cases by Priority, unlike openCases/openStatusCounts', async () => {
+      prismaService.case.count.mockResolvedValue(4);
+      prismaService.case.findMany
+        .mockResolvedValueOnce([
+          { status: CaseStatus.STATUS_00_DRAFT, priority: 'HIGH' },
+          { status: CaseStatus.STATUS_20_IN_PROGRESS, priority: 'HIGH' },
+          { status: CaseStatus.STATUS_10_ASSIGNED, priority: 'LOW' },
+        ])
+        .mockResolvedValueOnce([]); // closedCasesWithTimes
+
+      const result = await service.getCaseStatus('last30', { tenantId: 'tenant-123' });
+
+      // openCases still counts the draft (3 non-closed cases)...
+      expect(result.stats.openCases).toBe(3);
+      // ...but the priority breakdown drops it, so High only reflects the
+      // non-draft case and the bucket sum no longer equals openCases.
+      expect(result.recentCases).toEqual([
+        { priority: 'Low', count: 1 },
+        { priority: 'Medium', count: 0 },
+        { priority: 'High', count: 1 },
+      ]);
+      expect(result.stats.highPriorityCases).toBe(1);
+      expect(result.openStatusCounts.find((s) => s.status === CaseStatus.STATUS_00_DRAFT)?.count).toBe(1);
     });
   });
 
@@ -335,6 +496,41 @@ describe('ReportsService', () => {
 
       expect(result.performanceData).toBeDefined();
       expect(Array.isArray(result.performanceData)).toBe(true);
+    });
+
+    it.each([
+      ['caseType', { caseType: 'AML' }, { case_type: 'AML' }],
+      ['priority', { priority: 'HIGH' }, { priority: 'HIGH' }],
+    ])('scopes the investigator list by %s', async (_filterName, filterParam, expectedWhereClause) => {
+      await service.getInvestigatorWorkload('last30', { tenantId: 'tenant-123', ...filterParam });
+
+      expect(prismaService.case.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining(expectedWhereClause),
+          distinct: ['case_owner_user_id'],
+        }),
+      );
+    });
+
+    it('restricts the report to a single investigator when the investigator filter is set', async () => {
+      await service.getInvestigatorWorkload('last30', { tenantId: 'tenant-123', investigator: 'user-123' });
+
+      expect(prismaService.case.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ case_owner_user_id: 'user-123' }),
+          distinct: ['case_owner_user_id'],
+        }),
+      );
+    });
+
+    it('scopes the active-case count by tenant, case type, and priority', async () => {
+      await service.getInvestigatorWorkload('last30', { tenantId: 'tenant-123', caseType: 'AML', priority: 'HIGH' });
+
+      expect(prismaService.case.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ tenant_id: 'tenant-123', case_type: 'AML', priority: 'HIGH' }),
+        }),
+      );
     });
   });
 
@@ -417,6 +613,251 @@ describe('ReportsService', () => {
       const result = await service.getCaseAgeing('last30');
 
       expect(result.caseDetails).toEqual([]);
+      expect(result.stats.avgCaseAge).toBeNull();
+      expect(result.stats.avgResolutionTime).toBeNull();
+    });
+
+    it('sends a where clause that excludes unowned drafts, while keeping owned drafts and other statuses', async () => {
+      // The mock doesn't apply Prisma's `where` filtering, so this simulates
+      // what a real DB would return after the NOT clause is applied - an
+      // unowned draft (case 1) would never come back. The `where` assertion
+      // below is what actually proves the exclusion is wired correctly.
+      prismaService.case.findMany.mockResolvedValueOnce([
+        { case_id: 2, created_at: new Date('2026-03-01T12:00:00Z'), status: CaseStatus.STATUS_00_DRAFT, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: 'user-123' }, // owned draft - kept
+        { case_id: 3, created_at: new Date('2026-03-01T12:00:00Z'), status: CaseStatus.STATUS_20_IN_PROGRESS, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: 'user-123' },
+      ]);
+
+      const result = await service.getCaseAgeing('last30');
+
+      expect(result.caseDetails).toHaveLength(2);
+      expect(result.caseDetails.map((c) => c.caseId).sort()).toEqual([2, 3]);
+
+      const whereArg = prismaService.case.findMany.mock.calls[0][0].where;
+      expect(whereArg.NOT).toEqual({ status: CaseStatus.STATUS_00_DRAFT, case_owner_user_id: null });
+    });
+
+    it('excludes abandoned cases from the ageing dataset, not just from the closed set', async () => {
+      await service.getCaseAgeing('last30', { tenantId: 'tenant-123' });
+
+      // The open-backlog query (feeding avgCaseAge, the 16-29/30+ cards, the
+      // by-status bar, the distribution donut, and the details table) and the
+      // closed-window query (feeding avgResolutionTime, resolutionTrend, and
+      // resolutionByOutcome - all three now share this single fetch) both go
+      // through withNonContainerCaseFilter, so abandoned cases are excluded
+      // from every one of them. Assert every recorded findMany call, since a
+      // single toHaveBeenCalledWith only proves one of the two matched.
+      const whereClauses = prismaService.case.findMany.mock.calls.map(([args]: [any]) => args.where);
+      expect(whereClauses.length).toBeGreaterThanOrEqual(2);
+      whereClauses.forEach((where) => {
+        expect(where.AND).toEqual(
+          expect.arrayContaining([expect.objectContaining({ status: { not: CaseStatus.STATUS_99_ABANDONED } })]),
+        );
+      });
+    });
+
+    it('queries the open backlog unwindowed and the closed set windowed on updated_at', async () => {
+      await service.getCaseAgeing('last30', { tenantId: 'tenant-123' });
+
+      expect(prismaService.case.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: { notIn: expect.arrayContaining([CaseStatus.STATUS_99_ABANDONED]) } }),
+        }),
+      );
+      expect(prismaService.case.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: { in: expect.arrayContaining([CaseStatus.STATUS_82_CLOSED_CONFIRMED]) },
+            updated_at: { gte: expect.any(Date), lte: expect.any(Date) },
+          }),
+        }),
+      );
+    });
+
+    it('puts open cases into exactly one of the 16-29 / 30+ tiers', async () => {
+      prismaService.case.findMany.mockResolvedValueOnce([
+        { case_id: 1, created_at: new Date('2026-03-15T12:00:00Z'), status: CaseStatus.STATUS_20_IN_PROGRESS, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: null }, // age 5
+        { case_id: 2, created_at: new Date('2026-03-01T12:00:00Z'), status: CaseStatus.STATUS_20_IN_PROGRESS, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: null }, // age 19
+        { case_id: 3, created_at: new Date('2026-02-01T12:00:00Z'), status: CaseStatus.STATUS_20_IN_PROGRESS, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: null }, // age 47
+      ]);
+
+      const result = await service.getCaseAgeing('last30');
+
+      expect(result.stats.casesOver15Days).toBe(1);
+      expect(result.stats.casesOver30Days).toBe(1);
+      expect(result.stats.avgCaseAge).toBe(Math.round((5 + 19 + 47) / 3));
+    });
+
+    it('seeds the status axis from every open-eligible status, including ones with zero open cases', async () => {
+      prismaService.case.findMany.mockResolvedValueOnce([]);
+
+      const result = await service.getCaseAgeing('last30');
+
+      // 15 CaseStatus values total, 6 closed + STATUS_03_RETURNED excluded
+      // (to match the Case Status report's per-status table) -> 8 rows, always.
+      expect(result.ageingByStatus.length).toBe(8);
+      expect(result.ageingByStatus.every((row) => row.age0to7 === 0 && row.age30Plus === 0)).toBe(true);
+    });
+
+    it('excludes STATUS_03_RETURNED from the by-status breakdown, matching the Case Status report', async () => {
+      const result = await service.getCaseAgeing('last30');
+
+      expect(result.ageingByStatus.some((row) => row.status.toUpperCase().includes('RETURNED'))).toBe(false);
+    });
+
+    it('reconciles ageingDistribution percentages to sum to exactly 100', async () => {
+      prismaService.case.findMany.mockResolvedValueOnce([
+        { case_id: 1, created_at: new Date('2026-03-18T12:00:00Z'), status: CaseStatus.STATUS_20_IN_PROGRESS, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: null }, // age 2
+        { case_id: 2, created_at: new Date('2026-03-10T12:00:00Z'), status: CaseStatus.STATUS_20_IN_PROGRESS, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: null }, // age 10
+        { case_id: 3, created_at: new Date('2026-03-01T12:00:00Z'), status: CaseStatus.STATUS_20_IN_PROGRESS, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: null }, // age 19
+      ]);
+
+      const result = await service.getCaseAgeing('last30');
+
+      const totalPercentage = result.ageingDistribution.reduce((sum, band) => sum + band.percentage, 0);
+      expect(totalPercentage).toBe(100);
+    });
+
+    it('surfaces only the raw investigator id on caseDetails, resolved client-side', async () => {
+      prismaService.case.findMany.mockResolvedValueOnce([
+        { case_id: 1, created_at: new Date('2026-03-01T12:00:00Z'), status: CaseStatus.STATUS_20_IN_PROGRESS, case_type: CaseType.AML, priority: 'LOW', case_owner_user_id: 'user-123' },
+      ]);
+
+      const result = await service.getCaseAgeing('last30');
+
+      expect(result.caseDetails[0]).toEqual(
+        expect.objectContaining({ investigatorId: 'user-123', createdDate: new Date('2026-03-01T12:00:00Z').toISOString() }),
+      );
+      expect(result.caseDetails[0]).not.toHaveProperty('userId');
+      expect(result.caseDetails[0]).not.toHaveProperty('investigator');
+    });
+
+    it('buckets the resolution trend by calendar month across the dateRange window, not a fixed 6 months', async () => {
+      // mockDate is 2026-03-20; 'last30' -> startDate 2026-02-18, endDate 2026-03-20,
+      // spanning exactly two calendar months (Feb, Mar).
+      const result = await service.getCaseAgeing('last30');
+
+      expect(result.resolutionTrend.length).toBe(2);
+      expect(result.resolutionTrend[0].month).toBe('2026-02');
+      expect(result.resolutionTrend[1].month).toBe('2026-03');
+      result.resolutionTrend.forEach((bucket) => {
+        expect(bucket).toHaveProperty('n');
+        expect(bucket).toHaveProperty('median');
+        expect(bucket).toHaveProperty('p25');
+        expect(bucket).toHaveProperty('p75');
+      });
+    });
+
+    it('caps the resolution trend at 24 buckets for a wide dateRange like "all"', async () => {
+      const result = await service.getCaseAgeing('all');
+      expect(result.resolutionTrend.length).toBe(24);
+      expect(result.resolutionTrend[23].month).toBe('2026-03');
+    });
+
+    it('bounds the all-time resolution trend query to its earliest visible bucket', async () => {
+      await service.getCaseAgeing('all');
+
+      const trendQuery = prismaService.case.findMany.mock.calls
+        .map(([args]: [any]) => args)
+        .find((args: any) =>
+          args.where?.status?.in &&
+          args.select?.created_at === true &&
+          args.select?.updated_at === true &&
+          Object.keys(args.select).length === 2,
+        );
+
+      expect(trendQuery).toEqual(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            updated_at: {
+              gte: new Date(2024, 3, 1),
+              lte: expect.any(Date),
+            },
+          }),
+        }),
+      );
+    });
+
+    it('is a no-op single-month trend for a narrow dateRange like "today"', async () => {
+      const result = await service.getCaseAgeing('today');
+
+      expect(result.resolutionTrend.length).toBe(1);
+      expect(result.resolutionTrend[0].month).toBe('2026-03');
+    });
+
+    it('returns resolutionByOutcome grouped by closed status, sharing the same window as avgResolutionTime', async () => {
+      prismaService.case.findMany.mockResolvedValue([
+        {
+          case_id: 1,
+          created_at: new Date('2026-01-01'),
+          updated_at: new Date('2026-02-01'),
+          status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+          case_type: CaseType.AML,
+          priority: 'HIGH',
+          case_owner_user_id: 'user-123',
+        },
+      ]);
+
+      const result = await service.getCaseAgeing('last30');
+
+      expect(result.resolutionByOutcome).toEqual(
+        expect.arrayContaining([expect.objectContaining({ status: expect.any(String), avgDays: expect.any(Number) })]),
+      );
+    });
+
+    it('caseTypeResolution ignores the caseType filter and still reflects every type', async () => {
+      prismaService.case.findMany.mockResolvedValue([
+        {
+          case_id: 1,
+          created_at: new Date('2026-01-01'),
+          updated_at: new Date('2026-02-01'),
+          status: CaseStatus.STATUS_82_CLOSED_CONFIRMED,
+          case_type: CaseType.FRAUD,
+          priority: 'HIGH',
+          case_owner_user_id: 'user-123',
+        },
+      ]);
+
+      await service.getCaseAgeing('last30', { caseType: 'AML' });
+
+      // A second closed-window query is issued without the caseType filter,
+      // so caseTypeResolution isn't narrowed down to a single type.
+      const closedCallsWithoutType = prismaService.case.findMany.mock.calls.filter(
+        ([args]: [any]) => args.where?.status?.in && !('case_type' in args.where),
+      );
+      expect(closedCallsWithoutType.length).toBeGreaterThanOrEqual(1);
+      // The type-filtered closed-window query (feeding avgResolutionTime) still exists too.
+      const closedCallsWithType = prismaService.case.findMany.mock.calls.filter(
+        ([args]: [any]) => args.where?.status?.in && args.where?.case_type === 'AML',
+      );
+      expect(closedCallsWithType.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it.each([
+      ['caseType', { caseType: 'AML' }, { case_type: 'AML' }],
+      ['priority', { priority: 'HIGH' }, { priority: 'HIGH' }],
+      ['investigator', { investigator: 'user-123' }, { case_owner_user_id: 'user-123' }],
+    ])('filters both the open backlog and the closed window by %s', async (_filterName, filterParam, expectedWhereClause) => {
+      await service.getCaseAgeing('last30', { tenantId: 'tenant-123', ...filterParam });
+
+      // The open-backlog query (status notIn CLOSED_STATUSES) and the
+      // closed-window query (status in CLOSED_STATUSES) share commonFilters,
+      // so caseType/priority/investigator apply to both halves of the page.
+      expect(prismaService.case.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: { notIn: expect.arrayContaining([CaseStatus.STATUS_99_ABANDONED]) },
+            ...expectedWhereClause,
+          }),
+        }),
+      );
+      expect(prismaService.case.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: { in: expect.arrayContaining([CaseStatus.STATUS_82_CLOSED_CONFIRMED]) },
+            ...expectedWhereClause,
+          }),
+        }),
+      );
     });
   });
 
@@ -426,6 +867,7 @@ describe('ReportsService', () => {
         .mockResolvedValueOnce([{ case_type: CaseType.AML }, { case_type: CaseType.FRAUD }])
         .mockResolvedValueOnce([{ priority: 'HIGH' }, { priority: 'MEDIUM' }])
         .mockResolvedValueOnce([{ case_owner_user_id: 'user-123' }]);
+      prismaService.cms_usernames.findMany.mockResolvedValue([{ user_id: 'user-123', name: 'Test Investigator' }]);
     });
 
     it('should return filter options', async () => {
@@ -445,7 +887,7 @@ describe('ReportsService', () => {
       expect(result.caseTypes[0]).toHaveProperty('label');
     });
 
-    it('should handle null case types', async () => {
+    it('should omit null case types from filter options', async () => {
       prismaService.case.findMany
         .mockReset()
         .mockResolvedValueOnce([{ case_type: null }])
@@ -454,7 +896,7 @@ describe('ReportsService', () => {
 
       const result = await service.getFilters();
 
-      expect(result.caseTypes[0].value).toBe('NONE');
+      expect(result.caseTypes).toEqual([]);
     });
   });
 
@@ -712,9 +1154,14 @@ describe('ReportsService', () => {
     });
 
     it('should format case status name correctly', () => {
+      // Code-prefixed title-case, not ALL CAPS - "STATUS_20_IN_PROGRESS" -> "20 In Progress".
       const formatted = (service as any).formatStatusName(CaseStatus.STATUS_20_IN_PROGRESS);
-      expect(formatted).toBeDefined();
-      expect(typeof formatted).toBe('string');
+      expect(formatted).toBe('20 In Progress');
+    });
+
+    it('title-cases every word of a multi-word status, not just the first', () => {
+      const formatted = (service as any).formatStatusName(CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT);
+      expect(formatted).toBe('02 Ready For Assignment');
     });
 
     it('should return Info for SUCCESS outcome', () => {

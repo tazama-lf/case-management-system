@@ -480,7 +480,7 @@ describe('EvidenceFindingsReport', () => {
   it('uses default dateRange when not provided', () => {
     render(<EvidenceFindingsReport />, { wrapper: createWrapper() });
 
-    expect(useEvidenceFindings).toHaveBeenCalledWith('last30');
+    expect(useEvidenceFindings).toHaveBeenCalledWith('last30', undefined);
   });
 
   it('handles view evidence for previewable file', async () => {

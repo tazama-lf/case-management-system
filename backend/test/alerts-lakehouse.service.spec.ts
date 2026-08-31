@@ -151,6 +151,80 @@ describe('AlertsLakehouseService', () => {
       expect(result.meta.tenantId).toBe('DEFAULT');
     });
 
+    it('surfaces flowProcessorData for a bumped EFRuP rule version (EFRuP@2.0.0)', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 4,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: 'typology-004',
+                typology_cfg: '001@1.0.0',
+                rules: [
+                  {
+                    rule_id: 'rule-001',
+                    rule_weight: 250,
+                    rule_sub_ref: '.01',
+                  },
+                  {
+                    rule_id: 'EFRuP@2.0.0',
+                    rule_cfg: 'none',
+                    rule_weight: 0,
+                    rule_independent_variable: 'Block',
+                    rule_sub_ref: 'Block',
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(4, 'DEFAULT');
+
+      expect(result.typologies[0].flowProcessorData).toBe('Block');
+      const parsedRules = JSON.parse(result.typologies[0].rules);
+      expect(parsedRules).toHaveLength(1);
+      expect(parsedRules[0].ruleId).toBe('rule-001');
+    });
+
+    it('excludes EFRuP from triggered rules even if it carries a non-zero weight', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 5,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: 'typology-005',
+                typology_cfg: '001@1.0.0',
+                rules: [
+                  {
+                    rule_id: 'rule-001',
+                    rule_weight: 250,
+                    rule_sub_ref: '.01',
+                  },
+                  {
+                    rule_id: 'EFRuP@1.0.0',
+                    rule_weight: 5,
+                    rule_sub_ref: 'Block',
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(5, 'DEFAULT');
+
+      expect(result.typologies[0].flowProcessorData).toBe('Block');
+      const parsedRules = JSON.parse(result.typologies[0].rules);
+      expect(parsedRules).toHaveLength(1);
+      expect(parsedRules[0].ruleId).toBe('rule-001');
+    });
+
     it('handles null values gracefully', async () => {
       http.mockReturnValue(
         okHttp([
@@ -304,6 +378,123 @@ describe('AlertsLakehouseService', () => {
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
       await expect(service.getAlertNavigatorData(1)).rejects.toThrow(HttpException);
+    });
+
+    describe('rule_desc and matched_band_reason columns', () => {
+      it('passes rule_desc and matched_band_reason through for triggered rules', async () => {
+        http.mockReturnValue(
+          okHttp([
+            {
+              alert_id: 12,
+              tenant_id: 'DEFAULT',
+              typologies: [
+                {
+                  typology_id: 'typology-005',
+                  typology_cfg: '005@1.0.0',
+                  typology_score: 500,
+                  rule_count_in_typology: 1,
+                  rules: [
+                    {
+                      rule_id: 'rule-030',
+                      rule_weight: 100,
+                      rule_sub_ref: '.01',
+                      rule_independent_variable: null,
+                      rule_desc: 'Transaction exceeds threshold',
+                      matched_band_reason: 'Amount in high-risk band',
+                    },
+                  ],
+                },
+              ],
+            },
+          ]),
+        );
+
+        const result = await service.getAlertNavigatorData(12, 'DEFAULT');
+        const parsedRules = JSON.parse(result.typologies[0].rules);
+
+        expect(parsedRules).toHaveLength(1);
+        expect(parsedRules[0].rule_desc).toBe('Transaction exceeds threshold');
+        expect(parsedRules[0].matched_band_reason).toBe('Amount in high-risk band');
+      });
+
+      it('defaults rule_desc and matched_band_reason to null/undefined when not provided by the lakehouse', async () => {
+        http.mockReturnValue(
+          okHttp([
+            {
+              alert_id: 13,
+              tenant_id: 'DEFAULT',
+              typologies: [
+                {
+                  typology_id: 'typology-006',
+                  typology_cfg: '006@1.0.0',
+                  typology_score: 500,
+                  rule_count_in_typology: 1,
+                  rules: [
+                    {
+                      rule_id: 'rule-040',
+                      rule_weight: 100,
+                      rule_sub_ref: '.01',
+                      rule_independent_variable: null,
+                      rule_desc: null,
+                      matched_band_reason: null,
+                    },
+                  ],
+                },
+              ],
+            },
+          ]),
+        );
+
+        const result = await service.getAlertNavigatorData(13, 'DEFAULT');
+        const parsedRules = JSON.parse(result.typologies[0].rules);
+
+        expect(parsedRules[0].rule_desc).toBeNull();
+        expect(parsedRules[0].matched_band_reason).toBeNull();
+      });
+
+      it('does not leak rule_desc/matched_band_reason of the flow-processor rule into flowProcessorData', async () => {
+        http.mockReturnValue(
+          okHttp([
+            {
+              alert_id: 14,
+              tenant_id: 'DEFAULT',
+              typologies: [
+                {
+                  typology_id: 'typology-007',
+                  typology_cfg: '007@1.0.0',
+                  typology_score: 500,
+                  rule_count_in_typology: 2,
+                  rules: [
+                    {
+                      rule_id: 'rule-050',
+                      rule_weight: 100,
+                      rule_sub_ref: '.01',
+                      rule_desc: 'Triggered rule description',
+                      matched_band_reason: 'Triggered band reason',
+                    },
+                    {
+                      rule_id: 'EFRuP@1.0.0',
+                      rule_weight: 0,
+                      rule_sub_ref: 'Block',
+                      rule_desc: 'Flow processor description',
+                      matched_band_reason: 'Flow processor band reason',
+                    },
+                  ],
+                },
+              ],
+            },
+          ]),
+        );
+
+        const result = await service.getAlertNavigatorData(14, 'DEFAULT');
+        const parsedRules = JSON.parse(result.typologies[0].rules);
+
+        expect(result.typologies[0].flowProcessorData).toBe('Block');
+        expect(parsedRules).toHaveLength(1);
+        expect(parsedRules[0].ruleId).toBe('rule-050');
+        expect(parsedRules[0].rule_desc).toBe('Triggered rule description');
+        expect(parsedRules[0].matched_band_reason).toBe('Triggered band reason');
+      });
     });
   });
 

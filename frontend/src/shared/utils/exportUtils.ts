@@ -292,7 +292,7 @@ export const formatDataForExport = (
         Status: item.status ?? '',
         Count: item.count ?? 0,
         Percentage: item.percentage ?? '0%',
-        'Avg Time in Status': item.avgTimeInStatus ?? '0 days',
+        'Avg Age of Current Cases': item.avgTimeInStatus ?? '0 days',
         'Current Trend Period': item.currentTrendPeriod ?? 'No trend',
       }));
 
@@ -338,22 +338,16 @@ export const formatDataForExport = (
           'Age (Days)': item.ageDays ?? item.age_days ?? item.age ?? 0,
           Priority: item.priority ?? 'Normal',
           'User ID': String(
-            item.userId ??
+            item.investigatorId ??
+              item.userId ??
               item.user_id ??
               item.assigneeId ??
               item.assignee_id ??
-              'N/A',
+              'Unassigned',
           ),
-          Investigator:
-            getAssigneeFullName?.(
-              String(
-                item.userId ??
-                  item.user_id ??
-                  item.assigneeId ??
-                  item.assignee_id ??
-                  'N/A',
-              ),
-            ) ?? 'N/A',
+          Investigator: item.investigatorId
+            ? (getAssigneeFullName?.(String(item.investigatorId)) ?? 'N/A')
+            : 'Unassigned',
         };
       });
 
@@ -439,7 +433,11 @@ export const getColumnsForReport = (reportType: string): TableColumn[] => {
         { key: 'Status', label: 'Status', width: 100 },
         { key: 'Count', label: 'Count', width: 60 },
         { key: 'Percentage', label: 'Percentage', width: 80 },
-        { key: 'Avg Time in Status', label: 'Avg Time in Status', width: 120 },
+        {
+          key: 'Avg Age of Current Cases',
+          label: 'Avg Age of Current Cases',
+          width: 120,
+        },
         {
           key: 'Current Trend Period',
           label: 'Current Trend Period',

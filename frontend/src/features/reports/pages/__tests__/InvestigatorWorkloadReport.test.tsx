@@ -304,6 +304,6 @@ describe('InvestigatorWorkloadReport', () => {
       wrapper: createWrapper(),
     });
 
-    expect(useInvestigatorWorkload).toHaveBeenCalledWith('last7');
+    expect(useInvestigatorWorkload).toHaveBeenCalledWith('last7', undefined);
   });
 });

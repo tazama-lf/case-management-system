@@ -139,8 +139,6 @@ describe('CaseDetailsTab', () => {
     render(
       <CaseDetailsTab
         row={mockCaseRow}
-        subCasesDetails={undefined}
-        parentCaseDetails={null}
       />,
     );
     await waitFor(() => {

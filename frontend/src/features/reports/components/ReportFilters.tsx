@@ -5,18 +5,19 @@ import authService from '@/features/auth/services/authService';
 
 interface ReportFiltersProps {
   reportType:
-    | 'CASE_STATUS'
-    | 'CASE_AGEING'
-    | 'INVESTIGATOR_WORKLOAD'
-    | 'EVIDENCE_FINDINGS';
+  | 'CASE_STATUS'
+  | 'CASE_AGEING'
+  | 'INVESTIGATOR_WORKLOAD'
+  | 'EVIDENCE_FINDINGS';
   dateRange:
-    | 'today'
-    | 'yesterday'
-    | 'last7'
-    | 'last30'
-    | 'last90'
-    | 'thisMonth'
-    | 'lastYear';
+  | 'today'
+  | 'yesterday'
+  | 'last7'
+  | 'last30'
+  | 'last90'
+  | 'thisMonth'
+  | 'lastYear'
+  | 'all';
   onChangeReportType: (type: ReportFiltersProps['reportType']) => void;
   onChangeDateRange: (range: ReportFiltersProps['dateRange']) => void;
   onApplyFilters: (filters: {
@@ -58,6 +59,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
     last90: 'Last 90 Days',
     thisMonth: 'This Month',
     lastYear: 'Last Year',
+    all: 'All Time',
   };
 
   const handleToggleReportMenu = () => {
@@ -191,6 +193,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
           onChange={handleChange}
           onApply={handleApply}
           onReset={handleReset}
+          showInvestigatorFilter={isSupervisor}
         />
       )}
     </div>

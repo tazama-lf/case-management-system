@@ -34,6 +34,18 @@ vi.mock('../../../auth/services/authService', () => ({
   },
 }));
 
+vi.mock('../../hooks/useInvestigatorSupervisorList', () => ({
+  useInvestigatorSupervisorList: () => ({
+    investigators: [
+      { id: 'user-1', name: 'User 1', firstName: 'Jane', lastName: 'Investigator' },
+    ],
+    supervisors: [
+      { id: 'user-2', name: 'User 2', firstName: 'John', lastName: 'Supervisor' },
+    ],
+    getAssigneeFullName: (assignee?: string) => assignee ?? 'N/A',
+  }),
+}));
+
 describe('CaseFilters', () => {
   const defaultProps = {
     search: '',
@@ -46,8 +58,12 @@ describe('CaseFilters', () => {
     onPriorityFilterChange: vi.fn(),
     sarStrStatusFilter: '',
     onSarStrStatusFilterChange: vi.fn(),
+    slaStateFilter: '',
+    onSlaStateFilterChange: vi.fn(),
     caseTypeFilter: 'all' as const,
     onCaseTypeFilterChange: vi.fn(),
+    assigneeFilter: '',
+    onAssigneeFilterChange: vi.fn(),
   };
 
   beforeEach(() => {
@@ -59,7 +75,9 @@ describe('CaseFilters', () => {
 
   it('should display search value', () => {
     render(<CaseFilters {...defaultProps} search="test search" />);
-    const searchInput = screen.getByPlaceholderText('Search cases...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search by Case ID, priority, SLA state, or keywords...',
+    );
     expect(searchInput).toHaveValue('test search');
   });
 
@@ -67,7 +85,9 @@ describe('CaseFilters', () => {
     const user = userEvent.setup();
     const onSearchChange = vi.fn();
     render(<CaseFilters {...defaultProps} onSearchChange={onSearchChange} />);
-    const searchInput = screen.getByPlaceholderText('Search cases...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search by Case ID, priority, SLA state, or keywords...',
+    );
     await user.type(searchInput, 'test');
     expect(onSearchChange).toHaveBeenCalled();
     expect(onSearchChange.mock.calls.length).toBeGreaterThanOrEqual(4);
@@ -104,6 +124,36 @@ describe('CaseFilters', () => {
     expect(
       screen.getByRole('option', { name: 'Suspended' }),
     ).toBeInTheDocument();
+  });
+
+  it('should render assignee filter options (investigators and supervisors) after opening filters', async () => {
+    const user = userEvent.setup();
+    render(<CaseFilters {...defaultProps} />);
+    await user.click(screen.getByText('Filters'));
+    expect(
+      screen.getByRole('option', { name: 'All Assignees' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'Jane Investigator' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'John Supervisor' }),
+    ).toBeInTheDocument();
+  });
+
+  it('should call onAssigneeFilterChange when assignee is changed', async () => {
+    const user = userEvent.setup();
+    const onAssigneeFilterChange = vi.fn();
+    render(
+      <CaseFilters
+        {...defaultProps}
+        onAssigneeFilterChange={onAssigneeFilterChange}
+      />,
+    );
+    await user.click(screen.getByText('Filters'));
+    const assigneeSelect = screen.getByDisplayValue('All Assignees');
+    await user.selectOptions(assigneeSelect, 'user-1');
+    expect(onAssigneeFilterChange).toHaveBeenCalledWith('user-1');
   });
 
   it('should call onStatusFilterChange when status is changed', async () => {
@@ -164,6 +214,43 @@ describe('CaseFilters', () => {
     expect(screen.getByDisplayValue('High')).toBeInTheDocument();
   });
 
+  it('should render SLA state filter options and call onSlaStateFilterChange when changed', async () => {
+    const user = userEvent.setup();
+    const onSlaStateFilterChange = vi.fn();
+    render(
+      <CaseFilters
+        {...defaultProps}
+        onSlaStateFilterChange={onSlaStateFilterChange}
+      />,
+    );
+    await user.click(screen.getByText('Filters'));
+    expect(
+      screen.getByRole('option', { name: 'All SLA States' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'On Track' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'At Risk' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Due Soon' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Breached' })).toBeInTheDocument();
+
+    const slaStateSelect = screen.getByDisplayValue('All SLA States');
+    await user.selectOptions(slaStateSelect, 'AT_RISK');
+    expect(onSlaStateFilterChange).toHaveBeenCalledWith('AT_RISK');
+  });
+
+  it('should clear slaStateFilter when Clear button is clicked', async () => {
+    const user = userEvent.setup();
+    const onSlaStateFilterChange = vi.fn();
+    render(
+      <CaseFilters
+        {...defaultProps}
+        slaStateFilter="AT_RISK"
+        onSlaStateFilterChange={onSlaStateFilterChange}
+      />,
+    );
+    await user.click(screen.getByText('Clear'));
+    expect(onSlaStateFilterChange).toHaveBeenCalledWith('');
+  });
+
   it('should render search icon', () => {
     const { container } = render(<CaseFilters {...defaultProps} />);
     const icon = container.querySelector('svg');
@@ -172,7 +259,9 @@ describe('CaseFilters', () => {
 
   it('should have proper styling classes on search input', () => {
     render(<CaseFilters {...defaultProps} />);
-    const searchInput = screen.getByPlaceholderText('Search cases...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search by Case ID, priority, SLA state, or keywords...',
+    );
     expect(searchInput).toHaveClass('w-full', 'border', 'border-gray-300');
   });
 
@@ -186,7 +275,9 @@ describe('CaseFilters', () => {
         onSearchChange={onSearchChange}
       />,
     );
-    const searchInput = screen.getByPlaceholderText('Search cases...');
+    const searchInput = screen.getByPlaceholderText(
+      'Search by Case ID, priority, SLA state, or keywords...',
+    );
     await user.clear(searchInput);
     expect(onSearchChange).toHaveBeenCalledWith('');
   });
@@ -235,6 +326,7 @@ describe('CaseFilters', () => {
     expect(onStatusFilterChange).toHaveBeenCalledWith('');
     expect(onPriorityFilterChange).toHaveBeenCalledWith('');
     expect(onSarStrStatusFilterChange).toHaveBeenCalledWith('');
+    expect(defaultProps.onAssigneeFilterChange).toHaveBeenCalledWith('');
     expect(onSortChange).toHaveBeenCalledWith('recent');
     expect(onCaseTypeFilterChange).toHaveBeenCalledWith('all');
   });
@@ -406,6 +498,38 @@ describe('CaseFilters', () => {
     expect(onStatusFilterChange).toHaveBeenCalledWith('STATUS_20_IN_PROGRESS');
     expect(onPriorityFilterChange).toHaveBeenCalledWith('MEDIUM');
     expect(onSarStrStatusFilterChange).toHaveBeenCalledWith('');
+  });
+
+  it('should apply slaState from a saved filter when selected', async () => {
+    mockGetFilters.mockResolvedValue([
+      {
+        filter_Id: 1,
+        user_filters: JSON.stringify({
+          sortBy: 'oldest',
+          status: 'STATUS_20_IN_PROGRESS',
+          priority: 'MEDIUM',
+          sarStrStatus: '',
+          slaState: 'AT_RISK',
+        }),
+      },
+    ]);
+    const user = userEvent.setup();
+    const onSlaStateFilterChange = vi.fn();
+    render(
+      <CaseFilters
+        {...defaultProps}
+        onSlaStateFilterChange={onSlaStateFilterChange}
+      />,
+    );
+    await user.click(screen.getByText('Filters'));
+    await waitFor(() => {
+      expect(
+        screen.getByText('OLDEST - STATUS_20_IN_PROGRESS - MEDIUM - AT_RISK'),
+      ).toBeInTheDocument();
+    });
+    const savedFilterSelect = screen.getByDisplayValue('Select a saved filter');
+    await user.selectOptions(savedFilterSelect, '1');
+    expect(onSlaStateFilterChange).toHaveBeenCalledWith('AT_RISK');
   });
 
   it('should show "No saved filters available" when no filters exist', async () => {

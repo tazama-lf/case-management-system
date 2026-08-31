@@ -7,7 +7,7 @@ import { LoggingOrchestrationService } from '../src/modules/logging-orchestratio
 import { TaskValidationUtil } from '../src/modules/shared/utils/task-validation.util';
 import { SlaPolicyUtil } from '../src/modules/shared/utils/sla-policy.util';
 import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { CaseStatus, TaskStatus, CaseType, Priority } from '@prisma/client-cms';
+import { CaseStatus, TaskStatus, CaseType, Priority, SlaState } from '@prisma/client-cms';
 import { GetUserCasesQueryDto } from '../src/modules/case/dto/get-user-cases.dto';
 import { GetAllCasesQueryDto } from '../src/modules/case/dto/get-all-cases.dto';
 
@@ -376,6 +376,38 @@ describe('CaseQueryService', () => {
       expect(result.cases).toHaveLength(1);
     });
 
+    it('should filter by SLA state via a candidate lookup before pagination', async () => {
+      const queryWithSlaState: GetAllCasesQueryDto = { ...query, slaState: SlaState.AT_RISK };
+      const now = Date.now();
+      const atRiskCandidate = {
+        case_id: 1,
+        tenant_id: 'tenant-123',
+        sla_due_at: new Date(now + 30 * 60 * 1000),
+        sla_started_at: new Date(now - 60 * 60 * 1000),
+      };
+      const onTrackCandidate = {
+        case_id: 2,
+        tenant_id: 'tenant-123',
+        sla_due_at: new Date(now + 90 * 60 * 1000),
+        sla_started_at: new Date(now - 10 * 60 * 1000),
+      };
+
+      prismaService.case.findMany.mockResolvedValueOnce([atRiskCandidate, onTrackCandidate]); // candidate lookup
+      prismaService.case.count.mockResolvedValueOnce(1); // totalCount
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]); // paginated fetch
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: mockCase.status, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: mockCase.priority, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: mockCase.case_type, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0); // unassigned count
+
+      const result = await service.getAllCases(queryWithSlaState, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+      const paginatedFindManyArgs = prismaService.case.findMany.mock.calls[1][0];
+      expect(paginatedFindManyArgs.where.case_id).toEqual({ in: [atRiskCandidate.case_id] });
+    });
+
     it.each([
       ['case id', '1'],
       ['case type partial match', 'fr'],
@@ -391,6 +423,101 @@ describe('CaseQueryService', () => {
 
       expect(result.cases).toHaveLength(1);
       expect(logger.log).toHaveBeenCalled();
+    });
+
+    it('should search by case id with a "Case" prefix, mirroring Alert ID search', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'Case 1' };
+      setupGetAllCasesMocks();
+
+      const result = await service.getAllCases(queryWithSearch, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+      const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
+      expect(findManyArgs.where.AND).toContainEqual({ OR: [{ case_id: 1 }] });
+    });
+
+    it('should partially search by priority', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'hi' };
+      setupGetAllCasesMocks();
+
+      const result = await service.getAllCases(queryWithSearch, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+      const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
+      expect(findManyArgs.where.AND).toContainEqual({
+        OR: expect.arrayContaining([{ priority: { in: ['HIGH'] } }]),
+      });
+    });
+
+    it.each([['risk'], ['at risk'], ['at-risk'], ['AT_RISK']])(
+      'should partially search by SLA state using "%s" (spaces/dashes normalize to the enum\'s underscore form)',
+      async (searchTerm) => {
+        const queryWithSearch: GetAllCasesQueryDto = { ...query, search: searchTerm };
+        const now = Date.now();
+        const atRiskCandidate = {
+          case_id: 5,
+          tenant_id: 'tenant-123',
+          sla_due_at: new Date(now + 30 * 60 * 1000),
+          sla_started_at: new Date(now - 60 * 60 * 1000),
+        };
+        const onTrackCandidate = {
+          case_id: 6,
+          tenant_id: 'tenant-123',
+          sla_due_at: new Date(now + 90 * 60 * 1000),
+          sla_started_at: new Date(now - 10 * 60 * 1000),
+        };
+
+        prismaService.case.findMany.mockResolvedValueOnce([atRiskCandidate, onTrackCandidate]); // SLA search candidate lookup
+        prismaService.case.count.mockResolvedValueOnce(1); // totalCount
+        prismaService.case.findMany.mockResolvedValueOnce([mockCase]); // paginated fetch
+        prismaService.case.groupBy
+          .mockResolvedValueOnce([{ status: mockCase.status, _count: { case_id: 1 } }])
+          .mockResolvedValueOnce([{ priority: mockCase.priority, _count: { case_id: 1 } }])
+          .mockResolvedValueOnce([{ case_type: mockCase.case_type, _count: { case_id: 1 } }]);
+        prismaService.case.count.mockResolvedValueOnce(0); // unassigned count
+
+        const result = await service.getAllCases(queryWithSearch, tenantId);
+
+        expect(result.cases).toHaveLength(1);
+        const paginatedFindManyArgs = prismaService.case.findMany.mock.calls[1][0];
+        expect(paginatedFindManyArgs.where.AND).toContainEqual({
+          OR: expect.arrayContaining([{ case_id: { in: [atRiskCandidate.case_id] } }]),
+        });
+      },
+    );
+
+    it('should partially search by SLA state using "due soon" (multi-word, matches DUE_SOON)', async () => {
+      const queryWithSearch: GetAllCasesQueryDto = { ...query, search: 'due soon' };
+      const now = Date.now();
+      const dueSoonCandidate = {
+        case_id: 7,
+        tenant_id: 'tenant-123',
+        sla_due_at: new Date(now + 5 * 60 * 1000),
+        sla_started_at: new Date(now - 60 * 60 * 1000),
+      };
+      const onTrackCandidate = {
+        case_id: 8,
+        tenant_id: 'tenant-123',
+        sla_due_at: new Date(now + 90 * 60 * 1000),
+        sla_started_at: new Date(now - 10 * 60 * 1000),
+      };
+
+      prismaService.case.findMany.mockResolvedValueOnce([dueSoonCandidate, onTrackCandidate]); // SLA search candidate lookup
+      prismaService.case.count.mockResolvedValueOnce(1); // totalCount
+      prismaService.case.findMany.mockResolvedValueOnce([mockCase]); // paginated fetch
+      prismaService.case.groupBy
+        .mockResolvedValueOnce([{ status: mockCase.status, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ priority: mockCase.priority, _count: { case_id: 1 } }])
+        .mockResolvedValueOnce([{ case_type: mockCase.case_type, _count: { case_id: 1 } }]);
+      prismaService.case.count.mockResolvedValueOnce(0); // unassigned count
+
+      const result = await service.getAllCases(queryWithSearch, tenantId);
+
+      expect(result.cases).toHaveLength(1);
+      const paginatedFindManyArgs = prismaService.case.findMany.mock.calls[1][0];
+      expect(paginatedFindManyArgs.where.AND).toContainEqual({
+        OR: expect.arrayContaining([{ case_id: { in: [dueSoonCandidate.case_id] } }]),
+      });
     });
 
     it('should search for N/A cases', async () => {
@@ -442,6 +569,25 @@ describe('CaseQueryService', () => {
       const result = await service.getAllCases(testQuery, tenantId, investigatorId);
 
       expect(result.cases).toHaveLength(1);
+    });
+
+    it('applies an assignee filter to investigator-visible cases', async () => {
+      const investigatorId = 'investigator-123';
+      const supervisorId = 'supervisor-457';
+      setupGetAllCasesMocks({ ...mockCase, case_owner_user_id: supervisorId });
+
+      await service.getAllCases({ ...query, ownerId: supervisorId }, tenantId, investigatorId);
+
+      const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
+      expect(findManyArgs.where.AND).toContainEqual(
+        expect.objectContaining({ case_owner_user_id: supervisorId }),
+      );
+      expect(findManyArgs.where.AND).toContainEqual({
+        OR: expect.arrayContaining([
+          { case_owner_user_id: investigatorId },
+          { tasks: { some: { assigned_user_id: investigatorId } } },
+        ]),
+      });
     });
 
     it('should calculate average tasks per case', async () => {
@@ -604,6 +750,46 @@ describe('CaseQueryService', () => {
 
     //   await expect(service.retrieveCase(caseId, tenantId, true)).rejects.toThrow(ForbiddenException);
     // });
+  });
+
+  describe('getSubCasesDetails', () => {
+    const caseId = 1;
+
+    it('should get sub-cases for a parent case', async () => {
+      const mockSubCases = [
+        { ...mockCase, case_id: 2, parent_id: caseId },
+        { ...mockCase, case_id: 3, parent_id: caseId },
+      ];
+
+      prismaService.case.findMany.mockResolvedValueOnce(mockSubCases as any);
+
+      const result = await service.getSubCasesDetails(caseId);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].parent_id).toBe(caseId);
+    });
+
+    it('should return empty array when no sub-cases found', async () => {
+      prismaService.case.findMany.mockResolvedValueOnce([]);
+
+      const result = await service.getSubCasesDetails(caseId);
+      expect(result).toEqual([]);
+      expect(slaPolicyUtil.getEscalationRatios).not.toHaveBeenCalled();
+    });
+
+    it('resolves escalation ratios once per distinct tenant among the sub-cases', async () => {
+      const mockSubCases = [
+        { ...mockCase, case_id: 2, parent_id: caseId, tenant_id: 'tenant-a' },
+        { ...mockCase, case_id: 3, parent_id: caseId, tenant_id: 'tenant-a' },
+      ];
+      prismaService.case.findMany.mockResolvedValueOnce(mockSubCases as any);
+
+      const result = await service.getSubCasesDetails(caseId);
+
+      expect(result).toHaveLength(2);
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledTimes(1);
+      expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith('tenant-a');
+    });
   });
 
   describe('updateCase', () => {

@@ -93,6 +93,7 @@ model Alert {
   network_map        Json
   confidence_per     Int
   created_at         DateTime            @default(now()) @db.Timestamp(6)
+  updated_at         DateTime            @updatedAt @db.Timestamp(6)
   case_id            Int?                @unique
   case               Case?               @relation(fields: [case_id], references: [case_id])
   investigationGroup InvestigationGroup?
@@ -140,11 +141,6 @@ model SlaPolicy {
   @@map("sla_policies")
 }
 
-// Priority-agnostic per-tenant thresholds for classifying AT_RISK/DUE_SOON (see
-// sla-state.util.ts): one row per tenant, not per (tenant, priority), because the
-// same ratios are meant to apply across LOW/MEDIUM/HIGH regardless of each
-// priority's total SLA window. BREACHED needs no threshold — it's just
-// sla_due_at having passed.
 model SlaEscalationThreshold {
   id             Int      @id @default(autoincrement())
   tenant_id      String   @unique
@@ -156,9 +152,6 @@ model SlaEscalationThreshold {
   @@map("sla_escalation_thresholds")
 }
 
-// Per-tenant cutoffs for bucketing a continuous priorityScore (0-1) into a
-// LOW/MEDIUM/HIGH Priority at triage/case-creation time (see case-priority.util.ts).
-// One row per tenant: there's a single pair of cutoffs, not one per priority.
 model CasePriorityThreshold {
   id               Int      @id @default(autoincrement())
   tenant_id        String   @unique
@@ -180,11 +173,15 @@ enum SlaState {
 model SlaEscalationRecord {
   id          Int      @id @default(autoincrement())
   case_id     Int
+  tenant_id   String
   sla_state   SlaState
   notified_at DateTime @default(now()) @db.Timestamp(6)
+  created_at  DateTime @default(now()) @db.Timestamp(6)
+  updated_at  DateTime @updatedAt @db.Timestamp(6)
   case        Case     @relation(fields: [case_id], references: [case_id])
 
   @@unique([case_id, sla_state])
+  @@index([tenant_id])
   @@map("sla_escalation_records")
 }
 

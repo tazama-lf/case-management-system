@@ -175,6 +175,33 @@ describe('ReportsService', () => {
       expect(result.stats.totalInvestigators).toBe(0);
       expect(result.workloadData).toEqual([]);
     });
+
+    it('should include caseType/priority/investigator in the query params', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        stats: {
+          totalInvestigators: 0,
+          avgCasesPerInvestigator: 0,
+          avgResolutionTime: 0,
+          caseClosureRate: 0,
+        },
+        workloadData: [],
+        volumeTrend: [],
+        efficiencyData: [],
+        outcomeData: [],
+        performanceData: [],
+      });
+
+      await reportsService.getInvestigatorWorkloadData('last30', {
+        caseType: 'FRAUD',
+        priority: 'HIGH',
+        investigator: 'user-1',
+      });
+
+      const callUrl = vi.mocked(apiClient.get).mock.calls[0][0] as string;
+      expect(callUrl).toContain('caseType=FRAUD');
+      expect(callUrl).toContain('priority=HIGH');
+      expect(callUrl).toContain('investigator=user-1');
+    });
   });
 
   describe('getTaskCompletionData', () => {
@@ -271,7 +298,7 @@ describe('ReportsService', () => {
 
       const result = await reportsService.getCaseAgeingData();
 
-      expect(result.stats.avgCaseAge).toBe(0);
+      expect(result.stats.avgCaseAge).toBe(null);
       expect(result.ageingByStatus).toEqual([]);
     });
 
@@ -280,8 +307,35 @@ describe('ReportsService', () => {
 
       const result = await reportsService.getCaseAgeingData();
 
-      expect(result.stats.avgCaseAge).toBe(0);
+      expect(result.stats.avgCaseAge).toBe(null);
       expect(result.ageingByStatus).toEqual([]);
+    });
+
+    it('should include caseType/priority/investigator in the query params', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        stats: {
+          avgCaseAge: null,
+          avgResolutionTime: null,
+          casesOver15Days: 0,
+          casesOver30Days: 0,
+        },
+        ageingByStatus: [],
+        resolutionTrend: [],
+        ageingDistribution: [],
+        caseTypeResolution: [],
+        caseDetails: [],
+      });
+
+      await reportsService.getCaseAgeingData('last30', {
+        caseType: 'AML',
+        priority: 'LOW',
+        investigator: 'user-2',
+      });
+
+      const callUrl = vi.mocked(apiClient.get).mock.calls[0][0] as string;
+      expect(callUrl).toContain('caseType=AML');
+      expect(callUrl).toContain('priority=LOW');
+      expect(callUrl).toContain('investigator=user-2');
     });
   });
 
@@ -539,12 +593,67 @@ describe('ReportsService', () => {
       expect(apiClient.get).toHaveBeenCalledTimes(1);
     });
 
+    it('should apply caseType/priority/investigator client-side, since there is no backend evidence-findings endpoint', async () => {
+      const cases = [
+        {
+          case_id: 1,
+          status: 'STATUS_82_CLOSED_CONFIRMED',
+          created_at: new Date().toISOString(),
+          case_type: 'FRAUD',
+          priority: 'HIGH',
+          case_owner_user_id: 'user-1',
+        },
+        {
+          case_id: 2,
+          status: 'STATUS_82_CLOSED_CONFIRMED',
+          created_at: new Date().toISOString(),
+          case_type: 'AML',
+          priority: 'LOW',
+          case_owner_user_id: 'user-2',
+        },
+      ];
+
+      vi.mocked(apiClient.get)
+        .mockResolvedValueOnce(cases)
+        .mockResolvedValueOnce({
+          evidence: [{ id: 'ev-1', fileName: 'a.pdf', taskId: 1 }],
+        });
+
+      const result = await reportsService.getEvidenceFindingsData('last30', {
+        caseType: 'FRAUD',
+        priority: '',
+        investigator: '',
+      });
+
+      expect(result.stats.totalFindings).toBe(1);
+      expect(result.findings[0].caseId).toBe(1);
+    });
+
+    it('should exclude cases outside the selected date range client-side', async () => {
+      const cases = [
+        {
+          case_id: 1,
+          status: 'STATUS_82_CLOSED_CONFIRMED',
+          created_at: '2020-01-01T00:00:00.000Z',
+        },
+      ];
+
+      vi.mocked(apiClient.get).mockResolvedValueOnce(cases);
+
+      const result = await reportsService.getEvidenceFindingsData('last30');
+
+      expect(result.stats.totalFindings).toBe(0);
+      // Only the cases fetch should happen - the out-of-window case never
+      // reaches the per-case evidence fetch loop.
+      expect(apiClient.get).toHaveBeenCalledTimes(1);
+    });
+
     it('should aggregate evidence from confirmed cases', async () => {
       const cases = [
         {
           case_id: 10,
           status: 'STATUS_82_CLOSED_CONFIRMED',
-          created_at: '2024-01-01',
+          created_at: new Date().toISOString(),
         },
       ];
       const evidence = [{ id: 'ev-1', fileName: 'doc.pdf', taskId: 100 }];
@@ -566,7 +675,7 @@ describe('ReportsService', () => {
         {
           case_id: 11,
           status: 'STATUS_71_AUTOCLOSED_CONFIRMED',
-          created_at: '2024-01-01',
+          created_at: new Date().toISOString(),
         },
       ];
       const evidence = [{ id: 'ev-2', fileName: 'doc.pdf', taskId: 200 }];
@@ -585,7 +694,7 @@ describe('ReportsService', () => {
         {
           case_id: 20,
           status: 'STATUS_81_CLOSED_REFUTED',
-          created_at: '2024-02-01',
+          created_at: new Date().toISOString(),
         },
       ];
       const evidence = [{ id: 'ev-3', fileName: 'evidence.pdf', taskId: 300 }];
@@ -605,7 +714,7 @@ describe('ReportsService', () => {
         {
           case_id: 21,
           status: 'STATUS_72_AUTOCLOSED_REFUTED',
-          created_at: '2024-02-01',
+          created_at: new Date().toISOString(),
         },
       ];
       const evidence = [{ id: 'ev-4', fileName: 'doc.pdf', taskId: 400 }];
@@ -624,7 +733,7 @@ describe('ReportsService', () => {
         {
           case_id: 30,
           status: 'STATUS_83_CLOSED_INCONCLUSIVE',
-          created_at: '2024-03-01',
+          created_at: new Date().toISOString(),
         },
       ];
       const evidence = [{ id: 'ev-5', fileName: 'doc.pdf', taskId: 500 }];
@@ -644,7 +753,7 @@ describe('ReportsService', () => {
         {
           case_id: 40,
           status: 'STATUS_20_IN_PROGRESS',
-          created_at: '2024-04-01',
+          created_at: new Date().toISOString(),
         },
       ];
       const evidence = [{ id: 'ev-6', fileName: 'doc.pdf', taskId: 600 }];
@@ -663,7 +772,7 @@ describe('ReportsService', () => {
         {
           case_id: 50,
           status: 'STATUS_82_CLOSED_CONFIRMED',
-          created_at: '2024-01-01',
+          created_at: new Date().toISOString(),
         },
       ];
 
@@ -683,7 +792,7 @@ describe('ReportsService', () => {
         {
           case_id: 60,
           status: 'STATUS_82_CLOSED_CONFIRMED',
-          created_at: '2024-01-01',
+          created_at: new Date().toISOString(),
         },
       ];
       const evidence = [
@@ -705,7 +814,7 @@ describe('ReportsService', () => {
         {
           case_id: 70,
           status: 'STATUS_82_CLOSED_CONFIRMED',
-          created_at: '2024-01-01',
+          created_at: new Date().toISOString(),
         },
       ];
       const evidence = [
@@ -727,7 +836,7 @@ describe('ReportsService', () => {
         {
           case_id: 80,
           status: 'STATUS_82_CLOSED_CONFIRMED',
-          created_at: '2024-01-01',
+          created_at: new Date().toISOString(),
         },
       ];
 
@@ -754,12 +863,12 @@ describe('ReportsService', () => {
         {
           case_id: 1,
           status: 'STATUS_82_CLOSED_CONFIRMED',
-          created_at: '2024-01-01',
+          created_at: new Date().toISOString(),
         },
         {
           case_id: 2,
           status: 'STATUS_81_CLOSED_REFUTED',
-          created_at: '2024-01-02',
+          created_at: new Date().toISOString(),
         },
         { case_id: 3, status: 'STATUS_00_DRAFT' },
       ];
@@ -787,7 +896,7 @@ describe('ReportsService', () => {
         {
           case_id: 90,
           status: 'STATUS_82_CLOSED_CONFIRMED',
-          created_at: '2024-01-01',
+          created_at: new Date().toISOString(),
         },
       ];
       const evidence = [

@@ -46,11 +46,11 @@ Updated DWH seed data and created 10 test alert payloads to match NATS structure
 
 | ID | Customer | Transaction ID | Amount | FSP | Status | Confidence | Priority |
 |----|----------|----------------|--------|-----|--------|------------|----------|
-| 6 | John Smith | TXN-001-02 | $1,200 | fsp001 | ALRT | 92.0% | URGENT |
-| 7 | Jane Doe | TXN-002-02 | $800 | fsp002 | ALRT | 95.5% | CRITICAL |
-| 8 | Robert Johnson | TXN-003-02 | $3,200 | fsp003 | ALRT | 90.0% | URGENT |
-| 9 | Sarah Williams | TXN-004-03 | $950 | fsp004 | ALRT | 87.5% | URGENT |
-| 10 | Michael Brown | TXN-005-01 | $25,000 | fsp005 | ALRT | 97.0% | CRITICAL |
+| 6 | John Smith | TXN-001-02 | $1,200 | fsp001 | ALRT | 92.0% | MEDIUM |
+| 7 | Jane Doe | TXN-002-02 | $800 | fsp002 | ALRT | 95.5% | HIGH |
+| 8 | Robert Johnson | TXN-003-02 | $3,200 | fsp003 | ALRT | 90.0% | MEDIUM |
+| 9 | Sarah Williams | TXN-004-03 | $950 | fsp004 | ALRT | 87.5% | MEDIUM |
+| 10 | Michael Brown | TXN-005-01 | $25,000 | fsp005 | ALRT | 97.0% | HIGH |
 
 **ALRT alerts:**
 - Score ≥ 200 (above alert threshold)
@@ -107,7 +107,7 @@ Authorization: Bearer YOUR_JWT_TOKEN
 
 {
   "tenant_id": "T001",
-  "priority": "NEW",
+  "priority": "LOW",
   "source": "NATS",
   ...
   # Use payload from alert-payloads.json[0]
@@ -123,7 +123,7 @@ Authorization: Bearer YOUR_JWT_TOKEN
 
 {
   "tenant_id": "T001",
-  "priority": "URGENT",
+  "priority": "MEDIUM",
   "source": "NATS",
   ...
   # Use payload from alert-payloads.json[5]

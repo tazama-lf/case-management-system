@@ -427,8 +427,8 @@ describe('useAlertsQuery', () => {
       });
 
       const response = await result.current.performManualTriage({
-          alertId: 1,
-          data: { action: 'APPROVE', notes: 'Looks good' },
+        alertId: 1,
+        data: { action: 'APPROVE', notes: 'Looks good' },
       });
 
       expect(response).toBe(mockTriageResult);

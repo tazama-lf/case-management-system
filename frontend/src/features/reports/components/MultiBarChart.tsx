@@ -58,7 +58,7 @@ const MultiBarChart: React.FC<MultiBarChartProps> = ({
   const chartData = data.map((item) => ({
     name: item.label,
     'Cases Created': item.casesCreated,
-    'Cases Closed': item.casesClosed,
+    'Cases Closed': -item.casesClosed,
   }));
 
   return (
@@ -75,6 +75,7 @@ const MultiBarChart: React.FC<MultiBarChartProps> = ({
           <XAxis dataKey="name" tick={{ fontSize: 12 }} />
           <YAxis />
           <Tooltip
+            formatter={(value) => Math.abs(Number(value))}
             contentStyle={{
               backgroundColor: '#fff',
               border: '1px solid #e0e0e0',

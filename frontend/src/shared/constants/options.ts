@@ -6,6 +6,7 @@ export const DATE_RANGE_OPTIONS = [
   { value: 'last90', label: 'Last 90 Days' },
   { value: 'thisMonth', label: 'This Month' },
   { value: 'lastYear', label: 'Last Year' },
+  { value: 'all', label: 'All Time' },
 ];
 
 export const REPORT_TYPE_OPTIONS = [
@@ -52,7 +53,7 @@ export const REPORT_TABLE_HEADERS = [
   'Status',
   'Count',
   'Percentage',
-  'Avg Time in Status',
+  'Avg Age of Current Cases',
   'Current Trend Period',
 ];
 
@@ -81,6 +82,7 @@ export const DATE_RANGE_LABELS: Record<string, string> = {
   last90: 'Last 90 Days',
   thisMonth: 'This Month',
   lastYear: 'Last Year',
+  all: 'All Time',
 };
 
 export const REPORT_TYPE_LABELS: Record<string, string> = {
