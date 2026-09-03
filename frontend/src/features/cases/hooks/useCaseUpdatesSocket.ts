@@ -24,8 +24,11 @@ interface CaseChangedPayload {
  * existing, already-authorized case-list endpoint.
  *
  * Fails open: if the socket can't connect (or the auth token is missing/expired), the dashboard
- * simply behaves as it does without this hook - no error is surfaced to the user, and socket.io
- * keeps retrying the connection in the background.
+ * simply behaves as it does without this hook - no error is surfaced to the user. socket.io
+ * retries transient disconnects (network blips, server restarts) on its own; the gateway
+ * explicitly disconnects (rather than just letting the connection drop) when the token is
+ * rejected or this user already has too many sockets open, so those cases are handled below by
+ * disconnecting for good instead of retrying a connection that will only be rejected again.
  */
 export function useCaseUpdatesSocket(onChange: () => void): void {
   const onChangeRef = useRef(onChange);
@@ -48,6 +51,17 @@ export function useCaseUpdatesSocket(onChange: () => void): void {
 
     socket.on('case:changed', (_payload: CaseChangedPayload) => {
       debouncedOnChange();
+    });
+
+    // The gateway emits one of these right before it disconnects us on purpose (bad/expired
+    // token, or too many sockets already open for this user) - stop here rather than letting
+    // socket.io's default reconnection keep retrying with the same token/connection that will
+    // just be rejected again.
+    socket.on('auth_failed', () => {
+      socket.disconnect();
+    });
+    socket.on('connection_limit_exceeded', () => {
+      socket.disconnect();
     });
 
     return () => {

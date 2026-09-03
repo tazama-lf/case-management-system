@@ -301,6 +301,28 @@ export class TaskService {
       const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
       if (assigneeId && caseRecord!.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
       await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
+      // Notify the Cases Dashboard (via CaseEventsGateway's @OnEvent listener) that this case's
+      // status changed - this promotion path updates the case directly and otherwise never
+      // calls FlowableService for the case itself (only for the task, below), so without this
+      // the dashboard would never learn about it until a manual refresh.
+      // handleCaseStatusChanged emits that notification first, then separately syncs the
+      // Flowable process's own state (throwing NotFoundException if no process instance
+      // exists for this case). Caught here deliberately: whether the dashboard got told about
+      // this change must not depend on whether that Flowable-side sync succeeds, and this runs
+      // inside the same transaction as the task update itself - an uncaught error here would
+      // roll back the task/case status change that already succeeded.
+      try {
+        await this.flowableService.handleCaseStatusChanged({
+          caseId: taskRecord.case_id,
+          newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `Case status change notification/Flowable sync failed for case ${taskRecord.case_id} (continuing): ${errorMessage}`,
+          TaskService.name,
+        );
+      }
       await this.executeFlowableOperation(taskRecord, taskRecord.assigned_user_id ?? existingTask.assigned_user_id!);
 
       return taskRecord;
