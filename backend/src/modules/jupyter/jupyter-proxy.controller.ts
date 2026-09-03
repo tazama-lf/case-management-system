@@ -167,10 +167,12 @@ export class JupyterProxyController {
     // reuse same validation as gold-lakehouse
     if (startDate ?? endDate) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/v;
-      if ((startDate && !dateRegex.test(startDate)) ?? (endDate && !dateRegex.test(endDate))) {
+      const startDateInvalid = Boolean(startDate && !dateRegex.test(startDate));
+      const endDateInvalid = Boolean(endDate && !dateRegex.test(endDate));
+      if (startDateInvalid || endDateInvalid) {
         throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
       }
-      if ((startDate && !endDate) ?? (!startDate && endDate)) {
+      if (Boolean(startDate) !== Boolean(endDate)) {
         throw new BadRequestException('Both startDate and endDate must be provided together');
       }
     }
@@ -225,10 +227,14 @@ export class JupyterProxyController {
   ): Promise<TransactionNetworkResponseDto> {
     const userId = this.getUserId(req);
     const dateRegex = /^\d{4}-\d{2}-\d{2}/v;
-    if ((startDate && !endDate) ?? (!startDate && endDate)) {
+    // See the identical validation in getTransactionHistory above for why these are `Boolean(...)`
+    // rather than bare `||`/`??` chains of the raw `startDate && ...` expressions.
+    if (Boolean(startDate) !== Boolean(endDate)) {
       throw new BadRequestException('Both startDate and endDate must be provided together');
     }
-    if ((startDate && !dateRegex.test(startDate)) ?? (endDate && !dateRegex.test(endDate))) {
+    const startDateInvalid = Boolean(startDate && !dateRegex.test(startDate));
+    const endDateInvalid = Boolean(endDate && !dateRegex.test(endDate));
+    if (startDateInvalid || endDateInvalid) {
       throw new BadRequestException('Invalid date format. Use YYYY-MM-DD or ISO timestamp');
     }
     return await this.proxyService.getTransactionNetworkData(userId, accountId, tenantId, timeRange, startDate, endDate);
