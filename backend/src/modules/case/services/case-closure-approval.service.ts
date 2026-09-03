@@ -406,6 +406,23 @@ export class CaseClosureApprovalService {
         },
       });
 
+      // Notify the Cases Dashboard (via CaseEventsGateway's @OnEvent listener) that this
+      // case's status changed - approving a closure (confirmed/refuted/inconclusive) otherwise
+      // never calls handleCaseStatusChanged for the case itself, so the investigator's
+      // dashboard never learned the case had been closed. Guarded (like the other closure call
+      // sites in this file) so a Flowable-side hiccup can't skip the SAR/STR auto-generation,
+      // investigator notification, or audit log entry that follow - the case is already
+      // committed as closed in the DB by this point.
+      try {
+        await this.flowableService.handleCaseStatusChanged({ caseId, newStatus: finalOutcome });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `Case status change notification/Flowable sync failed for case ${caseId} (continuing): ${errorMessage}`,
+          CaseClosureApprovalService.name,
+        );
+      }
+
       const comment: CreateCommentDto = {
         caseId,
         taskId: approvalTask.task_id,

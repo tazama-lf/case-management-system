@@ -442,6 +442,31 @@ describe('CaseClosureApprovalService', () => {
       expect(flowableService.handleTaskCompleted).toHaveBeenCalled();
       expect(commentService.addComment).toHaveBeenCalled();
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
+      // Regression: approving a closure (confirmed/refuted/inconclusive) otherwise never called
+      // handleCaseStatusChanged, so the investigator's dashboard never learned the case had
+      // been closed via the Cases Dashboard's live-update gateway.
+      expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledWith({
+        caseId: 1,
+        newStatus: 'STATUS_82_CLOSED_CONFIRMED',
+      });
+    });
+
+    it('should still approve the closure and run SAR generation/notifications even if the Flowable status-change notification fails', async () => {
+      const pendingCase = setupSuccessfulApproval('STATUS_82_CLOSED_CONFIRMED');
+      pendingCase.tasks[1].assigned_user_id = 'investigator-123';
+      taskService.createTask.mockResolvedValue({ task_id: 3, name: 'SAR_STR_FILING' } as any);
+      notificationService.sendNotification.mockResolvedValue({} as any);
+      // e.g. no Flowable process instance exists for this case - approval (already committed
+      // to the DB by this point) must not be undermined by a downstream Flowable hiccup, and
+      // neither should SAR/STR auto-generation, the investigator notification, or audit logging.
+      flowableService.handleCaseStatusChanged.mockRejectedValueOnce(new Error('No Flowable process found for case 1'));
+
+      const result = await service.approveCaseClosure(1, 'STATUS_82_CLOSED_CONFIRMED', 'Approved', 'supervisor-123', 'tenant-123');
+
+      expect(result.message).toBe('Case closure approved');
+      expect(taskService.createTask).toHaveBeenCalled();
+      expect(notificationService.sendNotification).toHaveBeenCalled();
+      expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
     });
 
     it('should create SAR filing task when approving confirmed case', async () => {
