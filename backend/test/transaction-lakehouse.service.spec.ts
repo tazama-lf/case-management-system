@@ -173,15 +173,20 @@ describe('TransactionLakehouseService', () => {
               total_transactions: 5,
               total_value: 2500,
               avg_value: 500,
-              duration_days: 30,
+              first_tx_date: '2024-01-01',
+              last_tx_date: '2024-01-31',
             },
           ]),
         )
         .mockReturnValueOnce(okHttp([]))
-        .mockReturnValueOnce(okHttp([{ is_alerted: 0, is_investigated: 0 }]));
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]));
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
       expect(result.centerAccount.accountId).toBe('acc1');
       expect(result.connectedAccounts).toHaveLength(1);
+      // Fallback (aggregated) edges should still carry a best-effort timestamp instead of leaving it blank
+      expect(result.edges[0].timestamp).toBe('2024-01-31');
     });
 
     it('returns HIGH velocity when tx/day > 0.5', async () => {
@@ -195,14 +200,19 @@ describe('TransactionLakehouseService', () => {
               total_transactions: 100,
               total_value: 50000,
               avg_value: 500,
-              duration_days: 1,
+              // Same day => falls back to a 1-day window => 100 tx/day
+              first_tx_date: '2024-01-01T00:00:00',
+              last_tx_date: '2024-01-01T23:00:00',
             },
           ]),
         )
         .mockReturnValueOnce(okHttp([]))
-        .mockReturnValueOnce(okHttp([{ is_alerted: 0, is_investigated: 0 }]));
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]));
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day');
       expect(result.connectedAccounts[0].transactionStats.velocity).toBe('HIGH');
+      expect(result.connectedAccounts[0].transactionStats.frequency).not.toBe(result.connectedAccounts[0].transactionStats.velocity);
     });
 
     it('returns MEDIUM velocity when tx/day >= 0.2', async () => {
@@ -216,17 +226,23 @@ describe('TransactionLakehouseService', () => {
               total_transactions: 6,
               total_value: 3000,
               avg_value: 500,
-              duration_days: 20,
+              // 20-day span => 6/20 = 0.3 tx/day
+              first_tx_date: '2024-01-01',
+              last_tx_date: '2024-01-21',
             },
           ]),
         )
         .mockReturnValueOnce(okHttp([]))
-        .mockReturnValueOnce(okHttp([{ is_alerted: 0, is_investigated: 0 }]));
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]));
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day');
       expect(result.connectedAccounts[0].transactionStats.velocity).toBe('MEDIUM');
+      // 6 transactions over 20 days => 0.3/day, distinct from the MEDIUM bucket label
+      expect(result.connectedAccounts[0].transactionStats.frequency).toBe('0.3/day');
     });
 
-    it('marks connected accounts with alerts when center account has alerts in transaction history', async () => {
+    it('marks a connected account with alerts using its OWN alert history, not the center account\'s', async () => {
       http
         .mockReturnValueOnce(okHttp([{ account_id: 'acc1', account_name: 'Center' }]))
         .mockReturnValueOnce(
@@ -238,15 +254,80 @@ describe('TransactionLakehouseService', () => {
               total_transactions: 5,
               total_value: 2500,
               avg_value: 500,
-              duration_days: 30,
+              first_tx_date: '2024-01-01',
+              last_tx_date: '2024-01-31',
             },
           ]),
         )
         .mockReturnValueOnce(okHttp([]))
-        .mockReturnValueOnce(okHttp([{ is_alerted: 1, is_investigated: 0 }]));
+        .mockReturnValueOnce(okHttp([]))
+        // Only acc2 (the connected account) has an AGG-level alert - the center (acc1) does not
+        .mockReturnValueOnce(okHttp([{ entity_id: 'acc2', is_alerted: 1, is_investigated: 0 }]))
+        .mockReturnValueOnce(okHttp([]));
       const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
       expect(result.connectedAccounts[0].hasAlert).toBe(true);
+      expect(result.centerAccount.hasAlert).toBe(false);
       expect(result.centerAccount.networkSummary.accountsWithAlerts).toBe(1);
+    });
+
+    it('does not mark connected accounts as alerted just because the center account has alerts', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ account_id: 'acc1', account_name: 'Center' }]))
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              connected_account_id: 'acc2',
+              connected_account_name: 'Other',
+              flow_direction: 'OUTBOUND',
+              total_transactions: 5,
+              total_value: 2500,
+              avg_value: 500,
+              first_tx_date: '2024-01-01',
+              last_tx_date: '2024-01-31',
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]))
+        // Only the center (acc1) has an AGG-level alert - acc2 does not
+        .mockReturnValueOnce(okHttp([{ entity_id: 'acc1', is_alerted: 1, is_investigated: 1 }]))
+        .mockReturnValueOnce(okHttp([]));
+      const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
+      expect(result.connectedAccounts[0].hasAlert).toBe(false);
+      expect(result.connectedAccounts[0].isInvestigated).toBe(false);
+      expect(result.centerAccount.hasAlert).toBe(true);
+      expect(result.centerAccount.isInvestigated).toBe(true);
+    });
+
+    it('includes each node\'s counterparty identifier alongside its account identifier', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ account_id: 'acc1', account_name: 'Center' }]))
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              connected_account_id: 'acc2',
+              connected_account_name: 'Other',
+              flow_direction: 'OUTBOUND',
+              total_transactions: 5,
+              total_value: 2500,
+              avg_value: 500,
+              first_tx_date: '2024-01-01',
+              last_tx_date: '2024-01-31',
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(
+          okHttp([
+            { account_id: 'acc1', counterparty_id: 'dbtr_center' },
+            { account_id: 'acc2', counterparty_id: 'cdtr_other' },
+          ]),
+        );
+      const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', '30d');
+      expect(result.centerAccount.counterpartyId).toBe('dbtr_center');
+      expect(result.connectedAccounts[0].counterpartyId).toBe('cdtr_other');
     });
 
     it('throws when account not found', async () => {
@@ -257,6 +338,74 @@ describe('TransactionLakehouseService', () => {
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
       await expect(service.getTransactionNetworkData('acc1', 'DEFAULT', 'day')).rejects.toThrow(HttpException);
+    });
+
+    it('returns transaction-level edges when raw transactions are available', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ account_id: 'acc1', account_name: 'Center' }]))
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              connected_account_id: 'acc2',
+              connected_account_name: 'Other',
+              flow_direction: 'OUTBOUND',
+              total_transactions: 2,
+              total_value: 300,
+              avg_value: 150,
+              first_tx_date: '2024-01-01T10:00:00',
+              last_tx_date: '2024-01-01T11:00:00',
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              transaction_id: 'tx1',
+              debtor_account_id: 'acc1',
+              creditor_account_id: 'acc2',
+              interbank_settlement_amount: 100,
+              interbank_settlement_currency: 'USD',
+              tx_event_ts: '2024-01-01T10:00:00',
+              is_alerted: 0,
+              is_investigated: 0,
+            },
+            {
+              transaction_id: 'tx2',
+              debtor_account_id: 'acc1',
+              creditor_account_id: 'acc2',
+              interbank_settlement_amount: 200,
+              interbank_settlement_currency: 'USD',
+              tx_event_ts: '2024-01-01T11:00:00',
+              is_alerted: 1,
+              is_investigated: 1,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]));
+
+      const result = await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day', '2024-01-01', '2024-01-02');
+
+      expect(result.edges).toHaveLength(2);
+      expect(result.edges).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            transactionId: 'tx2',
+            source: 'acc1',
+            target: 'acc2',
+            amount: 200,
+            currency: 'USD',
+            timestamp: '2024-01-01T11:00:00',
+            hasAlert: true,
+            isInvestigated: true,
+          }),
+        ]),
+      );
+      // Alert/investigation status on a connected account should also reflect what its own
+      // transaction edges carried, even without an AGG-level record.
+      expect(result.connectedAccounts[0].hasAlert).toBe(true);
+      expect(result.connectedAccounts[0].isInvestigated).toBe(true);
     });
   });
 

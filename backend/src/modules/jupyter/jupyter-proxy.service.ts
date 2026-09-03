@@ -144,9 +144,11 @@ export class JupyterProxyService {
     accountId: string,
     tenantId: string,
     timeRange: string,
+    startDate?: string,
+    endDate?: string,
   ): Promise<TransactionNetworkResponseDto> {
     const userJwt = await this.getUserJwt(userId);
-    return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId, timeRange, userJwt);
+    return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId, timeRange, startDate, endDate, userJwt);
   }
 
   async getAccountNetworkData(

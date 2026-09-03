@@ -11,11 +11,14 @@ export class TransactionStatsDto {
   averageValue: number;
 
   @ApiProperty({
-    description: 'Transaction velocity based on frequency',
+    description: 'HIGH/MEDIUM/LOW bucket describing transaction pace (transactions per day)',
     enum: ['HIGH', 'MEDIUM', 'LOW'],
     example: 'MEDIUM',
   })
   velocity: 'HIGH' | 'MEDIUM' | 'LOW';
+
+  @ApiProperty({ description: 'Transaction occurrence rate, e.g. "3.2/day" - distinct from velocity', example: '3.2/day' })
+  frequency: string;
 }
 
 export class ConnectedAccountDto {
@@ -24,6 +27,9 @@ export class ConnectedAccountDto {
 
   @ApiProperty({ description: 'Account holder name', example: 'Retail Store' })
   accountHolder: string;
+
+  @ApiPropertyOptional({ description: 'Counterparty identifier linked to this account', example: 'cdtr_bbdc270b8eff4e4991fb2a5288d0334d' })
+  counterpartyId?: string;
 
   @ApiProperty({
     description: 'Flow direction relative to center account',
@@ -38,8 +44,11 @@ export class ConnectedAccountDto {
   })
   transactionStats: TransactionStatsDto;
 
-  @ApiProperty({ description: 'Whether this account has triggered alerts', example: false })
+  @ApiProperty({ description: 'Whether this account itself has current or prior alerts', example: false })
   hasAlert: boolean;
+
+  @ApiProperty({ description: 'Whether this account itself is currently or previously under investigation', example: false })
+  isInvestigated: boolean;
 
   @ApiPropertyOptional({ description: 'Alert message if account has alerts', example: 'Alert triggered on this account' })
   alertMessage?: string;
@@ -72,6 +81,18 @@ export class CenterAccountDto {
   @ApiProperty({ description: 'Account holder name', example: 'John Smith' })
   accountHolder: string;
 
+  @ApiPropertyOptional({
+    description: 'Counterparty identifier linked to the center account',
+    example: 'dbtr_590333b8f3e040a0af6678f0390f8286',
+  })
+  counterpartyId?: string;
+
+  @ApiProperty({ description: 'Whether the center account itself has current or prior alerts', example: false })
+  hasAlert: boolean;
+
+  @ApiProperty({ description: 'Whether the center account itself is currently or previously under investigation', example: false })
+  isInvestigated: boolean;
+
   @ApiProperty({
     description: 'Network summary statistics',
     type: NetworkSummaryDto,
@@ -101,6 +122,24 @@ export class NetworkEdgeDto {
 
   @ApiPropertyOptional({ description: 'Total value for this edge' })
   totalValue?: number;
+
+  @ApiPropertyOptional({ description: 'Single transaction identifier for transaction-level edges' })
+  transactionId?: string;
+
+  @ApiPropertyOptional({ description: 'Single transaction amount for transaction-level edges' })
+  amount?: number;
+
+  @ApiPropertyOptional({ description: 'Transaction currency' })
+  currency?: string;
+
+  @ApiPropertyOptional({ description: 'Transaction timestamp' })
+  timestamp?: string;
+
+  @ApiPropertyOptional({ description: 'Whether this transaction edge previously alerted' })
+  hasAlert?: boolean;
+
+  @ApiPropertyOptional({ description: 'Whether this transaction edge is currently or previously investigated' })
+  isInvestigated?: boolean;
 }
 
 export class TransactionNetworkResponseDto {
@@ -124,6 +163,12 @@ export class TransactionNetworkResponseDto {
 
   @ApiProperty({ description: 'Time range used for analysis', example: '30d' })
   timeRange: string;
+
+  @ApiPropertyOptional({ description: 'Selected period start date' })
+  startDate?: string;
+
+  @ApiPropertyOptional({ description: 'Selected period end date' })
+  endDate?: string;
 
   @ApiProperty({ description: 'Tenant identifier' })
   tenantId: string;
