@@ -9,6 +9,7 @@ import { useAuth } from '@/features/auth/components/AuthContext';
 import { useToast } from '@/shared/providers/ToastProvider';
 import { useDynamicRoute } from '@/shared/utils/routeUtils';
 import { useCaseActions } from '@/features/cases/hooks';
+import { useCaseUpdatesSocket } from '@/features/cases/hooks/useCaseUpdatesSocket';
 import type {
   CaseModalState,
   CaseModalActions,
@@ -88,7 +89,7 @@ export const useCaseDashboard = (): {
   caseActions: ReturnType<typeof useCaseActions>;
   setCurrentPage: (page: number) => void;
   setPageSize: (size: number) => void;
-  refreshCases: () => Promise<void>;
+  refreshCases: (options?: { silent?: boolean }) => Promise<void>;
 } => {
   const { hasInvestigatorRole, hasSupervisorRole, hasCMSAdminRole } = useAuth();
   const { error } = useToast();
@@ -183,92 +184,110 @@ export const useCaseDashboard = (): {
   const [createCaseLoading, setCreateCaseLoading] = useState(false);
   const [createCaseError, setCreateCaseError] = useState<string>('');
 
-  const fetchCases = useCallback(async () => {
-    latestRequestIdRef.current += 1;
-    const requestId = latestRequestIdRef.current;
-    setLoading(true);
-    setErrorState(null);
+  const fetchCases = useCallback(
+    async (options: { silent?: boolean } = {}) => {
+      const { silent = false } = options;
+      latestRequestIdRef.current += 1;
+      const requestId = latestRequestIdRef.current;
+      if (!silent) {
+        setLoading(true);
+        setErrorState(null);
+      }
 
-    try {
-      let finalStatusFilter = statusFilter;
-      let excludeDraft = false;
-      let excludeClosed = false;
-      let closedOnly = false;
+      try {
+        let finalStatusFilter = statusFilter;
+        let excludeDraft = false;
+        let excludeClosed = false;
+        let closedOnly = false;
 
-      if (caseTypeFilter === 'draft') {
-        finalStatusFilter = 'STATUS_00_DRAFT';
-      } else if (caseTypeFilter === 'closed') {
-        if (!statusFilter) {
-          closedOnly = true;
-          finalStatusFilter = '';
+        if (caseTypeFilter === 'draft') {
+          finalStatusFilter = 'STATUS_00_DRAFT';
+        } else if (caseTypeFilter === 'closed') {
+          if (!statusFilter) {
+            closedOnly = true;
+            finalStatusFilter = '';
+          }
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Explicit check for 'all' improves code readability
+        } else if (caseTypeFilter === 'all') {
+          if (!statusFilter) {
+            excludeDraft = true;
+            excludeClosed = true;
+            finalStatusFilter = '';
+          }
         }
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Explicit check for 'all' improves code readability
-      } else if (caseTypeFilter === 'all') {
-        if (!statusFilter) {
-          excludeDraft = true;
-          excludeClosed = true;
-          finalStatusFilter = '';
+
+        const response = await caseService.getAllCases({
+          status: finalStatusFilter || undefined,
+          priority: priorityFilter || undefined,
+          sarStrStatus: sarStrStatusFilter || undefined,
+          slaState: slaStateFilter || undefined,
+          ownerId: assigneeFilter || undefined,
+          sortBy: 'updated_at',
+          sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
+          page: currentPage,
+          limit: pageSize,
+          search: debouncedSearch || undefined,
+          excludeDraft,
+          excludeClosed,
+          closedOnly,
+        });
+
+        // A newer request has since been kicked off (e.g. filters changed again
+        // before this one resolved) - drop this response so it can't clobber
+        // the more recent one.
+        if (requestId !== latestRequestIdRef.current) {
+          return;
+        }
+
+        const transformedCases = response.cases.map(transformBackendCaseToUI);
+        setCases(transformedCases);
+
+        // Update pagination state from backend response
+        if (response.pagination) {
+          const pagination = response.pagination as {
+            total: number;
+            totalPages: number;
+          };
+          setBackendTotalItems(pagination.total);
+          setBackendTotalPages(pagination.totalPages);
+        }
+      } catch {
+        if (requestId !== latestRequestIdRef.current) {
+          return;
+        }
+        // A silent (live-update-triggered) refetch that fails shouldn't disrupt what the
+        // investigator is currently looking at - just leave the existing list and error state
+        // as they are; the next successful refresh (manual or live) will catch up.
+        if (!silent) {
+          setErrorState('Failed to load cases. Please try again.');
+          setCases([]);
+        }
+      } finally {
+        // Whichever request is latest when it settles is responsible for resolving the loading
+        // flag - even if that settling request happens to be a silent one. A non-silent call that
+        // gets superseded by a later silent (live-update) call before it resolves would otherwise
+        // never have `loading` cleared: its own finally is skipped because it's no longer latest,
+        // and the silent call that IS latest used to skip this block entirely, leaving `loading`
+        // stuck at true. Clearing it here is safe either way - it only ever turns loading off, and
+        // only a non-silent call ever turns it on.
+        if (requestId === latestRequestIdRef.current) {
+          setLoading(false);
         }
       }
-
-      const response = await caseService.getAllCases({
-        status: finalStatusFilter || undefined,
-        priority: priorityFilter || undefined,
-        sarStrStatus: sarStrStatusFilter || undefined,
-        slaState: slaStateFilter || undefined,
-        ownerId: assigneeFilter || undefined,
-        sortBy: 'updated_at',
-        sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
-        page: currentPage,
-        limit: pageSize,
-        search: debouncedSearch || undefined,
-        excludeDraft,
-        excludeClosed,
-        closedOnly,
-      });
-
-      // A newer request has since been kicked off (e.g. filters changed again
-      // before this one resolved) - drop this response so it can't clobber
-      // the more recent one.
-      if (requestId !== latestRequestIdRef.current) {
-        return;
-      }
-
-      const transformedCases = response.cases.map(transformBackendCaseToUI);
-      setCases(transformedCases);
-
-      // Update pagination state from backend response
-      if (response.pagination) {
-        const pagination = response.pagination as {
-          total: number;
-          totalPages: number;
-        };
-        setBackendTotalItems(pagination.total);
-        setBackendTotalPages(pagination.totalPages);
-      }
-    } catch {
-      if (requestId !== latestRequestIdRef.current) {
-        return;
-      }
-      setErrorState('Failed to load cases. Please try again.');
-      setCases([]);
-    } finally {
-      if (requestId === latestRequestIdRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [
-    statusFilter,
-    priorityFilter,
-    sarStrStatusFilter,
-    slaStateFilter,
-    assigneeFilter,
-    sortBy,
-    currentPage,
-    pageSize,
-    debouncedSearch,
-    caseTypeFilter,
-  ]);
+    },
+    [
+      statusFilter,
+      priorityFilter,
+      sarStrStatusFilter,
+      slaStateFilter,
+      assigneeFilter,
+      sortBy,
+      currentPage,
+      pageSize,
+      debouncedSearch,
+      caseTypeFilter,
+    ],
+  );
 
   // Case actions hook
   const caseActions = useCaseActions(fetchCases);
@@ -276,6 +295,13 @@ export const useCaseDashboard = (): {
   useEffect(() => {
     fetchCases();
   }, [fetchCases]);
+
+  // Live updates: refetch (silently, no loading spinner) whenever another user creates a case
+  // or changes a case's status, so the dashboard stays current without a manual refresh.
+  const handleLiveCaseChange = useCallback(() => {
+    fetchCases({ silent: true });
+  }, [fetchCases]);
+  useCaseUpdatesSocket(handleLiveCaseChange);
 
   useEffect(() => {
     const fetchAndViewCase = async (): Promise<void> => {

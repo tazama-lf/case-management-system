@@ -1,5 +1,6 @@
 import { Injectable, HttpException, HttpStatus, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AxiosInstance } from 'axios';
 import * as fs from 'node:fs/promises';
@@ -35,6 +36,7 @@ export class FlowableService implements OnModuleInit {
     private readonly flowableProcessService: FlowableProcessService,
     private readonly caseEventListener: CaseEventListener,
     private readonly taskEventListener: TaskEventListener,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     this.flowableClient = this.clientFactory.getClient();
     this.flowableUrl = this.clientFactory.getBaseUrl();
@@ -169,6 +171,10 @@ export class FlowableService implements OnModuleInit {
   }
 
   async handleCaseCreated(event: CaseCreatedEvent): Promise<void> {
+    // Notify the Cases Dashboard (via CaseEventsGateway's @OnEvent listener) first, so a
+    // Flowable outage below never prevents other users' dashboards from picking up this case.
+    this.eventEmitter.emit('case.created', { caseId: event.caseId, tenantId: event.tenantId });
+
     this.loggerService.log(`Start - Process CaseID: ${event.caseId}`, CaseEventListener.name);
 
     const processInstance = await this.flowableProcessService.startProcessInstance(
@@ -197,6 +203,9 @@ export class FlowableService implements OnModuleInit {
   }
 
   async handleCaseStatusChanged(event: CaseStatusChangedEvent): Promise<void> {
+    // Same reasoning as handleCaseCreated above - emit before any Flowable work.
+    this.eventEmitter.emit('case.status-changed', { caseId: event.caseId, newStatus: event.newStatus });
+
     await this.caseEventListener.handleCaseStatusChanged(event);
   }
 
