@@ -159,6 +159,24 @@ export class CaseClosureApprovalService {
               }
             : undefined,
         );
+        // Notify the Cases Dashboard (via CaseEventsGateway's @OnEvent listener) that this
+        // case's status changed - unlike the investigator closure path below, this direct
+        // path never otherwise calls handleCaseStatusChanged for the case itself. Guarded
+        // (unlike that path's call) because a Flowable-side failure here (e.g. no process
+        // instance found for this case) must not skip the audit log entry and SAR/STR
+        // auto-generation still to come below - the case is already closed in the DB by this
+        // point (updateCaseStatusAndCompleteTask has no shared transaction with those later
+        // steps), so aborting here would leave them silently skipped for a case that's
+        // otherwise successfully closed.
+        try {
+          await this.flowableService.handleCaseStatusChanged({ caseId, newStatus: finalStatus });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.warn(
+            `Case status change notification/Flowable sync failed for case ${caseId} (continuing): ${errorMessage}`,
+            CaseClosureApprovalService.name,
+          );
+        }
         await this.flowableService.handleTaskCompleted({
           caseId,
           taskName: 'Investigate Case',

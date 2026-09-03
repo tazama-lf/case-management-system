@@ -221,12 +221,46 @@ describe('TaskService', () => {
       });
 
       flowableService.handleTaskAssigned.mockResolvedValue();
+      flowableService.handleCaseStatusChanged.mockResolvedValue();
 
       const result = await service.updateTask(1, updateData, 'user1', 'tenant1');
 
       expect(result).toMatchObject(updatedTask);
       expect(flowableService.handleTaskAssigned).toHaveBeenCalled();
+      // Regression: this promotion path updates the case status directly (not via a task-status
+      // event), so it's the only thing that tells the Cases Dashboard's live-update gateway the
+      // case changed - without this call the dashboard would never learn about it.
+      expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledWith({
+        caseId: existingTask.case_id,
+        newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+      });
       expect(loggingService.logActionsWithHistory).toHaveBeenCalled();
+    });
+
+    it('should still promote the case to in-progress even if the Flowable status-change notification fails', async () => {
+      const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
+      const updatedTask = { ...existingTask, status: TaskStatus.STATUS_20_IN_PROGRESS } as any;
+
+      taskRepository.transaction.mockImplementation(async (callback) => {
+        taskRepository.findTaskWithCase.mockResolvedValue(existingTask);
+        taskRepository.updateTask.mockResolvedValue(updatedTask);
+        taskRepository.findCaseStatus.mockResolvedValue(existingTask.case);
+        taskRepository.updateCase.mockResolvedValue({
+          ...existingTask.case,
+          status: CaseStatus.STATUS_20_IN_PROGRESS,
+        } as any);
+        return callback(taskRepository as any);
+      });
+
+      flowableService.handleTaskAssigned.mockResolvedValue();
+      // e.g. no Flowable process instance exists for this case (CaseEventListener throws
+      // NotFoundException in that case) - the task/case update must still succeed.
+      flowableService.handleCaseStatusChanged.mockRejectedValue(new Error('No Flowable process found for case 1'));
+
+      const result = await service.updateTask(1, updateData, 'user1', 'tenant1');
+
+      expect(result).toMatchObject(updatedTask);
+      expect(loggerService.warn).toHaveBeenCalled();
     });
 
     it('should handle task assignment status change', async () => {
