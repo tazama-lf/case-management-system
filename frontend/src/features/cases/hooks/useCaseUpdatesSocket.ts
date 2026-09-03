@@ -1,0 +1,61 @@
+import { useEffect, useRef } from 'react';
+import { io, type Socket } from 'socket.io-client';
+import { useDebouncedCallback } from 'use-debounce';
+import authService from '@/features/auth/services/authService';
+
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+  'http://127.0.0.1:3000';
+
+// Matches the search-input debounce already used on this dashboard (useCaseDashboard.ts) -
+// coalesces a burst of near-simultaneous case-changed events into a single refetch.
+const DEBOUNCE_MS = 500;
+
+interface CaseChangedPayload {
+  caseId: number;
+  type: 'created' | 'status-changed';
+}
+
+/**
+ * Subscribes to the backend's CaseEventsGateway and calls `onChange` (debounced) whenever any
+ * case in the current user's tenant is created or has its status changed by anyone - including
+ * other users' sessions. The socket only ever carries a lightweight "something changed" signal,
+ * never case data itself; `onChange` is expected to trigger a normal re-fetch through the
+ * existing, already-authorized case-list endpoint.
+ *
+ * Fails open: if the socket can't connect (or the auth token is missing/expired), the dashboard
+ * simply behaves as it does without this hook - no error is surfaced to the user, and socket.io
+ * keeps retrying the connection in the background.
+ */
+export function useCaseUpdatesSocket(onChange: () => void): void {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  const debouncedOnChange = useDebouncedCallback(() => {
+    onChangeRef.current();
+  }, DEBOUNCE_MS);
+
+  useEffect(() => {
+    const token = authService.getToken();
+    if (!token) {
+      // Not logged in (or token not yet available) - nothing to connect for.
+      return undefined;
+    }
+
+    const socket: Socket = io(API_BASE_URL, {
+      auth: { token },
+    });
+
+    socket.on('case:changed', (_payload: CaseChangedPayload) => {
+      debouncedOnChange();
+    });
+
+    return () => {
+      debouncedOnChange.cancel();
+      socket.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- token is read once per mount; a token refresh mid-session degrades gracefully to no live updates rather than reconnecting
+  }, []);
+}
+
+export default useCaseUpdatesSocket;

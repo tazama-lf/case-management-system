@@ -708,4 +708,59 @@ describe('useCaseDashboard', () => {
     // It must not clobber the newer, correct result.
     expect(result.current.dashboardState.cases).toHaveLength(1);
   });
+
+  it('does not get stuck loading forever when a silent (live-update) refetch supersedes a slower direct refresh', async () => {
+    // Reproduces the task-assign/reassign/unassign flow: a direct refreshCases() call (e.g.
+    // TaskLogTab's onRefreshCases()) is issued, then - before it resolves - a live-update
+    // socket event fires a silent refreshCases({ silent: true }), which becomes the newer
+    // request. Neither call's own `finally` used to be allowed to clear `loading` in that
+    // case: the direct call's requestId goes stale, and the silent call skipped the loading
+    // toggle entirely - leaving the dashboard stuck showing its loading state forever.
+    let resolveDirectRefresh: (value: unknown) => void = () => {};
+    const directRefresh = new Promise((resolve) => {
+      resolveDirectRefresh = resolve;
+    });
+
+    (caseService.getAllCases as unknown as vi.Mock)
+      .mockResolvedValueOnce({
+        cases: [],
+        pagination: { total: 0, totalPages: 1 },
+      }) // initial mount fetch
+      .mockReturnValueOnce(directRefresh) // direct refresh (e.g. onRefreshCases()) - slow
+      .mockResolvedValueOnce({
+        cases: [createBackendCase({ case_id: 1 })],
+        pagination: { total: 1, totalPages: 1 },
+      }); // silent live-update refetch - fast, resolves first
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    // Direct refresh kicked off (not yet resolved) - loading flips true.
+    act(() => {
+      result.current.refreshCases();
+    });
+    expect(result.current.dashboardState.loading).toBe(true);
+
+    // A live-update event supersedes it with a silent refetch, which resolves quickly.
+    await act(async () => {
+      await result.current.refreshCases({ silent: true });
+    });
+
+    // The silent call is now the latest request and has settled - loading must not be stuck.
+    expect(result.current.dashboardState.loading).toBe(false);
+    expect(result.current.dashboardState.cases).toHaveLength(1);
+
+    // The stale direct-refresh call finally resolves too; it must not clobber the newer result
+    // or resurrect the loading spinner.
+    await act(async () => {
+      resolveDirectRefresh({
+        cases: [],
+        pagination: { total: 0, totalPages: 1 },
+      });
+    });
+    expect(result.current.dashboardState.loading).toBe(false);
+    expect(result.current.dashboardState.cases).toHaveLength(1);
+  });
 });
