@@ -97,21 +97,17 @@ class EnvironmentVariables {
   @IsString()
   FLOWABLE_PASSWORD?: string;
 
-  @IsOptional()
   @IsString()
-  COUCHDB_URL?: string;
+  COUCHDB_URL!: string;
 
-  @IsOptional()
   @IsString()
-  COUCHDB_USERNAME?: string;
+  COUCHDB_USERNAME!: string;
 
-  @IsOptional()
   @IsString()
-  COUCHDB_PASSWORD?: string;
+  COUCHDB_PASSWORD!: string;
 
-  @IsOptional()
   @IsString()
-  COUCHDB_DATABASE?: string;
+  COUCHDB_DATABASE!: string;
 
   @IsOptional()
   @IsString()
