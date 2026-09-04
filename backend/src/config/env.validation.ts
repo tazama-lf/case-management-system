@@ -1,5 +1,5 @@
 import { plainToClass } from 'class-transformer';
-import { IsEnum, IsString, IsUUID, IsOptional, IsNumberString, validateSync, IsBooleanString } from 'class-validator';
+import { IsEnum, IsString, IsUUID, IsOptional, IsNumberString, validateSync, IsBooleanString, IsNotEmpty } from 'class-validator';
 
 enum NodeEnv {
   DEVELOPMENT = 'dev',
@@ -97,21 +97,21 @@ class EnvironmentVariables {
   @IsString()
   FLOWABLE_PASSWORD?: string;
 
-  @IsOptional()
   @IsString()
-  COUCHDB_URL?: string;
+  @IsNotEmpty()
+  COUCHDB_URL!: string;
 
-  @IsOptional()
   @IsString()
-  COUCHDB_USERNAME?: string;
+  @IsNotEmpty()
+  COUCHDB_USERNAME!: string;
 
-  @IsOptional()
   @IsString()
-  COUCHDB_PASSWORD?: string;
+  @IsNotEmpty()
+  COUCHDB_PASSWORD!: string;
 
-  @IsOptional()
   @IsString()
-  COUCHDB_DATABASE?: string;
+  @IsNotEmpty()
+  COUCHDB_DATABASE!: string;
 
   @IsOptional()
   @IsString()

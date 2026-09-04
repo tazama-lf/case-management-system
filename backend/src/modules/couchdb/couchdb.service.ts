@@ -11,14 +11,21 @@ export class CouchdbService implements OnModuleInit {
   private readonly dbName: string;
 
   constructor(private readonly configService: ConfigService) {
-    const url = this.configService.get<string>('COUCHDB_URL') ?? 'http://10.10.80.16:5984';
-    const username = this.configService.get<string>('COUCHDB_USERNAME') ?? 'simon';
-    const password = this.configService.get<string>('COUCHDB_PASSWORD') ?? '1234';
-    this.dbName = this.configService.get<string>('COUCHDB_DATABASE') ?? 'cms-evidence';
+    const url = this.configService.getOrThrow<string>('COUCHDB_URL');
+    const username = this.configService.getOrThrow<string>('COUCHDB_USERNAME');
+    const password = this.configService.getOrThrow<string>('COUCHDB_PASSWORD');
+    this.dbName = this.configService.getOrThrow<string>('COUCHDB_DATABASE');
 
-    const urlWithAuth = url.replace('://', `://${username}:${password}@`);
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url);
+    } catch (error) {
+      throw new Error('COUCHDB_URL is not a valid URL', { cause: error });
+    }
+    parsedUrl.username = encodeURIComponent(username);
+    parsedUrl.password = encodeURIComponent(password);
 
-    this.nanoInstance = nano(urlWithAuth);
+    this.nanoInstance = nano(parsedUrl.toString());
   }
 
   async onModuleInit(): Promise<void> {

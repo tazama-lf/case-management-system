@@ -294,9 +294,10 @@ SMTP_PASS="your-smtp-password"
 MAIL_FROM="user@example.com"
 
 # CouchDB Configuration
+# All four are required; the service fails to start if any is missing.
 COUCHDB_URL=http://couchdb:5984
 COUCHDB_DATABASE=cms-evidence
-COUCHDB_USER=admin
+COUCHDB_USERNAME=admin
 COUCHDB_PASSWORD=password
 
 # Audit / OpenSearch Configuration
