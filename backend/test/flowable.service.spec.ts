@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FlowableService } from '../src/modules/flowable/flowable.service';
 import { FlowableProcessService } from '../src/modules/flowable/services/flowable-process.service';
 import { FlowableClientFactory } from '../src/modules/flowable/services/flowable-client.factory';
@@ -17,6 +18,7 @@ describe('FlowableService', () => {
   let processService: jest.Mocked<FlowableProcessService>;
   let caseEventListener: jest.Mocked<CaseEventListener>;
   let taskEventListener: jest.Mocked<TaskEventListener>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   const mockFlowableClient = {
     get: jest.fn(),
@@ -71,6 +73,12 @@ describe('FlowableService', () => {
             handleTaskUnassigned: jest.fn(),
           },
         },
+        {
+          provide: EventEmitter2,
+          useValue: {
+            emit: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -80,6 +88,7 @@ describe('FlowableService', () => {
     processService = module.get(FlowableProcessService);
     caseEventListener = module.get(CaseEventListener);
     taskEventListener = module.get(TaskEventListener);
+    eventEmitter = module.get(EventEmitter2);
 
     jest.clearAllMocks();
   });
@@ -223,6 +232,16 @@ describe('FlowableService', () => {
         'tenant1',
       );
       expect(loggerService.log).toHaveBeenCalledWith(expect.stringContaining('Started process'), 'CaseEventListener');
+      expect(eventEmitter.emit).toHaveBeenCalledWith('case.created', { caseId: 123, tenantId: 'tenant1' });
+    });
+
+    it('should notify the Cases Dashboard (via EventEmitter2) when a case status changes', async () => {
+      const event = { caseId: 123, newStatus: 'IN_PROGRESS' };
+
+      await service.handleCaseStatusChanged(event as any);
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith('case.status-changed', { caseId: 123, newStatus: 'IN_PROGRESS' });
+      expect(caseEventListener.handleCaseStatusChanged).toHaveBeenCalledWith(event);
     });
 
     const eventHandlerCases = [
