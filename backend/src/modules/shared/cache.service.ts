@@ -158,7 +158,13 @@ export class CacheService {
   }
 
   /**
-   * Store user JWT token in Redis cache with TTL matching the token's expiration
+   * Store user JWT token in Redis cache with TTL matching the token's expiration.
+   *
+   * Safe to call on every proxied request, not just when the cache is known to be stale:
+   * a token only ever overwrites what's cached if it is actually newer (later `exp`). Without
+   * that check, an older browser tab or notebook kernel still holding an earlier token could
+   * call this after a newer token was already cached for the same user and regress it back.
+   *
    * @param userId - The user ID
    * @param token - The JWT token
    */
@@ -187,6 +193,15 @@ export class CacheService {
       if (ttl <= 0) {
         this.logger.warn(`Token for user ${userId} is already expired`, CacheService.name);
         return;
+      }
+
+      const existingToken = await this.getUserToken(userId);
+      if (existingToken) {
+        const existingDecoded = jwt.decode(existingToken) as { exp?: number } | null;
+        if (existingDecoded?.exp && existingDecoded.exp >= decoded.exp) {
+          this.logger.debug(`Cached token for user ${userId} is already as fresh or fresher, skipping write`, CacheService.name);
+          return;
+        }
       }
 
       const tokenKey = `${this.TOKEN_CACHE_KEY_PREFIX}${userId}`;
