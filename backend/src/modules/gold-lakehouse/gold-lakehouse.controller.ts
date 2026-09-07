@@ -111,7 +111,7 @@ export class GoldLakehouseController {
   })
   @ApiQuery({
     name: 'accountId',
-    description: 'Account ID from conditions_timeline.cond_account_id field',
+    description: 'Account ID from conditions.account_id field',
     required: true,
     type: String,
     example: '6665bafaee4b430692dafe4bd0efb3fa',
@@ -194,7 +194,7 @@ export class GoldLakehouseController {
   })
   @ApiQuery({
     name: 'accountId',
-    description: 'Account ID from conditions_timeline.cond_account_id field',
+    description: 'Account ID from conditions.account_id field',
     required: true,
     type: String,
     example: '6665bafaee4b430692dafe4bd0efb3fa',
