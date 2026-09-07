@@ -106,7 +106,6 @@ export class JupyterProxyService {
     granularity?: string,
   ): Promise<TransactionHistoryResponse> {
     const userJwt = await this.getUserJwt(userId);
-    this.logger.log(`User token: ${userJwt}`);
     return await this.transactionLakehouseService.getTransactionHistoryByAccountId(
       accountId,
       tenantId ?? 'DEFAULT',
