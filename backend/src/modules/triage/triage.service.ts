@@ -650,24 +650,18 @@ export class TriageService {
           });
 
           const investigationGroup = await this.investigationGroupService.createInvestigationGroup(alertId, tenantId);
+          // Repurpose the original case as the FRAUD case inside the group (mirrors
+          // handleManualTriage) instead of recreating a FRAUD_AND_AML-typed container
           await this.caseCreationService.updateCaseStatus(
             caseId,
             CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
             userId,
             tenantId,
             priority,
-            predictedAlertType,
-            investigationGroup.id,
-          );
-          const fraudCase = await this.caseCreateService.createCaseWithInvestigationTask(
             CaseType.FRAUD,
-            userId,
-            tenantId,
-            priority,
-            CaseCreationType.AUTOMATIC_SYSTEM,
-            'SUPERVISOR',
             investigationGroup.id,
           );
+
           try {
             await this.caseCreateService.createCaseWithInvestigationTask(
               CaseType.AML,
@@ -678,41 +672,42 @@ export class TriageService {
               'SUPERVISOR',
               investigationGroup.id,
             );
+
+            // Detach the alert now that both group cases exist - FRAUD_AND_AML alerts
+            // link via investigation_groups.alert_id, not alerts.case_id (see
+            // AlertRepository.getAlertByCaseId / getGroupedCasesForAlert).
+            await this.alertService.updateAlert(alertId, userId, { caseId: null } as unknown as UpdateAlertDTO, undefined);
           } catch (amlError) {
             const amlErrorMessage = amlError instanceof Error ? amlError.message : String(amlError);
             this.logger.error(
-              `FRAUD_AND_AML triage for alert ${alertId}: AML case creation failed after FRAUD case ${fraudCase.caseId} (investigation group ${investigationGroup.id}) was already created - rolling back`,
+              `FRAUD_AND_AML triage for alert ${alertId}: AML case creation failed after case ${caseId} (investigation group ${investigationGroup.id}) was already repurposed as FRAUD - rolling back`,
               amlError instanceof Error ? amlError.stack : undefined,
               TriageService.name,
             );
 
             // Neither Postgres nor Flowable support true distributed rollback, so we can't
-            // "undo" the earlier steps - instead we drive both cases (and their Flowable
-            // process instances) to the same terminal abandoned state the manual abandon
+            // "undo" the earlier steps - instead we drive the case (and its Flowable
+            // process instance) to the same terminal abandoned state the manual abandon
             // flow uses (see CaseService.abandonCase), and drop the investigation group so
             // the alert becomes eligible for triage/manual case creation again.
             const rollbackReason = `FRAUD_AND_AML triage rollback: AML case creation failed for alert ${alertId}: ${amlErrorMessage}`;
             try {
-              await Promise.all([
-                this.caseRepository.updateCase(caseId, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null }),
-                this.caseRepository.updateCase(fraudCase.caseId, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null }),
-              ]);
+              await this.caseRepository.updateCase(caseId, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
               this.flowableService.handleCaseAbandoned({ caseId, reason: rollbackReason });
-              this.flowableService.handleCaseAbandoned({ caseId: fraudCase.caseId, reason: rollbackReason });
               await this.prisma.investigationGroup.delete({ where: { id: investigationGroup.id } });
 
               await this.loggingOrchestrationService.logActions({
                 userId,
                 operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLED_BACK',
                 entityName: 'Case',
-                actionPerformed: `Rolled back FRAUD_AND_AML triage for alert ${alertId}: abandoned case ${caseId} and FRAUD case ${fraudCase.caseId} after AML case creation failed`,
+                actionPerformed: `Rolled back FRAUD_AND_AML triage for alert ${alertId}: abandoned case ${caseId} after AML case creation failed`,
                 outcome: Outcome.FAILURE,
                 tenantId,
               });
             } catch (rollbackError) {
               const rollbackErrorMessage = rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
               this.logger.error(
-                `FRAUD_AND_AML triage rollback itself failed for alert ${alertId} (case ${caseId}, FRAUD case ${fraudCase.caseId}, group ${investigationGroup.id}) - needs manual reconciliation: ${rollbackErrorMessage}`,
+                `FRAUD_AND_AML triage rollback itself failed for alert ${alertId} (case ${caseId}, group ${investigationGroup.id}) - needs manual reconciliation: ${rollbackErrorMessage}`,
                 rollbackError instanceof Error ? rollbackError.stack : undefined,
                 TriageService.name,
               );
@@ -720,7 +715,7 @@ export class TriageService {
                 userId,
                 operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLBACK_FAILED',
                 entityName: 'Case',
-                actionPerformed: `Rollback failed for alert ${alertId}; case ${caseId} and FRAUD case ${fraudCase.caseId} (group ${investigationGroup.id}) need manual reconciliation`,
+                actionPerformed: `Rollback failed for alert ${alertId}; case ${caseId} (group ${investigationGroup.id}) needs manual reconciliation`,
                 outcome: Outcome.FAILURE,
                 tenantId,
               });
