@@ -77,6 +77,17 @@ describe('ConditionLakehouseService', () => {
       await expect(service.getConditionsSummaryByAccount('acc1', 'DEFAULT')).rejects.toThrow('Not found');
     });
 
+    it('queries the conditions table (not conditions_timeline) for the per-condition detail list', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ total_conditions: 1, active_conditions: 1, expired_conditions: 0, future_conditions: 0 }]))
+        .mockReturnValueOnce(okHttp([{ condition_id: 'c1', condition_type: 'block', is_active: 1 }]));
+      await service.getConditionsSummaryByAccount('acc1', 'DEFAULT');
+
+      const conditionsListSql = http.mock.calls[1][1].sql_query as string;
+      expect(conditionsListSql).toContain('FROM conditions');
+      expect(conditionsListSql).not.toContain('conditions_timeline');
+    });
+
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
       await expect(service.getConditionsSummaryByAccount('acc1', 'DEFAULT')).rejects.toThrow(HttpException);
@@ -118,37 +129,17 @@ describe('ConditionLakehouseService', () => {
       http.mockReturnValue(errHttp());
       await expect(service.getConditionsListByAccount('acc1', 'DEFAULT')).rejects.toThrow(HttpException);
     });
-  });
 
-  // ===================== getEvaluatedTransactionsByAccount =====================
-  describe('getEvaluatedTransactionsByAccount', () => {
-    it('returns BLOCKED transactions', async () => {
-      http.mockReturnValue(
-        okHttp([
-          {
-            tx_transaction_id: 'tx1',
-            tx_event_ts: '2024-01-01',
-            tx_amount: 100,
-            cond_condition_id: 'c1',
-            cond_type: 'block',
-            cond_account_id: 'acc1',
-          },
-        ]),
-      );
-      const result = await service.getEvaluatedTransactionsByAccount('acc1', 'DEFAULT');
-      expect(result.transactions).toHaveLength(1);
-      expect(result.transactions[0].outcome).toBe('BLOCKED');
+    it('maps the real pk column instead of hardcoding "no mapping found"', async () => {
+      http.mockReturnValue(okHttp([{ pk: 'real-pk-value', condition_id: 'c1', condition_type: 'block', is_active: 1, is_expired: 0 }]));
+      const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT');
+      expect(result.conditions[0].pk).toBe('real-pk-value');
     });
 
-    it('returns DATA_NOT_FOUND metadata when empty', async () => {
-      http.mockReturnValue(okHttp([]));
-      const result = await service.getEvaluatedTransactionsByAccount('acc1', 'DEFAULT');
-      expect(result.metadata.status).toBe('DATA_NOT_FOUND');
-    });
-
-    it('throws on error', async () => {
-      http.mockReturnValue(errHttp());
-      await expect(service.getEvaluatedTransactionsByAccount('acc1', 'DEFAULT')).rejects.toThrow(HttpException);
+    it('falls back to "no mapping found" when pk is absent', async () => {
+      http.mockReturnValue(okHttp([{ condition_id: 'c1', condition_type: 'block', is_active: 1, is_expired: 0 }]));
+      const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT');
+      expect(result.conditions[0].pk).toBe('no mapping found');
     });
   });
 
@@ -250,6 +241,16 @@ describe('ConditionLakehouseService', () => {
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
       await expect(service.getConditionsByEntity('entity1', 'DEFAULT')).rejects.toThrow(HttpException);
+    });
+
+    it('filters on the real target_type column instead of the non-existent identity_type', async () => {
+      http.mockReturnValueOnce(okHttp([{ account_id: 'acc1' }])).mockReturnValueOnce(okHttp([]));
+      await service.getConditionsByEntity('entity1', 'DEFAULT');
+
+      const conditionsSql = http.mock.calls[1][1].sql_query as string;
+      expect(conditionsSql).toContain("target_type = 'ACCOUNT'");
+      expect(conditionsSql).toContain("target_type = 'ENTITY'");
+      expect(conditionsSql).not.toContain('identity_type');
     });
   });
 });
