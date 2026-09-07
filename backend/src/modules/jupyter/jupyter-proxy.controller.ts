@@ -7,7 +7,6 @@ import {
   AccountNodeFullDataResponse,
   ConditionsContextByTransactionResponse,
   CounterpartyNodeFullDataResponse,
-  EvaluatedTransactionsResponse,
 } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
 import { AlertHistoryAlertsResponse } from '../gold-lakehouse/types/IAlertHistory.types';
 import { TransactionHistoryResponse } from '../gold-lakehouse/types/transaction-history-response.types';
@@ -338,22 +337,5 @@ export class JupyterProxyController {
       throw new BadRequestException('accountId is required');
     }
     return await this.proxyService.getConditionsDetails(userId, accountId, tenantId, asOfDate, showInactive);
-  }
-
-  @Get('conditions/evaluated-transactions/:accountId')
-  @ApiOperation({ summary: 'Proxy: Get evaluated transactions for a condition/account' })
-  @ApiQuery({ name: 'tenantId', required: true })
-  @ApiQuery({ name: 'fromDate', required: false })
-  async getConditionsEvaluatedTransactions(
-    @Req() req: AuthenticatedRequest,
-    @Param('accountId') accountId: string,
-    @Query('tenantId') tenantId: string,
-    @Query('fromDate') fromDate?: string,
-  ): Promise<EvaluatedTransactionsResponse> {
-    const userId = this.getUserId(req);
-    if (!accountId || accountId.trim() === '') {
-      throw new BadRequestException('accountId is required');
-    }
-    return await this.proxyService.getConditionsEvaluatedTransactions(userId, accountId, tenantId, fromDate);
   }
 }

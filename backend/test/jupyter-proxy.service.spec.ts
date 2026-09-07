@@ -58,7 +58,6 @@ describe('JupyterProxyService', () => {
             getConditionsContextByTransaction: jest.fn().mockResolvedValue({}),
             getConditionsSummaryByAccount: jest.fn().mockResolvedValue({}),
             getConditionsListByAccount: jest.fn().mockResolvedValue({}),
-            getEvaluatedTransactionsByAccount: jest.fn().mockResolvedValue({}),
           },
         },
         {
@@ -259,18 +258,6 @@ describe('JupyterProxyService', () => {
     it('applies defaults when parameters are omitted', async () => {
       await service.getConditionsDetails(MOCK_USER_ID, 'acc1', 'DEFAULT');
       expect(conditionSvc.getConditionsListByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, false, MOCK_JWT);
-    });
-  });
-
-  describe('getConditionsEvaluatedTransactions', () => {
-    it('delegates with explicit tenantId', async () => {
-      await service.getConditionsEvaluatedTransactions(MOCK_USER_ID, 'acc1', 'TENANT_A', '2024-01-01');
-      expect(conditionSvc.getEvaluatedTransactionsByAccount).toHaveBeenCalledWith('acc1', 'TENANT_A', '2024-01-01', MOCK_JWT);
-    });
-
-    it('omits fromDate when not provided', async () => {
-      await service.getConditionsEvaluatedTransactions(MOCK_USER_ID, 'acc1', 'DEFAULT');
-      expect(conditionSvc.getEvaluatedTransactionsByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, MOCK_JWT);
     });
   });
 
