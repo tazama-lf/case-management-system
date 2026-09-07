@@ -2,11 +2,7 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from './gold-lakehouse.service';
-import {
-  ConditionsByEntityResponse,
-  ConditionsContextByTransactionResponse,
-  EvaluatedTransactionsResponse,
-} from './types/gold-lakehouse-responses.types';
+import { ConditionsByEntityResponse, ConditionsContextByTransactionResponse } from './types/gold-lakehouse-responses.types';
 import { AccountConditionsSummary, ConditionsListByAccountResponse } from './types/IAccountConditions.types';
 
 @Injectable()
@@ -54,25 +50,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       const response = await this.runSqlQuery(sql, 1, params, userJwt);
       const summary = response.data?.[0] ?? {};
 
-      // const conditionsSql = `
-      // SELECT
-      //   condition_id,
-      //   condition_reason,
-      //   condition_type,
-      //   perspective,
-      //   condition_inception_ts,
-      //   condition_expiry_ts,
-      //   is_active,
-      //   is_expired,
-      //   created_by_user,
-      //   account_scheme,
-      //   account_agent_mmb_id
-      // FROM conditions
-      // WHERE account_id = 'ACC-ce6e83a6'
-      // AND tenant_id = 'DEFAULT'
-      // LIMIT 100
-      // `;
-
       const conditionsParams: any[] = [accountId];
       let conditionsAsOfDateFilter = '';
 
@@ -100,7 +77,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         created_by_user,
         account_scheme,
         account_agent_mmb_id
-      FROM conditions_timeline
+      FROM conditions
       WHERE account_id = $1
         ${conditionsTenantFilter}
         ${conditionsAsOfDateFilter}
@@ -171,6 +148,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
       const sql = `
       SELECT
+        ct.pk,
         ct.condition_id,
         ct.condition_reason,
         ct.condition_type,
@@ -200,7 +178,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
       const formattedConditions = rows.map((row) => ({
         conditionId: row.condition_id,
-        pk: 'no mapping found',
+        pk: row.pk ?? 'no mapping found',
         tenantId: row.tenant_id ?? tenantId,
         bucketGranularity: 'no data found',
         bucketStart: 'no data found',
@@ -238,107 +216,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error('Error fetching conditions list by account', errorStack);
       throw new HttpException('Failed to fetch conditions list', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  async getEvaluatedTransactionsByAccount(
-    accountId: string,
-    tenantId: string,
-    fromDate?: string,
-    userJwt?: string,
-  ): Promise<EvaluatedTransactionsResponse> {
-    try {
-      this.logger.log(`Fetching evaluated transactions for account: ${accountId}`);
-      const params: any[] = [accountId, tenantId];
-      const dateFilter = fromDate ? `AND ct.cond_inception_ts >= $${params.length + 1}` : '';
-      if (fromDate) {
-        params.push(fromDate);
-      }
-
-      const sql = `
-      SELECT DISTINCT
-        td.transaction_id as tx_transaction_id,
-        td.tx_event_ts,
-        td.tx_type,
-        td.interbank_settlement_amount as tx_amount,
-        td.interbank_settlement_currency as tx_ccy,
-        ct.cond_condition_id,
-        ct.cond_type,
-        ct.cond_reason,
-        ct.cond_inception_ts,
-        ct.cond_expiry_ts,
-        ct.cond_account_id,
-        CASE 
-          WHEN td.debtor_account_id = ct.cond_account_id THEN 'debtor'
-          WHEN td.creditor_account_id = ct.cond_account_id THEN 'creditor'
-          ELSE 'unknown'
-        END as account_role
-      FROM conditions_timeline ct
-      INNER JOIN transaction_detail td ON (
-        (td.debtor_account_id = ct.cond_account_id OR td.creditor_account_id = ct.cond_account_id)
-        AND td.tx_event_ts >= ct.cond_inception_ts
-        AND (ct.cond_expiry_ts IS NULL OR td.tx_event_ts <= ct.cond_expiry_ts)
-        AND td.tenant_id = ct.cond_tenant_id
-      )
-      WHERE ct.cond_account_id = $1
-        AND ct.cond_tenant_id = $2
-        ${dateFilter}
-      ORDER BY td.tx_event_ts DESC
-      LIMIT 500
-      `;
-
-      const response = await this.runSqlQuery(sql, 500, params, userJwt);
-      const rows = response.data ?? [];
-
-      this.logger.log(`Found ${rows.length} transactions for account ${accountId}`);
-
-      if (rows.length === 0) {
-        return {
-          transactions: [],
-          metadata: {
-            accountId,
-            totalRecords: 0,
-            status: 'DATA_NOT_FOUND',
-            joinMethod: 'Temporal (Time-based)',
-            message: 'No transactions found overlapping with condition windows (Temporal Join returned 0 results)',
-            queryTimestamp: new Date().toISOString(),
-          },
-        };
-      }
-
-      return {
-        transactions: rows.map((r) => ({
-          transactionId: r.tx_transaction_id ?? 'NOT_MAPPED',
-          date: r.tx_event_ts ?? 'NOT_FOUND',
-          type: r.tx_type ?? 'UNKNOWN',
-          amount: r.tx_amount ?? 0,
-          currency: r.tx_ccy ?? 'N/A',
-          outcome: r.cond_type === 'overridable-block' ? 'BLOCKED_OVERRIDABLE' : 'BLOCKED',
-          conditionId: r.cond_condition_id ?? 'NOT_FOUND',
-          conditionType: r.cond_type ?? 'UNKNOWN',
-          reason: r.cond_reason ?? 'NO_REASON_PROVIDED',
-          conditionPeriod: {
-            start: r.cond_inception_ts ?? 'NOT_FOUND',
-            end: r.cond_expiry_ts ?? 'NOT_FOUND',
-          },
-          accountRole: r.account_role ?? 'UNMAPPED',
-          accountId: r.cond_account_id ?? accountId,
-        })),
-        metadata: {
-          accountId,
-          totalRecords: rows.length,
-          status: 'SUCCESS',
-          joinMethod: 'Temporal (Time-based)',
-          queryTimestamp: new Date().toISOString(),
-        },
-      };
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error('Error fetching evaluated transactions by account', errorStack);
-      throw new HttpException('Failed to fetch evaluated transactions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -593,8 +470,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         condition_created_ts,
         created_by_user
       FROM conditions
-      WHERE ((account_id IN (${accountPlaceholders}) AND identity_type = 'ACCOUNT')
-             OR (entity_id = $2 AND identity_type = 'ENTITY'))
+      WHERE ((account_id IN (${accountPlaceholders}) AND target_type = 'ACCOUNT')
+             OR (entity_id = $2 AND target_type = 'ENTITY'))
         AND tenant_id = $1
         ${dateFilter}
       ORDER BY condition_inception_ts DESC

@@ -9,7 +9,6 @@ import {
   AccountNodeFullDataResponse,
   ConditionsContextByTransactionResponse,
   CounterpartyNodeFullDataResponse,
-  EvaluatedTransactionsResponse,
 } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
 import { AccountConditionsSummary, ConditionsListByAccountResponse } from '../gold-lakehouse/types/IAccountConditions.types';
 import { AlertHistoryAlertsResponse } from '../gold-lakehouse/types/IAlertHistory.types';
@@ -29,7 +28,7 @@ export class JupyterProxyService {
     private readonly conditionLakehouseService: ConditionLakehouseService,
     private readonly authService: AuthService,
     private readonly cacheService: CacheService,
-  ) {}
+  ) { }
 
   /**
    * Retrieve the JWT to forward to Gold Lakehouse for this call.
@@ -244,16 +243,5 @@ export class JupyterProxyService {
   ): Promise<ConditionsListByAccountResponse> {
     const userJwt = await this.getUserJwt(userId, fallbackJwt);
     return await this.conditionLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive ?? false, userJwt);
-  }
-
-  async getConditionsEvaluatedTransactions(
-    userId: string,
-    accountId: string,
-    tenantId: string,
-    fromDate?: string,
-    fallbackJwt?: string,
-  ): Promise<EvaluatedTransactionsResponse> {
-    const userJwt = await this.getUserJwt(userId, fallbackJwt);
-    return await this.conditionLakehouseService.getEvaluatedTransactionsByAccount(accountId, tenantId, fromDate, userJwt);
   }
 }
