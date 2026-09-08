@@ -30,6 +30,15 @@ export class JupyterProxyController {
     return userId;
   }
 
+  /**
+   * The JWT TazamaAuthGuard already validated on this request. Passed down as a fallback for
+   * when the voila-proxy-populated Redis cache (see JupyterProxyService.getUserJwt) missed,
+   * expired, or was never written.
+   */
+  private getRequestJwt(req: AuthenticatedRequest): string | undefined {
+    return req.user.token.tokenString;
+  }
+
   @Get('network-analysis/counterparty/:accountId')
   @ApiOperation({ summary: 'Proxy: Get Counterparty Network Analysis' })
   @ApiQuery({ name: 'timeRange', required: false, example: '30d' })
@@ -47,7 +56,13 @@ export class JupyterProxyController {
     if (timeRange && !['7d', '30d', '90d', '1y', 'all'].includes(timeRange)) {
       throw new BadRequestException('Invalid timeRange. Must be one of: 7d, 30d, 90d, 1y, all');
     }
-    return await this.proxyService.getCounterpartyNetworkData(userId, accountId, tenantId ?? 'DEFAULT', timeRange ?? '30d');
+    return await this.proxyService.getCounterpartyNetworkData(
+      userId,
+      accountId,
+      tenantId ?? 'DEFAULT',
+      timeRange ?? '30d',
+      this.getRequestJwt(req),
+    );
   }
 
   @Get('network-analysis/counterparty-node/:counterpartyId')
@@ -72,6 +87,7 @@ export class JupyterProxyController {
       counterpartyId,
       tenantId ?? 'DEFAULT',
       granularity as 'day' | 'month' | 'year',
+      this.getRequestJwt(req),
     );
   }
 
@@ -96,7 +112,13 @@ export class JupyterProxyController {
     if (granularity && !['day', 'month', 'year'].includes(granularity)) {
       throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
-    return await this.proxyService.getAlertHistorySummary(userId, tenantId, entityId, granularity as 'day' | 'month' | 'year');
+    return await this.proxyService.getAlertHistorySummary(
+      userId,
+      tenantId,
+      entityId,
+      granularity as 'day' | 'month' | 'year',
+      this.getRequestJwt(req),
+    );
   }
 
   @Get('alert-history/timeline')
@@ -114,7 +136,13 @@ export class JupyterProxyController {
     if (granularity && !['day', 'month', 'year'].includes(granularity)) {
       throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
-    return await this.proxyService.getAlertHistoryTimeline(userId, tenantId, entityId, granularity as 'day' | 'month' | 'year');
+    return await this.proxyService.getAlertHistoryTimeline(
+      userId,
+      tenantId,
+      entityId,
+      granularity as 'day' | 'month' | 'year',
+      this.getRequestJwt(req),
+    );
   }
 
   @Get('alert-history/alerts')
@@ -143,6 +171,7 @@ export class JupyterProxyController {
       granularity as 'day' | 'month' | 'year',
       page ?? 1,
       limit ?? 20,
+      this.getRequestJwt(req),
     );
   }
 
@@ -179,7 +208,15 @@ export class JupyterProxyController {
     if (granularity && !['day', 'week', 'month', 'year'].includes(granularity)) {
       throw new BadRequestException('Invalid granularity. Must be one of: day, week, month, year');
     }
-    return await this.proxyService.getTransactionHistoryData(userId, accountId, tenantId, startDate, endDate, granularity);
+    return await this.proxyService.getTransactionHistoryData(
+      userId,
+      accountId,
+      tenantId,
+      startDate,
+      endDate,
+      granularity,
+      this.getRequestJwt(req),
+    );
   }
 
   @Get('lake/analytics/benford/account/:accountId')
@@ -208,7 +245,7 @@ export class JupyterProxyController {
     if (!tenantId || !from || !to) {
       throw new BadRequestException('tenantId, from and to are required');
     }
-    return await this.proxyService.getBenfordByAccount(userId, accountId, tenantId, from, to);
+    return await this.proxyService.getBenfordByAccount(userId, accountId, tenantId, from, to, this.getRequestJwt(req));
   }
 
   @Get('network-analysis/transaction/:accountId')
@@ -237,7 +274,15 @@ export class JupyterProxyController {
     if (startDateInvalid || endDateInvalid) {
       throw new BadRequestException('Invalid date format. Use YYYY-MM-DD or ISO timestamp');
     }
-    return await this.proxyService.getTransactionNetworkData(userId, accountId, tenantId, timeRange, startDate, endDate);
+    return await this.proxyService.getTransactionNetworkData(
+      userId,
+      accountId,
+      tenantId,
+      timeRange,
+      startDate,
+      endDate,
+      this.getRequestJwt(req),
+    );
   }
 
   @Get('network-analysis/entity/:entityId')
@@ -257,7 +302,7 @@ export class JupyterProxyController {
     if (!['day', 'month', 'year'].includes(granularity)) {
       throw new BadRequestException('Invalid granularity. Must be one of: day, month, year');
     }
-    return await this.proxyService.getAccountNetworkData(userId, entityId, tenantId, granularity);
+    return await this.proxyService.getAccountNetworkData(userId, entityId, tenantId, granularity, this.getRequestJwt(req));
   }
 
   @Get('conditions/by-transaction/:transactionId')
@@ -274,7 +319,7 @@ export class JupyterProxyController {
       throw new BadRequestException('transactionId is required');
     }
     const userId = this.getUserId(req);
-    return await this.proxyService.getConditionsContextByTransaction(userId, transactionId, tenantId, asOfDate);
+    return await this.proxyService.getConditionsContextByTransaction(userId, transactionId, tenantId, asOfDate, this.getRequestJwt(req));
   }
 
   @Get('conditions/summary')
@@ -305,7 +350,7 @@ export class JupyterProxyController {
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
-    return await this.proxyService.getConditionsSummary(userId, accountId, tenantId, asOfDate);
+    return await this.proxyService.getConditionsSummary(userId, accountId, tenantId, asOfDate, this.getRequestJwt(req));
   }
 
   @Get('conditions/details')
@@ -337,7 +382,7 @@ export class JupyterProxyController {
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
-    return await this.proxyService.getConditionsDetails(userId, accountId, tenantId, asOfDate, showInactive);
+    return await this.proxyService.getConditionsDetails(userId, accountId, tenantId, asOfDate, showInactive, this.getRequestJwt(req));
   }
 
   @Get('conditions/evaluated-transactions/:accountId')
@@ -354,6 +399,6 @@ export class JupyterProxyController {
     if (!accountId || accountId.trim() === '') {
       throw new BadRequestException('accountId is required');
     }
-    return await this.proxyService.getConditionsEvaluatedTransactions(userId, accountId, tenantId, fromDate);
+    return await this.proxyService.getConditionsEvaluatedTransactions(userId, accountId, tenantId, fromDate, this.getRequestJwt(req));
   }
 }
