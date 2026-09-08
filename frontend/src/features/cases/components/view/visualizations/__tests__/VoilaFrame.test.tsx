@@ -64,6 +64,29 @@ describe('VoilaFrame', () => {
       expect(container.querySelector('iframe')).toBeNull();
     });
 
+    it('refuses to mount and never issues a request when a required param is an empty string', () => {
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'text/html' },
+      });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const { container } = render(
+        <VoilaFrame
+          notebookPath="test.ipynb"
+          title="Test"
+          queryParams={{ accountId: '', tenantId: 'DEFAULT' }}
+          requiredParams={['accountId']}
+        />,
+      );
+
+      expect(screen.getByTestId('error-state')).toBeInTheDocument();
+      expect(container.querySelector('iframe')).toBeNull();
+      // No voilaUrl was ever built, so no pre-flight request goes out either.
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
     it('refuses to mount when a required param is the literal string "undefined"', () => {
       const { container } = render(
         <VoilaFrame
