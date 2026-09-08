@@ -13,6 +13,8 @@ import * as path from 'node:path';
 import type { Request, Response } from 'express';
 import type { IncomingMessage } from 'node:http';
 import type { Socket } from 'node:net';
+import { RedisService } from './modules/shared/redis.service';
+import { RedisIoAdapter } from './redis-io.adapter';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -134,6 +136,36 @@ async function bootstrap(): Promise<void> {
     .build();
   const doc = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, doc);
+
+  // Run Nest's own init (provider instantiation + onModuleInit hooks, including RedisService's
+  // connection attempt) before app.listen() so a WebSocket Redis adapter can be attached before
+  // the underlying Socket.IO server is created. Safe to call explicitly: app.listen() below
+  // detects init already ran and does not repeat it.
+  await app.init();
+
+  const redisService = app.get(RedisService);
+  const redisPubClient = redisService.getClient();
+  if (redisPubClient) {
+    try {
+      const redisSubClient = redisPubClient.duplicate();
+      redisSubClient.on('error', (error: Error) => {
+        logger.error(`WebSocket Redis (sub) client error: ${error.message}`);
+      });
+      await redisSubClient.connect();
+
+      const redisIoAdapter = new RedisIoAdapter(app, redisPubClient, redisSubClient);
+      redisIoAdapter.connectToRedis();
+      app.useWebSocketAdapter(redisIoAdapter);
+    } catch (error) {
+      logger.warn(
+        `Failed to set up the WebSocket Redis adapter - live case updates will only reach clients on this instance: ${
+          (error as Error).message
+        }`,
+      );
+    }
+  } else {
+    logger.warn('Redis is unavailable at startup - WebSocket broadcasts will only reach clients on this instance');
+  }
 
   const port = configService.get<number>('PORT', 3090);
   await app.listen(port);
