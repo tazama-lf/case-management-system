@@ -29,7 +29,7 @@ export class JupyterProxyService {
     private readonly conditionLakehouseService: ConditionLakehouseService,
     private readonly authService: AuthService,
     private readonly cacheService: CacheService,
-  ) { }
+  ) {}
 
   /**
    * Retrieve the JWT to forward to Gold Lakehouse for this call.
