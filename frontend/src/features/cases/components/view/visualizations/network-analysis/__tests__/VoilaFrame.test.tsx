@@ -16,11 +16,12 @@ function postNotebookMessage(iframe: HTMLIFrameElement, data: unknown, origin = 
 }
 
 /**
- * Stubs global fetch to behave like the voila-proxy: a single GET pre-flight
- * reporting `status`/`contentType`, whose JSON body carries `message` -
- * mirroring the {statusCode, message, error} shape
- * voila-proxy.controller.ts/service.ts actually return. Not a HEAD: Voila
- * returns 405 for HEAD on this route, so the real component never sends one.
+ * Stubs global fetch to behave like the voila-proxy: a HEAD pre-flight
+ * reporting `status`/`contentType` with no body (Express strips HEAD bodies,
+ * same as a real fetch would see), and - only when the pre-flight isn't
+ * healthy - a follow-up GET whose JSON body carries `message`, mirroring the
+ * {statusCode, message, error} shape voila-proxy.controller.ts/service.ts
+ * actually return.
  */
 function stubProxyFetch({
   status = 200,
@@ -30,14 +31,20 @@ function stubProxyFetch({
   const ok = status >= 200 && status < 300;
   vi.stubGlobal(
     'fetch',
-    vi.fn(() =>
-      Promise.resolve({
+    vi.fn((_url: string, init?: RequestInit) => {
+      if (init?.method === 'HEAD') {
+        return Promise.resolve({
+          ok,
+          status,
+          headers: { get: (name: string) => (name.toLowerCase() === 'content-type' ? contentType : null) },
+        });
+      }
+      return Promise.resolve({
         ok,
         status,
-        headers: { get: (name: string) => (name.toLowerCase() === 'content-type' ? contentType : null) },
         json: () => Promise.resolve({ statusCode: status, message, error: 'Error' }),
-      }),
-    ),
+      });
+    }),
   );
 }
 

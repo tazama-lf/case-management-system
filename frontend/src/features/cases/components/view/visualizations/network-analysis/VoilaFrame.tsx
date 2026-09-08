@@ -63,13 +63,13 @@ const GENERIC_ERROR_MESSAGE =
  * component ignores both and instead races two checks in parallel with the
  * iframe load; whichever resolves first (or a timeout) sets the status:
  *
- * 1. A GET pre-flight checking status + Content-Type - catches a 401/502
- *    before it'd render as a JSON blob, and reads the real error message
- *    straight out of that same response body on failure. (Not a HEAD: Voila
- *    doesn't support it on this route and returns 405, which - since this
- *    check races the iframe's own load - would only *sometimes* lose that
- *    race and show a false error, exactly the kind of intermittent failure
- *    that's easy to mistake for backend flakiness.)
+ * 1. A HEAD pre-flight checking status + Content-Type - catches a 401
+ *    (session expired) before it'd render as a JSON blob. The proxy
+ *    short-circuits an authenticated HEAD on the render route itself,
+ *    without ever forwarding it to Voila (which doesn't support HEAD there
+ *    and would 405), so this costs nothing extra on the happy path. On
+ *    failure a follow-up GET reads the real error message out of the body,
+ *    since HEAD responses never carry one.
  * 2. A postMessage the notebook sends from its final cell once it's truly
  *    done (see notebooks/*.ipynb) - catches a caught backend error, a
  *    kernel crash, or a hung render, none of which change the HTTP status.
@@ -202,22 +202,31 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
     // 1) Pre-flight: catches proxy-level failures (401 session expired, 502
     //    Voila down) before they'd otherwise render as a JSON blob inside
     //    the frame while the parent thinks the load succeeded. This is a
-    //    real GET (see the doc comment above for why not HEAD), so on the
-    //    happy path it does mean the notebook executes twice - once here,
-    //    once for the iframe's own navigation. That's the tradeoff for
-    //    catching auth/gateway failures reliably; 401/502 specifically stay
-    //    cheap regardless, since the proxy rejects those before ever
-    //    reaching Voila.
+    //    HEAD - the proxy now short-circuits an authenticated HEAD on the
+    //    render route to a plain 200 without ever forwarding it to Voila
+    //    (see VoilaProxyController.proxyToVoila), so the happy path costs
+    //    nothing extra: no second kernel start, no second DLH round trip.
+    //    HEAD responses never carry a body, so on failure we issue one
+    //    follow-up GET - only then - to read the real error message out of
+    //    the JSON body; that GET is itself cheap for 401/502 specifically,
+    //    since the proxy rejects those before ever reaching Voila either.
+    //
+    //    Trade-off: because the proxy answers HEAD without actually asking
+    //    Voila anything, this no longer detects "Voila is genuinely down"
+    //    the way the (now-removed) full-GET pre-flight did - that failure
+    //    mode falls through to the postMessage/timeout check below instead,
+    //    surfacing ~readyTimeoutMs later rather than immediately.
     const runPreflight = async (): Promise<void> => {
       try {
-        const res = await fetch(voilaUrl, { credentials: 'include', signal: controller.signal });
+        const res = await fetch(voilaUrl, { method: 'HEAD', credentials: 'include', signal: controller.signal });
         const contentType = res.headers.get('content-type') ?? '';
         const isHealthy = res.status === PROXY_SUCCESS_STATUS && contentType.includes('text/html');
         if (isHealthy) return;
 
         let message = GENERIC_ERROR_MESSAGE;
         try {
-          const body: unknown = await res.json();
+          const bodyRes = await fetch(voilaUrl, { credentials: 'include', signal: controller.signal });
+          const body: unknown = await bodyRes.json();
           const bodyMessage = (body as { message?: unknown } | null)?.message;
           if (typeof bodyMessage === 'string' && bodyMessage !== '') {
             message = bodyMessage;
