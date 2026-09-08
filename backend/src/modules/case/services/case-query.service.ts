@@ -34,10 +34,9 @@ export class CaseQueryService {
     const uniqueTenantIds = [...new Set(tenantIds)];
     return new Map(
       await Promise.all(
-        uniqueTenantIds.map(async (tenantId): Promise<[string, SlaEscalationRatios]> => [
-          tenantId,
-          await this.slaPolicyUtil.getEscalationRatios(tenantId),
-        ]),
+        uniqueTenantIds.map(
+          async (tenantId): Promise<[string, SlaEscalationRatios]> => [tenantId, await this.slaPolicyUtil.getEscalationRatios(tenantId)],
+        ),
       ),
     );
   }

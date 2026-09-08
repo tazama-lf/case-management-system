@@ -261,7 +261,7 @@ describe('CouchdbService', () => {
       mockDb.find.mockResolvedValueOnce({ docs: mockDocs });
       mockDb.find.mockResolvedValueOnce({ docs: new Array(20) });
 
-      const result = await service.queryDocuments({ page: 1, limit: 10 });
+      const result = await service.queryDocuments({ tenantId: '', page: 1, limit: 10 });
 
       expect(mockDb.find).toHaveBeenCalledWith({
         selector: {},
@@ -301,7 +301,7 @@ describe('CouchdbService', () => {
       ['archive true', { archive: true }, { archive: true }],
       ['archive false', { archive: false }, { archive: false }],
     ])('should filter by %s', async (_description, filterParam, expectedSelector) => {
-      await service.queryDocuments({ ...filterParam, page: 1, limit: 10 });
+      await service.queryDocuments({ tenantId: '', ...filterParam, page: 1, limit: 10 });
 
       expect(mockDb.find).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -337,7 +337,7 @@ describe('CouchdbService', () => {
     });
 
     it('should handle search with text fields', async () => {
-      await service.queryDocuments({ search: 'test query', page: 1, limit: 10 });
+      await service.queryDocuments({ tenantId: '', search: 'test query', page: 1, limit: 10 });
 
       expect(mockDb.find).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -355,7 +355,7 @@ describe('CouchdbService', () => {
     it('should handle search with UUID (36 characters)', async () => {
       const uuid = '123e4567-e89b-12d3-a456-426614174000';
 
-      await service.queryDocuments({ search: uuid, page: 1, limit: 10 });
+      await service.queryDocuments({ tenantId: '', search: uuid, page: 1, limit: 10 });
 
       const call = (mockDb.find as jest.Mock).mock.calls[0][0];
       expect(call.selector.$or).toContainEqual({ id: uuid });
@@ -363,7 +363,7 @@ describe('CouchdbService', () => {
     });
 
     it('should calculate skip correctly for different pages', async () => {
-      await service.queryDocuments({ page: 3, limit: 20 });
+      await service.queryDocuments({ tenantId: '', page: 3, limit: 20 });
 
       expect(mockDb.find).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -375,7 +375,7 @@ describe('CouchdbService', () => {
     it('should handle query errors', async () => {
       mockDb.find.mockRejectedValue(new Error('Query failed'));
 
-      await expect(service.queryDocuments({ page: 1, limit: 10 })).rejects.toThrow(InternalServerErrorException);
+      await expect(service.queryDocuments({ tenantId: '', page: 1, limit: 10 })).rejects.toThrow(InternalServerErrorException);
     });
   });
 

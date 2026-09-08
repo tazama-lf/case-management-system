@@ -312,7 +312,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
 
       const edges: NetworkEdge[] = cleanedAccountIds.map((accountId) => {
         const stats = accountStats.get(accountId);
-        const currency = stats && stats.currencies.size === 1 ? Array.from(stats.currencies)[0] : undefined;
+        const currency = stats?.currencies.size === 1 ? Array.from(stats.currencies)[0] : undefined;
         const flags = { alerted: stats?.alerted ?? false, investigated: stats?.investigated ?? false };
 
         nodesMap.set(accountId, {

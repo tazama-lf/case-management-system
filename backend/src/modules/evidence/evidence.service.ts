@@ -524,7 +524,7 @@ export class EvidenceService {
         message: allVerified ? 'All requested attachments verified' : 'One or more attachments failed verification',
         verifiedAt: new Date(),
         verifiedBy: userId,
-        details,      
+        details,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -564,7 +564,7 @@ export class EvidenceService {
   }
 
   async getEvidenceByCaseId(caseId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
-    const allDocs: any[] = [];              
+    const allDocs: any[] = [];
 
     const query: QueryDocumentsParams = { caseId, tenantId, page: 1, limit: 100 };
 

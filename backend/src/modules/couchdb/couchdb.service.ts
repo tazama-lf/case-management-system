@@ -108,7 +108,9 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
-  async queryDocuments(params: QueryDocumentsParams): Promise<{ data: any[]; page: number; limit: number; total: number; totalPages: number }> {
+  async queryDocuments(
+    params: QueryDocumentsParams,
+  ): Promise<{ data: any[]; page: number; limit: number; total: number; totalPages: number }> {
     const { id, evidenceId, reportId, tenantId, uploadedBy, taskId, caseId, evidenceType, verified, archive, search, page, limit } = params;
 
     if (!Number.isInteger(page) || page < 1) {
