@@ -662,8 +662,9 @@ export class TriageService {
             investigationGroup.id,
           );
 
+          let amlCaseId: number | undefined;
           try {
-            await this.caseCreateService.createCaseWithInvestigationTask(
+            const amlCase = await this.caseCreateService.createCaseWithInvestigationTask(
               CaseType.AML,
               userId,
               tenantId,
@@ -672,11 +673,7 @@ export class TriageService {
               'SUPERVISOR',
               investigationGroup.id,
             );
-
-            // Detach the alert now that both group cases exist - FRAUD_AND_AML alerts
-            // link via investigation_groups.alert_id, not alerts.case_id (see
-            // AlertRepository.getAlertByCaseId / getGroupedCasesForAlert).
-            await this.alertService.updateAlert(alertId, userId, { caseId: null } as unknown as UpdateAlertDTO, undefined);
+            amlCaseId = amlCase.caseId;
           } catch (amlError) {
             const amlErrorMessage = amlError instanceof Error ? amlError.message : String(amlError);
             this.logger.error(
@@ -722,6 +719,37 @@ export class TriageService {
             }
 
             throw amlError;
+          }
+
+          // Detach the alert now that both group cases exist - FRAUD_AND_AML alerts
+          // link via investigation_groups.alert_id, not alerts.case_id (see
+          // AlertRepository.getAlertByCaseId / getGroupedCasesForAlert).
+          try {
+            await this.alertService.updateAlert(alertId, userId, { caseId: null } as unknown as UpdateAlertDTO, undefined);
+          } catch (detachError) {
+            const detachErrorMessage = detachError instanceof Error ? detachError.message : String(detachError);
+            this.logger.error(
+              `FRAUD_AND_AML triage for alert ${alertId}: alert detachment failed after both cases were created (FRAUD case ${caseId}, AML case ${amlCaseId}, group ${investigationGroup.id}) - preserving both cases and group for manual reconciliation`,
+              detachError instanceof Error ? detachError.stack : undefined,
+              TriageService.name,
+            );
+
+            // Both the FRAUD case (repurposed original) and the AML case have been
+            // created successfully at this point. Abandoning only the FRAUD case and
+            // deleting the group would orphan the AML case. Instead, preserve both cases
+            // and the investigation group so an operator can manually reconcile the alert
+            // (e.g. re-run detachment or close the cases). We log the failure and rethrow
+            // so the caller is aware, but we do NOT delete the group or abandon either case.
+            await this.loggingOrchestrationService.logActions({
+              userId,
+              operation: 'AI_TRIAGE_FRAUD_AND_AML_DETACH_FAILED',
+              entityName: 'Case',
+              actionPerformed: `Alert detachment failed for alert ${alertId}; FRAUD case ${caseId} and AML case ${amlCaseId} (group ${investigationGroup.id}) preserved for manual reconciliation: ${detachErrorMessage}`,
+              outcome: Outcome.FAILURE,
+              tenantId,
+            });
+
+            throw detachError;
           }
 
           return;

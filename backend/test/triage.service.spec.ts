@@ -660,6 +660,59 @@ describe('TriageService', () => {
       );
     });
 
+    it('should preserve both cases and the group when alert detachment fails after AML creation succeeds', async () => {
+      taskService.createTask.mockResolvedValue(mockTask as any);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
+      (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
+      mockedAxios.post.mockResolvedValue({
+        data: { confidence: 0.95, priority: 0.8 },
+      });
+      taskService.updateTask.mockResolvedValue(mockTask as any);
+      loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
+      loggingOrchestrationService.logActions.mockResolvedValue(undefined);
+      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
+      flowableService.handleCaseAbandoned.mockResolvedValue(undefined);
+      caseRepository.updateCase.mockResolvedValue(mockCase as any);
+      prismaService.investigationGroup.delete.mockResolvedValue({ id: 123 });
+
+      // AML case creation succeeds
+      caseCreateService.createCaseWithInvestigationTask.mockResolvedValueOnce({
+        caseId: 456,
+        message: 'Case created, BPMN will create investigation task',
+        taskId: 2,
+      });
+
+      // First updateAlert call (prediction update in updateAlertAndUpdateTriageTask) succeeds;
+      // second call (alert detachment) fails.
+      alertService.updateAlert
+        .mockResolvedValueOnce(mockAlert as any)
+        .mockRejectedValueOnce(new Error('Detachment failed'));
+
+      jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
+        confidence_per: 95,
+        alertType: CaseType.FRAUD_AND_AML,
+        isTruePositive: true,
+        priorityScore: 0.8,
+      });
+
+      await expect(service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123')).rejects.toThrow(InternalServerErrorException);
+
+      // AML case was created successfully
+      expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
+
+      // Neither case is abandoned and the group is NOT deleted - both cases and the
+      // group are preserved for manual reconciliation.
+      expect(caseRepository.updateCase).not.toHaveBeenCalled();
+      expect(flowableService.handleCaseAbandoned).not.toHaveBeenCalled();
+      expect(prismaService.investigationGroup.delete).not.toHaveBeenCalled();
+
+      // The detachment failure is logged for manual reconciliation.
+      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'AI_TRIAGE_FRAUD_AND_AML_DETACH_FAILED' }),
+      );
+    });
+
     it('should create investigation task for AML type when true positive', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
       casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
