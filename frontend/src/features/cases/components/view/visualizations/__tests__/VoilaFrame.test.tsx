@@ -87,6 +87,53 @@ describe('VoilaFrame', () => {
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
+    it('refuses to mount and never issues a request when a required param is whitespace-only', () => {
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'text/html' },
+      });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const { container } = render(
+        <VoilaFrame
+          notebookPath="test.ipynb"
+          title="Test"
+          queryParams={{ accountId: '   ', tenantId: 'DEFAULT' }}
+          requiredParams={['accountId']}
+        />,
+      );
+
+      expect(screen.getByTestId('error-state')).toBeInTheDocument();
+      expect(container.querySelector('iframe')).toBeNull();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('refuses to mount (rather than throwing) when a required param name was never a key in queryParams at all', () => {
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'text/html' },
+      });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      // 'debtorAccountId' is absent from queryParams entirely - not just
+      // undefined/empty - so sanitizedParams['debtorAccountId'] is
+      // `undefined` at runtime even though its declared type is `string`.
+      const { container } = render(
+        <VoilaFrame
+          notebookPath="test.ipynb"
+          title="Test"
+          queryParams={{ accountId: 'ACC-001' }}
+          requiredParams={['debtorAccountId']}
+        />,
+      );
+
+      expect(screen.getByTestId('error-state')).toBeInTheDocument();
+      expect(container.querySelector('iframe')).toBeNull();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
     it('refuses to mount when a required param is the literal string "undefined"', () => {
       const { container } = render(
         <VoilaFrame

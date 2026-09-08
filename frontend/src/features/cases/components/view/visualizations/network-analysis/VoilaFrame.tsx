@@ -100,10 +100,21 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
   const missingRequiredParams = React.useMemo(
     // Deliberately broader than isMissingValue (which strips exactly
     // undefined/null/"undefined"/"null"): a required param that comes
-    // through as an empty string is just as unusable as a missing one, so
-    // any falsy value here - not only the four stripped cases - fails the
-    // gate.
-    () => (requiredParams ?? []).filter((name) => !sanitizedParams[name]),
+    // through as an empty or whitespace-only string is just as unusable as
+    // a missing one, so any blank value here - not only the four stripped
+    // cases - fails the gate instead of mounting the iframe and letting the
+    // notebook's own require_notebook_params() reject it after a wasted
+    // round trip.
+    //
+    // The `?.` below is load-bearing, not redundant: TS types
+    // sanitizedParams[name] as `string` because the object's declared type
+    // is Record<string, string>, but `name` comes from the caller's
+    // requiredParams array and isn't guaranteed to be a key that was ever
+    // set - a name absent from queryParams entirely looks up as `undefined`
+    // at runtime regardless of what the index signature claims. Dropping
+    // the `?.` would throw on `.trim()` for exactly that case.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- sanitizedParams[name] can be undefined at runtime for a name that was never a key, despite the Record<string, string> type saying otherwise
+    () => (requiredParams ?? []).filter((name) => !sanitizedParams[name]?.trim()),
     [requiredParams, sanitizedParams],
   );
 
