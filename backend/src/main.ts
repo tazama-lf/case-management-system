@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { parseAllowedOrigins } from './config/cors.config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -120,9 +121,10 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  // Temporary - allow all origins (for testing only)
+  // Exact-match allowlist. `credentials: true` is required by the cookie-authenticated
+  // Voila iframe and the cross-origin frontend, so the origin list must never be reflected.
   app.enableCors({
-    origin: true,
+    origin: parseAllowedOrigins(configService.getOrThrow<string>('CORS_ALLOWED_ORIGINS')),
     credentials: true,
   });
 

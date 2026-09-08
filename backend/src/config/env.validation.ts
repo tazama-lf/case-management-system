@@ -11,6 +11,12 @@ enum StartupType {
   NATS = 'nats',
 }
 
+enum SameSitePolicy {
+  STRICT = 'strict',
+  LAX = 'lax',
+  NONE = 'none',
+}
+
 class EnvironmentVariables {
   @IsEnum(NodeEnv)
   NODE_ENV!: NodeEnv;
@@ -112,6 +118,16 @@ class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   COUCHDB_DATABASE!: string;
+
+  @IsBooleanString()
+  SESSION_COOKIE_SECURE!: string;
+
+  @IsEnum(SameSitePolicy)
+  SESSION_COOKIE_SAMESITE!: SameSitePolicy;
+
+  @IsString()
+  @IsNotEmpty()
+  CORS_ALLOWED_ORIGINS!: string;
 
   @IsOptional()
   @IsString()
