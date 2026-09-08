@@ -12,17 +12,26 @@ describe('CouchdbService', () => {
   let mockNanoInstance: any;
   let mockDb: any;
 
-  const createMockConfig = () => ({
-    get: jest.fn((key: string) => {
-      const config = {
-        COUCHDB_URL: 'http://10.10.80.16:5984',
-        COUCHDB_USERNAME: 'simon',
-        COUCHDB_PASSWORD: '1234',
-        COUCHDB_DATABASE: 'cms-evidence',
-      };
-      return config[key];
-    }),
-  });
+  const createMockConfig = (overrides: Record<string, string | undefined> = {}) => {
+    const config: Record<string, string | undefined> = {
+      COUCHDB_URL: 'http://10.10.80.16:5984',
+      COUCHDB_USERNAME: 'simon',
+      COUCHDB_PASSWORD: '1234',
+      COUCHDB_DATABASE: 'cms-evidence',
+      ...overrides,
+    };
+
+    return {
+      get: jest.fn((key: string) => config[key]),
+      getOrThrow: jest.fn((key: string) => {
+        const value = config[key];
+        if (value === undefined) {
+          throw new Error(`Configuration key "${key}" does not exist`);
+        }
+        return value;
+      }),
+    };
+  };
 
   beforeEach(async () => {
     mockDb = {
@@ -76,16 +85,36 @@ describe('CouchdbService', () => {
       expect(nano).toHaveBeenCalledWith(expect.stringContaining('simon:1234@'));
     });
 
-    it('should use default values when config is not provided', () => {
-      const mockConfigServiceWithDefaults = {
-        get: jest.fn().mockReturnValue(undefined),
-      };
+    it.each(['COUCHDB_URL', 'COUCHDB_USERNAME', 'COUCHDB_PASSWORD', 'COUCHDB_DATABASE'])(
+      'should fail to construct when %s is missing instead of falling back to a default',
+      async (missingKey) => {
+        await expect(
+          Test.createTestingModule({
+            providers: [CouchdbService, { provide: ConfigService, useValue: createMockConfig({ [missingKey]: undefined }) }],
+          }).compile(),
+        ).rejects.toThrow(`Configuration key "${missingKey}" does not exist`);
+      },
+    );
 
-      const module = Test.createTestingModule({
-        providers: [CouchdbService, { provide: ConfigService, useValue: mockConfigServiceWithDefaults }],
+    it('should fail to construct when COUCHDB_URL is not a valid URL', async () => {
+      await expect(
+        Test.createTestingModule({
+          providers: [CouchdbService, { provide: ConfigService, useValue: createMockConfig({ COUCHDB_URL: 'not-a-url' }) }],
+        }).compile(),
+      ).rejects.toThrow('COUCHDB_URL is not a valid URL');
+    });
+
+    it('should percent-encode credentials containing URL-special characters', async () => {
+      (nano as any).mockClear();
+
+      await Test.createTestingModule({
+        providers: [
+          CouchdbService,
+          { provide: ConfigService, useValue: createMockConfig({ COUCHDB_PASSWORD: 'p@ss:word/1' }) },
+        ],
       }).compile();
 
-      expect(module).toBeDefined();
+      expect(nano).toHaveBeenCalledWith(expect.stringContaining('simon:p%40ss%3Aword%2F1@'));
     });
   });
 
