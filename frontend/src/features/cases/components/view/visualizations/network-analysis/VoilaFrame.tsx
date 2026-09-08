@@ -51,9 +51,13 @@ const GENERIC_ERROR_MESSAGE =
  * component ignores both and instead races two checks in parallel with the
  * iframe load; whichever resolves first (or a timeout) sets the status:
  *
- * 1. A HEAD pre-flight checking status + Content-Type - catches a 401/502
- *    before it'd render as a JSON blob. On failure, a follow-up GET reads
- *    the real error message out of the JSON body.
+ * 1. A GET pre-flight checking status + Content-Type - catches a 401/502
+ *    before it'd render as a JSON blob, and reads the real error message
+ *    straight out of that same response body on failure. (Not a HEAD: Voila
+ *    doesn't support it on this route and returns 405, which - since this
+ *    check races the iframe's own load - would only *sometimes* lose that
+ *    race and show a false error, exactly the kind of intermittent failure
+ *    that's easy to mistake for backend flakiness.)
  * 2. A postMessage the notebook sends from its final cell once it's truly
  *    done (see notebooks/*.ipynb) - catches a caught backend error, a
  *    kernel crash, or a hung render, none of which change the HTTP status.
@@ -174,24 +178,23 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
 
     // 1) Pre-flight: catches proxy-level failures (401 session expired, 502
     //    Voila down) before they'd otherwise render as a JSON blob inside
-    //    the frame while the parent thinks the load succeeded. A cheap HEAD
-    //    is enough to check status + Content-Type (both come back on HEAD
-    //    responses same as GET) without paying for a full notebook
-    //    execution on every load. Only on a confirmed failure do we issue a
-    //    second, GET request - to read the actual error message out of the
-    //    JSON body - since that second request is itself cheap (proxy-level
-    //    failures return before ever reaching Voila).
+    //    the frame while the parent thinks the load succeeded. This is a
+    //    real GET (see the doc comment above for why not HEAD), so on the
+    //    happy path it does mean the notebook executes twice - once here,
+    //    once for the iframe's own navigation. That's the tradeoff for
+    //    catching auth/gateway failures reliably; 401/502 specifically stay
+    //    cheap regardless, since the proxy rejects those before ever
+    //    reaching Voila.
     const runPreflight = async (): Promise<void> => {
       try {
-        const headRes = await fetch(voilaUrl, { method: 'HEAD', credentials: 'include', signal: controller.signal });
-        const contentType = headRes.headers.get('content-type') ?? '';
-        const isHealthy = headRes.status === PROXY_SUCCESS_STATUS && contentType.includes('text/html');
+        const res = await fetch(voilaUrl, { credentials: 'include', signal: controller.signal });
+        const contentType = res.headers.get('content-type') ?? '';
+        const isHealthy = res.status === PROXY_SUCCESS_STATUS && contentType.includes('text/html');
         if (isHealthy) return;
 
         let message = GENERIC_ERROR_MESSAGE;
         try {
-          const bodyRes = await fetch(voilaUrl, { credentials: 'include', signal: controller.signal });
-          const body: unknown = await bodyRes.json();
+          const body: unknown = await res.json();
           const bodyMessage = (body as { message?: unknown } | null)?.message;
           if (typeof bodyMessage === 'string' && bodyMessage !== '') {
             message = bodyMessage;
@@ -199,7 +202,7 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
         } catch {
           // Body wasn't valid/parseable JSON - fall back to the generic message.
         }
-        resolveError(message, { httpStatus: headRes.status, contentType });
+        resolveError(message, { httpStatus: res.status, contentType });
       } catch (err) {
         if (controller.signal.aborted) return;
         resolveError(GENERIC_ERROR_MESSAGE, { error: err instanceof Error ? err.message : String(err) });

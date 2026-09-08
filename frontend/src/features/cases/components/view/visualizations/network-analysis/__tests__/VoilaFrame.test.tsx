@@ -16,11 +16,11 @@ function postNotebookMessage(iframe: HTMLIFrameElement, data: unknown, origin = 
 }
 
 /**
- * Stubs global fetch to behave like the voila-proxy: a HEAD pre-flight
- * reporting `status`/`contentType`, and (only hit when the pre-flight fails)
- * a follow-up GET whose JSON body carries `message` - mirroring the
- * {statusCode, message, error} shape voila-proxy.controller.ts/service.ts
- * actually return.
+ * Stubs global fetch to behave like the voila-proxy: a single GET pre-flight
+ * reporting `status`/`contentType`, whose JSON body carries `message` -
+ * mirroring the {statusCode, message, error} shape
+ * voila-proxy.controller.ts/service.ts actually return. Not a HEAD: Voila
+ * returns 405 for HEAD on this route, so the real component never sends one.
  */
 function stubProxyFetch({
   status = 200,
@@ -30,20 +30,14 @@ function stubProxyFetch({
   const ok = status >= 200 && status < 300;
   vi.stubGlobal(
     'fetch',
-    vi.fn((_url: string, init?: RequestInit) => {
-      if (init?.method === 'HEAD') {
-        return Promise.resolve({
-          ok,
-          status,
-          headers: { get: (name: string) => (name.toLowerCase() === 'content-type' ? contentType : null) },
-        });
-      }
-      return Promise.resolve({
+    vi.fn(() =>
+      Promise.resolve({
         ok,
         status,
+        headers: { get: (name: string) => (name.toLowerCase() === 'content-type' ? contentType : null) },
         json: () => Promise.resolve({ statusCode: status, message, error: 'Error' }),
-      });
-    }),
+      }),
+    ),
   );
 }
 
@@ -218,20 +212,14 @@ describe('VoilaFrame', () => {
     vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3090');
     vi.stubGlobal(
       'fetch',
-      vi.fn((_url: string, init?: RequestInit) => {
-        if (init?.method === 'HEAD') {
-          return Promise.resolve({
-            ok: false,
-            status: 502,
-            headers: { get: () => 'application/json' },
-          });
-        }
-        return Promise.resolve({
+      vi.fn(() =>
+        Promise.resolve({
           ok: false,
           status: 502,
+          headers: { get: () => 'application/json' },
           json: () => Promise.reject(new Error('not json')),
-        });
-      }),
+        }),
+      ),
     );
 
     render(
