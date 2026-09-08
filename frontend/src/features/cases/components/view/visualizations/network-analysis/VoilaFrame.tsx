@@ -19,6 +19,18 @@ interface VoilaFrameProps {
   readyTimeoutMs?: number;
 }
 
+/**
+ * The postMessage payload contract with the notebook side. This is the
+ * single source of truth for the *shape* on the frontend, but the actual
+ * values are constructed independently in Python - see
+ * `notebooks/_cms_signal_ready.py` (the shared helper every notebook's
+ * final cell calls) for the other half of this contract. If the two drift
+ * (e.g. a typo in `source`), `isVoilaNotebookMessage` below silently
+ * rejects the message and the parent times out after `readyTimeoutMs`
+ * instead of ever seeing 'ready' - there's no end-to-end test across the
+ * JS/Python boundary that would catch that, so keep both sides in sync by
+ * hand when either changes.
+ */
 interface VoilaNotebookMessage {
   source: 'voila-notebook';
   status: 'ready' | 'error';
@@ -174,8 +186,8 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
     const resolveError = (message: string, logContext: Record<string, unknown>): void => {
       if (resolved) return;
       resolved = true;
-      // No frontend monitoring/telemetry service is wired up yet; this is
-      // currently the only record that a visualization silently failed.
+      // TODO(telemetry): wire into Sentry/RUM when available - console.error
+      // is currently the only record that a visualization silently failed.
       console.error('[VoilaFrame] visualization failed to load', { notebookPath, voilaUrl, ...logContext });
       setErrorMessage(message);
       setStatus('error');
