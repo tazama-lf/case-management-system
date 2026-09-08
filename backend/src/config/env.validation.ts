@@ -168,5 +168,12 @@ export const validate = (config: Record<string, unknown>): EnvironmentVariables 
     throw new Error(errors.toString());
   }
 
+  // Cross-field: browsers drop a `SameSite=None` cookie that is not also `Secure`,
+  // so this combination lets login "succeed" while the session cookie is never
+  // stored or sent. Fail at boot rather than shipping a silently-broken session.
+  if (validatedConfig.SESSION_COOKIE_SAMESITE === SameSitePolicy.NONE && validatedConfig.SESSION_COOKIE_SECURE !== 'true') {
+    throw new Error('SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true');
+  }
+
   return validatedConfig;
 };

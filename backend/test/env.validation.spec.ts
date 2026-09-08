@@ -48,6 +48,35 @@ describe('env.validation', () => {
     expect(result.COUCHDB_DATABASE).toBe('cms-evidence');
   });
 
+  describe('session cookie cross-field validation', () => {
+    it('rejects SameSite=none without Secure=true', () => {
+      const config = createValidConfig({
+        SESSION_COOKIE_SAMESITE: 'none',
+        SESSION_COOKIE_SECURE: 'false',
+      });
+
+      expect(() => validate(config)).toThrow('SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true');
+    });
+
+    it('accepts SameSite=none with Secure=true', () => {
+      const config = createValidConfig({
+        SESSION_COOKIE_SAMESITE: 'none',
+        SESSION_COOKIE_SECURE: 'true',
+      });
+
+      expect(validate(config).SESSION_COOKIE_SAMESITE).toBe('none');
+    });
+
+    it('accepts SameSite=lax with Secure=false', () => {
+      const config = createValidConfig({
+        SESSION_COOKIE_SAMESITE: 'lax',
+        SESSION_COOKIE_SECURE: 'false',
+      });
+
+      expect(validate(config).SESSION_COOKIE_SAMESITE).toBe('lax');
+    });
+  });
+
   describe('CouchDB variables', () => {
     const couchdbKeys = ['COUCHDB_URL', 'COUCHDB_USERNAME', 'COUCHDB_PASSWORD', 'COUCHDB_DATABASE'] as const;
 
