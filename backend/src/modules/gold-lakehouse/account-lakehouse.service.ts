@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from './gold-lakehouse.service';
@@ -60,16 +60,18 @@ export class AccountLakehouseService extends GoldLakehouseService {
         `;
       const entityMetadataResp = await this.runSqlQuery(entitySQL, 1, [referenceId, tenantId], userJwt);
       const entityMetadataRow = entityMetadataResp.data?.[0];
-      const entityMetadata = {
-        debtorId: entityMetadataRow?.debtor_Id,
-        debtorAccountId: entityMetadataRow?.debtor_account_id,
-        debtorName: entityMetadataRow?.debtor_name,
-        creditorId: entityMetadataRow?.creditor_id,
-        creditorAccountId: entityMetadataRow?.creditor_account_id,
-        creditorName: entityMetadataRow?.creditor_name,
-      };
+      if (!entityMetadataRow) {
+        throw new NotFoundException(`No transaction found for alert ${alertId} (referenceId: ${referenceId}, tenant: ${tenantId})`);
+      }
 
-      return entityMetadata;
+      return {
+        debtorId: entityMetadataRow.debtor_Id,
+        debtorAccountId: entityMetadataRow.debtor_account_id,
+        debtorName: entityMetadataRow.debtor_name,
+        creditorId: entityMetadataRow.creditor_id,
+        creditorAccountId: entityMetadataRow.creditor_account_id,
+        creditorName: entityMetadataRow.creditor_name,
+      };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;

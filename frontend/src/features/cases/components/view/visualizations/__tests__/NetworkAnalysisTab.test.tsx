@@ -1,21 +1,25 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import NetworkAnalysisTab from '../network-analysis/NetworkAnalysisTab';
 
+const mockUseEntityMetadata = vi.fn();
+
 vi.mock('@/features/cases/hooks/useEntityMetadata', () => ({
-  useEntityMetadata: () => ({
-    entityMetadata: {
-      creditorAccountId: 'ACC-001',
-      debtorAccountId: 'ACC-002',
-      creditorId: 'CRED-001',
-      debtorId: 'DEB-001',
-    },
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
+  useEntityMetadata: (...args: unknown[]) => mockUseEntityMetadata(...args),
 }));
+
+const defaultMetadata = {
+  entityMetadata: {
+    creditorAccountId: 'ACC-001',
+    debtorAccountId: 'ACC-002',
+    creditorId: 'CRED-001',
+    debtorId: 'DEB-001',
+  },
+  isLoading: false,
+  error: null,
+  refetch: vi.fn(),
+};
 
 vi.mock('../network-analysis/TransactionNetworkTab', () => ({
   default: ({ transactionId }: { transactionId?: string }) => (
@@ -50,9 +54,46 @@ describe('NetworkAnalysisTab', () => {
     tenantId: 'test-tenant',
   };
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseEntityMetadata.mockReturnValue(defaultMetadata);
+  });
+
   it('renders without crashing', () => {
     render(<NetworkAnalysisTab {...mockProps} />);
     expect(screen.getByText(/Network Navigator/i)).toBeInTheDocument();
+  });
+
+  it('shows a "no data" error state instead of forwarding undefined account IDs when the metadata lookup 404s', () => {
+    mockUseEntityMetadata.mockReturnValue({
+      entityMetadata: undefined,
+      isLoading: false,
+      error: new Error('No transaction found for alert 1'),
+      refetch: vi.fn(),
+    });
+    render(<NetworkAnalysisTab {...mockProps} />);
+    expect(
+      screen.getByText('No transaction data available'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Upstream and downstream transaction flows/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a "no data" error state when entityMetadata is a truthy all-empty stub (defense in depth)', () => {
+    mockUseEntityMetadata.mockReturnValue({
+      entityMetadata: {},
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    render(<NetworkAnalysisTab {...mockProps} />);
+    expect(
+      screen.getByText('No transaction data available'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Upstream and downstream transaction flows/i),
+    ).not.toBeInTheDocument();
   });
 
   it('displays all three sub-tabs', () => {

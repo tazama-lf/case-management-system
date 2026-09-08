@@ -99,7 +99,7 @@ describe('NetworkAnalysisTab', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  it('shows loading state when entityMetadata is undefined', () => {
+  it('shows a "no data" error state (not a stuck loading state) when entityMetadata settles to undefined', () => {
     vi.mocked(useEntityMetadata).mockReturnValue({
       entityMetadata: undefined,
       isLoading: false,
@@ -109,7 +109,26 @@ describe('NetworkAnalysisTab', () => {
 
     render(<NetworkAnalysisTab {...defaultProps} />);
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByText('No transaction data available')).toBeInTheDocument();
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+  });
+
+  it('shows a "no data" error state when entityMetadata is truthy but every usable id is falsy', () => {
+    vi.mocked(useEntityMetadata).mockReturnValue({
+      entityMetadata: {
+        creditorAccountId: undefined,
+        debtorAccountId: undefined,
+        creditorId: undefined,
+        debtorId: undefined,
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<NetworkAnalysisTab {...defaultProps} />);
+
+    expect(screen.getByText('No transaction data available')).toBeInTheDocument();
   });
 
   it('renders TransactionNetworkTab by default', () => {

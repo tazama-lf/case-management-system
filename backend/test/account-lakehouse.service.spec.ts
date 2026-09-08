@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { HttpException, InternalServerErrorException } from '@nestjs/common';
+import { HttpException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
@@ -536,6 +536,14 @@ describe('AccountLakehouseService', () => {
       alertRepo.getReferenceId.mockResolvedValue({ referenceIdName: 'EndToEndId' });
 
       await expect(service.getEntityMetadataByAlertId(1, 'DEFAULT')).rejects.toThrow('ReferenceId not found in transaction data');
+    });
+
+    it('throws NotFoundException instead of returning an all-undefined stub when the SQL query matches zero rows', async () => {
+      alertRepo.getAlertById.mockResolvedValue(mockAlert);
+      alertRepo.getReferenceId.mockResolvedValue({ referenceIdName: 'EndToEndId' });
+      http.mockReturnValueOnce(okHttp([]));
+
+      await expect(service.getEntityMetadataByAlertId(1, 'DEFAULT')).rejects.toThrow(NotFoundException);
     });
 
     it('throws when the SQL query fails', async () => {
