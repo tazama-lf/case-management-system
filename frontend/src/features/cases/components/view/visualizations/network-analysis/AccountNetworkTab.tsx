@@ -18,7 +18,7 @@ const AccountNetworkTab: React.FC<AccountNetworkTabProps> = ({
 }) => {
   const queryParams = React.useMemo(
     () => ({
-      entity_id: entityId || '',
+      entity_id: entityId,
       tenantId,
       granularity: timeRange || 'month',
     }),
@@ -30,6 +30,7 @@ const AccountNetworkTab: React.FC<AccountNetworkTabProps> = ({
       notebookPath="account-network.ipynb"
       title="Account Network Analysis"
       queryParams={queryParams}
+      requiredParams={['entity_id']}
     />
   );
 };
