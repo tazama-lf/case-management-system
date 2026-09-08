@@ -52,6 +52,46 @@ describe('TransactionHistoryTab', () => {
     expect(screen.getByText('Loading entity metadata...')).toBeInTheDocument();
   });
 
+  it('shows a "no data" error state instead of forwarding undefined account IDs when the metadata lookup 404s', () => {
+    mockUseEntityMetadata.mockReturnValue({
+      entityMetadata: undefined,
+      isLoading: false,
+      error: new Error('No transaction found for alert 1'),
+      refetch: vi.fn(),
+    });
+    render(
+      <TransactionHistoryTab
+        alertId={1}
+        transactionId="TXN-001"
+        tenantId="DEFAULT"
+      />,
+    );
+    expect(
+      screen.getByText('No transaction data available'),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('voila-frame')).not.toBeInTheDocument();
+  });
+
+  it('shows a "no data" error state when entityMetadata is a truthy all-empty stub (defense in depth)', () => {
+    mockUseEntityMetadata.mockReturnValue({
+      entityMetadata: {},
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    render(
+      <TransactionHistoryTab
+        alertId={1}
+        transactionId="TXN-001"
+        tenantId="DEFAULT"
+      />,
+    );
+    expect(
+      screen.getByText('No transaction data available'),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('voila-frame')).not.toBeInTheDocument();
+  });
+
   it('renders with entity metadata', () => {
     render(
       <TransactionHistoryTab

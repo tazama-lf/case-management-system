@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import VoilaFrame from '../network-analysis/VoilaFrame';
+import ErrorState from '@/shared/components/ui/ErrorState';
 import { useEntityMetadata } from '@/features/cases/hooks/useEntityMetadata';
 
 type TimeRange = 'day' | 'month' | 'year' | 'all';
@@ -22,7 +23,10 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
   >('creditor');
   const [timeRange, setTimeRange] = React.useState<TimeRange>('month');
   const [showTimeDropdown, setShowTimeDropdown] = React.useState(false);
-  const { entityMetadata } = useEntityMetadata(alertId, tenantId);
+  const { entityMetadata, error, isLoading, refetch } = useEntityMetadata(
+    alertId,
+    tenantId,
+  );
 
   const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
     { value: 'day', label: 'Day' },
@@ -44,13 +48,31 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
     );
   }
 
-  if (!entityMetadata) {
+  if (isLoading) {
     return (
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
         <p className="text-sm text-gray-600">Loading entity metadata...</p>
       </div>
     );
   }
+
+  const hasUsableEntityIds = Boolean(
+    entityMetadata?.creditorAccountId ?? entityMetadata?.debtorAccountId,
+  );
+  if (Boolean(error) || !entityMetadata || !hasUsableEntityIds) {
+    return (
+      <ErrorState
+        severity="warning"
+        title="No transaction data available"
+        message="No transaction detail is on file for this alert, so there's nothing to visualize yet."
+        showRetry
+        onRetry={() => {
+          refetch();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -74,8 +96,8 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
                 setActiveEntityRole('creditor');
               }}
               className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'creditor'
-                  ? 'bg-white shadow text-blue-600 font-medium'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-white shadow text-blue-600 font-medium'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
             >
               Creditor
@@ -86,8 +108,8 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
                 setActiveEntityRole('debtor');
               }}
               className={`px-4 py-1.5 text-sm rounded-md transition ${activeEntityRole === 'debtor'
-                  ? 'bg-white shadow text-blue-600 font-medium'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-white shadow text-blue-600 font-medium'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
             >
               Debtor
@@ -116,8 +138,8 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
                       setShowTimeDropdown(false);
                     }}
                     className={`block w-full px-4 py-2 text-left text-sm ${timeRange === option.value
-                        ? 'bg-indigo-50 text-indigo-700'
-                        : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'text-gray-700 hover:bg-gray-50'
                       }`}
                   >
                     {option.label}
@@ -142,6 +164,7 @@ const TransactionHistoryTab: React.FC<TransactionHistoryTabProps> = ({
               : entityMetadata?.debtorAccountId,
           granularity: timeRange,
         }}
+        requiredParams={['entityAccountId']}
       />
     </div>
   );

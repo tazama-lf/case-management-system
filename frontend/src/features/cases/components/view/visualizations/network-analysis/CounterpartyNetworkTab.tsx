@@ -20,6 +20,7 @@ const CounterpartyNetworkTab: React.FC<CounterpartyNetworkTabProps> = ({
     notebookPath="counterparty-network.ipynb"
     title="Counterparty Network Analysis"
     queryParams={{ entityId, tenantId, granularity: timeRange }}
+    requiredParams={['entityId']}
   />
 );
 
