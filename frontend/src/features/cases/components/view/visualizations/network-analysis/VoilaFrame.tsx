@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import ErrorState from '@/shared/components/ui/ErrorState';
 import LoadingSpinner from '@/shared/components/ui/LoadingSpinner';
 
@@ -22,6 +22,19 @@ const isMissingValue = (value: string | undefined | null): boolean =>
 
 /**
  * Renders a Voila notebook inside an iframe.
+ *
+ * The iframe's onLoad fires even for a 401/500/502 error body, and onError
+ * only fires for transport failures that don't happen against a same-
+ * cluster proxy - so neither is a trustworthy success/failure signal. This
+ * component ignores both and instead races two checks in parallel with the
+ * iframe load; whichever resolves first (or a timeout) sets the status:
+ *
+ * 1. A HEAD pre-flight checking status + Content-Type - catches a 401/502
+ *    before it'd render as a JSON blob. On failure, a follow-up GET reads
+ *    the real error message out of the JSON body.
+ * 2. A postMessage the notebook sends from its final cell once it's truly
+ *    done (see notebooks/*.ipynb) - catches a caught backend error, a
+ *    kernel crash, or a hung render, none of which change the HTTP status.
  *
  * Validates that VITE_VOILA_BASE_URL is set to an absolute HTTP/HTTPS URL
  * before constructing the src. If the variable is missing or resolves to a
@@ -67,6 +80,7 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
     // Use NestJS proxy instead of direct Voila URL for security
     // The proxy validates user JWT from cookie, mints service token, and forwards to Voila
     const backendUrl: string | undefined = import.meta.env.VITE_API_BASE_URL as string | undefined;
+    const backendUrl: string | undefined = import.meta.env.VITE_API_BASE_URL as string | undefined;
 
     // Validate backend URL is configured
     if (!backendUrl || typeof backendUrl !== 'string') {
@@ -74,6 +88,7 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
     }
 
     // Remove any trailing slashes from backend URL
+    const cleanBackendUrl = backendUrl.replace(/\/+$/u, '');
     const cleanBackendUrl = backendUrl.replace(/\/+$/u, '');
 
     // Construct proxy URL: /voila-proxy/voila/render/{notebook}
@@ -94,6 +109,8 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
   };
 
   useEffect(() => {
+    if (!voilaUrl || !voilaOrigin) return undefined;
+
     setStatus('loading');
   }, [voilaUrl]);
 
@@ -144,7 +161,7 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
             <ErrorState
               severity="error"
               title="Visualization Unavailable"
-              message="The visualization could not be loaded. The Voila server may be unavailable or unreachable. Please try again or contact your system administrator."
+              message={errorMessage}
               showRetry
               onRetry={handleRetry}
               size="large"
@@ -154,15 +171,16 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
       )}
 
       <iframe
+        ref={iframeRef}
         key={`${voilaUrl}-${retryCount}`}
         src={voilaUrl}
         className={`h-full w-full rounded-lg border-0${status === 'loaded' ? '' : ' invisible'}`}
+        className={`h-full w-full rounded-lg border-0${status === 'loaded' ? '' : ' invisible'}`}
         title={title}
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-        onLoad={() => {
-          setStatus('loaded');
-        }}
         onError={() => {
+          console.error('[VoilaFrame] iframe transport error', { notebookPath, voilaUrl });
+          setErrorMessage(GENERIC_ERROR_MESSAGE);
           setStatus('error');
         }}
       />

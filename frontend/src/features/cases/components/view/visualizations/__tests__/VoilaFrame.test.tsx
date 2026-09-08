@@ -17,6 +17,20 @@ vi.mock('@/shared/components/ui/LoadingSpinner', () => ({
 }));
 
 describe('VoilaFrame', () => {
+  beforeEach(() => {
+    // VoilaFrame HEAD-preflights the proxy URL before trusting the iframe's
+    // own load events (see VoilaFrame.tsx for why) - stub it to "healthy" so
+    // these tests exercise rendering, not the preflight itself.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'text/html' },
+      }),
+    );
+  });
+
   it('shows warning when VITE_API_BASE_URL is not set', () => {
     vi.stubEnv('VITE_API_BASE_URL', undefined);
     render(<VoilaFrame notebookPath="test.ipynb" title="Test" />);
