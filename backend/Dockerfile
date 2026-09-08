@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # SPDX-License-Identifier: Apache-2.0
-ARG BUILD_IMAGE=node:20-bullseye
-ARG RUN_IMAGE=gcr.io/distroless/nodejs20-debian11:nonroot
+ARG BUILD_IMAGE=node:24-trixie
+ARG RUN_IMAGE=gcr.io/distroless/nodejs24-debian13:nonroot
 
 # Builder stage: Build the application
 FROM ${BUILD_IMAGE} AS builder
@@ -36,7 +36,9 @@ WORKDIR /home/app
 COPY --from=builder /home/app ./
 
 # Install tools needed for DB setup
-RUN apt-get update && apt-get install -y postgresql-client netcat
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client netcat-openbsd && \
+    rm -rf /var/lib/apt/lists/*
 
 CMD ["sh"]
 
