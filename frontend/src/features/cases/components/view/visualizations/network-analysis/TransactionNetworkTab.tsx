@@ -25,6 +25,7 @@ const TransactionNetworkTab: React.FC<TransactionNetworkTabProps> = ({
       notebookPath="transaction-network.ipynb"
       title="Transaction Network"
       queryParams={queryParams}
+      requiredParams={['accountId']}
     />
   );
 };

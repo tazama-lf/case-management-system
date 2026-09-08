@@ -5,8 +5,20 @@ import LoadingSpinner from '@/shared/components/ui/LoadingSpinner';
 interface VoilaFrameProps {
   notebookPath: string;
   title: string;
-  queryParams?: Record<string, string>;
+  queryParams?: Record<string, string | undefined | null>;
+  /**
+   * Names (keys into queryParams) that must resolve to a real value after
+   * filtering. If any is missing, the iframe never mounts - shows an error
+   * state instead. Belt-and-braces against a caller passing through an
+   * undefined/null id (e.g. from a backend contract that regresses to a
+   * truthy-but-empty response) that would otherwise reach the notebook as
+   * the literal string "undefined".
+   */
+  requiredParams?: string[];
 }
+
+const isMissingValue = (value: string | undefined | null): boolean =>
+  value === undefined || value === null || value === 'undefined' || value === 'null';
 
 /**
  * Renders a Voila notebook inside an iframe.
@@ -16,20 +28,45 @@ interface VoilaFrameProps {
  * relative path (e.g. "undefined/..."), the browser would treat it as same-
  * origin and the SPA catch-all would return the CMS itself inside the frame.
  */
+const INITIAL_RETRY_COUNT = 0;
+const NO_MISSING_PARAMS = 0;
+const RETRY_STEP = 1;
+
 const VoilaFrame: React.FC<VoilaFrameProps> = ({
   notebookPath,
   title,
   queryParams,
+  requiredParams,
 }) => {
   const [status, setStatus] = React.useState<'loading' | 'loaded' | 'error'>(
     'loading',
   );
-  const [retryCount, setRetryCount] = React.useState(0);
+  const [retryCount, setRetryCount] = React.useState(INITIAL_RETRY_COUNT);
+
+  const sanitizedParams = React.useMemo(() => {
+    const result: Record<string, string> = {};
+    if (queryParams) {
+      Object.entries(queryParams).forEach(([k, v]) => {
+        if (typeof v !== 'string' || isMissingValue(v)) return;
+        result[k] = v;
+      });
+    }
+    return result;
+  }, [queryParams]);
+
+  const missingRequiredParams = React.useMemo(
+    () => (requiredParams ?? []).filter((name) => isMissingValue(sanitizedParams[name])),
+    [requiredParams, sanitizedParams],
+  );
 
   const voilaUrl = React.useMemo(() => {
+    if (missingRequiredParams.length > NO_MISSING_PARAMS) {
+      return null;
+    }
+
     // Use NestJS proxy instead of direct Voila URL for security
     // The proxy validates user JWT from cookie, mints service token, and forwards to Voila
-    const backendUrl = import.meta.env.VITE_API_BASE_URL;
+    const backendUrl: string | undefined = import.meta.env.VITE_API_BASE_URL as string | undefined;
 
     // Validate backend URL is configured
     if (!backendUrl || typeof backendUrl !== 'string') {
@@ -37,7 +74,7 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
     }
 
     // Remove any trailing slashes from backend URL
-    const cleanBackendUrl = backendUrl.replace(/\/+$/, '');
+    const cleanBackendUrl = backendUrl.replace(/\/+$/u, '');
 
     // Construct proxy URL: /voila-proxy/voila/render/{notebook}
     const url = new URL(
@@ -45,22 +82,36 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
       cleanBackendUrl,
     );
 
-    if (queryParams) {
-      Object.entries(queryParams).forEach(([k, v]) => {
-        url.searchParams.set(k, v);
-      });
-    }
+    Object.entries(sanitizedParams).forEach(([k, v]) => {
+      url.searchParams.set(k, v);
+    });
     return url.toString();
-  }, [notebookPath, queryParams]);
+  }, [notebookPath, sanitizedParams, missingRequiredParams]);
 
-  const handleRetry = () => {
+  const handleRetry = (): void => {
     setStatus('loading');
-    setRetryCount((c) => c + 1);
+    setRetryCount((c) => c + RETRY_STEP);
   };
 
   useEffect(() => {
     setStatus('loading');
   }, [voilaUrl]);
+
+  if (missingRequiredParams.length > NO_MISSING_PARAMS) {
+    return (
+      <div className="flex h-[750px] w-full items-center justify-center rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
+        <div className="w-full max-w-md">
+          <ErrorState
+            severity="warning"
+            title="Visualization Unavailable"
+            message={`Missing required data for this visualization (${missingRequiredParams.join(', ')}). This usually means there's no matching record for this alert yet.`}
+            showRetry={false}
+            size="large"
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (!voilaUrl) {
     return (
@@ -105,7 +156,7 @@ const VoilaFrame: React.FC<VoilaFrameProps> = ({
       <iframe
         key={`${voilaUrl}-${retryCount}`}
         src={voilaUrl}
-        className={`h-full w-full rounded-lg border-0${status !== 'loaded' ? ' invisible' : ''}`}
+        className={`h-full w-full rounded-lg border-0${status === 'loaded' ? '' : ' invisible'}`}
         title={title}
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         onLoad={() => {
