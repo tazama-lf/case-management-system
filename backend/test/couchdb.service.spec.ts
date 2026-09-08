@@ -339,6 +339,20 @@ describe('CouchdbService', () => {
       );
     });
 
+    it('should pass a real, non-empty tenantId through to the CouchDB selector', async () => {
+      await service.queryDocuments({ tenantId: 'tenant-real-456', page: 1, limit: 10 });
+
+      expect(mockDb.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selector: expect.objectContaining({ tenantId: 'tenant-real-456' }),
+        }),
+      );
+
+      const call = (mockDb.find as jest.Mock).mock.calls[0][0];
+      expect(call.selector.tenantId).toBe('tenant-real-456');
+      expect(call.selector.tenantId).not.toBe('');
+    });
+
     it('should filter by multiple fields', async () => {
       await service.queryDocuments({
         tenantId: 'tenant-123',
