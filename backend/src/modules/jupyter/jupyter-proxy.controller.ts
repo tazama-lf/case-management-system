@@ -276,37 +276,6 @@ export class JupyterProxyController {
     return await this.proxyService.getConditionsContextByTransaction(userId, transactionId, tenantId, asOfDate);
   }
 
-  @Get('conditions/summary')
-  @ApiOperation({ summary: 'Proxy: Get conditions summary with counts by Account ID' })
-  @ApiQuery({ name: 'accountId', required: true })
-  @ApiQuery({ name: 'tenantId', required: true })
-  @ApiQuery({ name: 'asOfDate', required: false })
-  async getConditionsSummary(
-    @Req() req: AuthenticatedRequest,
-    @Query('accountId') accountId: string,
-    @Query('tenantId') tenantId: string,
-    @Query('asOfDate') asOfDate?: string,
-  ): Promise<{
-    accountId: string;
-    accountScheme: any;
-    fspId: any;
-    totalConditions: any;
-    activeConditions: any;
-    expiredConditions: any;
-    futureConditions: any;
-    conditions: any;
-    metadata: {
-      asOfDate: string;
-      queryTimestamp: string;
-    };
-  }> {
-    const userId = this.getUserId(req);
-    if (!accountId || accountId.trim() === '') {
-      throw new BadRequestException('accountId is required');
-    }
-    return await this.proxyService.getConditionsSummary(userId, accountId, tenantId, asOfDate);
-  }
-
   @Get('conditions/details')
   @ApiOperation({ summary: 'Proxy: Get complete condition records with full details by Account ID' })
   @ApiQuery({ name: 'accountId', required: true })
