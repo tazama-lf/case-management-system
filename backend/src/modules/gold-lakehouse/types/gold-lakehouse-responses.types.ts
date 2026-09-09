@@ -224,7 +224,6 @@ export interface CounterpartyNodeFullDataResponse {
 export interface EntityAccountWithConditionCounts {
   accountId: string;
   accountNumber: string;
-  accountType: string;
   isTransactionAccount: boolean;
   activeConditionsCount: number;
   expiredConditionsCount: number;
