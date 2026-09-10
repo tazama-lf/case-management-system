@@ -100,7 +100,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
   ): Promise<ConditionsContextByTransactionResponse> {
     try {
       const txSql =
-        'SELECT transaction_id, end_to_end_id, tx_event_ts, tx_event_date, tx_type, interbank_settlement_amount, interbank_settlement_currency, debtor_id, debtor_name, debtor_account_id, creditor_id, creditor_name, creditor_account_id FROM transaction_detail WHERE end_to_end_id = $1 AND tenant_id = $2 LIMIT 1;';
+        'SELECT transaction_id, end_to_end_id, tx_event_ts, tx_event_date, tx_type, interbank_settlement_amount, interbank_settlement_currency, debtor_id, debtor_name, debtor_account_id, creditor_id, creditor_name, creditor_account_id FROM transaction_detail WHERE end_to_end_id = $1 AND tenant_id = $2 LIMIT 100;';
 
       const txResponse = await this.runSqlQuery(txSql, 1, [transactionId, tenantId], userJwt);
       const pacs8 = txResponse.data.find((record) => record.tx_type === 'pacs.008.001.10');
@@ -131,6 +131,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         filterDate,
         userJwt,
       );
+      this.logger.log(`Debtor accounts for transaction ${transactionId}:`, debtorAccounts);
+      this.logger.log(`Creditor accounts for transaction ${transactionId}:`, creditorAccounts);
 
       return {
         transaction: {
