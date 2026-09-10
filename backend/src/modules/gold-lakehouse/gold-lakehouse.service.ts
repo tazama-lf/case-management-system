@@ -89,7 +89,7 @@ export class GoldLakehouseService {
     return `'${escaped}'`;
   }
 
-  async runSqlQuery(sql: string, limit = 1, parameters?: any[], userJwt?: string): Promise<any> {
+  async runSqlQuery(sql: string, limit: number, parameters?: any[], userJwt?: string): Promise<any> {
     try {
       let finalSql = sql;
 
