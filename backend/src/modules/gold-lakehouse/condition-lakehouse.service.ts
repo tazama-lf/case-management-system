@@ -105,6 +105,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       const txResponse = await this.runSqlQuery(txSql, 1, [transactionId, tenantId], userJwt);
       const pacs8 = txResponse.data.find((record) => record.tx_type === 'pacs.008.001.10');
 
+      this.logger.log(`Transaction details for ${transactionId}:`, txResponse.data);
+
       if (!pacs8) {
         throw new HttpException(`Transaction ${transactionId} not found`, HttpStatus.NOT_FOUND);
       }
@@ -200,6 +202,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         `;
         const enhancedEntityId = `${entityId}TAZAMA_EID`;
         const accountsResponse = await this.runSqlQuery(accountsSql, 100, [enhancedEntityId, tenantId], userJwt);
+
+        this.logger.log(`Accounts for entity ${entityId}:`, accountsResponse.data);
+
         accountsResponse.data?.forEach((r) => {
           if (r.account_id) {
             accountIdsSet.add(r.account_id);
@@ -253,6 +258,9 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           `;
 
           const countsResponse = await this.runSqlQuery(conditionsSql, 1, [asOfDate, accountIdToUse, tenantId], userJwt);
+
+          this.logger.log(`Condition counts for ${accountIdToUse}:`, countsResponse);
+
           const counts = countsResponse.data?.[0] ?? {};
 
           const accountNumber = accountId.slice(-12);
@@ -297,6 +305,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       `;
 
       const accountsResponse = await this.runSqlQuery(accountsSql, 100, [entityId, tenantId], userJwt);
+      this.logger.log(`Accounts for entity ${entityId}:`, accountsResponse.data);
       const accountIds = accountsResponse.data?.map((r) => r.account_id).filter(Boolean) ?? [];
 
       if (accountIds.length === 0) {
@@ -353,6 +362,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       `;
 
       const response = await this.runSqlQuery(conditionsSql, 500, params, userJwt);
+      this.logger.log(`Conditions for entity ${entityId}:`, response.data);
       const rows = response.data ?? [];
 
       return {
