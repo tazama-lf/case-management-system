@@ -27,7 +27,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       params.push(tenantId);
 
       let dateFilter = '';
-      if (asOfDate) {
+      if (asOfDate && !showInactive) {
         dateFilter = `
           AND condition_inception_ts <= $${params.length + 1}
           AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= $${params.length + 1})
@@ -36,7 +36,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       }
 
       const sql = `
-      SELECT pk, condition_id, condition_reason, condition_type, perspective, condition_inception_ts, condition_expiry_ts, condition_created_ts, 
+      SELECT pk, condition_id, condition_reason, condition_type, perspective, condition_inception_ts, condition_expiry_ts, condition_created_ts,
       is_active, is_expired, account_id, tenant_id, account_scheme, event_types_csv, created_by_user FROM conditions WHERE account_id = $1 
       ${tenantFilter} 
       ${dateFilter} 
