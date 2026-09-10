@@ -483,6 +483,16 @@ describe('EvidenceService', () => {
     it('should throw UnauthorizedException for invalid role', async () => {
       await expect(service.getEvidenceByTaskId(taskId, userId, tenantId, 'INVALID_ROLE')).rejects.toThrow(UnauthorizedException);
     });
+
+    it('should pass the real, non-empty tenantId through to CouchDB queryDocuments', async () => {
+      await service.getEvidenceByTaskId(taskId, userId, tenantId, 'CMS_SUPERVISOR');
+
+      expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 'tenant-123' }));
+
+      const call = couchdbService.queryDocuments.mock.calls[0][0];
+      expect(call.tenantId).toBe(tenantId);
+      expect(call.tenantId).not.toBe('');
+    });
   });
 
   describe('getEvidenceByCaseId', () => {

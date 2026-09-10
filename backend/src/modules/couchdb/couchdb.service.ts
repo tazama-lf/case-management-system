@@ -129,8 +129,12 @@ export class CouchdbService implements OnModuleInit {
 
     const selector: any = {};
 
+    if (typeof tenantId !== 'string' || tenantId.length === 0) {
+      throw new BadRequestException('tenantId is required');
+    }
+
     if (id) selector.id = id;
-    if (tenantId) selector.tenantId = tenantId;
+    selector.tenantId = tenantId;
     if (uploadedBy) selector.uploadedBy = uploadedBy;
     if (taskId) selector.taskId = taskId;
     if (caseId) selector.caseId = caseId;
