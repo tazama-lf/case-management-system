@@ -19,7 +19,7 @@ import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
 export class JupyterProxyController {
-  constructor(private readonly proxyService: JupyterProxyService) { }
+  constructor(private readonly proxyService: JupyterProxyService) {}
 
   private getUserId(req: AuthenticatedRequest): string {
     const { userId } = req.user;
