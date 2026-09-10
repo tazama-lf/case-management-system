@@ -650,69 +650,69 @@ export class TriageService {
           });
 
           const investigationGroup = await this.investigationGroupService.createInvestigationGroup(alertId, tenantId);
+          // Repurpose the original case as the FRAUD case inside the group (mirrors
+          // handleManualTriage) instead of recreating a FRAUD_AND_AML-typed container
           await this.caseCreationService.updateCaseStatus(
             caseId,
             CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
             userId,
             tenantId,
             priority,
-            predictedAlertType,
-            investigationGroup.id,
-          );
-          const fraudCase = await this.caseCreateService.createCaseWithInvestigationTask(
             CaseType.FRAUD,
-            userId,
-            tenantId,
-            priority,
-            CaseCreationType.AUTOMATIC_SYSTEM,
-            'SUPERVISOR',
             investigationGroup.id,
           );
+
+          let amlCaseId: number | undefined;
           try {
-            await this.caseCreateService.createCaseWithInvestigationTask(
-              CaseType.AML,
-              userId,
-              tenantId,
-              priority,
-              CaseCreationType.AUTOMATIC_SYSTEM,
-              'SUPERVISOR',
-              investigationGroup.id,
-            );
+            const existingAmlCase = await this.prisma.case.findFirst({
+              where: { group_id: investigationGroup.id, case_type: CaseType.AML },
+              select: { case_id: true },
+            });
+            if (existingAmlCase) {
+              amlCaseId = existingAmlCase.case_id;
+            } else {
+              const amlCase = await this.caseCreateService.createCaseWithInvestigationTask(
+                CaseType.AML,
+                userId,
+                tenantId,
+                priority,
+                CaseCreationType.AUTOMATIC_SYSTEM,
+                'SUPERVISOR',
+                investigationGroup.id,
+              );
+              amlCaseId = amlCase.caseId;
+            }
           } catch (amlError) {
             const amlErrorMessage = amlError instanceof Error ? amlError.message : String(amlError);
             this.logger.error(
-              `FRAUD_AND_AML triage for alert ${alertId}: AML case creation failed after FRAUD case ${fraudCase.caseId} (investigation group ${investigationGroup.id}) was already created - rolling back`,
+              `FRAUD_AND_AML triage for alert ${alertId}: AML case creation failed after case ${caseId} (investigation group ${investigationGroup.id}) was already repurposed as FRAUD - rolling back`,
               amlError instanceof Error ? amlError.stack : undefined,
               TriageService.name,
             );
 
             // Neither Postgres nor Flowable support true distributed rollback, so we can't
-            // "undo" the earlier steps - instead we drive both cases (and their Flowable
-            // process instances) to the same terminal abandoned state the manual abandon
+            // "undo" the earlier steps - instead we drive the case (and its Flowable
+            // process instance) to the same terminal abandoned state the manual abandon
             // flow uses (see CaseService.abandonCase), and drop the investigation group so
             // the alert becomes eligible for triage/manual case creation again.
             const rollbackReason = `FRAUD_AND_AML triage rollback: AML case creation failed for alert ${alertId}: ${amlErrorMessage}`;
             try {
-              await Promise.all([
-                this.caseRepository.updateCase(caseId, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null }),
-                this.caseRepository.updateCase(fraudCase.caseId, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null }),
-              ]);
+              await this.caseRepository.updateCase(caseId, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
               this.flowableService.handleCaseAbandoned({ caseId, reason: rollbackReason });
-              this.flowableService.handleCaseAbandoned({ caseId: fraudCase.caseId, reason: rollbackReason });
               await this.prisma.investigationGroup.delete({ where: { id: investigationGroup.id } });
 
               await this.loggingOrchestrationService.logActions({
                 userId,
                 operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLED_BACK',
                 entityName: 'Case',
-                actionPerformed: `Rolled back FRAUD_AND_AML triage for alert ${alertId}: abandoned case ${caseId} and FRAUD case ${fraudCase.caseId} after AML case creation failed`,
+                actionPerformed: `Rolled back FRAUD_AND_AML triage for alert ${alertId}: abandoned case ${caseId} after AML case creation failed`,
                 outcome: Outcome.FAILURE,
                 tenantId,
               });
             } catch (rollbackError) {
               const rollbackErrorMessage = rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
               this.logger.error(
-                `FRAUD_AND_AML triage rollback itself failed for alert ${alertId} (case ${caseId}, FRAUD case ${fraudCase.caseId}, group ${investigationGroup.id}) - needs manual reconciliation: ${rollbackErrorMessage}`,
+                `FRAUD_AND_AML triage rollback itself failed for alert ${alertId} (case ${caseId}, group ${investigationGroup.id}) - needs manual reconciliation: ${rollbackErrorMessage}`,
                 rollbackError instanceof Error ? rollbackError.stack : undefined,
                 TriageService.name,
               );
@@ -720,13 +720,44 @@ export class TriageService {
                 userId,
                 operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLBACK_FAILED',
                 entityName: 'Case',
-                actionPerformed: `Rollback failed for alert ${alertId}; case ${caseId} and FRAUD case ${fraudCase.caseId} (group ${investigationGroup.id}) need manual reconciliation`,
+                actionPerformed: `Rollback failed for alert ${alertId}; case ${caseId} (group ${investigationGroup.id}) needs manual reconciliation`,
                 outcome: Outcome.FAILURE,
                 tenantId,
               });
             }
 
             throw amlError;
+          }
+
+          // Detach the alert now that both group cases exist - FRAUD_AND_AML alerts
+          // link via investigation_groups.alert_id, not alerts.case_id (see
+          // AlertRepository.getAlertByCaseId / getGroupedCasesForAlert).
+          try {
+            await this.alertService.updateAlert(alertId, userId, { caseId: null } as unknown as UpdateAlertDTO, undefined);
+          } catch (detachError) {
+            const detachErrorMessage = detachError instanceof Error ? detachError.message : String(detachError);
+            this.logger.error(
+              `FRAUD_AND_AML triage for alert ${alertId}: alert detachment failed after both cases were created (FRAUD case ${caseId}, AML case ${amlCaseId}, group ${investigationGroup.id}) - preserving both cases and group for manual reconciliation`,
+              detachError instanceof Error ? detachError.stack : undefined,
+              TriageService.name,
+            );
+
+            // Both the FRAUD case (repurposed original) and the AML case have been
+            // created successfully at this point. Abandoning only the FRAUD case and
+            // deleting the group would orphan the AML case. Instead, preserve both cases
+            // and the investigation group so an operator can manually reconcile the alert
+            // (e.g. re-run detachment or close the cases). We log the failure and rethrow
+            // so the caller is aware, but we do NOT delete the group or abandon either case.
+            await this.loggingOrchestrationService.logActions({
+              userId,
+              operation: 'AI_TRIAGE_FRAUD_AND_AML_DETACH_FAILED',
+              entityName: 'Case',
+              actionPerformed: `Alert detachment failed for alert ${alertId}; FRAUD case ${caseId} and AML case ${amlCaseId} (group ${investigationGroup.id}) preserved for manual reconciliation: ${detachErrorMessage}`,
+              outcome: Outcome.FAILURE,
+              tenantId,
+            });
+
+            throw detachError;
           }
 
           return;

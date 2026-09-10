@@ -55,7 +55,10 @@ describe('TriageService', () => {
   let caseCreateService: jest.Mocked<CaseCreationService>;
   let loggingOrchestrationService: jest.Mocked<LoggingOrchestrationService>;
   let investigationGroupService: jest.Mocked<InvestigationGroupService>;
-  let prismaService: { investigationGroup: { create: jest.Mock; delete: jest.Mock } };
+  let prismaService: {
+    investigationGroup: { create: jest.Mock; delete: jest.Mock };
+    case: { findFirst: jest.Mock };
+  };
 
   const mockAlert = {
     alert_id: 1,
@@ -226,6 +229,11 @@ describe('TriageService', () => {
           tenant_id: 'tenant-123',
         }),
         delete: jest.fn(),
+      },
+      // Defaults to "no existing AML case" so existing FRAUD_AND_AML tests keep exercising the
+      // create path unchanged; overridden per-test to cover the idempotent-reuse path.
+      case: {
+        findFirst: jest.fn().mockResolvedValue(null),
       },
     };
 
@@ -554,7 +562,7 @@ describe('TriageService', () => {
       expect(flowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
     });
 
-    it('should handle FRAUD_AND_AML type when true positive', async () => {
+    it('should repurpose the original case as FRAUD, create only an AML sibling, and detach the alert', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
       casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
       (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
@@ -565,7 +573,11 @@ describe('TriageService', () => {
       taskService.updateTask.mockResolvedValue(mockTask as any);
       loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
       caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
-      caseCreateService.createCaseWithInvestigationTask.mockResolvedValue(mockCase as any);
+      caseCreateService.createCaseWithInvestigationTask.mockResolvedValue({
+        caseId: 456,
+        message: 'Case created, BPMN will create investigation task',
+        taskId: 2,
+      });
       flowableService.handleTaskCompleted.mockResolvedValue(undefined);
 
       // Mock prediction to return FRAUD_AND_AML
@@ -583,16 +595,10 @@ describe('TriageService', () => {
 
       await service.handleAITriage(1, 1, fraudAndAmlDto, 'user-123', 'tenant-123');
 
-      expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(2);
-      expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
-        CaseType.FRAUD,
-        'user-123',
-        'tenant-123',
-        Priority.MEDIUM,
-        CaseCreationType.AUTOMATIC_SYSTEM,
-        'SUPERVISOR',
-        123,
-      );
+      // Exactly one sibling case is created (AML) - the original case (1) is repurposed
+      // in place as the FRAUD case, so no separate FRAUD case row is created and no
+      // FRAUD_AND_AML-typed container survives.
+      expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
       expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledWith(
         CaseType.AML,
         'user-123',
@@ -602,9 +608,63 @@ describe('TriageService', () => {
         'SUPERVISOR',
         123,
       );
+
+      // The original case is hardcoded to FRAUD, not the raw predicted FRAUD_AND_AML type.
+      expect(caseCreationService.updateCaseStatus).toHaveBeenCalledWith(
+        1,
+        CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        'user-123',
+        'tenant-123',
+        Priority.MEDIUM,
+        CaseType.FRAUD,
+        123,
+      );
+
+      // The alert is detached once both group cases exist - it is linked via
+      // investigation_groups.alert_id instead.
+      expect(alertService.updateAlert).toHaveBeenCalledWith(1, 'user-123', { caseId: null }, undefined);
     });
 
-    it('should roll back the FRAUD case and investigation group when AML case creation fails', async () => {
+    it('reuses an existing AML sibling instead of creating a duplicate on a retry after detachError', async () => {
+      // Reproduces retrying handleAITriage for the same alert after a prior attempt got as far
+      // as creating the AML case but then failed to detach the alert (see the
+      // "should preserve both cases and the group when alert detachment fails..." test below) -
+      // createInvestigationGroup is already upsert-based and safe to call again, but AML case
+      // creation had no equivalent guard before this fix.
+      taskService.createTask.mockResolvedValue(mockTask as any);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
+      (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
+      mockedAxios.post.mockResolvedValue({
+        data: { confidence: 0.95, priority: 0.8 },
+      });
+      alertService.updateAlert.mockResolvedValue(mockAlert as any);
+      taskService.updateTask.mockResolvedValue(mockTask as any);
+      loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
+      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
+      // The prior attempt's AML case already exists in this investigation group.
+      prismaService.case.findFirst.mockResolvedValue({ case_id: 456 });
+
+      jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
+        confidence_per: 95,
+        alertType: CaseType.FRAUD_AND_AML,
+        isTruePositive: true,
+        priorityScore: 0.8,
+      });
+
+      await service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123');
+
+      expect(prismaService.case.findFirst).toHaveBeenCalledWith({
+        where: { group_id: 123, case_type: CaseType.AML },
+        select: { case_id: true },
+      });
+      // No new AML case created - the existing one (456) is reused, and the alert can still
+      // be detached to complete the retry.
+      expect(caseCreateService.createCaseWithInvestigationTask).not.toHaveBeenCalled();
+      expect(alertService.updateAlert).toHaveBeenCalledWith(1, 'user-123', { caseId: null }, undefined);
+    });
+
+    it('should roll back the repurposed case and investigation group when AML case creation fails', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
       casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
       (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
@@ -621,9 +681,9 @@ describe('TriageService', () => {
       caseRepository.updateCase.mockResolvedValue(mockCase as any);
       prismaService.investigationGroup.delete.mockResolvedValue({ id: 123 });
 
-      caseCreateService.createCaseWithInvestigationTask
-        .mockResolvedValueOnce({ caseId: 456, message: 'Case created, BPMN will create investigation task', taskId: 2 })
-        .mockRejectedValueOnce(new InternalServerErrorException('Failed to create AML case'));
+      caseCreateService.createCaseWithInvestigationTask.mockRejectedValueOnce(
+        new InternalServerErrorException('Failed to create AML case'),
+      );
 
       jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
         confidence_per: 95,
@@ -634,24 +694,26 @@ describe('TriageService', () => {
 
       await expect(service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123')).rejects.toThrow(InternalServerErrorException);
 
+      // Only the original (repurposed) case is rolled back - no separate FRAUD case exists.
       expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
-      expect(caseRepository.updateCase).toHaveBeenCalledWith(456, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
+      expect(caseRepository.updateCase).toHaveBeenCalledTimes(1);
       expect(flowableService.handleCaseAbandoned).toHaveBeenCalledWith(expect.objectContaining({ caseId: 1 }));
-      expect(flowableService.handleCaseAbandoned).toHaveBeenCalledWith(expect.objectContaining({ caseId: 456 }));
+      expect(flowableService.handleCaseAbandoned).toHaveBeenCalledTimes(1);
       expect(prismaService.investigationGroup.delete).toHaveBeenCalledWith({ where: { id: 123 } });
+      // The alert must not be detached when the AML sibling failed to be created.
+      expect(alertService.updateAlert).not.toHaveBeenCalledWith(1, 'user-123', { caseId: null }, undefined);
       expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
         expect.objectContaining({ operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLED_BACK' }),
       );
     });
 
-   it('should roll back the FRAUD case and investigation group when AML case creation fails', async () => {
+    it('should preserve both cases and the group when alert detachment fails after AML creation succeeds', async () => {
       taskService.createTask.mockResolvedValue(mockTask as any);
-            casePriorityUtil.determinePriority.mockResolvedValue(Priority.HIGH);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
       (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
       mockedAxios.post.mockResolvedValue({
         data: { confidence: 0.95, priority: 0.8 },
       });
-      alertService.updateAlert.mockResolvedValue(mockAlert as any);
       taskService.updateTask.mockResolvedValue(mockTask as any);
       loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
       loggingOrchestrationService.logActions.mockResolvedValue(undefined);
@@ -661,9 +723,18 @@ describe('TriageService', () => {
       caseRepository.updateCase.mockResolvedValue(mockCase as any);
       prismaService.investigationGroup.delete.mockResolvedValue({ id: 123 });
 
-      caseCreateService.createCaseWithInvestigationTask
-        .mockResolvedValueOnce({ caseId: 456, message: 'Case created, BPMN will create investigation task', taskId: 2 })
-        .mockRejectedValueOnce(new InternalServerErrorException('Failed to create AML case'));
+      // AML case creation succeeds
+      caseCreateService.createCaseWithInvestigationTask.mockResolvedValueOnce({
+        caseId: 456,
+        message: 'Case created, BPMN will create investigation task',
+        taskId: 2,
+      });
+
+      // First updateAlert call (prediction update in updateAlertAndUpdateTriageTask) succeeds;
+      // second call (alert detachment) fails.
+      alertService.updateAlert
+        .mockResolvedValueOnce(mockAlert as any)
+        .mockRejectedValueOnce(new Error('Detachment failed'));
 
       jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
         confidence_per: 95,
@@ -674,54 +745,18 @@ describe('TriageService', () => {
 
       await expect(service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123')).rejects.toThrow(InternalServerErrorException);
 
-      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
-      expect(caseRepository.updateCase).toHaveBeenCalledWith(456, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
-      expect(flowableService.handleCaseAbandoned).toHaveBeenCalledWith(expect.objectContaining({ caseId: 1 }));
-      expect(flowableService.handleCaseAbandoned).toHaveBeenCalledWith(expect.objectContaining({ caseId: 456 }));
-      expect(prismaService.investigationGroup.delete).toHaveBeenCalledWith({ where: { id: 123 } });
+      // AML case was created successfully
+      expect(caseCreateService.createCaseWithInvestigationTask).toHaveBeenCalledTimes(1);
+
+      // Neither case is abandoned and the group is NOT deleted - both cases and the
+      // group are preserved for manual reconciliation.
+      expect(caseRepository.updateCase).not.toHaveBeenCalled();
+      expect(flowableService.handleCaseAbandoned).not.toHaveBeenCalled();
+      expect(prismaService.investigationGroup.delete).not.toHaveBeenCalled();
+
+      // The detachment failure is logged for manual reconciliation.
       expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
-        expect.objectContaining({ operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLED_BACK' }),
-      );
-    });
-
-   it('should roll back the FRAUD case and investigation group when AML case creation fails', async () => {
-      taskService.createTask.mockResolvedValue(mockTask as any);
-      casePriorityUtil.determinePriority.mockResolvedValue(Priority.HIGH);
-      (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
-      mockedAxios.post.mockResolvedValue({
-        data: { confidence: 0.95, priority: 0.8 },
-      });
-      alertService.updateAlert.mockResolvedValue(mockAlert as any);
-      taskService.updateTask.mockResolvedValue(mockTask as any);
-      loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
-      loggingOrchestrationService.logActions.mockResolvedValue(undefined);
-      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
-      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
-      flowableService.handleCaseAbandoned.mockResolvedValue(undefined);
-      caseRepository.updateCase.mockResolvedValue(mockCase as any);
-      prismaService.investigationGroup.delete.mockResolvedValue({ id: 123 });
-
-
-      caseCreateService.createCaseWithInvestigationTask
-        .mockResolvedValueOnce({ caseId: 456, message: 'Case created, BPMN will create investigation task', taskId: 2 })
-        .mockRejectedValueOnce(new InternalServerErrorException('Failed to create AML case'));
-
-      jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
-        confidence_per: 95,
-        alertType: CaseType.FRAUD_AND_AML,
-        isTruePositive: true,
-        priorityScore: 0.8,
-      });
-
-      await expect(service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123')).rejects.toThrow(InternalServerErrorException);
-
-      expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
-      expect(caseRepository.updateCase).toHaveBeenCalledWith(456, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
-      expect(flowableService.handleCaseAbandoned).toHaveBeenCalledWith(expect.objectContaining({ caseId: 1 }));
-      expect(flowableService.handleCaseAbandoned).toHaveBeenCalledWith(expect.objectContaining({ caseId: 456 }));
-      expect(prismaService.investigationGroup.delete).toHaveBeenCalledWith({ where: { id: 123 } });
-      expect(loggingOrchestrationService.logActions).toHaveBeenCalledWith(
-        expect.objectContaining({ operation: 'AI_TRIAGE_FRAUD_AND_AML_ROLLED_BACK' }),
+        expect.objectContaining({ operation: 'AI_TRIAGE_FRAUD_AND_AML_DETACH_FAILED' }),
       );
     });
 
@@ -831,10 +866,10 @@ describe('TriageService', () => {
       flowableService.handleTaskCompleted.mockResolvedValue(undefined);
       flowableService.handleCaseAbandoned.mockResolvedValue(undefined);
 
-      // FRAUD case succeeds, AML case creation fails
-      caseCreateService.createCaseWithInvestigationTask
-        .mockResolvedValueOnce({ caseId: 456, message: 'Case created, BPMN will create investigation task', taskId: 2 })
-        .mockRejectedValueOnce(new InternalServerErrorException('Failed to create AML case'));
+      // AML case creation fails (the original case was already repurposed as FRAUD)
+      caseCreateService.createCaseWithInvestigationTask.mockRejectedValueOnce(
+        new InternalServerErrorException('Failed to create AML case'),
+      );
 
       // Rollback itself fails: investigationGroup.delete throws
       caseRepository.updateCase.mockResolvedValue(mockCase as any);
@@ -849,9 +884,9 @@ describe('TriageService', () => {
 
       await expect(service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123')).rejects.toThrow(InternalServerErrorException);
 
-      // Rollback was attempted
+      // Rollback was attempted on the single repurposed case
       expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
-      expect(caseRepository.updateCase).toHaveBeenCalledWith(456, { status: CaseStatus.STATUS_99_ABANDONED, group_id: null });
+      expect(caseRepository.updateCase).toHaveBeenCalledTimes(1);
       expect(prismaService.investigationGroup.delete).toHaveBeenCalledWith({ where: { id: 123 } });
 
       // Rollback failure was logged
