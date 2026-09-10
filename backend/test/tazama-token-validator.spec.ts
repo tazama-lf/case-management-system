@@ -31,9 +31,12 @@ function buildToken(overrides: {
     email?: string;
     innerEmail?: string;
     innerName?: string;
-    realmRoles?: string[];
-    tenantDetails?: string[];
-    status?: string;
+    // unknown (rather than string[]/string) so tests can also build tokens with malformed
+    // claim shapes - a wrong JWT client/IdP payload is untrusted input the validator must
+    // handle without crashing.
+    realmRoles?: unknown;
+    tenantDetails?: unknown;
+    status?: unknown;
     innerTokenString?: string;
 }): string {
     const innerPayload: Record<string, unknown> = {
@@ -136,6 +139,18 @@ describe('tazama-token-validator', () => {
         it('should throw UnauthorizedException for a malformed entry', () => {
             expect(() => extractTenantName(['/'])).toThrow(UnauthorizedException);
             expect(() => extractTenantName(['/'])).toThrow('Invalid tenant details format');
+        });
+
+        it('should throw UnauthorizedException (not a raw TypeError) when tenant_details is not an array', () => {
+            expect(() => extractTenantName(12345)).toThrow(UnauthorizedException);
+            expect(() => extractTenantName(12345)).toThrow('Invalid tenant details');
+            expect(() => extractTenantName('tenant-a/realm1')).toThrow(UnauthorizedException);
+            expect(() => extractTenantName({ tenant: 'tenant-a' })).toThrow(UnauthorizedException);
+        });
+
+        it('should throw UnauthorizedException (not a raw TypeError) when the first entry is not a string', () => {
+            expect(() => extractTenantName([123, 'tenant-a/realm1'])).toThrow(UnauthorizedException);
+            expect(() => extractTenantName([123, 'tenant-a/realm1'])).toThrow('Invalid tenant details');
         });
     });
 
@@ -269,7 +284,43 @@ describe('tazama-token-validator', () => {
         });
 
         it('should set allowedStatuses to undefined when token has no status field', () => {
-            const token = buildToken({ status: undefined as unknown as string });
+            const token = buildToken({ status: undefined });
+            const validated: ClaimValidationResult = { CMS_INVESTIGATOR: true };
+            validateTokenAndClaims.mockReturnValue(validated);
+
+            const user = validateTazamaToken(token, [], ['CMS_INVESTIGATOR']);
+            expect(user.allowedStatuses).toBeUndefined();
+        });
+
+        it('should throw UnauthorizedException (not a raw TypeError) when tenant_details is not an array', () => {
+            const token = buildToken({ tenantDetails: 12345 });
+            const validated: ClaimValidationResult = { CMS_INVESTIGATOR: true };
+            validateTokenAndClaims.mockReturnValue(validated);
+
+            expect(() => validateTazamaToken(token, [], ['CMS_INVESTIGATOR'])).toThrow(UnauthorizedException);
+            expect(() => validateTazamaToken(token, [], ['CMS_INVESTIGATOR'])).toThrow('Invalid tenant details');
+        });
+
+        it('should throw UnauthorizedException (not a raw TypeError) when realm_access.roles is not an array', () => {
+            const token = buildToken({ realmRoles: 'CMS_INVESTIGATOR' });
+            const validated: ClaimValidationResult = { CMS_INVESTIGATOR: true };
+            validateTokenAndClaims.mockReturnValue(validated);
+
+            expect(() => validateTazamaToken(token, [], ['CMS_INVESTIGATOR'])).toThrow(UnauthorizedException);
+            expect(() => validateTazamaToken(token, [], ['CMS_INVESTIGATOR'])).toThrow('No supported CMS role found in token');
+        });
+
+        it('should skip non-string entries and still find a valid role when realm_access.roles has mixed element types', () => {
+            const token = buildToken({ realmRoles: [123, { role: 'nope' }, 'CMS_SUPERVISOR'] });
+            const validated: ClaimValidationResult = { CMS_SUPERVISOR: true };
+            validateTokenAndClaims.mockReturnValue(validated);
+
+            const user = validateTazamaToken(token, [], ['CMS_SUPERVISOR']);
+            expect(user.actorRole).toBe('CMS_SUPERVISOR');
+        });
+
+        it('should set allowedStatuses to undefined (not throw) when status is not a string', () => {
+            const token = buildToken({ status: 12345 });
             const validated: ClaimValidationResult = { CMS_INVESTIGATOR: true };
             validateTokenAndClaims.mockReturnValue(validated);
 

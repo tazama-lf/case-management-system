@@ -51,23 +51,24 @@ export function validateTazamaToken(token: string, requiredClaims: string[], any
 
   const actorEmail = innerDecoded.email as string | undefined;
   const actorName = innerDecoded.name as string | undefined;
-  const tenantName = extractTenantName(innerDecoded.tenant_details as string[] | undefined);
+  const tenantName = extractTenantName(innerDecoded.tenant_details);
 
-  const realmAccess = innerDecoded.realm_access as { roles?: string[] } | undefined;
-  const realmRoles = realmAccess?.roles;
+  const realmAccess = innerDecoded.realm_access as { roles?: unknown } | undefined;
+  const realmRoles = Array.isArray(realmAccess?.roles) ? realmAccess.roles : undefined;
 
   const supportedRoles = new Set(['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_ADMIN']);
-  const actorRole = realmRoles?.find((role: string) => supportedRoles.has(role));
+  const actorRole = realmRoles?.find((role: unknown): role is string => typeof role === 'string' && supportedRoles.has(role));
   if (!actorRole) {
     throw new UnauthorizedException('No supported CMS role found in token');
   }
 
-  const allowedStatuses = innerDecoded.status
-    ? (innerDecoded.status as string)
-        .split(',')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0)
-    : undefined;
+  const allowedStatuses =
+    typeof innerDecoded.status === 'string' && innerDecoded.status.length > 0
+      ? innerDecoded.status
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+      : undefined;
 
   if (allowedStatuses) {
     logger.log(`Extracted ${allowedStatuses.length} allowed statuses: ${allowedStatuses.join(', ')}`, logContext);
@@ -177,9 +178,9 @@ export function extractInnerToken(outerToken: string): Record<string, unknown> {
   }
 }
 
-export function extractTenantName(tenantDetails: string[] | undefined): string {
-  if (!tenantDetails || tenantDetails.length === 0) {
-    logger.error('Tenant details array is empty or undefined');
+export function extractTenantName(tenantDetails: unknown): string {
+  if (!Array.isArray(tenantDetails) || tenantDetails.length === 0 || typeof tenantDetails[0] !== 'string') {
+    logger.error('Tenant details is missing, not an array, or has a non-string entry');
     throw new UnauthorizedException('Invalid tenant details');
   }
   const tenantName = tenantDetails[0].split('/').find((part) => part.length > 0);
