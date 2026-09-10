@@ -26,16 +26,6 @@ describe('AlertMetadata', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders blockReason when provided', () => {
-    render(<AlertMetadata {...props} blockReason="Sanctioned entity" />);
-    expect(screen.getByText('Sanctioned entity')).toBeInTheDocument();
-  });
-
-  it('does not render blockReason when not provided', () => {
-    render(<AlertMetadata {...props} />);
-    expect(screen.queryByText('Block Reason')).not.toBeInTheDocument();
-  });
-
   it('uses default entity when not provided', () => {
     const { entity, ...propsWithoutEntity } = props;
     render(<AlertMetadata {...propsWithoutEntity} />);

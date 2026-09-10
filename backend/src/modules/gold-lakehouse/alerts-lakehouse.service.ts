@@ -162,7 +162,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         currency: String(data.transaction_currency ?? ''),
         status: String(data.alert_status ?? ''),
         reason: String(data.alert_reason ?? ''),
-        blockReason: String(data.block_or_override_status ?? ''),
+        efrupSubRuleRef: String(data.block_or_override_status ?? ''),
         evaluationId: String(data.evaluation_id ?? ''),
       };
 
@@ -469,14 +469,6 @@ export class AlertsLakehouseService extends GoldLakehouseService {
     }
   }
 
-  /**
-   * Coerces a lakehouse COLLECT_LIST result to a plain array.
-   *
-   * Server-side Spark/Hudi API instances sometimes serialize COLLECT_LIST
-   * results as a JSON string instead of an already-parsed array.  This helper
-   * transparently handles both representations so the calling code never has
-   * to distinguish between them.
-   */
   private safeParseArray<T>(value: unknown): T[] {
     if (Array.isArray(value)) return value;
     if (typeof value === 'string' && value.trim().startsWith('[')) {

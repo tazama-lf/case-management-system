@@ -72,7 +72,7 @@ describe('AlertsLakehouseService', () => {
             transaction_currency: 'USD',
             transaction_id: '31',
             end_to_end_id: 'e2e-123',
-            block_or_override_status: 'NOT_BLOCKED',
+            block_or_override_status: 'block',
             alert_date: '2024-01-01',
             typologies: [
               {
@@ -131,6 +131,7 @@ describe('AlertsLakehouseService', () => {
       expect(result.alertMetadata.alertId).toBe(1);
       expect(result.alertMetadata.evaluationId).toBe('eval-123');
       expect(result.alertMetadata.status).toBe('ALRT');
+      expect(result.alertMetadata.efrupSubRuleRef).toBe('block');
       expect(result.alertMetadata.transactionType).toBe('pacs.008.001.10');
 
       expect(result.typologies).toHaveLength(1);
@@ -223,6 +224,100 @@ describe('AlertsLakehouseService', () => {
       const parsedRules = JSON.parse(result.typologies[0].rules);
       expect(parsedRules).toHaveLength(1);
       expect(parsedRules[0].ruleId).toBe('rule-001');
+    });
+
+    it('leaves flowProcessorData undefined when no EFRuP rule is configured for the typology', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 6,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: 'typology-006',
+                typology_cfg: '001@1.0.0',
+                rules: [
+                  {
+                    rule_id: 'rule-001',
+                    rule_weight: 250,
+                    rule_sub_ref: '.01',
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(6, 'DEFAULT');
+
+      expect(result.typologies[0].flowProcessorData).toBeUndefined();
+    });
+
+    it('leaves flowProcessorData undefined when the EFRuP rule exists but rule_sub_ref is NULL', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 7,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: 'typology-007',
+                typology_cfg: '001@1.0.0',
+                rules: [
+                  {
+                    rule_id: 'rule-001',
+                    rule_weight: 250,
+                    rule_sub_ref: '.01',
+                  },
+                  {
+                    rule_id: 'EFRuP@1.0.0',
+                    rule_weight: 0,
+                    rule_sub_ref: null,
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(7, 'DEFAULT');
+
+      expect(result.typologies[0].flowProcessorData).toBeUndefined();
+    });
+
+    it('surfaces flowProcessorData as the literal string "none" when the EFRuP rule evaluated with result none', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 8,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: 'typology-008',
+                typology_cfg: '001@1.0.0',
+                rules: [
+                  {
+                    rule_id: 'rule-001',
+                    rule_weight: 250,
+                    rule_sub_ref: '.01',
+                  },
+                  {
+                    rule_id: 'EFRuP@1.0.0',
+                    rule_weight: 0,
+                    rule_sub_ref: 'none',
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(8, 'DEFAULT');
+
+      expect(result.typologies[0].flowProcessorData).toBe('none');
     });
 
     it('handles null values gracefully', async () => {
