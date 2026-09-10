@@ -129,8 +129,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         filterDate,
         userJwt,
       );
-      this.logger.log(`Debtor accounts for transaction ${transactionId}:`, debtorAccounts);
-      this.logger.log(`Creditor accounts for transaction ${transactionId}:`, creditorAccounts);
 
       return {
         transaction: {
@@ -189,8 +187,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     try {
       const accountIdsSet = new Set<string>();
 
-      this.logger.log(`Fetching accounts for entity ${entityId} with primary account ${primaryAccountId}`);
-
       if (primaryAccountId && primaryAccountId !== 'no data found') {
         accountIdsSet.add(primaryAccountId);
       }
@@ -204,8 +200,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         `;
         const enhancedEntityId = `${entityId}TAZAMA_EID`;
         const accountsResponse = await this.runSqlQuery(accountsSql, 100, [enhancedEntityId, tenantId], userJwt);
-
-        this.logger.log(`Accounts for entity ${entityId}:`, accountsResponse.data);
 
         accountsResponse.data?.forEach((r) => {
           if (r.account_id) {
@@ -261,8 +255,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
           const countsResponse = await this.runSqlQuery(conditionsSql, 1, [asOfDate, accountIdToUse, tenantId], userJwt);
 
-          this.logger.log(`Condition counts for ${accountIdToUse}:`, countsResponse);
-
           const counts = countsResponse.data?.[0] ?? {};
 
           const accountNumber = accountId.slice(-12);
@@ -297,8 +289,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     userJwt?: string,
   ): Promise<ConditionsByEntityResponse> {
     try {
-      this.logger.log(`Fetching conditions for entity: ${entityId}`);
-
       const accountsSql = `
       SELECT DISTINCT destination as account_id
       FROM account_holder
@@ -307,7 +297,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       `;
 
       const accountsResponse = await this.runSqlQuery(accountsSql, 100, [entityId, tenantId], userJwt);
-      this.logger.log(`Accounts for entity ${entityId}:`, accountsResponse.data);
       const accountIds = accountsResponse.data?.map((r) => r.account_id).filter(Boolean) ?? [];
 
       if (accountIds.length === 0) {
@@ -364,7 +353,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       `;
 
       const response = await this.runSqlQuery(conditionsSql, 500, params, userJwt);
-      this.logger.log(`Conditions for entity ${entityId}:`, response.data);
       const rows = response.data ?? [];
 
       return {
