@@ -3,6 +3,22 @@ import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import nano from 'nano';
 
+export interface QueryDocumentsParams {
+  id?: string;
+  evidenceId?: string;
+  reportId?: string;
+  tenantId: string;
+  uploadedBy?: string;
+  taskId?: number;
+  caseId?: number;
+  evidenceType?: string;
+  verified?: boolean;
+  archive?: boolean;
+  search?: string;
+  page: number;
+  limit: number;
+}
+
 @Injectable()
 export class CouchdbService implements OnModuleInit {
   private readonly logger = new Logger(CouchdbService.name);
@@ -99,21 +115,9 @@ export class CouchdbService implements OnModuleInit {
     }
   }
 
-  async queryDocuments(params: {
-    id?: string;
-    evidenceId?: string;
-    reportId?: string;
-    tenantId?: string;
-    uploadedBy?: string;
-    taskId?: number;
-    caseId?: number;
-    evidenceType?: string;
-    verified?: boolean;
-    archive?: boolean;
-    search?: string;
-    page: number;
-    limit: number;
-  }): Promise<{ data: any[]; page: number; limit: number; total: number; totalPages: number }> {
+  async queryDocuments(
+    params: QueryDocumentsParams,
+  ): Promise<{ data: any[]; page: number; limit: number; total: number; totalPages: number }> {
     const { id, evidenceId, reportId, tenantId, uploadedBy, taskId, caseId, evidenceType, verified, archive, search, page, limit } = params;
 
     if (!Number.isInteger(page) || page < 1) {
@@ -125,8 +129,12 @@ export class CouchdbService implements OnModuleInit {
 
     const selector: any = {};
 
+    if (typeof tenantId !== 'string' || tenantId.length === 0) {
+      throw new BadRequestException('tenantId is required');
+    }
+
     if (id) selector.id = id;
-    if (tenantId) selector.tenantId = tenantId;
+    selector.tenantId = tenantId;
     if (uploadedBy) selector.uploadedBy = uploadedBy;
     if (taskId) selector.taskId = taskId;
     if (caseId) selector.caseId = caseId;
