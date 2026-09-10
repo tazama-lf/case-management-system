@@ -447,6 +447,67 @@ describe('CacheService', () => {
     });
   });
 
+  describe('setUserToken', () => {
+    const makeToken = (exp: number): string => {
+      const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({ exp })).toString('base64url');
+      return `${header}.${payload}.signature`;
+    };
+
+    const nowSeconds = () => Math.floor(Date.now() / 1000);
+
+    beforeEach(() => {
+      redisService.isConnected.mockReturnValue(true);
+      (redisService as any).set = jest.fn().mockResolvedValue(undefined);
+    });
+
+    it('caches the token when nothing is cached yet', async () => {
+      redisService.get.mockResolvedValue(null);
+      const token = makeToken(nowSeconds() + 3600);
+
+      await service.setUserToken('user-1', token);
+
+      expect((redisService as any).set).toHaveBeenCalledWith('cms:tokens:user-1', token, expect.any(Number));
+    });
+
+    it('overwrites the cached token when the new one is fresher', async () => {
+      const older = makeToken(nowSeconds() + 100);
+      const fresher = makeToken(nowSeconds() + 3600);
+      redisService.get.mockResolvedValue(older);
+
+      await service.setUserToken('user-1', fresher);
+
+      expect((redisService as any).set).toHaveBeenCalledWith('cms:tokens:user-1', fresher, expect.any(Number));
+    });
+
+    it('skips the write when the cached token is already as fresh or fresher (no regression)', async () => {
+      const newer = makeToken(nowSeconds() + 3600);
+      const older = makeToken(nowSeconds() + 100);
+      redisService.get.mockResolvedValue(newer);
+
+      await service.setUserToken('user-1', older);
+
+      expect((redisService as any).set).not.toHaveBeenCalled();
+    });
+
+    it('does not attempt to cache an already-expired token', async () => {
+      const expired = makeToken(nowSeconds() - 10);
+
+      await service.setUserToken('user-1', expired);
+
+      expect((redisService as any).set).not.toHaveBeenCalled();
+      expect(redisService.get).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when Redis is not connected', async () => {
+      redisService.isConnected.mockReturnValue(false);
+
+      await service.setUserToken('user-1', makeToken(nowSeconds() + 3600));
+
+      expect((redisService as any).set).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Integration scenarios', () => {
     it('should handle complete initialization flow with multiple users', async () => {
       redisService.isConnected.mockReturnValue(true);

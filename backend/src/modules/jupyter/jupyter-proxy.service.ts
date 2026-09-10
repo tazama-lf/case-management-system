@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { TransactionLakehouseService } from '../gold-lakehouse/transaction-lakehouse.service';
 import { AccountLakehouseService } from '../gold-lakehouse/account-lakehouse.service';
 import { AlertsLakehouseService } from '../gold-lakehouse/alerts-lakehouse.service';
@@ -31,30 +31,50 @@ export class JupyterProxyService {
   ) {}
 
   /**
-   * Retrieve the original user's JWT token from cache.
-   * This token will be forwarded to Gold Lakehouse for proper authorization.
+   * Retrieve the JWT to forward to Gold Lakehouse for this call.
    *
-   * @param userId - The user ID extracted from the service token
+   * Falls back to the request's own JWT (`fallbackJwt`, already validated by TazamaAuthGuard)
+   * when the cache is missing or expired, instead of failing. Still re-checks `fallbackJwt`'s expiry so "cache and fallback both
+   * expired" throws instead of forwarding a dead token. A usable fallback also refreshes the
+   * cache on every call via `cacheService.setUserToken`, which only overwrites an older entry
+   * so this can't regress a fresher token another tab already cached.
+   *
+   * @param userId - The user ID extracted from the request
+   * @param fallbackJwt - The JWT already validated on the current request, if any
    * @returns The user's JWT token
    */
-  private async getUserJwt(userId: string): Promise<string> {
+  private async getUserJwt(userId: string, fallbackJwt?: string): Promise<string> {
     try {
-      // Retrieve user's JWT from cache (stored during login)
       const userJwt = await this.cacheService.getUserToken(userId);
+      const fallbackUsable = Boolean(fallbackJwt) && !this.authService.isTokenExpired(fallbackJwt!);
 
-      if (!userJwt) {
-        this.logger.warn(`No JWT found in cache for user: ${userId}`);
-        throw new Error('User session not found');
+      if (fallbackUsable) {
+        // A fresh JWT on any proxied call refreshes the cache for this user - not only when we
+        // need it ourselves below. Safe to do unconditionally: setUserToken only overwrites a
+        // strictly older cached entry, so this can't regress a fresher one another tab cached.
+        await this.cacheService.setUserToken(userId, fallbackJwt!);
       }
 
-      // Optionally verify the token hasn't expired
-      if (this.authService.isTokenExpired(userJwt)) {
-        this.logger.warn(`Expired JWT for user: ${userId}`);
-        throw new Error('User session expired');
+      if (userJwt && !this.authService.isTokenExpired(userJwt)) {
+        return userJwt;
       }
 
-      return userJwt;
+      const cacheProblem = userJwt ? 'expired' : 'missing';
+
+      if (fallbackUsable) {
+        // Expected, routine occurrence (cache miss/expiry/eviction/Redis outage) - debug level
+        // only, so it doesn't add INFO/WARN noise for something that isn't a real failure.
+        this.logger.debug(`Cache ${cacheProblem} for user ${userId} - falling back to the request's own validated JWT`);
+        return fallbackJwt!;
+      }
+
+      // No usable credential anywhere - this is a genuine failure, worth surfacing above debug.
+      this.logger.warn(`No usable JWT for user ${userId} (cache ${cacheProblem}, no valid request fallback)`);
+      throw new UnauthorizedException('User session not found or expired');
     } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
       this.logger.error(`Failed to retrieve user JWT for ${userId}: ${error instanceof Error ? error.message : error}`);
       throw error;
     }
@@ -65,8 +85,9 @@ export class JupyterProxyService {
     accountId: string,
     tenantId: string,
     timeRange: string,
+    fallbackJwt?: string,
   ): Promise<CounterpartyNetworkResponseDto> {
-    const userJwt = await this.getUserJwt(userId);
+    const userJwt = await this.getUserJwt(userId, fallbackJwt);
     return await this.transactionLakehouseService.getCounterpartyNetworkData(accountId, tenantId, timeRange, userJwt);
   }
 
@@ -75,8 +96,9 @@ export class JupyterProxyService {
     counterpartyId: string,
     tenantId: string,
     granularity: 'day' | 'month' | 'year' = 'month',
+    fallbackJwt?: string,
   ): Promise<CounterpartyNodeFullDataResponse> {
-    const userJwt = await this.getUserJwt(userId);
+    const userJwt = await this.getUserJwt(userId, fallbackJwt);
     return await this.accountLakehouseService.getCounterpartyNodeFullData(counterpartyId, tenantId, granularity, userJwt);
   }
 
@@ -85,6 +107,7 @@ export class JupyterProxyService {
     tenantId: string,
     entityId: string,
     granularity: 'day' | 'month' | 'year' = 'month',
+    fallbackJwt?: string,
   ): Promise<{
     totalAlerts: number;
     casesOpened: number;
@@ -92,7 +115,7 @@ export class JupyterProxyService {
     sarFilings: number;
     totalValue: number;
   }> {
-    const userJwt = await this.getUserJwt(userId);
+    const userJwt = await this.getUserJwt(userId, fallbackJwt);
     return await this.alertsLakehouseService.getAlertHistorySummary(tenantId, entityId, granularity, userJwt);
   }
 
@@ -103,9 +126,9 @@ export class JupyterProxyService {
     startDate?: string,
     endDate?: string,
     granularity?: string,
+    fallbackJwt?: string,
   ): Promise<TransactionHistoryResponse> {
-    const userJwt = await this.getUserJwt(userId);
-    this.logger.log(`User token: ${userJwt}`);
+    const userJwt = await this.getUserJwt(userId, fallbackJwt);
     return await this.transactionLakehouseService.getTransactionHistoryByAccountId(
       accountId,
       tenantId ?? 'DEFAULT',
@@ -121,8 +144,9 @@ export class JupyterProxyService {
     tenantId: string,
     entityId: string,
     granularity: 'day' | 'month' | 'year' = 'month',
+    fallbackJwt?: string,
   ): Promise<unknown> {
-    const userJwt = await this.getUserJwt(userId);
+    const userJwt = await this.getUserJwt(userId, fallbackJwt);
     return await this.alertsLakehouseService.getAlertHistoryTimeline(tenantId, entityId, granularity, userJwt);
   }
 
@@ -133,8 +157,9 @@ export class JupyterProxyService {
     granularity: 'day' | 'month' | 'year' = 'month',
     page: number,
     limit: number,
+    fallbackJwt?: string,
   ): Promise<AlertHistoryAlertsResponse> {
-    const userJwt = await this.getUserJwt(userId);
+    const userJwt = await this.getUserJwt(userId, fallbackJwt);
     return await this.alertsLakehouseService.getAlertHistoryAlerts(tenantId, entityId, granularity, page, limit, userJwt);
   }
 
@@ -145,8 +170,9 @@ export class JupyterProxyService {
     timeRange: string,
     startDate?: string,
     endDate?: string,
+    fallbackJwt?: string,
   ): Promise<TransactionNetworkResponseDto> {
-    const userJwt = await this.getUserJwt(userId);
+    const userJwt = await this.getUserJwt(userId, fallbackJwt);
     return await this.transactionLakehouseService.getTransactionNetworkData(accountId, tenantId, timeRange, startDate, endDate, userJwt);
   }
 
@@ -155,8 +181,9 @@ export class JupyterProxyService {
     entityId: string,
     tenantId?: string,
     granularity: 'day' | 'month' | 'year' = 'month',
+    fallbackJwt?: string,
   ): Promise<AccountNodeFullDataResponse> {
-    const userJwt = await this.getUserJwt(userId);
+    const userJwt = await this.getUserJwt(userId, fallbackJwt);
     return await this.accountLakehouseService.getAccountNodeFullData(entityId, tenantId ?? 'DEFAULT', granularity, userJwt);
   }
 
@@ -166,6 +193,7 @@ export class JupyterProxyService {
     tenantId: string,
     from: string,
     to: string,
+    fallbackJwt?: string,
   ): Promise<{
     expected: Record<number, number>;
     actual: Record<number, number>;
@@ -177,7 +205,7 @@ export class JupyterProxyService {
       toDate: string;
     };
   }> {
-    const userJwt = await this.getUserJwt(userId);
+    const userJwt = await this.getUserJwt(userId, fallbackJwt);
     return await this.benfordsLawLakehouseService.getBenfordAnalysisByAccount(accountId, tenantId, from, to, userJwt);
   }
 
@@ -188,8 +216,9 @@ export class JupyterProxyService {
     transactionId: string,
     tenantId: string,
     asOfDate?: string,
+    fallbackJwt?: string,
   ): Promise<ConditionsContextByTransactionResponse> {
-    const userJwt = await this.getUserJwt(userId);
+    const userJwt = await this.getUserJwt(userId, fallbackJwt);
     return await this.conditionLakehouseService.getConditionsContextByTransaction(transactionId, tenantId, asOfDate, userJwt);
   }
 
@@ -199,8 +228,9 @@ export class JupyterProxyService {
     tenantId: string,
     asOfDate?: string,
     showInactive?: boolean,
+    fallbackJwt?: string,
   ): Promise<ConditionsListByAccountResponse> {
-    const userJwt = await this.getUserJwt(userId);
+    const userJwt = await this.getUserJwt(userId, fallbackJwt);
     return await this.conditionLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive ?? false, userJwt);
   }
 }

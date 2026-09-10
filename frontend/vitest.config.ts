@@ -6,6 +6,18 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'happy-dom',
+    // Stops happy-dom from actually navigating <iframe src="..."> in tests
+    // (e.g. VoilaFrame) - that real request always fails here and surfaces
+    // as unrelated unhandled-rejection noise, sometimes failing the run.
+    environmentOptions: {
+      happyDOM: {
+        settings: {
+          navigation: {
+            disableChildFrameNavigation: true,
+          },
+        },
+      },
+    },
     testTimeout: 20000,
     setupFiles: ['./src/test/setup.ts'],
     css: true,
