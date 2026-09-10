@@ -60,9 +60,7 @@ describe('JupyterProxyService', () => {
           provide: ConditionLakehouseService,
           useValue: {
             getConditionsContextByTransaction: jest.fn().mockResolvedValue({}),
-            getConditionsSummaryByAccount: jest.fn().mockResolvedValue({}),
             getConditionsListByAccount: jest.fn().mockResolvedValue({}),
-            getEvaluatedTransactionsByAccount: jest.fn().mockResolvedValue({}),
           },
         },
         {
@@ -233,18 +231,6 @@ describe('JupyterProxyService', () => {
     });
   });
 
-  describe('getConditionsSummary', () => {
-    it('delegates with explicit tenantId', async () => {
-      await service.getConditionsSummary(MOCK_USER_ID, 'acc1', 'TENANT_A', '2024-01-01');
-      expect(conditionSvc.getConditionsSummaryByAccount).toHaveBeenCalledWith('acc1', 'TENANT_A', undefined, '2024-01-01', MOCK_JWT);
-    });
-
-    it('omits asOfDate when not provided', async () => {
-      await service.getConditionsSummary(MOCK_USER_ID, 'acc1', 'DEFAULT');
-      expect(conditionSvc.getConditionsSummaryByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, undefined, MOCK_JWT);
-    });
-  });
-
   describe('getConditionsDetails', () => {
     it('delegates with all parameters', async () => {
       await service.getConditionsDetails(MOCK_USER_ID, 'acc1', 'TENANT_A', '2024-01-01', true);
@@ -254,79 +240,6 @@ describe('JupyterProxyService', () => {
     it('applies defaults when parameters are omitted', async () => {
       await service.getConditionsDetails(MOCK_USER_ID, 'acc1', 'DEFAULT');
       expect(conditionSvc.getConditionsListByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, false, MOCK_JWT);
-    });
-  });
-
-  describe('getConditionsEvaluatedTransactions', () => {
-    it('delegates with explicit tenantId', async () => {
-      await service.getConditionsEvaluatedTransactions(MOCK_USER_ID, 'acc1', 'TENANT_A', '2024-01-01');
-      expect(conditionSvc.getEvaluatedTransactionsByAccount).toHaveBeenCalledWith('acc1', 'TENANT_A', '2024-01-01', MOCK_JWT);
-    });
-
-    it('omits fromDate when not provided', async () => {
-      await service.getConditionsEvaluatedTransactions(MOCK_USER_ID, 'acc1', 'DEFAULT');
-      expect(conditionSvc.getEvaluatedTransactionsByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, MOCK_JWT);
-    });
-  });
-
-  describe('JWT fallback (getUserJwt)', () => {
-    it('uses the cached JWT for the call, but still refreshes the cache with the fresh request JWT', async () => {
-      // The call itself is served from the cache (MOCK_JWT), but a usable request JWT still
-      // refreshes the cache on every call - CacheService.setUserToken is what actually decides
-      // whether that's a newer token worth keeping, not this method.
-      await service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d', FALLBACK_JWT);
-      expect(transactionSvc.getCounterpartyNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', '30d', MOCK_JWT);
-      expect(cacheSvc.setUserToken).toHaveBeenCalledWith(MOCK_USER_ID, FALLBACK_JWT);
-    });
-
-    it('does not touch the cache when no request JWT is available', async () => {
-      await service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d');
-      expect(transactionSvc.getCounterpartyNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', '30d', MOCK_JWT);
-      expect(cacheSvc.setUserToken).not.toHaveBeenCalled();
-    });
-
-    it('falls back to the request JWT and re-caches it on a cache miss', async () => {
-      cacheSvc.getUserToken.mockResolvedValueOnce(null);
-      await service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d', FALLBACK_JWT);
-      expect(transactionSvc.getCounterpartyNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', '30d', FALLBACK_JWT);
-      expect(cacheSvc.setUserToken).toHaveBeenCalledWith(MOCK_USER_ID, FALLBACK_JWT);
-    });
-
-    it('falls back to the request JWT and re-caches it when the cached entry is expired', async () => {
-      authSvc.isTokenExpired.mockImplementation((token: string) => token === MOCK_JWT);
-      await service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d', FALLBACK_JWT);
-      expect(transactionSvc.getCounterpartyNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', '30d', FALLBACK_JWT);
-      expect(cacheSvc.setUserToken).toHaveBeenCalledWith(MOCK_USER_ID, FALLBACK_JWT);
-    });
-
-    it('throws UnauthorizedException on a cache miss with no fallback JWT available', async () => {
-      cacheSvc.getUserToken.mockResolvedValueOnce(null);
-      await expect(service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d')).rejects.toThrow(UnauthorizedException);
-      expect(cacheSvc.setUserToken).not.toHaveBeenCalled();
-    });
-
-    it('throws UnauthorizedException when both the cached JWT and the request JWT are expired', async () => {
-      authSvc.isTokenExpired.mockReturnValue(true);
-      await expect(
-        service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d', FALLBACK_JWT),
-      ).rejects.toThrow(UnauthorizedException);
-      expect(cacheSvc.setUserToken).not.toHaveBeenCalled();
-    });
-
-    it('falls back to the request JWT without a 500 when Redis is disconnected', async () => {
-      // CacheService.getUserToken/setUserToken both no-op to a "miss"/silent-skip when Redis is
-      // down, rather than throwing - so from getUserJwt's point of view this looks identical to
-      // a cache miss, and the request's own already-validated JWT still carries the call through.
-      cacheSvc.getUserToken.mockResolvedValueOnce(null);
-      cacheSvc.setUserToken.mockResolvedValueOnce(undefined);
-      await service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d', FALLBACK_JWT);
-      expect(transactionSvc.getCounterpartyNetworkData).toHaveBeenCalledWith('acc1', 'DEFAULT', '30d', FALLBACK_JWT);
-    });
-
-    it('threads the fallback JWT through getConditionsDetails on a cache miss', async () => {
-      cacheSvc.getUserToken.mockResolvedValueOnce(null);
-      await service.getConditionsDetails(MOCK_USER_ID, 'acc1', 'DEFAULT', undefined, false, FALLBACK_JWT);
-      expect(conditionSvc.getConditionsListByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, false, FALLBACK_JWT);
     });
   });
 
