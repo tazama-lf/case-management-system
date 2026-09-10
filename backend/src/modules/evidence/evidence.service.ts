@@ -10,7 +10,7 @@ import {
 import * as crypto from 'node:crypto';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType, CreateEvidenceDto } from './dto';
 import { PrismaService } from 'prisma/prisma.service';
-import { CouchdbService } from '../couchdb/couchdb.service';
+import { CouchdbService, QueryDocumentsParams } from '../couchdb/couchdb.service';
 import { EvidenceRepository } from '../repository/evidence.repository';
 import { TaskRepository } from '../repository/task.repository';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
@@ -504,22 +504,6 @@ export class EvidenceService {
             actualHash: encryptedHash,
           };
         }
-
-        // try {
-        //   let decrypted: Buffer;
-        //   decrypted = this.decrypt(encryptedBuffer, att.encryption.key, att.encryption.iv, att.encryption.authTag);
-        // } catch (decErr) {
-        //   const errorMessage = decErr instanceof Error ? decErr.message : String(decErr);
-        //   const errorStack = decErr instanceof Error ? decErr.stack : undefined;
-        //   this.logger.error(`Decryption failed for ${evidenceId}:${att.fileName} - ${errorMessage}`, errorStack);
-        //   return {
-        //     fileName: att.fileName,
-        //     verified: false,
-        //     reason: 'decryption failed',
-        //     error: errorMessage,
-        //   };
-        // }
-
         return {
           fileName: att.fileName,
           verified: true,
@@ -552,7 +536,7 @@ export class EvidenceService {
   }
 
   async getEvidenceByTaskId(taskId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
-    const query: any = { taskId, archive: false, page: 1, limit: 100 };
+    const query: QueryDocumentsParams = { taskId, tenantId, archive: false, page: 1, limit: 100 };
     if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
@@ -582,7 +566,7 @@ export class EvidenceService {
   async getEvidenceByCaseId(caseId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
     const allDocs: any[] = [];
 
-    const query: any = { caseId, page: 1, limit: 100 };
+    const query: QueryDocumentsParams = { caseId, tenantId, page: 1, limit: 100 };
 
     if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
     else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
