@@ -59,6 +59,25 @@ export class VoilaProxyController {
       // Store user token in cache
       await this.storeUserToken(userId, accessToken);
 
+      // VoilaFrame (frontend) HEAD-pre-flights the render URL to check the
+      // session is valid before ever mounting the iframe. Voila itself
+      // doesn't support HEAD on that route (405) and would otherwise pay
+      // for a full kernel start just to answer it - since auth has already
+      // been validated above (a bad/missing cookie is rejected as 401
+      // before this point, without ever reaching Voila), a HEAD request
+      // that gets this far has nothing left to check: answer it here
+      // directly and never proxy it to Voila at all.
+      //
+      // Trade-off: this only confirms "you're authenticated", not "Voila is
+      // actually up" - a genuinely unreachable Voila server is no longer
+      // caught by this pre-flight and instead surfaces ~30s later via
+      // VoilaFrame's ready-signal timeout instead of an immediate 502.
+      if (req.method === 'HEAD' && req.url.includes('/voila/render/')) {
+        this.logger.log('[VoilaProxy] HEAD pre-flight - authenticated, short-circuiting without proxying to Voila');
+        res.status(200).setHeader('Content-Type', 'text/html').end();
+        return;
+      }
+
       // Proxy the request to Voila with the user's JWT
       this.logger.log('[VoilaProxy] Proxying request to Voila server...');
       await this.voilaProxyService.proxyRequest(req, res, accessToken);
