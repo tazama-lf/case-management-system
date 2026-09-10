@@ -107,6 +107,7 @@ describe('ConditionLakehouseService', () => {
               transaction_id: 1,
               tx_event_ts: '2024-01-01',
               end_to_end_id: 'e2e1',
+              tx_type: 'pacs.008.001.10',
               debtor_id: 'entity1',
               debtor_account_id: 'acc1',
               creditor_id: 'entity2',
@@ -131,7 +132,7 @@ describe('ConditionLakehouseService', () => {
             transaction_id: 'TMICFBPK2801321903297120',
             tx_event_ts: '2024-01-01',
             end_to_end_id: 'e2e1',
-            tx_type: 'PAYMENT',
+            tx_type: 'pacs.008.001.10',
             interbank_settlement_amount: 100,
             interbank_settlement_currency: 'USD',
             debtor_id: 'entity1',
@@ -147,7 +148,7 @@ describe('ConditionLakehouseService', () => {
     });
 
     it('returns conditions context without entity ids', async () => {
-      http.mockReturnValue(okHttp([{ transaction_id: 1, tx_event_ts: '2024-01-01' }]));
+      http.mockReturnValue(okHttp([{ transaction_id: 1, tx_event_ts: '2024-01-01', tx_type: 'pacs.008.001.10' }]));
       const result = await service.getConditionsContextByTransaction('TMICFBPK2801321903297120', 'DEFAULT');
       expect(result.transaction).toBeDefined();
     });

@@ -60,7 +60,6 @@ describe('JupyterProxyService', () => {
           provide: ConditionLakehouseService,
           useValue: {
             getConditionsContextByTransaction: jest.fn().mockResolvedValue({}),
-            getConditionsSummaryByAccount: jest.fn().mockResolvedValue({}),
             getConditionsListByAccount: jest.fn().mockResolvedValue({}),
           },
         },
@@ -229,18 +228,6 @@ describe('JupyterProxyService', () => {
         undefined,
         MOCK_JWT,
       );
-    });
-  });
-
-  describe('getConditionsSummary', () => {
-    it('delegates with explicit tenantId', async () => {
-      await service.getConditionsSummary(MOCK_USER_ID, 'acc1', 'TENANT_A', '2024-01-01');
-      expect(conditionSvc.getConditionsSummaryByAccount).toHaveBeenCalledWith('acc1', 'TENANT_A', undefined, '2024-01-01', MOCK_JWT);
-    });
-
-    it('omits asOfDate when not provided', async () => {
-      await service.getConditionsSummary(MOCK_USER_ID, 'acc1', 'DEFAULT');
-      expect(conditionSvc.getConditionsSummaryByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, undefined, MOCK_JWT);
     });
   });
 
