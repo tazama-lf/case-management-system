@@ -23,7 +23,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       this.logger.log(`Fetching all conditions for ID: ${id}`);
 
       const params: any[] = [id];
-      const tenantFilter = `AND ct.tenant_id = $${params.length + 1}`;
+      const tenantFilter = `AND tenant_id = $${params.length + 1}`;
       params.push(tenantId);
 
       let dateFilter = '';
