@@ -24,6 +24,29 @@ const USER_SOCKETS_TTL_SECONDS = 60 * 60;
 
 const userSocketsKey = (userId: string): string => `case-events:user-sockets:${userId}`;
 
+// Registers a socket under the per-user set as one atomic step on the Redis server, so two
+// concurrent connections for the same user can't both read a count under the limit via SCARD
+// and both add themselves via SADD before either write lands (a plain scard-then-sadd from the
+// client can't be made atomic that way - EVAL can, since Redis runs the whole script as a single
+// command with no other client's commands interleaved). Returns 1 if the socket is now
+// registered (added, or already present), 0 if the limit was reached.
+const REGISTER_CONNECTION_SCRIPT = `
+local key = KEYS[1]
+local member = ARGV[1]
+local limit = tonumber(ARGV[2])
+local ttl = tonumber(ARGV[3])
+if redis.call('SISMEMBER', key, member) == 1 then
+  redis.call('EXPIRE', key, ttl)
+  return 1
+end
+if redis.call('SCARD', key) >= limit then
+  return 0
+end
+redis.call('SADD', key, member)
+redis.call('EXPIRE', key, ttl)
+return 1
+`;
+
 interface CaseChangedPayload {
   caseId: number;
   type: 'created' | 'status-changed';
@@ -106,12 +129,20 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
   private async registerConnection(userId: string, socketId: string): Promise<{ registered: boolean; viaRedis: boolean }> {
     const redisClient = this.redisService.getClient();
     if (redisClient) {
-      const key = userSocketsKey(userId);
-      const count = await redisClient.scard(key);
-      if (count >= MAX_CONNECTIONS_PER_USER) return { registered: false, viaRedis: true };
-      await redisClient.sadd(key, socketId);
-      await redisClient.expire(key, USER_SOCKETS_TTL_SECONDS);
-      return { registered: true, viaRedis: true };
+      try {
+        const key = userSocketsKey(userId);
+        const registered = await redisClient.eval(
+          REGISTER_CONNECTION_SCRIPT,
+          1,
+          key,
+          socketId,
+          MAX_CONNECTIONS_PER_USER,
+          USER_SOCKETS_TTL_SECONDS,
+        );
+        return { registered: registered === 1, viaRedis: true };
+      } catch (error) {
+        this.logger.warn(`Redis registerConnection failed for user ${userId}, falling back to local tracking: ${(error as Error).message}`);
+      }
     }
 
     const sockets = this.localUserSockets.get(userId) ?? new Set<string>();

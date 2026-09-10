@@ -103,6 +103,9 @@ export const useCaseDashboard = (): {
   // overwrite) the result of a newer one - e.g. clearing filters right after
   // selecting one that returns zero results.
   const latestRequestIdRef = useRef(0);
+  // requestId of a currently in-flight foreground (non-silent) request, or null. A successful
+  // silent refresh may still supersede it, but a *failed* one hands the "latest" slot back instead of stranding the foreground request.
+  const inFlightForegroundRequestIdRef = useRef<number | null>(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(DEFAULT_PAGE);
@@ -190,6 +193,7 @@ export const useCaseDashboard = (): {
       latestRequestIdRef.current += 1;
       const requestId = latestRequestIdRef.current;
       if (!silent) {
+        inFlightForegroundRequestIdRef.current = requestId;
         setLoading(true);
         setErrorState(null);
       }
@@ -252,6 +256,18 @@ export const useCaseDashboard = (): {
           setBackendTotalPages(pagination.totalPages);
         }
       } catch {
+        if (silent) {
+          // Hand "latest" back to a still-pending foreground request this failure bumped past,
+          // so that request's own result and loading-clear aren't later discarded as stale.
+          const pendingForegroundId = inFlightForegroundRequestIdRef.current;
+          if (
+            pendingForegroundId !== null &&
+            pendingForegroundId < requestId &&
+            requestId === latestRequestIdRef.current
+          ) {
+            latestRequestIdRef.current = pendingForegroundId;
+          }
+        }
         if (requestId !== latestRequestIdRef.current) {
           return;
         }
@@ -263,6 +279,9 @@ export const useCaseDashboard = (): {
           setCases([]);
         }
       } finally {
+        if (!silent && inFlightForegroundRequestIdRef.current === requestId) {
+          inFlightForegroundRequestIdRef.current = null;
+        }
         // Whichever request is latest when it settles is responsible for resolving the loading
         // flag - even if that settling request happens to be a silent one. A non-silent call that
         // gets superseded by a later silent (live-update) call before it resolves would otherwise

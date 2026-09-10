@@ -66,20 +66,16 @@ describe('CaseEventsGateway', () => {
     let mockServer: Server;
 
     const mockRedisClient = {
-        scard: jest.fn(),
-        sadd: jest.fn(),
+        eval: jest.fn(),
         srem: jest.fn(),
-        expire: jest.fn(),
     };
 
     beforeEach(async () => {
         jest.clearAllMocks();
 
-        // Default: Redis is connected
-        mockRedisClient.scard.mockResolvedValue(0);
-        mockRedisClient.sadd.mockResolvedValue(1);
+        // Default: Redis is connected, and the atomic register script reports success (1).
+        mockRedisClient.eval.mockResolvedValue(1);
         mockRedisClient.srem.mockResolvedValue(1);
-        mockRedisClient.expire.mockResolvedValue(1);
 
         mockFindUnique = jest.fn();
         mockGetClient = jest.fn().mockReturnValue(mockRedisClient);
@@ -187,7 +183,7 @@ describe('CaseEventsGateway', () => {
                 tenantId: 'tenant-a',
                 actorRole: 'CMS_INVESTIGATOR',
             });
-            mockRedisClient.scard.mockResolvedValue(5);
+            mockRedisClient.eval.mockResolvedValue(0);
 
             await gateway.handleConnection(socket);
 

@@ -89,6 +89,7 @@ export class TaskService {
     try {
       const txResult = await this.taskRepository.transaction(async (tx) => {
         let updatedTask: Task;
+        let caseStatusNotification: { caseId: number; newStatus: CaseStatus } | undefined;
         const existingTask = await this.taskRepository.findTaskWithCase(taskId, tenantId, tx);
         if (existingTask === null || existingTask.case === null) {
           throw new NotFoundException(`Task ${taskId} not found`);
@@ -110,7 +111,13 @@ export class TaskService {
         const shouldPromoteCaseToInProgress = this.shouldPromoteCaseToInProgress(existingTask, updateData);
         const isCaseEligibleForInProgress = this.isCaseEligibleForInProgress(existingTask.case.status);
         if (shouldPromoteCaseToInProgress && isCaseEligibleForInProgress) {
-          updatedTask = await this.promoteCaseToInProgress(taskId, updateInput, existingTask, tenantId, tx);
+          ({ task: updatedTask, caseStatusNotification } = await this.promoteCaseToInProgress(
+            taskId,
+            updateInput,
+            existingTask,
+            tenantId,
+            tx,
+          ));
         } else {
           updatedTask = await this.taskRepository.updateTask(taskId, updateInput, tx);
           await this.executeFlowableOperation(updatedTask, updateData.assignedUserId ?? existingTask.assigned_user_id!);
@@ -141,8 +148,19 @@ export class TaskService {
           );
         }
 
-        return { updatedTask };
+        return { updatedTask, caseStatusNotification };
       });
+      if (txResult.caseStatusNotification) {
+        try {
+          await this.flowableService.handleCaseStatusChanged(txResult.caseStatusNotification);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.warn(
+            `Case status change notification/Flowable sync failed for case ${txResult.caseStatusNotification.caseId} (continuing): ${errorMessage}`,
+            TaskService.name,
+          );
+        }
+      }
 
       this.logger.log('End - updateTask', TaskService.name);
       return txResult.updatedTask;
@@ -292,7 +310,7 @@ export class TaskService {
     existingTask: Task,
     tenantId: string,
     tx: Prisma.TransactionClient,
-  ): Promise<Task> {
+  ): Promise<{ task: Task; caseStatusNotification: { caseId: number; newStatus: CaseStatus } }> {
     try {
       const taskRecord = await this.taskRepository.updateTask(taskId, updateInput, tx);
       const caseRecord = await this.taskRepository.findCaseStatus(taskRecord.case_id, tenantId, tx);
@@ -301,31 +319,21 @@ export class TaskService {
       const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
       if (assigneeId && caseRecord!.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
       await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
-      // Notify the Cases Dashboard (via CaseEventsGateway's @OnEvent listener) that this case's
-      // status changed - this promotion path updates the case directly and otherwise never
-      // calls FlowableService for the case itself (only for the task, below), so without this
-      // the dashboard would never learn about it until a manual refresh.
-      // handleCaseStatusChanged emits that notification first, then separately syncs the
-      // Flowable process's own state (throwing NotFoundException if no process instance
-      // exists for this case). Caught here deliberately: whether the dashboard got told about
-      // this change must not depend on whether that Flowable-side sync succeeds, and this runs
-      // inside the same transaction as the task update itself - an uncaught error here would
-      // roll back the task/case status change that already succeeded.
-      try {
-        await this.flowableService.handleCaseStatusChanged({
-          caseId: taskRecord.case_id,
-          newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
-        });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.logger.warn(
-          `Case status change notification/Flowable sync failed for case ${taskRecord.case_id} (continuing): ${errorMessage}`,
-          TaskService.name,
-        );
-      }
       await this.executeFlowableOperation(taskRecord, taskRecord.assigned_user_id ?? existingTask.assigned_user_id!);
 
-      return taskRecord;
+      // Notify the Cases Dashboard (via CaseEventsGateway's @OnEvent listener) that this case's
+      // status changed - this promotion path updates the case directly and otherwise never
+      // calls FlowableService for the case itself (only for the task, above), so without this
+      // the dashboard would never learn about it until a manual refresh.
+      // Deliberately NOT sent here: this method still runs inside the same DB transaction as the
+      // task/case update, and the caller (updateTask) does further work in that same transaction
+      // after this returns. Firing the notification now would tell the dashboard about a change
+      // that could still be rolled back by something later in the same transaction. The caller
+      // sends it only after the transaction has committed - see updateTask.
+      return {
+        task: taskRecord,
+        caseStatusNotification: { caseId: taskRecord.case_id, newStatus: CaseStatus.STATUS_20_IN_PROGRESS },
+      };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;

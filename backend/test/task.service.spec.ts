@@ -263,6 +263,52 @@ describe('TaskService', () => {
       expect(loggerService.warn).toHaveBeenCalled();
     });
 
+    it('sends the case status notification only after the transaction commits, not from inside it', async () => {
+      const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
+      const updatedTask = { ...existingTask, status: TaskStatus.STATUS_20_IN_PROGRESS } as any;
+
+      let resolveCommit: () => void;
+      const commitGate = new Promise<void>((resolve) => {
+        resolveCommit = resolve;
+      });
+
+      taskRepository.transaction.mockImplementation(async (callback) => {
+        taskRepository.findTaskWithCase.mockResolvedValue(existingTask);
+        taskRepository.updateTask.mockResolvedValue(updatedTask);
+        taskRepository.findCaseStatus.mockResolvedValue(existingTask.case);
+        taskRepository.updateCase.mockResolvedValue({
+          ...existingTask.case,
+          status: CaseStatus.STATUS_20_IN_PROGRESS,
+        } as any);
+        // The callback (equivalent to everything inside taskRepository.transaction's arrow
+        // function, including promoteCaseToInProgress) runs to completion here, same as real
+        // Prisma - but the transaction as a whole (this mock, standing in for $transaction)
+        // does not resolve until the commit gate below opens, mirroring commit taking real time.
+        const result = await callback(taskRepository as any);
+        await commitGate;
+        return result;
+      });
+
+      flowableService.handleTaskAssigned.mockResolvedValue();
+      flowableService.handleCaseStatusChanged.mockResolvedValue();
+
+      const updatePromise = service.updateTask(1, updateData, 'user1', 'tenant1');
+
+      // Flush every pending microtask (promoteCaseToInProgress's own awaits included) without
+      // advancing past the still-open commit gate - setImmediate only runs once the microtask
+      // queue is fully drained, so this proves the notification hasn't fired mid-transaction.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(flowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
+
+      resolveCommit!();
+      await updatePromise;
+
+      expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledWith({
+        caseId: existingTask.case_id,
+        newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+      });
+    });
+
     it('should handle task assignment status change', async () => {
       const updateData = {
         status: TaskStatus.STATUS_10_ASSIGNED,

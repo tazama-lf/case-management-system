@@ -109,6 +109,15 @@ describe('tazama-token-validator', () => {
         it('should throw UnauthorizedException for an invalid outer token', () => {
             expect(() => extractInnerToken('invalid')).toThrow(UnauthorizedException);
         });
+
+        it('should throw UnauthorizedException when the inner token fails to decode', () => {
+            const token = buildToken({ innerTokenString: 'not-a-valid-jwt' });
+
+            // The specific 'Invalid inner token format' throw is itself caught by this
+            // function's own try/catch and rethrown with this generic message instead.
+            expect(() => extractInnerToken(token)).toThrow(UnauthorizedException);
+            expect(() => extractInnerToken(token)).toThrow('Invalid token format');
+        });
     });
 
     // ─── extractTenantName ────────────────────────────────────────────────

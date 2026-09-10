@@ -51,7 +51,7 @@ export function validateTazamaToken(token: string, requiredClaims: string[], any
 
   const actorEmail = innerDecoded.email as string | undefined;
   const actorName = innerDecoded.name as string | undefined;
-  const tenantName = extractTenantName(innerDecoded.tenant_details as string[]);
+  const tenantName = extractTenantName(innerDecoded.tenant_details as string[] | undefined);
 
   const realmAccess = innerDecoded.realm_access as { roles?: string[] } | undefined;
   const realmRoles = realmAccess?.roles;
@@ -177,8 +177,8 @@ export function extractInnerToken(outerToken: string): Record<string, unknown> {
   }
 }
 
-export function extractTenantName(tenantDetails: string[]): string {
-  if (tenantDetails.length === 0) {
+export function extractTenantName(tenantDetails: string[] | undefined): string {
+  if (!tenantDetails || tenantDetails.length === 0) {
     logger.error('Tenant details array is empty or undefined');
     throw new UnauthorizedException('Invalid tenant details');
   }
