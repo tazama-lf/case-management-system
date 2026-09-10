@@ -189,6 +189,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     try {
       const accountIdsSet = new Set<string>();
 
+      this.logger.log(`Fetching accounts for entity ${entityId} with primary account ${primaryAccountId}`);
+
       if (primaryAccountId && primaryAccountId !== 'no data found') {
         accountIdsSet.add(primaryAccountId);
       }
@@ -214,7 +216,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
       const accountIds = Array.from(accountIdsSet);
 
-      this.logger.debug(
+      this.logger.log(
         `Found ${accountIds.length} unique accounts for entity ${entityId}: ` +
           `${primaryAccountId ? '1 transaction account' : 'no transaction account'} + ` +
           `${accountIds.length - (primaryAccountId ? 1 : 0)} from account_holder`,
