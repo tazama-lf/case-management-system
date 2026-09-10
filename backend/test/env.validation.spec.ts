@@ -108,4 +108,90 @@ describe('env.validation', () => {
       );
     });
   });
+
+  describe('SESSION_COOKIE_SECURE', () => {
+    it('rejects a missing value', () => {
+      const config = createValidConfig();
+      delete config.SESSION_COOKIE_SECURE;
+
+      expect(() => validate(config)).toThrow(
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isBooleanString/,
+      );
+    });
+
+    it('rejects an empty value', () => {
+      const config = createValidConfig({ SESSION_COOKIE_SECURE: '' });
+
+      expect(() => validate(config)).toThrow(
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isBooleanString/,
+      );
+    });
+
+    it('rejects a malformed value', () => {
+      const config = createValidConfig({ SESSION_COOKIE_SECURE: 'yes' });
+
+      expect(() => validate(config)).toThrow(
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isBooleanString/,
+      );
+    });
+
+    it('accepts "false" paired with a non-none SameSite policy', () => {
+      const config = createValidConfig({ SESSION_COOKIE_SECURE: 'false', SESSION_COOKIE_SAMESITE: 'lax' });
+
+      expect(validate(config).SESSION_COOKIE_SECURE).toBe('false');
+    });
+  });
+
+  describe('SESSION_COOKIE_SAMESITE', () => {
+    it('rejects a missing value', () => {
+      const config = createValidConfig();
+      delete config.SESSION_COOKIE_SAMESITE;
+
+      expect(() => validate(config)).toThrow(
+        /property SESSION_COOKIE_SAMESITE has failed the following constraints: isEnum/,
+      );
+    });
+
+    it('rejects an empty value', () => {
+      const config = createValidConfig({ SESSION_COOKIE_SAMESITE: '' });
+
+      expect(() => validate(config)).toThrow(
+        /property SESSION_COOKIE_SAMESITE has failed the following constraints: isEnum/,
+      );
+    });
+
+    it('rejects a malformed value', () => {
+      const config = createValidConfig({ SESSION_COOKIE_SAMESITE: 'invalid' });
+
+      expect(() => validate(config)).toThrow(
+        /property SESSION_COOKIE_SAMESITE has failed the following constraints: isEnum/,
+      );
+    });
+
+    it.each(['strict', 'lax', 'none'])('accepts "%s"', (value) => {
+      const config = createValidConfig({
+        SESSION_COOKIE_SAMESITE: value,
+        SESSION_COOKIE_SECURE: 'true',
+      });
+
+      expect(validate(config).SESSION_COOKIE_SAMESITE).toBe(value);
+    });
+  });
+
+  describe('CORS_ALLOWED_ORIGINS', () => {
+    it('rejects a missing value', () => {
+      const config = createValidConfig();
+      delete config.CORS_ALLOWED_ORIGINS;
+
+      expect(() => validate(config)).toThrow(/property CORS_ALLOWED_ORIGINS has failed/);
+    });
+
+    it('rejects an empty value', () => {
+      const config = createValidConfig({ CORS_ALLOWED_ORIGINS: '' });
+
+      expect(() => validate(config)).toThrow(
+        /property CORS_ALLOWED_ORIGINS has failed the following constraints: isNotEmpty/,
+      );
+    });
+  });
 });
