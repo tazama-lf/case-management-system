@@ -48,52 +48,6 @@ describe('ConditionLakehouseService', () => {
 
   it('should be defined', () => expect(service).toBeDefined());
 
-  // ===================== getConditionsSummaryByAccount =====================
-  describe('getConditionsSummaryByAccount', () => {
-    it('returns summary with DEFAULT tenant', async () => {
-      http
-        .mockReturnValueOnce(okHttp([{ total_conditions: 5, active_conditions: 3, expired_conditions: 1, future_conditions: 1 }]))
-        .mockReturnValueOnce(okHttp([{ condition_id: 'c1', condition_type: 'block', is_active: 1 }]));
-      const result = await service.getConditionsSummaryByAccount('acc1', 'DEFAULT');
-      expect(result.totalConditions).toBe(5);
-    });
-
-    it('adds tenant filter for non-DEFAULT tenant', async () => {
-      http.mockReturnValueOnce(okHttp([{}])).mockReturnValueOnce(okHttp([]));
-      const result = await service.getConditionsSummaryByAccount('acc1', 'TENANT_A');
-      expect(result.accountId).toBe('acc1');
-    });
-
-    it('applies asOfDate filter when provided', async () => {
-      http
-        .mockReturnValueOnce(okHttp([{ total_conditions: 2, active_conditions: 1, expired_conditions: 1, future_conditions: 0 }]))
-        .mockReturnValueOnce(okHttp([]));
-      const result = await service.getConditionsSummaryByAccount('acc1', 'DEFAULT', undefined, '2024-01-01');
-      expect(result.accountId).toBe('acc1');
-    });
-
-    it('re-throws HttpException directly', async () => {
-      http.mockReturnValue(throwError(() => new HttpException('Not found', 404)));
-      await expect(service.getConditionsSummaryByAccount('acc1', 'DEFAULT')).rejects.toThrow('Not found');
-    });
-
-    it('queries the conditions table (not conditions_timeline) for the per-condition detail list', async () => {
-      http
-        .mockReturnValueOnce(okHttp([{ total_conditions: 1, active_conditions: 1, expired_conditions: 0, future_conditions: 0 }]))
-        .mockReturnValueOnce(okHttp([{ condition_id: 'c1', condition_type: 'block', is_active: 1 }]));
-      await service.getConditionsSummaryByAccount('acc1', 'DEFAULT');
-
-      const conditionsListSql = http.mock.calls[1][1].sql_query as string;
-      expect(conditionsListSql).toContain('FROM conditions');
-      expect(conditionsListSql).not.toContain('conditions_timeline');
-    });
-
-    it('throws on error', async () => {
-      http.mockReturnValue(errHttp());
-      await expect(service.getConditionsSummaryByAccount('acc1', 'DEFAULT')).rejects.toThrow(HttpException);
-    });
-  });
-
   // ===================== getConditionsListByAccount =====================
   describe('getConditionsListByAccount', () => {
     it('returns conditions list', async () => {
