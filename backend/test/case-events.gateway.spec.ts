@@ -68,6 +68,7 @@ describe('CaseEventsGateway', () => {
     const mockRedisClient = {
         eval: jest.fn(),
         srem: jest.fn(),
+        expire: jest.fn(),
     };
 
     beforeEach(async () => {
@@ -76,6 +77,7 @@ describe('CaseEventsGateway', () => {
         // Default: Redis is connected, and the atomic register script reports success (1).
         mockRedisClient.eval.mockResolvedValue(1);
         mockRedisClient.srem.mockResolvedValue(1);
+        mockRedisClient.expire.mockResolvedValue(1);
 
         mockFindUnique = jest.fn();
         mockGetClient = jest.fn().mockReturnValue(mockRedisClient);
@@ -228,6 +230,22 @@ describe('CaseEventsGateway', () => {
             expect(socket.emit).toHaveBeenCalledWith('connection_limit_exceeded');
             expect(socket.disconnect).toHaveBeenCalledWith(true);
         });
+
+        it('should fall back to local tracking when the Redis eval call rejects', async () => {
+            mockRedisClient.eval.mockRejectedValue(new Error('Redis connection lost'));
+            validateTazamaToken.mockReturnValue({
+                userId: 'user-1',
+                tenantId: 'tenant-a',
+                actorRole: 'CMS_INVESTIGATOR',
+            });
+            const socket = createMockSocket('valid-token');
+
+            await gateway.handleConnection(socket);
+
+            expect(socket.emit).not.toHaveBeenCalledWith('auth_failed');
+            expect(socket.join).toHaveBeenCalledWith('tenant:tenant-a');
+            expect(socket.data.trackedViaRedis).toBe(false);
+        });
     });
 
     // ─── handleDisconnect ─────────────────────────────────────────────────
@@ -270,6 +288,77 @@ describe('CaseEventsGateway', () => {
             await gateway.handleDisconnect(socket);
 
             expect(mockRedisClient.srem).not.toHaveBeenCalled();
+        });
+    });
+
+    // ─── TTL refresh interval ─────────────────────────────────────────────
+
+    describe('TTL refresh interval', () => {
+        const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+
+        beforeEach(() => {
+            jest.useFakeTimers();
+        });
+
+        afterEach(() => {
+            gateway.onModuleDestroy();
+            jest.useRealTimers();
+        });
+
+        it('should start a periodic refresh on module init and stop it on destroy', () => {
+            const setIntervalSpy = jest.spyOn(global, 'setInterval');
+            const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+            gateway.onModuleInit();
+
+            expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), REFRESH_INTERVAL_MS);
+
+            gateway.onModuleDestroy();
+
+            expect(clearIntervalSpy).toHaveBeenCalled();
+        });
+
+        it("should refresh a user's TTL while they still have an open Redis-tracked socket", async () => {
+            validateTazamaToken.mockReturnValue({ userId: 'user-1', tenantId: 'tenant-a', actorRole: 'CMS_INVESTIGATOR' });
+            await gateway.handleConnection(createMockSocket('valid-token'));
+
+            gateway.onModuleInit();
+            await jest.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS);
+
+            expect(mockRedisClient.expire).toHaveBeenCalledWith('case-events:user-sockets:user-1', 60 * 60);
+        });
+
+        it('should stop refreshing once the user has no sockets left tracked via Redis', async () => {
+            validateTazamaToken.mockReturnValue({ userId: 'user-1', tenantId: 'tenant-a', actorRole: 'CMS_INVESTIGATOR' });
+            const socket = createMockSocket('valid-token');
+            await gateway.handleConnection(socket);
+            await gateway.handleDisconnect(socket);
+
+            gateway.onModuleInit();
+            await jest.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS);
+
+            expect(mockRedisClient.expire).not.toHaveBeenCalled();
+        });
+
+        it('should skip the refresh entirely when Redis is unavailable', async () => {
+            validateTazamaToken.mockReturnValue({ userId: 'user-1', tenantId: 'tenant-a', actorRole: 'CMS_INVESTIGATOR' });
+            await gateway.handleConnection(createMockSocket('valid-token'));
+            mockGetClient.mockReturnValue(null);
+
+            gateway.onModuleInit();
+            await jest.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS);
+
+            expect(mockRedisClient.expire).not.toHaveBeenCalled();
+        });
+
+        it('should log and continue when an EXPIRE call rejects', async () => {
+            validateTazamaToken.mockReturnValue({ userId: 'user-1', tenantId: 'tenant-a', actorRole: 'CMS_INVESTIGATOR' });
+            await gateway.handleConnection(createMockSocket('valid-token'));
+            mockRedisClient.expire.mockRejectedValue(new Error('Redis down'));
+
+            gateway.onModuleInit();
+
+            await expect(jest.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS)).resolves.toBeUndefined();
         });
     });
 

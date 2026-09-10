@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { WebSocketGateway, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
@@ -21,6 +21,11 @@ const MAX_CONNECTIONS_PER_USER = 5;
 // never gets a matching disconnect (e.g. the server process is killed) doesn't permanently
 // occupy one of that user's connection slots - it just ages out.
 const USER_SOCKETS_TTL_SECONDS = 60 * 60;
+
+// How often to re-EXPIRE the Redis-tracked set for every user with an open socket, so a socket
+// that outlives the TTL without reconnecting doesn't have its slot expire while still live.
+// Must stay comfortably under USER_SOCKETS_TTL_SECONDS.
+const USER_SOCKETS_REFRESH_INTERVAL_MS = (USER_SOCKETS_TTL_SECONDS / 4) * 1000;
 
 const userSocketsKey = (userId: string): string => `case-events:user-sockets:${userId}`;
 
@@ -62,21 +67,60 @@ interface CaseChangedPayload {
  * duplicate the role-based case-visibility rules that endpoint enforces (case.controller.ts).
  */
 @WebSocketGateway({ cors: { origin: true, credentials: true } })
-export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit, OnModuleDestroy {
   @WebSocketServer() private readonly server!: Server;
 
   private readonly logger = new Logger(CaseEventsGateway.name);
 
-  // Per-instance fallback connection tracking, used only when Redis is unavailable - caps
-  // connections on this instance alone in that case, rather than globally across a
-  // horizontally-scaled deployment. Best-effort, matching this app's "Redis is optional,
-  // degrade gracefully" convention (see RedisService) rather than refusing to run without it.
+  // Per-instance fallback connection tracking, used only when Redis is unavailable.
   private readonly localUserSockets = new Map<string, Set<string>>();
+
+  // Every socket currently registered via Redis, so the refresh interval knows which per-user
+  // keys still have a live socket and need their TTL kept alive.
+  private readonly redisTrackedSockets = new Map<string, Set<string>>();
+
+  private refreshIntervalHandle: ReturnType<typeof setInterval> | undefined;
 
   constructor(
     private readonly prismaService: PrismaService,
     private readonly redisService: RedisService,
   ) {}
+
+  onModuleInit(): void {
+    this.refreshIntervalHandle = setInterval(() => {
+      void this.refreshTrackedUserTtls();
+    }, USER_SOCKETS_REFRESH_INTERVAL_MS);
+    // Don't let this timer alone keep the Node process alive.
+    this.refreshIntervalHandle.unref();
+  }
+
+  onModuleDestroy(): void {
+    if (this.refreshIntervalHandle) {
+      clearInterval(this.refreshIntervalHandle);
+    }
+  }
+
+  // Re-EXPIREs the Redis set for every user with at least one still-open socket, so a connection
+  // that outlives USER_SOCKETS_TTL_SECONDS without reconnecting doesn't have its slot silently
+  // age out from under it.
+  private async refreshTrackedUserTtls(): Promise<void> {
+    const redisClient = this.redisService.getClient();
+    if (!redisClient) return;
+
+    // Fired off together rather than awaited one at a time in the loop - these are independent
+    // per-user refreshes, so there's no reason to let one wait on the previous one's round trip.
+    await Promise.all(
+      Array.from(this.redisTrackedSockets.entries())
+        .filter(([, socketIds]) => socketIds.size > 0)
+        .map(async ([userId]) => {
+          try {
+            await redisClient.expire(userSocketsKey(userId), USER_SOCKETS_TTL_SECONDS);
+          } catch (error) {
+            this.logger.warn(`Failed to refresh TTL for user ${userId}'s socket set: ${(error as Error).message}`);
+          }
+        }),
+    );
+  }
 
   async handleConnection(client: Socket): Promise<void> {
     try {
@@ -139,6 +183,11 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
           MAX_CONNECTIONS_PER_USER,
           USER_SOCKETS_TTL_SECONDS,
         );
+        if (registered === 1) {
+          const tracked = this.redisTrackedSockets.get(userId) ?? new Set<string>();
+          tracked.add(socketId);
+          this.redisTrackedSockets.set(userId, tracked);
+        }
         return { registered: registered === 1, viaRedis: true };
       } catch (error) {
         this.logger.warn(`Redis registerConnection failed for user ${userId}, falling back to local tracking: ${(error as Error).message}`);
@@ -154,6 +203,13 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
 
   private async unregisterConnection(userId: string, socketId: string, viaRedis: boolean): Promise<void> {
     if (viaRedis) {
+      const tracked = this.redisTrackedSockets.get(userId);
+      if (tracked) {
+        tracked.delete(socketId);
+        if (tracked.size === 0) {
+          this.redisTrackedSockets.delete(userId);
+        }
+      }
       const redisClient = this.redisService.getClient();
       if (redisClient) {
         await redisClient.srem(userSocketsKey(userId), socketId);
