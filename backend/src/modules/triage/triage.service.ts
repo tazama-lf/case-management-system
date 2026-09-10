@@ -664,16 +664,24 @@ export class TriageService {
 
           let amlCaseId: number | undefined;
           try {
-            const amlCase = await this.caseCreateService.createCaseWithInvestigationTask(
-              CaseType.AML,
-              userId,
-              tenantId,
-              priority,
-              CaseCreationType.AUTOMATIC_SYSTEM,
-              'SUPERVISOR',
-              investigationGroup.id,
-            );
-            amlCaseId = amlCase.caseId;
+            const existingAmlCase = await this.prisma.case.findFirst({
+              where: { group_id: investigationGroup.id, case_type: CaseType.AML },
+              select: { case_id: true },
+            });
+            if (existingAmlCase) {
+              amlCaseId = existingAmlCase.case_id;
+            } else {
+              const amlCase = await this.caseCreateService.createCaseWithInvestigationTask(
+                CaseType.AML,
+                userId,
+                tenantId,
+                priority,
+                CaseCreationType.AUTOMATIC_SYSTEM,
+                'SUPERVISOR',
+                investigationGroup.id,
+              );
+              amlCaseId = amlCase.caseId;
+            }
           } catch (amlError) {
             const amlErrorMessage = amlError instanceof Error ? amlError.message : String(amlError);
             this.logger.error(

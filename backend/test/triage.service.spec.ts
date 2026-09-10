@@ -55,7 +55,10 @@ describe('TriageService', () => {
   let caseCreateService: jest.Mocked<CaseCreationService>;
   let loggingOrchestrationService: jest.Mocked<LoggingOrchestrationService>;
   let investigationGroupService: jest.Mocked<InvestigationGroupService>;
-  let prismaService: { investigationGroup: { create: jest.Mock; delete: jest.Mock } };
+  let prismaService: {
+    investigationGroup: { create: jest.Mock; delete: jest.Mock };
+    case: { findFirst: jest.Mock };
+  };
 
   const mockAlert = {
     alert_id: 1,
@@ -226,6 +229,11 @@ describe('TriageService', () => {
           tenant_id: 'tenant-123',
         }),
         delete: jest.fn(),
+      },
+      // Defaults to "no existing AML case" so existing FRAUD_AND_AML tests keep exercising the
+      // create path unchanged; overridden per-test to cover the idempotent-reuse path.
+      case: {
+        findFirst: jest.fn().mockResolvedValue(null),
       },
     };
 
@@ -614,6 +622,45 @@ describe('TriageService', () => {
 
       // The alert is detached once both group cases exist - it is linked via
       // investigation_groups.alert_id instead.
+      expect(alertService.updateAlert).toHaveBeenCalledWith(1, 'user-123', { caseId: null }, undefined);
+    });
+
+    it('reuses an existing AML sibling instead of creating a duplicate on a retry after detachError', async () => {
+      // Reproduces retrying handleAITriage for the same alert after a prior attempt got as far
+      // as creating the AML case but then failed to detach the alert (see the
+      // "should preserve both cases and the group when alert detachment fails..." test below) -
+      // createInvestigationGroup is already upsert-based and safe to call again, but AML case
+      // creation had no equivalent guard before this fix.
+      taskService.createTask.mockResolvedValue(mockTask as any);
+      casePriorityUtil.determinePriority.mockResolvedValue(Priority.MEDIUM);
+      (featureExtractionService.extractFeatures as any).mockResolvedValue({ features: [] });
+      mockedAxios.post.mockResolvedValue({
+        data: { confidence: 0.95, priority: 0.8 },
+      });
+      alertService.updateAlert.mockResolvedValue(mockAlert as any);
+      taskService.updateTask.mockResolvedValue(mockTask as any);
+      loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
+      caseCreationService.updateCaseStatus.mockResolvedValue(mockCase as any);
+      flowableService.handleTaskCompleted.mockResolvedValue(undefined);
+      // The prior attempt's AML case already exists in this investigation group.
+      prismaService.case.findFirst.mockResolvedValue({ case_id: 456 });
+
+      jest.spyOn(service as any, 'predictAlert').mockResolvedValue({
+        confidence_per: 95,
+        alertType: CaseType.FRAUD_AND_AML,
+        isTruePositive: true,
+        priorityScore: 0.8,
+      });
+
+      await service.handleAITriage(1, 1, ingestAlertDto, 'user-123', 'tenant-123');
+
+      expect(prismaService.case.findFirst).toHaveBeenCalledWith({
+        where: { group_id: 123, case_type: CaseType.AML },
+        select: { case_id: true },
+      });
+      // No new AML case created - the existing one (456) is reused, and the alert can still
+      // be detached to complete the retry.
+      expect(caseCreateService.createCaseWithInvestigationTask).not.toHaveBeenCalled();
       expect(alertService.updateAlert).toHaveBeenCalledWith(1, 'user-123', { caseId: null }, undefined);
     });
 
