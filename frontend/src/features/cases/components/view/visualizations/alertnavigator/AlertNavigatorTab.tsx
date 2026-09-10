@@ -217,13 +217,13 @@ const AlertNavigatorTab: React.FC<AlertNavigatorTabProps> = ({
             </div>
           </div>
 
-          {data.alertMetadata.blockReason && (
+          {data.alertMetadata.status && (
             <div className="col-span-2">
               <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-                Block Status
+                Report Status
               </div>
               <div className="text-sm text-gray-900">
-                {data.alertMetadata.status} - {data.alertMetadata.blockReason}
+                {data.alertMetadata.status}
               </div>
             </div>
           )}

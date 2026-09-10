@@ -30,7 +30,7 @@ export interface AlertNavigatorDto {
     currency: string;
     status: string;
     reason: string;
-    blockReason: string;
+    efrupSubRuleRef: string;
     evaluationId: string;
   };
   typologies: TypologyDto[];
