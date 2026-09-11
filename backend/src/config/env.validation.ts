@@ -1,5 +1,15 @@
 import { plainToClass } from 'class-transformer';
-import { IsEnum, IsString, IsUUID, IsOptional, IsNumberString, validateSync, IsBooleanString, IsNotEmpty } from 'class-validator';
+import {
+  IsEnum,
+  IsString,
+  IsUUID,
+  IsOptional,
+  IsNumberString,
+  validateSync,
+  IsBooleanString,
+  IsIn,
+  IsNotEmpty,
+} from 'class-validator';
 
 enum NodeEnv {
   DEVELOPMENT = 'dev',
@@ -119,7 +129,7 @@ class EnvironmentVariables {
   @IsNotEmpty()
   COUCHDB_DATABASE!: string;
 
-  @IsBooleanString()
+  @IsIn(['true', 'false'])
   SESSION_COOKIE_SECURE!: string;
 
   @IsEnum(SameSitePolicy)

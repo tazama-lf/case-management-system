@@ -115,7 +115,7 @@ describe('env.validation', () => {
       delete config.SESSION_COOKIE_SECURE;
 
       expect(() => validate(config)).toThrow(
-        /property SESSION_COOKIE_SECURE has failed the following constraints: isBooleanString/,
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isIn/,
       );
     });
 
@@ -123,7 +123,7 @@ describe('env.validation', () => {
       const config = createValidConfig({ SESSION_COOKIE_SECURE: '' });
 
       expect(() => validate(config)).toThrow(
-        /property SESSION_COOKIE_SECURE has failed the following constraints: isBooleanString/,
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isIn/,
       );
     });
 
@@ -131,7 +131,19 @@ describe('env.validation', () => {
       const config = createValidConfig({ SESSION_COOKIE_SECURE: 'yes' });
 
       expect(() => validate(config)).toThrow(
-        /property SESSION_COOKIE_SECURE has failed the following constraints: isBooleanString/,
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isIn/,
+      );
+    });
+
+    it('rejects numeric boolean strings', () => {
+      const config1 = createValidConfig({ SESSION_COOKIE_SECURE: '1' });
+      const config0 = createValidConfig({ SESSION_COOKIE_SECURE: '0' });
+
+      expect(() => validate(config1)).toThrow(
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isIn/,
+      );
+      expect(() => validate(config0)).toThrow(
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isIn/,
       );
     });
 
