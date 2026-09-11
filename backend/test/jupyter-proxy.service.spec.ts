@@ -62,7 +62,6 @@ describe('JupyterProxyService', () => {
             getConditionsContextByTransaction: jest.fn().mockResolvedValue({}),
             getConditionsSummaryByAccount: jest.fn().mockResolvedValue({}),
             getConditionsListByAccount: jest.fn().mockResolvedValue({}),
-            getEvaluatedTransactionsByAccount: jest.fn().mockResolvedValue({}),
           },
         },
         {

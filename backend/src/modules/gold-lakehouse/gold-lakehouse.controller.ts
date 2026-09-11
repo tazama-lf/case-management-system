@@ -11,7 +11,7 @@ import { TransactionNetworkResponseDto, CounterpartyNetworkResponseDto } from '.
 import { AccountNodeFullDataResponse, CounterpartyNodeFullDataResponse } from './types/gold-lakehouse-responses.types';
 import { AlertNavigatorDataResponse } from './types/alert-navigator.types';
 import { TransactionDetailDataResponse } from './types/transaction-detail.types';
-import { AccountConditionsSummary, ConditionsListByAccountResponse } from './types/IAccountConditions.types';
+import { ConditionsListByAccountResponse } from './types/IAccountConditions.types';
 import { Audit } from '../audit/decorators/audit-log.decorator';
 import { GenerateProfileDto } from './dto/generate-profile.dto';
 import { GenerateProfileResponseDto } from './dto/profile-response.dto';
@@ -89,88 +89,6 @@ export class GoldLakehouseController {
 
   // ================ CONDITIONS ENDPOINTS ================
 
-  @Get('conditions/summary')
-  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
-  @ApiOperation({
-    summary: 'Get conditions summary with counts by Account ID',
-    description: `Returns aggregated condition counts and basic details for a specific account. 
-    
-    Features:
-    - Condition counts by status (active, expired, future)
-    - Account metadata (scheme, FSP ID)
-    - Historical view support via asOfDate parameter
-    - Summary of each condition (type, reason, dates)
-    
-    Use Cases:
-    - Dashboard metrics and KPIs
-    - Quick account condition overview
-    - Historical compliance checks
-    - Account risk assessment
-    
-    Test with: 87f16412f0d147c1ad2fe94cac078f2c (has rich condition data with real metadata)`,
-  })
-  @ApiQuery({
-    name: 'accountId',
-    description: 'Account ID from conditions_timeline.cond_account_id field',
-    required: true,
-    type: String,
-    example: '6665bafaee4b430692dafe4bd0efb3fa',
-  })
-  @ApiQuery({
-    name: 'tenantId',
-    description: 'Tenant ID for multi-tenant filtering (use DEFAULT for cross-tenant)',
-    required: false,
-    type: String,
-    example: 'DEFAULT',
-  })
-  @ApiQuery({
-    name: 'asOfDate',
-    description:
-      'Historical view: Show conditions as they were at this ISO timestamp. Filters based on inception/expiry dates. If omitted, uses current timestamp.',
-    required: false,
-    type: String,
-    example: '2025-12-31T08:00:00',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Condition summary with counts and basic condition details',
-    schema: {
-      example: {
-        accountId: '87f16412f0d147c1ad2fe94cac078f2c',
-        accountScheme: 'MSISDN',
-        fspId: 'fsp001',
-        totalConditions: 1,
-        activeConditions: 0,
-        expiredConditions: 1,
-        futureConditions: 0,
-        conditions: [
-          {
-            conditionId: 'ba36e82f-d2e1-46fa-a9a4-ed95007db7e0',
-            type: 'override',
-            perspective: 'creditor',
-            reason: 'Suspicion of Money Laundering',
-            status: 'expired',
-            inceptionDate: '2026-02-04T02:22:33.452000',
-            expiryDate: '2026-02-05T02:22:00',
-            createdBy: 'demo UI',
-          },
-        ],
-      },
-    },
-  })
-  async getConditionsSummary(
-    @Query('accountId') accountId: string,
-    @Query('tenantId') tenantId: string,
-    @Query('asOfDate') asOfDate?: string,
-    @Req() req?: AuthenticatedRequest,
-  ): Promise<AccountConditionsSummary> {
-    if (!accountId) {
-      throw new BadRequestException('accountId is required');
-    }
-    const userJwt = req ? this.extractJwt(req) : undefined;
-    return await this.conditionLakehouseService.getConditionsSummaryByAccount(accountId, tenantId, undefined, asOfDate, userJwt);
-  }
-
   @Get('conditions/details')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({
@@ -194,7 +112,7 @@ export class GoldLakehouseController {
   })
   @ApiQuery({
     name: 'accountId',
-    description: 'Account ID from conditions_timeline.cond_account_id field',
+    description: 'Account ID from conditions.account_id field',
     required: true,
     type: String,
     example: '6665bafaee4b430692dafe4bd0efb3fa',
