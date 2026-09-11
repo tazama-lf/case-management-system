@@ -1,5 +1,5 @@
 import { plainToClass } from 'class-transformer';
-import { IsEnum, IsString, IsUUID, IsOptional, IsNumberString, validateSync, IsBooleanString, IsNotEmpty } from 'class-validator';
+import { IsEnum, IsString, IsUUID, IsOptional, IsNumberString, validateSync, IsBooleanString, IsIn, IsNotEmpty } from 'class-validator';
 
 enum NodeEnv {
   DEVELOPMENT = 'dev',
@@ -9,6 +9,12 @@ enum NodeEnv {
 
 enum StartupType {
   NATS = 'nats',
+}
+
+enum SameSitePolicy {
+  STRICT = 'strict',
+  LAX = 'lax',
+  NONE = 'none',
 }
 
 class EnvironmentVariables {
@@ -113,6 +119,16 @@ class EnvironmentVariables {
   @IsNotEmpty()
   COUCHDB_DATABASE!: string;
 
+  @IsIn(['true', 'false'])
+  SESSION_COOKIE_SECURE!: string;
+
+  @IsEnum(SameSitePolicy)
+  SESSION_COOKIE_SAMESITE!: SameSitePolicy;
+
+  @IsString()
+  @IsNotEmpty()
+  CORS_ALLOWED_ORIGINS!: string;
+
   @IsOptional()
   @IsString()
   VOILA_URL?: string;
@@ -150,6 +166,13 @@ export const validate = (config: Record<string, unknown>): EnvironmentVariables 
 
   if (errors.length > 0) {
     throw new Error(errors.toString());
+  }
+
+  // Cross-field: browsers drop a `SameSite=None` cookie that is not also `Secure`,
+  // so this combination lets login "succeed" while the session cookie is never
+  // stored or sent. Fail at boot rather than shipping a silently-broken session.
+  if (validatedConfig.SESSION_COOKIE_SAMESITE === SameSitePolicy.NONE && validatedConfig.SESSION_COOKIE_SECURE !== 'true') {
+    throw new Error('SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true');
   }
 
   return validatedConfig;

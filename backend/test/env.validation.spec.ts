@@ -25,6 +25,9 @@ describe('env.validation', () => {
     COUCHDB_USERNAME: 'admin',
     COUCHDB_PASSWORD: 'password',
     COUCHDB_DATABASE: 'cms-evidence',
+    SESSION_COOKIE_SECURE: 'true',
+    SESSION_COOKIE_SAMESITE: 'strict',
+    CORS_ALLOWED_ORIGINS: 'http://localhost:3000',
     AUDIT_PROVIDER: 'opensearch',
     OPENSEARCH_NODE: 'http://localhost:9200',
     OPENSEARCH_USERNAME: 'admin',
@@ -43,6 +46,35 @@ describe('env.validation', () => {
     expect(result.COUCHDB_USERNAME).toBe('admin');
     expect(result.COUCHDB_PASSWORD).toBe('password');
     expect(result.COUCHDB_DATABASE).toBe('cms-evidence');
+  });
+
+  describe('session cookie cross-field validation', () => {
+    it('rejects SameSite=none without Secure=true', () => {
+      const config = createValidConfig({
+        SESSION_COOKIE_SAMESITE: 'none',
+        SESSION_COOKIE_SECURE: 'false',
+      });
+
+      expect(() => validate(config)).toThrow('SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true');
+    });
+
+    it('accepts SameSite=none with Secure=true', () => {
+      const config = createValidConfig({
+        SESSION_COOKIE_SAMESITE: 'none',
+        SESSION_COOKIE_SECURE: 'true',
+      });
+
+      expect(validate(config).SESSION_COOKIE_SAMESITE).toBe('none');
+    });
+
+    it('accepts SameSite=lax with Secure=false', () => {
+      const config = createValidConfig({
+        SESSION_COOKIE_SAMESITE: 'lax',
+        SESSION_COOKIE_SECURE: 'false',
+      });
+
+      expect(validate(config).SESSION_COOKIE_SAMESITE).toBe('lax');
+    });
   });
 
   describe('CouchDB variables', () => {
@@ -73,6 +105,104 @@ describe('env.validation', () => {
 
       expect(() => validate(config)).toThrow(
         /COUCHDB_URL[\s\S]*COUCHDB_USERNAME[\s\S]*COUCHDB_PASSWORD[\s\S]*COUCHDB_DATABASE/,
+      );
+    });
+  });
+
+  describe('SESSION_COOKIE_SECURE', () => {
+    it('rejects a missing value', () => {
+      const config = createValidConfig();
+      delete config.SESSION_COOKIE_SECURE;
+
+      expect(() => validate(config)).toThrow(
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isIn/,
+      );
+    });
+
+    it('rejects an empty value', () => {
+      const config = createValidConfig({ SESSION_COOKIE_SECURE: '' });
+
+      expect(() => validate(config)).toThrow(
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isIn/,
+      );
+    });
+
+    it('rejects a malformed value', () => {
+      const config = createValidConfig({ SESSION_COOKIE_SECURE: 'yes' });
+
+      expect(() => validate(config)).toThrow(
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isIn/,
+      );
+    });
+
+    it('rejects numeric boolean strings', () => {
+      const config1 = createValidConfig({ SESSION_COOKIE_SECURE: '1' });
+      const config0 = createValidConfig({ SESSION_COOKIE_SECURE: '0' });
+
+      expect(() => validate(config1)).toThrow(
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isIn/,
+      );
+      expect(() => validate(config0)).toThrow(
+        /property SESSION_COOKIE_SECURE has failed the following constraints: isIn/,
+      );
+    });
+
+    it('accepts "false" paired with a non-none SameSite policy', () => {
+      const config = createValidConfig({ SESSION_COOKIE_SECURE: 'false', SESSION_COOKIE_SAMESITE: 'lax' });
+
+      expect(validate(config).SESSION_COOKIE_SECURE).toBe('false');
+    });
+  });
+
+  describe('SESSION_COOKIE_SAMESITE', () => {
+    it('rejects a missing value', () => {
+      const config = createValidConfig();
+      delete config.SESSION_COOKIE_SAMESITE;
+
+      expect(() => validate(config)).toThrow(
+        /property SESSION_COOKIE_SAMESITE has failed the following constraints: isEnum/,
+      );
+    });
+
+    it('rejects an empty value', () => {
+      const config = createValidConfig({ SESSION_COOKIE_SAMESITE: '' });
+
+      expect(() => validate(config)).toThrow(
+        /property SESSION_COOKIE_SAMESITE has failed the following constraints: isEnum/,
+      );
+    });
+
+    it('rejects a malformed value', () => {
+      const config = createValidConfig({ SESSION_COOKIE_SAMESITE: 'invalid' });
+
+      expect(() => validate(config)).toThrow(
+        /property SESSION_COOKIE_SAMESITE has failed the following constraints: isEnum/,
+      );
+    });
+
+    it.each(['strict', 'lax', 'none'])('accepts "%s"', (value) => {
+      const config = createValidConfig({
+        SESSION_COOKIE_SAMESITE: value,
+        SESSION_COOKIE_SECURE: 'true',
+      });
+
+      expect(validate(config).SESSION_COOKIE_SAMESITE).toBe(value);
+    });
+  });
+
+  describe('CORS_ALLOWED_ORIGINS', () => {
+    it('rejects a missing value', () => {
+      const config = createValidConfig();
+      delete config.CORS_ALLOWED_ORIGINS;
+
+      expect(() => validate(config)).toThrow(/property CORS_ALLOWED_ORIGINS has failed/);
+    });
+
+    it('rejects an empty value', () => {
+      const config = createValidConfig({ CORS_ALLOWED_ORIGINS: '' });
+
+      expect(() => validate(config)).toThrow(
+        /property CORS_ALLOWED_ORIGINS has failed the following constraints: isNotEmpty/,
       );
     });
   });
