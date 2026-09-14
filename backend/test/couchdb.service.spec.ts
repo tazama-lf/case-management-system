@@ -562,14 +562,57 @@ describe('CouchdbService', () => {
     });
   });
 
+  describe('onModuleInit — design document provisioning', () => {
+    beforeEach(() => {
+      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
+    });
+
+    it('creates _design/evidence when the database has no design document', async () => {
+      const notFound = Object.assign(new Error('missing'), { statusCode: 404 });
+      mockDb.get.mockRejectedValueOnce(notFound);
+      mockDb.insert.mockResolvedValueOnce({ ok: true, id: '_design/evidence', rev: '1-abc' });
+
+      await service.onModuleInit();
+
+      expect(mockDb.get).toHaveBeenCalledWith('_design/evidence');
+      expect(mockDb.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          views: expect.objectContaining({
+            by_uploadedAt: expect.objectContaining({
+              map: expect.stringContaining('doc.archive !== true'),
+            }),
+          }),
+        }),
+        '_design/evidence',
+      );
+    });
+
+    it('does not recreate _design/evidence when it already exists', async () => {
+      mockDb.get.mockResolvedValueOnce({ _id: '_design/evidence', _rev: '1-abc', views: {} });
+
+      await service.onModuleInit();
+
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('propagates errors other than 404 from the design-document GET', async () => {
+      const boom = Object.assign(new Error('boom'), { statusCode: 500 });
+      mockDb.get.mockRejectedValueOnce(boom);
+
+      await expect(service.onModuleInit()).rejects.toThrow('boom');
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+  });
+
   describe('autoArchiveOldEvidence', () => {
     beforeEach(async () => {
       mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
+      mockDb.get.mockResolvedValue({ _id: '_design/evidence', _rev: '1-abc', views: {} });
       await service.onModuleInit();
     });
 
-    it('should archive old evidence', async () => {
-      const oldDoc = { _id: 'doc-123', _rev: '1-abc', fileName: 'old.pdf', archiveFlag: false };
+    it('archives old evidence that is not yet marked archive:true', async () => {
+      const oldDoc = { _id: 'doc-123', _rev: '1-abc', fileName: 'old.pdf', archive: false };
 
       mockDb.view.mockResolvedValue({ rows: [{ doc: oldDoc }] });
       mockDb.insert.mockResolvedValue({ ok: true });
@@ -585,8 +628,8 @@ describe('CouchdbService', () => {
       });
     });
 
-    it('should not archive already archived evidence', async () => {
-      const archivedDoc = { _id: 'doc-456', _rev: '1-xyz', archiveFlag: true };
+    it('does not re-archive a document that already has archive:true', async () => {
+      const archivedDoc = { _id: 'doc-456', _rev: '1-xyz', archive: true };
 
       mockDb.view.mockResolvedValue({ rows: [{ doc: archivedDoc }] });
 
@@ -597,9 +640,9 @@ describe('CouchdbService', () => {
 
     it('should handle multiple documents', async () => {
       const docs = [
-        { _id: 'doc-1', _rev: '1-a', archiveFlag: false },
-        { _id: 'doc-2', _rev: '1-b', archiveFlag: false },
-        { _id: 'doc-3', _rev: '1-c', archiveFlag: true },
+        { _id: 'doc-1', _rev: '1-a', archive: false },
+        { _id: 'doc-2', _rev: '1-b', archive: false },
+        { _id: 'doc-3', _rev: '1-c', archive: true },
       ];
 
       mockDb.view.mockResolvedValue({ rows: docs.map((doc) => ({ doc })) });
