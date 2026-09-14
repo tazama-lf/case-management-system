@@ -30,9 +30,9 @@ export interface CaseInvestigatorBlacklistEntry {
 
 // No AddCaseInvestigatorDto — there is no whitelist add endpoint at all
 // (plan §2/§6). The whitelist is populated exclusively by task assignment
-// and case ownership (plan §3); nobody, including a supervisor, adds to it
-// by hand. "Refuses on blacklist hit" now only ever surfaces indirectly, via
-// a refused task assignment or ownership change, not through this file.
+// nobody,including a supervisor, adds to it by hand. "Refuses on blacklist hit"
+// now only ever surfaces indirectly, via a refused task assignment, not
+// through this file.
 
 export interface RevokeCaseInvestigatorDto {
   reason: string;

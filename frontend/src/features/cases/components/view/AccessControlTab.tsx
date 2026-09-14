@@ -21,10 +21,10 @@ import { formatDate } from '@/shared/utils/dateUtils';
 import { LoadingSpinner, EmptyState, ErrorState } from '@/shared/components/ui';
 import ReasonRequiredModal from '../modals/ReasonRequiredModal';
 
-// Supervisor+ only, The whitelist has no manual-add
-// path at all (it's populated exclusively by task assignment and case
-// ownership), so there is nothing here for an investigator, on-case
-// or not, to see or do.
+// Supervisor+ only, in full. The whitelist has no manual-add path at all —
+// it's populated exclusively by task assignment (plan §3; case ownership
+// is not an ACL trigger) — so there is nothing here for an investigator,
+// on-case or not, to see or do.
 
 interface AccessControlTabProps {
   caseId: number;
@@ -155,8 +155,7 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
 
   return (
     <div className="space-y-8">
-      {/* Whitelist — read-only; populated only by task assignment / case
-          ownership (plan §3), there is no add action anywhere on this tab. */}
+      {/* Whitelist — read-only; populated only by task assignment , there is no add action anywhere on this tab. */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-semibold text-gray-900">
@@ -295,7 +294,7 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
         onConfirm={handleConfirmPendingAction}
         title="Revoke Access"
         subtitle={pendingAction ? resolveName(pendingAction.userId) : undefined}
-        description="This removes the investigator's access to this case. They can only regain it through a new task assignment or case ownership change — not by being re-added here."
+        description="This removes the investigator's access to this case. They can only regain it by being assigned a task on this case again — not by being re-added here."
         icon={<UserMinusIcon className="h-5 w-5 text-orange-600" />}
         iconWrapperClassName="bg-orange-100"
         reasonLabel="Reason for revocation"
@@ -311,7 +310,7 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
         onConfirm={handleConfirmPendingAction}
         title="Blacklist Investigator"
         subtitle={pendingAction ? resolveName(pendingAction.userId) : undefined}
-        description="This revokes any current access and refuses future task assignments or case ownership changes for this person on this case, until a supervisor unblocks them."
+        description="This revokes any current access and refuses future task assignments for this person on this case, until a supervisor unblocks them."
         icon={<NoSymbolIcon className="h-5 w-5 text-red-600" />}
         iconWrapperClassName="bg-red-100"
         reasonLabel="Reason for blacklisting"
@@ -327,7 +326,7 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
         onConfirm={handleConfirmPendingAction}
         title="Unblock Investigator"
         subtitle={pendingAction ? resolveName(pendingAction.userId) : undefined}
-        description="This does not grant access back — a new task assignment or case ownership change is still required for this person to reappear on the whitelist."
+        description="This does not grant access back — a new task assignment is still required for this person to reappear on the whitelist."
         icon={<LockOpenIcon className="h-5 w-5 text-emerald-600" />}
         iconWrapperClassName="bg-emerald-100"
         reasonLabel="Reason for unblocking"
