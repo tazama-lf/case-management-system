@@ -31,6 +31,7 @@ CREATE TYPE "CaseInvestigatorMembership" AS ENUM ('LEAD', 'OBSERVER');
 CREATE TABLE "case_investigators" (
     "id" SERIAL NOT NULL,
     "case_id" INTEGER NOT NULL,
+    "tenant_id" TEXT NOT NULL,
     "user_id" UUID NOT NULL,
     "membership" "CaseInvestigatorMembership" NOT NULL DEFAULT 'OBSERVER',
     "granted_by" UUID NOT NULL,
@@ -46,6 +47,7 @@ CREATE TABLE "case_investigators" (
 CREATE TABLE "case_investigators_blacklist" (
     "id" SERIAL NOT NULL,
     "case_id" INTEGER NOT NULL,
+    "tenant_id" TEXT NOT NULL,
     "user_id" UUID NOT NULL,
     "blocked_by" UUID NOT NULL,
     "blocked_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -71,6 +73,9 @@ CREATE INDEX "case_investigators_case_id_user_id_idx" ON "case_investigators"("c
 CREATE INDEX "case_investigators_user_id_idx" ON "case_investigators"("user_id");
 
 -- CreateIndex
+CREATE INDEX "case_investigators_tenant_id_idx" ON "case_investigators"("tenant_id");
+
+-- CreateIndex
 -- Same reasoning as above — "one live block per (case, user)".
 CREATE UNIQUE INDEX "case_investigators_blacklist_case_id_user_id_live_key"
   ON "case_investigators_blacklist"("case_id", "user_id")
@@ -81,6 +86,9 @@ CREATE INDEX "case_investigators_blacklist_case_id_user_id_idx" ON "case_investi
 
 -- CreateIndex
 CREATE INDEX "case_investigators_blacklist_user_id_idx" ON "case_investigators_blacklist"("user_id");
+
+-- CreateIndex
+CREATE INDEX "case_investigators_blacklist_tenant_id_idx" ON "case_investigators_blacklist"("tenant_id");
 
 -- AddForeignKey
 ALTER TABLE "case_investigators" ADD CONSTRAINT "case_investigators_case_id_fkey" FOREIGN KEY ("case_id") REFERENCES "cases"("case_id") ON DELETE RESTRICT ON UPDATE CASCADE;

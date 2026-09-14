@@ -18,6 +18,10 @@
 --            completed task, skipping anyone who already got a LEAD row
 --            in Step 1 (DO NOTHING never downgrades an existing LEAD)
 --
+-- tenant_id is copied from tasks.tenant_id (every task already carries its
+-- own tenant_id, same convention as every other case-scoped table) — not
+-- looked up separately from cases, and not left for a join at query time.
+--
 -- Note on why "reassigned away before completion" isn't a gap here: an
 -- earlier draft of this backfill worried that Task.assigned_user_id being a
 -- single mutable column (no history) means someone reassigned off a task
@@ -35,9 +39,10 @@ BEGIN;
 -- script after Step 2 seeded an OBSERVER row for the same pair, or after
 -- someone picked up a new active task, should re-promote them.
 -- ---------------------------------------------------------------------------
-INSERT INTO case_investigators (case_id, user_id, membership, granted_by, granted_at)
+INSERT INTO case_investigators (case_id, tenant_id, user_id, membership, granted_by, granted_at)
 SELECT DISTINCT
     t.case_id,
+    t.tenant_id,
     t.assigned_user_id,
     'LEAD'::"CaseInvestigatorMembership",
     '00000000-0000-0000-0000-000000000000'::uuid,
@@ -53,9 +58,10 @@ DO UPDATE SET membership = 'LEAD'::"CaseInvestigatorMembership";
 -- completed task. DO NOTHING preserves whatever Step 1 already set — never
 -- downgrades an existing LEAD.
 -- ---------------------------------------------------------------------------
-INSERT INTO case_investigators (case_id, user_id, membership, granted_by, granted_at)
+INSERT INTO case_investigators (case_id, tenant_id, user_id, membership, granted_by, granted_at)
 SELECT DISTINCT
     t.case_id,
+    t.tenant_id,
     t.assigned_user_id,
     'OBSERVER'::"CaseInvestigatorMembership",
     '00000000-0000-0000-0000-000000000000'::uuid,
