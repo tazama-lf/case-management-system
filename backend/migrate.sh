@@ -7,6 +7,7 @@ until nc -z "$POSTGRES_HOST" "$POSTGRES_PORT"; do
   sleep 2
 done
 
+
 echo "Creating databases if not exist..."
 
 export PGPASSWORD="$POSTGRES_PASSWORD"
