@@ -102,31 +102,72 @@ model Alert {
 }
 
 model Case {
-  case_id              Int                   @id @default(autoincrement())
-  case_creator_user_id String                @db.Uuid
-  case_owner_user_id   String?               @db.Uuid
-  tenant_id            String
-  status               CaseStatus
-  priority             Priority             @default(LOW)
-  sla_started_at       DateTime?            @db.Timestamp(6)
-  sla_due_at           DateTime?            @db.Timestamp(6)
-  created_at           DateTime             @default(now()) @db.Timestamp(6)
-  updated_at           DateTime             @updatedAt @db.Timestamp(6)
-  final_outcome        CaseStatus?
-  parent_id            Int?
-  group_id             Int?
-  case_type            CaseType?
-  case_creation_type   CaseCreationType
-  alert                Alert?
-  comments             Comment[]
-  tasks                Task[]
-  evidence             Evidence[]
-  transactionProfiles  TransactionProfile[]
-  investigationGroup   InvestigationGroup?   @relation(fields: [group_id], references: [id])
-  slaEscalationRecords SlaEscalationRecord[]
+  case_id                   Int                         @id @default(autoincrement())
+  case_creator_user_id      String                      @db.Uuid
+  case_owner_user_id        String?                     @db.Uuid
+  tenant_id                 String
+  status                    CaseStatus
+  priority                  Priority                    @default(LOW)
+  sla_started_at            DateTime?                   @db.Timestamp(6)
+  sla_due_at                DateTime?                   @db.Timestamp(6)
+  created_at                DateTime                    @default(now()) @db.Timestamp(6)
+  updated_at                DateTime                    @updatedAt @db.Timestamp(6)
+  final_outcome             CaseStatus?
+  parent_id                 Int?
+  group_id                  Int?
+  case_type                 CaseType?
+  case_creation_type        CaseCreationType
+  alert                     Alert?
+  comments                  Comment[]
+  tasks                     Task[]
+  evidence                  Evidence[]
+  transactionProfiles       TransactionProfile[]
+  investigationGroup        InvestigationGroup?         @relation(fields: [group_id], references: [id])
+  slaEscalationRecords      SlaEscalationRecord[]
+  caseInvestigators         CaseInvestigator[]
+  caseInvestigatorBlacklist CaseInvestigatorBlacklist[]
 
   @@index([group_id])
   @@map("cases")
+}
+
+enum CaseInvestigatorMembership {
+  LEAD
+  OBSERVER
+}
+
+model CaseInvestigator {
+  id            Int                        @id @default(autoincrement())
+  case_id       Int
+  user_id       String                     @db.Uuid
+  membership    CaseInvestigatorMembership @default(OBSERVER)
+  granted_by    String                     @db.Uuid
+  granted_at    DateTime                   @default(now()) @db.Timestamp(6)
+  revoked_at    DateTime?                  @db.Timestamp(6)
+  revoked_by    String?                    @db.Uuid
+  revoke_reason String?                    @db.VarChar(1000)
+  case          Case                       @relation(fields: [case_id], references: [case_id])
+
+  @@index([case_id, user_id])
+  @@index([user_id])
+  @@map("case_investigators")
+}
+
+model CaseInvestigatorBlacklist {
+  id             Int       @id @default(autoincrement())
+  case_id        Int
+  user_id        String    @db.Uuid
+  blocked_by     String    @db.Uuid
+  blocked_at     DateTime  @default(now()) @db.Timestamp(6)
+  block_reason   String    @db.VarChar(1000)
+  unblocked_at   DateTime? @db.Timestamp(6)
+  unblocked_by   String?   @db.Uuid
+  unblock_reason String?   @db.VarChar(1000)
+  case           Case      @relation(fields: [case_id], references: [case_id])
+
+  @@index([case_id, user_id])
+  @@index([user_id])
+  @@map("case_investigators_blacklist")
 }
 
 model SlaPolicy {
@@ -141,7 +182,6 @@ model SlaPolicy {
   @@map("sla_policies")
 }
 
-
 model SlaEscalationThreshold {
   id             Int      @id @default(autoincrement())
   tenant_id      String   @unique
@@ -152,7 +192,6 @@ model SlaEscalationThreshold {
 
   @@map("sla_escalation_thresholds")
 }
-
 
 model CasePriorityThreshold {
   id               Int      @id @default(autoincrement())
