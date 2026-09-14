@@ -246,6 +246,52 @@ describe('TaskService', () => {
       const result = await service.updateTask(1, updateData, 'user1', 'tenant1');
 
       expect(result).toBeDefined();
+      // Regression check for the case-ACL plan §3/step 4 fix: the task must be
+      // written to the REQUESTED assignee (user2), not to the caller (user1).
+      // Before the fix this wrote `assigned_user_id: userId` ('user1') whenever
+      // the requested id differed from the existing one — this assertion is
+      // what would have caught that; the version of this test before the fix
+      // never inspected the write, only that a result came back.
+      expect(taskRepository.updateTask).toHaveBeenCalledWith(1, expect.objectContaining({ assigned_user_id: 'user2' }), expect.anything());
+    });
+
+    it('should leave the existing assignment untouched when assignedUserId is omitted (not self-assign the caller)', async () => {
+      // Broader manifestation of the same bug, found while fixing it: with the
+      // old `updateData.assignedUserId === existingTask.assigned_user_id ? ... :
+      // userId` check, omitting assignedUserId entirely compares `undefined ===
+      // null` (false) and ALSO fell through to `userId` — meaning a plain
+      // status/notes-only update on an unassigned task silently self-assigned it
+      // to whoever called the endpoint. existingTask.assigned_user_id is null in
+      // this fixture, so this reproduces exactly that case.
+      const updateData = { investigationNotes: 'just a note, no assignment change' };
+
+      taskRepository.transaction.mockImplementation(async (callback) => {
+        taskRepository.findTaskWithCase.mockResolvedValue(existingTask);
+        taskRepository.updateTask.mockResolvedValue({ ...existingTask, ...updateData } as any);
+        return callback(taskRepository as any);
+      });
+
+      await service.updateTask(1, updateData, 'user1', 'tenant1');
+
+      expect(taskRepository.updateTask).toHaveBeenCalledWith(1, expect.objectContaining({ assigned_user_id: null }), expect.anything());
+    });
+
+    it('should persist an explicit null assignedUserId as unassignment, not as the caller', async () => {
+      // This DTO documents assignedUserId: null as "unassign". Uses a fixture
+      // with a real existing assignee so the write is distinguishable from the
+      // "omitted" case above.
+      const assignedFixture = { ...existingTask, assigned_user_id: 'user2' };
+      const updateData = { assignedUserId: null } as any;
+
+      taskRepository.transaction.mockImplementation(async (callback) => {
+        taskRepository.findTaskWithCase.mockResolvedValue(assignedFixture);
+        taskRepository.updateTask.mockResolvedValue({ ...assignedFixture, assigned_user_id: null } as any);
+        return callback(taskRepository as any);
+      });
+
+      await service.updateTask(1, updateData, 'user1', 'tenant1');
+
+      expect(taskRepository.updateTask).toHaveBeenCalledWith(1, expect.objectContaining({ assigned_user_id: null }), expect.anything());
     });
 
     it('should log error on update failure', async () => {
