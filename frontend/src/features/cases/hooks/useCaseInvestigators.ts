@@ -33,9 +33,9 @@ export const useCaseBlacklist = (caseId: number, enabled = true) =>
     staleTime: 30 * 1000,
   });
 
-// No useAddInvestigator — there is no whitelist add endpoint.
-// The whitelist is populated exclusively by task assignment and case
-// ownership; nobody, including a supervisor, adds to it by hand.
+// No useAddInvestigator — there is no whitelist add endpoint. The
+// whitelist is populated exclusively by task assignment (plan §3,
+// task-only); nobody, including a supervisor, adds to it by hand.
 
 /** Revoke from the whitelist. Supervisor+ only, mandatory reason. */
 export const useRevokeInvestigator = (caseId: number) => {

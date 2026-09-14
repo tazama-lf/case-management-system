@@ -35,8 +35,9 @@ export class InvestigatorService {
     }
   }
 
-  // No addInvestigator. The whitelist is populated exclusively by task assignment and
-  // case ownership; nobody adds to it by hand, supervisor included.
+  // No addInvestigator. The whitelist is populated exclusively by task
+  // assignment; nobody adds to it by hand, supervisor
+  // included.
 
   async revokeInvestigator(
     caseId: number,
