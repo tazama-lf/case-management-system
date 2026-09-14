@@ -155,7 +155,7 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
 
   return (
     <div className="space-y-8">
-      {/* Whitelist — read-only; populated only by task assignment , there is no add action anywhere on this tab. */}
+      {/* Whitelist — read-only; populated only by task assignment, there is no add action anywhere on this tab. */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-semibold text-gray-900">
@@ -183,7 +183,7 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
           <EmptyState
             icon="folder"
             title="No investigators on this case yet"
-            description="Nobody currently has case-level access — assigning a task or setting a case owner will grant it."
+            description="Nobody currently has case-level access — assigning a task on this case will grant it."
           />
         )}
 
