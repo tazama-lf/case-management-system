@@ -99,7 +99,6 @@ export class GoldLakehouseController {
     - Full condition record details (all database fields)
     - Filter by active status (showInactive parameter)
     - Historical view support (asOfDate parameter)
-    - Includes bucket granularity and bucket start dates
     - Force create flags and event type details
     
     Use Cases:
@@ -133,7 +132,7 @@ export class GoldLakehouseController {
   })
   @ApiQuery({
     name: 'showInactive',
-    description: 'Include expired and future conditions. Set to true for complete history. Default: false (active only)',
+    description: 'Include expired and future conditions. Default: true (full history).',
     required: false,
     type: Boolean,
     example: true,
@@ -150,8 +149,6 @@ export class GoldLakehouseController {
             conditionId: 'ba36e82f-d2e1-46fa-a9a4-ed95007db7e0',
             pk: 'no mapping found',
             tenantId: 'DEFAULT',
-            bucketGranularity: 'no data found',
-            bucketStart: 'no data found',
             accountId: '87f16412f0d147c1ad2fe94cac078f2c',
             accountScheme: 'MSISDN',
             type: 'override',

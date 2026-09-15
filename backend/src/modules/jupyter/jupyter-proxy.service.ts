@@ -231,6 +231,6 @@ export class JupyterProxyService {
     fallbackJwt?: string,
   ): Promise<ConditionsListByAccountResponse> {
     const userJwt = await this.getUserJwt(userId, fallbackJwt);
-    return await this.conditionLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive ?? false, userJwt);
+    return await this.conditionLakehouseService.getConditionsListByAccount(accountId, tenantId, asOfDate, showInactive, userJwt);
   }
 }
