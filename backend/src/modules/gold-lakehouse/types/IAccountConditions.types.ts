@@ -1,17 +1,5 @@
 import type { Condition } from '@tazama-lf/frms-coe-lib';
 
-export interface AccountConditionsSummary {
-  accountId: string;
-  accountScheme: string;
-  fspId: string;
-  totalConditions: number;
-  activeConditions: number;
-  expiredConditions: number;
-  futureConditions: number;
-  conditions: Condition[];
-  metadata: AccountConditionsMetadata;
-}
-
 export interface AccountConditionsMetadata {
   asOfDate: string;
   queryTimestamp: string;
