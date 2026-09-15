@@ -7,6 +7,7 @@ export type CaseInvestigatorMembership = 'LEAD' | 'OBSERVER';
 export interface CaseInvestigator {
   id: number;
   case_id: number;
+  tenant_id: string;
   user_id: string;
   membership: CaseInvestigatorMembership;
   granted_by: string;
@@ -19,6 +20,7 @@ export interface CaseInvestigator {
 export interface CaseInvestigatorBlacklistEntry {
   id: number;
   case_id: number;
+  tenant_id: string;
   user_id: string;
   blocked_by: string;
   blocked_at: string;
@@ -29,7 +31,7 @@ export interface CaseInvestigatorBlacklistEntry {
 }
 
 // No AddCaseInvestigatorDto — there is no whitelist add endpoint at all
-// (plan §2/§6). The whitelist is populated exclusively by task assignment
+// The whitelist is populated exclusively by task assignment
 // nobody,including a supervisor, adds to it by hand. "Refuses on blacklist hit"
 // now only ever surfaces indirectly, via a refused task assignment, not
 // through this file.
