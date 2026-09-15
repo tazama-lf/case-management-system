@@ -237,9 +237,9 @@ describe('JupyterProxyService', () => {
       expect(conditionSvc.getConditionsListByAccount).toHaveBeenCalledWith('acc1', 'TENANT_A', '2024-01-01', true, MOCK_JWT);
     });
 
-    it('applies defaults when parameters are omitted', async () => {
+    it('passes showInactive through unset so the downstream service default applies', async () => {
       await service.getConditionsDetails(MOCK_USER_ID, 'acc1', 'DEFAULT');
-      expect(conditionSvc.getConditionsListByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, false, MOCK_JWT);
+      expect(conditionSvc.getConditionsListByAccount).toHaveBeenCalledWith('acc1', 'DEFAULT', undefined, undefined, MOCK_JWT);
     });
   });
 
