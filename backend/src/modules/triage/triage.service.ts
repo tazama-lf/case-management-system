@@ -681,6 +681,21 @@ export class TriageService {
                 investigationGroup.id,
               );
               amlCaseId = amlCase.caseId;
+
+              await this.flowableService.handleCaseCreated({
+                caseId: amlCase.caseId,
+                tenantId,
+                caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+                creationType: CaseCreationType.AUTOMATIC_SYSTEM,
+                creatorRole: 'SUPERVISOR',
+                isReopened: false,
+                isFraudNAML: true,
+              });
+
+              await this.flowableService.handleCaseStatusChanged({
+                caseId: amlCase.caseId,
+                newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+              });
             }
           } catch (amlError) {
             const amlErrorMessage = amlError instanceof Error ? amlError.message : String(amlError);
