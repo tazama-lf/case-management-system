@@ -116,21 +116,8 @@ export class TaskService {
           investigationNote = updateData.investigationNotes;
         }
 
-        // whenever the requested assignedUserId differed from the existing one — so `PATCH /:taskId
-        // { assignedUserId: X }` silently assigned the task to whoever called the
-        // endpoint, not to X, contradicting this DTO's own Swagger docstring
-        // ("UUID of the user to assign the task to"). Checking `'assignedUserId'
-        // in updateData` (rather than `updateData.assignedUserId ?? ...`) is
-        // deliberate: it distinguishes "field omitted" (leave the existing
-        // assignment untouched) from "field explicitly sent" — including sent as
-        // `null`, which this DTO documents as the way to unassign — from a plain
-        // `??`, which would collapse that documented null-to-unassign case back
-        // into "leave unchanged" and never actually unassign. No existing test
-        // asserted the old value, and no current frontend call site sends
-        // assignedUserId through this endpoint at all, so this is a pure fix,
-        // not a behavior anything already relies on.
-        const assigneeExplicitlyProvided = 'assignedUserId' in updateData;
-        const nextAssignedUserId = assigneeExplicitlyProvided ? (updateData.assignedUserId ?? null) : existingTask.assigned_user_id;
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above: ?? would misbehave on an explicit null
+        const nextAssignedUserId = updateData.assignedUserId === undefined ? existingTask.assigned_user_id : updateData.assignedUserId;
 
         // this is the one place a task mutation
         // must actually be BLOCKED by the ACL, not just synced after the
@@ -161,6 +148,14 @@ export class TaskService {
           updatedTask = await this.promoteCaseToInProgress(taskId, updateInput, existingTask, tenantId, tx);
         } else {
           updatedTask = await this.taskRepository.updateTask(taskId, updateInput, tx);
+          if (existingTask.assigned_user_id && nextAssignedUserId && existingTask.assigned_user_id !== nextAssignedUserId) {
+            await this.flowableService.handleTaskUnassigned({
+              taskId,
+              caseId: existingTask.case_id,
+              taskName: existingTask.name!,
+              assignedUser: null,
+            });
+          }
           await this.executeFlowableOperation(updatedTask, nextAssignedUserId ?? existingTask.assigned_user_id!);
         }
 
@@ -376,6 +371,14 @@ export class TaskService {
       const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
       if (assigneeId && caseRecord!.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
       await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
+      if (existingTask.assigned_user_id && taskRecord.assigned_user_id && existingTask.assigned_user_id !== taskRecord.assigned_user_id) {
+        await this.flowableService.handleTaskUnassigned({
+          taskId,
+          caseId: existingTask.case_id,
+          taskName: existingTask.name!,
+          assignedUser: null,
+        });
+      }
       await this.executeFlowableOperation(taskRecord, taskRecord.assigned_user_id ?? existingTask.assigned_user_id!);
 
       return taskRecord;

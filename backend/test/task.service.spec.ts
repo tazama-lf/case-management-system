@@ -9,6 +9,8 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { TaskStatus, CaseStatus, Priority } from '@prisma/client-cms';
+import { plainToInstance } from 'class-transformer';
+import { UpdateTaskDto } from '../src/modules/task/dto/update-task.dto';
 import * as timersPromises from 'node:timers/promises';
 
 jest.mock('node:timers/promises', () => ({ setTimeout: jest.fn().mockResolvedValue(undefined) }));
@@ -68,6 +70,7 @@ describe('TaskService', () => {
           useValue: {
             handleTaskAssigned: jest.fn(),
             handleCaseStatusChanged: jest.fn(),
+            handleTaskUnassigned: jest.fn().mockResolvedValue(undefined),
           },
         },
         {
@@ -350,6 +353,78 @@ describe('TaskService', () => {
       await service.updateTask(1, updateData, 'user1', 'tenant1');
 
       expect(taskRepository.updateTask).toHaveBeenCalledWith(1, expect.objectContaining({ assigned_user_id: null }), expect.anything());
+    });
+
+    // Case-ACL plan §10 — regression test for a real bug found by live HTTP
+    // execution, not by review or by any prior unit test in this file.
+    // Case-ACL plan §10 — regression test for a real 500 found by live HTTP
+    // execution: reassigning an already-assigned task via this generic PATCH
+    // (unlike the dedicated /reassign endpoint) never unclaimed the previous
+    // Flowable holder first, and Flowable genuinely rejects claiming an
+    // already-claimed task ("Failed to claim task").
+    it('should unclaim the previous Flowable holder before claiming the new one when the assignee actually changes', async () => {
+      const assignedTask = { ...existingTask, assigned_user_id: 'user2', name: 'Not Investigate Case' };
+      const updateData = { assignedUserId: 'user3' };
+
+      taskRepository.transaction.mockImplementation(async (callback) => {
+        taskRepository.findTaskWithCase.mockResolvedValue(assignedTask);
+        taskRepository.updateTask.mockResolvedValue({ ...assignedTask, assigned_user_id: 'user3' } as any);
+        return callback(taskRepository as any);
+      });
+      flowableService.handleTaskAssigned.mockResolvedValue();
+
+      await service.updateTask(1, updateData, 'user1', 'tenant1');
+
+      expect(flowableService.handleTaskUnassigned).toHaveBeenCalledWith(
+        expect.objectContaining({ taskId: 1, assignedUser: null }),
+      );
+      // Unclaim must happen before the new claim, not after.
+      const unassignedOrder = flowableService.handleTaskUnassigned.mock.invocationCallOrder[0];
+      const assignedOrder = flowableService.handleTaskAssigned.mock.invocationCallOrder[0];
+      expect(unassignedOrder).toBeLessThan(assignedOrder);
+    });
+
+    it('should NOT call handleTaskUnassigned for a status-only update (no assignee change)', async () => {
+      const assignedTask = { ...existingTask, assigned_user_id: 'user2' };
+      const updateData = { investigationNotes: 'no assignment change' };
+
+      taskRepository.transaction.mockImplementation(async (callback) => {
+        taskRepository.findTaskWithCase.mockResolvedValue(assignedTask);
+        taskRepository.updateTask.mockResolvedValue({ ...assignedTask, ...updateData } as any);
+        return callback(taskRepository as any);
+      });
+      flowableService.handleTaskAssigned.mockResolvedValue();
+
+      await service.updateTask(1, updateData, 'user1', 'tenant1');
+
+      expect(flowableService.handleTaskUnassigned).not.toHaveBeenCalled();
+    });
+
+    it('should preserve the existing assignment on a real, class-transformer-shaped request body with assignedUserId omitted (regression: plainToInstance materializes it as an own `undefined` key, which broke a naive `in` check)', async () => {
+      // This is the crucial difference from the "omitted" test above: a hand-built
+      // `{ investigationNotes: '...' }` object literal genuinely has no
+      // `assignedUserId` key. A REAL request body goes through the global
+      // ValidationPipe's `transform: true`, i.e. `plainToInstance(UpdateTaskDto, body)`
+      // — which sets every DECLARED DTO field as an own property of the result,
+      // `undefined` if the caller didn't send it. `'assignedUserId' in result` is
+      // therefore `true` either way; only checking the VALUE (`=== undefined`)
+      // tells the two cases apart. The very first version of this test used a
+      // plain object and would NOT have caught the real bug — confirmed by
+      // reverting the fix locally and rerunning against a plain object: it still
+      // passed, because plain objects don't have this own-key quirk. Using
+      // `plainToInstance` here closes that gap for good.
+      const realRequestBody = plainToInstance(UpdateTaskDto, { status: 'STATUS_20_IN_PROGRESS' });
+      const assignedTask = { ...existingTask, assigned_user_id: 'user2', name: 'Not Investigate Case' };
+
+      taskRepository.transaction.mockImplementation(async (callback) => {
+        taskRepository.findTaskWithCase.mockResolvedValue(assignedTask);
+        taskRepository.updateTask.mockResolvedValue({ ...assignedTask, status: 'STATUS_20_IN_PROGRESS' } as any);
+        return callback(taskRepository as any);
+      });
+
+      await service.updateTask(1, realRequestBody, 'user1', 'tenant1');
+
+      expect(taskRepository.updateTask).toHaveBeenCalledWith(1, expect.objectContaining({ assigned_user_id: 'user2' }), expect.anything());
     });
 
     it('should log error on update failure', async () => {
