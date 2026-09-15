@@ -9,7 +9,7 @@ import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvesti
 import type { CaseInvestigator } from '@/features/cases/types/investigator.types';
 
 // This tab is only ever rendered for a supervisor+ caller — ViewCaseModal
-// doesn't include it in the tab list otherwise (plan §2/§6). So there's no
+// doesn't include it in the tab list otherwise. So there's no
 // role branching to test here, unlike an earlier draft of this component;
 // every whitelist row always shows Revoke/Blacklist, every blacklist row
 // always shows Unblock, and there is no add form of any kind.

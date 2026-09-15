@@ -8,9 +8,19 @@ import { CouchdbModule } from '../couchdb/couchdb.module';
 import { NotificationModule } from '../notification/notification.module';
 import { EvidenceModule } from '../evidence/evidence.module';
 import { EventLogModule } from '../event_log/eventLog.module';
+import { CaseInvestigatorModule } from '../case-investigator/case-investigator.module';
 
 @Module({
-  imports: [PrismaModule, CaseModule, TaskModule, CouchdbModule, NotificationModule, EvidenceModule, EventLogModule],
+  imports: [
+    PrismaModule,
+    CaseModule,
+    TaskModule,
+    CouchdbModule,
+    NotificationModule,
+    EvidenceModule,
+    EventLogModule,
+    CaseInvestigatorModule,
+  ],
   controllers: [ReportsController],
   providers: [ReportsService],
   exports: [ReportsService],

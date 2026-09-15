@@ -10,6 +10,7 @@ import { BadRequestException, NotFoundException, ForbiddenException } from '@nes
 import { CaseStatus, TaskStatus, CaseType, Priority, SlaState } from '@prisma/client-cms';
 import { GetUserCasesQueryDto } from '../src/modules/case/dto/get-user-cases.dto';
 import { GetAllCasesQueryDto } from '../src/modules/case/dto/get-all-cases.dto';
+import { CaseInvestigatorService } from '../src/modules/case-investigator/case-investigator.service';
 
 describe('CaseQueryService', () => {
   let service: CaseQueryService;
@@ -19,6 +20,7 @@ describe('CaseQueryService', () => {
   let loggingOrchestrationService: any;
   let taskValidationUtil: any;
   let slaPolicyUtil: any;
+  let caseInvestigatorService: any;
 
   const mockCase = {
     case_id: 1,
@@ -131,6 +133,10 @@ describe('CaseQueryService', () => {
       getEscalationRatios: jest.fn().mockResolvedValue({ dueSoonRatio: 0.2, atRiskRatio: 0.5 }),
     } as any;
 
+    const mockCaseInvestigatorService = {
+      getAccessibleCaseIds: jest.fn().mockResolvedValue([]),
+    } as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CaseQueryService,
@@ -140,6 +146,7 @@ describe('CaseQueryService', () => {
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
         { provide: TaskValidationUtil, useValue: mockTaskValidationUtil },
         { provide: SlaPolicyUtil, useValue: mockSlaPolicyUtil },
+        { provide: CaseInvestigatorService, useValue: mockCaseInvestigatorService },
       ],
     }).compile();
 
@@ -150,6 +157,7 @@ describe('CaseQueryService', () => {
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
     taskValidationUtil = module.get(TaskValidationUtil);
     slaPolicyUtil = module.get(SlaPolicyUtil);
+    caseInvestigatorService = module.get(CaseInvestigatorService);
   });
 
   afterEach(() => {
@@ -590,6 +598,33 @@ describe('CaseQueryService', () => {
       });
     });
 
+    it('additively includes case_investigator-accessible case_ids in the investigator OR-branch, without dropping the existing branches', async () => {
+      const investigatorId = 'investigator-123';
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([42, 43]);
+      setupGetAllCasesMocks();
+
+      await service.getAllCases(query, tenantId, investigatorId);
+
+      expect(caseInvestigatorService.getAccessibleCaseIds).toHaveBeenCalledWith(investigatorId, tenantId);
+      const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
+      const visibilityOr = findManyArgs.where.AND.find((c: any) => Array.isArray(c.OR))?.OR;
+      expect(visibilityOr).toContainEqual({ case_owner_user_id: investigatorId });
+      expect(visibilityOr).toContainEqual({ case_id: { in: [42, 43] } });
+    });
+
+    it('additively includes accessible case_ids alongside a search filter too', async () => {
+      const investigatorId = 'investigator-123';
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([42]);
+      setupGetAllCasesMocks();
+
+      await service.getAllCases({ ...query, search: 'fraud' }, tenantId, investigatorId);
+
+      const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
+      const combinedCondition = findManyArgs.where.AND.find((c: any) => Array.isArray(c.AND));
+      const visibilityOr = combinedCondition?.AND.at(-1)?.OR;
+      expect(visibilityOr).toContainEqual({ case_id: { in: [42] } });
+    });
+
     it('should calculate average tasks per case', async () => {
       prismaService.case.count.mockResolvedValueOnce(2);
       prismaService.case.findMany.mockResolvedValueOnce([
@@ -632,6 +667,86 @@ describe('CaseQueryService', () => {
       expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith(tenantId);
       expect(result.cases[0].sla_state).toBe('DUE_SOON');
       jest.useRealTimers();
+    });
+  });
+
+  describe('checkUserCaseAccess', () => {
+    const caseId = 1;
+    const tenantId = 'tenant-123';
+    const investigatorUserId = '550e8400-e29b-41d4-a716-446655440000';
+
+    it('supervisor (no investigatorUserId): true when the case exists in the tenant', async () => {
+      prismaService.case.findFirst.mockResolvedValueOnce({ case_id: caseId });
+
+      const result = await service.checkUserCaseAccess(caseId, undefined, tenantId);
+
+      expect(result).toBe(true);
+      expect(prismaService.case.findFirst).toHaveBeenCalledWith({
+        where: { case_id: caseId, tenant_id: tenantId },
+        select: { case_id: true },
+      });
+    });
+
+    it('supervisor: false when the case does not exist in the tenant', async () => {
+      prismaService.case.findFirst.mockResolvedValueOnce(null);
+
+      const result = await service.checkUserCaseAccess(caseId, undefined, tenantId);
+
+      expect(result).toBe(false);
+    });
+
+    it('investigator: false for a malformed userId, without querying the DB', async () => {
+      const result = await service.checkUserCaseAccess(caseId, 'not-a-uuid', tenantId);
+
+      expect(result).toBe(false);
+      expect(prismaService.case.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('investigator: true when they own the case, have a task, are unowned, or ready-for-assignment (existing OR branches unchanged)', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      prismaService.case.findFirst.mockResolvedValueOnce({ case_id: caseId });
+
+      const result = await service.checkUserCaseAccess(caseId, investigatorUserId, tenantId);
+
+      expect(result).toBe(true);
+      const whereArg = prismaService.case.findFirst.mock.calls[0][0].where;
+      expect(whereArg.OR).toEqual(
+        expect.arrayContaining([
+          { case_owner_user_id: investigatorUserId },
+          { tasks: { some: { assigned_user_id: investigatorUserId } } },
+          { case_owner_user_id: null },
+          { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+        ]),
+      );
+    });
+
+    it('additively includes case_investigator membership as one more OR-branch, consistent with getAllCases', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([caseId]);
+      prismaService.case.findFirst.mockResolvedValueOnce({ case_id: caseId });
+
+      await service.checkUserCaseAccess(caseId, investigatorUserId, tenantId);
+
+      expect(caseInvestigatorService.getAccessibleCaseIds).toHaveBeenCalledWith(investigatorUserId, tenantId);
+      const whereArg = prismaService.case.findFirst.mock.calls[0][0].where;
+      expect(whereArg.OR).toContainEqual({ case_id: { in: [caseId] } });
+    });
+
+    it('investigator: false when none of the OR branches match', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      prismaService.case.findFirst.mockResolvedValueOnce(null);
+
+      const result = await service.checkUserCaseAccess(caseId, investigatorUserId, tenantId);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false (not a throw) on an unexpected error', async () => {
+      prismaService.case.findFirst.mockRejectedValueOnce(new Error('DB down'));
+
+      const result = await service.checkUserCaseAccess(caseId, undefined, tenantId);
+
+      expect(result).toBe(false);
+      expect(logger.error).toHaveBeenCalled();
     });
   });
 

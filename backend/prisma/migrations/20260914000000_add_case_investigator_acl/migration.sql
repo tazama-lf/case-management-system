@@ -1,28 +1,3 @@
-/*
-  Case-level access control (ACL) — plan .claude/plans/wild-dreaming-dewdrop.md §1
-  (design background: docs/case-acl-design.md).
-
-  Two tables:
-    - case_investigators            (whitelist)
-    - case_investigators_blacklist  (exclusion list)
-
-  Both are populated exclusively by task assignment (plan §3, task-only —
-  Case.case_owner_user_id is not read by the ACL) — there is no manual-add
-  endpoint, for anyone, supervisor included. Supervisors retain revoke /
-  blacklist / unblock.
-
-  IMPORTANT — partial unique indexes, not plain UNIQUE constraints:
-  "One live row per (case_id, user_id)" cannot be enforced by a plain
-  UNIQUE(case_id, user_id, revoked_at) the way an earlier draft of the
-  design proposed — Postgres treats every NULL as distinct from every other
-  NULL, so a plain unique constraint including the nullable revoked_at /
-  unblocked_at column would silently allow multiple simultaneously-live
-  rows for the same (case_id, user_id), which is the opposite of what's
-  needed. The two CREATE UNIQUE INDEX ... WHERE statements below are the
-  real constraint. This is why schema.prisma only declares plain @@index
-  for these two tables — Prisma's schema DSL cannot express a partial
-  index, so it's hand-written here instead of generated.
-*/
 
 -- CreateEnum
 CREATE TYPE "CaseInvestigatorMembership" AS ENUM ('LEAD', 'OBSERVER');

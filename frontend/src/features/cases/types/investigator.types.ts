@@ -1,7 +1,3 @@
-// Types for the case-level access-control list (ACL) — plan §2/§6
-// (docs/case-acl-design.md, .claude/plans/wild-dreaming-dewdrop.md).
-// Mirrors the backend's CaseInvestigator / CaseInvestigatorBlacklist shape.
-
 export type CaseInvestigatorMembership = 'LEAD' | 'OBSERVER';
 
 export interface CaseInvestigator {

@@ -31,6 +31,7 @@ import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { Task } from '@prisma/client-cms';
 import { Audit } from '../audit/decorators/audit-log.decorator';
 import type { AuthenticatedUser } from '../../utils/types/auth.types';
+import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -52,6 +53,7 @@ export class TaskController {
   constructor(
     private readonly taskService: TaskService,
     private readonly taskLifecycleService: TaskLifecycleService,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
 
   @Post()
@@ -599,6 +601,7 @@ export class TaskController {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     const userClaims = req.user.token.claims ?? [];
+    await this.caseInvestigatorService.assertReadAccess(caseId, userId, tenantId, req.user.actorRole);
     return await this.taskService.getTasksByCaseId(caseId, tenantId, userId, userClaims);
   }
 
@@ -655,7 +658,8 @@ export class TaskController {
   })
   async getTaskById(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest): Promise<Task | null> {
     const { tenantId } = req.user.token;
-    return await this.taskService.getTaskById(taskId, tenantId);
+    const userId = req.user.token.clientId;
+    return await this.taskService.getTaskById(taskId, tenantId, userId, req.user.actorRole);
   }
 
   @Post(':taskId/complete')
