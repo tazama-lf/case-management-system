@@ -213,12 +213,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
       const accountIds = Array.from(accountIdsSet);
 
-      this.logger.log(
-        `Found ${accountIds.length} unique accounts for entity ${entityId}: ` +
-          `${primaryAccountId ? '1 transaction account' : 'no transaction account'} + ` +
-          `${accountIds.length - (primaryAccountId ? 1 : 0)} from account_holder`,
-      );
-
       if (accountIds.length === 0) {
         this.logger.warn(`No accounts found for entity ${entityId}`);
         return [];
