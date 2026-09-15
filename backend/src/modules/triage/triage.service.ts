@@ -663,6 +663,7 @@ export class TriageService {
           );
 
           let amlCaseId: number | undefined;
+          let newlyCreatedAmlCaseId: number | undefined;
           try {
             const existingAmlCase = await this.prisma.case.findFirst({
               where: { group_id: investigationGroup.id, case_type: CaseType.AML },
@@ -671,6 +672,11 @@ export class TriageService {
             if (existingAmlCase) {
               amlCaseId = existingAmlCase.case_id;
             } else {
+              // createCaseWithInvestigationTask is called without a tx, so
+              // CaseCreationService.createCase already dispatches
+              // flowableService.handleCaseCreated internally (see
+              // executeFlowableCaseCreationEvent) - dispatching it again here would
+              // be a duplicate event.
               const amlCase = await this.caseCreateService.createCaseWithInvestigationTask(
                 CaseType.AML,
                 userId,
@@ -681,21 +687,7 @@ export class TriageService {
                 investigationGroup.id,
               );
               amlCaseId = amlCase.caseId;
-
-              await this.flowableService.handleCaseCreated({
-                caseId: amlCase.caseId,
-                tenantId,
-                caseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-                creationType: CaseCreationType.AUTOMATIC_SYSTEM,
-                creatorRole: 'SUPERVISOR',
-                isReopened: false,
-                isFraudNAML: true,
-              });
-
-              await this.flowableService.handleCaseStatusChanged({
-                caseId: amlCase.caseId,
-                newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
-              });
+              newlyCreatedAmlCaseId = amlCase.caseId;
             }
           } catch (amlError) {
             const amlErrorMessage = amlError instanceof Error ? amlError.message : String(amlError);
@@ -742,6 +734,35 @@ export class TriageService {
             }
 
             throw amlError;
+          }
+
+          if (newlyCreatedAmlCaseId !== undefined) {
+            // AML case already persisted - don't abandon/delete-group on failure here
+            // (that would orphan it), preserve both for manual reconciliation instead.
+            try {
+              await this.flowableService.handleCaseStatusChanged({
+                caseId: newlyCreatedAmlCaseId,
+                newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+              });
+            } catch (statusChangeError) {
+              const statusChangeErrorMessage = statusChangeError instanceof Error ? statusChangeError.message : String(statusChangeError);
+              this.logger.error(
+                `FRAUD_AND_AML triage for alert ${alertId}: status-changed Flowable event failed for AML case ${newlyCreatedAmlCaseId} (FRAUD case ${caseId}, group ${investigationGroup.id}) - preserving both cases and the group for manual reconciliation`,
+                statusChangeError instanceof Error ? statusChangeError.stack : undefined,
+                TriageService.name,
+              );
+
+              await this.loggingOrchestrationService.logActions({
+                userId,
+                operation: 'AI_TRIAGE_FRAUD_AND_AML_STATUS_EVENT_FAILED',
+                entityName: 'Case',
+                actionPerformed: `Status-changed Flowable event failed for AML case ${newlyCreatedAmlCaseId} (FRAUD case ${caseId}, group ${investigationGroup.id}); both cases and the group were preserved for manual reconciliation: ${statusChangeErrorMessage}`,
+                outcome: Outcome.FAILURE,
+                tenantId,
+              });
+
+              throw statusChangeError;
+            }
           }
 
           // Detach the alert now that both group cases exist - FRAUD_AND_AML alerts
