@@ -5,6 +5,9 @@ import { GoldLakehouseService } from './gold-lakehouse.service';
 import { ConditionsByEntityResponse, ConditionsContextByTransactionResponse } from './types/gold-lakehouse-responses.types';
 import { ConditionsListByAccountResponse } from './types/IAccountConditions.types';
 
+const DBTR_ACCT_PREFIX = 'dbtrAcct_';
+const CDTR_ACCT_PREFIX = 'cdtrAcct_';
+
 @Injectable()
 export class ConditionLakehouseService extends GoldLakehouseService {
   // eslint-disable-next-line @typescript-eslint/no-useless-constructor -- Required for NestJS dependency injection in subclasses
@@ -224,8 +227,10 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       const accountsWithCounts = await Promise.all(
         accountIds.map(async (accountId) => {
           let accountIdToUse = accountId;
-          if (accountIdToUse.includes('dbtrAcct_') || accountIdToUse.includes('cdtrAcct_')) {
-            accountIdToUse = accountIdToUse.slice(9);
+          if (accountIdToUse.startsWith(DBTR_ACCT_PREFIX)) {
+            accountIdToUse = accountIdToUse.slice(DBTR_ACCT_PREFIX.length);
+          } else if (accountIdToUse.startsWith(CDTR_ACCT_PREFIX)) {
+            accountIdToUse = accountIdToUse.slice(CDTR_ACCT_PREFIX.length);
           }
 
           const conditionsSql = `
