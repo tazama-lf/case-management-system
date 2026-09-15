@@ -13,6 +13,7 @@ import { TaskHistoryModule } from '../task_history/taskHistory.module';
 import { CaseHistoryModule } from '../case_history/caseHistory.module';
 import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orchestration.module';
 import { UserModule } from '../user/user.module';
+import { CaseInvestigatorModule } from '../case-investigator/case-investigator.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { UserModule } from '../user/user.module';
     CaseHistoryModule,
     LoggingOrchestrationModule,
     UserModule,
+    CaseInvestigatorModule,
   ],
   providers: [TaskService, TaskLifecycleService],
   exports: [TaskService],

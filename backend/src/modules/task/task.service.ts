@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -9,6 +9,7 @@ import { TaskAssignedEvent } from '../events/domain-events';
 import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
+import { CaseInvestigatorService, SyncTaskAssignmentParams } from '../case-investigator/case-investigator.service';
 import { setTimeout } from 'node:timers/promises';
 
 @Injectable()
@@ -19,7 +20,21 @@ export class TaskService {
     private readonly eventEmitter: EventEmitter2,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
+  private async syncCaseAcl(caseId: number, tenantId: string, actingUserId: string, params: SyncTaskAssignmentParams): Promise<void> {
+    try {
+      await this.caseInvestigatorService.syncTaskAssignment(caseId, tenantId, actingUserId, params);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.warn(
+        `Case-investigator ACL sync failed for case ${caseId}, task ${params.taskId} (task mutation itself already succeeded): ${errorMessage}`,
+        errorStack,
+        TaskService.name,
+      );
+    }
+  }
 
   async createTask(taskDTO: CreateTaskDto, userId: string, tenantId: string, tx?: Prisma.TransactionClient): Promise<Task> {
     this.logger.log('Start - createTask', TaskService.name);
@@ -117,6 +132,23 @@ export class TaskService {
         const assigneeExplicitlyProvided = 'assignedUserId' in updateData;
         const nextAssignedUserId = assigneeExplicitlyProvided ? (updateData.assignedUserId ?? null) : existingTask.assigned_user_id;
 
+        // this is the one place a task mutation
+        // must actually be BLOCKED by the ACL, not just synced after the
+        // fact — a blacklisted user must not be able to get back onto a
+        // case merely by being (re)assigned a task on it. Checked here,
+        // before any write, so it aborts the transaction with nothing to
+        // roll back yet. Only checked on a genuine assignment change (a
+        // no-op resend of the same assignee, or the field being omitted
+        // entirely, has nothing to check against).
+        if (nextAssignedUserId && nextAssignedUserId !== existingTask.assigned_user_id) {
+          const blocked = await this.caseInvestigatorService.isBlacklisted(existingTask.case_id, nextAssignedUserId, tenantId);
+          if (blocked) {
+            throw new ForbiddenException(
+              `User is blacklisted on this case (blocked by ${blocked.blocked_by} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`,
+            );
+          }
+        }
+
         const updateInput: Prisma.TaskUpdateInput = {
           status: updateData.status,
           assigned_user_id: nextAssignedUserId,
@@ -157,7 +189,14 @@ export class TaskService {
           );
         }
 
-        return { updatedTask };
+        return { updatedTask, previousAssigneeId: existingTask.assigned_user_id };
+      });
+
+      await this.syncCaseAcl(txResult.updatedTask.case_id, tenantId, userId, {
+        taskId,
+        previousAssigneeId: txResult.previousAssigneeId,
+        newAssigneeId: txResult.updatedTask.assigned_user_id,
+        newStatus: txResult.updatedTask.status,
       });
 
       this.logger.log('End - updateTask', TaskService.name);
@@ -247,9 +286,25 @@ export class TaskService {
 
       const previousAssignedUserId = existingTask.assigned_user_id;
 
+      // block the claim if the claimant is
+      // blacklisted on this case, before writing anything.
+      const blocked = await this.caseInvestigatorService.isBlacklisted(existingTask.case_id, userId, tenantId);
+      if (blocked) {
+        throw new ForbiddenException(
+          `User is blacklisted on this case (blocked by ${blocked.blocked_by} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`,
+        );
+      }
+
       const updatedTask = await this.taskRepository.updateTask(taskId, {
         assigned_user_id: userId,
         status: TaskStatus.STATUS_10_ASSIGNED,
+      });
+
+      await this.syncCaseAcl(updatedTask.case_id, tenantId, userId, {
+        taskId,
+        previousAssigneeId: previousAssignedUserId,
+        newAssigneeId: userId,
+        newStatus: updatedTask.status,
       });
 
       this.eventEmitter.emit(
