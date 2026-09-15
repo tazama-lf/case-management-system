@@ -13,6 +13,7 @@ import { setTimeout } from 'node:timers/promises';
 import { RbacService, EndpointKey } from 'src/utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from 'src/utils/types/auth.types';
 import { UserService } from 'src/modules/user/user.service';
+import { CaseInvestigatorService, SyncTaskAssignmentParams } from 'src/modules/case-investigator/case-investigator.service';
 
 @Injectable()
 export class TaskLifecycleService {
@@ -27,7 +28,37 @@ export class TaskLifecycleService {
     private readonly notificationService: NotificationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly userService: UserService,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
+
+  private async syncCaseAcl(caseId: number, tenantId: string, actingUserId: string, params: SyncTaskAssignmentParams): Promise<void> {
+    try {
+      await this.caseInvestigatorService.syncTaskAssignment(caseId, tenantId, actingUserId, params);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.warn(
+        `Case-investigator ACL sync failed for case ${caseId}, task ${params.taskId} (task mutation itself already succeeded): ${errorMessage}`,
+        errorStack,
+        TaskLifecycleService.name,
+      );
+    }
+  }
+
+  /**
+   *the one place a task mutation must actually be
+   * BLOCKED by the ACL — a blacklisted user must not get back onto a case
+   * merely by being (re)assigned a task on it. Checked before the write, so
+   * there's nothing to roll back when it throws.
+   */
+  private async assertNotBlacklisted(caseId: number, userId: string, tenantId: string): Promise<void> {
+    const blocked = await this.caseInvestigatorService.isBlacklisted(caseId, userId, tenantId);
+    if (blocked) {
+      throw new ForbiddenException(
+        `User is blacklisted on this case (blocked by ${blocked.blocked_by} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`,
+      );
+    }
+  }
 
   async assignTaskToInvestigator(
     taskId: number,
@@ -43,6 +74,7 @@ export class TaskLifecycleService {
     const rbacRole = this.rbacService.getRoleFromUser(user);
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    await this.assertNotBlacklisted(existingTask.case_id, assignedUserId, tenantId);
 
     const result = await this.taskRepository.transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -83,6 +115,13 @@ export class TaskLifecycleService {
       }
 
       return { updatedTask, updatedCase };
+    });
+
+    await this.syncCaseAcl(existingTask.case_id, tenantId, userId, {
+      taskId,
+      previousAssigneeId: existingTask.assigned_user_id,
+      newAssigneeId: assignedUserId,
+      newStatus: result.updatedTask.status,
     });
 
     const { token, tenantName } = user;
@@ -128,6 +167,7 @@ export class TaskLifecycleService {
     const rbacRole = this.rbacService.getRoleFromUser(user);
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    await this.assertNotBlacklisted(existingTask.case_id, assignedUserId, tenantId);
 
     const result = await this.taskRepository.transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -173,6 +213,13 @@ export class TaskLifecycleService {
         tx,
       );
       return { updatedTask, updatedCase };
+    });
+
+    await this.syncCaseAcl(existingTask.case_id, tenantId, actorUserId, {
+      taskId,
+      previousAssigneeId: existingTask.assigned_user_id,
+      newAssigneeId: assignedUserId,
+      newStatus: result.updatedTask.status,
     });
 
     const { token, tenantName } = user;
@@ -261,6 +308,13 @@ export class TaskLifecycleService {
       return { updatedTask };
     });
 
+    await this.syncCaseAcl(existingTask.case_id, tenantId, actorUserId, {
+      taskId,
+      previousAssigneeId: existingTask.assigned_user_id,
+      newAssigneeId: null,
+      newStatus: result.updatedTask.status,
+    });
+
     try {
       if (existingTask.assigned_user_id) {
         await this.notificationService.sendNotification({
@@ -340,6 +394,18 @@ export class TaskLifecycleService {
       });
 
       await this.executeFlowableOperation(txResult.updatedTask);
+
+      // Completion doesn't change assigned_user_id, so the just-persisted
+      // value IS the (unchanged) assignee both before and after — matches
+      // syncTaskAssignment's "completion, assignee unchanged" branch, which
+      // demotes that person to OBSERVER unless they hold another live task
+      // on this case.
+      await this.syncCaseAcl(txResult.updatedTask.case_id, tenantId, actorUserId, {
+        taskId,
+        previousAssigneeId: txResult.updatedTask.assigned_user_id,
+        newAssigneeId: txResult.updatedTask.assigned_user_id,
+        newStatus: txResult.updatedTask.status,
+      });
 
       return txResult.updatedTask;
     } catch (error) {
