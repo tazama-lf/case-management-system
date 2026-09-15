@@ -21,11 +21,6 @@ import { formatDate } from '@/shared/utils/dateUtils';
 import { LoadingSpinner, EmptyState, ErrorState } from '@/shared/components/ui';
 import ReasonRequiredModal from '../modals/ReasonRequiredModal';
 
-// Supervisor+ only, in full. The whitelist has no manual-add path at all —
-// it's populated exclusively by task assignment (plan §3; case ownership
-// is not an ACL trigger) — so there is nothing here for an investigator,
-// on-case or not, to see or do.
-
 interface AccessControlTabProps {
   caseId: number;
 }
@@ -66,9 +61,6 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
-  // Live rows only — defensive filter in case the endpoint ever returns
-  // history alongside live rows; plan §6 says the tab starts with live
-  // rows only, matching what the GET endpoints are specified to return.
   const liveWhitelist = useMemo(
     () => whitelist.filter((row) => !row.revoked_at),
     [whitelist],

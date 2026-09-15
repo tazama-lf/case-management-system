@@ -61,7 +61,7 @@ export class CaseHistoryController {
   })
   @ApiResponse({ status: 404, description: 'Case History not found' })
   async getCaseHistory(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<CaseHistory[]> {
-    const { tenantId } = req.user.token;
-    return await this.caseHistoryService.getCaseHistory(caseId, tenantId);
+    const { userId, tenantId, actorRole } = req.user;
+    return await this.caseHistoryService.getCaseHistory(caseId, tenantId, userId, actorRole);
   }
 }

@@ -266,9 +266,13 @@ export class TaskService {
     }
   }
 
-  async getTaskById(taskId: number, tenantId: string): Promise<Task | null> {
+  async getTaskById(taskId: number, tenantId: string, userId: string, role: string): Promise<Task | null> {
     try {
-      return await this.taskRepository.findTaskWithCase(taskId, tenantId);
+      const task = await this.taskRepository.findTaskWithCase(taskId, tenantId);
+      if (task) {
+        await this.caseInvestigatorService.assertReadAccess(task.case_id, userId, tenantId, role);
+      }
+      return task;
     } catch (error) {
       this.logger.error(`Error retrieving task ${taskId}`, error, TaskService.name);
       throw error;

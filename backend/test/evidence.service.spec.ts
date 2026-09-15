@@ -16,6 +16,7 @@ import {
 import { EvidenceType } from '../src/modules/evidence/dto/upload-evidence.dto';
 import { RbacService, EndpointKey } from '../src/utils/rbac/rbacHelper';
 import { AuthenticatedUser } from '../src/utils/types/auth.types';
+import { CaseInvestigatorService } from '../src/modules/case-investigator/case-investigator.service';
 
 describe('EvidenceService', () => {
   let service: EvidenceService;
@@ -25,6 +26,7 @@ describe('EvidenceService', () => {
   let taskRepository: any;
   let eventLogService: any;
   let taskHistoryService: any;
+  let caseInvestigatorService: any;
 
   const mockTask = {
     task_id: 1,
@@ -112,6 +114,13 @@ describe('EvidenceService', () => {
         { provide: TaskRepository, useValue: { findTaskWithCase: jest.fn() } },
         { provide: EventLogService, useValue: { logEventAction: jest.fn() } },
         { provide: TaskHistoryService, useValue: { logTaskHistoryAction: jest.fn() } },
+        {
+          provide: CaseInvestigatorService,
+          useValue: {
+            assertReadAccess: jest.fn().mockResolvedValue(undefined),
+            getAccessibleCaseIds: jest.fn().mockResolvedValue([]),
+          },
+        },
       ],
     }).compile();
 
@@ -122,6 +131,8 @@ describe('EvidenceService', () => {
     taskRepository = module.get(TaskRepository);
     eventLogService = module.get(EventLogService);
     taskHistoryService = module.get(TaskHistoryService);
+    caseInvestigatorService = module.get(CaseInvestigatorService);
+    prismaService.task.findUnique.mockResolvedValue({ case_id: mockTask.case_id });
   });
 
   afterEach(() => {
@@ -230,6 +241,21 @@ describe('EvidenceService', () => {
 
       await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(NotFoundException);
     });
+
+    it('should gate on the task case membership before uploading', async () => {
+      await service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey);
+
+      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(mockTask.case_id, userId, tenantId, mockUser.actorRole);
+    });
+
+    it('should refuse the upload and write nothing when access is denied', async () => {
+      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new ForbiddenException('Case not found or access denied'));
+
+      await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(
+        'Case not found or access denied',
+      );
+      expect(couchdbService.insertDocument).not.toHaveBeenCalled();
+    });
   });
 
   describe('deleteEvidence', () => {
@@ -270,6 +296,25 @@ describe('EvidenceService', () => {
 
       await expect(service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, deleteEndpointKey)).rejects.toThrow('CouchDB error');
     });
+
+    it('should gate on the evidence case membership before deleting', async () => {
+      couchdbService.getDocument.mockResolvedValue(mockEvidenceDoc);
+      couchdbService.deleteEvidence.mockResolvedValue({ ok: true });
+
+      await service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, deleteEndpointKey);
+
+      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(mockEvidenceDoc.caseId, userId, tenantId, mockUser.actorRole);
+    });
+
+    it('should refuse the delete and touch nothing when access is denied', async () => {
+      couchdbService.getDocument.mockResolvedValue(mockEvidenceDoc);
+      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new ForbiddenException('Case not found or access denied'));
+
+      await expect(service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, deleteEndpointKey)).rejects.toThrow(
+        'Case not found or access denied',
+      );
+      expect(couchdbService.deleteEvidence).not.toHaveBeenCalled();
+    });
   });
 
   describe('getEvidenceById', () => {
@@ -280,18 +325,30 @@ describe('EvidenceService', () => {
       couchdbService.queryDocuments.mockResolvedValue({ data: [mockEvidenceDoc] });
     });
 
-    it.each([
-      ['CMS_INVESTIGATOR', true],
-      ['CMS_SUPERVISOR', false],
-      ['CMS_COMPLIANCE_OFFICER', false],
-    ])('should get evidence for %s role', async (role, shouldFilterByUser) => {
-      const result = await service.getEvidenceById('ev_1_123456', userId, tenantId, role);
+    // membership — no role gets an uploadedBy filter anymore.
+    it.each([['CMS_INVESTIGATOR'], ['CMS_SUPERVISOR'], ['CMS_COMPLIANCE_OFFICER']])(
+      'should get evidence for %s role, without an uploadedBy filter',
+      async (role) => {
+        const result = await service.getEvidenceById('ev_1_123456', userId, tenantId, role);
 
-      expect(result).toBeDefined();
-      expect(result.id).toBe('ev_1_123456');
-      if (shouldFilterByUser) {
-        expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ uploadedBy: userId }));
-      }
+        expect(result).toBeDefined();
+        expect(result.id).toBe('ev_1_123456');
+        expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.not.objectContaining({ uploadedBy: expect.anything() }));
+      },
+    );
+
+    it('should gate on the evidence case membership after fetching the doc', async () => {
+      await service.getEvidenceById('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR');
+
+      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(mockEvidenceDoc.caseId, userId, tenantId, 'CMS_INVESTIGATOR');
+    });
+
+    it('should propagate the gate rejection when access is denied', async () => {
+      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new Error('Case not found or access denied'));
+
+      await expect(service.getEvidenceById('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR')).rejects.toThrow(
+        'Case not found or access denied',
+      );
     });
 
     it('should throw UnauthorizedException for invalid role', async () => {
@@ -350,6 +407,20 @@ describe('EvidenceService', () => {
       couchdbService.queryDocuments.mockResolvedValue({ data: [] });
 
       await expect(service.downloadEvidence('ev_1_123456', userId, tenantId, 'CMS_SUPERVISOR')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should gate on the evidence case membership after fetching the doc', async () => {
+      await service.downloadEvidence('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR');
+
+      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(mockEvidenceDoc.caseId, userId, tenantId, 'CMS_INVESTIGATOR');
+    });
+
+    it('should propagate the gate rejection as a NotFoundException (rethrow allowlist)', async () => {
+      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new NotFoundException('Case not found or access denied'));
+
+      await expect(service.downloadEvidence('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR')).rejects.toThrow(
+        'Case not found or access denied',
+      );
     });
 
     it('should throw NotFoundException when no attachments found', async () => {
@@ -414,10 +485,25 @@ describe('EvidenceService', () => {
       expect(result.details![0].reason).toBe('encrypted hash mismatch');
     });
 
-    it('should filter evidence by uploadedBy for CMS_INVESTIGATOR role', async () => {
+    //"own uploads only" replaced by case membership.
+    it('should not filter by uploadedBy for CMS_INVESTIGATOR role', async () => {
       await service.verifyEvidence('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR');
 
-      expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ uploadedBy: userId }));
+      expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.not.objectContaining({ uploadedBy: expect.anything() }));
+    });
+
+    it('should gate on the evidence case membership after fetching the doc', async () => {
+      await service.verifyEvidence('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR');
+
+      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(mockEvidenceDoc.caseId, userId, tenantId, 'CMS_INVESTIGATOR');
+    });
+
+    it('should propagate the gate rejection when access is denied', async () => {
+      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new Error('Case not found or access denied'));
+
+      await expect(service.verifyEvidence('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR')).rejects.toThrow(
+        'Case not found or access denied',
+      );
     });
 
     it('should throw UnauthorizedException for invalid role', async () => {
@@ -493,6 +579,32 @@ describe('EvidenceService', () => {
       expect(call.tenantId).toBe(tenantId);
       expect(call.tenantId).not.toBe('');
     });
+
+    // No case_id param on this endpoint — resolved via the task.
+    it('should resolve case_id via the task and gate before querying CouchDB', async () => {
+      prismaService.task.findUnique.mockResolvedValue({ case_id: 100 });
+
+      await service.getEvidenceByTaskId(taskId, userId, tenantId, 'CMS_INVESTIGATOR');
+
+      expect(prismaService.task.findUnique).toHaveBeenCalledWith({ where: { task_id: taskId }, select: { case_id: true } });
+      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(100, userId, tenantId, 'CMS_INVESTIGATOR');
+    });
+
+    it('should throw NotFoundException when the task does not exist, without querying CouchDB', async () => {
+      prismaService.task.findUnique.mockResolvedValue(null);
+
+      await expect(service.getEvidenceByTaskId(taskId, userId, tenantId, 'CMS_INVESTIGATOR')).rejects.toThrow(NotFoundException);
+      expect(couchdbService.queryDocuments).not.toHaveBeenCalled();
+    });
+
+    it('should propagate the gate rejection and never query CouchDB when access is denied', async () => {
+      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new Error('Case not found or access denied'));
+
+      await expect(service.getEvidenceByTaskId(taskId, userId, tenantId, 'CMS_INVESTIGATOR')).rejects.toThrow(
+        'Case not found or access denied',
+      );
+      expect(couchdbService.queryDocuments).not.toHaveBeenCalled();
+    });
   });
 
   describe('getEvidenceByCaseId', () => {
@@ -504,19 +616,32 @@ describe('EvidenceService', () => {
       couchdbService.queryDocuments.mockResolvedValue({ data: [mockEvidenceDoc] });
     });
 
-    it.each([
-      ['CMS_INVESTIGATOR', true],
-      ['CMS_SUPERVISOR', false],
-      ['CMS_COMPLIANCE_OFFICER', false],
-    ])('should get evidence by case ID for %s role', async (role, shouldFilterByUser) => {
-      const result = await service.getEvidenceByCaseId(caseId, userId, tenantId, role);
+    // "own uploads only" replaced by case membership.
+    it.each([['CMS_INVESTIGATOR'], ['CMS_SUPERVISOR'], ['CMS_COMPLIANCE_OFFICER']])(
+      'should get evidence by case ID for %s role, without an uploadedBy filter',
+      async (role) => {
+        const result = await service.getEvidenceByCaseId(caseId, userId, tenantId, role);
 
-      expect(result).toBeDefined();
-      expect(result.evidence).toHaveLength(1);
-      expect(result.total).toBe(1);
-      if (shouldFilterByUser) {
-        expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ uploadedBy: userId }));
-      }
+        expect(result).toBeDefined();
+        expect(result.evidence).toHaveLength(1);
+        expect(result.total).toBe(1);
+        expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.not.objectContaining({ uploadedBy: expect.anything() }));
+      },
+    );
+
+    it('should gate directly on caseId before querying', async () => {
+      await service.getEvidenceByCaseId(caseId, userId, tenantId, 'CMS_INVESTIGATOR');
+
+      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(caseId, userId, tenantId, 'CMS_INVESTIGATOR');
+    });
+
+    it('should propagate the gate rejection and never query CouchDB when access is denied', async () => {
+      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new Error('Case not found or access denied'));
+
+      await expect(service.getEvidenceByCaseId(caseId, userId, tenantId, 'CMS_INVESTIGATOR')).rejects.toThrow(
+        'Case not found or access denied',
+      );
+      expect(couchdbService.queryDocuments).not.toHaveBeenCalled();
     });
 
     it('should return empty array when no evidence found', async () => {
@@ -552,20 +677,40 @@ describe('EvidenceService', () => {
       couchdbService.queryDocuments.mockResolvedValue({ data: [mockEvidenceDoc] });
     });
 
-    it.each([
-      ['CMS_INVESTIGATOR', true],
-      ['CMS_SUPERVISOR', false],
-      ['CMS_COMPLIANCE_OFFICER', false],
-    ])('should get evidence by type for %s role', async (role, shouldFilterByUser) => {
-      const result = await service.getEvidenceByType(evidenceType as any, userId, tenantId, role);
+    // "own uploads only" replaced by restricting to
+    // accessible case_ids via CouchDB's $in — supervisor/compliance-officer
+    // see everything (no caseIds filter at all).
+    it.each([['CMS_SUPERVISOR'], ['CMS_COMPLIANCE_OFFICER']])(
+      'should get evidence by type for %s role, without any case filter',
+      async (role) => {
+        const result = await service.getEvidenceByType(evidenceType as any, userId, tenantId, role);
 
-      expect(result).toBeDefined();
+        expect(result).toBeDefined();
+        expect(result.evidence).toHaveLength(1);
+        expect(result.total).toBe(1);
+        expect(result.evidenceType).toBe(evidenceType);
+        expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.not.objectContaining({ uploadedBy: expect.anything() }));
+        expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.not.objectContaining({ caseIds: expect.anything() }));
+      },
+    );
+
+    it('should restrict CMS_INVESTIGATOR to their accessible case_ids via the CouchDB selector', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([100, 101]);
+
+      const result = await service.getEvidenceByType(evidenceType as any, userId, tenantId, 'CMS_INVESTIGATOR');
+
       expect(result.evidence).toHaveLength(1);
-      expect(result.total).toBe(1);
-      expect(result.evidenceType).toBe(evidenceType);
-      if (shouldFilterByUser) {
-        expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ uploadedBy: userId }));
-      }
+      expect(caseInvestigatorService.getAccessibleCaseIds).toHaveBeenCalledWith(userId, tenantId);
+      expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ caseIds: [100, 101] }));
+    });
+
+    it('should short-circuit to an empty result for CMS_INVESTIGATOR with no accessible cases, without querying CouchDB', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+
+      const result = await service.getEvidenceByType(evidenceType as any, userId, tenantId, 'CMS_INVESTIGATOR');
+
+      expect(result).toEqual({ evidence: [], total: 0, evidenceType });
+      expect(couchdbService.queryDocuments).not.toHaveBeenCalled();
     });
 
     it('should return empty array when no evidence found', async () => {

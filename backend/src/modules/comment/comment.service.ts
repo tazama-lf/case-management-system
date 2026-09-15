@@ -7,6 +7,7 @@ import { Comment } from '@prisma/client-cms';
 import { RbacService, EndpointKey } from '../../utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from '../../utils/types/auth.types';
 import { TaskRepository } from '../repository/task.repository';
+import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
 
 @Injectable()
 export class CommentService {
@@ -17,6 +18,7 @@ export class CommentService {
     private readonly commentRepository: CommentRepository,
     private readonly caseRepository: CaseRepository,
     private readonly taskRepository: TaskRepository,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
 
   async addCommentFromController(
@@ -50,6 +52,7 @@ export class CommentService {
     const rbacRole = this.rbacService.getRoleFromUser(user);
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    await this.caseInvestigatorService.assertReadAccess(caseId, userId, tenantId, rbacRole);
 
     try {
       const comment = await this.commentRepository.createComment(userId, createCommentDto);
@@ -82,13 +85,17 @@ export class CommentService {
     }
   }
 
-  async getComment(commentId: number, userId: string, tenantId: string): Promise<Comment> {
+  async getComment(commentId: number, userId: string, tenantId: string, role: string): Promise<Comment> {
     this.logger.log('Retrieving comment', CommentService.name);
     try {
       const comment = await this.commentRepository.getCommentsByCommentId(commentId, tenantId);
 
       if (!comment) {
         throw new NotFoundException('Comment not found');
+      }
+      const caseId = comment.case_id ?? (await this.taskRepository.findTaskById(comment.task_id!, tenantId))?.case_id;
+      if (caseId) {
+        await this.caseInvestigatorService.assertReadAccess(caseId, userId, tenantId, role);
       }
 
       return comment;
@@ -98,7 +105,13 @@ export class CommentService {
     }
   }
 
-  async getCommentsByCaseOrTask(caseId?: number, taskId?: number, userId?: string): Promise<Comment[]> {
+  async getCommentsByCaseOrTask(
+    caseId: number | undefined,
+    taskId: number | undefined,
+    userId: string,
+    tenantId: string,
+    role: string,
+  ): Promise<Comment[]> {
     this.logger.log('Retrieving comments by case or task', CommentService.name);
     try {
       if (!caseId && !taskId) {
@@ -109,9 +122,13 @@ export class CommentService {
         throw new BadRequestException('Cannot provide both caseId and taskId');
       }
 
+      const resolvedCaseId = caseId ?? (await this.taskRepository.findTaskById(taskId!, tenantId))?.case_id;
+      if (resolvedCaseId) {
+        await this.caseInvestigatorService.assertReadAccess(resolvedCaseId, userId, tenantId, role);
+      }
       const comments = caseId
-        ? await this.commentRepository.getCommentsByCaseId(caseId)
-        : await this.commentRepository.getCommentsByTaskId(taskId);
+        ? await this.commentRepository.getCommentsByCaseId(caseId, tenantId)
+        : await this.commentRepository.getCommentsByTaskId(taskId, tenantId);
 
       return comments;
     } catch (error) {
@@ -120,11 +137,12 @@ export class CommentService {
     }
   }
 
-  async getCommentsByCaseId(caseId: number, userId?: string): Promise<Comment[]> {
+  async getCommentsByCaseId(caseId: number, userId: string, tenantId: string, role: string): Promise<Comment[]> {
     this.logger.log('Retrieving comments by caseId: ', CommentService.name);
 
     try {
-      const comments = await this.commentRepository.getCommentsByCaseId(caseId);
+      await this.caseInvestigatorService.assertReadAccess(caseId, userId, tenantId, role);
+      const comments = await this.commentRepository.getCommentsByCaseId(caseId, tenantId);
 
       return comments;
     } catch (error) {
@@ -133,11 +151,15 @@ export class CommentService {
     }
   }
 
-  async getCommentsByTaskId(taskId: number, userId?: string): Promise<Comment[]> {
+  async getCommentsByTaskId(taskId: number, userId: string, tenantId: string, role: string): Promise<Comment[]> {
     this.logger.log('Retrieving comments by taskId: ', CommentService.name);
 
     try {
-      const comments = await this.commentRepository.getCommentsByTaskId(taskId);
+      const task = await this.taskRepository.findTaskById(taskId, tenantId);
+      if (task) {
+        await this.caseInvestigatorService.assertReadAccess(task.case_id, userId, tenantId, role);
+      }
+      const comments = await this.commentRepository.getCommentsByTaskId(taskId, tenantId);
       return comments;
     } catch (error) {
       this.logger.error('Error retrieving comments', error, CommentService.name);

@@ -25,9 +25,8 @@ export class CommentController {
   @Get(':commentId')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async getComment(@Param('commentId') commentId: number, @Req() req: AuthenticatedRequest): Promise<Comment> {
-    const userId = req.user.token.clientId;
-    const { tenantId } = req.user.token;
-    return await this.commentService.getComment(commentId, userId, tenantId);
+    const { userId, tenantId, actorRole } = req.user;
+    return await this.commentService.getComment(commentId, userId, tenantId, actorRole);
   }
 
   @Get()
@@ -37,20 +36,21 @@ export class CommentController {
     @Query('caseId') caseId?: number,
     @Query('taskId') taskId?: number,
   ): Promise<Comment[]> {
-    const userId = req.user.token.clientId;
-    return await this.commentService.getCommentsByCaseOrTask(caseId, taskId, userId);
+    const { userId, tenantId, actorRole } = req.user;
+    return await this.commentService.getCommentsByCaseOrTask(caseId, taskId, userId, tenantId, actorRole);
   }
 
   @Get('/case/:caseId/comment')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async getCommentsByCaseId(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<Comment[]> {
-    return await this.commentService.getCommentsByCaseId(caseId);
+    const { userId, tenantId, actorRole } = req.user;
+    return await this.commentService.getCommentsByCaseId(caseId, userId, tenantId, actorRole);
   }
 
   @Get('/task/:taskId/comment')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   async getCommentsByTaskId(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest): Promise<Comment[]> {
-    const userId = req.user.token.clientId;
-    return await this.commentService.getCommentsByTaskId(taskId, userId);
+    const { userId, tenantId, actorRole } = req.user;
+    return await this.commentService.getCommentsByTaskId(taskId, userId, tenantId, actorRole);
   }
 }

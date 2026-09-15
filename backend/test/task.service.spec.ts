@@ -96,6 +96,7 @@ describe('TaskService', () => {
           useValue: {
             isBlacklisted: jest.fn().mockResolvedValue(null),
             syncTaskAssignment: jest.fn().mockResolvedValue(undefined),
+            assertReadAccess: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -267,16 +268,7 @@ describe('TaskService', () => {
       const result = await service.updateTask(1, updateData, 'user1', 'tenant1');
 
       expect(result).toBeDefined();
-      // Regression check for the case-ACL plan §3/step 4 fix: the task must be
-      // written to the REQUESTED assignee (user2), not to the caller (user1).
-      // Before the fix this wrote `assigned_user_id: userId` ('user1') whenever
-      // the requested id differed from the existing one — this assertion is
-      // what would have caught that; the version of this test before the fix
-      // never inspected the write, only that a result came back.
       expect(taskRepository.updateTask).toHaveBeenCalledWith(1, expect.objectContaining({ assigned_user_id: 'user2' }), expect.anything());
-      // Case-ACL plan §3/step 6: the ACL must be synced with the before/after
-      // assignment, using the PREVIOUS value read before the write (null, per
-      // the shared `existingTask` fixture), not the buggy post-write value.
       expect(caseInvestigatorService.syncTaskAssignment).toHaveBeenCalledWith(1, 'tenant1', 'user1', {
         taskId: 1,
         previousAssigneeId: null,
@@ -623,7 +615,7 @@ describe('TaskService', () => {
       } as any;
       taskRepository.findTaskWithCase.mockResolvedValue(task);
 
-      const result = await service.getTaskById(1, 'tenant1');
+      const result = await service.getTaskById(1, 'tenant1', 'user1', 'CMS_SUPERVISOR');
 
       expect(result).toEqual(task);
     });
@@ -631,7 +623,35 @@ describe('TaskService', () => {
     it('should handle errors', async () => {
       taskRepository.findTaskWithCase.mockRejectedValue(new Error('Not found'));
 
-      await expect(service.getTaskById(1, 'tenant1')).rejects.toThrow();
+      await expect(service.getTaskById(1, 'tenant1', 'user1', 'CMS_SUPERVISOR')).rejects.toThrow();
+    });
+
+    it('should gate on the task case membership before returning', async () => {
+      const task = { task_id: 1, case_id: 1, tenant_id: 'tenant1' } as any;
+      taskRepository.findTaskWithCase.mockResolvedValue(task);
+
+      await service.getTaskById(1, 'tenant1', 'user1', 'CMS_INVESTIGATOR');
+
+      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(1, 'user1', 'tenant1', 'CMS_INVESTIGATOR');
+    });
+
+    it('should propagate the gate rejection when access is denied', async () => {
+      const task = { task_id: 1, case_id: 1, tenant_id: 'tenant1' } as any;
+      taskRepository.findTaskWithCase.mockResolvedValue(task);
+      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new Error('Case not found or access denied'));
+
+      await expect(service.getTaskById(1, 'tenant1', 'user1', 'CMS_INVESTIGATOR')).rejects.toThrow(
+        'Case not found or access denied',
+      );
+    });
+
+    it('should not gate when the task does not exist (nothing to check access on)', async () => {
+      taskRepository.findTaskWithCase.mockResolvedValue(null);
+
+      const result = await service.getTaskById(999, 'tenant1', 'user1', 'CMS_INVESTIGATOR');
+
+      expect(result).toBeNull();
+      expect(caseInvestigatorService.assertReadAccess).not.toHaveBeenCalled();
     });
   });
 
@@ -666,7 +686,6 @@ describe('TaskService', () => {
       expect(result).toEqual(updatedTask);
       expect(eventEmitter.emit).toHaveBeenCalledWith('task.assigned', expect.anything());
       expect(loggingService.logActionsWithHistory).toHaveBeenCalled();
-      // Case-ACL plan §3/step 6: claiming a task must sync case_investigators.
       expect(caseInvestigatorService.syncTaskAssignment).toHaveBeenCalledWith(1, 'tenant1', 'user1', {
         taskId: 1,
         previousAssigneeId: null,

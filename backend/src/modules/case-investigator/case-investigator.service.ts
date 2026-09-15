@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, ForbiddenException, BadRequestException, forwardRef } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CaseInvestigator, CaseInvestigatorBlacklist, CaseInvestigatorMembership, TaskStatus } from '@prisma/client-cms';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -26,6 +26,7 @@ export class CaseInvestigatorService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly logger: LoggerService,
+    @Inject(forwardRef(() => LoggingOrchestrationService))
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
   ) {}
 

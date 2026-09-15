@@ -8,6 +8,7 @@ import { RepositoryModule } from '../repository/repository.module';
 import { EventLogModule } from '../event_log/eventLog.module';
 import { CaseHistoryModule } from '../case_history/caseHistory.module';
 import { TaskHistoryModule } from '../task_history/taskHistory.module';
+import { CaseInvestigatorModule } from '../case-investigator/case-investigator.module';
 import * as multer from 'multer';
 
 @Module({
@@ -18,6 +19,7 @@ import * as multer from 'multer';
     EventLogModule,
     TaskHistoryModule,
     CaseHistoryModule,
+    CaseInvestigatorModule,
     MulterModule.register({
       limits: {
         fileSize: 100 * 1024 * 1024,

@@ -24,6 +24,7 @@ import {
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { extractUserData } from '../../utils/helperFunction';
+import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
 import {
   GetUserCasesQueryDto,
   GetUserCasesResponseDto,
@@ -79,6 +80,7 @@ export class CaseController {
     private readonly caseCreationService: CaseCreationService,
     private readonly casePriorityService: CasePriorityService,
     private readonly casePriorityUtil: CasePriorityUtil,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
 
   @Put(':caseId/abandon')
@@ -624,7 +626,8 @@ export class CaseController {
   @ApiResponse({ status: 200, description: 'Case retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Case not found' })
   async getCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<Case | null> {
-    const { isComplianceOfficer, tenantId } = extractUserData(req);
+    const { userId, isComplianceOfficer, tenantId } = extractUserData(req);
+    await this.caseInvestigatorService.assertReadAccess(caseId, userId, tenantId, req.user.actorRole);
     return await this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
   }
 

@@ -2,10 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { v4 as uuidv4, validate as isUuid } from 'uuid';
 import { CaseHistory } from '@prisma/client-cms';
+import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
 
 @Injectable()
 export class CaseHistoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
+  ) {}
 
   async logCaseHistoryAction(data: {
     userId?: string;
@@ -39,7 +43,8 @@ export class CaseHistoryService {
     });
   }
 
-  async getCaseHistory(caseId: number, tenantId: string): Promise<CaseHistory[]> {
+  async getCaseHistory(caseId: number, tenantId: string, userId: string, role: string): Promise<CaseHistory[]> {
+    await this.caseInvestigatorService.assertReadAccess(caseId, userId, tenantId, role);
     return await this.prisma.caseHistory.findMany({
       where: {
         case_id: caseId,

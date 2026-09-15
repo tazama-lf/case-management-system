@@ -9,6 +9,7 @@ import { SlaPolicyUtil } from '../src/modules/shared/utils/sla-policy.util';
 import { BadRequestException } from '@nestjs/common';
 import { CaseStatus, CaseType, TaskStatus } from '@prisma/client-cms';
 import { FraudReportOutcome } from '../src/modules/report/report.model';
+import { CaseInvestigatorService } from '../src/modules/case-investigator/case-investigator.service';
 
 describe('ReportsService', () => {
   let service: ReportsService;
@@ -17,6 +18,7 @@ describe('ReportsService', () => {
   let couchdbService: any;
   let notificationService: any;
   let eventLogService: any;
+  let caseInvestigatorService: any;
 
   const mockDate = new Date('2026-03-20T12:00:00.000Z');
   const mockCase = {
@@ -131,6 +133,10 @@ describe('ReportsService', () => {
         { provide: NotificationService, useValue: mockNotificationService },
         { provide: EventLogService, useValue: mockEventLogService },
         { provide: SlaPolicyUtil, useValue: mockSlaPolicyUtil },
+        {
+          provide: CaseInvestigatorService,
+          useValue: { assertReadAccess: jest.fn().mockResolvedValue(undefined) },
+        },
       ],
     }).compile();
 
@@ -140,6 +146,7 @@ describe('ReportsService', () => {
     couchdbService = module.get(CouchdbService);
     notificationService = module.get(NotificationService);
     eventLogService = module.get(EventLogService);
+    caseInvestigatorService = module.get(CaseInvestigatorService);
 
     jest.useFakeTimers();
     jest.setSystemTime(mockDate);
@@ -1098,8 +1105,10 @@ describe('ReportsService', () => {
   });
 
   describe('getFraudReports', () => {
+    let mockDb: { find: jest.Mock };
+
     beforeEach(() => {
-      const mockDb = {
+      mockDb = {
         find: jest.fn().mockResolvedValue({
           docs: [
             { ...mockFraudReport, version: 1 },
@@ -1111,7 +1120,7 @@ describe('ReportsService', () => {
     });
 
     it('should get all fraud reports for a case', async () => {
-      const result = await service.getFraudReports('1');
+      const result = await service.getFraudReports('1', 'tenant-123', 'user-123', 'CMS_SUPERVISOR');
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
@@ -1119,20 +1128,37 @@ describe('ReportsService', () => {
     });
 
     it('should sort reports by version descending', async () => {
-      const result = await service.getFraudReports('1');
+      const result = await service.getFraudReports('1', 'tenant-123', 'user-123', 'CMS_SUPERVISOR');
 
       expect(result[0].version).toBeGreaterThan(result[1].version);
     });
 
     it('should handle empty reports list', async () => {
-      const mockDb = {
-        find: jest.fn().mockResolvedValue({ docs: [] }),
-      };
-      couchdbService.getDatabase.mockReturnValue(mockDb);
+      mockDb.find.mockResolvedValue({ docs: [] });
 
-      const result = await service.getFraudReports('999');
+      const result = await service.getFraudReports('999', 'tenant-123', 'user-123', 'CMS_SUPERVISOR');
 
       expect(result).toEqual([]);
+    });
+    it('should thread tenantId into the CouchDB selector', async () => {
+      await service.getFraudReports('1', 'tenant-123', 'user-123', 'CMS_SUPERVISOR');
+
+      expect(mockDb.find).toHaveBeenCalledWith({ selector: { caseId: '1', category: 'report', tenantId: 'tenant-123' } });
+    });
+
+    it('should gate on case membership before querying CouchDB', async () => {
+      await service.getFraudReports('1', 'tenant-123', 'user-123', 'CMS_INVESTIGATOR');
+
+      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(1, 'user-123', 'tenant-123', 'CMS_INVESTIGATOR');
+    });
+
+    it('should propagate the gate rejection and never query CouchDB when access is denied', async () => {
+      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new Error('Case not found or access denied'));
+
+      await expect(service.getFraudReports('1', 'tenant-123', 'user-123', 'CMS_INVESTIGATOR')).rejects.toThrow(
+        'Case not found or access denied',
+      );
+      expect(mockDb.find).not.toHaveBeenCalled();
     });
   });
 

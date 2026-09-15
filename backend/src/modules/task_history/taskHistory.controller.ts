@@ -82,11 +82,7 @@ export class TaskHistoryController {
   })
   @ApiResponse({ status: 404, description: 'Task History not found' })
   async getCaseHistory(@Param('caseId', ParseIntPipe) caseId: number, @Req() req: AuthenticatedRequest): Promise<TaskHistory[]> {
-    const {
-      user: {
-        token: { tenantId },
-      },
-    } = req;
-    return await this.taskHistoryService.getTaskHistory(caseId, tenantId);
+    const { userId, tenantId, actorRole } = req.user;
+    return await this.taskHistoryService.getTaskHistory(caseId, tenantId, userId, actorRole);
   }
 }

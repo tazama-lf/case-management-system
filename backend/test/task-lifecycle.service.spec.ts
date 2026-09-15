@@ -267,7 +267,7 @@ describe('TaskLifecycleService', () => {
         }),
       );
       expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalled();
-      // Case-ACL plan §3/step 6: assignment must sync case_investigators.
+      // assignment must sync case_investigators.
       expect(mockCaseInvestigatorService.syncTaskAssignment).toHaveBeenCalledWith(1, 'tenant1', 'supervisor1', {
         taskId: 1,
         previousAssigneeId: null,
@@ -441,9 +441,6 @@ describe('TaskLifecycleService', () => {
       expect(result.assigned_user_id).toBe('user2');
       expect(mockCommentRepository.createComment).toHaveBeenCalled();
       expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalled();
-      // Case-ACL plan §3/step 6: reassignment must sync case_investigators
-      // with BOTH the old and new assignee (the service composes grant for
-      // the new one and a conditional revoke for the old one internally).
       expect(mockCaseInvestigatorService.syncTaskAssignment).toHaveBeenCalledWith(1, 'tenant1', 'supervisor1', {
         taskId: 1,
         previousAssigneeId: 'user1',
@@ -543,7 +540,7 @@ describe('TaskLifecycleService', () => {
       expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalled();
       expect(mockFlowableService.handleTaskUnassigned).toHaveBeenCalled();
       expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalled();
-      // Case-ACL plan §3/step 6: unassignment must sync case_investigators —
+      // unassignment must sync case_investigators —
       // newAssigneeId is null, matching syncTaskAssignment's
       // reassignment/unassignment branch (revokes unless another live claim).
       expect(mockCaseInvestigatorService.syncTaskAssignment).toHaveBeenCalledWith(1, 'tenant1', 'supervisor1', {
@@ -702,9 +699,6 @@ describe('TaskLifecycleService', () => {
         },
       });
       expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalled();
-      // Case-ACL plan §3/step 6: completion doesn't change assigned_user_id,
-      // so previous/new assignee are the same value — matches
-      // syncTaskAssignment's "completion, assignee unchanged" branch.
       expect(mockCaseInvestigatorService.syncTaskAssignment).toHaveBeenCalledWith(1, 'tenant1', 'user1', {
         taskId: 1,
         previousAssigneeId: 'user1',
