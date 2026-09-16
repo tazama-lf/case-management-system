@@ -708,4 +708,113 @@ describe('useCaseDashboard', () => {
     // It must not clobber the newer, correct result.
     expect(result.current.dashboardState.cases).toHaveLength(1);
   });
+
+  it('does not get stuck loading forever when a silent (live-update) refetch supersedes a slower direct refresh', async () => {
+    // Reproduces the task-assign/reassign/unassign flow: a direct refreshCases() call (e.g.
+    // TaskLogTab's onRefreshCases()) is issued, then - before it resolves - a live-update
+    // socket event fires a silent refreshCases({ silent: true }), which becomes the newer
+    // request. Neither call's own `finally` used to be allowed to clear `loading` in that
+    // case: the direct call's requestId goes stale, and the silent call skipped the loading
+    // toggle entirely - leaving the dashboard stuck showing its loading state forever.
+    let resolveDirectRefresh: (value: unknown) => void = () => {};
+    const directRefresh = new Promise((resolve) => {
+      resolveDirectRefresh = resolve;
+    });
+
+    (caseService.getAllCases as unknown as vi.Mock)
+      .mockResolvedValueOnce({
+        cases: [],
+        pagination: { total: 0, totalPages: 1 },
+      }) // initial mount fetch
+      .mockReturnValueOnce(directRefresh) // direct refresh (e.g. onRefreshCases()) - slow
+      .mockResolvedValueOnce({
+        cases: [createBackendCase({ case_id: 1 })],
+        pagination: { total: 1, totalPages: 1 },
+      }); // silent live-update refetch - fast, resolves first
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    // Direct refresh kicked off (not yet resolved) - loading flips true.
+    act(() => {
+      result.current.refreshCases();
+    });
+    expect(result.current.dashboardState.loading).toBe(true);
+
+    // A live-update event supersedes it with a silent refetch, which resolves quickly.
+    await act(async () => {
+      await result.current.refreshCases({ silent: true });
+    });
+
+    // The silent call is now the latest request and has settled - loading must not be stuck.
+    expect(result.current.dashboardState.loading).toBe(false);
+    expect(result.current.dashboardState.cases).toHaveLength(1);
+
+    // The stale direct-refresh call finally resolves too; it must not clobber the newer result
+    // or resurrect the loading spinner.
+    await act(async () => {
+      resolveDirectRefresh({
+        cases: [],
+        pagination: { total: 0, totalPages: 1 },
+      });
+    });
+    expect(result.current.dashboardState.loading).toBe(false);
+    expect(result.current.dashboardState.cases).toHaveLength(1);
+  });
+
+  it('a failed silent refresh does not clear loading or discard the result of a still-pending foreground request', async () => {
+    // A live-update event can fire a silent refreshCases({ silent: true }) while a direct
+    // refreshCases() (e.g. a manual refresh, or TaskLogTab's onRefreshCases()) is still in
+    // flight. Unlike a *successful* silent refresh (which is allowed to supersede - see the
+    // "does not get stuck loading forever" test above), a *failed* one has no result worth
+    // superseding with, and must not strand the foreground request: it must not clear
+    // `loading` early, and the foreground request's own later success must still apply.
+    let resolveDirectRefresh: (value: unknown) => void = () => {};
+    const directRefresh = new Promise((resolve) => {
+      resolveDirectRefresh = resolve;
+    });
+
+    (caseService.getAllCases as unknown as vi.Mock)
+      .mockResolvedValueOnce({
+        cases: [],
+        pagination: { total: 0, totalPages: 1 },
+      }) // initial mount fetch
+      .mockReturnValueOnce(directRefresh) // direct refresh - slow, resolves last
+      .mockRejectedValueOnce(new Error('network blip')); // silent live-update refetch - fails fast
+
+    const { result } = renderHook(() => useCaseDashboard());
+    await waitFor(() =>
+      expect(result.current.dashboardState.loading).toBe(false),
+    );
+
+    // Direct (foreground) refresh kicked off (not yet resolved) - loading flips true.
+    act(() => {
+      result.current.refreshCases();
+    });
+    expect(result.current.dashboardState.loading).toBe(true);
+
+    // A live-update event fires a silent refetch concurrently, and it fails.
+    await act(async () => {
+      await result.current.refreshCases({ silent: true });
+    });
+
+    // The failed silent refresh must not disrupt the still-pending foreground request: no
+    // error surfaced, and loading must still be true (the real fetch hasn't settled yet).
+    expect(result.current.dashboardState.errorState).toBeNull();
+    expect(result.current.dashboardState.loading).toBe(true);
+
+    // The foreground request finally resolves with real data - its success must still apply,
+    // not be discarded as stale because of the silent failure in between.
+    await act(async () => {
+      resolveDirectRefresh({
+        cases: [createBackendCase({ case_id: 1 })],
+        pagination: { total: 1, totalPages: 1 },
+      });
+    });
+
+    expect(result.current.dashboardState.loading).toBe(false);
+    expect(result.current.dashboardState.cases).toHaveLength(1);
+  });
 });
