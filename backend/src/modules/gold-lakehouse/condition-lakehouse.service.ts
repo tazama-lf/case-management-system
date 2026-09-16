@@ -100,34 +100,36 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
       this.logger.log(`Found ${rows.length} conditions for ID ${id}`);
 
-      const formattedConditions = rows.map((row) => ({
-        conditionId: row.condition_id,
-        pk: row.pk ?? 'no mapping found',
-        tenantId: row.tenant_id ?? tenantId,
-        accountId: row.account_id,
-        accountScheme: row.account_scheme ?? 'no data found',
-        type: row.condition_type ?? 'no data found',
-        perspective: row.perspective ?? 'no data found',
-        reason: row.condition_reason ?? 'no data found',
-        eventTypes: row.event_types_csv ?? 'no data found',
-        inceptionDate: row.condition_inception_ts,
-        expiryDate: row.condition_expiry_ts,
-        createdDate: row.condition_created_ts,
-        isActive: row.is_active === 1,
-        isExpired: row.is_expired === 1,
-        createdBy: row.created_by_user ?? 'no data found',
-      }));
+      // No asOfDate means the caller isn't asking for a historical view, so
+      // classify against right now - same convention as elsewhere in this
+      // service when a point-in-time reference is otherwise unavailable.
+      const effectiveAsOfDate = asOfDate ?? new Date().toISOString();
+      const formattedConditions = rows.map((row) => this.formatConditionRow(row, tenantId, effectiveAsOfDate));
 
       this.logger.log(`Formatted ${JSON.stringify(formattedConditions)}, rows: ${JSON.stringify(rows)} conditions for ID ${id}`);
+
+      let activeCount = 0;
+      let expiredCount = 0;
+      let futureCount = 0;
+      for (const row of rows) {
+        const classification = this.classifyConditionByDate(row.condition_inception_ts, row.condition_expiry_ts, effectiveAsOfDate);
+        if (classification === 'active') {
+          activeCount += 1;
+        } else if (classification === 'expired') {
+          expiredCount += 1;
+        } else if (classification === 'future') {
+          futureCount += 1;
+        }
+      }
 
       return {
         accountId: id,
         totalConditions: rows.length,
         conditions: formattedConditions,
         metadata: {
-          activeCount: rows.filter((r) => r.is_active === 1).length,
-          expiredCount: rows.filter((r) => r.is_expired === 1).length,
-          futureCount: rows.filter((r) => r.is_active === 0 && r.is_expired === 0).length,
+          activeCount,
+          expiredCount,
+          futureCount,
           asOfDate: asOfDate ?? 'current',
           showInactive,
           queryTimestamp: new Date().toISOString(),

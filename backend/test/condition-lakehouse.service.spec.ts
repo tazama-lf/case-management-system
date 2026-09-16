@@ -57,13 +57,34 @@ describe('ConditionLakehouseService', () => {
     });
 
     it('marks expired conditions correctly', async () => {
-      http.mockReturnValue(okHttp([{ condition_id: 'c2', condition_type: 'block', is_active: 0, is_expired: 1 }]));
+      http.mockReturnValue(
+        okHttp([
+          {
+            condition_id: 'c2',
+            condition_type: 'block',
+            condition_inception_ts: '2020-01-01T00:00:00.000Z',
+            condition_expiry_ts: '2020-06-01T00:00:00.000Z',
+            is_active: 0,
+            is_expired: 1,
+          },
+        ]),
+      );
       const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT');
       expect(result.conditions[0].isExpired).toBe(true);
     });
 
     it('marks future conditions correctly', async () => {
-      http.mockReturnValue(okHttp([{ condition_id: 'c3', condition_type: 'block', is_active: 0, is_expired: 0 }]));
+      http.mockReturnValue(
+        okHttp([
+          {
+            condition_id: 'c3',
+            condition_type: 'block',
+            condition_inception_ts: '2099-01-01T00:00:00.000Z',
+            is_active: 0,
+            is_expired: 0,
+          },
+        ]),
+      );
       const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT');
       expect(result.conditions[0].isActive).toBe(false);
       expect(result.conditions[0].isExpired).toBe(false);
