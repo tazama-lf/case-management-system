@@ -90,14 +90,22 @@ describe('ConditionLakehouseService', () => {
       expect(result.conditions[0].isExpired).toBe(false);
     });
 
-    it('applies asOfDate filter when showInactive is false', async () => {
+    it('applies asOfDate filter when showInactive is false, excluding conditions expiring exactly at asOfDate', async () => {
       await service.getConditionsListByAccount('acc1', 'DEFAULT', '2024-01-01', false);
       expect(http).toHaveBeenCalled();
+
+      const sql = http.mock.calls[0][1].sql_query as string;
+      expect(sql).toContain('condition_inception_ts <=');
+      expect(sql).toContain('condition_expiry_ts >');
+      expect(sql).not.toContain('condition_expiry_ts >=');
     });
 
     it('skips date filter when showInactive is true', async () => {
       await service.getConditionsListByAccount('acc1', 'DEFAULT', '2024-01-01', true);
       expect(http).toHaveBeenCalled();
+
+      const sql = http.mock.calls[0][1].sql_query as string;
+      expect(sql).not.toContain('condition_inception_ts <=');
     });
 
     it('throws on error', async () => {
@@ -212,6 +220,58 @@ describe('ConditionLakehouseService', () => {
       const result = await service.getConditionsContextByTransaction('TMICFBPK2801321903297120', 'DEFAULT');
       expect(result.debtor.primaryAccountId).toBe('acc1');
       expect(result.debtor.accounts.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('seeds the primary account when account_holder does not cover it yet, without duplicating an account it already covers', async () => {
+      // Content-routed mock (rather than mockReturnValueOnce sequencing) since
+      // this test cares about the *set* of accounts produced, not the exact
+      // order Promise.all happens to fire calls in.
+      http.mockImplementation((_url: string, body: { sql_query: string }) => {
+        const sql = body.sql_query ?? '';
+        if (sql.includes('FROM transaction_detail')) {
+          return okHttp([
+            {
+              transaction_id: 1,
+              tx_event_ts: '2024-01-01T00:00:00.000Z',
+              end_to_end_id: 'e2e1',
+              tx_type: 'pacs.008.001.10',
+              debtor_id: 'entity1',
+              debtor_account_id: 'acc1', // plain form; account_holder (below) doesn't know about it
+              creditor_id: 'entity2',
+              creditor_account_id: 'acc2', // plain form; account_holder DOES cover it, as its composite form
+            },
+          ]);
+        }
+        if (sql.includes('FROM account_holder')) {
+          if (sql.includes("'entity1TAZAMA_EID'")) return okHttp([]); // debtor: nothing yet - ETL lag
+          if (sql.includes("'entity2TAZAMA_EID'")) return okHttp([{ account_id: 'acc2MSISDNfsp001' }]); // creditor: already covered
+          return okHttp([]);
+        }
+        if (sql.includes("target_type = 'ENTITY'")) {
+          return okHttp([]); // no entity-level conditions in this test
+        }
+        if (sql.includes('FROM conditions')) {
+          if (sql.includes("'acc1'")) {
+            // found only via the account_id fallback, since 'acc1' isn't a real condition_key_key
+            return okHttp([{ condition_id: 'c1', condition_type: 'block', account_id: 'acc1', condition_inception_ts: '2020-01-01T00:00:00.000Z' }]);
+          }
+          return okHttp([]);
+        }
+        return okHttp([]);
+      });
+
+      const result = await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
+
+      // debtor: the primary account gets exactly one chip, seeded rather than dropped
+      expect(result.debtor.accounts).toHaveLength(1);
+      expect(result.debtor.accounts[0].accountId).toBe('acc1');
+      expect(result.debtor.accounts[0].isTransactionAccount).toBe(true);
+      expect(result.debtor.accounts[0].conditions).toHaveLength(1);
+
+      // creditor: already covered by account_holder - seeding must not add a duplicate chip
+      expect(result.creditor.accounts).toHaveLength(1);
+      expect(result.creditor.accounts[0].accountId).toBe('acc2MSISDNfsp001');
+      expect(result.creditor.accounts[0].isTransactionAccount).toBe(true);
     });
 
     it('returns conditions context with entity accounts resolved', async () => {

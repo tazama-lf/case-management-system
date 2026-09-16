@@ -280,6 +280,19 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         });
       }
 
+      // The transaction's own account should always appear, even if account_holder
+      // hasn't caught up yet (ETL lag, asymmetric scheme, deleted holder record) -
+      // don't rely solely on account_holder coverage. Skip seeding when it's
+      // already represented under its composite (condition_key_key-style) form,
+      // so this doesn't show the same account as two separate chips.
+      if (
+        primaryAccountId &&
+        primaryAccountId !== 'no data found' &&
+        !Array.from(accountIdsSet).some((id) => id.startsWith(primaryAccountId))
+      ) {
+        accountIdsSet.add(primaryAccountId);
+      }
+
       const accountIds = Array.from(accountIdsSet);
 
       if (accountIds.length === 0) {
@@ -289,11 +302,15 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
       const accountsWithCounts = await Promise.all(
         accountIds.map(async (accountId) => {
+          // accountId may be the condition_key_key-style composite (from account_holder)
+          // or a plain account_id (seeded above when account_holder didn't cover the
+          // primary account) - match either, since a plain seed would never satisfy
+          // condition_key_key alone.
           const conditionsSql = `
           SELECT pk, condition_id, condition_reason, condition_type, perspective, condition_inception_ts, condition_expiry_ts, condition_created_ts,
           is_active, is_expired, account_id, tenant_id, account_scheme, event_types_csv, created_by_user
           FROM conditions
-          WHERE condition_key_key = $1
+          WHERE (condition_key_key = $1 OR account_id = $1)
             AND tenant_id = $2
           `;
           const rowsResponse = await this.runSqlQuery(conditionsSql, 500, [accountId, tenantId], userJwt);
