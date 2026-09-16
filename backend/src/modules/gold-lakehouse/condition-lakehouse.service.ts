@@ -132,10 +132,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         userJwt,
       );
 
-      this.logger.log(
-        `Fetched conditions context for transaction ${transactionId} and ${JSON.stringify(pacs8)}: Debtor accounts: ${JSON.stringify(debtorAccounts)}, Creditor accounts: ${JSON.stringify(creditorAccounts)}`,
-      );
-
       return {
         transaction: {
           transactionId: pacs8.transaction_id,
@@ -193,10 +189,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     try {
       const accountIdsSet = new Set<string>();
 
-      if (primaryAccountId && primaryAccountId !== 'no data found') {
-        accountIdsSet.add(primaryAccountId);
-      }
-
       if (entityId && entityId !== 'no data found') {
         const accountsSql = `
         SELECT DISTINCT destination as account_id
@@ -220,8 +212,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         this.logger.warn(`No accounts found for entity ${entityId}`);
         return [];
       }
-
-      this.logger.log(`accountIds for entity ${entityId}: ${JSON.stringify(accountIds)}`);
 
       const accountsWithCounts = await Promise.all(
         accountIds.map(async (accountId) => {
@@ -249,7 +239,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           WHERE condition_key_key = $2
             AND tenant_id = $3
           `;
-          this.logger.log(`Executing conditions count query for account ${accountId} with asOfDate ${asOfDate} and tenantId ${tenantId}`);
           const countsResponse = await this.runSqlQuery(conditionsSql, 1, [asOfDate, accountId, tenantId], userJwt);
 
           const counts = countsResponse.data?.[0] ?? {};
