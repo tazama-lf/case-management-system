@@ -81,7 +81,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       if (asOfDate && !showInactive) {
         dateFilter = `
           AND condition_inception_ts <= $${params.length + 1}
-          AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= $${params.length + 1})
+          AND (condition_expiry_ts IS NULL OR condition_expiry_ts > $${params.length + 1})
         `;
         params.push(asOfDate);
       }
