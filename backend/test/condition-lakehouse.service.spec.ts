@@ -341,10 +341,15 @@ describe('ConditionLakehouseService', () => {
 
       expect(result.debtor.entityConditions).toHaveLength(1);
       expect(result.creditor.entityConditions).toEqual([]);
+      expect(result.debtor.entityConditions[0].entityId).toBe('entity1');
+      expect(result.debtor.entityConditions[0].accountId).toBe('no data found');
 
       const debtorEntitySql = http.mock.calls[3][1].sql_query as string;
       expect(debtorEntitySql).toContain("target_type = 'ENTITY'");
       expect(debtorEntitySql).toContain('entity_id =');
+      // entity_id must also be in the SELECT list (not just the WHERE clause),
+      // since that's what lets formatConditionRow populate entityId.
+      expect(debtorEntitySql).toMatch(/SELECT[\s\S]*\bentity_id\b[\s\S]*FROM conditions/);
     });
 
     it('returns empty entityConditions for both parties when entity ids are missing', async () => {

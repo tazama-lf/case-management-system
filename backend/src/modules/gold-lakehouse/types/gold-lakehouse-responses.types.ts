@@ -4,6 +4,7 @@ export interface FormattedConditionRecord {
   pk: string;
   tenantId: string;
   accountId: string;
+  entityId: string;
   accountScheme: string;
   type: string;
   perspective: string;

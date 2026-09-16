@@ -48,7 +48,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       conditionId: row.condition_id,
       pk: row.pk ?? 'no mapping found',
       tenantId: row.tenant_id ?? tenantId,
-      accountId: row.account_id,
+      accountId: row.account_id ?? 'no data found',
+      entityId: row.entity_id ?? 'no data found',
       accountScheme: row.account_scheme ?? 'no data found',
       type: row.condition_type ?? 'no data found',
       perspective: row.perspective ?? 'no data found',
@@ -228,7 +229,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
     const sql = `
     SELECT pk, condition_id, condition_reason, condition_type, perspective, condition_inception_ts, condition_expiry_ts, condition_created_ts,
-    is_active, is_expired, account_id, tenant_id, account_scheme, event_types_csv, created_by_user
+    is_active, is_expired, account_id, entity_id, tenant_id, account_scheme, event_types_csv, created_by_user
     FROM conditions
     WHERE entity_id = $1
       AND target_type = 'ENTITY'
