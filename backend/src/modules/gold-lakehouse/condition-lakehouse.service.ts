@@ -106,8 +106,6 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       const effectiveAsOfDate = asOfDate ?? new Date().toISOString();
       const formattedConditions = rows.map((row) => this.formatConditionRow(row, tenantId, effectiveAsOfDate));
 
-      this.logger.log(`Formatted ${JSON.stringify(formattedConditions)}, rows: ${JSON.stringify(rows)} conditions for ID ${id}`);
-
       let activeCount = 0;
       let expiredCount = 0;
       let futureCount = 0;
