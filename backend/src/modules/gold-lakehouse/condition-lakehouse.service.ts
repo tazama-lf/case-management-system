@@ -67,6 +67,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         createdBy: row.created_by_user ?? 'no data found',
       }));
 
+      this.logger.log(`Formatted ${JSON.stringify(formattedConditions)}, rows: ${JSON.stringify(rows)} conditions for ID ${id}`);
+
       return {
         accountId: id,
         totalConditions: rows.length,
@@ -128,6 +130,10 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         tenantId,
         filterDate,
         userJwt,
+      );
+
+      this.logger.log(
+        `Fetched conditions context for transaction ${transactionId} and ${JSON.stringify(pacs8)}: Debtor accounts: ${JSON.stringify(debtorAccounts)}, Creditor accounts: ${JSON.stringify(creditorAccounts)}`,
       );
 
       return {
