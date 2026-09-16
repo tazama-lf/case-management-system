@@ -1,16 +1,4 @@
-import type { Condition } from '@tazama-lf/frms-coe-lib';
-
-export interface AccountConditionsSummary {
-  accountId: string;
-  accountScheme: string;
-  fspId: string;
-  totalConditions: number;
-  activeConditions: number;
-  expiredConditions: number;
-  futureConditions: number;
-  conditions: Condition[];
-  metadata: AccountConditionsMetadata;
-}
+import type { FormattedConditionRecord } from './gold-lakehouse-responses.types';
 
 export interface AccountConditionsMetadata {
   asOfDate: string;
@@ -29,6 +17,6 @@ export interface ConditionsListMetadata {
 export interface ConditionsListByAccountResponse {
   accountId: string;
   totalConditions: number;
-  conditions: Condition[];
+  conditions: FormattedConditionRecord[];
   metadata: ConditionsListMetadata;
 }

@@ -7,7 +7,6 @@ import {
   AccountNodeFullDataResponse,
   ConditionsContextByTransactionResponse,
   CounterpartyNodeFullDataResponse,
-  EvaluatedTransactionsResponse,
 } from '../gold-lakehouse/types/gold-lakehouse-responses.types';
 import { AlertHistoryAlertsResponse } from '../gold-lakehouse/types/IAlertHistory.types';
 import { TransactionHistoryResponse } from '../gold-lakehouse/types/transaction-history-response.types';
@@ -322,37 +321,6 @@ export class JupyterProxyController {
     return await this.proxyService.getConditionsContextByTransaction(userId, transactionId, tenantId, asOfDate, this.getRequestJwt(req));
   }
 
-  @Get('conditions/summary')
-  @ApiOperation({ summary: 'Proxy: Get conditions summary with counts by Account ID' })
-  @ApiQuery({ name: 'accountId', required: true })
-  @ApiQuery({ name: 'tenantId', required: true })
-  @ApiQuery({ name: 'asOfDate', required: false })
-  async getConditionsSummary(
-    @Req() req: AuthenticatedRequest,
-    @Query('accountId') accountId: string,
-    @Query('tenantId') tenantId: string,
-    @Query('asOfDate') asOfDate?: string,
-  ): Promise<{
-    accountId: string;
-    accountScheme: any;
-    fspId: any;
-    totalConditions: any;
-    activeConditions: any;
-    expiredConditions: any;
-    futureConditions: any;
-    conditions: any;
-    metadata: {
-      asOfDate: string;
-      queryTimestamp: string;
-    };
-  }> {
-    const userId = this.getUserId(req);
-    if (!accountId || accountId.trim() === '') {
-      throw new BadRequestException('accountId is required');
-    }
-    return await this.proxyService.getConditionsSummary(userId, accountId, tenantId, asOfDate, this.getRequestJwt(req));
-  }
-
   @Get('conditions/details')
   @ApiOperation({ summary: 'Proxy: Get complete condition records with full details by Account ID' })
   @ApiQuery({ name: 'accountId', required: true })
@@ -383,22 +351,5 @@ export class JupyterProxyController {
       throw new BadRequestException('accountId is required');
     }
     return await this.proxyService.getConditionsDetails(userId, accountId, tenantId, asOfDate, showInactive, this.getRequestJwt(req));
-  }
-
-  @Get('conditions/evaluated-transactions/:accountId')
-  @ApiOperation({ summary: 'Proxy: Get evaluated transactions for a condition/account' })
-  @ApiQuery({ name: 'tenantId', required: true })
-  @ApiQuery({ name: 'fromDate', required: false })
-  async getConditionsEvaluatedTransactions(
-    @Req() req: AuthenticatedRequest,
-    @Param('accountId') accountId: string,
-    @Query('tenantId') tenantId: string,
-    @Query('fromDate') fromDate?: string,
-  ): Promise<EvaluatedTransactionsResponse> {
-    const userId = this.getUserId(req);
-    if (!accountId || accountId.trim() === '') {
-      throw new BadRequestException('accountId is required');
-    }
-    return await this.proxyService.getConditionsEvaluatedTransactions(userId, accountId, tenantId, fromDate, this.getRequestJwt(req));
   }
 }
