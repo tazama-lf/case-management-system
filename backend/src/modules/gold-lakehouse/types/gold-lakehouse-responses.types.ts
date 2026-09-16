@@ -9,7 +9,7 @@ export interface FormattedConditionRecord {
   perspective: string;
   reason: string;
   eventTypes: string;
-  inceptionDate: string;
+  inceptionDate: string | null;
   expiryDate: string | null;
   createdDate: string;
   isActive: boolean;
