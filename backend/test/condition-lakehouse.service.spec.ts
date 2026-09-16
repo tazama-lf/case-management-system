@@ -118,6 +118,74 @@ describe('ConditionLakehouseService', () => {
     });
   });
 
+  // classifyConditionByDate/formatConditionRow are private; exercised here via
+  // getConditionsListByAccount, which surfaces both the per-condition
+  // isActive/isExpired flags and the aggregate metadata counts they drive.
+  describe('classifyConditionByDate / formatConditionRow date-boundary behavior', () => {
+    const asOfDate = '2024-06-15T12:00:00.000Z';
+
+    it('classifies a condition within [inception, expiry) as active', async () => {
+      http.mockReturnValue(
+        okHttp([
+          { condition_id: 'c1', condition_inception_ts: '2024-01-01T00:00:00.000Z', condition_expiry_ts: '2024-12-31T00:00:00.000Z' },
+        ]),
+      );
+      const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT', asOfDate);
+      expect(result.conditions[0].isActive).toBe(true);
+      expect(result.conditions[0].isExpired).toBe(false);
+      expect(result.metadata.activeCount).toBe(1);
+    });
+
+    it('classifies a condition with no expiry as active once inception has passed', async () => {
+      http.mockReturnValue(okHttp([{ condition_id: 'c1', condition_inception_ts: '2024-01-01T00:00:00.000Z', condition_expiry_ts: null }]));
+      const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT', asOfDate);
+      expect(result.conditions[0].isActive).toBe(true);
+    });
+
+    it('classifies a condition inceptioning exactly at asOfDate as active (inclusive lower bound)', async () => {
+      http.mockReturnValue(okHttp([{ condition_id: 'c1', condition_inception_ts: asOfDate, condition_expiry_ts: null }]));
+      const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT', asOfDate);
+      expect(result.conditions[0].isActive).toBe(true);
+    });
+
+    it('classifies a condition expiring exactly at asOfDate as expired (exclusive upper bound)', async () => {
+      http.mockReturnValue(
+        okHttp([{ condition_id: 'c1', condition_inception_ts: '2024-01-01T00:00:00.000Z', condition_expiry_ts: asOfDate }]),
+      );
+      const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT', asOfDate);
+      expect(result.conditions[0].isActive).toBe(false);
+      expect(result.conditions[0].isExpired).toBe(true);
+      expect(result.metadata.expiredCount).toBe(1);
+    });
+
+    it('classifies a condition expiring one millisecond after asOfDate as still active', async () => {
+      http.mockReturnValue(
+        okHttp([{ condition_id: 'c1', condition_inception_ts: '2024-01-01T00:00:00.000Z', condition_expiry_ts: '2024-06-15T12:00:00.001Z' }]),
+      );
+      const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT', asOfDate);
+      expect(result.conditions[0].isActive).toBe(true);
+      expect(result.conditions[0].isExpired).toBe(false);
+    });
+
+    it('classifies a condition with a future inception as neither active nor expired', async () => {
+      http.mockReturnValue(okHttp([{ condition_id: 'c1', condition_inception_ts: '2099-01-01T00:00:00.000Z', condition_expiry_ts: null }]));
+      const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT', asOfDate);
+      expect(result.conditions[0].isActive).toBe(false);
+      expect(result.conditions[0].isExpired).toBe(false);
+      expect(result.metadata.futureCount).toBe(1);
+    });
+
+    it('leaves a condition with no inception timestamp unclassified - not active, not expired, not counted as future', async () => {
+      http.mockReturnValue(okHttp([{ condition_id: 'c1', condition_inception_ts: null, condition_expiry_ts: null }]));
+      const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT', asOfDate);
+      expect(result.conditions[0].isActive).toBe(false);
+      expect(result.conditions[0].isExpired).toBe(false);
+      expect(result.metadata.activeCount).toBe(0);
+      expect(result.metadata.expiredCount).toBe(0);
+      expect(result.metadata.futureCount).toBe(0);
+    });
+  });
+
   // ===================== getConditionsContextByTransaction =====================
   describe('getConditionsContextByTransaction', () => {
     it('adds extra entity accounts from account_holder', async () => {
@@ -182,6 +250,48 @@ describe('ConditionLakehouseService', () => {
     it('throws on error', async () => {
       http.mockReturnValue(errHttp());
       await expect(service.getConditionsContextByTransaction('TMICFBPK2801321903297120', 'DEFAULT')).rejects.toThrow(HttpException);
+    });
+  });
+
+  // getEntityLevelConditions is private; exercised here via
+  // getConditionsContextByTransaction's debtor/creditor.entityConditions.
+  describe('getEntityLevelConditions (via getConditionsContextByTransaction)', () => {
+    it('queries target_type = ENTITY and returns entityConditions per party', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([
+            {
+              transaction_id: 1,
+              tx_event_ts: '2024-01-01T00:00:00.000Z',
+              end_to_end_id: 'e2e1',
+              tx_type: 'pacs.008.001.10',
+              debtor_id: 'entity1',
+              debtor_account_id: 'acc1',
+              creditor_id: 'entity2',
+              creditor_account_id: 'acc2',
+            },
+          ]),
+        ) // transaction lookup
+        .mockReturnValueOnce(okHttp([])) // debtor account_holder -> no accounts
+        .mockReturnValueOnce(okHttp([])) // creditor account_holder -> no accounts
+        .mockReturnValueOnce(okHttp([{ condition_id: 'ec1', condition_type: 'overridable-block', entity_id: 'entity1' }])) // debtor entity-level conditions
+        .mockReturnValueOnce(okHttp([])); // creditor entity-level conditions
+
+      const result = await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
+
+      expect(result.debtor.entityConditions).toHaveLength(1);
+      expect(result.creditor.entityConditions).toEqual([]);
+
+      const debtorEntitySql = http.mock.calls[3][1].sql_query as string;
+      expect(debtorEntitySql).toContain("target_type = 'ENTITY'");
+      expect(debtorEntitySql).toContain('entity_id =');
+    });
+
+    it('returns empty entityConditions for both parties when entity ids are missing', async () => {
+      http.mockReturnValueOnce(okHttp([{ transaction_id: 1, tx_event_ts: '2024-01-01T00:00:00.000Z', tx_type: 'pacs.008.001.10' }]));
+      const result = await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
+      expect(result.debtor.entityConditions).toEqual([]);
+      expect(result.creditor.entityConditions).toEqual([]);
     });
   });
 

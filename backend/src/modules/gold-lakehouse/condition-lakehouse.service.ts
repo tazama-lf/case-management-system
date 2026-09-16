@@ -30,10 +30,10 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     const inceptionTime = inceptionTs ? new Date(inceptionTs).getTime() : null;
     const expiryTime = expiryTs ? new Date(expiryTs).getTime() : null;
 
-    if (inceptionTime !== null && inceptionTime <= asOfTime && (expiryTime === null || expiryTime >= asOfTime)) {
+    if (inceptionTime !== null && inceptionTime <= asOfTime && (expiryTime === null || expiryTime > asOfTime)) {
       return 'active';
     }
-    if (expiryTime !== null && expiryTime < asOfTime) {
+    if (expiryTime !== null && expiryTime <= asOfTime) {
       return 'expired';
     }
     if (inceptionTime !== null && inceptionTime > asOfTime) {

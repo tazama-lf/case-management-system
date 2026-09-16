@@ -93,6 +93,78 @@ describe('JupyterProxyService', () => {
     expect(service).toBeDefined();
   });
 
+  // getUserJwt is private; exercised here via getCounterpartyNetworkData,
+  // which forwards its resolved JWT as the last argument to the lakehouse call.
+  describe('JWT fallback (getUserJwt)', () => {
+    const call = (fallbackJwt?: string) => service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d', fallbackJwt);
+    const forwardedJwt = () => transactionSvc.getCounterpartyNetworkData.mock.calls[0][3];
+
+    it('uses the cached JWT when it is present and not expired', async () => {
+      cacheSvc.getUserToken.mockResolvedValue(MOCK_JWT);
+      authSvc.isTokenExpired.mockReturnValue(false);
+
+      await call(FALLBACK_JWT);
+
+      expect(forwardedJwt()).toBe(MOCK_JWT);
+    });
+
+    it('still refreshes the cache with a usable fallback even though the cached JWT was used', async () => {
+      cacheSvc.getUserToken.mockResolvedValue(MOCK_JWT);
+      authSvc.isTokenExpired.mockReturnValue(false);
+
+      await call(FALLBACK_JWT);
+
+      expect(cacheSvc.setUserToken).toHaveBeenCalledWith(MOCK_USER_ID, FALLBACK_JWT);
+    });
+
+    it('does not touch the cache when no fallback JWT was provided', async () => {
+      cacheSvc.getUserToken.mockResolvedValue(MOCK_JWT);
+      authSvc.isTokenExpired.mockReturnValue(false);
+
+      await call(undefined);
+
+      expect(cacheSvc.setUserToken).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the request JWT when the cache is empty', async () => {
+      cacheSvc.getUserToken.mockResolvedValue(undefined as unknown as string);
+      authSvc.isTokenExpired.mockReturnValue(false);
+
+      await call(FALLBACK_JWT);
+
+      expect(forwardedJwt()).toBe(FALLBACK_JWT);
+    });
+
+    it('falls back to the request JWT when the cached JWT is expired', async () => {
+      cacheSvc.getUserToken.mockResolvedValue(MOCK_JWT);
+      authSvc.isTokenExpired.mockImplementation((token) => token === MOCK_JWT);
+
+      await call(FALLBACK_JWT);
+
+      expect(forwardedJwt()).toBe(FALLBACK_JWT);
+    });
+
+    it('throws Unauthorized when the cache is empty and no fallback JWT was provided', async () => {
+      cacheSvc.getUserToken.mockResolvedValue(undefined as unknown as string);
+
+      await expect(call(undefined)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws Unauthorized when both the cached and fallback JWTs are expired', async () => {
+      cacheSvc.getUserToken.mockResolvedValue(MOCK_JWT);
+      authSvc.isTokenExpired.mockReturnValue(true);
+
+      await expect(call(FALLBACK_JWT)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('does not fall back to the request JWT when the cache lookup itself throws', async () => {
+      cacheSvc.getUserToken.mockRejectedValue(new Error('redis unavailable'));
+
+      await expect(call(FALLBACK_JWT)).rejects.toThrow('redis unavailable');
+      expect(transactionSvc.getCounterpartyNetworkData).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getCounterpartyNetworkData', () => {
     it('delegates to GoldLakehouseService', async () => {
       const result = await service.getCounterpartyNetworkData(MOCK_USER_ID, 'acc1', 'DEFAULT', '30d');
