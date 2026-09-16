@@ -296,7 +296,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
             activeConditionsCount,
             expiredConditionsCount,
             futureConditionsCount,
-            conditions: rows.map((row) => this.formatConditionRow(row, tenantId)),
+            conditions: rows.map((row) => ({ ...this.formatConditionRow(row, tenantId), accountId })),
           };
         }),
       );
