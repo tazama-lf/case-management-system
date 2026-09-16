@@ -300,6 +300,20 @@ COUCHDB_DATABASE=cms-evidence
 COUCHDB_USERNAME=admin
 COUCHDB_PASSWORD=password
 
+# Session cookie flags - required; the service fails to start if either is missing.
+# secure=true requires HTTPS end-to-end; set false only for local HTTP dev.
+# sameSite=strict is safest, but the Voila iframe needs 'none' (with secure=true)
+# when the frontend and backend are on different registrable domains.
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_SAMESITE=strict
+
+# CORS - comma-separated list of allowed browser origins. Required.
+# Exact origins only (scheme + host + port), no trailing slash, no wildcards.
+# 5175 is the vite dev server (frontend/vite.config.ts); 5173 is the port the
+# frontend container publishes (docker-compose-cms.yml). Both are listed so
+# local dev works either way - trim this to the real origin in deployments.
+CORS_ALLOWED_ORIGINS=http://localhost:5175,http://127.0.0.1:5175,http://localhost:5173,http://127.0.0.1:5173
+
 # Audit / OpenSearch Configuration
 AUDIT_PROVIDER=opensearch
 OPENSEARCH_NODE=http://localhost:9200

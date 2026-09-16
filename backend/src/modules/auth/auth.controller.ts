@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Post, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
-import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
+import { CookieOptions, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { RequireAuthenticated } from '../../decorators/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
@@ -17,11 +18,26 @@ import { CacheService } from '../shared/cache.service';
 @ApiBearerAuth('jwt')
 @Controller('v1/auth')
 export class AuthController {
+  /**
+   * Flags shared by the cookie set on login and the cookie cleared on logout.
+   * A browser only removes a cookie when the clearing options match those it
+   * was set with, so both call sites must read the same values.
+   */
+  private readonly cookieOptions: CookieOptions;
+
   constructor(
     private readonly authService: AuthService,
     private readonly logger: LoggerService,
     private readonly cacheService: CacheService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.cookieOptions = {
+      httpOnly: true,
+      secure: this.configService.getOrThrow<string>('SESSION_COOKIE_SECURE') === 'true',
+      sameSite: this.configService.getOrThrow<'strict' | 'lax' | 'none'>('SESSION_COOKIE_SAMESITE'),
+      path: '/',
+    };
+  }
 
   @Post('login')
   @HttpCode(200)
@@ -43,11 +59,8 @@ export class AuthController {
       // Set JWT as HttpOnly cookie for iframe authentication (Voila proxy)
       // This allows iframes to send the token automatically via cookies
       res.cookie(`access_token_${userId}`, result.token, {
-        httpOnly: true,
-        secure: false, // Set to true in production with HTTPS
-        sameSite: 'lax', // Allows cookie with same-site iframe requests
+        ...this.cookieOptions,
         maxAge: result.expiresIn ? result.expiresIn * 1000 : 24 * 60 * 60 * 1000, // Convert to ms
-        path: '/',
       });
 
       const response: LoginResponseDto = {
@@ -98,12 +111,7 @@ export class AuthController {
     const userId = user.userId || 'unknown';
 
     // Clear the HttpOnly cookie
-    res.clearCookie(`access_token_${userId}`, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      path: '/',
-    });
+    res.clearCookie(`access_token_${userId}`, this.cookieOptions);
 
     // Clear the cached JWT token from Redis
     await this.cacheService.deleteUserToken(userId);
