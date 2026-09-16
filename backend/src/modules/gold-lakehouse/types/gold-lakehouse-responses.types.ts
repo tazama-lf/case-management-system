@@ -266,12 +266,14 @@ export interface ConditionsContextByTransactionResponse {
     entityName: string;
     primaryAccountId: string;
     accounts: EntityAccountWithConditionCounts[];
+    entityConditions: FormattedConditionRecord[];
   };
   creditor: {
     entityId: string;
     entityName: string;
     primaryAccountId: string;
     accounts: EntityAccountWithConditionCounts[];
+    entityConditions: FormattedConditionRecord[];
   };
   metadata: {
     asOfDate: string;

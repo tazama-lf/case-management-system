@@ -140,21 +140,12 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       // const displayId = `TXN-${pacs8.tx_event_date?.replace(/-/gv, '')}${transactionId}`;
       const dateSegment = pacs8.tx_event_date?.replace(/-/gv, '') ?? '';
       const displayId = `TXN-${dateSegment}${transactionId}`;
-      const debtorAccounts = await this.getEntityAccountsWithConditionCounts(
-        pacs8.debtor_id,
-        pacs8.debtor_account_id,
-        tenantId,
-        filterDate,
-        userJwt,
-      );
-
-      const creditorAccounts = await this.getEntityAccountsWithConditionCounts(
-        pacs8.creditor_id,
-        pacs8.creditor_account_id,
-        tenantId,
-        filterDate,
-        userJwt,
-      );
+      const [debtorAccounts, creditorAccounts, debtorEntityConditions, creditorEntityConditions] = await Promise.all([
+        this.getEntityAccountsWithConditionCounts(pacs8.debtor_id, pacs8.debtor_account_id, tenantId, filterDate, userJwt),
+        this.getEntityAccountsWithConditionCounts(pacs8.creditor_id, pacs8.creditor_account_id, tenantId, filterDate, userJwt),
+        this.getEntityLevelConditions(pacs8.debtor_id, tenantId, userJwt),
+        this.getEntityLevelConditions(pacs8.creditor_id, tenantId, userJwt),
+      ]);
 
       return {
         transaction: {
@@ -171,12 +162,14 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           entityName: pacs8.debtor_name ?? 'no data found',
           primaryAccountId: pacs8.debtor_account_id ?? 'no data found',
           accounts: debtorAccounts,
+          entityConditions: debtorEntityConditions,
         },
         creditor: {
           entityId: pacs8.creditor_id ?? 'no data found',
           entityName: pacs8.creditor_name ?? 'no data found',
           primaryAccountId: pacs8.creditor_account_id ?? 'no data found',
           accounts: creditorAccounts,
+          entityConditions: creditorEntityConditions,
         },
         metadata: {
           asOfDate: filterDate,
@@ -192,6 +185,30 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       this.logger.error(`Error fetching conditions context by transaction: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch conditions context', HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  // Conditions placed directly against the entity (target_type = 'ENTITY'),
+  // as distinct from conditions scoped to one of its accounts.
+  private async getEntityLevelConditions(entityId: string, tenantId: string, userJwt?: string): Promise<FormattedConditionRecord[]> {
+    if (!entityId || entityId === 'no data found') {
+      return [];
+    }
+
+    const sql = `
+    SELECT pk, condition_id, condition_reason, condition_type, perspective, condition_inception_ts, condition_expiry_ts, condition_created_ts,
+    is_active, is_expired, account_id, tenant_id, account_scheme, event_types_csv, created_by_user
+    FROM conditions
+    WHERE entity_id = $1
+      AND target_type = 'ENTITY'
+      AND tenant_id = $2
+    ORDER BY condition_inception_ts DESC
+    LIMIT 500
+    `;
+
+    const response = await this.runSqlQuery(sql, 500, [entityId, tenantId], userJwt);
+    const rows = response.data ?? [];
+
+    return rows.map((row) => this.formatConditionRow(row, tenantId));
   }
 
   private async getEntityAccountsWithConditionCounts(
