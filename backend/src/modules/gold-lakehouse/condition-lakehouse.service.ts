@@ -16,7 +16,34 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     super(httpService, configService);
   }
 
-  private formatConditionRow(row: any, tenantId: string): FormattedConditionRecord {
+  // Classifies a condition against asOfDate from its own inception/expiry
+  // timestamps, rather than the lakehouse's precomputed is_active/is_expired
+  // columns - those reflect the ETL's real ingestion time, which drifts from
+  // a historical asOfDate. Single source of truth for both per-condition
+  // flags and aggregate counts, so the two never disagree.
+  private classifyConditionByDate(
+    inceptionTs: string | null | undefined,
+    expiryTs: string | null | undefined,
+    asOfDate: string,
+  ): 'active' | 'expired' | 'future' | 'unclassified' {
+    const asOfTime = new Date(asOfDate).getTime();
+    const inceptionTime = inceptionTs ? new Date(inceptionTs).getTime() : null;
+    const expiryTime = expiryTs ? new Date(expiryTs).getTime() : null;
+
+    if (inceptionTime !== null && inceptionTime <= asOfTime && (expiryTime === null || expiryTime >= asOfTime)) {
+      return 'active';
+    }
+    if (expiryTime !== null && expiryTime < asOfTime) {
+      return 'expired';
+    }
+    if (inceptionTime !== null && inceptionTime > asOfTime) {
+      return 'future';
+    }
+    return 'unclassified';
+  }
+
+  private formatConditionRow(row: any, tenantId: string, asOfDate: string): FormattedConditionRecord {
+    const classification = this.classifyConditionByDate(row.condition_inception_ts, row.condition_expiry_ts, asOfDate);
     return {
       conditionId: row.condition_id,
       pk: row.pk ?? 'no mapping found',
@@ -30,8 +57,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       inceptionDate: row.condition_inception_ts,
       expiryDate: row.condition_expiry_ts,
       createdDate: row.condition_created_ts,
-      isActive: row.is_active === 1,
-      isExpired: row.is_expired === 1,
+      isActive: classification === 'active',
+      isExpired: classification === 'expired',
       createdBy: row.created_by_user ?? 'no data found',
     };
   }
@@ -143,8 +170,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       const [debtorAccounts, creditorAccounts, debtorEntityConditions, creditorEntityConditions] = await Promise.all([
         this.getEntityAccountsWithConditionCounts(pacs8.debtor_id, pacs8.debtor_account_id, tenantId, filterDate, userJwt),
         this.getEntityAccountsWithConditionCounts(pacs8.creditor_id, pacs8.creditor_account_id, tenantId, filterDate, userJwt),
-        this.getEntityLevelConditions(pacs8.debtor_id, tenantId, userJwt),
-        this.getEntityLevelConditions(pacs8.creditor_id, tenantId, userJwt),
+        this.getEntityLevelConditions(pacs8.debtor_id, tenantId, filterDate, userJwt),
+        this.getEntityLevelConditions(pacs8.creditor_id, tenantId, filterDate, userJwt),
       ]);
 
       return {
@@ -189,7 +216,12 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
   // Conditions placed directly against the entity (target_type = 'ENTITY'),
   // as distinct from conditions scoped to one of its accounts.
-  private async getEntityLevelConditions(entityId: string, tenantId: string, userJwt?: string): Promise<FormattedConditionRecord[]> {
+  private async getEntityLevelConditions(
+    entityId: string,
+    tenantId: string,
+    asOfDate: string,
+    userJwt?: string,
+  ): Promise<FormattedConditionRecord[]> {
     if (!entityId || entityId === 'no data found') {
       return [];
     }
@@ -208,7 +240,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     const response = await this.runSqlQuery(sql, 500, [entityId, tenantId], userJwt);
     const rows = response.data ?? [];
 
-    return rows.map((row) => this.formatConditionRow(row, tenantId));
+    return rows.map((row) => this.formatConditionRow(row, tenantId, asOfDate));
   }
 
   private async getEntityAccountsWithConditionCounts(
@@ -267,36 +299,39 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           const rowsResponse = await this.runSqlQuery(conditionsSql, 500, [accountId, tenantId], userJwt);
           const rows = rowsResponse.data ?? [];
 
-          // Classify each condition against asOfDate here (not with a precomputed
-          // is_active/is_expired flag) so counts and the raw condition list always
-          // agree - those flags reflect the lakehouse ETL's real ingestion time,
-          // which drifts from a historical asOfDate.
-          const asOfTime = new Date(asOfDate).getTime();
           let activeConditionsCount = 0;
           let expiredConditionsCount = 0;
           let futureConditionsCount = 0;
           for (const row of rows) {
-            const inceptionTime = row.condition_inception_ts ? new Date(row.condition_inception_ts).getTime() : null;
-            const expiryTime = row.condition_expiry_ts ? new Date(row.condition_expiry_ts).getTime() : null;
-            if (inceptionTime !== null && inceptionTime <= asOfTime && (expiryTime === null || expiryTime >= asOfTime)) {
+            const classification = this.classifyConditionByDate(row.condition_inception_ts, row.condition_expiry_ts, asOfDate);
+            if (classification === 'active') {
               activeConditionsCount += 1;
-            } else if (expiryTime !== null && expiryTime < asOfTime) {
+            } else if (classification === 'expired') {
               expiredConditionsCount += 1;
-            } else if (inceptionTime !== null && inceptionTime > asOfTime) {
+            } else if (classification === 'future') {
               futureConditionsCount += 1;
             }
           }
 
           const accountNumber = accountId.slice(-12);
 
+          // accountId here is the condition_key_key-style composite (account_id +
+          // account_scheme + account_agent_mmb_id, e.g. "da3715...aMSISDNfsp001"),
+          // but primaryAccountId (from transaction_detail) is the plain account_id
+          // (e.g. "da3715...a") - comparing them directly would never match.
+          // conditions.account_id carries the plain form, so use it when this
+          // account has any conditions; otherwise fall back to a prefix check,
+          // since the composite is always accountId+scheme+agent with no separator.
+          const plainAccountId = rows[0]?.account_id ?? (accountId.startsWith(primaryAccountId) ? primaryAccountId : accountId);
+
           return {
             accountId,
             accountNumber: `****${accountNumber}`,
-            isTransactionAccount: accountId === primaryAccountId,
+            isTransactionAccount: plainAccountId === primaryAccountId,
             activeConditionsCount,
             expiredConditionsCount,
             futureConditionsCount,
-            conditions: rows.map((row) => ({ ...this.formatConditionRow(row, tenantId), accountId })),
+            conditions: rows.map((row) => ({ ...this.formatConditionRow(row, tenantId, asOfDate), accountId })),
           };
         }),
       );
