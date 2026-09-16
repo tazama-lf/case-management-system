@@ -7,7 +7,6 @@ interface AlertMetadataProps {
   entity?: string;
   transactionId: string;
   reason: string;
-  blockReason?: string;
 }
 
 export const AlertMetadata: React.FC<AlertMetadataProps> = ({
@@ -17,7 +16,6 @@ export const AlertMetadata: React.FC<AlertMetadataProps> = ({
   entity = 'Binance',
   transactionId,
   reason,
-  blockReason,
 }) => (
   <div className="rounded-lg border border-gray-200 bg-white p-5">
     <h4 className="text-sm font-semibold text-gray-900 mb-4">Alert Metadata</h4>
@@ -60,14 +58,6 @@ export const AlertMetadata: React.FC<AlertMetadataProps> = ({
         </div>
         <div className="text-sm text-gray-900">{reason}</div>
       </div>
-      {blockReason && (
-        <div className="col-span-2">
-          <div className="text-xs font-medium text-gray-500 uppercase mb-1">
-            Block Reason
-          </div>
-          <div className="text-sm text-gray-900">{blockReason}</div>
-        </div>
-      )}
     </div>
   </div>
 );
