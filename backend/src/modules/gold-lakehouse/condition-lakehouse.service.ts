@@ -221,6 +221,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         return [];
       }
 
+      this.logger.log(`accountIds for entity ${entityId}: ${JSON.stringify(accountIds)}`);
+
       const accountsWithCounts = await Promise.all(
         accountIds.map(async (accountId) => {
           const conditionsSql = `
@@ -247,7 +249,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           WHERE condition_key_key = $2
             AND tenant_id = $3
           `;
-
+          this.logger.log(`Executing conditions count query for account ${accountId} with asOfDate ${asOfDate} and tenantId ${tenantId}`);
           const countsResponse = await this.runSqlQuery(conditionsSql, 1, [asOfDate, accountId, tenantId], userJwt);
 
           const counts = countsResponse.data?.[0] ?? {};
