@@ -1,3 +1,22 @@
+// Raw condition record shape, as formatted by ConditionLakehouseService.formatConditionRow
+export interface FormattedConditionRecord {
+  conditionId: string;
+  pk: string;
+  tenantId: string;
+  accountId: string;
+  accountScheme: string;
+  type: string;
+  perspective: string;
+  reason: string;
+  eventTypes: string;
+  inceptionDate: string;
+  expiryDate: string | null;
+  createdDate: string;
+  isActive: boolean;
+  isExpired: boolean;
+  createdBy: string;
+}
+
 // // Condition Item
 export interface ConditionItem {
   conditionId: string;
@@ -228,6 +247,7 @@ export interface EntityAccountWithConditionCounts {
   activeConditionsCount: number;
   expiredConditionsCount: number;
   futureConditionsCount: number;
+  conditions: FormattedConditionRecord[];
 }
 
 // Conditions Context By Transaction Response

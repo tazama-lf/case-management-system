@@ -2,7 +2,11 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { GoldLakehouseService } from './gold-lakehouse.service';
-import { ConditionsByEntityResponse, ConditionsContextByTransactionResponse } from './types/gold-lakehouse-responses.types';
+import {
+  ConditionsByEntityResponse,
+  ConditionsContextByTransactionResponse,
+  FormattedConditionRecord,
+} from './types/gold-lakehouse-responses.types';
 import { ConditionsListByAccountResponse } from './types/IAccountConditions.types';
 
 @Injectable()
@@ -10,6 +14,26 @@ export class ConditionLakehouseService extends GoldLakehouseService {
   // eslint-disable-next-line @typescript-eslint/no-useless-constructor -- Required for NestJS dependency injection in subclasses
   constructor(httpService: HttpService, configService: ConfigService) {
     super(httpService, configService);
+  }
+
+  private formatConditionRow(row: any, tenantId: string): FormattedConditionRecord {
+    return {
+      conditionId: row.condition_id,
+      pk: row.pk ?? 'no mapping found',
+      tenantId: row.tenant_id ?? tenantId,
+      accountId: row.account_id,
+      accountScheme: row.account_scheme ?? 'no data found',
+      type: row.condition_type ?? 'no data found',
+      perspective: row.perspective ?? 'no data found',
+      reason: row.condition_reason ?? 'no data found',
+      eventTypes: row.event_types_csv ?? 'no data found',
+      inceptionDate: row.condition_inception_ts,
+      expiryDate: row.condition_expiry_ts,
+      createdDate: row.condition_created_ts,
+      isActive: row.is_active === 1,
+      isExpired: row.is_expired === 1,
+      createdBy: row.created_by_user ?? 'no data found',
+    };
   }
 
   async getConditionsListByAccount(
@@ -184,6 +208,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       activeConditionsCount: number;
       expiredConditionsCount: number;
       futureConditionsCount: number;
+      conditions: FormattedConditionRecord[];
     }>
   > {
     try {
@@ -216,32 +241,34 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       const accountsWithCounts = await Promise.all(
         accountIds.map(async (accountId) => {
           const conditionsSql = `
-          SELECT 
-            COUNT(*) as total,
-            SUM(CASE 
-              WHEN condition_inception_ts <= $1 
-              AND (condition_expiry_ts IS NULL OR condition_expiry_ts >= $1)
-              AND is_active = 1 
-              THEN 1 ELSE 0 
-            END) as active,
-            SUM(CASE 
-              WHEN condition_expiry_ts < $1 
-              AND is_expired = 1 
-              THEN 1 ELSE 0 
-            END) as expired,
-            SUM(CASE 
-              WHEN condition_inception_ts > $1 
-              AND is_active = 0 
-              AND is_expired = 0 
-              THEN 1 ELSE 0 
-            END) as future
+          SELECT pk, condition_id, condition_reason, condition_type, perspective, condition_inception_ts, condition_expiry_ts, condition_created_ts,
+          is_active, is_expired, account_id, tenant_id, account_scheme, event_types_csv, created_by_user
           FROM conditions
-          WHERE condition_key_key = $2
-            AND tenant_id = $3
+          WHERE condition_key_key = $1
+            AND tenant_id = $2
           `;
-          const countsResponse = await this.runSqlQuery(conditionsSql, 1, [asOfDate, accountId, tenantId], userJwt);
+          const rowsResponse = await this.runSqlQuery(conditionsSql, 500, [accountId, tenantId], userJwt);
+          const rows = rowsResponse.data ?? [];
 
-          const counts = countsResponse.data?.[0] ?? {};
+          // Classify each condition against asOfDate here (not with a precomputed
+          // is_active/is_expired flag) so counts and the raw condition list always
+          // agree - those flags reflect the lakehouse ETL's real ingestion time,
+          // which drifts from a historical asOfDate.
+          const asOfTime = new Date(asOfDate).getTime();
+          let activeConditionsCount = 0;
+          let expiredConditionsCount = 0;
+          let futureConditionsCount = 0;
+          for (const row of rows) {
+            const inceptionTime = row.condition_inception_ts ? new Date(row.condition_inception_ts).getTime() : null;
+            const expiryTime = row.condition_expiry_ts ? new Date(row.condition_expiry_ts).getTime() : null;
+            if (inceptionTime !== null && inceptionTime <= asOfTime && (expiryTime === null || expiryTime >= asOfTime)) {
+              activeConditionsCount += 1;
+            } else if (expiryTime !== null && expiryTime < asOfTime) {
+              expiredConditionsCount += 1;
+            } else if (inceptionTime !== null && inceptionTime > asOfTime) {
+              futureConditionsCount += 1;
+            }
+          }
 
           const accountNumber = accountId.slice(-12);
 
@@ -249,9 +276,10 @@ export class ConditionLakehouseService extends GoldLakehouseService {
             accountId,
             accountNumber: `****${accountNumber}`,
             isTransactionAccount: accountId === primaryAccountId,
-            activeConditionsCount: Number(counts.active ?? 0),
-            expiredConditionsCount: Number(counts.expired ?? 0),
-            futureConditionsCount: Number(counts.future ?? 0),
+            activeConditionsCount,
+            expiredConditionsCount,
+            futureConditionsCount,
+            conditions: rows.map((row) => this.formatConditionRow(row, tenantId)),
           };
         }),
       );
