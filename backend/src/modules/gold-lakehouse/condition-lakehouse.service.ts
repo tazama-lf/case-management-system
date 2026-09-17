@@ -89,7 +89,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
       const sql = `
       SELECT pk, condition_id, condition_reason, condition_type, perspective, condition_inception_ts, condition_expiry_ts, condition_created_ts,
-      is_active, is_expired, account_id, tenant_id, account_scheme, event_types_csv, created_by_user FROM conditions WHERE account_id = $1 
+      is_active, is_expired, account_id, entity_id, tenant_id, account_scheme, event_types_csv, created_by_user FROM conditions WHERE account_id = $1
       ${tenantFilter} 
       ${dateFilter} 
       ORDER BY condition_inception_ts DESC 
@@ -309,7 +309,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           // condition_key_key alone.
           const conditionsSql = `
           SELECT pk, condition_id, condition_reason, condition_type, perspective, condition_inception_ts, condition_expiry_ts, condition_created_ts,
-          is_active, is_expired, account_id, tenant_id, account_scheme, event_types_csv, created_by_user
+          is_active, is_expired, account_id, entity_id, tenant_id, account_scheme, event_types_csv, created_by_user
           FROM conditions
           WHERE (condition_key_key = $1 OR account_id = $1)
             AND tenant_id = $2

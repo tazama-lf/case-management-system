@@ -56,6 +56,15 @@ describe('ConditionLakehouseService', () => {
       expect(result.conditions).toHaveLength(1);
     });
 
+    it('selects entity_id and falls back to "no data found" for an account-scoped condition (entity_id is null in the DB for these)', async () => {
+      http.mockReturnValue(okHttp([{ condition_id: 'c1', condition_type: 'block', account_id: 'acc1', entity_id: null }]));
+      const result: any = await service.getConditionsListByAccount('acc1', 'DEFAULT');
+      expect(result.conditions[0].entityId).toBe('no data found');
+
+      const sql = http.mock.calls[0][1].sql_query as string;
+      expect(sql).toMatch(/SELECT[\s\S]*\bentity_id\b[\s\S]*FROM conditions/);
+    });
+
     it('marks expired conditions correctly', async () => {
       http.mockReturnValue(
         okHttp([
@@ -267,11 +276,18 @@ describe('ConditionLakehouseService', () => {
       expect(result.debtor.accounts[0].accountId).toBe('acc1');
       expect(result.debtor.accounts[0].isTransactionAccount).toBe(true);
       expect(result.debtor.accounts[0].conditions).toHaveLength(1);
+      // account-scoped condition has no entity_id in the DB - falls back like any other missing field
+      expect(result.debtor.accounts[0].conditions[0].entityId).toBe('no data found');
 
       // creditor: already covered by account_holder - seeding must not add a duplicate chip
       expect(result.creditor.accounts).toHaveLength(1);
       expect(result.creditor.accounts[0].accountId).toBe('acc2MSISDNfsp001');
       expect(result.creditor.accounts[0].isTransactionAccount).toBe(true);
+
+      const debtorConditionsSql = http.mock.calls.find(
+        (call) => (call[1] as { sql_query: string }).sql_query.includes('FROM conditions') && (call[1] as { sql_query: string }).sql_query.includes("'acc1'"),
+      )?.[1].sql_query as string;
+      expect(debtorConditionsSql).toMatch(/SELECT[\s\S]*\bentity_id\b[\s\S]*FROM conditions/);
     });
 
     it('returns conditions context with entity accounts resolved', async () => {
