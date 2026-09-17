@@ -312,6 +312,29 @@ describe('ConditionLakehouseService', () => {
       expect(result.debtor.primaryAccountId).toBe('acc1');
     });
 
+    it('filters by tx_type, orders by most recent, and limits to one row at the SQL level, so a high-row-count end_to_end_id (retries, replays) cannot push the real pacs.008 record out of a client-side scan', async () => {
+      http.mockReturnValueOnce(
+        okHttp([
+          {
+            transaction_id: 1,
+            tx_event_ts: '2024-01-01T00:00:00.000Z',
+            end_to_end_id: 'e2e1',
+            tx_type: 'pacs.008.001.10',
+            debtor_id: 'entity1',
+            debtor_account_id: 'acc1',
+            creditor_id: 'entity2',
+            creditor_account_id: 'acc2',
+          },
+        ]),
+      );
+      await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
+
+      const txSql = http.mock.calls[0][1].sql_query as string;
+      expect(txSql).toContain("tx_type = 'pacs.008.001.10'");
+      expect(txSql).toContain('ORDER BY tx_event_ts DESC');
+      expect(txSql).toContain('LIMIT 1');
+    });
+
     it('returns conditions context without entity ids', async () => {
       http.mockReturnValue(okHttp([{ transaction_id: 1, tx_event_ts: '2024-01-01', tx_type: 'pacs.008.001.10' }]));
       const result = await service.getConditionsContextByTransaction('TMICFBPK2801321903297120', 'DEFAULT');
