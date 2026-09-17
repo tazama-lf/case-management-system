@@ -160,6 +160,43 @@ class EnvironmentVariables {
   OPENSEARCH_REFRESH!: string;
 }
 
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1']);
+
+const warnOnSuspiciousCorsConfig = (validatedConfig: EnvironmentVariables): void => {
+  const origins = validatedConfig.CORS_ALLOWED_ORIGINS.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  if (validatedConfig.SESSION_COOKIE_SECURE === 'true' && !origins.some((origin) => origin.startsWith('https://'))) {
+    // eslint-disable-next-line no-console -- runs during ConfigModule.forRoot, before the Nest logger exists
+    console.warn(
+      `[env.validation] SESSION_COOKIE_SECURE=true but no CORS_ALLOWED_ORIGINS entry uses https:// (${validatedConfig.CORS_ALLOWED_ORIGINS}). ` +
+        'A Secure cookie is only stored by the browser on an HTTPS origin, so login will appear to succeed and then every subsequent request will 401. ' +
+        'This is expected only when a TLS-terminating proxy sits in front of a plaintext internal origin.',
+    );
+  }
+
+  const port = validatedConfig.PORT;
+  const ownOrigin = origins.find((origin) => {
+    let url: URL;
+    try {
+      url = new URL(origin);
+    } catch {
+      return false;
+    }
+    return LOOPBACK_HOSTNAMES.has(url.hostname) && url.port === port;
+  });
+
+  if (ownOrigin !== undefined) {
+    // eslint-disable-next-line no-console -- runs during ConfigModule.forRoot, before the Nest logger exists
+    console.warn(
+      `[env.validation] CORS_ALLOWED_ORIGINS entry "${ownOrigin}" matches this backend's own listen port (${port}). ` +
+        'CORS_ALLOWED_ORIGINS must list the browser address-bar origin (the frontend), not the backend own origin — ' +
+        'the browser never sends an Origin header equal to the server it is calling.',
+    );
+  }
+};
+
 export const validate = (config: Record<string, unknown>): EnvironmentVariables => {
   const validatedConfig = plainToClass(EnvironmentVariables, config);
   const errors = validateSync(validatedConfig);
@@ -168,12 +205,11 @@ export const validate = (config: Record<string, unknown>): EnvironmentVariables 
     throw new Error(errors.toString());
   }
 
-  // Cross-field: browsers drop a `SameSite=None` cookie that is not also `Secure`,
-  // so this combination lets login "succeed" while the session cookie is never
-  // stored or sent. Fail at boot rather than shipping a silently-broken session.
   if (validatedConfig.SESSION_COOKIE_SAMESITE === SameSitePolicy.NONE && validatedConfig.SESSION_COOKIE_SECURE !== 'true') {
     throw new Error('SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true');
   }
+
+  warnOnSuspiciousCorsConfig(validatedConfig);
 
   return validatedConfig;
 };
