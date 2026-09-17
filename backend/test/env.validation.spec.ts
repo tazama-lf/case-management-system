@@ -267,6 +267,44 @@ describe('env.validation', () => {
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('own listen port'));
     });
 
+    it('warns when a CORS origin uses the implicit default http port matching PORT=80', () => {
+      const config = createValidConfig({
+        PORT: '80',
+        SESSION_COOKIE_SECURE: 'false',
+        SESSION_COOKIE_SAMESITE: 'lax',
+        CORS_ALLOWED_ORIGINS: 'http://localhost',
+      });
+
+      validate(config);
+
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('own listen port'));
+    });
+
+    it('warns when a CORS origin uses the implicit default https port matching PORT=443', () => {
+      const config = createValidConfig({
+        PORT: '443',
+        SESSION_COOKIE_SECURE: 'true',
+        CORS_ALLOWED_ORIGINS: 'https://localhost',
+      });
+
+      validate(config);
+
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('own listen port'));
+    });
+
+    it('warns for an IPv6 loopback CORS origin matching the backend own listen port', () => {
+      const config = createValidConfig({
+        PORT: '3090',
+        SESSION_COOKIE_SECURE: 'false',
+        SESSION_COOKIE_SAMESITE: 'lax',
+        CORS_ALLOWED_ORIGINS: 'http://[::1]:3090',
+      });
+
+      validate(config);
+
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('own listen port'));
+    });
+
     it('does not warn when CORS origins point at the frontend, not the backend port', () => {
       const config = createValidConfig({
         PORT: '3090',

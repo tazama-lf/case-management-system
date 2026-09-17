@@ -184,7 +184,9 @@ const warnOnSuspiciousCorsConfig = (validatedConfig: EnvironmentVariables): void
     } catch {
       return false;
     }
-    return LOOPBACK_HOSTNAMES.has(url.hostname) && url.port === port;
+    const hostname = url.hostname.startsWith('[') && url.hostname.endsWith(']') ? url.hostname.slice(1, -1) : url.hostname;
+    const effectivePort = url.port || (url.protocol === 'http:' ? '80' : url.protocol === 'https:' ? '443' : '');
+    return LOOPBACK_HOSTNAMES.has(hostname) && effectivePort === port;
   });
 
   if (ownOrigin !== undefined) {
