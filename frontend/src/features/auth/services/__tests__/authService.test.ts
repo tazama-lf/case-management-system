@@ -8,6 +8,7 @@ import type {
 } from '../../types/auth.types';
 import { server } from '@/test/mocks/server';
 import { http, HttpResponse } from 'msw';
+import { ACTIVE_SESSION_KEY, ACTIVE_SESSION_USER } from '../sessionLock';
 
 // Mock the crypto module entirely
 vi.mock('@/shared/utils/crypto', () => {
@@ -88,6 +89,8 @@ describe('authService', () => {
 
       expect(response.token).toBe(mockToken);
       expect(localStorage.getItem('authToken')).toBe(mockToken);
+      expect(localStorage.getItem(ACTIVE_SESSION_KEY)).not.toBeNull();
+      expect(localStorage.getItem(ACTIVE_SESSION_USER)).toBe('user-1');
     });
 
     it('throws error on invalid credentials', async () => {
@@ -225,11 +228,15 @@ describe('authService', () => {
     it('removes token and user from localStorage', () => {
       localStorage.setItem('authToken', 'token');
       localStorage.setItem('user', JSON.stringify({ userId: 'user-1' }));
+      localStorage.setItem(ACTIVE_SESSION_KEY, '123');
+      localStorage.setItem(ACTIVE_SESSION_USER, 'user-1');
 
       authService.logout();
 
       expect(localStorage.getItem('authToken')).toBeNull();
       expect(localStorage.getItem('user')).toBeNull();
+      expect(localStorage.getItem(ACTIVE_SESSION_KEY)).toBeNull();
+      expect(localStorage.getItem(ACTIVE_SESSION_USER)).toBeNull();
     });
   });
 

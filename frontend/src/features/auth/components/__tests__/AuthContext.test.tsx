@@ -1,7 +1,8 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AuthProvider, useAuth } from '../AuthContext';
 import authService from '../../services/authService';
+import { ACTIVE_SESSION_KEY, ACTIVE_SESSION_USER } from '../../services/sessionLock';
 
 // Mock authService
 vi.mock('../../services/authService', () => ({
@@ -163,5 +164,92 @@ describe('AuthContext', () => {
     expect(typeof result.current.hasInvestigatorRole).toBe('function');
     expect(typeof result.current.hasSupervisorRole).toBe('function');
     expect(typeof result.current.hasAdminRole).toBe('function');
+  });
+
+  describe('cross-tab storage events', () => {
+    it('should logout when ACTIVE_SESSION_KEY is removed in another tab', () => {
+      // Setup authenticated state
+      (authService.getToken as any).mockReturnValue('valid-token');
+      (authService.isAuthenticated as any).mockReturnValue(true);
+
+      // Mock window.location.href
+      Object.defineProperty(window, 'location', {
+        value: { href: '' },
+        writable: true,
+      });
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      expect(result.current.isAuthenticated).toBe(true);
+
+      // Simulate another tab removing the session key
+      act(() => {
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: ACTIVE_SESSION_KEY,
+            newValue: null,
+          }),
+        );
+      });
+
+      expect(authService.logout).toHaveBeenCalled();
+    });
+
+    it('should logout when ACTIVE_SESSION_USER changes in another tab', () => {
+      // Setup authenticated state
+      (authService.getToken as any).mockReturnValue('valid-token');
+      (authService.isAuthenticated as any).mockReturnValue(true);
+
+      // Mock window.location.href
+      Object.defineProperty(window, 'location', {
+        value: { href: '' },
+        writable: true,
+      });
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      expect(result.current.isAuthenticated).toBe(true);
+
+      // Simulate another tab replacing the session user
+      act(() => {
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: ACTIVE_SESSION_USER,
+            oldValue: 'user-1',
+            newValue: 'user-2',
+          }),
+        );
+      });
+
+      expect(authService.logout).toHaveBeenCalled();
+    });
+
+    it('should not logout for unrelated storage events', () => {
+      // Setup authenticated state
+      (authService.getToken as any).mockReturnValue('valid-token');
+      (authService.isAuthenticated as any).mockReturnValue(true);
+
+      // Mock window.location.href
+      Object.defineProperty(window, 'location', {
+        value: { href: '' },
+        writable: true,
+      });
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      expect(result.current.isAuthenticated).toBe(true);
+
+      // Simulate an unrelated storage change
+      act(() => {
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: 'some-other-key',
+            newValue: 'value',
+          }),
+        );
+      });
+
+      expect(authService.logout).not.toHaveBeenCalled();
+    });
   });
 });
