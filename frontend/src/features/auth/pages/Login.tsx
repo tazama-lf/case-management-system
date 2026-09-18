@@ -6,6 +6,7 @@ import {
   LockClosedIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../components/AuthContext';
+import { ACTIVE_SESSION_KEY } from '../services/sessionLock';
 import type { LoginCredentials } from '../types/auth.types';
 
 interface LoginProps {
@@ -40,7 +41,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const activeSession = localStorage.getItem('ACTIVE_AUTH_SESSION');
+    const activeSession = localStorage.getItem(ACTIVE_SESSION_KEY);
     if (activeSession) {
       alert('Another user is already logged in in this browser.');
       return;
@@ -64,7 +65,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full mx-4">
-        {}
+        { }
         <div className="text-center mb-8">
           <div className="mx-auto h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
             <LockClosedIcon className="h-8 w-8 text-blue-600" />
@@ -75,7 +76,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           <p className="text-sm text-gray-600">Investigation Platform</p>
         </div>
 
-        {}
+        { }
         <div className="card">
           <div className="card-body">
             <p className="text-base font-normal text-gray-900 mb-6 text-center">
@@ -91,7 +92,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {}
+              { }
               <div>
                 <label htmlFor="username" className="form-label">
                   Login ID
@@ -112,7 +113,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              {}
+              { }
               <div>
                 <label htmlFor="password" className="form-label">
                   Password
@@ -163,11 +164,11 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               </button>
             </form>
 
-            {}
+            { }
           </div>
         </div>
 
-        {}
+        { }
         <div className="mt-8 text-center">
           <p className="text-gray-500 text-sm">
             Copyright LF Charities, Inc. and contributors to the Tazama project
