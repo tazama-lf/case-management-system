@@ -89,7 +89,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
 
       const sql = `
       SELECT pk, condition_id, condition_reason, condition_type, perspective, condition_inception_ts, condition_expiry_ts, condition_created_ts,
-      is_active, is_expired, account_id, tenant_id, account_scheme, event_types_csv, created_by_user FROM conditions WHERE account_id = $1 
+      is_active, is_expired, account_id, entity_id, tenant_id, account_scheme, event_types_csv, created_by_user FROM conditions WHERE account_id = $1
       ${tenantFilter} 
       ${dateFilter} 
       ORDER BY condition_inception_ts DESC 
@@ -153,11 +153,18 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     userJwt?: string,
   ): Promise<ConditionsContextByTransactionResponse> {
     try {
-      const txSql =
-        'SELECT transaction_id, end_to_end_id, tx_event_ts, tx_event_date, tx_type, interbank_settlement_amount, interbank_settlement_currency, debtor_id, debtor_name, debtor_account_id, creditor_id, creditor_name, creditor_account_id FROM transaction_detail WHERE end_to_end_id = $1 AND tenant_id = $2;';
+      const txSql = `
+      SELECT transaction_id, end_to_end_id, tx_event_ts, tx_event_date, tx_type, interbank_settlement_amount, interbank_settlement_currency,
+      debtor_id, debtor_name, debtor_account_id, creditor_id, creditor_name, creditor_account_id
+      FROM transaction_detail
+      WHERE end_to_end_id = $1 AND tenant_id = $2
+        AND tx_type = 'pacs.008.001.10'
+      ORDER BY tx_event_ts DESC
+      LIMIT 1
+      `;
 
-      const txResponse = await this.runSqlQuery(txSql, 100, [transactionId, tenantId], userJwt);
-      const pacs8 = txResponse.data.find((record) => record.tx_type === 'pacs.008.001.10');
+      const txResponse = await this.runSqlQuery(txSql, 1, [transactionId, tenantId], userJwt);
+      const [pacs8] = txResponse.data;
 
       if (!pacs8) {
         throw new HttpException(`Transaction ${transactionId} not found`, HttpStatus.NOT_FOUND);
@@ -309,7 +316,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           // condition_key_key alone.
           const conditionsSql = `
           SELECT pk, condition_id, condition_reason, condition_type, perspective, condition_inception_ts, condition_expiry_ts, condition_created_ts,
-          is_active, is_expired, account_id, tenant_id, account_scheme, event_types_csv, created_by_user
+          is_active, is_expired, account_id, entity_id, tenant_id, account_scheme, event_types_csv, created_by_user
           FROM conditions
           WHERE (condition_key_key = $1 OR account_id = $1)
             AND tenant_id = $2
