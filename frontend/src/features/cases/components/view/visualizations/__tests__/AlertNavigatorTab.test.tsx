@@ -21,7 +21,7 @@ const baseAlertMetadata = {
   currency: 'USD',
   status: 'ACTIVE',
   reason: 'Suspicious',
-  blockReason: '',
+  efrupSubRuleRef: '',
   evaluationId: 'eval-1',
 };
 
@@ -417,19 +417,21 @@ describe('AlertNavigatorTab', () => {
       });
     });
 
-    it('renders the block status section when blockReason is present', async () => {
+    it('renders the report status section with only the report status value', async () => {
       mockGetAlertNavigator.mockResolvedValue({
         ...buildResponse(),
         alertMetadata: {
           ...baseAlertMetadata,
-          blockReason: 'Manually blocked',
+          status: 'ALRT',
+          efrupSubRuleRef: 'block',
         },
       });
       render(<AlertNavigatorTab alertId={1} tenantId="DEFAULT" />);
       await waitFor(() => {
-        expect(screen.getByText('Block Status')).toBeInTheDocument();
+        expect(screen.getByText('Report Status')).toBeInTheDocument();
       });
-      expect(screen.getByText(/Manually blocked/)).toBeInTheDocument();
+      expect(screen.getAllByText('ALRT').length).toBeGreaterThan(0);
+      expect(screen.queryByText(/block/)).not.toBeInTheDocument();
     });
   });
 

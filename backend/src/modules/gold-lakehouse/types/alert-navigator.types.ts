@@ -8,7 +8,7 @@ export interface AlertNavigatorDataResponse {
     currency: string;
     status: string;
     reason: string;
-    blockReason: string;
+    efrupSubRuleRef: string;
     evaluationId: string;
   };
   typologies: Array<{
