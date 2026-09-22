@@ -1,9 +1,13 @@
 import { Inject, Injectable, NotFoundException, ForbiddenException, BadRequestException, forwardRef } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CaseInvestigator, CaseInvestigatorBlacklist, CaseInvestigatorMembership, TaskStatus } from '@prisma/client-cms';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
+import { CacheService } from '../shared/cache.service';
 import { Outcome } from '../../utils/types/outcome';
+
+const INVESTIGATOR_ROLE = 'CMS_INVESTIGATOR';
 
 // Case-level ACL — The one place membership logic lives; every other module that needs to
 // know "can this investigator see this case" imports CaseInvestigatorModule
@@ -21,6 +25,15 @@ export interface SyncTaskAssignmentParams {
   newStatus?: TaskStatus;
 }
 
+/** Payload for the 'case-investigator.access-removed' event - see unassignLiveTasks. */
+export interface CaseInvestigatorAccessRemovedEvent {
+  caseId: number;
+  userId: string;
+  tenantId: string;
+  actorUserId: string;
+  reason: string;
+}
+
 @Injectable()
 export class CaseInvestigatorService {
   constructor(
@@ -28,7 +41,56 @@ export class CaseInvestigatorService {
     private readonly logger: LoggerService,
     @Inject(forwardRef(() => LoggingOrchestrationService))
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly cacheService: CacheService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
+
+  /**
+   * Only CMS_INVESTIGATOR targets may be revoked/blacklisted - supervisors/
+   * compliance officers bypass the ACL in hasAccess() regardless, so
+   * blacklisting one would leave a misleading row with no real effect.
+   * Role comes from CacheService's Redis cache, not a live call. A cache
+   * miss means unknown, not "safe" - fail closed.
+   */
+  private async assertTargetIsInvestigator(userId: string): Promise<void> {
+    const role = await this.cacheService.getUserRole(userId);
+
+    if (role === null) {
+      throw new ForbiddenException(
+        `Could not verify the role of user ${userId} (not found in the user cache) - refusing to revoke or blacklist until their role can be confirmed.`,
+      );
+    }
+
+    if (role !== INVESTIGATOR_ROLE) {
+      throw new ForbiddenException(`Cannot revoke or blacklist a ${role} - only investigators can be removed from a case.`);
+    }
+  }
+
+  /**
+   * Unassigns any live task this user holds on the case, as a consequence
+   * of losing access. Emitted as an event rather than injecting
+   * TaskLifecycleService directly, to avoid a circular module dependency
+   * (see case-investigator.module.ts). emitAsync so this resolves only
+   * once the listener finishes; its failure is still caught here too, so
+   * an already-successful revoke/blacklist can't fail on cleanup.
+   */
+  private async unassignLiveTasks(caseId: number, userId: string, tenantId: string, actorUserId: string, reason: string): Promise<void> {
+    try {
+      await this.eventEmitter.emitAsync('case-investigator.access-removed', {
+        caseId,
+        userId,
+        tenantId,
+        actorUserId,
+        reason,
+      } satisfies CaseInvestigatorAccessRemovedEvent);
+    } catch (error) {
+      this.logger.error(
+        `Task-unassign cascade failed after removing case-investigator access for ${userId} on case ${caseId}`,
+        error,
+        CaseInvestigatorService.name,
+      );
+    }
+  }
 
   /**
    * true immediately for CMS_SUPERVISOR/CMS_COMPLIANCE_OFFICER (pure
@@ -213,7 +275,7 @@ export class CaseInvestigatorService {
       // Reassignment / unassignment / claim-away.
       const stillHasClaim = await this.hasOtherLiveClaimOnCase(caseId, previousAssigneeId, tenantId, taskId);
       if (!stillHasClaim) {
-        await this.revoke(
+        await this.performRevoke(
           caseId,
           previousAssigneeId,
           tenantId,
@@ -233,8 +295,26 @@ export class CaseInvestigatorService {
     }
   }
 
-  /** Supervisor+ only, mandatory reason. Soft-remove — user can be re-added later by a fresh task assignment, not by hand. */
+  /**
+   * Supervisor+ only, mandatory reason. Investigator-only target (see
+   * assertTargetIsInvestigator). Soft-remove — user can be re-added later
+   * by a fresh task assignment, not by hand. Cascades: any live task this
+   * user holds on the case gets unassigned too.
+   */
   async revoke(caseId: number, userId: string, tenantId: string, revokedBy: string, reason: string): Promise<void> {
+    await this.assertTargetIsInvestigator(userId);
+    await this.performRevoke(caseId, userId, tenantId, revokedBy, reason);
+    await this.unassignLiveTasks(caseId, userId, tenantId, revokedBy, `Investigator access revoked: ${reason}`);
+  }
+
+  /**
+   * Raw revoke DB operation, no role check or cascade. Used by revoke()
+   * above and by syncTaskAssignment's automatic cleanup - task assignment
+   * doesn't enforce an investigator-only assignee, so gating this
+   * bookkeeping path on assertTargetIsInvestigator could throw on a
+   * legitimate auto-cleanup rather than a deliberate decision.
+   */
+  private async performRevoke(caseId: number, userId: string, tenantId: string, revokedBy: string, reason: string): Promise<void> {
     this.assertReason(reason, 'Reason for revocation');
 
     try {
@@ -270,11 +350,14 @@ export class CaseInvestigatorService {
   }
 
   /**
-   * Supervisor+ only, mandatory reason. One transaction: revoke any live
+   * Supervisor+ only, mandatory reason. Investigator-only target (see
+   * assertTargetIsInvestigator). One transaction: revoke any live
    * whitelist row (revoke_reason = 'blacklisted'), then write the
    * blacklist row. Future task assignments refuse until unblocked.
+   * Cascades: any live task this user holds on the case gets unassigned too.
    */
   async blacklist(caseId: number, userId: string, tenantId: string, blockedBy: string, reason: string): Promise<void> {
+    await this.assertTargetIsInvestigator(userId);
     this.assertReason(reason, 'Reason for blacklisting');
 
     try {
@@ -315,6 +398,8 @@ export class CaseInvestigatorService {
         caseId,
         tenantId,
       );
+
+      await this.unassignLiveTasks(caseId, userId, tenantId, blockedBy, `Investigator blacklisted: ${reason}`);
     } catch (error) {
       this.logger.error(`Error blacklisting user ${userId} on case ${caseId}`, error, CaseInvestigatorService.name);
       throw error;

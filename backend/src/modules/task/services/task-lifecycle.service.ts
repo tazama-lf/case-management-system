@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { NotificationService } from 'src/modules/notification/notification.service';
 import { Case, CaseStatus, TaskStatus, Task } from '@prisma/client-cms';
@@ -14,6 +15,7 @@ import { RbacService, EndpointKey } from 'src/utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from 'src/utils/types/auth.types';
 import { UserService } from 'src/modules/user/user.service';
 import { CaseInvestigatorService, SyncTaskAssignmentParams } from 'src/modules/case-investigator/case-investigator.service';
+import type { CaseInvestigatorAccessRemovedEvent } from 'src/modules/case-investigator/case-investigator.service';
 
 @Injectable()
 export class TaskLifecycleService {
@@ -269,6 +271,94 @@ export class TaskLifecycleService {
       throw new BadRequestException(`Task ${taskId} is already unassigned`);
     }
 
+    const previousAssigneeId = existingTask.assigned_user_id;
+    const updatedTask = await this.performUnassignEffects(existingTask, actorUserId, tenantId, reason);
+
+    await this.syncCaseAcl(existingTask.case_id, tenantId, actorUserId, {
+      taskId,
+      previousAssigneeId,
+      newAssigneeId: null,
+      newStatus: updatedTask.status,
+    });
+
+    await this.sendUnassignNotification(existingTask, previousAssigneeId, actorUserId, reason);
+
+    const { token, tenantName } = user;
+    const fullname = await this.fetchUserDetails(token.tokenString, tenantName, previousAssigneeId);
+
+    await this.loggingOrchestrationService.logActionsWithHistory(
+      {
+        userId: actorUserId,
+        actionPerformed: `Unassigned task ${taskId} from user ${fullname ?? previousAssigneeId}.`,
+        entityName: 'TaskService',
+        operation: 'unassignTask',
+        outcome: Outcome.SUCCESS,
+        tenantId: existingTask.tenant_id,
+      },
+      existingTask.case_id,
+      existingTask.tenant_id,
+      taskId,
+    );
+
+    return {
+      ...updatedTask,
+      unassignmentReason: reason,
+    };
+  }
+
+  /**
+   * Unassigns a task because its assignee lost case access (revoke/
+   * blacklist), not via the guarded unassign API. Skips syncCaseAcl (would
+   * re-enter the in-progress revoke/blacklist) and RBAC (no
+   * AuthenticatedUser here). No-ops if the task is gone, unassigned, or completed.
+   */
+  async unassignTaskDueToAccessChange(taskId: number, actorUserId: string, tenantId: string, reason: string): Promise<void> {
+    const existingTask = await this.taskRepository.findTaskById(taskId, tenantId);
+    if (!existingTask?.assigned_user_id || existingTask.status === TaskStatus.STATUS_30_COMPLETED) {
+      return;
+    }
+
+    const previousAssigneeId = existingTask.assigned_user_id;
+    await this.performUnassignEffects(existingTask, actorUserId, tenantId, reason);
+    await this.sendUnassignNotification(existingTask, previousAssigneeId, actorUserId, reason);
+  }
+
+  /**
+   * Reacts to CaseInvestigatorService.revoke()/blacklist() via an event
+   * (a direct injection would create a circular module dependency).
+   * Unassigns every live task the user held on the case.
+   */
+  @OnEvent('case-investigator.access-removed')
+  async handleAccessRemoved(event: CaseInvestigatorAccessRemovedEvent): Promise<void> {
+    const { caseId, userId, tenantId, actorUserId, reason } = event;
+
+    const liveTasks = await this.taskRepository.findTasks(
+      { case_id: caseId, assigned_user_id: userId, status: { not: TaskStatus.STATUS_30_COMPLETED } },
+      tenantId,
+      false,
+    );
+
+    const results = await Promise.allSettled(
+      liveTasks.map(async (task) => {
+        await this.unassignTaskDueToAccessChange(task.task_id, actorUserId, tenantId, reason);
+      }),
+    );
+
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        this.logger.error(
+          `Failed to unassign task ${liveTasks[index].task_id} after case-investigator access change for ${userId}`,
+          result.reason,
+          TaskLifecycleService.name,
+        );
+      }
+    });
+  }
+
+  /** Shared DB transaction + Flowable/BPMN sync + audit comment behind both unassignTask and unassignTaskDueToAccessChange. */
+  private async performUnassignEffects(existingTask: Task, actorUserId: string, tenantId: string, reason: string): Promise<Task> {
+    const taskId = existingTask.task_id;
+
     const result = await this.taskRepository.transaction(async (tx) => {
       const updatedTask = await tx.task.update({
         where: { task_id: taskId },
@@ -308,48 +398,37 @@ export class TaskLifecycleService {
       return { updatedTask };
     });
 
-    await this.syncCaseAcl(existingTask.case_id, tenantId, actorUserId, {
-      taskId,
-      previousAssigneeId: existingTask.assigned_user_id,
-      newAssigneeId: null,
-      newStatus: result.updatedTask.status,
-    });
+    return result.updatedTask;
+  }
+
+  private async sendUnassignNotification(
+    existingTask: Task,
+    previousAssigneeId: string | null,
+    actorUserId: string,
+    reason: string,
+  ): Promise<void> {
+    if (!previousAssigneeId) {
+      return;
+    }
 
     try {
-      if (existingTask.assigned_user_id) {
-        await this.notificationService.sendNotification({
-          userId: existingTask.assigned_user_id,
-          type: 'TASK_UNASSIGNED',
-          message: `Task "${existingTask.name ?? taskId}" has been unassigned. Reason: ${reason}`,
-          metadata: { taskId, caseId: existingTask.case_id, unassignedBy: actorUserId, reason, taskTitle: existingTask.name },
-        });
-      }
+      await this.notificationService.sendNotification({
+        userId: previousAssigneeId,
+        type: 'TASK_UNASSIGNED',
+        message: `Task "${existingTask.name ?? existingTask.task_id}" has been unassigned. Reason: ${reason}`,
+        metadata: {
+          taskId: existingTask.task_id,
+          caseId: existingTask.case_id,
+          unassignedBy: actorUserId,
+          reason,
+          taskTitle: existingTask.name,
+        },
+      });
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : String(e);
       const errorStack = e instanceof Error ? e.stack : undefined;
       this.logger.warn(`Failed notifications for unassign: ${errorMessage}`, errorStack, TaskLifecycleService.name);
     }
-    const { token, tenantName } = user;
-    const fullname = await this.fetchUserDetails(token.tokenString, tenantName, existingTask.assigned_user_id);
-
-    await this.loggingOrchestrationService.logActionsWithHistory(
-      {
-        userId: actorUserId,
-        actionPerformed: `Unassigned task ${taskId} from user ${fullname ?? existingTask.assigned_user_id}.`,
-        entityName: 'TaskService',
-        operation: 'unassignTask',
-        outcome: Outcome.SUCCESS,
-        tenantId: existingTask.tenant_id,
-      },
-      existingTask.case_id,
-      existingTask.tenant_id,
-      taskId,
-    );
-
-    return {
-      ...result.updatedTask,
-      unassignmentReason: reason,
-    };
   }
 
   async completeTask(
