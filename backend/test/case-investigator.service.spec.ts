@@ -1,8 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CaseInvestigatorService } from '../src/modules/case-investigator/case-investigator.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
+import { CacheService } from '../src/modules/shared/cache.service';
 import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { CaseInvestigatorMembership, TaskStatus } from '@prisma/client-cms';
 
@@ -18,6 +20,8 @@ describe('CaseInvestigatorService', () => {
   let prisma: any;
   let logger: any;
   let loggingOrchestrationService: any;
+  let cacheService: any;
+  let eventEmitter: any;
 
   beforeEach(async () => {
     const mockPrisma = {
@@ -57,12 +61,31 @@ describe('CaseInvestigatorService', () => {
       logActionsWithHistory: jest.fn().mockResolvedValue(undefined),
     };
 
+    // revoke/blacklist only reach the DB once the target's cached role
+    // passes assertTargetIsInvestigator - default to a live investigator
+    // target so every existing revoke/blacklist test still exercises the
+    // same behavior it did before that guard existed. Role-guard behavior
+    // itself is covered by its own dedicated tests below.
+    const mockCacheService = {
+      getUserRole: jest.fn().mockResolvedValue('CMS_INVESTIGATOR'),
+    };
+
+    // revoke/blacklist emit 'case-investigator.access-removed' (via emitAsync)
+    // rather than calling TaskLifecycleService directly - see the docstring
+    // on unassignLiveTasks for why. Default to resolving with an empty
+    // listener-result array, matching "no listener threw."
+    const mockEventEmitter = {
+      emitAsync: jest.fn().mockResolvedValue([]),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CaseInvestigatorService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: LoggerService, useValue: mockLogger },
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
+        { provide: CacheService, useValue: mockCacheService },
+        { provide: EventEmitter2, useValue: mockEventEmitter },
       ],
     }).compile();
 
@@ -70,6 +93,8 @@ describe('CaseInvestigatorService', () => {
     prisma = module.get(PrismaService);
     logger = module.get(LoggerService);
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
+    cacheService = module.get(CacheService);
+    eventEmitter = module.get(EventEmitter2);
   });
 
   afterEach(() => {
@@ -354,7 +379,11 @@ describe('CaseInvestigatorService', () => {
     it('reassignment: revokes the previous assignee when they hold no other live claim on the case', async () => {
       jest.spyOn(service, 'grant').mockResolvedValue(undefined);
       jest.spyOn(service, 'hasOtherLiveClaimOnCase').mockResolvedValue(false);
-      const revokeSpy = jest.spyOn(service, 'revoke').mockResolvedValue(undefined);
+      // syncTaskAssignment revokes via the internal performRevoke, not the
+      // guarded public revoke() - it's automated ACL bookkeeping, not the
+      // deliberate supervisor action revoke()'s role-guard/task-cascade
+      // apply to (see assertTargetIsInvestigator's docstring).
+      const revokeSpy = jest.spyOn(service as any, 'performRevoke').mockResolvedValue(undefined);
 
       await service.syncTaskAssignment(CASE_ID, TENANT, GRANTED_BY, {
         taskId: 1,
@@ -375,7 +404,7 @@ describe('CaseInvestigatorService', () => {
     it('reassignment: does NOT revoke the previous assignee when they still hold another live task on the case', async () => {
       jest.spyOn(service, 'grant').mockResolvedValue(undefined);
       jest.spyOn(service, 'hasOtherLiveClaimOnCase').mockResolvedValue(true);
-      const revokeSpy = jest.spyOn(service, 'revoke').mockResolvedValue(undefined);
+      const revokeSpy = jest.spyOn(service as any, 'performRevoke').mockResolvedValue(undefined);
 
       await service.syncTaskAssignment(CASE_ID, TENANT, GRANTED_BY, {
         taskId: 1,
@@ -389,7 +418,7 @@ describe('CaseInvestigatorService', () => {
 
     it('unassignment: revokes when newAssigneeId is null and no other claim remains', async () => {
       jest.spyOn(service, 'hasOtherLiveClaimOnCase').mockResolvedValue(false);
-      const revokeSpy = jest.spyOn(service, 'revoke').mockResolvedValue(undefined);
+      const revokeSpy = jest.spyOn(service as any, 'performRevoke').mockResolvedValue(undefined);
 
       await service.syncTaskAssignment(CASE_ID, TENANT, GRANTED_BY, {
         taskId: 1,
@@ -502,11 +531,111 @@ describe('CaseInvestigatorService', () => {
         expect.objectContaining({ data: expect.objectContaining({ user_id: USER_ID, membership: CaseInvestigatorMembership.LEAD }) }),
       );
     });
+
+    it('refuses to revoke a supervisor target before ever touching the DB', async () => {
+      cacheService.getUserRole.mockResolvedValue('CMS_SUPERVISOR');
+
+      await expect(service.revoke(CASE_ID, USER_ID, TENANT, GRANTED_BY, 'reassigned')).rejects.toThrow(ForbiddenException);
+      expect(prisma.caseInvestigator.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('refuses to revoke a compliance officer target', async () => {
+      cacheService.getUserRole.mockResolvedValue('CMS_COMPLIANCE_OFFICER');
+
+      await expect(service.revoke(CASE_ID, USER_ID, TENANT, GRANTED_BY, 'reassigned')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('fails closed - refuses when the target role is unknown (cache miss), rather than assuming it is safe', async () => {
+      cacheService.getUserRole.mockResolvedValue(null);
+
+      await expect(service.revoke(CASE_ID, USER_ID, TENANT, GRANTED_BY, 'reassigned')).rejects.toThrow(ForbiddenException);
+      expect(prisma.caseInvestigator.findFirst).not.toHaveBeenCalled();
+    });
+
+    it("syncTaskAssignment's automatic revoke bypasses the role guard entirely (it's ACL bookkeeping, not the deliberate action the guard is for)", async () => {
+      cacheService.getUserRole.mockResolvedValue('CMS_SUPERVISOR'); // would be refused by revoke()
+      jest.spyOn(service, 'hasOtherLiveClaimOnCase').mockResolvedValue(false);
+      prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 9 });
+
+      await service.syncTaskAssignment(CASE_ID, TENANT, GRANTED_BY, {
+        taskId: 1,
+        previousAssigneeId: USER_ID,
+        newAssigneeId: null,
+        newStatus: TaskStatus.STATUS_01_UNASSIGNED,
+      });
+
+      expect(cacheService.getUserRole).not.toHaveBeenCalled();
+      expect(prisma.caseInvestigator.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 9 } }),
+      );
+    });
+  });
+
+  describe('revoke / blacklist: task-unassign cascade', () => {
+    // CaseInvestigatorService does not call the task repository or
+    // TaskLifecycleService directly for this cascade - it emits
+    // 'case-investigator.access-removed' (via emitAsync, awaited) and
+    // TaskLifecycleService.handleAccessRemoved (a separate @OnEvent
+    // listener, covered by its own tests in task-lifecycle.service.spec.ts)
+    // does the actual task lookup/unassignment. Direct injection was
+    // rejected - see the module-level comment on unassignLiveTasks for why.
+    it('emits case-investigator.access-removed with the revoke details when revoked', async () => {
+      prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 3 });
+
+      await service.revoke(CASE_ID, USER_ID, TENANT, GRANTED_BY, 'reassigned');
+
+      expect(eventEmitter.emitAsync).toHaveBeenCalledWith('case-investigator.access-removed', {
+        caseId: CASE_ID,
+        userId: USER_ID,
+        tenantId: TENANT,
+        actorUserId: GRANTED_BY,
+        reason: expect.stringContaining('reassigned'),
+      });
+    });
+
+    it('emits case-investigator.access-removed when blacklisted too', async () => {
+      prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
+      prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 5 });
+
+      await service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest');
+
+      expect(eventEmitter.emitAsync).toHaveBeenCalledWith('case-investigator.access-removed', {
+        caseId: CASE_ID,
+        userId: USER_ID,
+        tenantId: TENANT,
+        actorUserId: BLOCKED_BY,
+        reason: expect.stringContaining('conflict of interest'),
+      });
+    });
+
+    it('a listener failure is caught and logged but does not fail the revoke itself', async () => {
+      prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 3 });
+      eventEmitter.emitAsync.mockRejectedValueOnce(new Error('flowable unavailable'));
+
+      await expect(service.revoke(CASE_ID, USER_ID, TENANT, GRANTED_BY, 'reassigned')).resolves.toBeUndefined();
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('a listener failure is caught and logged but does not fail the blacklist itself', async () => {
+      prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
+      prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 5 });
+      eventEmitter.emitAsync.mockRejectedValueOnce(new Error('flowable unavailable'));
+
+      await expect(service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest')).resolves.toBeUndefined();
+      expect(logger.error).toHaveBeenCalled();
+    });
   });
 
   describe('blacklist', () => {
     it('requires a non-blank reason', async () => {
       await expect(service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, '')).rejects.toThrow(BadRequestException);
+      expect(prisma.case.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('refuses to blacklist a supervisor or compliance officer target before ever touching the DB', async () => {
+      cacheService.getUserRole.mockResolvedValue('CMS_SUPERVISOR');
+
+      await expect(service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict')).rejects.toThrow(ForbiddenException);
       expect(prisma.case.findFirst).not.toHaveBeenCalled();
     });
 

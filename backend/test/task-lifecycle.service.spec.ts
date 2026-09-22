@@ -60,6 +60,7 @@ describe('TaskLifecycleService', () => {
     }),
     findTaskById: jest.fn(),
     updateTask: jest.fn(),
+    findTasks: jest.fn(),
   };
 
   const mockCaseRepository = {
@@ -665,6 +666,130 @@ describe('TaskLifecycleService', () => {
       expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalled();
       expect(mockPrisma.case.findFirst).not.toHaveBeenCalled();
       expect(mockPrisma.case.update).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('unassignTaskDueToAccessChange', () => {
+    // Called by CaseInvestigatorService.revoke/blacklist as a cascade -
+    // no RBAC/AuthenticatedUser involved, and deliberately does not call
+    // syncCaseAcl (that would re-enter the in-progress revoke/blacklist).
+    const existingTask = {
+      task_id: 1,
+      case_id: 1,
+      name: 'Investigate Case',
+      status: TaskStatus.STATUS_10_ASSIGNED,
+      assigned_user_id: 'user1',
+      tenant_id: 'tenant1',
+    };
+
+    it('unassigns the task and notifies the previous assignee, without an AuthenticatedUser or RBAC check', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
+      mockPrisma.task.update.mockResolvedValue({ ...existingTask, assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED });
+      mockPrisma.case.update.mockResolvedValue({ case_id: 1, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
+
+      await service.unassignTaskDueToAccessChange(1, 'supervisor1', 'tenant1', 'Investigator access revoked: reassigned');
+
+      expect(mockPrisma.task.update).toHaveBeenCalledWith({
+        where: { task_id: 1 },
+        data: { assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED },
+      });
+      expect(mockFlowableService.handleTaskUnassigned).toHaveBeenCalledWith(
+        expect.objectContaining({ taskId: 1, caseId: 1, assignedUser: null }),
+      );
+      expect(mockNotificationService.sendNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'user1', type: 'TASK_UNASSIGNED' }),
+      );
+    });
+
+    it('does not call syncCaseAcl / CaseInvestigatorService - that would re-enter the in-progress revoke/blacklist', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
+      mockPrisma.task.update.mockResolvedValue({ ...existingTask, assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED });
+      mockPrisma.case.update.mockResolvedValue({ case_id: 1, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
+
+      await service.unassignTaskDueToAccessChange(1, 'supervisor1', 'tenant1', 'reason');
+
+      expect(mockCaseInvestigatorService.syncTaskAssignment).not.toHaveBeenCalled();
+    });
+
+    it('no-ops silently when the task is already unassigned', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue({ ...existingTask, assigned_user_id: null });
+
+      await service.unassignTaskDueToAccessChange(1, 'supervisor1', 'tenant1', 'reason');
+
+      expect(mockPrisma.task.update).not.toHaveBeenCalled();
+    });
+
+    it('no-ops silently when the task is already completed - does not reopen a finished task', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue({ ...existingTask, status: TaskStatus.STATUS_30_COMPLETED });
+
+      await service.unassignTaskDueToAccessChange(1, 'supervisor1', 'tenant1', 'reason');
+
+      expect(mockPrisma.task.update).not.toHaveBeenCalled();
+    });
+
+    it('no-ops silently when the task no longer exists', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue(null);
+
+      await expect(service.unassignTaskDueToAccessChange(999, 'supervisor1', 'tenant1', 'reason')).resolves.toBeUndefined();
+      expect(mockPrisma.task.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleAccessRemoved', () => {
+    // The @OnEvent('case-investigator.access-removed') listener -
+    // CaseInvestigatorService.revoke()/blacklist() emit this rather than
+    // calling TaskLifecycleService directly (see the module-level comment
+    // on case-investigator.module.ts for why). This is the other half of
+    // that cascade: find every live task the target held on the case and
+    // unassign each one via unassignTaskDueToAccessChange.
+    const event = {
+      caseId: 1,
+      userId: 'user1',
+      tenantId: 'tenant1',
+      actorUserId: 'supervisor1',
+      reason: 'Investigator access revoked: reassigned',
+    };
+
+    it('unassigns every live (non-completed) task the user holds on the case', async () => {
+      mockTaskRepository.findTasks.mockResolvedValue([{ task_id: 10 }, { task_id: 11 }]);
+      const spy = jest.spyOn(service, 'unassignTaskDueToAccessChange').mockResolvedValue(undefined);
+
+      await service.handleAccessRemoved(event);
+
+      expect(mockTaskRepository.findTasks).toHaveBeenCalledWith(
+        { case_id: 1, assigned_user_id: 'user1', status: { not: TaskStatus.STATUS_30_COMPLETED } },
+        'tenant1',
+        false,
+      );
+      expect(spy).toHaveBeenCalledWith(10, 'supervisor1', 'tenant1', event.reason);
+      expect(spy).toHaveBeenCalledWith(11, 'supervisor1', 'tenant1', event.reason);
+    });
+
+    it('does nothing when the user holds no live task on the case', async () => {
+      mockTaskRepository.findTasks.mockResolvedValue([]);
+      const spy = jest.spyOn(service, 'unassignTaskDueToAccessChange').mockResolvedValue(undefined);
+
+      await service.handleAccessRemoved(event);
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('a failure unassigning one task is logged but does not stop the others or reject', async () => {
+      mockTaskRepository.findTasks.mockResolvedValue([{ task_id: 10 }, { task_id: 11 }]);
+      const spy = jest
+        .spyOn(service, 'unassignTaskDueToAccessChange')
+        .mockRejectedValueOnce(new Error('flowable unavailable'))
+        .mockResolvedValueOnce(undefined);
+
+      await expect(service.handleAccessRemoved(event)).resolves.toBeUndefined();
+
+      expect(spy).toHaveBeenCalledWith(10, 'supervisor1', 'tenant1', event.reason);
+      expect(spy).toHaveBeenCalledWith(11, 'supervisor1', 'tenant1', event.reason);
+      expect(mockLoggerService.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to unassign task 10'),
+        expect.any(Error),
+        TaskLifecycleService.name,
+      );
     });
   });
 

@@ -69,6 +69,7 @@ export class CacheService {
               lastName: user.lastName,
               fullName: `${user.firstName} ${user.lastName}`.trim(),
               email: user.email,
+              roles: [role],
             };
 
             cacheData[this.getCacheKey(user.id)] = userDetails;
@@ -155,6 +156,11 @@ export class CacheService {
   async getUserEmailFromCache(userId: string): Promise<string | null> {
     const user = await this.getUserFromCache(userId);
     return user?.email ?? null;
+  }
+
+  async getUserRole(userId: string): Promise<string | null> {
+    const user = await this.getUserFromCache(userId);
+    return user?.roles?.[0] ?? null;
   }
 
   /**
