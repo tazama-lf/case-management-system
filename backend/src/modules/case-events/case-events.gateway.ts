@@ -131,7 +131,7 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
       // Only users who could actually load the Cases Dashboard may subscribe to its live
       // updates - visibility of the actual case data is still separately enforced by the
       // REST endpoint the client re-fetches from.
-      const user = validateTazamaToken(token, [], SUBSCRIBER_CLAIMS);
+      const user = await validateTazamaToken(token, [], SUBSCRIBER_CLAIMS);
 
       const { registered, viaRedis } = await this.registerConnection(user.userId, client.id);
       if (!registered) {

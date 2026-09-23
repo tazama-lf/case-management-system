@@ -11,7 +11,7 @@ export class TazamaAuthGuard implements CanActivate {
 
   constructor(private readonly reflector: Reflector) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const logContext = 'TazamaAuthGuard.canActivate()';
 
     if (this.isPublicRoute(context)) return true;
@@ -21,7 +21,7 @@ export class TazamaAuthGuard implements CanActivate {
 
     const { requiredClaims, anyClaims } = this.getClaimsFromDecorators(context);
 
-    const authenticatedUser: AuthenticatedUser = validateTazamaToken(token, requiredClaims, anyClaims);
+    const authenticatedUser: AuthenticatedUser = await validateTazamaToken(token, requiredClaims, anyClaims);
 
     authenticatedUser.sourceIP =
       request.ip ?? (request.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim() ?? request.socket.remoteAddress;
@@ -56,7 +56,7 @@ export class TazamaAuthGuard implements CanActivate {
   }
 
   /** AuthService calls this directly on an injected guard instance - kept here as a thin delegate to the shared implementation. */
-  extractInnerToken(outerToken: string): Record<string, unknown> {
-    return extractInnerTokenPayload(outerToken);
+  async extractInnerToken(outerToken: string): Promise<Record<string, unknown>> {
+    return await extractInnerTokenPayload(outerToken);
   }
 }

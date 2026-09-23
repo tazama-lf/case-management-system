@@ -129,6 +129,15 @@ class EnvironmentVariables {
   @IsNotEmpty()
   CORS_ALLOWED_ORIGINS!: string;
 
+  // The inner token embedded in the outer Tazama token (tokenString) is a
+  // real Keycloak-issued access token, signed by Keycloak's own key - not
+  // Tazama's. It must be verified against this exact, pre-configured
+  // issuer's JWKS, never against whatever `iss` the token itself claims,
+  // or a forged token could point `iss` at an attacker-controlled server.
+  @IsString()
+  @IsNotEmpty()
+  KEYCLOAK_ISSUER_URL!: string;
+
   @IsOptional()
   @IsString()
   VOILA_URL?: string;

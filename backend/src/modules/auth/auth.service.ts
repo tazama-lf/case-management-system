@@ -267,7 +267,7 @@ export class AuthService {
   private async storeUserName(token: string): Promise<void> {
     this.logger.log('Storing user name from token into database if needed');
 
-    const innerDecoded = this.authGuard.extractInnerToken(token);
+    const innerDecoded = await this.authGuard.extractInnerToken(token);
     const userId = innerDecoded.sub as string;
     const name = innerDecoded.name as string;
     const tenantId = innerDecoded.tenant_id as string;

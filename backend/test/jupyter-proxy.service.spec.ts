@@ -9,6 +9,15 @@ import { ConditionLakehouseService } from '../src/modules/gold-lakehouse/conditi
 import { AuthService } from '../src/modules/auth/auth.service';
 import { CacheService } from '../src/modules/shared/cache.service';
 
+// AuthService (imported for DI typing only) transitively imports TazamaAuthGuard, which
+// imports tazama-token-validator.ts, which imports jwks-rsa. jwks-rsa's own dependency
+// (jose) ships ESM-only, which Jest's default CJS transform can't parse. Mock the module
+// directly so it's never actually loaded here, same approach as test/case-events.gateway.spec.ts.
+jest.mock('../src/guards/tazama-token-validator', () => ({
+  validateTazamaToken: jest.fn(),
+  extractInnerToken: jest.fn(),
+}));
+
 const MOCK_USER_ID = 'user-1';
 const MOCK_JWT = 'mock-jwt-token';
 const FALLBACK_JWT = 'fallback-request-jwt';

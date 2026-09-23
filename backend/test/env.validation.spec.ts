@@ -28,6 +28,7 @@ describe('env.validation', () => {
     SESSION_COOKIE_SECURE: 'true',
     SESSION_COOKIE_SAMESITE: 'strict',
     CORS_ALLOWED_ORIGINS: 'http://localhost:3000',
+    KEYCLOAK_ISSUER_URL: 'http://localhost:8080/realms/tazama',
     AUDIT_PROVIDER: 'opensearch',
     OPENSEARCH_NODE: 'http://localhost:9200',
     OPENSEARCH_USERNAME: 'admin',
@@ -203,6 +204,23 @@ describe('env.validation', () => {
 
       expect(() => validate(config)).toThrow(
         /property CORS_ALLOWED_ORIGINS has failed the following constraints: isNotEmpty/,
+      );
+    });
+  });
+
+  describe('KEYCLOAK_ISSUER_URL', () => {
+    it('rejects a missing value', () => {
+      const config = createValidConfig();
+      delete config.KEYCLOAK_ISSUER_URL;
+
+      expect(() => validate(config)).toThrow(/property KEYCLOAK_ISSUER_URL has failed/);
+    });
+
+    it('rejects an empty value', () => {
+      const config = createValidConfig({ KEYCLOAK_ISSUER_URL: '' });
+
+      expect(() => validate(config)).toThrow(
+        /property KEYCLOAK_ISSUER_URL has failed the following constraints: isNotEmpty/,
       );
     });
   });

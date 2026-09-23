@@ -6,6 +6,16 @@ import { TriageController } from '../src/modules/triage/triage.controller';
 import { TriageService } from '../src/modules/triage/triage.service';
 import { TazamaAuthGuard } from '../src/guards/tazama-auth.guard';
 
+// TazamaAuthGuard is only imported here for its DI token (a TestAuthGuard replaces it
+// below via overrideGuard) - but importing it still pulls in tazama-token-validator.ts,
+// which imports jwks-rsa. jwks-rsa's own dependency (jose) ships ESM-only, which Jest's
+// default CJS transform can't parse. Mock the module directly so it's never actually
+// loaded here, same approach as test/case-events.gateway.spec.ts.
+jest.mock('../src/guards/tazama-token-validator', () => ({
+  validateTazamaToken: jest.fn(),
+  extractInnerToken: jest.fn(),
+}));
+
 class TestAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();

@@ -19,6 +19,16 @@ jest.mock('jsonwebtoken', () => {
   };
 });
 
+// TazamaAuthGuard is only imported here for its type/DI token (authGuard itself is a plain
+// mock object below) - but importing it still pulls in tazama-token-validator.ts, which
+// imports jwks-rsa. jwks-rsa's own dependency (jose) ships ESM-only, which Jest's default
+// CJS transform can't parse. Mock the module directly so it's never actually loaded here,
+// same approach as test/case-events.gateway.spec.ts.
+jest.mock('../src/guards/tazama-token-validator', () => ({
+  validateTazamaToken: jest.fn(),
+  extractInnerToken: jest.fn(),
+}));
+
 describe('AuthService', () => {
   let service: AuthService;
   let httpService: jest.Mocked<HttpService>;
@@ -145,6 +155,12 @@ describe('AuthService', () => {
         username: 'testuser',
         password: 'password123',
       });
+
+      // storeUserName() runs fire-and-forget (not awaited by login()) and now awaits
+      // authGuard.extractInnerToken() as its first step, adding one microtask hop before
+      // it reaches the prisma calls below - flush it before asserting on them.
+      await Promise.resolve();
+
       expect(prismaService.cms_usernames.findFirst).toHaveBeenCalledWith({
         where: { user_id: 'user123' },
       });

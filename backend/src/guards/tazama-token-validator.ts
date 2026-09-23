@@ -1,10 +1,85 @@
 import { UnauthorizedException, Logger } from '@nestjs/common';
+import { promisify } from 'node:util';
 import * as jwt from 'jsonwebtoken';
+import jwksClient from 'jwks-rsa';
 import { validateTokenAndClaims } from '@tazama-lf/auth-lib';
 
 import type { AuthenticatedUser, ClaimValidationResult, CMSToken } from '../utils/types/auth.types';
 
 const logger = new Logger('TazamaTokenValidator');
+
+// jwt.verify has multiple overloads (sync / callback-based); wrapping it in a single,
+// unambiguous callback signature first lets promisify infer a clean Promise-returning type.
+function verifyJwtCallback(
+  token: string,
+  getKey: jwt.GetPublicKeyOrSecret,
+  options: jwt.VerifyOptions,
+  callback: jwt.VerifyCallback<jwt.JwtPayload | string>,
+): void {
+  jwt.verify(token, getKey, options, callback);
+}
+const verifyJwt = promisify(verifyJwtCallback);
+
+// The inner token (tokenString) is a real Keycloak-issued access token, signed by
+// Keycloak's own key - a different keypair from the one that signs the outer Tazama
+// token. It must be verified against Keycloak's JWKS, resolved from this pre-configured,
+// trusted issuer - never from the token's own `iss` claim, which a forged token could
+// set to anything. Created lazily (not at module load) so it reads the env var after
+// dotenv has actually populated process.env.
+let cachedJwksClient: ReturnType<typeof jwksClient> | undefined;
+function getJwksClient(): ReturnType<typeof jwksClient> {
+  if (!cachedJwksClient) {
+    const issuer = process.env.KEYCLOAK_ISSUER_URL;
+    if (!issuer) {
+      throw new Error('KEYCLOAK_ISSUER_URL is not configured');
+    }
+    cachedJwksClient = jwksClient({
+      jwksUri: `${issuer}/protocol/openid-connect/certs`,
+      cache: true,
+      rateLimit: true,
+    });
+  }
+  return cachedJwksClient;
+}
+
+/**
+ * Verifies a Keycloak-issued access token's signature against that realm's JWKS.
+ * Rejects (rather than fetches JWKS for) any token whose `iss` doesn't exactly match
+ * the pre-configured KEYCLOAK_ISSUER_URL, so a forged token can't point `iss` at an
+ * attacker-controlled server and have us trust whatever key it serves.
+ */
+async function verifyKeycloakToken(token: string): Promise<Record<string, unknown>> {
+  const expectedIssuer = process.env.KEYCLOAK_ISSUER_URL;
+  if (!expectedIssuer) {
+    throw new Error('KEYCLOAK_ISSUER_URL is not configured');
+  }
+
+  const unverifiedPayload = jwt.decode(token) as Record<string, unknown> | null;
+  if (unverifiedPayload?.iss !== expectedIssuer) {
+    throw new Error('Inner token issuer does not match the configured Keycloak issuer');
+  }
+
+  const client = getJwksClient();
+  const getKey: jwt.GetPublicKeyOrSecret = (header, callback) => {
+    if (!header.kid) {
+      callback(new Error('Inner token header is missing kid'));
+      return;
+    }
+    client.getSigningKey(header.kid, (err, key) => {
+      if (err ?? !key) {
+        callback(err ?? new Error('No signing key found for kid'));
+        return;
+      }
+      callback(null, key.getPublicKey());
+    });
+  };
+
+  const decoded = await verifyJwt(token, getKey, { algorithms: ['RS256'], issuer: expectedIssuer });
+  if (!decoded || typeof decoded === 'string') {
+    throw new Error('Inner token verification returned no payload');
+  }
+  return decoded;
+}
 
 /**
  * Transport-agnostic core of CMS token validation, shared by TazamaAuthGuard (HTTP requests)
@@ -16,7 +91,7 @@ const logger = new Logger('TazamaTokenValidator');
  * sourceIP is intentionally left unset here (it's HTTP-request-specific); callers that have
  * one available (the HTTP guard) set it themselves on the returned object afterward.
  */
-export function validateTazamaToken(token: string, requiredClaims: string[], anyClaims: string[]): AuthenticatedUser {
+export async function validateTazamaToken(token: string, requiredClaims: string[], anyClaims: string[]): Promise<AuthenticatedUser> {
   const logContext = 'validateTazamaToken()';
 
   const decoded = extractTokenPayload(token);
@@ -47,7 +122,7 @@ export function validateTazamaToken(token: string, requiredClaims: string[], any
     throw new UnauthorizedException(`Missing or invalid claims: ${invalid.join(', ')}`);
   }
 
-  const innerDecoded = extractInnerToken(token);
+  const innerDecoded = await extractInnerToken(token);
 
   const actorEmail = innerDecoded.email as string | undefined;
   const actorName = innerDecoded.name as string | undefined;
@@ -147,7 +222,7 @@ export function extractTokenPayload(token: string): CMSToken {
   return decoded;
 }
 
-export function extractInnerToken(outerToken: string): Record<string, unknown> {
+export async function extractInnerToken(outerToken: string): Promise<Record<string, unknown>> {
   try {
     const outerDecoded = jwt.decode(outerToken) as Record<string, unknown> | null;
 
@@ -163,14 +238,7 @@ export function extractInnerToken(outerToken: string): Record<string, unknown> {
       return outerDecoded; // Return outer token if there's no inner token
     }
 
-    const innerDecoded = jwt.decode(outerDecoded.tokenString as string) as Record<string, unknown> | null;
-
-    if (!innerDecoded) {
-      logger.warn('Failed to decode inner token');
-      throw new UnauthorizedException('Invalid inner token format');
-    }
-
-    return innerDecoded;
+    return await verifyKeycloakToken(outerDecoded.tokenString as string);
   } catch (error) {
     const err = error as Error;
     logger.warn(`Failed to extract inner token payload: ${err.message}`);
