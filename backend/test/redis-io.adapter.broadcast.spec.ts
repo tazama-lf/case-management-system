@@ -79,13 +79,17 @@ async function isRedisReachable(): Promise<boolean> {
   }
 }
 
+// Resolves on the gateway's 'ready' signal, not on 'connect' - 'connect' fires as soon as the
+// transport handshake completes, independent of handleConnection's async tenant-room join
+// (case-events.gateway.ts). Resolving on 'connect' would let the test emit a broadcast before
+// the client is actually in its room, which can time out instead of failing clearly.
 function connectClient(port: number): Promise<ClientSocket> {
   return new Promise((resolve, reject) => {
     const client = ioClient(`http://localhost:${port}`, {
       auth: { token: 'valid-token' },
       timeout: CONNECT_TIMEOUT_MS,
     });
-    client.once('connect', () => resolve(client));
+    client.once('ready', () => resolve(client));
     client.once('connect_error', reject);
     // The gateway rejects at the application level (bad/limited auth) rather than at the
     // transport level, so a plain 'connect_error' listener alone won't catch that case.

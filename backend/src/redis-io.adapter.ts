@@ -70,17 +70,22 @@ export class RedisIoAdapter extends IoAdapter {
       return;
     }
 
+    let subClient: Redis | undefined;
     try {
-      const subClient = pubClient.duplicate();
-      this.subClients.push(subClient);
+      subClient = pubClient.duplicate();
       subClient.on('error', (error: Error) => {
         RedisIoAdapter.logger.error(`WebSocket Redis (sub) client error: ${error.message}`);
       });
       await subClient.connect();
+      this.subClients.push(subClient);
 
       server.adapter(createAdapter(pubClient, subClient));
       RedisIoAdapter.logger.log('Socket.IO Redis adapter attached - broadcasts now span all backend instances');
     } catch (error) {
+      // Only tracked in this.subClients once connected - an untracked client that failed to
+      // connect would otherwise sit there retrying via its retryStrategy and logging on every
+      // attempt until shutdown, even though the fallback path below never uses it.
+      subClient?.disconnect();
       RedisIoAdapter.logger.warn(
         `Failed to set up the WebSocket Redis adapter - live case updates will only reach clients on this instance: ${(error as Error).message}`,
       );

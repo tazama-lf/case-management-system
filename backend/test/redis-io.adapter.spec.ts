@@ -10,16 +10,16 @@ jest.mock('@socket.io/redis-adapter', () => ({
 }));
 
 // Short enough to keep the "Redis never becomes ready" test fast, long enough to exercise at
-// least one retry tick in the "not ready yet" tests.
+// least one retry tick in the "not ready yet" tests. Tests await adapter.waitUntilReady() rather
+// than sleeping a guessed duration, so these values only affect how long the fallback tests take
+// to settle, not whether any test can assert too early.
 const READY_TIMEOUT_MS = 150;
 const POLL_INTERVAL_MS = 10;
-
-const wait = async (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('RedisIoAdapter', () => {
   let mockServer: { adapter: jest.Mock };
   let mockPubClient: { duplicate: jest.Mock };
-  let mockSubClient: { on: jest.Mock; connect: jest.Mock };
+  let mockSubClient: { on: jest.Mock; connect: jest.Mock; disconnect: jest.Mock };
   let mockRedisService: { getClient: jest.Mock };
   let mockApp: INestApplicationContext;
   let createIOServerSpy: jest.SpyInstance;
@@ -33,6 +33,7 @@ describe('RedisIoAdapter', () => {
     mockSubClient = {
       on: jest.fn(),
       connect: jest.fn().mockResolvedValue(undefined),
+      disconnect: jest.fn(),
     };
     mockPubClient = {
       duplicate: jest.fn().mockReturnValue(mockSubClient),
@@ -65,7 +66,7 @@ describe('RedisIoAdapter', () => {
     const adapter = newAdapter();
 
     adapter.createIOServer(3090);
-    await wait(POLL_INTERVAL_MS * 2);
+    await adapter.waitUntilReady();
 
     expect(mockPubClient.duplicate).toHaveBeenCalled();
     expect(mockCreateAdapter).toHaveBeenCalledWith(mockPubClient, mockSubClient);
@@ -76,7 +77,7 @@ describe('RedisIoAdapter', () => {
     const adapter = newAdapter();
 
     adapter.createIOServer(3090);
-    await wait(POLL_INTERVAL_MS * 2);
+    await adapter.waitUntilReady();
 
     expect(mockSubClient.on).toHaveBeenCalledWith('error', expect.any(Function));
   });
@@ -85,7 +86,7 @@ describe('RedisIoAdapter', () => {
     const adapter = newAdapter();
 
     adapter.createIOServer(3090);
-    await wait(POLL_INTERVAL_MS * 2);
+    await adapter.waitUntilReady();
 
     expect(mockApp.get).toHaveBeenCalledWith(RedisService);
   });
@@ -95,7 +96,7 @@ describe('RedisIoAdapter', () => {
     const adapter = newAdapter();
 
     expect(() => adapter.createIOServer(3090)).not.toThrow();
-    await wait(READY_TIMEOUT_MS + POLL_INTERVAL_MS * 2);
+    await adapter.waitUntilReady();
 
     expect(mockServer.adapter).not.toHaveBeenCalled();
     expect(mockPubClient.duplicate).not.toHaveBeenCalled();
@@ -107,9 +108,13 @@ describe('RedisIoAdapter', () => {
     const adapter = newAdapter();
 
     expect(() => adapter.createIOServer(3090)).not.toThrow();
-    await wait(POLL_INTERVAL_MS * 2);
+    await adapter.waitUntilReady();
 
     expect(mockServer.adapter).not.toHaveBeenCalled();
+    // The failed-to-connect sub client must be disconnected itself, so it doesn't sit there
+    // retrying via its own retryStrategy and logging on every attempt for a client the fallback
+    // path never ends up using.
+    expect(mockSubClient.disconnect).toHaveBeenCalled();
   });
 
   // Regression coverage: createIOServer() runs before RedisService's onModuleInit has assigned
@@ -127,7 +132,7 @@ describe('RedisIoAdapter', () => {
     const adapter = newAdapter();
 
     expect(() => adapter.createIOServer(3090)).not.toThrow();
-    await wait(POLL_INTERVAL_MS * 4);
+    await adapter.waitUntilReady();
 
     expect(mockServer.adapter).toHaveBeenCalledWith('redis-adapter-instance');
   });
@@ -139,7 +144,7 @@ describe('RedisIoAdapter', () => {
     const adapter = newAdapter();
 
     expect(() => adapter.createIOServer(3090)).not.toThrow();
-    await wait(READY_TIMEOUT_MS + POLL_INTERVAL_MS * 2);
+    await adapter.waitUntilReady();
 
     expect(mockServer.adapter).not.toHaveBeenCalled();
   });
