@@ -3,41 +3,104 @@ import type { INestApplicationContext } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import type Redis from 'ioredis';
+import { setTimeout as delay } from 'node:timers/promises';
 import type { Server, ServerOptions } from 'socket.io';
+import { RedisService } from './modules/shared/redis.service';
 
 /**
- * Makes Socket.IO broadcasts (e.g. CaseEventsGateway's "case:changed" pings) reach clients
- * connected to ANY backend instance, not just the one that received the triggering event.
- * Without this, a horizontally-scaled deployment would only deliver live updates to whichever
- * pod a given client happens to be connected to - broadcasts wouldn't cross instances.
+ * Makes Socket.IO broadcasts (e.g. CaseEventsGateway's "case:changed" pings) reach clients on
+ * ANY backend instance, not just the one that received the triggering event.
  *
- * connectToRedis() must be called (and must succeed) before this adapter is handed to
- * app.useWebSocketAdapter(); callers should fall back to the plain IoAdapter if Redis isn't
- * reachable, matching this app's existing "Redis is optional, degrade gracefully" convention
- * (see RedisService) - a single-instance deployment keeps working exactly as before either way.
+ * Must be installed via app.useWebSocketAdapter() BEFORE app.init()/app.listen() - Nest binds
+ * gateways to whatever adapter is current during init and won't rebind them (see main.ts). That
+ * means createIOServer() runs before RedisService.onModuleInit, so getClient() can throw, not
+ * just return null - client acquisition is polled for a bounded window instead of read once, and
+ * falls back to the in-process adapter if Redis never becomes reachable.
+ *
+ * Callers MUST await waitUntilReady() before accepting real connections (see main.ts):
+ * Socket.IO's Server#adapter() rebuilds each namespace's adapter from scratch rather than
+ * migrating existing room memberships, so a client that joins a room before the swap completes
+ * would silently stop receiving broadcasts even though it stays connected.
  */
 export class RedisIoAdapter extends IoAdapter {
   private static readonly logger = new Logger(RedisIoAdapter.name);
-  private adapterConstructor?: ReturnType<typeof createAdapter>;
+  private readonly attachPromises: Array<Promise<void>> = [];
+  // Duplicated from RedisService's client - RedisService doesn't know about these, so they'd
+  // otherwise leak (and eventually surface as an unhandled "Connection is closed" rejection).
+  private readonly subClients: Redis[] = [];
 
   constructor(
-    app: INestApplicationContext,
-    private readonly pubClient: Redis,
-    private readonly subClient: Redis,
+    private readonly app: INestApplicationContext,
+    private readonly readyTimeoutMs = 10_000,
+    private readonly pollIntervalMs = 100,
   ) {
     super(app);
   }
 
-  connectToRedis(): void {
-    this.adapterConstructor = createAdapter(this.pubClient, this.subClient);
-  }
-
   createIOServer(port: number, options?: ServerOptions): Server {
     const server: Server = super.createIOServer(port, options);
-    if (this.adapterConstructor) {
-      server.adapter(this.adapterConstructor);
-      RedisIoAdapter.logger.log('Socket.IO Redis adapter attached - broadcasts now span all backend instances');
-    }
+    this.attachPromises.push(this.attachRedisAdapter(server));
     return server;
+  }
+
+  // Resolves once every attach attempt has succeeded or fallen back. See the class doc.
+  async waitUntilReady(): Promise<void> {
+    await Promise.all(this.attachPromises);
+  }
+
+  async close(server: Server): Promise<void> {
+    // super.close() awaits each namespace's adapter.close(), which gracefully unsubscribes the
+    // sub client - must happen before we quit it ourselves, or the unsubscribe queues on an
+    // already-dead connection and never resolves.
+    await super.close(server);
+    await Promise.all(
+      this.subClients.map(async (client) => {
+        await client.quit().catch(() => {
+          client.disconnect();
+        });
+      }),
+    );
+  }
+
+  private async attachRedisAdapter(server: Server): Promise<void> {
+    const redisService = this.app.get(RedisService);
+    const pubClient = await this.waitForRedisClient(redisService);
+    if (!pubClient) {
+      RedisIoAdapter.logger.warn('Redis is unavailable - WebSocket broadcasts will only reach clients on this instance');
+      return;
+    }
+
+    try {
+      const subClient = pubClient.duplicate();
+      this.subClients.push(subClient);
+      subClient.on('error', (error: Error) => {
+        RedisIoAdapter.logger.error(`WebSocket Redis (sub) client error: ${error.message}`);
+      });
+      await subClient.connect();
+
+      server.adapter(createAdapter(pubClient, subClient));
+      RedisIoAdapter.logger.log('Socket.IO Redis adapter attached - broadcasts now span all backend instances');
+    } catch (error) {
+      RedisIoAdapter.logger.warn(
+        `Failed to set up the WebSocket Redis adapter - live case updates will only reach clients on this instance: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  // getClient() can throw before RedisService finishes connecting (see class doc); retries on
+  // both that throw and a `null` result, up to readyTimeoutMs.
+  private async waitForRedisClient(redisService: RedisService): Promise<Redis | null> {
+    const deadline = Date.now() + this.readyTimeoutMs;
+    for (;;) {
+      try {
+        const client = redisService.getClient();
+        if (client) return client;
+      } catch {
+        // RedisService hasn't finished connecting yet - fall through to retry below.
+      }
+      if (Date.now() >= deadline) return null;
+      // eslint-disable-next-line no-await-in-loop -- intentional sequential retry
+      await delay(this.pollIntervalMs);
+    }
   }
 }
