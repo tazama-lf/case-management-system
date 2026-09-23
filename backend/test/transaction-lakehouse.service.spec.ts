@@ -420,7 +420,7 @@ describe('TransactionLakehouseService', () => {
               event_date: '2024-01-01',
               tx_amount: 100,
               tx_ccy: 'USD',
-              tx_type: 'PAYMENT',
+              tx_type: 'pacs.008.001.10',
               is_alerted: 0,
               is_investigated: 0,
               cum_tx_count: 1,
@@ -438,6 +438,20 @@ describe('TransactionLakehouseService', () => {
       http.mockReturnValue(okHttp([]));
       const result: any = await service.getTransactionHistoryByAccountId('entity1', 'DEFAULT');
       expect(result.summary.totalTransactions).toBe(0);
+    });
+
+    it('counts only pacs.008 events toward totalTransactions - each payment has multiple pacs.002 status events in transaction_history', async () => {
+      http
+        .mockReturnValueOnce(
+          okHttp([
+            { transaction_id: 'tx1', event_date: '2024-01-01', tx_amount: 100, tx_ccy: 'USD', tx_type: 'pacs.008.001.10', is_alerted: 0, is_investigated: 0 },
+            { transaction_id: 'tx1', event_date: '2024-01-01', tx_amount: 100, tx_ccy: 'USD', tx_type: 'pacs.002.001.12', is_alerted: 0, is_investigated: 0 },
+            { transaction_id: 'tx1', event_date: '2024-01-01', tx_amount: 100, tx_ccy: 'USD', tx_type: 'pacs.002.001.12', is_alerted: 0, is_investigated: 0 },
+          ]),
+        )
+        .mockReturnValueOnce(okHttp([]));
+      const result: any = await service.getTransactionHistoryByAccountId('entity1', 'DEFAULT');
+      expect(result.summary.totalTransactions).toBe(1);
     });
 
     it('returns entity history with granularity', async () => {

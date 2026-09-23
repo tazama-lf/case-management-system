@@ -576,6 +576,12 @@ describe('EvidenceFindingsReport', () => {
         'evidence-1',
       );
     });
+
+    // Wait for the component's internal cleanup setTimeout to fire so it
+    // doesn't run after the test (and jsdom environment) has torn down.
+    await waitFor(() => {
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    });
   });
 
   it('handles view evidence error', async () => {
@@ -920,6 +926,12 @@ describe('EvidenceFindingsReport', () => {
 
     await waitFor(() => {
       expect(evidenceService.downloadEvidence).toHaveBeenCalled();
+    });
+
+    // Wait for the component's internal cleanup setTimeout to fire so it
+    // doesn't run after the test (and jsdom environment) has torn down.
+    await waitFor(() => {
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
     });
   });
 
@@ -1474,6 +1486,12 @@ describe('EvidenceFindingsReport', () => {
       expect(evidenceService.downloadEvidence).toHaveBeenCalledWith(
         'evidence-1',
       );
+    });
+
+    // Wait for the component's internal cleanup setTimeout to fire so it
+    // doesn't run after the test (and jsdom environment) has torn down.
+    await waitFor(() => {
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
     });
   });
 

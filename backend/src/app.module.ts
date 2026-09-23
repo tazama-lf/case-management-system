@@ -16,6 +16,7 @@ import { TaskModule } from './modules/task/task.module';
 import { NatsModule } from './modules/nats/nats.module';
 import { SystemConfigModule } from './config/config.module';
 import { FlowableModule } from './modules/flowable/flowable.module';
+import { CaseEventsModule } from './modules/case-events/case-events.module';
 import { AsyncTaskModule } from './modules/async-task/async-task.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { NotificationPreferencesModule } from './modules/notification-preferences/notification-preferences.module';
@@ -50,6 +51,7 @@ import { AlertPriorityModule } from './modules/alert-priority/alert-priority.mod
     SharedModule,
     PrismaModule,
     FlowableModule,
+    CaseEventsModule,
     NatsModule,
     AuditLogModule,
     AdminModule,

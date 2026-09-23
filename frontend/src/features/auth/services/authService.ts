@@ -9,7 +9,7 @@ import type {
   Investigator,
   Supervisor,
 } from '../types/auth.types';
-import { ACTIVE_SESSION_KEY } from './sessionLock';
+import { ACTIVE_SESSION_KEY, ACTIVE_SESSION_USER } from './sessionLock';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3000';
@@ -45,7 +45,7 @@ class AuthService {
           const user = await this.fetchUserProfile(data.token);
           if (user) {
             this.setUser(user);
-            localStorage.setItem('ACTIVE_SESSION_USER', user.userId);
+            localStorage.setItem(ACTIVE_SESSION_USER, user.userId);
             data.user = user;
           }
         } catch (error) {
@@ -126,7 +126,7 @@ class AuthService {
     // Clear localStorage
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
-    localStorage.removeItem('ACTIVE_SESSION_USER');
+    localStorage.removeItem(ACTIVE_SESSION_USER);
     localStorage.removeItem(ACTIVE_SESSION_KEY);
     resetData();
   }

@@ -249,7 +249,10 @@ export class TransactionLakehouseService extends GoldLakehouseService {
       }
 
       // Calculate summary statistics
-      const totalTransactions = events.length;
+      // events mixes pacs.008 (payment) and pacs.002 (status) rows from
+      // transaction_history - each payment gets multiple status events, so
+      // events.length overcounts. A "transaction" is the pacs.008 row only.
+      const totalTransactions = events.filter((e) => e.tx_type === 'pacs.008.001.10').length;
       const totalVolume = events.reduce((sum, e) => sum + (parseFloat(e.tx_amount) || 0), 0);
       const alertsTriggered = events.filter((e) => e.is_alerted === 1).length;
       const investigated = events.filter((e) => e.is_investigated === 1).length;

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import authService from '../services/authService.ts';
+import { ACTIVE_SESSION_KEY, ACTIVE_SESSION_USER } from '../services/sessionLock';
 import type {
   AuthContextType,
   User,
@@ -47,12 +48,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent): void => {
       // Another tab logged out
-      if (e.key === 'ACTIVE_SESSION_KEY' && !e.newValue) {
+      if (e.key === ACTIVE_SESSION_KEY && !e.newValue) {
         logout();
       }
 
       // Token replaced by a different user
-      if (e.key === 'ACTIVE_SESSION_USER' && e.newValue !== e.oldValue) {
+      if (e.key === ACTIVE_SESSION_USER && e.newValue !== e.oldValue) {
         logout();
       }
     };

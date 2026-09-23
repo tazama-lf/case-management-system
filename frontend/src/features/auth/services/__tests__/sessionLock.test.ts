@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { ACTIVE_SESSION_KEY } from '../sessionLock';
+import { ACTIVE_SESSION_KEY, ACTIVE_SESSION_USER } from '../sessionLock';
 import type { ActiveSession } from '../sessionLock';
 
 describe('sessionLock', () => {
   it('exports ACTIVE_SESSION_KEY constant', () => {
     expect(ACTIVE_SESSION_KEY).toBe('ACTIVE_AUTH_SESSION');
+  });
+
+  it('exports ACTIVE_SESSION_USER constant', () => {
+    expect(ACTIVE_SESSION_USER).toBe('ACTIVE_SESSION_USER');
   });
 
   it('ActiveSession interface is structurally valid', () => {

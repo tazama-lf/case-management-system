@@ -199,6 +199,32 @@ describe('Login', () => {
     expect(passwordInput).toBeDisabled();
   });
 
+  it('blocks login when another session is already active', async () => {
+    const user = userEvent.setup();
+    mockLogin.mockResolvedValue(undefined);
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => { });
+
+    localStorage.setItem('ACTIVE_AUTH_SESSION', Date.now().toString());
+
+    renderLogin();
+
+    const usernameInput = screen.getByLabelText(/Login ID/i);
+    const passwordInput = screen.getByLabelText(/Password/i);
+    const submitButton = screen.getByRole('button', { name: /Sign in/i });
+
+    await user.type(usernameInput, 'test-user');
+    await user.type(passwordInput, 'password123');
+    await user.click(submitButton);
+
+    expect(mockLogin).not.toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Another user is already logged in in this browser.',
+    );
+
+    localStorage.removeItem('ACTIVE_AUTH_SESSION');
+    alertSpy.mockRestore();
+  });
+
   it('renders copyright notice', () => {
     renderLogin();
 

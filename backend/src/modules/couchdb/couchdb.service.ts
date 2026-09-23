@@ -55,12 +55,39 @@ export class CouchdbService implements OnModuleInit {
 
       this.db = this.nanoInstance.use(this.dbName);
       this.logger.log(`Connected to CouchDB database: ${this.dbName}`);
+
+      await this.ensureEvidenceDesignDocument();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Failed to initialize CouchDB: ${errorMessage}`, errorStack, CouchdbService.name);
       throw error;
     }
+  }
+
+  private async ensureEvidenceDesignDocument(): Promise<void> {
+    const designId = '_design/evidence';
+    try {
+      await this.db.get(designId);
+      return;
+    } catch (error) {
+      const { statusCode } = error as { statusCode?: number };
+      if (statusCode !== 404) {
+        throw error;
+      }
+    }
+
+    this.logger.log(`Creating design document: ${designId}`);
+    await this.db.insert(
+      {
+        views: {
+          by_uploadedAt: {
+            map: 'function (doc) { if (doc.uploadedAt && doc.archive !== true) { emit(doc.uploadedAt, null); } }',
+          },
+        },
+      } as any,
+      designId,
+    );
   }
 
   getDatabase(): nano.DocumentScope<any> {
@@ -252,22 +279,22 @@ export class CouchdbService implements OnModuleInit {
         include_docs: true,
       });
 
-      const updatePromises = result.rows
-        .filter((row) => !row.doc.archiveFlag)
-        .map(async (row) => {
-          const { doc } = row;
-          doc.archive = true;
+      const candidates = result.rows.filter((row) => !row.doc.archive);
 
-          return await this.db.insert({
-            ...doc,
-            _id: doc._id,
-            _rev: doc._rev,
-          });
+      const updatePromises = candidates.map(async (row) => {
+        const { doc } = row;
+        doc.archive = true;
+
+        return await this.db.insert({
+          ...doc,
+          _id: doc._id,
+          _rev: doc._rev,
         });
+      });
 
       await Promise.all(updatePromises);
 
-      this.logger.log(`Auto-archived ${result.rows.length} evidence older than 7 days`, CouchdbService.name);
+      this.logger.log(`Auto-archived ${candidates.length} evidence older than 7 days`, CouchdbService.name);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;

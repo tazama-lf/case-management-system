@@ -90,8 +90,8 @@ describe('GoldLakehouseService', () => {
 
   // ===================== runSqlQuery =====================
   describe('runSqlQuery', () => {
-    it('uses default limit of 1', async () => {
-      await service.runSqlQuery('SELECT 1');
+    it('sends the given limit in the request body', async () => {
+      await service.runSqlQuery('SELECT 1', 1);
       expect(http).toHaveBeenCalledWith('http://localhost:5000/execute_sql', expect.objectContaining({ limit: 1 }), expect.any(Object));
     });
 
@@ -102,17 +102,17 @@ describe('GoldLakehouseService', () => {
 
     it('throws when status is not success', async () => {
       http.mockReturnValue(badHttp());
-      await expect(service.runSqlQuery('BAD')).rejects.toThrow(HttpException);
+      await expect(service.runSqlQuery('BAD', 1)).rejects.toThrow(HttpException);
     });
 
     it('re-throws HttpException', async () => {
       http.mockReturnValue(throwError(() => new HttpException('SQL error', 500)));
-      await expect(service.runSqlQuery('BAD')).rejects.toThrow('SQL error');
+      await expect(service.runSqlQuery('BAD', 1)).rejects.toThrow('SQL error');
     });
 
     it('wraps generic errors', async () => {
       http.mockReturnValue(errHttp('conn'));
-      await expect(service.runSqlQuery('BAD')).rejects.toThrow('Failed to run SQL query');
+      await expect(service.runSqlQuery('BAD', 1)).rejects.toThrow('Failed to run SQL query');
     });
 
     it('logs the upstream response body on an Axios failure', async () => {
@@ -123,7 +123,7 @@ describe('GoldLakehouseService', () => {
       http.mockReturnValue(throwError(() => axiosError));
       const errorSpy = jest.spyOn(service['logger'], 'error');
 
-      await expect(service.runSqlQuery('BAD')).rejects.toThrow(HttpException);
+      await expect(service.runSqlQuery('BAD', 1)).rejects.toThrow(HttpException);
 
       expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Spark: table not found'));
     });
