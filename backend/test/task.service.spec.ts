@@ -713,6 +713,69 @@ describe('TaskService', () => {
     });
   });
 
+  describe('assertCanMutateTask', () => {
+    const baseTask = { task_id: 7, case_id: 42, tenant_id: 'tenant1', assigned_user_id: 'other-user' } as any;
+
+    it('should defer to the caller NotFound (no gate call) when the task does not exist', async () => {
+      taskRepository.findTaskById.mockResolvedValue(null);
+
+      await expect(service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR')).resolves.toBeUndefined();
+
+      expect(caseInvestigatorService.assertReadAccess).not.toHaveBeenCalled();
+    });
+
+    it('should let the current assignee act on their own task without a membership lookup', async () => {
+      taskRepository.findTaskById.mockResolvedValue({ ...baseTask, assigned_user_id: 'user1' });
+
+      await service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR');
+
+      expect(caseInvestigatorService.assertReadAccess).not.toHaveBeenCalled();
+    });
+
+    it('should keep claiming open: unassigned task, caller assigning it to themselves', async () => {
+      taskRepository.findTaskById.mockResolvedValue({ ...baseTask, assigned_user_id: null });
+
+      await service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR', 'user1');
+
+      expect(caseInvestigatorService.assertReadAccess).not.toHaveBeenCalled();
+    });
+
+    it('should NOT treat assigning an unassigned task to someone else as a claim', async () => {
+      taskRepository.findTaskById.mockResolvedValue({ ...baseTask, assigned_user_id: null });
+      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new Error('Case not found or access denied'));
+
+      await expect(service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR', 'someone-else')).rejects.toThrow(
+        'Case not found or access denied',
+      );
+    });
+
+    it('should NOT treat self-assigning a task already held by someone else as a claim', async () => {
+      taskRepository.findTaskById.mockResolvedValue(baseTask);
+      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new Error('Case not found or access denied'));
+
+      await expect(service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR', 'user1')).rejects.toThrow(
+        'Case not found or access denied',
+      );
+    });
+
+    it('should gate on the task case membership for everyone else', async () => {
+      taskRepository.findTaskById.mockResolvedValue(baseTask);
+
+      await service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR');
+
+      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(42, 'user1', 'tenant1', 'CMS_INVESTIGATOR');
+    });
+
+    it('should reject a non-member investigator acting on a task held by someone else', async () => {
+      taskRepository.findTaskById.mockResolvedValue(baseTask);
+      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new Error('Case not found or access denied'));
+
+      await expect(service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR')).rejects.toThrow(
+        'Case not found or access denied',
+      );
+    });
+  });
+
   describe('getTaskById', () => {
     it('should return task by id', async () => {
       const task = {

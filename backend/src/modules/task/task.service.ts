@@ -267,6 +267,26 @@ export class TaskService {
     }
   }
 
+  /**
+   * Write-side counterpart of the read gate, for the task mutation endpoints
+   * (reassign/unassign/complete/PATCH). Called from the controller, not
+   * from updateTask itself, because updateTask also has internal callers (draft
+   * abandon/complete, triage, closure) that run on cases with no whitelist rows.
+   *
+   * Passes if the caller has case access (supervisor/compliance bypass, or a live
+   * whitelist row), OR is the task's current assignee (a task's holder can always
+   * act on it), OR is claiming: `newAssigneeId` is the caller and the task is
+   * currently unassigned. Claiming has to stay open - it's how an investigator
+   * first gets onto a case. A missing task is left for the caller's own NotFound.
+   */
+  async assertCanMutateTask(taskId: number, tenantId: string, userId: string, role: string, newAssigneeId?: string | null): Promise<void> {
+    const task = await this.taskRepository.findTaskById(taskId, tenantId);
+    if (!task) return;
+    if (task.assigned_user_id === userId) return;
+    if (!task.assigned_user_id && newAssigneeId === userId) return;
+    await this.caseInvestigatorService.assertReadAccess(task.case_id, userId, tenantId, role);
+  }
+
   async getTaskById(taskId: number, tenantId: string, userId: string, role: string): Promise<Task | null> {
     try {
       const task = await this.taskRepository.findTaskWithCase(taskId, tenantId);
