@@ -12,12 +12,12 @@ import { RedisService } from './modules/shared/redis.service';
  * ANY backend instance, not just the one that received the triggering event.
  *
  * Must be installed via app.useWebSocketAdapter() BEFORE app.init()/app.listen() - Nest binds
- * gateways to whatever adapter is current during init and won't rebind them (see main.ts). That
+ * gateways to whatever adapter is current during init and won't rebind them. That
  * means createIOServer() runs before RedisService.onModuleInit, so getClient() can throw, not
  * just return null - client acquisition is polled for a bounded window instead of read once, and
  * falls back to the in-process adapter if Redis never becomes reachable.
  *
- * Callers MUST await waitUntilReady() before accepting real connections (see main.ts):
+ * Callers MUST await waitUntilReady() before accepting real connections:
  * Socket.IO's Server#adapter() rebuilds each namespace's adapter from scratch rather than
  * migrating existing room memberships, so a client that joins a room before the swap completes
  * would silently stop receiving broadcasts even though it stays connected.
@@ -70,22 +70,36 @@ export class RedisIoAdapter extends IoAdapter {
       return;
     }
 
+    const previousAdapter = server.adapter();
     let subClient: Redis | undefined;
+    let installed = false;
     try {
       subClient = pubClient.duplicate();
       subClient.on('error', (error: Error) => {
         RedisIoAdapter.logger.error(`WebSocket Redis (sub) client error: ${error.message}`);
       });
-      await subClient.connect();
+      // ioredis's connectTimeout (default 10s) already bounds connect() on its own, but ping()
+      // has no equivalent default (commandTimeout isn't set) - a connected-but-silent Redis would
+      // leave it pending forever, and since main.ts awaits waitUntilReady() before app.listen(),
+      // that would block the whole app from ever accepting connections. Both are bounded here for
+      // the same reason, so neither depends on ioredis's own (or lack of) defaults.
+      await this.awaitWithTimeout(subClient.connect(), 'Redis subscriber connection');
 
       server.adapter(createAdapter(pubClient, subClient));
+      installed = true;
       // createAdapter() fires SUBSCRIBE/PSUBSCRIBE with no exposed promise to await or catch.
       // Redis replies to commands in order, so this ping only resolves once those subscribes
       // have too - and fails here instead of as an unhandled rejection later if they didn't.
-      await subClient.ping();
+      await this.awaitWithTimeout(subClient.ping(), 'Redis subscriber ping');
       this.subClients.push(subClient);
       RedisIoAdapter.logger.log('Socket.IO Redis adapter attached - broadcasts now span all backend instances');
     } catch (error) {
+      // If the Redis adapter was already installed above, an untested/broken subscriber leaves
+      // it able to publish to other pods (pubClient) but never receive from them (subClient) -
+      // worse than the clean single-instance fallback restoring the previous adapter gives us.
+      if (installed && previousAdapter) {
+        server.adapter(previousAdapter);
+      }
       // Only tracked in this.subClients once fully set up - an untracked client that failed
       // partway through would otherwise sit there retrying via its retryStrategy and logging on
       // every attempt until shutdown, even though the fallback path below never uses it.
@@ -110,6 +124,26 @@ export class RedisIoAdapter extends IoAdapter {
       if (Date.now() >= deadline) return null;
       // eslint-disable-next-line no-await-in-loop -- intentional sequential retry
       await delay(this.pollIntervalMs);
+    }
+  }
+
+  // ioredis doesn't bound every operation by default (see the connect()/ping() call sites), so
+  // this gives any of them the same readyTimeoutMs bound the rest of this class already commits
+  // to, rather than risking an indefinite hang on a connected-but-unresponsive Redis.
+  private async awaitWithTimeout<T>(operation: Promise<T>, operationName: string): Promise<T> {
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        operation,
+        // eslint-disable-next-line promise/avoid-new -- no existing utility races a promise against a rejecting timeout
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => {
+            reject(new Error(`${operationName} timed out after ${this.readyTimeoutMs}ms`));
+          }, this.readyTimeoutMs);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
     }
   }
 }

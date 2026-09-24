@@ -52,6 +52,9 @@ export function useCaseUpdatesSocket(onChange: () => void): void {
     socket.on('ready', () => {
       isReady = true;
     });
+    socket.on('disconnect', () => {
+      isReady = false;
+    });
 
     socket.on('case:changed', (_payload: CaseChangedPayload) => {
       if (!isReady) return;

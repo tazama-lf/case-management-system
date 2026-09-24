@@ -27,7 +27,10 @@ describe('RedisIoAdapter', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockServer = { adapter: jest.fn() };
+    // The getter form (no args) stands in for "whatever adapter constructor was active before
+    // this adapter touched it" - a distinct sentinel so tests can assert a restore actually
+    // happened, separately from the setter form (called with the Redis adapter constructor).
+    mockServer = { adapter: jest.fn().mockReturnValue('default-adapter-instance') };
     createIOServerSpy = jest.spyOn(IoAdapter.prototype, 'createIOServer').mockReturnValue(mockServer as never);
 
     mockSubClient = {
@@ -111,12 +114,39 @@ describe('RedisIoAdapter', () => {
     expect(() => adapter.createIOServer(3090)).not.toThrow();
     await adapter.waitUntilReady();
 
-    expect(mockServer.adapter).not.toHaveBeenCalled();
+    // connect() fails before the Redis adapter is ever installed, so the only call server.adapter
+    // sees is the getter read (to know what to restore on failure) - never a set to the Redis one.
+    expect(mockServer.adapter).not.toHaveBeenCalledWith('redis-adapter-instance');
     // The failed-to-connect sub client must be disconnected itself, so it doesn't sit there
     // retrying via its own retryStrategy and logging on every attempt for a client the fallback
     // path never ends up using.
     expect(mockSubClient.disconnect).toHaveBeenCalled();
   });
+
+  // Regression coverage: ioredis's connectTimeout bounds connect() by default, but there's no
+  // equivalent default for ping() (commandTimeout isn't set) - a connected-but-silent Redis would
+  // leave it pending forever, and since main.ts awaits waitUntilReady() before app.listen(), that
+  // would block the whole app from ever accepting connections, not just WebSocket ones.
+  it('falls back without hanging when connect() never settles', async () => {
+    mockSubClient.connect.mockReturnValue(new Promise(() => {}));
+    const adapter = newAdapter();
+
+    expect(() => adapter.createIOServer(3090)).not.toThrow();
+    await adapter.waitUntilReady();
+
+    expect(mockServer.adapter).not.toHaveBeenCalledWith('redis-adapter-instance');
+  }, READY_TIMEOUT_MS + 2000);
+
+  it('falls back without hanging when ping() never settles', async () => {
+    mockSubClient.ping.mockReturnValue(new Promise(() => {}));
+    const adapter = newAdapter();
+
+    expect(() => adapter.createIOServer(3090)).not.toThrow();
+    await adapter.waitUntilReady();
+
+    expect(mockSubClient.disconnect).toHaveBeenCalled();
+    expect(mockServer.adapter).toHaveBeenNthCalledWith(3, 'default-adapter-instance');
+  }, READY_TIMEOUT_MS + 2000);
 
   // Regression coverage: createAdapter()'s constructor issues SUBSCRIBE/PSUBSCRIBE without
   // exposing any promise for them, so a failure there (or the connection dying right after
@@ -130,10 +160,12 @@ describe('RedisIoAdapter', () => {
     expect(() => adapter.createIOServer(3090)).not.toThrow();
     await adapter.waitUntilReady();
 
-    // server.adapter() is still called with the (now-broken) Redis adapter before the ping
-    // rejection is discovered - what matters is that the client this adapter would have used
-    // doesn't linger, and that the failure is logged as a setup failure, not left uncaught.
     expect(mockSubClient.disconnect).toHaveBeenCalled();
+    // server.adapter() is called with the (now-broken) Redis adapter before the ping rejection is
+    // discovered, then must be restored - otherwise this instance is left able to publish to
+    // other pods but never receive from them, which is worse than the clean fallback.
+    expect(mockServer.adapter).toHaveBeenNthCalledWith(2, 'redis-adapter-instance');
+    expect(mockServer.adapter).toHaveBeenNthCalledWith(3, 'default-adapter-instance');
   });
 
   // Regression coverage: createIOServer() runs before RedisService's onModuleInit has assigned
