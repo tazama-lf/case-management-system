@@ -55,6 +55,7 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",
     "eslint-config-love": "^151.0.0",
+    "helmet": "^8.3.0",
     "http-proxy": "^1.18.1",
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.2",
