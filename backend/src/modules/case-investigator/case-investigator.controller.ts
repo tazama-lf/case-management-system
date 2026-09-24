@@ -1,12 +1,12 @@
 import { Controller, Get, Post, Delete, Body, Param, Req, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
-import { CaseInvestigator, CaseInvestigatorBlacklist } from '@prisma/client-cms';
+import { CaseInvestigatorBlacklist } from '@prisma/client-cms';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { RequireSupervisorRole } from 'src/decorators/auth.decorator';
 import { Audit } from '../audit/decorators/audit-log.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { extractUserData } from 'src/utils/helperFunction';
-import { CaseInvestigatorService } from './case-investigator.service';
+import { CaseInvestigatorService, CaseInvestigatorWithRole } from './case-investigator.service';
 import { RevokeCaseInvestigatorDto, BlacklistCaseInvestigatorDto, UnblockCaseInvestigatorDto } from './dto';
 
 // There is no POST /investigators (manual add) — the whitelist is
@@ -95,10 +95,14 @@ export class CaseInvestigatorController {
 
   @Get(':caseId/investigators')
   @RequireSupervisorRole()
-  @ApiOperation({ summary: 'List a case live whitelist', description: 'Supervisor+ only.' })
+  @ApiOperation({
+    summary: 'List a case live whitelist',
+    description:
+      'Supervisor+ only. Each row carries user_role (null if unknown) so callers can tell which rows can be revoked/blacklisted (investigators only).',
+  })
   @ApiParam({ name: 'caseId', type: 'number', example: 123 })
   @ApiResponse({ status: 200, description: 'Live whitelist rows' })
-  async getInvestigators(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<CaseInvestigator[]> {
+  async getInvestigators(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<CaseInvestigatorWithRole[]> {
     const { tenantId } = extractUserData(req);
     return await this.caseInvestigatorService.listWhitelist(caseId, tenantId);
   }

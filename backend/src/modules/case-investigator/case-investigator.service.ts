@@ -9,6 +9,9 @@ import { Outcome } from '../../utils/types/outcome';
 
 const INVESTIGATOR_ROLE = 'CMS_INVESTIGATOR';
 
+/** A whitelist row plus its user's role (null = unknown). */
+export type CaseInvestigatorWithRole = CaseInvestigator & { user_role: string | null };
+
 // Case-level ACL — The one place membership logic lives; every other module that needs to
 // know "can this investigator see this case" imports CaseInvestigatorModule
 // and calls into this service rather than querying case_investigators /
@@ -500,12 +503,33 @@ export class CaseInvestigatorService {
     }
   }
 
-  /** Live whitelist rows for a case, tenant-scoped. */
-  async listWhitelist(caseId: number, tenantId: string): Promise<CaseInvestigator[]> {
-    return await this.prismaService.caseInvestigator.findMany({
+  /**
+   * Live whitelist rows for a case, tenant-scoped, each tagged with the user's
+   * role so the Access screen can tell which rows can actually be revoked or
+   * blacklisted. Supervisors and compliance officers can land on the whitelist
+   * (task assignment doesn't filter by role) but revoke/blacklist refuse them
+   * (assertTargetIsInvestigator), so the UI must not offer those actions.
+   * Role comes from the same cache assertTargetIsInvestigator uses; a miss or
+   * cache failure is `null` (unknown), never guessed.
+   */
+  async listWhitelist(caseId: number, tenantId: string): Promise<CaseInvestigatorWithRole[]> {
+    const rows = await this.prismaService.caseInvestigator.findMany({
       where: { case_id: caseId, tenant_id: tenantId, revoked_at: null },
       orderBy: { granted_at: 'asc' },
     });
+
+    const roles = new Map<string, string | null>();
+    await Promise.all(
+      [...new Set(rows.map((row) => row.user_id))].map(async (userId) => {
+        try {
+          roles.set(userId, await this.cacheService.getUserRole(userId));
+        } catch {
+          roles.set(userId, null);
+        }
+      }),
+    );
+
+    return rows.map((row) => ({ ...row, user_role: roles.get(row.user_id) ?? null }));
   }
 
   /** Live blacklist rows for a case, tenant-scoped. */

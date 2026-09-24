@@ -38,6 +38,14 @@ const membershipBadgeClass = (
     ? 'bg-indigo-100 text-indigo-800'
     : 'bg-gray-100 text-gray-700';
 
+// Supervisors and compliance officers can appear on the whitelist (task assignment
+// doesn't filter by role) but can never be revoked or blacklisted - the backend refuses
+// them - so their rows get a note instead of actions that could only fail.
+const NON_REMOVABLE_ROLE_LABELS: Record<string, string> = {
+  CMS_SUPERVISOR: 'Supervisor',
+  CMS_COMPLIANCE_OFFICER: 'Compliance officer',
+};
+
 const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
   const { getAssigneeFullName } = useInvestigatorSupervisorList();
 
@@ -119,28 +127,34 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
         {formatDate(row.granted_at)}
       </td>
       <td className="py-2 text-right">
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setPendingAction({ type: 'revoke', userId: row.user_id });
-            }}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-orange-700 hover:bg-orange-50"
-          >
-            <UserMinusIcon className="h-4 w-4" />
-            Revoke
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setPendingAction({ type: 'blacklist', userId: row.user_id });
-            }}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
-          >
-            <NoSymbolIcon className="h-4 w-4" />
-            Blacklist
-          </button>
-        </div>
+        {row.user_role && NON_REMOVABLE_ROLE_LABELS[row.user_role] ? (
+          <span className="text-xs text-gray-400">
+            {NON_REMOVABLE_ROLE_LABELS[row.user_role]} — always has access
+          </span>
+        ) : (
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setPendingAction({ type: 'revoke', userId: row.user_id });
+              }}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-orange-700 hover:bg-orange-50"
+            >
+              <UserMinusIcon className="h-4 w-4" />
+              Revoke
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPendingAction({ type: 'blacklist', userId: row.user_id });
+              }}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+            >
+              <NoSymbolIcon className="h-4 w-4" />
+              Blacklist
+            </button>
+          </div>
+        )}
       </td>
     </tr>
   );

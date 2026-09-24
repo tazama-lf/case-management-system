@@ -811,16 +811,55 @@ describe('CaseInvestigatorService', () => {
 
   describe('listWhitelist / listBlacklist', () => {
     it('listWhitelist filters live rows by case_id and tenant_id, ordered by granted_at asc', async () => {
-      const rows = [{ id: 1 }];
-      prisma.caseInvestigator.findMany.mockResolvedValue(rows);
+      prisma.caseInvestigator.findMany.mockResolvedValue([{ id: 1, user_id: USER_ID }]);
 
       const result = await service.listWhitelist(CASE_ID, TENANT);
 
-      expect(result).toBe(rows);
+      expect(result).toEqual([{ id: 1, user_id: USER_ID, user_role: 'CMS_INVESTIGATOR' }]);
       expect(prisma.caseInvestigator.findMany).toHaveBeenCalledWith({
         where: { case_id: CASE_ID, tenant_id: TENANT, revoked_at: null },
         orderBy: { granted_at: 'asc' },
       });
+    });
+
+    it('listWhitelist tags each row with its user role so supervisors/compliance officers can be told apart', async () => {
+      prisma.caseInvestigator.findMany.mockResolvedValue([
+        { id: 1, user_id: USER_ID },
+        { id: 2, user_id: OTHER_USER_ID },
+        { id: 3, user_id: GRANTED_BY },
+      ]);
+      cacheService.getUserRole.mockImplementation(async (id: string) =>
+        ({ [USER_ID]: 'CMS_INVESTIGATOR', [OTHER_USER_ID]: 'CMS_SUPERVISOR', [GRANTED_BY]: 'CMS_COMPLIANCE_OFFICER' })[id] ?? null,
+      );
+
+      const result = await service.listWhitelist(CASE_ID, TENANT);
+
+      expect(result.map((r: any) => r.user_role)).toEqual(['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER']);
+    });
+
+    it('listWhitelist looks each distinct user up once', async () => {
+      prisma.caseInvestigator.findMany.mockResolvedValue([
+        { id: 1, user_id: USER_ID },
+        { id: 2, user_id: USER_ID },
+      ]);
+
+      await service.listWhitelist(CASE_ID, TENANT);
+
+      expect(cacheService.getUserRole).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['a cache miss', async () => null],
+      ['a cache failure', async () => {
+        throw new Error('redis down');
+      }],
+    ])('listWhitelist reports role null (unknown), not a guess, on %s - and still returns the rows', async (_desc, impl) => {
+      prisma.caseInvestigator.findMany.mockResolvedValue([{ id: 1, user_id: USER_ID }]);
+      cacheService.getUserRole.mockImplementation(impl);
+
+      const result = await service.listWhitelist(CASE_ID, TENANT);
+
+      expect(result).toEqual([{ id: 1, user_id: USER_ID, user_role: null }]);
     });
 
     it('listBlacklist filters live rows by case_id and tenant_id, ordered by blocked_at asc', async () => {
