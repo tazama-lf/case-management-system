@@ -89,7 +89,7 @@ describe('AccessControlTab', () => {
     (investigatorService.getCaseBlacklist as vi.Mock).mockResolvedValue([]);
   });
 
-  it('renders the whitelist with names, tiers, and always shows Revoke/Blacklist actions', async () => {
+  it('renders the whitelist with names, tiers, and shows Revoke/Blacklist for investigator rows', async () => {
     renderTab();
     await waitForWhitelistLoaded();
 
@@ -101,6 +101,51 @@ describe('AccessControlTab', () => {
     expect(screen.getAllByRole('button', { name: /Blacklist/ })).toHaveLength(
       2,
     );
+  });
+
+  it('offers no Revoke/Blacklist on supervisor or compliance-officer rows (the backend can never act on them), only on investigators', async () => {
+    (investigatorService.getCaseInvestigators as vi.Mock).mockResolvedValue([
+      { ...mockWhitelist[0], user_role: 'CMS_INVESTIGATOR' },
+      {
+        ...mockWhitelist[1],
+        id: 3,
+        user_id: 'user-sup',
+        user_role: 'CMS_SUPERVISOR',
+      },
+      {
+        ...mockWhitelist[1],
+        id: 4,
+        user_id: 'user-co',
+        user_role: 'CMS_COMPLIANCE_OFFICER',
+      },
+    ]);
+    renderTab();
+    await waitForWhitelistLoaded();
+
+    // one row of actions (the investigator), not three
+    expect(screen.getAllByRole('button', { name: /Revoke/ })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /Blacklist/ })).toHaveLength(
+      1,
+    );
+    expect(
+      screen.getByText(/Supervisor — always has access/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Compliance officer — always has access/),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the actions when a row role is unknown (null) - the backend still guards it', async () => {
+    (investigatorService.getCaseInvestigators as vi.Mock).mockResolvedValue([
+      { ...mockWhitelist[0], user_role: null },
+    ]);
+    renderTab();
+    await waitForWhitelistLoaded();
+
+    expect(screen.getByRole('button', { name: /Revoke/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Blacklist/ }),
+    ).toBeInTheDocument();
   });
 
   it('has no add-investigator form of any kind', async () => {

@@ -11,6 +11,8 @@ export interface CaseInvestigator {
   revoked_at: string | null;
   revoked_by: string | null;
   revoke_reason: string | null;
+  /** The user's role, from the backend's role cache. null/absent = unknown. */
+  user_role?: string | null;
 }
 
 export interface CaseInvestigatorBlacklistEntry {
