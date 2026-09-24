@@ -108,6 +108,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; task: Task }> {
     const { userId, tenantId } = extractUserData(req);
+    await this.caseInvestigatorService.assertCanModifyCase(caseId, userId, tenantId, req.user.actorRole);
     return await this.caseService.abandonCase(caseId, body.reason, userId, tenantId, req.user, 'PUT /api/v1/cases/:caseId/abandon');
   }
 
@@ -235,6 +236,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; completedTask: Task; newTask: Task }> {
     const { userId, tenantId } = extractUserData(req);
+    await this.caseInvestigatorService.assertCanModifyCase(caseId, userId, tenantId, req.user.actorRole);
     return await this.caseService.completeCase(caseId, userId, tenantId, req.user, 'PUT /api/v1/cases/:caseId/complete');
   }
 
@@ -646,6 +648,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Case not found' })
   async updateCase(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest): Promise<Case> {
     const { userId, tenantId } = extractUserData(req);
+    await this.caseInvestigatorService.assertCanModifyCase(caseId, userId, tenantId, req.user.actorRole);
     return await this.caseService.updateCase(caseId, dto, userId, req.user, 'PUT /api/v1/cases/:caseId', tenantId);
   }
 

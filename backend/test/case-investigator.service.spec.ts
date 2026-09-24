@@ -42,6 +42,7 @@ describe('CaseInvestigatorService', () => {
       },
       task: {
         count: jest.fn(),
+        findMany: jest.fn(),
       },
       $transaction: jest.fn(),
     };
@@ -178,6 +179,59 @@ describe('CaseInvestigatorService', () => {
       const result = await service.getAccessibleCaseIds(USER_ID, TENANT);
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('assertCanModifyCase', () => {
+    const holders = (...ids) => ids.map((id) => ({ assigned_user_id: id }));
+
+    it.each(['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'])('lets %s through without querying tasks', async (role) => {
+      await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, role)).resolves.toBeUndefined();
+
+      expect(prisma.task.findMany).not.toHaveBeenCalled();
+    });
+
+    it('is open when nobody currently holds the case', async () => {
+      prisma.task.findMany.mockResolvedValue([]);
+
+      await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBeUndefined();
+    });
+
+    it('lets the holder through, including when several people hold live tasks on the case', async () => {
+      prisma.task.findMany.mockResolvedValue(holders('someone-else', USER_ID));
+
+      await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBeUndefined();
+    });
+
+    it('only looks at live (non-completed), assigned tasks on this case in this tenant', async () => {
+      prisma.task.findMany.mockResolvedValue([]);
+
+      await service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR');
+
+      expect(prisma.task.findMany).toHaveBeenCalledWith({
+        where: {
+          case_id: CASE_ID,
+          tenant_id: TENANT,
+          assigned_user_id: { not: null },
+          status: { not: TaskStatus.STATUS_30_COMPLETED },
+        },
+        select: { assigned_user_id: true },
+        distinct: ['assigned_user_id'],
+      });
+    });
+
+    it('gives a non-holder with no read access the same 404 as every gated read', async () => {
+      prisma.task.findMany.mockResolvedValue(holders('someone-else'));
+      prisma.caseInvestigator.findFirst.mockResolvedValue(null);
+
+      await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).rejects.toThrow(NotFoundException);
+    });
+
+    it('gives a non-holder who can see the case (e.g. a past OBSERVER) a 403', async () => {
+      prisma.task.findMany.mockResolvedValue(holders('someone-else'));
+      prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 1 });
+
+      await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).rejects.toThrow(ForbiddenException);
     });
   });
 

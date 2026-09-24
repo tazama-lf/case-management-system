@@ -76,6 +76,11 @@ export class TaskLifecycleService {
     const rbacRole = this.rbacService.getRoleFromUser(user);
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    // assign is for unassigned tasks (claim / first assignment); taking over a held task goes through
+    // reassign. Refusing here keeps self-assign open without letting assign act as an ungated reassign.
+    if (existingTask.assigned_user_id) {
+      throw new BadRequestException(`Task ${taskId} is already assigned. Use reassign to change its assignee.`);
+    }
     await this.assertNotBlacklisted(existingTask.case_id, assignedUserId, tenantId);
 
     const result = await this.taskRepository.transaction(async (tx) => {

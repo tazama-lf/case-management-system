@@ -268,6 +268,45 @@ export class CaseInvestigatorService {
   }
 
   /**
+   * Write-side gate for case mutations that have no owner check of their own
+   * (PUT /cases/:caseId, abandon, complete-draft). Mirrors the task rule: if
+   * nobody currently holds the case it is open, but once someone holds a live
+   * (non-completed) task on it, only a holder — or a supervisor/compliance
+   * officer — may modify it. "Holder" is derived from tasks, never from
+   * Case.case_owner_user_id (see the plan: that column is written from
+   * unrelated places). A draft's creator is its holder, since "Complete New
+   * Case" is assigned to them at creation.
+   *
+   * Someone with no read access gets the same 404 as every gated read; someone
+   * who can see the case but isn't its holder (e.g. a past OBSERVER) gets a 403.
+   */
+  async assertCanModifyCase(caseId: number, userId: string, tenantId: string, role: string): Promise<void> {
+    if (role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
+      return;
+    }
+
+    const holders = await this.prismaService.task.findMany({
+      where: {
+        case_id: caseId,
+        tenant_id: tenantId,
+        assigned_user_id: { not: null },
+        status: { not: TaskStatus.STATUS_30_COMPLETED },
+      },
+      select: { assigned_user_id: true },
+      distinct: ['assigned_user_id'],
+    });
+
+    if (holders.length === 0 || holders.some((holder) => holder.assigned_user_id === userId)) {
+      return;
+    }
+
+    if (!(await this.hasAccess(caseId, userId, tenantId, role))) {
+      throw new NotFoundException('Case not found or access denied');
+    }
+    throw new ForbiddenException('This case is held by another investigator - only its current holder or a supervisor can modify it.');
+  }
+
+  /**
    * The one entry point every task-mutating call site uses. Composes
    * grant/demote/revoke/hasOtherLiveClaimOnCase/blacklist-refusal so this
    * logic lives in exactly one place instead of being re-implemented at
