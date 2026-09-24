@@ -26,11 +26,7 @@ async function bootstrap(): Promise<void> {
 
   app.use(cookieParser());
 
-  // Browser hardening headers (X-Frame-Options, X-Content-Type-Options, HSTS,
-  // Referrer-Policy, CSP). `frame-ancestors: 'none'` blocks this API/Swagger
-  // surface from being framed - the CMS frontend itself is a separate SPA and
-  // is not served from here. CSP's script-src/style-src allow 'unsafe-inline'
-  // only because Swagger UI (mounted below at /api/docs) requires it.
+  const isProduction = configService.getOrThrow<string>('NODE_ENV') === 'prod';
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -45,6 +41,7 @@ async function bootstrap(): Promise<void> {
           styleSrc: ["'self'", "'unsafe-inline'"],
           // eslint-disable-next-line @stylistic/quotes -- see defaultSrc above
           imgSrc: ["'self'", 'data:'],
+          upgradeInsecureRequests: isProduction ? [] : null,
         },
       },
     }),
