@@ -15,9 +15,18 @@
 --
 -- SAFETY MODEL: both steps below open with the same preflight check and
 -- ABORT (RAISE EXCEPTION, which rolls back that step's transaction) if they
--- find ANY row that isn't attributable to the backfill script's sentinel
--- actor (00000000-0000-0000-0000-000000000000) — i.e. any real grant that
--- upgraded a row, any revoke, any blacklist/unblock activity at all. Once
+-- find ANY row that isn't attributable to the backfill — i.e. any grant made
+-- by someone other than the row's own user, any revoke, any blacklist/
+-- unblock activity at all.
+--
+-- HOW BACKFILL ROWS ARE RECOGNISED: the backfill sets granted_by = user_id
+-- (the assignee). Databases backfilled by an earlier version of the script
+-- carry the nil UUID (00000000-0000-0000-0000-000000000000) instead; both are
+-- treated as backfill rows. LIMITATION: a live self-claim also writes
+-- granted_by = user_id, so it is indistinguishable from a backfill row here
+-- and Step 1 will delete it. That loses nothing that matters — access is
+-- derived from task assignment, and re-running the backfill recreates the
+-- row — but granted_at on such a row is not preserved. Once
 -- real activity exists, this feature's data is not safely undoable by a
 -- generic script: a revoked row carries a supervisor's real revoke_reason,
 -- a blacklist row carries a real block_reason — deleting or dropping those
@@ -45,7 +54,7 @@ BEGIN
     SELECT COUNT(*) INTO real_activity_count
     FROM (
         SELECT 1 FROM case_investigators
-        WHERE granted_by <> '00000000-0000-0000-0000-000000000000'
+        WHERE (granted_by <> user_id AND granted_by <> '00000000-0000-0000-0000-000000000000')
            OR revoked_at IS NOT NULL
         UNION ALL
         SELECT 1 FROM case_investigators_blacklist
@@ -53,13 +62,14 @@ BEGIN
 
     IF real_activity_count > 0 THEN
         RAISE EXCEPTION
-            'Rollback aborted: % row(s) of real activity found (a grant that upgraded a row, a revoke, or any blacklist/unblock entry). This script only undoes the sentinel-seeded backfill, not real usage — restore from backup or handle manually.',
+            'Rollback aborted: % row(s) of real activity found (a grant made by someone other than the grantee themselves, a revoke, or any blacklist/unblock entry). This script only undoes the sentinel-seeded backfill, not real usage — restore from backup or handle manually.',
             real_activity_count;
     END IF;
 END $$;
 
 DELETE FROM case_investigators
-WHERE granted_by = '00000000-0000-0000-0000-000000000000';
+WHERE granted_by = user_id
+   OR granted_by = '00000000-0000-0000-0000-000000000000';
 
 COMMIT;
 
@@ -80,7 +90,7 @@ COMMIT;
 --     SELECT COUNT(*) INTO real_activity_count
 --     FROM (
 --         SELECT 1 FROM case_investigators
---         WHERE granted_by <> '00000000-0000-0000-0000-000000000000'
+--         WHERE (granted_by <> user_id AND granted_by <> '00000000-0000-0000-0000-000000000000')
 --            OR revoked_at IS NOT NULL
 --         UNION ALL
 --         SELECT 1 FROM case_investigators_blacklist

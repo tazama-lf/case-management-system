@@ -18,6 +18,12 @@
 --            completed task, skipping anyone who already got a LEAD row
 --            in Step 1 (DO NOTHING never downgrades an existing LEAD)
 --
+-- granted_by is set to the row's own user_id (the assignee): task history does
+-- not reliably record who assigned a pre-existing task, so the backfill
+-- attributes each grant to the person it is for rather than to a made-up
+-- actor. Read it as "came from their own task assignment", not as a literal
+-- claim that they assigned themselves.
+--
 -- tenant_id is copied from tasks.tenant_id (every task already carries its
 -- own tenant_id, same convention as every other case-scoped table) — not
 -- looked up separately from cases, and not left for a join at query time.
@@ -45,7 +51,7 @@ SELECT DISTINCT
     t.tenant_id,
     t.assigned_user_id,
     'LEAD'::"CaseInvestigatorMembership",
-    '00000000-0000-0000-0000-000000000000'::uuid,
+    t.assigned_user_id,
     NOW()
 FROM tasks t
 WHERE t.assigned_user_id IS NOT NULL
@@ -64,7 +70,7 @@ SELECT DISTINCT
     t.tenant_id,
     t.assigned_user_id,
     'OBSERVER'::"CaseInvestigatorMembership",
-    '00000000-0000-0000-0000-000000000000'::uuid,
+    t.assigned_user_id,
     NOW()
 FROM tasks t
 WHERE t.assigned_user_id IS NOT NULL

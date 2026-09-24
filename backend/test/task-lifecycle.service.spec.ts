@@ -319,6 +319,34 @@ describe('TaskLifecycleService', () => {
       await expect(service.assignTaskToInvestigator(999, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey)).rejects.toThrow(NotFoundException);
     });
 
+    it.each([
+      ['a different user', 'user1'],
+      ['the same user (no-op resend)', 'holder'],
+    ])('should reject assigning a task that already has an assignee, even to %s, and write nothing', async (_desc, target) => {
+      mockTaskRepository.findTaskById.mockResolvedValue({ ...existingTask, status: TaskStatus.STATUS_10_ASSIGNED, assigned_user_id: 'holder' });
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+
+      await expect(service.assignTaskToInvestigator(1, target, 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey)).rejects.toThrow(
+        new BadRequestException('Task 1 is already assigned. Use reassign to change its assignee.'),
+      );
+
+      expect(mockPrisma.task.update).not.toHaveBeenCalled();
+      expect(mockPrisma.case.update).not.toHaveBeenCalled();
+      expect(mockFlowableService.handleTaskAssigned).not.toHaveBeenCalled();
+      expect(mockCaseInvestigatorService.syncTaskAssignment).not.toHaveBeenCalled();
+    });
+
+    it('should still let an unassigned task be assigned to the caller (self-assign stays open)', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockPrisma.task.update.mockResolvedValue({ ...existingTask, assigned_user_id: 'supervisor1', status: TaskStatus.STATUS_10_ASSIGNED });
+      mockPrisma.case.update.mockResolvedValue({ ...existingCase, status: CaseStatus.STATUS_10_ASSIGNED, case_owner_user_id: 'supervisor1' });
+
+      const result = await service.assignTaskToInvestigator(1, 'supervisor1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey);
+
+      expect(result.assigned_user_id).toBe('supervisor1');
+    });
+
     it('should handle case retrieval', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
