@@ -77,14 +77,18 @@ export class RedisIoAdapter extends IoAdapter {
         RedisIoAdapter.logger.error(`WebSocket Redis (sub) client error: ${error.message}`);
       });
       await subClient.connect();
-      this.subClients.push(subClient);
 
       server.adapter(createAdapter(pubClient, subClient));
+      // createAdapter() fires SUBSCRIBE/PSUBSCRIBE with no exposed promise to await or catch.
+      // Redis replies to commands in order, so this ping only resolves once those subscribes
+      // have too - and fails here instead of as an unhandled rejection later if they didn't.
+      await subClient.ping();
+      this.subClients.push(subClient);
       RedisIoAdapter.logger.log('Socket.IO Redis adapter attached - broadcasts now span all backend instances');
     } catch (error) {
-      // Only tracked in this.subClients once connected - an untracked client that failed to
-      // connect would otherwise sit there retrying via its retryStrategy and logging on every
-      // attempt until shutdown, even though the fallback path below never uses it.
+      // Only tracked in this.subClients once fully set up - an untracked client that failed
+      // partway through would otherwise sit there retrying via its retryStrategy and logging on
+      // every attempt until shutdown, even though the fallback path below never uses it.
       subClient?.disconnect();
       RedisIoAdapter.logger.warn(
         `Failed to set up the WebSocket Redis adapter - live case updates will only reach clients on this instance: ${(error as Error).message}`,

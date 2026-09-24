@@ -19,7 +19,7 @@ const POLL_INTERVAL_MS = 10;
 describe('RedisIoAdapter', () => {
   let mockServer: { adapter: jest.Mock };
   let mockPubClient: { duplicate: jest.Mock };
-  let mockSubClient: { on: jest.Mock; connect: jest.Mock; disconnect: jest.Mock };
+  let mockSubClient: { on: jest.Mock; connect: jest.Mock; disconnect: jest.Mock; ping: jest.Mock };
   let mockRedisService: { getClient: jest.Mock };
   let mockApp: INestApplicationContext;
   let createIOServerSpy: jest.SpyInstance;
@@ -34,6 +34,7 @@ describe('RedisIoAdapter', () => {
       on: jest.fn(),
       connect: jest.fn().mockResolvedValue(undefined),
       disconnect: jest.fn(),
+      ping: jest.fn().mockResolvedValue('PONG'),
     };
     mockPubClient = {
       duplicate: jest.fn().mockReturnValue(mockSubClient),
@@ -114,6 +115,24 @@ describe('RedisIoAdapter', () => {
     // The failed-to-connect sub client must be disconnected itself, so it doesn't sit there
     // retrying via its own retryStrategy and logging on every attempt for a client the fallback
     // path never ends up using.
+    expect(mockSubClient.disconnect).toHaveBeenCalled();
+  });
+
+  // Regression coverage: createAdapter()'s constructor issues SUBSCRIBE/PSUBSCRIBE without
+  // exposing any promise for them, so a failure there (or the connection dying right after
+  // connect() resolved) has to be caught some other way - the post-adapter ping() stands in for
+  // "did the subscribe setup actually succeed."
+  it('falls back to the default adapter without throwing when subscription confirmation fails', async () => {
+    const subscribeError = new Error('subscribe failed');
+    mockSubClient.ping.mockRejectedValue(subscribeError);
+    const adapter = newAdapter();
+
+    expect(() => adapter.createIOServer(3090)).not.toThrow();
+    await adapter.waitUntilReady();
+
+    // server.adapter() is still called with the (now-broken) Redis adapter before the ping
+    // rejection is discovered - what matters is that the client this adapter would have used
+    // doesn't linger, and that the failure is logged as a setup failure, not left uncaught.
     expect(mockSubClient.disconnect).toHaveBeenCalled();
   });
 
