@@ -43,6 +43,7 @@ async function createTestModule() {
 
   const mockCaseInvestigatorService = {
     assertReadAccess: jest.fn().mockResolvedValue(undefined),
+    getCaseIdScope: jest.fn().mockResolvedValue(null),
   };
 
   const module: TestingModule = await Test.createTestingModule({
@@ -173,7 +174,7 @@ describe('TaskHistoryService', () => {
     });
 
     it('should retrieve logs with default pagination', async () => {
-      const result = await service.getLogs('tenant-123');
+      const result = await service.getLogs('tenant-123', TEST_USER_ID, TEST_ROLE);
 
       expect(result).toEqual(mockLogs);
       expect(prismaService.taskHistory.findMany).toHaveBeenCalledWith({
@@ -194,7 +195,7 @@ describe('TaskHistoryService', () => {
       ];
 
       for (const { limit, offset, name } of scenarios) {
-        await service.getLogs('tenant-123', limit, offset);
+        await service.getLogs('tenant-123', TEST_USER_ID, TEST_ROLE, limit, offset);
 
         expect(prismaService.taskHistory.findMany).toHaveBeenCalledWith({
           where: { tenant_id: 'tenant-123' },
@@ -209,7 +210,7 @@ describe('TaskHistoryService', () => {
       const tenantIds = ['tenant-123', 'tenant-456', 'org-789', ''];
 
       for (const tenantId of tenantIds) {
-        await service.getLogs(tenantId);
+        await service.getLogs(tenantId, TEST_USER_ID, TEST_ROLE);
 
         const callArgs = prismaService.taskHistory.findMany.mock.calls[prismaService.taskHistory.findMany.mock.calls.length - 1][0];
         expect(callArgs.where.tenant_id).toBe(tenantId);
@@ -219,16 +220,44 @@ describe('TaskHistoryService', () => {
     it('should return empty array when no logs found', async () => {
       prismaService.taskHistory.findMany.mockResolvedValue([]);
 
-      const result = await service.getLogs('tenant-123');
+      const result = await service.getLogs('tenant-123', TEST_USER_ID, TEST_ROLE);
 
       expect(result).toEqual([]);
       expect(result).toHaveLength(0);
     });
 
+    it('should not filter by case_id for roles that bypass the ACL (scope is null)', async () => {
+      caseInvestigatorService.getCaseIdScope.mockResolvedValue(null);
+
+      await service.getLogs('tenant-123', TEST_USER_ID, TEST_ROLE);
+
+      expect(caseInvestigatorService.getCaseIdScope).toHaveBeenCalledWith(TEST_USER_ID, 'tenant-123', TEST_ROLE);
+      const where = prismaService.taskHistory.findMany.mock.calls[0][0].where;
+      expect(where).toEqual({ tenant_id: 'tenant-123' });
+    });
+
+    it('should restrict to the accessible case_ids of the caller when scoped (investigator)', async () => {
+      caseInvestigatorService.getCaseIdScope.mockResolvedValue([456, 789]);
+
+      await service.getLogs('tenant-123', TEST_USER_ID, 'CMS_INVESTIGATOR');
+
+      const where = prismaService.taskHistory.findMany.mock.calls[0][0].where;
+      expect(where).toEqual({ tenant_id: 'tenant-123', case_id: { in: [456, 789] } });
+    });
+
+    it('should return nothing (empty IN list) for an investigator with no whitelisted cases', async () => {
+      caseInvestigatorService.getCaseIdScope.mockResolvedValue([]);
+
+      await service.getLogs('tenant-123', TEST_USER_ID, 'CMS_INVESTIGATOR');
+
+      const where = prismaService.taskHistory.findMany.mock.calls[0][0].where;
+      expect(where.case_id).toEqual({ in: [] });
+    });
+
     it('should propagate database errors', async () => {
       prismaService.taskHistory.findMany.mockRejectedValue(new Error('Query failed'));
 
-      await expect(service.getLogs('tenant-123')).rejects.toThrow('Query failed');
+      await expect(service.getLogs('tenant-123', TEST_USER_ID, TEST_ROLE)).rejects.toThrow('Query failed');
     });
   });
 
@@ -321,7 +350,7 @@ describe('TaskHistoryService', () => {
       await service.logTaskHistoryAction(baseActionData);
 
       // Retrieve via getLogs
-      const logs = await service.getLogs('tenant-123');
+      const logs = await service.getLogs('tenant-123', TEST_USER_ID, TEST_ROLE);
       expect(logs).toContainEqual(mockTaskHistory);
 
       // Retrieve via getTaskHistory

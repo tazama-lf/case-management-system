@@ -141,6 +141,21 @@ export class CaseInvestigatorService {
     return rows.map((row) => row.case_id);
   }
 
+  /**
+   * For tenant-wide list endpoints that have no single caseId to assert on.
+   * Returns `null` for CMS_SUPERVISOR/CMS_COMPLIANCE_OFFICER (same bypass as
+   * hasAccess — no filter needed), otherwise the caller's live whitelist
+   * case_ids. Any other role fails closed to its own whitelist rather than
+   * seeing the whole tenant.
+   */
+  async getCaseIdScope(userId: string, tenantId: string, role: string): Promise<number[] | null> {
+    if (role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
+      return null;
+    }
+
+    return await this.getAccessibleCaseIds(userId, tenantId);
+  }
+
   /** The live blacklist row for (case, user), if any — lets refusal messages name who blocked and when. */
   async isBlacklisted(caseId: number, userId: string, tenantId: string): Promise<CaseInvestigatorBlacklist | null> {
     return await this.prismaService.caseInvestigatorBlacklist.findFirst({

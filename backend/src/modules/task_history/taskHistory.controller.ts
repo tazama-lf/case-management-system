@@ -43,12 +43,8 @@ export class TaskHistoryController {
     @Query('offset', ParseIntPipe) offset = 0,
     @Req() req: AuthenticatedRequest,
   ): Promise<TaskHistory[]> {
-    const {
-      user: {
-        token: { tenantId },
-      },
-    } = req;
-    return await this.taskHistoryService.getLogs(tenantId, limit, offset);
+    const { userId, tenantId, actorRole } = req.user;
+    return await this.taskHistoryService.getLogs(tenantId, userId, actorRole, limit, offset);
   }
 
   @Get(':caseId')
