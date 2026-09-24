@@ -203,6 +203,7 @@ export class TaskController {
   ): Promise<Task> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
+    await this.taskService.assertCanMutateTask(taskId, tenantId, userId, req.user.actorRole, reassignTaskDto.assignedUserId);
 
     return await this.taskLifecycleService.reassignTask(
       taskId,
@@ -311,6 +312,8 @@ export class TaskController {
     if (!unassignDto.reason || unassignDto.reason.trim().length === 0) {
       throw new BadRequestException('Reason for unassigning task is required');
     }
+
+    await this.taskService.assertCanMutateTask(taskId, tenantId, userId, req.user.actorRole);
 
     return await this.taskLifecycleService.unassignTask(
       taskId,
@@ -494,6 +497,9 @@ export class TaskController {
   async updateTask(@Param('taskId') taskId: number, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest): Promise<Task> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
+    // Gated here, not inside updateTask: it also has internal callers (draft abandon/complete,
+    // triage, closure) that run on cases with no whitelist rows.
+    await this.taskService.assertCanMutateTask(taskId, tenantId, userId, req.user.actorRole, dto.assignedUserId);
     return await this.taskService.updateTask(taskId, dto, userId, tenantId);
   }
 
@@ -708,6 +714,7 @@ export class TaskController {
   async completeTask(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest): Promise<Task> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
+    await this.taskService.assertCanMutateTask(taskId, tenantId, userId, req.user.actorRole);
     return await this.taskLifecycleService.completeTask(
       taskId,
       userId,
