@@ -7,6 +7,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import * as httpProxy from 'http-proxy';
 import * as jwt from 'jsonwebtoken';
 import * as fs from 'node:fs';
@@ -24,6 +25,30 @@ async function bootstrap(): Promise<void> {
   app.useLogger(logger);
 
   app.use(cookieParser());
+
+  // Browser hardening headers (X-Frame-Options, X-Content-Type-Options, HSTS,
+  // Referrer-Policy, CSP). `frame-ancestors: 'none'` blocks this API/Swagger
+  // surface from being framed - the CMS frontend itself is a separate SPA and
+  // is not served from here. CSP's script-src/style-src allow 'unsafe-inline'
+  // only because Swagger UI (mounted below at /api/docs) requires it.
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          // eslint-disable-next-line @stylistic/quotes -- CSP keywords are literal single-quoted values (e.g. 'self'); double-quoting is the only form prettier and eslint agree on here
+          defaultSrc: ["'self'"],
+          // eslint-disable-next-line @stylistic/quotes -- see defaultSrc above
+          frameAncestors: ["'none'"],
+          // eslint-disable-next-line @stylistic/quotes -- see defaultSrc above
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          // eslint-disable-next-line @stylistic/quotes -- see defaultSrc above
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          // eslint-disable-next-line @stylistic/quotes -- see defaultSrc above
+          imgSrc: ["'self'", 'data:'],
+        },
+      },
+    }),
+  );
 
   const voilaBaseUrl = configService.getOrThrow<string>('VOILA_BASE_URL');
   const publicKeyPath = configService.getOrThrow<string>('AUTH_PUBLIC_KEY_PATH');
