@@ -545,8 +545,8 @@ export class TaskController {
     description: 'Unauthorized - Invalid or missing authentication',
   })
   async getTasks(@Req() req: AuthenticatedRequest, @Query('status') status?: string): Promise<Task[]> {
-    const { tenantId } = req.user.token;
-    return await this.taskService.getTasks(tenantId, status);
+    const { userId, tenantId, actorRole } = req.user;
+    return await this.taskService.getTasks(tenantId, userId, actorRole, status);
   }
 
   @Get('case/:caseId')

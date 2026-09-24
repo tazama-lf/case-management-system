@@ -181,6 +181,31 @@ describe('CaseInvestigatorService', () => {
     });
   });
 
+  describe('getCaseIdScope', () => {
+    it.each(['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'])('returns null (unrestricted) for %s without querying the whitelist', async (role) => {
+      const result = await service.getCaseIdScope(USER_ID, TENANT, role);
+
+      expect(result).toBeNull();
+      expect(prisma.caseInvestigator.findMany).not.toHaveBeenCalled();
+    });
+
+    it('returns the investigator\'s live whitelist case_ids', async () => {
+      prisma.caseInvestigator.findMany.mockResolvedValue([{ case_id: 1 }, { case_id: 5 }]);
+
+      const result = await service.getCaseIdScope(USER_ID, TENANT, 'CMS_INVESTIGATOR');
+
+      expect(result).toEqual([1, 5]);
+    });
+
+    it('fails closed for any other role: scoped to its own whitelist, not the whole tenant', async () => {
+      prisma.caseInvestigator.findMany.mockResolvedValue([]);
+
+      const result = await service.getCaseIdScope(USER_ID, TENANT, 'alert-triage');
+
+      expect(result).toEqual([]);
+    });
+  });
+
   describe('isBlacklisted', () => {
     it('returns the live blacklist row when one exists', async () => {
       const row = { id: 1, blocked_by: BLOCKED_BY, block_reason: 'conflict of interest' };

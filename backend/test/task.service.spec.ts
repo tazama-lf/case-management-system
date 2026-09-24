@@ -100,6 +100,7 @@ describe('TaskService', () => {
             isBlacklisted: jest.fn().mockResolvedValue(null),
             syncTaskAssignment: jest.fn().mockResolvedValue(undefined),
             assertReadAccess: jest.fn().mockResolvedValue(undefined),
+            getCaseIdScope: jest.fn().mockResolvedValue(null),
           },
         },
       ],
@@ -620,7 +621,7 @@ describe('TaskService', () => {
       ] as any;
       taskRepository.findTasks.mockResolvedValue(tasks);
 
-      const result = await service.getTasks('tenant1', TaskStatus.STATUS_10_ASSIGNED);
+      const result = await service.getTasks('tenant1', 'user1', 'CMS_SUPERVISOR', TaskStatus.STATUS_10_ASSIGNED);
 
       expect(result).toEqual(tasks);
       expect(taskRepository.findTasks).toHaveBeenCalledWith({ status: TaskStatus.STATUS_10_ASSIGNED }, 'tenant1', true);
@@ -659,16 +660,56 @@ describe('TaskService', () => {
       ] as any;
       taskRepository.findTasks.mockResolvedValue(tasks);
 
-      const result = await service.getTasks('tenant1');
+      const result = await service.getTasks('tenant1', 'user1', 'CMS_SUPERVISOR');
 
       expect(result).toEqual(tasks);
       expect(taskRepository.findTasks).toHaveBeenCalledWith({}, 'tenant1', true);
     });
 
+    it('should not restrict by case_id for roles that bypass the ACL (scope is null)', async () => {
+      taskRepository.findTasks.mockResolvedValue([]);
+
+      await service.getTasks('tenant1', 'user1', 'CMS_SUPERVISOR');
+
+      expect(caseInvestigatorService.getCaseIdScope).toHaveBeenCalledWith('user1', 'tenant1', 'CMS_SUPERVISOR');
+      expect(taskRepository.findTasks).toHaveBeenCalledWith({}, 'tenant1', true);
+    });
+
+    it('should restrict an investigator to their accessible case_ids', async () => {
+      caseInvestigatorService.getCaseIdScope.mockResolvedValueOnce([1, 2]);
+      taskRepository.findTasks.mockResolvedValue([]);
+
+      await service.getTasks('tenant1', 'user1', 'CMS_INVESTIGATOR');
+
+      expect(taskRepository.findTasks).toHaveBeenCalledWith({ case_id: { in: [1, 2] } }, 'tenant1', true);
+    });
+
+    it('should combine the status filter with the case_id restriction', async () => {
+      caseInvestigatorService.getCaseIdScope.mockResolvedValueOnce([1]);
+      taskRepository.findTasks.mockResolvedValue([]);
+
+      await service.getTasks('tenant1', 'user1', 'CMS_INVESTIGATOR', TaskStatus.STATUS_10_ASSIGNED);
+
+      expect(taskRepository.findTasks).toHaveBeenCalledWith(
+        { status: TaskStatus.STATUS_10_ASSIGNED, case_id: { in: [1] } },
+        'tenant1',
+        true,
+      );
+    });
+
+    it('should return no tasks for an investigator with no whitelisted cases', async () => {
+      caseInvestigatorService.getCaseIdScope.mockResolvedValueOnce([]);
+      taskRepository.findTasks.mockResolvedValue([]);
+
+      await service.getTasks('tenant1', 'user1', 'CMS_INVESTIGATOR');
+
+      expect(taskRepository.findTasks).toHaveBeenCalledWith({ case_id: { in: [] } }, 'tenant1', true);
+    });
+
     it('should handle errors', async () => {
       taskRepository.findTasks.mockRejectedValue(new Error('DB error'));
 
-      await expect(service.getTasks('tenant1')).rejects.toThrow();
+      await expect(service.getTasks('tenant1', 'user1', 'CMS_SUPERVISOR')).rejects.toThrow();
     });
   });
 

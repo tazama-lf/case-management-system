@@ -251,9 +251,15 @@ export class TaskService {
     }
   }
 
-  async getTasks(tenantId: string, status?: string): Promise<Task[]> {
+  async getTasks(tenantId: string, userId: string, role: string, status?: string): Promise<Task[]> {
     try {
-      const where = status ? { status: status as TaskStatus } : {};
+      // Tenant-wide list: without this, an investigator could list tasks (and their case
+      // summary) for cases that GET /task/case/:caseId would 404 for them.
+      const caseIds = await this.caseInvestigatorService.getCaseIdScope(userId, tenantId, role);
+      const where = {
+        ...(status ? { status: status as TaskStatus } : {}),
+        ...(caseIds ? { case_id: { in: caseIds } } : {}),
+      };
       return await this.taskRepository.findTasks(where, tenantId, true);
     } catch (error) {
       this.logger.error('Error retrieving tasks', error, TaskService.name);
