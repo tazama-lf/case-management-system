@@ -49,13 +49,15 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   async close(server: Server): Promise<void> {
-    // super.close() awaits each namespace's adapter.close(), which gracefully unsubscribes the
-    // sub client - must happen before we quit it ourselves, or the unsubscribe queues on an
-    // already-dead connection and never resolves.
+    // super.close() calls each namespace's adapter.close(), which sends (without awaiting) the
+    // unsubscribe commands on the sub client - that must happen before we quit it ourselves, or
+    // those unsubscribes hit an already-closed connection and reject with nobody handling them.
     await super.close(server);
     await Promise.all(
       this.subClients.map(async (client) => {
-        await client.quit().catch(() => {
+        // quit() can stay pending if Redis keeps the socket open but stops replying, and
+        // RedisService sets no commandTimeout - bound it and force-disconnect on expiry.
+        await this.awaitWithTimeout(client.quit(), 'Redis subscriber shutdown').catch(() => {
           client.disconnect();
         });
       }),
