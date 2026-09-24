@@ -3,10 +3,18 @@ import type { INestApplicationContext } from '@nestjs/common';
 import { RedisIoAdapter } from '../src/redis-io.adapter';
 import { RedisService } from '../src/modules/shared/redis.service';
 
-const mockCreateAdapter = jest.fn().mockReturnValue('redis-adapter-instance');
+// Mirrors what the real @socket.io/redis-adapter constructor does: calls subscribe()/psubscribe()
+// on the sub client synchronously, with no promise exposed for either. Tests drive success/failure
+// through mockSubClient.subscribe/psubscribe rather than this function's own return value.
+const mockCreateAdapter = jest.fn((_pubClient: unknown, subClient: { subscribe: (...a: unknown[]) => unknown; psubscribe: (...a: unknown[]) => unknown }) => {
+  subClient.subscribe('request-channel', 'response-channel');
+  subClient.psubscribe('channel*');
+  return 'redis-adapter-instance';
+});
 
 jest.mock('@socket.io/redis-adapter', () => ({
-  createAdapter: (...args: unknown[]) => mockCreateAdapter(...args),
+  createAdapter: (pubClient: unknown, subClient: { subscribe: (...a: unknown[]) => unknown; psubscribe: (...a: unknown[]) => unknown }) =>
+    mockCreateAdapter(pubClient, subClient),
 }));
 
 // Short enough to keep the "Redis never becomes ready" test fast, long enough to exercise at
@@ -19,7 +27,13 @@ const POLL_INTERVAL_MS = 10;
 describe('RedisIoAdapter', () => {
   let mockServer: { adapter: jest.Mock };
   let mockPubClient: { duplicate: jest.Mock };
-  let mockSubClient: { on: jest.Mock; connect: jest.Mock; disconnect: jest.Mock; ping: jest.Mock };
+  let mockSubClient: {
+    on: jest.Mock;
+    connect: jest.Mock;
+    disconnect: jest.Mock;
+    subscribe: jest.Mock;
+    psubscribe: jest.Mock;
+  };
   let mockRedisService: { getClient: jest.Mock };
   let mockApp: INestApplicationContext;
   let createIOServerSpy: jest.SpyInstance;
@@ -37,7 +51,8 @@ describe('RedisIoAdapter', () => {
       on: jest.fn(),
       connect: jest.fn().mockResolvedValue(undefined),
       disconnect: jest.fn(),
-      ping: jest.fn().mockResolvedValue('PONG'),
+      subscribe: jest.fn().mockResolvedValue(undefined),
+      psubscribe: jest.fn().mockResolvedValue(undefined),
     };
     mockPubClient = {
       duplicate: jest.fn().mockReturnValue(mockSubClient),
@@ -137,8 +152,8 @@ describe('RedisIoAdapter', () => {
     expect(mockServer.adapter).not.toHaveBeenCalledWith('redis-adapter-instance');
   }, READY_TIMEOUT_MS + 2000);
 
-  it('falls back without hanging when ping() never settles', async () => {
-    mockSubClient.ping.mockReturnValue(new Promise(() => {}));
+  it('falls back without hanging when subscription setup never settles', async () => {
+    mockSubClient.subscribe.mockReturnValue(new Promise(() => {}));
     const adapter = newAdapter();
 
     expect(() => adapter.createIOServer(3090)).not.toThrow();
@@ -148,25 +163,26 @@ describe('RedisIoAdapter', () => {
     expect(mockServer.adapter).toHaveBeenNthCalledWith(3, 'default-adapter-instance');
   }, READY_TIMEOUT_MS + 2000);
 
-  // Regression coverage: createAdapter()'s constructor issues SUBSCRIBE/PSUBSCRIBE without
-  // exposing any promise for them, so a failure there (or the connection dying right after
-  // connect() resolved) has to be caught some other way - the post-adapter ping() stands in for
-  // "did the subscribe setup actually succeed."
-  it('falls back to the default adapter without throwing when subscription confirmation fails', async () => {
-    const subscribeError = new Error('subscribe failed');
-    mockSubClient.ping.mockRejectedValue(subscribeError);
+  // Regression coverage: createAdapter()'s constructor calls subscribe()/psubscribe() on the sub
+  // client with no promise exposed for either - a rejection there (e.g. an ACL denying SUBSCRIBE
+  // for this connection while other commands still work fine) has to be caught by intercepting
+  // those specific calls, not inferred from some other command happening to succeed.
+  it('falls back to the default adapter without throwing when a subscription rejects', async () => {
+    const subscribeError = new Error('NOPERM this user has no permissions to run the subscribe command');
+    mockSubClient.subscribe.mockRejectedValue(subscribeError);
     const adapter = newAdapter();
 
     expect(() => adapter.createIOServer(3090)).not.toThrow();
     await adapter.waitUntilReady();
 
     expect(mockSubClient.disconnect).toHaveBeenCalled();
-    // server.adapter() is called with the (now-broken) Redis adapter before the ping rejection is
+    // server.adapter() is called with the (now-broken) Redis adapter before the rejection is
     // discovered, then must be restored - otherwise this instance is left able to publish to
     // other pods but never receive from them, which is worse than the clean fallback.
     expect(mockServer.adapter).toHaveBeenNthCalledWith(2, 'redis-adapter-instance');
     expect(mockServer.adapter).toHaveBeenNthCalledWith(3, 'default-adapter-instance');
   });
+
 
   // Regression coverage: createIOServer() runs before RedisService's onModuleInit has assigned
   // its client, so getClient() throws on the first (and possibly several) polls rather than just

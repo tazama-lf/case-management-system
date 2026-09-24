@@ -78,19 +78,22 @@ export class RedisIoAdapter extends IoAdapter {
       subClient.on('error', (error: Error) => {
         RedisIoAdapter.logger.error(`WebSocket Redis (sub) client error: ${error.message}`);
       });
-      // ioredis's connectTimeout (default 10s) already bounds connect() on its own, but ping()
-      // has no equivalent default (commandTimeout isn't set) - a connected-but-silent Redis would
-      // leave it pending forever, and since main.ts awaits waitUntilReady() before app.listen(),
-      // that would block the whole app from ever accepting connections. Both are bounded here for
-      // the same reason, so neither depends on ioredis's own (or lack of) defaults.
+      // ioredis's connectTimeout (default 10s) already bounds connect() on its own, but not every
+      // operation below has an equivalent default - a connected-but-silent Redis could otherwise
+      // leave one pending forever, and since main.ts awaits waitUntilReady() before app.listen(),
+      // that would block the whole app from ever accepting connections. Bounding everything here
+      // means none of it depends on ioredis's own (or lack of) per-operation defaults.
       await this.awaitWithTimeout(subClient.connect(), 'Redis subscriber connection');
 
+      // createAdapter()'s constructor calls subscribe()/psubscribe() on subClient synchronously
+      // but keeps their promises to itself, so interceptSubscriptions() captures them first -
+      // that's the only way to know a subscription actually succeeded (a connected client that
+      // happily replies to other commands, e.g. an ACL denying SUBSCRIBE specifically, would
+      // otherwise look identical to one that's genuinely subscribed).
+      const subscriptions = this.interceptSubscriptions(subClient);
       server.adapter(createAdapter(pubClient, subClient));
       installed = true;
-      // createAdapter() fires SUBSCRIBE/PSUBSCRIBE with no exposed promise to await or catch.
-      // Redis replies to commands in order, so this ping only resolves once those subscribes
-      // have too - and fails here instead of as an unhandled rejection later if they didn't.
-      await this.awaitWithTimeout(subClient.ping(), 'Redis subscriber ping');
+      await this.awaitWithTimeout(Promise.all(subscriptions), 'Redis subscriber subscription setup');
       this.subClients.push(subClient);
       RedisIoAdapter.logger.log('Socket.IO Redis adapter attached - broadcasts now span all backend instances');
     } catch (error) {
@@ -110,6 +113,38 @@ export class RedisIoAdapter extends IoAdapter {
     }
   }
 
+  // Wraps subClient.subscribe()/psubscribe() just long enough to capture whatever calls
+  // createAdapter()'s constructor makes to them (it calls them synchronously and directly, with
+  // no hook of its own), then restores the originals before anything else can call them. Callers
+  // must invoke createAdapter()/server.adapter() synchronously, right after this returns.
+  private interceptSubscriptions(subClient: Redis): Array<Promise<unknown>> {
+    const originalSubscribe = subClient.subscribe.bind(subClient);
+    const originalPsubscribe = subClient.psubscribe.bind(subClient);
+    const results: Array<Promise<unknown>> = [];
+
+    // eslint-disable-next-line no-param-reassign -- deliberate, temporary interception; restored below
+    subClient.subscribe = ((...args: Parameters<typeof originalSubscribe>) => {
+      const result = originalSubscribe(...args);
+      results.push(Promise.resolve(result));
+      return result;
+    }) as typeof subClient.subscribe;
+    // eslint-disable-next-line no-param-reassign -- deliberate, temporary interception; restored below
+    subClient.psubscribe = ((...args: Parameters<typeof originalPsubscribe>) => {
+      const result = originalPsubscribe(...args);
+      results.push(Promise.resolve(result));
+      return result;
+    }) as typeof subClient.psubscribe;
+
+    queueMicrotask(() => {
+      // eslint-disable-next-line no-param-reassign -- restoring the originals captured above
+      subClient.subscribe = originalSubscribe;
+      // eslint-disable-next-line no-param-reassign -- restoring the originals captured above
+      subClient.psubscribe = originalPsubscribe;
+    });
+
+    return results;
+  }
+
   // getClient() can throw before RedisService finishes connecting (see class doc); retries on
   // both that throw and a `null` result, up to readyTimeoutMs.
   private async waitForRedisClient(redisService: RedisService): Promise<Redis | null> {
@@ -127,9 +162,9 @@ export class RedisIoAdapter extends IoAdapter {
     }
   }
 
-  // ioredis doesn't bound every operation by default (see the connect()/ping() call sites), so
-  // this gives any of them the same readyTimeoutMs bound the rest of this class already commits
-  // to, rather than risking an indefinite hang on a connected-but-unresponsive Redis.
+  // ioredis doesn't bound every operation by default (see the call sites above), so this gives
+  // any of them the same readyTimeoutMs bound the rest of this class already commits to, rather
+  // than risking an indefinite hang on a connected-but-unresponsive Redis.
   private async awaitWithTimeout<T>(operation: Promise<T>, operationName: string): Promise<T> {
     let timer: NodeJS.Timeout | undefined;
     try {
