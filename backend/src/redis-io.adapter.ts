@@ -52,17 +52,15 @@ export class RedisIoAdapter extends IoAdapter {
     // super.close() calls each namespace's adapter.close(), which sends (without awaiting) the
     // unsubscribe commands on the sub client - that must happen before we quit it ourselves, or
     // those unsubscribes hit an already-closed connection and reject with nobody handling them.
-    // Even in that order, a silent Redis leaves them pending until the force-disconnect below
-    // rejects them, so they're captured here and given a handler: they're best-effort at shutdown.
+    // Even in that order, they can still reject (a silent Redis leaves them pending until the
+    // force-disconnect below; a down one rejects them from ioredis's offline queue), so they're
+    // captured here - interceptCalls() marks each one handled: they're best-effort at shutdown.
     const unsubscribes = this.subClients.map((client) => this.interceptCalls(client, ['unsubscribe', 'punsubscribe']));
     try {
       await super.close(server);
     } finally {
-      unsubscribes.forEach(({ calls, restore }) => {
+      unsubscribes.forEach(({ restore }) => {
         restore();
-        calls.forEach((call) => {
-          call.catch(() => undefined);
-        });
       });
     }
     await Promise.all(
@@ -145,7 +143,12 @@ export class RedisIoAdapter extends IoAdapter {
       // eslint-disable-next-line no-param-reassign -- deliberate, temporary interception; undone by restore()
       client[method] = ((...args: unknown[]) => {
         const result = original.apply(client, args);
-        calls.push(Promise.resolve(result));
+        const call = Promise.resolve(result);
+        // Marked handled the moment it's captured: at shutdown these can reject (e.g. ioredis
+        // flushing its offline queue) while super.close() is still pending, before any caller
+        // could attach a handler. Callers awaiting `calls` still see the rejection.
+        call.catch(() => undefined);
+        calls.push(call);
         return result;
       }) as never;
       return { method, original };

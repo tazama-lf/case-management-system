@@ -280,6 +280,38 @@ describe('RedisIoAdapter', () => {
       expect(unhandled).not.toHaveBeenCalled();
     }, READY_TIMEOUT_MS + 2000);
 
+    // Regression coverage: against a Redis that's down (not just silent), ioredis rejects the
+    // queued unsubscribes from its offline queue on its own schedule - possibly while super.close()
+    // is still waiting on the HTTP server to close, i.e. before close() itself regains control.
+    it('does not leave unsubscribe rejections unhandled when they reject while super.close() is pending', async () => {
+      const adapter = await attachedAdapter();
+      mockSubClient.unsubscribe.mockRejectedValue(new Error('Reached the max retries per request limit'));
+      mockSubClient.punsubscribe.mockRejectedValue(new Error('Reached the max retries per request limit'));
+      closeSpy.mockImplementation(async () => {
+        mockSubClient.punsubscribe('channel*');
+        mockSubClient.unsubscribe(['request-channel', 'response-channel']);
+        // Stands in for server.close() waiting on the HTTP server: long enough for Node to check
+        // for unhandled rejections before close() gets past its await.
+        await new Promise((resolve) => {
+          setTimeout(resolve, 20);
+        });
+      });
+      const unhandled = jest.fn();
+      process.on('unhandledRejection', unhandled);
+
+      try {
+        await adapter.close(mockServer as never);
+        await new Promise((resolve) => {
+          setImmediate(resolve);
+        });
+      } finally {
+        process.off('unhandledRejection', unhandled);
+      }
+
+      expect(mockSubClient.quit).toHaveBeenCalled();
+      expect(unhandled).not.toHaveBeenCalled();
+    });
+
     it('unsubscribes before quitting and does not force-disconnect when Redis responds', async () => {
       const adapter = await attachedAdapter();
 
