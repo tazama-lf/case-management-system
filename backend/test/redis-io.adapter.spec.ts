@@ -33,6 +33,9 @@ describe('RedisIoAdapter', () => {
     disconnect: jest.Mock;
     subscribe: jest.Mock;
     psubscribe: jest.Mock;
+    unsubscribe: jest.Mock;
+    punsubscribe: jest.Mock;
+    quit: jest.Mock;
   };
   let mockRedisService: { getClient: jest.Mock };
   let mockApp: INestApplicationContext;
@@ -53,6 +56,9 @@ describe('RedisIoAdapter', () => {
       disconnect: jest.fn(),
       subscribe: jest.fn().mockResolvedValue(undefined),
       psubscribe: jest.fn().mockResolvedValue(undefined),
+      unsubscribe: jest.fn().mockResolvedValue(undefined),
+      punsubscribe: jest.fn().mockResolvedValue(undefined),
+      quit: jest.fn().mockResolvedValue('OK'),
     };
     mockPubClient = {
       duplicate: jest.fn().mockReturnValue(mockSubClient),
@@ -214,5 +220,85 @@ describe('RedisIoAdapter', () => {
     await adapter.waitUntilReady();
 
     expect(mockServer.adapter).not.toHaveBeenCalled();
+  });
+
+  describe('close()', () => {
+    let closeSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      // Mirrors what super.close() ends up doing via the real @socket.io/redis-adapter's close():
+      // sends the unsubscribe commands on the sub client without awaiting or handling them.
+      closeSpy = jest.spyOn(IoAdapter.prototype, 'close').mockImplementation(async () => {
+        mockSubClient.punsubscribe('channel*');
+        mockSubClient.unsubscribe(['request-channel', 'response-channel']);
+      });
+    });
+
+    afterEach(() => {
+      closeSpy.mockRestore();
+    });
+
+    const attachedAdapter = async (): Promise<RedisIoAdapter> => {
+      const adapter = newAdapter();
+      adapter.createIOServer(3090);
+      await adapter.waitUntilReady();
+      return adapter;
+    };
+
+    // Regression coverage: against a connected-but-silent Redis, the unsubscribes super.close()
+    // sends and quit() all stay pending until quit() times out and disconnect() rejects everything
+    // still queued - the unsubscribe rejections must not surface as unhandled rejections.
+    it('force-disconnects after quit() times out without leaving unsubscribe rejections unhandled', async () => {
+      const adapter = await attachedAdapter();
+      const rejectPending: Array<(error: Error) => void> = [];
+      const pendingUntilDisconnect = () =>
+        new Promise((_resolve, reject) => {
+          rejectPending.push(reject);
+        });
+      mockSubClient.unsubscribe.mockImplementation(pendingUntilDisconnect);
+      mockSubClient.punsubscribe.mockImplementation(pendingUntilDisconnect);
+      mockSubClient.quit.mockImplementation(pendingUntilDisconnect);
+      mockSubClient.disconnect.mockImplementation(() => {
+        rejectPending.forEach((reject) => reject(new Error('Connection is closed.')));
+      });
+      const unhandled = jest.fn();
+      process.on('unhandledRejection', unhandled);
+
+      try {
+        await adapter.close(mockServer as never);
+        // unhandledRejection fires only once the microtask queue has drained.
+        await new Promise((resolve) => {
+          setImmediate(resolve);
+        });
+      } finally {
+        process.off('unhandledRejection', unhandled);
+      }
+
+      expect(mockSubClient.unsubscribe).toHaveBeenCalled();
+      expect(mockSubClient.punsubscribe).toHaveBeenCalled();
+      expect(mockSubClient.disconnect).toHaveBeenCalled();
+      expect(unhandled).not.toHaveBeenCalled();
+    }, READY_TIMEOUT_MS + 2000);
+
+    it('unsubscribes before quitting and does not force-disconnect when Redis responds', async () => {
+      const adapter = await attachedAdapter();
+
+      await adapter.close(mockServer as never);
+
+      expect(mockSubClient.unsubscribe.mock.invocationCallOrder[0]).toBeLessThan(
+        mockSubClient.quit.mock.invocationCallOrder[0],
+      );
+      expect(mockSubClient.disconnect).not.toHaveBeenCalled();
+    });
+
+    it('restores the original unsubscribe methods once shutdown has sent them', async () => {
+      const adapter = await attachedAdapter();
+      const { unsubscribe, punsubscribe } = mockSubClient;
+
+      await adapter.close(mockServer as never);
+
+      expect(mockSubClient.unsubscribe).toBe(unsubscribe);
+      expect(mockSubClient.punsubscribe).toBe(punsubscribe);
+    });
   });
 });

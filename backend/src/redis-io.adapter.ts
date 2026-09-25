@@ -52,7 +52,19 @@ export class RedisIoAdapter extends IoAdapter {
     // super.close() calls each namespace's adapter.close(), which sends (without awaiting) the
     // unsubscribe commands on the sub client - that must happen before we quit it ourselves, or
     // those unsubscribes hit an already-closed connection and reject with nobody handling them.
-    await super.close(server);
+    // Even in that order, a silent Redis leaves them pending until the force-disconnect below
+    // rejects them, so they're captured here and given a handler: they're best-effort at shutdown.
+    const unsubscribes = this.subClients.map((client) => this.interceptCalls(client, ['unsubscribe', 'punsubscribe']));
+    try {
+      await super.close(server);
+    } finally {
+      unsubscribes.forEach(({ calls, restore }) => {
+        restore();
+        calls.forEach((call) => {
+          call.catch(() => undefined);
+        });
+      });
+    }
     await Promise.all(
       this.subClients.map(async (client) => {
         // quit() can stay pending if Redis keeps the socket open but stops replying, and
@@ -88,14 +100,18 @@ export class RedisIoAdapter extends IoAdapter {
       await this.awaitWithTimeout(subClient.connect(), 'Redis subscriber connection');
 
       // createAdapter()'s constructor calls subscribe()/psubscribe() on subClient synchronously
-      // but keeps their promises to itself, so interceptSubscriptions() captures them first -
-      // that's the only way to know a subscription actually succeeded (a connected client that
-      // happily replies to other commands, e.g. an ACL denying SUBSCRIBE specifically, would
-      // otherwise look identical to one that's genuinely subscribed).
-      const subscriptions = this.interceptSubscriptions(subClient);
-      server.adapter(createAdapter(pubClient, subClient));
+      // but keeps their promises to itself, so interceptCalls() captures them first - that's the
+      // only way to know a subscription actually succeeded (a connected client that happily
+      // replies to other commands, e.g. an ACL denying SUBSCRIBE specifically, would otherwise
+      // look identical to one that's genuinely subscribed).
+      const subscriptions = this.interceptCalls(subClient, ['subscribe', 'psubscribe']);
+      try {
+        server.adapter(createAdapter(pubClient, subClient));
+      } finally {
+        subscriptions.restore();
+      }
       installed = true;
-      await this.awaitWithTimeout(Promise.all(subscriptions), 'Redis subscriber subscription setup');
+      await this.awaitWithTimeout(Promise.all(subscriptions.calls), 'Redis subscriber subscription setup');
       this.subClients.push(subClient);
       RedisIoAdapter.logger.log('Socket.IO Redis adapter attached - broadcasts now span all backend instances');
     } catch (error) {
@@ -115,36 +131,34 @@ export class RedisIoAdapter extends IoAdapter {
     }
   }
 
-  // Wraps subClient.subscribe()/psubscribe() just long enough to capture whatever calls
-  // createAdapter()'s constructor makes to them (it calls them synchronously and directly, with
-  // no hook of its own), then restores the originals before anything else can call them. Callers
-  // must invoke createAdapter()/server.adapter() synchronously, right after this returns.
-  private interceptSubscriptions(subClient: Redis): Array<Promise<unknown>> {
-    const originalSubscribe = subClient.subscribe.bind(subClient);
-    const originalPsubscribe = subClient.psubscribe.bind(subClient);
-    const results: Array<Promise<unknown>> = [];
-
-    // eslint-disable-next-line no-param-reassign -- deliberate, temporary interception; restored below
-    subClient.subscribe = ((...args: Parameters<typeof originalSubscribe>) => {
-      const result = originalSubscribe(...args);
-      results.push(Promise.resolve(result));
-      return result;
-    }) as typeof subClient.subscribe;
-    // eslint-disable-next-line no-param-reassign -- deliberate, temporary interception; restored below
-    subClient.psubscribe = ((...args: Parameters<typeof originalPsubscribe>) => {
-      const result = originalPsubscribe(...args);
-      results.push(Promise.resolve(result));
-      return result;
-    }) as typeof subClient.psubscribe;
-
-    queueMicrotask(() => {
-      // eslint-disable-next-line no-param-reassign -- restoring the originals captured above
-      subClient.subscribe = originalSubscribe;
-      // eslint-disable-next-line no-param-reassign -- restoring the originals captured above
-      subClient.psubscribe = originalPsubscribe;
+  // Wraps the given (un)subscribe methods on a sub client to capture the promises of whatever
+  // calls @socket.io/redis-adapter makes to them - it calls them directly and keeps the promises
+  // to itself, with no hook of its own. Callers must call restore() once the adapter code that
+  // makes those calls has run, so nothing else ends up going through the wrappers.
+  private interceptCalls(
+    client: Redis,
+    methods: ReadonlyArray<'subscribe' | 'psubscribe' | 'unsubscribe' | 'punsubscribe'>,
+  ): { calls: Array<Promise<unknown>>; restore: () => void } {
+    const calls: Array<Promise<unknown>> = [];
+    const originals = methods.map((method) => {
+      const original = client[method] as (...args: unknown[]) => unknown;
+      // eslint-disable-next-line no-param-reassign -- deliberate, temporary interception; undone by restore()
+      client[method] = ((...args: unknown[]) => {
+        const result = original.apply(client, args);
+        calls.push(Promise.resolve(result));
+        return result;
+      }) as never;
+      return { method, original };
     });
 
-    return results;
+    const restore = (): void => {
+      originals.forEach(({ method, original }) => {
+        // eslint-disable-next-line no-param-reassign -- restoring the originals captured above
+        client[method] = original as never;
+      });
+    };
+
+    return { calls, restore };
   }
 
   // getClient() can throw before RedisService finishes connecting (see class doc); retries on
