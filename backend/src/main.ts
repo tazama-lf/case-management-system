@@ -14,7 +14,6 @@ import * as path from 'node:path';
 import type { Request, Response } from 'express';
 import type { IncomingMessage } from 'node:http';
 import type { Socket } from 'node:net';
-import { RedisService } from './modules/shared/redis.service';
 import { RedisIoAdapter } from './redis-io.adapter';
 
 async function bootstrap(): Promise<void> {
@@ -139,37 +138,19 @@ async function bootstrap(): Promise<void> {
   const doc = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, doc);
 
-  // Run Nest's own init (provider instantiation + onModuleInit hooks, including RedisService's
-  // connection attempt) before app.listen() so a WebSocket Redis adapter can be attached before
-  // the underlying Socket.IO server is created. Safe to call explicitly: app.listen() below
-  // detects init already ran and does not repeat it.
+  // Must be installed before app.init() - Nest binds gateways to whatever adapter is current
+  // during init and won't rebind them afterwards.
+  const redisIoAdapter = new RedisIoAdapter(app);
+  app.useWebSocketAdapter(redisIoAdapter);
+
+  // Wait for the Redis adapter before accepting connections below, so no client can join a room
+  // on the old adapter and have that membership dropped when the swap completes (see
+  // redis-io.adapter.ts).
   await app.init();
-
-  const redisService = app.get(RedisService);
-  const redisPubClient = redisService.getClient();
-  if (redisPubClient) {
-    try {
-      const redisSubClient = redisPubClient.duplicate();
-      redisSubClient.on('error', (error: Error) => {
-        logger.error(`WebSocket Redis (sub) client error: ${error.message}`);
-      });
-      await redisSubClient.connect();
-
-      const redisIoAdapter = new RedisIoAdapter(app, redisPubClient, redisSubClient);
-      redisIoAdapter.connectToRedis();
-      app.useWebSocketAdapter(redisIoAdapter);
-    } catch (error) {
-      logger.warn(
-        `Failed to set up the WebSocket Redis adapter - live case updates will only reach clients on this instance: ${
-          (error as Error).message
-        }`,
-      );
-    }
-  } else {
-    logger.warn('Redis is unavailable at startup - WebSocket broadcasts will only reach clients on this instance');
-  }
+  await redisIoAdapter.waitUntilReady();
 
   const port = configService.get<number>('PORT', 3090);
+  // init() already ran, so this just does the TCP bind.
   await app.listen(port);
 
   // Manually handle WebSocket upgrades AFTER server is listening

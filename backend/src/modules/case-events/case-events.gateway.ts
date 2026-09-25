@@ -147,7 +147,11 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
       client.data.userId = user.userId;
       // eslint-disable-next-line require-atomic-updates, no-param-reassign -- see comment above
       client.data.trackedViaRedis = viaRedis;
-      void client.join(`tenant:${user.tenantId}`);
+      // Awaited (rather than fire-and-forget) so 'ready' below is a trustworthy signal that the
+      // room join has actually completed - the client's own 'connect' event fires as soon as the
+      // transport handshake completes, independent of this handler, so it can't be used for that.
+      await client.join(`tenant:${user.tenantId}`);
+      client.emit('ready');
     } catch (error) {
       const err = error as Error;
       this.logger.warn(`WebSocket auth failed, disconnecting client: ${err.message}`);
