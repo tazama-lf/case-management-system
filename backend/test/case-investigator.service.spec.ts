@@ -6,7 +6,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
 import { CacheService } from '../src/modules/shared/cache.service';
 import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { CaseInvestigatorMembership, TaskStatus } from '@prisma/client-cms';
+import { CaseInvestigatorMembership, CaseStatus, TaskStatus } from '@prisma/client-cms';
 
 const TENANT = 'tenant-123';
 const CASE_ID = 1;
@@ -125,8 +125,37 @@ describe('CaseInvestigatorService', () => {
       });
     });
 
-    it('returns false for CMS_INVESTIGATOR with no live row', async () => {
+    it('returns false for CMS_INVESTIGATOR with no live row on a claimed case', async () => {
       prisma.caseInvestigator.findFirst.mockResolvedValue(null);
+      prisma.case.findFirst.mockResolvedValue(null);
+
+      const result = await service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR');
+
+      expect(result).toBe(false);
+      expect(prisma.case.findFirst).toHaveBeenCalledWith({
+        where: {
+          case_id: CASE_ID,
+          tenant_id: TENANT,
+          status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] },
+        },
+        select: { case_id: true },
+      });
+    });
+
+    it('returns true for CMS_INVESTIGATOR with no live row on an open-for-claim case', async () => {
+      prisma.caseInvestigator.findFirst.mockResolvedValue(null);
+      prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+
+      const result = await service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false for a blacklisted CMS_INVESTIGATOR even on an open-for-claim case', async () => {
+      prisma.caseInvestigator.findFirst.mockResolvedValue(null);
+      prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 9 });
 
       const result = await service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR');
 
