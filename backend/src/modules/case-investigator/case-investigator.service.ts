@@ -1,13 +1,16 @@
 import { Inject, Injectable, NotFoundException, ForbiddenException, BadRequestException, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CaseInvestigator, CaseInvestigatorBlacklist, CaseInvestigatorMembership, TaskStatus } from '@prisma/client-cms';
+import { CaseInvestigator, CaseInvestigatorBlacklist, CaseInvestigatorMembership, CaseStatus, TaskStatus } from '@prisma/client-cms';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { CacheService } from '../shared/cache.service';
 import { Outcome } from '../../utils/types/outcome';
 
 const INVESTIGATOR_ROLE = 'CMS_INVESTIGATOR';
+
+// Unclaimed cases every investigator can see and claim (same set ReportsService treats as visible to all).
+const OPEN_FOR_CLAIM_STATUSES: CaseStatus[] = [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT];
 
 /** A whitelist row plus its user's role (null = unknown). */
 export type CaseInvestigatorWithRole = CaseInvestigator & { user_role: string | null };
@@ -97,8 +100,10 @@ export class CaseInvestigatorService {
 
   /**
    * true immediately for CMS_SUPERVISOR/CMS_COMPLIANCE_OFFICER (pure
-   * bypass); for CMS_INVESTIGATOR, true iff a live
-   * whitelist row exists.
+   * bypass); for CMS_INVESTIGATOR, true iff a live whitelist row exists,
+   * or the case is still open for claiming (DRAFT / READY_FOR_ASSIGNMENT —
+   * nobody has been assigned yet, so no whitelist row can exist) and the
+   * user isn't blacklisted on it.
    */
   async hasAccess(caseId: number, userId: string, tenantId: string, role: string): Promise<boolean> {
     if (role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
@@ -115,7 +120,20 @@ export class CaseInvestigatorService {
       select: { id: true },
     });
 
-    return liveRow !== null;
+    if (liveRow !== null) {
+      return true;
+    }
+
+    const openCase = await this.prismaService.case.findFirst({
+      where: { case_id: caseId, tenant_id: tenantId, status: { in: OPEN_FOR_CLAIM_STATUSES } },
+      select: { case_id: true },
+    });
+
+    if (!openCase) {
+      return false;
+    }
+
+    return (await this.isBlacklisted(caseId, userId, tenantId)) === null;
   }
 
   /**
