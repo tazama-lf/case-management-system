@@ -3,6 +3,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { Alert, CaseType, Priority, Prisma, TransactionData } from '@prisma/client-cms';
 import { CreateAlertDTO, UpdateAlertDTO } from '../alert/dto';
 import { extractReferenceId } from './utils/extractReferenceId';
+import { extractTransactionIdentifiers } from './utils/extractTransactionIdentifiers';
 import { TransactionDTO } from 'src/dtos/Transaction.dto';
 import { JsonValue } from './utils/types/JsonValue';
 import { BaseRepository } from './base.repository';
@@ -18,6 +19,9 @@ export class AlertRepository extends BaseRepository {
     const AlertData = JSON.parse(JSON.stringify(alertData.report));
     const transaction = JSON.parse(JSON.stringify(alertData.transaction));
     const networkMap = JSON.parse(JSON.stringify(alertData.networkMap));
+    const { msgId, orgnlEndToEndId, orgnlInstrId, dbtrAcctId, cdtrAcctId } = extractTransactionIdentifiers(
+      transaction as JsonValue,
+    );
     const createdAlert = await client.alert.create({
       data: {
         tenant_id: alertData.tenantId,
@@ -29,6 +33,11 @@ export class AlertRepository extends BaseRepository {
         alert_data: AlertData,
         transaction,
         network_map: networkMap,
+        msg_id: msgId,
+        orgnl_end_to_end_id: orgnlEndToEndId,
+        orgnl_instr_id: orgnlInstrId,
+        dbtr_acct_id: dbtrAcctId,
+        cdtr_acct_id: cdtrAcctId,
         case_id: alertData.caseId ? alertData.caseId : null,
       },
     });

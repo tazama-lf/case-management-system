@@ -432,18 +432,11 @@ describe('AlertStatisticsService', () => {
           expect.objectContaining({
             where: expect.objectContaining({
               OR: expect.arrayContaining([
-                {
-                  transaction: {
-                    path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
-                    equals: 'TX-ABC-123',
-                  },
-                },
-                {
-                  transaction: {
-                    path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
-                    equals: 'TX-ABC-123',
-                  },
-                },
+                { msg_id: { contains: 'TX-ABC-123', mode: 'insensitive' } },
+                { orgnl_end_to_end_id: { contains: 'TX-ABC-123', mode: 'insensitive' } },
+                { orgnl_instr_id: { contains: 'TX-ABC-123', mode: 'insensitive' } },
+                { dbtr_acct_id: { contains: 'TX-ABC-123', mode: 'insensitive' } },
+                { cdtr_acct_id: { contains: 'TX-ABC-123', mode: 'insensitive' } },
               ]),
             }),
           }),
@@ -634,23 +627,16 @@ describe('AlertStatisticsService', () => {
         });
 
         const callArgs = alertRepository.findMany.mock.calls[0][0];
-        expect(callArgs.where?.OR).toHaveLength(5);
+        expect(callArgs.where?.OR).toHaveLength(8);
         expect(callArgs.where?.OR).toEqual(
           expect.arrayContaining([
             { txtp: { contains: '100', mode: 'insensitive' } },
             { source: { contains: '100', mode: 'insensitive' } },
-            {
-              transaction: {
-                path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
-                equals: '100',
-              },
-            },
-            {
-              transaction: {
-                path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
-                equals: '100',
-              },
-            },
+            { msg_id: { contains: '100', mode: 'insensitive' } },
+            { orgnl_end_to_end_id: { contains: '100', mode: 'insensitive' } },
+            { orgnl_instr_id: { contains: '100', mode: 'insensitive' } },
+            { dbtr_acct_id: { contains: '100', mode: 'insensitive' } },
+            { cdtr_acct_id: { contains: '100', mode: 'insensitive' } },
             { alert_id: { equals: 100 } },
           ]),
         );

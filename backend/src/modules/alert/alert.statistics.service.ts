@@ -243,18 +243,11 @@ export class AlertStatisticsService {
   }
 
   private addTransactionIdSearchConditions(searchConditions: Prisma.AlertWhereInput[], searchString: string): void {
-    searchConditions.push({
-      transaction: {
-        path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
-        equals: searchString,
-      },
-    });
-    searchConditions.push({
-      transaction: {
-        path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
-        equals: searchString,
-      },
-    });
+    searchConditions.push({ msg_id: { contains: searchString, mode: 'insensitive' } });
+    searchConditions.push({ orgnl_end_to_end_id: { contains: searchString, mode: 'insensitive' } });
+    searchConditions.push({ orgnl_instr_id: { contains: searchString, mode: 'insensitive' } });
+    searchConditions.push({ dbtr_acct_id: { contains: searchString, mode: 'insensitive' } });
+    searchConditions.push({ cdtr_acct_id: { contains: searchString, mode: 'insensitive' } });
   }
 
   private getNumericSearch(searchString: string): number | undefined {

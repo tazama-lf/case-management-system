@@ -371,7 +371,7 @@ describe('TriageService', () => {
       alertRepository.transaction.mockImplementation(async (callback) => {
         alertRepository.getAlertById.mockResolvedValue(mockAlert as any);
         caseRepository.findCaseById.mockResolvedValue(mockCase as any);
-        alertService.updateAlert.mockResolvedValue(alertWithoutCaseId);
+        alertService.updateAlert.mockResolvedValue(alertWithoutCaseId as any);
         return callback({} as any);
       });
 
