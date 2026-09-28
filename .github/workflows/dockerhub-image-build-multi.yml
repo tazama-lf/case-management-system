@@ -56,7 +56,7 @@ jobs:
             target: ""
 
     permissions:
-      packages: write
+      packages: read  # npm install of @tazama-lf packages from GitHub Packages (images are pushed to Docker Hub, not GHCR)
       contents: read
       attestations: write
       id-token: write
@@ -118,7 +118,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           secrets: |
-            GH_TOKEN=${{ secrets.GH_TOKEN }}
+            GH_TOKEN=${{ github.token }}
 
       - name: Generate artifact attestation
         if: success()
