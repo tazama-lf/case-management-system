@@ -155,6 +155,7 @@ describe('CaseEventsGateway', () => {
             expect(socket.join).toHaveBeenCalledWith('tenant:tenant-a');
             expect(socket.data.userId).toBe('user-1');
             expect(socket.data.trackedViaRedis).toBe(true);
+            expect(socket.emit).toHaveBeenCalledWith('ready');
         });
 
         it('should emit auth_failed and disconnect when no token is provided', async () => {
@@ -207,6 +208,7 @@ describe('CaseEventsGateway', () => {
 
             expect(socket.data.trackedViaRedis).toBe(false);
             expect(socket.join).toHaveBeenCalledWith('tenant:tenant-a');
+            expect(socket.emit).toHaveBeenCalledWith('ready');
         });
 
         it('should reject via local limit when Redis is null and local set is full', async () => {
@@ -245,6 +247,7 @@ describe('CaseEventsGateway', () => {
             expect(socket.emit).not.toHaveBeenCalledWith('auth_failed');
             expect(socket.join).toHaveBeenCalledWith('tenant:tenant-a');
             expect(socket.data.trackedViaRedis).toBe(false);
+            expect(socket.emit).toHaveBeenCalledWith('ready');
         });
     });
 
