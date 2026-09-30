@@ -48,8 +48,16 @@ export function useCaseUpdatesSocket(onChange: () => void): void {
     const socket: Socket = io(API_BASE_URL, {
       auth: { token },
     });
+    let isReady = false;
+    socket.on('ready', () => {
+      isReady = true;
+    });
+    socket.on('disconnect', () => {
+      isReady = false;
+    });
 
     socket.on('case:changed', (_payload: CaseChangedPayload) => {
+      if (!isReady) return;
       debouncedOnChange();
     });
 
