@@ -432,9 +432,9 @@ describe('AlertStatisticsService', () => {
           expect.objectContaining({
             where: expect.objectContaining({
               OR: expect.arrayContaining([
-                { msg_id: { contains: 'TX-ABC-123', mode: 'insensitive' } },
-                { orgnl_end_to_end_id: { contains: 'TX-ABC-123', mode: 'insensitive' } },
-                { orgnl_instr_id: { contains: 'TX-ABC-123', mode: 'insensitive' } },
+                { msg_id: { equals: 'TX-ABC-123' } },
+                { orgnl_end_to_end_id: { equals: 'TX-ABC-123' } },
+                { orgnl_instr_id: { equals: 'TX-ABC-123' } },
                 { dbtr_acct_id: { equals: 'TX-ABC-123' } },
                 { cdtr_acct_id: { equals: 'TX-ABC-123' } },
               ]),
@@ -632,9 +632,9 @@ describe('AlertStatisticsService', () => {
           expect.arrayContaining([
             { txtp: { contains: '100', mode: 'insensitive' } },
             { source: { contains: '100', mode: 'insensitive' } },
-            { msg_id: { contains: '100', mode: 'insensitive' } },
-            { orgnl_end_to_end_id: { contains: '100', mode: 'insensitive' } },
-            { orgnl_instr_id: { contains: '100', mode: 'insensitive' } },
+            { msg_id: { equals: '100' } },
+            { orgnl_end_to_end_id: { equals: '100' } },
+            { orgnl_instr_id: { equals: '100' } },
             { dbtr_acct_id: { equals: '100' } },
             { cdtr_acct_id: { equals: '100' } },
             { alert_id: { equals: 100 } },
