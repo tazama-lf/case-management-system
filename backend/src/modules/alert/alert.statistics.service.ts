@@ -246,8 +246,8 @@ export class AlertStatisticsService {
     searchConditions.push({ msg_id: { contains: searchString, mode: 'insensitive' } });
     searchConditions.push({ orgnl_end_to_end_id: { contains: searchString, mode: 'insensitive' } });
     searchConditions.push({ orgnl_instr_id: { contains: searchString, mode: 'insensitive' } });
-    searchConditions.push({ dbtr_acct_id: { contains: searchString, mode: 'insensitive' } });
-    searchConditions.push({ cdtr_acct_id: { contains: searchString, mode: 'insensitive' } });
+    searchConditions.push({ dbtr_acct_id: { equals: searchString } });
+    searchConditions.push({ cdtr_acct_id: { equals: searchString } });
   }
 
   private getNumericSearch(searchString: string): number | undefined {

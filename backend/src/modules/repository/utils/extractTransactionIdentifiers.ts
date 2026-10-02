@@ -9,10 +9,12 @@ export interface TransactionIdentifiers {
 }
 
 /**
- * Recursively searches the ISO20022 transaction payload for the first string value
- * keyed by any of `keys`. Field names like MsgId/OrgnlEndToEndId/OrgnlInstrId/EndToEndId/
- * InstrId are unique enough within the message shapes we ingest (pacs.002, pacs.008,
- * pain.001, pain.013) that an unscoped search is safe.
+ * Recursively searches the transaction payload for the first string value keyed by
+ * any of `keys`. MsgId/OrgnlEndToEndId/OrgnlInstrId live under FIToFIPmtSts.GrpHdr /
+ * TxInfAndSts, and dbtrAcctId/cdtrAcctId live flat on the rule/typology engine's
+ * DataCache enrichment object (see @tazama-lf/frms-coe-lib's DataCache interface) -
+ * these field names are unique enough in the payload that an unscoped recursive
+ * search is safe and doesn't need the exact container path hardcoded.
  */
 function findFirstKey(obj: JsonValue, keys: string[], maxDepth = 15, currentDepth = 0): string | null {
   if (!obj || typeof obj !== 'object' || currentDepth >= maxDepth) {
@@ -46,47 +48,12 @@ function findFirstKey(obj: JsonValue, keys: string[], maxDepth = 15, currentDept
   return null;
 }
 
-/**
- * Account identifiers (Dbtr/CdtrAcct.Id.Othr[].Id) share the bare key "Id" with unrelated
- * party-identity fields (e.g. Cdtr.Id.PrvtId.Othr[].Id), so we first locate the named
- * account container (DbtrAcct/CdtrAcct) and only then search within it for "Id".
- */
-function findAcctId(obj: JsonValue, containerKey: string, maxDepth = 15, currentDepth = 0): string | null {
-  if (!obj || typeof obj !== 'object' || currentDepth >= maxDepth) {
-    return null;
-  }
-
-  if (Array.isArray(obj)) {
-    for (const item of obj) {
-      const result = findAcctId(item, containerKey, maxDepth, currentDepth + 1);
-      if (result) return result;
-    }
-    return null;
-  }
-
-  const record = obj as Record<string, JsonValue>;
-  const container = record[containerKey];
-  if (container && typeof container === 'object') {
-    const id = findFirstKey(container, ['Id']);
-    if (id) return id;
-  }
-
-  for (const value of Object.values(record)) {
-    if (value && typeof value === 'object') {
-      const result = findAcctId(value, containerKey, maxDepth, currentDepth + 1);
-      if (result) return result;
-    }
-  }
-
-  return null;
-}
-
 export function extractTransactionIdentifiers(transaction: JsonValue): TransactionIdentifiers {
   return {
     msgId: findFirstKey(transaction, ['MsgId']),
     orgnlEndToEndId: findFirstKey(transaction, ['OrgnlEndToEndId', 'EndToEndId']),
     orgnlInstrId: findFirstKey(transaction, ['OrgnlInstrId', 'InstrId']),
-    dbtrAcctId: findAcctId(transaction, 'DbtrAcct'),
-    cdtrAcctId: findAcctId(transaction, 'CdtrAcct'),
+    dbtrAcctId: findFirstKey(transaction, ['dbtrAcctId']),
+    cdtrAcctId: findFirstKey(transaction, ['cdtrAcctId']),
   };
 }

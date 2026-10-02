@@ -11,16 +11,20 @@
     - pacs.002.001.12 (payment status report): FIToFIPmtSts.GrpHdr.MsgId,
       FIToFIPmtSts.TxInfAndSts.{OrgnlEndToEndId,OrgnlInstrId}
     - pacs.008.001.10 (credit transfer): FIToFICstmrCdtTrf.GrpHdr.MsgId,
-      FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.{EndToEndId,InstrId},
-      FIToFICstmrCdtTrf.CdtTrfTxInf.{DbtrAcct,CdtrAcct}.Id.Othr[0].Id
+      FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.{EndToEndId,InstrId}
     - pain.001.001.11 (customer credit transfer initiation):
-      CstmrCdtTrfInitn.GrpHdr.MsgId, CstmrCdtTrfInitn.PmtInf.DbtrAcct.Id.Othr[0].Id,
-      CstmrCdtTrfInitn.PmtInf.CdtTrfTxInf.PmtId.EndToEndId,
-      CstmrCdtTrfInitn.PmtInf.CdtTrfTxInf.CdtrAcct.Id.Othr[0].Id
+      CstmrCdtTrfInitn.GrpHdr.MsgId,
+      CstmrCdtTrfInitn.PmtInf.CdtTrfTxInf.PmtId.EndToEndId
     - pain.013.001.09 (creditor payment activation request):
-      CdtrPmtActvtnReq.GrpHdr.MsgId, CdtrPmtActvtnReq.PmtInf.DbtrAcct.Id.Othr[0].Id,
-      CdtrPmtActvtnReq.PmtInf.CdtTrfTxInf.PmtId.EndToEndId,
-      CdtrPmtActvtnReq.PmtInf.CdtTrfTxInf.CdtrAcct.Id.Othr[0].Id
+      CdtrPmtActvtnReq.GrpHdr.MsgId,
+      CdtrPmtActvtnReq.PmtInf.CdtTrfTxInf.PmtId.EndToEndId
+
+  Debtor/creditor account ids come from the rule/typology engine's DataCache
+  enrichment object (see @tazama-lf/frms-coe-lib's DataCache interface):
+    DataCache.dbtrAcctId, DataCache.cdtrAcctId
+  These are flat strings populated for every message type, including pacs.002
+  (which carries no Dbtr/Cdtr party data of its own), and match what
+  extractTransactionIdentifiers reads at ingest time.
 
   pacs.008/pain.001/pain.013 don't carry an "Orgnl"-prefixed end-to-end/
   instruction id (that prefix only exists on the pacs.002 status report that
@@ -54,16 +58,8 @@ UPDATE "alerts" SET
     transaction #>> '{FIToFIPmtSts,TxInfAndSts,OrgnlInstrId}',
     transaction #>> '{FIToFICstmrCdtTrf,CdtTrfTxInf,PmtId,InstrId}'
   ),
-  "dbtr_acct_id" = COALESCE(
-    transaction #>> '{FIToFICstmrCdtTrf,CdtTrfTxInf,DbtrAcct,Id,Othr,0,Id}',
-    transaction #>> '{CstmrCdtTrfInitn,PmtInf,DbtrAcct,Id,Othr,0,Id}',
-    transaction #>> '{CdtrPmtActvtnReq,PmtInf,DbtrAcct,Id,Othr,0,Id}'
-  ),
-  "cdtr_acct_id" = COALESCE(
-    transaction #>> '{FIToFICstmrCdtTrf,CdtTrfTxInf,CdtrAcct,Id,Othr,0,Id}',
-    transaction #>> '{CstmrCdtTrfInitn,PmtInf,CdtTrfTxInf,CdtrAcct,Id,Othr,0,Id}',
-    transaction #>> '{CdtrPmtActvtnReq,PmtInf,CdtTrfTxInf,CdtrAcct,Id,Othr,0,Id}'
-  )
+  "dbtr_acct_id" = transaction #>> '{DataCache,dbtrAcctId}',
+  "cdtr_acct_id" = transaction #>> '{DataCache,cdtrAcctId}'
 WHERE transaction IS NOT NULL;
 
 -- CreateIndex
