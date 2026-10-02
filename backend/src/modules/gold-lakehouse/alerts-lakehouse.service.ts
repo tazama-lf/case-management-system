@@ -88,7 +88,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             anh.transaction_amount,
             anh.transaction_currency,
             anh.transaction_id,
-            anh.block_or_override_status,
+            anh.efrup_subruleref,
             anh.alert_date,
             COLLECT_LIST(
                 NAMED_STRUCT(
@@ -140,7 +140,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
             anh.transaction_amount,
             anh.transaction_currency,
             anh.transaction_id,
-            anh.block_or_override_status,
+            anh.efrup_subruleref,
             anh.alert_date
       `;
 
@@ -162,7 +162,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         currency: String(data.transaction_currency ?? ''),
         status: String(data.alert_status ?? ''),
         reason: String(data.alert_reason ?? ''),
-        efrupSubRuleRef: String(data.block_or_override_status ?? ''),
+        efrupSubRuleRef: String(data.efrup_subruleref ?? ''),
         evaluationId: String(data.evaluation_id ?? ''),
       };
 
