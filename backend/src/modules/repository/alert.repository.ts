@@ -19,9 +19,7 @@ export class AlertRepository extends BaseRepository {
     const AlertData = JSON.parse(JSON.stringify(alertData.report));
     const transaction = JSON.parse(JSON.stringify(alertData.transaction));
     const networkMap = JSON.parse(JSON.stringify(alertData.networkMap));
-    const { msgId, orgnlEndToEndId, orgnlInstrId, dbtrAcctId, cdtrAcctId } = extractTransactionIdentifiers(
-      transaction as JsonValue,
-    );
+    const { msgId, orgnlEndToEndId, orgnlInstrId, dbtrAcctId, cdtrAcctId } = extractTransactionIdentifiers(transaction as JsonValue);
     const createdAlert = await client.alert.create({
       data: {
         tenant_id: alertData.tenantId,
