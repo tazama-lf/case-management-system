@@ -13,6 +13,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Request, Response } from 'express';
 import type { IncomingMessage } from 'node:http';
+import { ACCESS_TOKEN_COOKIE } from './utils/auth-cookie';
 import type { Socket } from 'node:net';
 import { RedisIoAdapter } from './redis-io.adapter';
 
@@ -42,19 +43,15 @@ async function bootstrap(): Promise<void> {
       const cookiePairs = cookieHeader.split(';').map((c) => c.trim());
       for (const pair of cookiePairs) {
         const [key] = pair.split('=');
-        if (key.startsWith('access_token_')) {
+        if (key === ACCESS_TOKEN_COOKIE) {
           const value = pair.substring(key.length + 1);
           return decodeURIComponent(value);
         }
       }
       return null;
     }
-    for (const [cookieName, cookieValue] of Object.entries(cookies)) {
-      if (cookieName.startsWith('access_token_')) {
-        return cookieValue as string;
-      }
-    }
-    return null;
+    const token = cookies[ACCESS_TOKEN_COOKIE];
+    return typeof token === 'string' && token.length > 0 ? token : null;
   };
 
   /**

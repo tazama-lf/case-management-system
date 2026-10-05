@@ -110,7 +110,7 @@ class AuthService {
   logout(): void {
     const token = this.getToken();
 
-    // Call backend to clear the access_token_${userId} cookie
+    // Call backend to clear the access_token cookie
     if (token) {
       fetch(`${API_BASE_URL}/v1/auth/logout`, {
         method: 'POST',
