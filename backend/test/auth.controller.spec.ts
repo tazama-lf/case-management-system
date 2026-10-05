@@ -64,6 +64,27 @@ describe('AuthController session cookie', () => {
       expect(cacheService.deleteUserToken).toHaveBeenCalledWith('user-1');
     });
 
+    it('clears the cookie when it was issued to the user logging out', async () => {
+      await controller.logout(requestWith({ access_token: token }), res as unknown as Response, user);
+
+      expect(res.clearCookie).toHaveBeenCalledWith('access_token', COOKIE_OPTIONS);
+    });
+
+    it('leaves the cookie alone when a newer login by a different user already replaced it', async () => {
+      const newerUsersToken = jwt.sign({ clientId: 'user-2', tenantId: 'PAYSYSLABS' }, 'test-secret');
+
+      await controller.logout(requestWith({ access_token: newerUsersToken }), res as unknown as Response, user);
+
+      expect(res.clearCookie).not.toHaveBeenCalledWith('access_token', expect.anything());
+      expect(cacheService.deleteUserToken).toHaveBeenCalledWith('user-1');
+    });
+
+    it('still clears an undecodable cookie', async () => {
+      await controller.logout(requestWith({ access_token: 'not-a-jwt' }), res as unknown as Response, user);
+
+      expect(res.clearCookie).toHaveBeenCalledWith('access_token', COOKIE_OPTIONS);
+    });
+
     it('also clears any legacy per-user cookies still in the browser', async () => {
       await controller.logout(requestWith({ access_token_old: 'a', access_token: 'c' }), res as unknown as Response, user);
 

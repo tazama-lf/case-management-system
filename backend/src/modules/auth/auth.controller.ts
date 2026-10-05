@@ -117,14 +117,31 @@ export class AuthController {
   ): Promise<{ message: string }> {
     const userId = user.userId || 'unknown';
 
-    // Clear the HttpOnly cookie
-    res.clearCookie(ACCESS_TOKEN_COOKIE, this.cookieOptions);
+    // Clear the HttpOnly cookie, unless a newer login by a different user has already replaced it
+    // (a delayed logout must not end that user's session).
+    if (this.cookieBelongsToAnotherUser(req, userId)) {
+      this.logger.log(`Logout for ${userId}: access_token cookie belongs to a newer session, leaving it in place`);
+    } else {
+      res.clearCookie(ACCESS_TOKEN_COOKIE, this.cookieOptions);
+    }
     this.clearLegacyCookies(req, res);
 
     // Clear the cached JWT token from Redis
     await this.cacheService.deleteUserToken(userId);
 
     return { message: 'Logout successful' };
+  }
+
+  /** True when the current access_token cookie was issued to a user other than `userId`. */
+  private cookieBelongsToAnotherUser(req: Request, userId: string): boolean {
+    const cookies = req.cookies as Record<string, unknown> | undefined;
+    const token = cookies?.[ACCESS_TOKEN_COOKIE];
+    if (typeof token !== 'string') {
+      return false;
+    }
+    const decoded = jwt.decode(token) as { clientId?: string; sub?: string } | null;
+    const cookieUserId = decoded?.clientId ?? decoded?.sub;
+    return cookieUserId !== undefined && cookieUserId !== userId;
   }
 
   /** Clears cookies left behind by the old per-user naming scheme (`access_token_<userId>`). */
