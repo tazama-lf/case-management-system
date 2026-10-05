@@ -1,7 +1,7 @@
-import { Body, Controller, Get, HttpCode, Post, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { CookieOptions, Response } from 'express';
+import { CookieOptions, Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { RequireAuthenticated } from '../../decorators/auth.decorator';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
@@ -13,6 +13,7 @@ import { AuthMeResponseDto } from 'src/modules/auth/dto/AuthMeResponse.dto';
 import { LoginRequestDto } from 'src/modules/auth/dto/LoginRequest.dto';
 import { LoginResponseDto } from 'src/modules/auth/dto/LoginResponse.dto';
 import { CacheService } from '../shared/cache.service';
+import { ACCESS_TOKEN_COOKIE, LEGACY_ACCESS_TOKEN_COOKIE_PREFIX } from '../../utils/auth-cookie';
 
 @ApiTags('Auth')
 @ApiBearerAuth('jwt')
@@ -45,7 +46,7 @@ export class AuthController {
   @ApiBody({ type: LoginRequestDto })
   @ApiOkResponse({ description: 'Login successful. JWT token returned.', type: LoginResponseDto })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials supplied.' })
-  async login(@Body() body: LoginRequestDto, @Res({ passthrough: true }) res: Response): Promise<LoginResponseDto> {
+  async login(@Body() body: LoginRequestDto, @Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<LoginResponseDto> {
     try {
       const result = await this.authService.login(body.username, body.password);
 
@@ -56,9 +57,11 @@ export class AuthController {
 
       this.logger.log(`User logged in: ${userId}`);
 
-      // Set JWT as HttpOnly cookie for iframe authentication (Voila proxy)
-      // This allows iframes to send the token automatically via cookies
-      res.cookie(`access_token_${userId}`, result.token, {
+      // Set JWT as HttpOnly cookie for iframe authentication (Voila proxy).
+      // One fixed cookie name, so a new login always replaces the previous user's session
+      // instead of leaving a second cookie behind for the proxy to pick up by accident.
+      this.clearLegacyCookies(req, res);
+      res.cookie(ACCESS_TOKEN_COOKIE, result.token, {
         ...this.cookieOptions,
         maxAge: result.expiresIn ? result.expiresIn * 1000 : 24 * 60 * 60 * 1000, // Convert to ms
       });
@@ -107,15 +110,33 @@ export class AuthController {
   @ApiOperation({ summary: 'Logout user', description: 'Clears the access_token cookie and cached JWT token.' })
   @ApiOkResponse({ description: 'Logout successful.' })
   @ApiBearerAuth('jwt')
-  async logout(@Res({ passthrough: true }) res: Response, @User() user: AuthenticatedUser): Promise<{ message: string }> {
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @User() user: AuthenticatedUser,
+  ): Promise<{ message: string }> {
     const userId = user.userId || 'unknown';
 
     // Clear the HttpOnly cookie
-    res.clearCookie(`access_token_${userId}`, this.cookieOptions);
+    res.clearCookie(ACCESS_TOKEN_COOKIE, this.cookieOptions);
+    this.clearLegacyCookies(req, res);
 
     // Clear the cached JWT token from Redis
     await this.cacheService.deleteUserToken(userId);
 
     return { message: 'Logout successful' };
+  }
+
+  /** Clears cookies left behind by the old per-user naming scheme (`access_token_<userId>`). */
+  private clearLegacyCookies(req: Request, res: Response): void {
+    const cookies = req.cookies as Record<string, unknown> | undefined;
+    if (!cookies) {
+      return;
+    }
+    for (const cookieName of Object.keys(cookies)) {
+      if (cookieName.startsWith(LEGACY_ACCESS_TOKEN_COOKIE_PREFIX)) {
+        res.clearCookie(cookieName, this.cookieOptions);
+      }
+    }
   }
 }

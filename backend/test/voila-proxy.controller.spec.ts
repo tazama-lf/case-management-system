@@ -66,7 +66,7 @@ describe('VoilaProxyController', () => {
     return {
       method: 'GET',
       url: '/voila-proxy/voila/render/transaction-network.ipynb',
-      cookies: { access_token_abc123: 'valid-jwt-token' },
+      cookies: { access_token: 'valid-jwt-token' },
       ...overrides,
     } as unknown as Request;
   }
@@ -147,6 +147,35 @@ describe('VoilaProxyController', () => {
 
       expect(res.status).toHaveBeenCalledWith(401);
       expect(voilaProxyService.proxyRequest).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('session cookie selection', () => {
+    beforeEach(() => {
+      (mockedJwt.verify as jest.Mock).mockReturnValue({ sub: 'user-123' });
+    });
+
+    it.each([
+      ['legacy cookies listed first', { access_token_stale: 'stale-token', access_token: 'current-token' }],
+      ['legacy cookies listed last', { access_token: 'current-token', access_token_stale: 'stale-token' }],
+    ])('uses the access_token cookie and ignores per-user access_token_* cookies (%s)', async (_label, cookies) => {
+      const req = buildAuthenticatedRequest({ method: 'HEAD', cookies });
+      const res = createMockResponse();
+
+      await controller.proxyToVoila(req, res);
+
+      expect(mockedJwt.verify).toHaveBeenCalledWith('current-token', expect.anything(), expect.anything());
+      expect(mockedJwt.verify).not.toHaveBeenCalledWith('stale-token', expect.anything(), expect.anything());
+    });
+
+    it('rejects with 401 when only legacy access_token_* cookies are present', async () => {
+      const req = buildAuthenticatedRequest({ method: 'HEAD', cookies: { access_token_stale: 'stale-token' } });
+      const res = createMockResponse();
+
+      await controller.proxyToVoila(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(mockedJwt.verify).not.toHaveBeenCalled();
     });
   });
 
