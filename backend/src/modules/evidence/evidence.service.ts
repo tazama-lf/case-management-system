@@ -285,52 +285,6 @@ export class EvidenceService {
     return metadata;
   }
 
-  async deleteEvidence(
-    evidenceId: string,
-    fileName: string,
-    userId: string,
-    tenantId: string,
-    user: AuthenticatedUser,
-    endpointKey: EndpointKey,
-  ): Promise<EvidenceResponseDto> {
-    if (evidenceId.trim() === '' || fileName.trim() === '') {
-      this.logger.log(`Evidence Id  ${evidenceId} or fileName  ${fileName} is not found`);
-      this.logger.error(`Evidence Id or fileName is not found: ${evidenceId} , ${fileName}`);
-      throw new BadRequestException(`Evidence Id is not found: ${evidenceId}, or fileName is empty: ${fileName}`);
-    }
-    this.logger.log(`Deleting evidence ${evidenceId}`);
-
-    const doc = await this.couchdb.getDocument(evidenceId);
-    this.logger.log(`Fetched document for evidence ${evidenceId}: ${JSON.stringify(doc)}`);
-
-    if (!doc) {
-      this.logger.error(`Evidence ${evidenceId} not found`);
-      throw new NotFoundException(`Evidence ${evidenceId} not found`);
-    }
-
-    const caseRecord = await this.prisma.case.findUnique({ where: { case_id: doc.caseId } });
-    if (caseRecord?.tenant_id !== tenantId || doc.tenantId !== tenantId) {
-      throw new ForbiddenException('Cannot verify case status: associated case not found');
-    }
-    const rbacRoleDelete = this.rbacService.getRoleFromUser(user);
-    const t2Delete = this.rbacService.checkTier2({ role: rbacRoleDelete, endpointKey, currentStatus: caseRecord.status });
-    if (!t2Delete.allowed) throw new ForbiddenException(t2Delete.reason);
-
-    try {
-      this.logger.log(`Deleting attachment ${fileName} from evidence ${doc._id} and revision ${doc._rev}`);
-      const deleteResult = await this.couchdb.deleteEvidence(doc._id, decodeURIComponent(fileName), doc._rev);
-      this.logger.log(`Attachment deletion result: ${JSON.stringify(deleteResult)}`);
-
-      await this.evidenceRepository.deleteEvidenceById(evidenceId, tenantId);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to delete evidence: ${errorMessage}`, errorStack);
-      throw error;
-    }
-    return doc;
-  }
-
   async getEvidenceById(evidenceId: string, userId: string, tenantId: string, userRole: string): Promise<EvidenceResponseDto> {
     const query: any = {
       tenantId,

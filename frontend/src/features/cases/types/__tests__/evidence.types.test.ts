@@ -10,7 +10,6 @@ import type {
   VerifyEvidenceResponse,
   EvidenceSearchFilters,
   EvidenceListResponse,
-  DeleteEvidenceResponse,
   DownloadEvidenceResponse,
   EvidenceAuditLog,
   EvidenceStatistics,
@@ -187,18 +186,6 @@ describe('evidence.types', () => {
       };
 
       expect(response.total).toBe(0);
-    });
-  });
-
-  describe('DeleteEvidenceResponse', () => {
-    it('can be instantiated', () => {
-      const response: DeleteEvidenceResponse = {
-        success: true,
-        message: 'Deleted',
-        evidenceId: 'EVIDENCE-1',
-      };
-
-      expect(response.success).toBe(true);
     });
   });
 

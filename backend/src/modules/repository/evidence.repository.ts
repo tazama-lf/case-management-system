@@ -31,13 +31,4 @@ export class EvidenceRepository extends BaseRepository {
       },
     });
   }
-
-  async deleteEvidenceById(evidenceId: string, tenantId: string): Promise<Evidence> {
-    return await this.prisma.evidence.delete({
-      where: {
-        evidence_id: evidenceId,
-        tenant_id: tenantId,
-      },
-    });
-  }
 }

@@ -158,12 +158,6 @@ export interface EvidenceListResponse {
   evidenceType?: EvidenceType;
 }
 
-export interface DeleteEvidenceResponse {
-  success: boolean;
-  message: string;
-  evidenceId: string;
-}
-
 export interface DownloadEvidenceResponse {
   file: Buffer | Blob;
   metadata: Evidence;

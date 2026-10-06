@@ -3,7 +3,6 @@ import {
   XMarkIcon,
   ArrowUpTrayIcon,
   DocumentCheckIcon,
-  TrashIcon,
   ArrowPathIcon,
   ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
@@ -17,7 +16,6 @@ import {
   type TaskStatusType,
 } from '../../services/taskService';
 import { useAuth } from '@/features/auth';
-import DeleteEvidenceModal from '../modals/DeleteEvidenceModal';
 import { formatDate } from '@/shared/utils/dateUtils';
 import { useInvestigatorSupervisorList } from '../../hooks/useInvestigatorSupervisorList';
 
@@ -53,10 +51,6 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
   const { hasComplianceOfficerRole, hasSupervisorRole } = useAuth();
   const { getAssigneeFullName } = useInvestigatorSupervisorList();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
-    id: string;
-    fileName: string;
-  } | null>(null);
   // Load existing SAR/STR evidence when modal opens
   useEffect(() => {
     if (!open || !taskId) return;
@@ -495,21 +489,6 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                               {getAssigneeFullName(evidence.uploadedBy)}
                             </p>
                           </div>
-                          {/* <div className="ml-3 flex items-center gap-2">
-                            <span className="text-xs text-green-600">✓ Uploaded</span>
-
-                            <button
-                              disabled={task.status.toLowerCase().includes('completed') || !hasComplianceOfficerRole()}
-                              type="button"
-                              onClick={() =>
-                                setEvidenceToDelete({ id: evidence.id, fileName: evidence.fileName })
-                              }
-                              className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
-                              title="Delete Evidence"
-                            >
-                              <TrashIcon className="h-4.5 w-4.5" />
-                            </button>
-                          </div> */}
                           <div className="ml-3 flex items-center gap-2">
                             {/* Download */}
                             <button
@@ -528,33 +507,6 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
                               ) : (
                                 <ArrowDownTrayIcon className="h-4.5 w-4.5" />
                               )}
-                            </button>
-
-                            {/* Delete */}
-                            <button
-                              hidden={
-                                task.status
-                                  .toLowerCase()
-                                  .includes('completed') ||
-                                !hasComplianceOfficerRole()
-                              }
-                              disabled={
-                                task.status
-                                  .toLowerCase()
-                                  .includes('completed') ||
-                                !hasComplianceOfficerRole()
-                              }
-                              type="button"
-                              onClick={() => {
-                                setEvidenceToDelete({
-                                  id: evidence.id,
-                                  fileName: evidence.fileName,
-                                });
-                              }}
-                              className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
-                              title="Delete Evidence"
-                            >
-                              <TrashIcon className="h-4.5 w-4.5" />
                             </button>
                           </div>
                         </div>
@@ -591,22 +543,6 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
           </div>
         </div>
       </div>
-
-      {evidenceToDelete && (
-        <DeleteEvidenceModal
-          evidenceToDelete={evidenceToDelete}
-          setEvidenceToDelete={setEvidenceToDelete}
-          setUploadedEvidence={setUploadedEvidence} // Evidence[] type
-          onDeleteSuccess={() => {
-            // Remove deleted evidence from the flat array
-            setUploadedEvidence((prev) =>
-              prev.filter((e) => e.id !== evidenceToDelete.id),
-            );
-            setEvidenceToDelete(null);
-            success('Evidence deleted successfully');
-          }}
-        />
-      )}
 
       {/* Complete Investigation Task Modal */}
       {completeTaskModalOpen && (

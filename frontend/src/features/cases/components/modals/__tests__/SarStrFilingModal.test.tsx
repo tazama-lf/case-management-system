@@ -39,27 +39,6 @@ vi.mock('../../../services/taskService', () => ({
   },
 }));
 
-vi.mock('../DeleteEvidenceModal', () => ({
-  default: ({
-    evidenceToDelete,
-    setEvidenceToDelete,
-    setUploadedEvidence,
-    onDeleteSuccess,
-  }: any) =>
-    evidenceToDelete ? (
-      <div data-testid="delete-evidence-modal">
-        <button
-          onClick={() => {
-            onDeleteSuccess();
-          }}
-        >
-          Confirm Delete
-        </button>
-        <button onClick={() => setEvidenceToDelete(null)}>Cancel Delete</button>
-      </div>
-    ) : null,
-}));
-
 vi.mock('../CompleteTaskModal', () => ({
   default: ({ open, onClose, onCompleteTask, task }: any) =>
     open ? (
@@ -690,8 +669,7 @@ describe('SarStrFilingModal', () => {
     });
   });
 
-  it('opens delete evidence modal when delete button is clicked', async () => {
-    const user = userEvent.setup();
+  it('does not offer a way to delete evidence', async () => {
     const mockEvidence = [
       {
         id: 'ev-1',
@@ -719,55 +697,7 @@ describe('SarStrFilingModal', () => {
       expect(screen.getByText('sar.pdf')).toBeInTheDocument();
     });
 
-    const deleteBtn = screen.getByTitle('Delete Evidence');
-    await user.click(deleteBtn);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('delete-evidence-modal')).toBeInTheDocument();
-    });
-  });
-
-  it('removes evidence from list after successful delete', async () => {
-    const user = userEvent.setup();
-    const mockEvidence = [
-      {
-        id: 'ev-1',
-        evidenceType: 'SAR_STR_FILING',
-        fileName: 'sar.pdf',
-        uploadedAt: '2024-01-01T00:00:00Z',
-        uploadedBy: 'user-1',
-      },
-    ];
-    (evidenceService.getTaskEvidence as vi.Mock).mockResolvedValue({
-      evidence: mockEvidence,
-    });
-
-    render(
-      <SarStrFilingModal
-        open={true}
-        onClose={mockOnClose}
-        taskId={123}
-        caseId={123}
-        task={mockTask}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('sar.pdf')).toBeInTheDocument();
-    });
-
-    // Open delete modal
-    await user.click(screen.getByTitle('Delete Evidence'));
-    await waitFor(() => {
-      expect(screen.getByTestId('delete-evidence-modal')).toBeInTheDocument();
-    });
-
-    // Confirm delete
-    await user.click(screen.getByText('Confirm Delete'));
-
-    await waitFor(() => {
-      expect(screen.queryByText('sar.pdf')).not.toBeInTheDocument();
-    });
+    expect(screen.queryByTitle('Delete Evidence')).not.toBeInTheDocument();
   });
 
   it('opens CompleteTaskModal when Mark as Complete is clicked', async () => {
