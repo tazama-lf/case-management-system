@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../shared/cache.service';
+import { ACCESS_TOKEN_COOKIE } from '../../utils/auth-cookie';
 
 /**
  * VoilaProxyController handles proxying requests to Voila notebooks.
@@ -127,15 +128,12 @@ export class VoilaProxyController {
       throw new UnauthorizedException('Authentication required');
     }
 
-    for (const [cookieName, cookieValue] of Object.entries(cookies)) {
-      if (cookieName.startsWith('access_token_')) {
-        this.logger.log(`[VoilaProxy] Found access token in cookie: ${cookieName}`);
-        return cookieValue as string;
-      }
+    const token = cookies[ACCESS_TOKEN_COOKIE];
+    if (typeof token === 'string' && token.length > 0) {
+      return token;
     }
 
-    this.logger.warn('[VoilaProxy] No access_token_* cookie found in request');
-    this.logger.log(`[VoilaProxy] Available cookies: ${Object.keys(cookies).join(', ')}`);
+    this.logger.warn(`[VoilaProxy] No ${ACCESS_TOKEN_COOKIE} cookie found in request`);
     throw new UnauthorizedException('Authentication required');
   }
 
