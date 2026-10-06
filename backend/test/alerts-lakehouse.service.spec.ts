@@ -72,7 +72,7 @@ describe('AlertsLakehouseService', () => {
             transaction_currency: 'USD',
             transaction_id: '31',
             end_to_end_id: 'e2e-123',
-            efrup_subruleref: 'block',
+            block_or_override_status: 'block',
             alert_date: '2024-01-01',
             typologies: [
               {
