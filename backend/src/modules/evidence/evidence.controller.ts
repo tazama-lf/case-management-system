@@ -13,6 +13,7 @@ import {
   MaxFileSizeValidator,
   UploadedFiles,
   NotFoundException,
+  Delete,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -184,6 +185,30 @@ export class EvidenceController {
     });
 
     res.send(buffer);
+  }
+
+  @Delete(':id/attachments/:attachmentName')
+  @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
+  @Audit()
+  @ApiOperation({ summary: 'delete evidence' })
+  @ApiResponse({
+    status: 200,
+    description: 'Deleted evidence successfully',
+  })
+  async deleteEvidence(
+    @Param('id') id: string,
+    @Param('attachmentName') attachmentName: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<EvidenceResponseDto> {
+    const { clientId, tenantId } = req.user.token;
+    return await this.evidenceService.deleteEvidence(
+      id,
+      attachmentName,
+      clientId,
+      tenantId,
+      req.user,
+      'DELETE /api/v1/evidence/:id/attachments/:attachmentName',
+    );
   }
 
   @Get(':id/verify')

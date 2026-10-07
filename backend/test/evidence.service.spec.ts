@@ -88,6 +88,7 @@ describe('EvidenceService', () => {
   };
 
   const uploadEndpointKey: EndpointKey = 'POST /api/v1/evidence/upload' as EndpointKey;
+  const deleteEndpointKey: EndpointKey = 'DELETE /api/v1/evidence/:id/attachments/:attachmentName' as EndpointKey;
 
 
   beforeEach(async () => {
@@ -102,11 +103,12 @@ describe('EvidenceService', () => {
             insertAttachment: jest.fn(),
             updateDocument: jest.fn(),
             getDocument: jest.fn(),
+            deleteEvidence: jest.fn(),
             queryDocuments: jest.fn(),
             getAttachment: jest.fn(),
           },
         },
-        { provide: EvidenceRepository, useValue: { createEvidence: jest.fn() } },
+        { provide: EvidenceRepository, useValue: { createEvidence: jest.fn(), deleteEvidenceById: jest.fn() } },
         { provide: TaskRepository, useValue: { findTaskWithCase: jest.fn() } },
         { provide: EventLogService, useValue: { logEventAction: jest.fn() } },
         { provide: TaskHistoryService, useValue: { logTaskHistoryAction: jest.fn() } },
@@ -230,9 +232,43 @@ describe('EvidenceService', () => {
     });
   });
 
-  describe('evidence deletion', () => {
-    it('is not supported: evidence is never deleted', () => {
-      expect((service as any).deleteEvidence).toBeUndefined();
+  describe('deleteEvidence', () => {
+    const userId = 'user-123';
+    const tenantId = 'tenant-123';
+
+    beforeEach(() => {
+      prismaService.case.findUnique.mockResolvedValue(mockTask.case);
+    });
+
+    it('should successfully delete evidence', async () => {
+      couchdbService.getDocument.mockResolvedValue(mockEvidenceDoc);
+      couchdbService.deleteEvidence.mockResolvedValue({ ok: true });
+
+      const result = await service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, deleteEndpointKey);
+
+      expect(result).toBeDefined();
+      expect(couchdbService.deleteEvidence).toHaveBeenCalled();
+      expect(evidenceRepository.deleteEvidenceById).toHaveBeenCalledWith('ev_1_123456', tenantId);
+    });
+
+    it.each([
+      ['', 'test.pdf'],
+      ['ev_1_123456', ''],
+    ])('should throw BadRequestException when evidenceId/fileName is empty', async (evidenceId, fileName) => {
+      await expect(service.deleteEvidence(evidenceId as any, fileName as any, userId, tenantId, mockUser, deleteEndpointKey)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw NotFoundException when evidence is not found', async () => {
+      couchdbService.getDocument.mockResolvedValue(null);
+
+      await expect(service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, deleteEndpointKey)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should propagate errors from couchdb delete operation', async () => {
+      couchdbService.getDocument.mockResolvedValue(mockEvidenceDoc);
+      couchdbService.deleteEvidence.mockRejectedValue(new Error('CouchDB error'));
+
+      await expect(service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, deleteEndpointKey)).rejects.toThrow('CouchDB error');
     });
   });
 

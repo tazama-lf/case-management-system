@@ -635,6 +635,28 @@
         }
       }
     },
+    "DELETE /api/v1/evidence/:id/attachments/:attachmentName": {
+      "tier2": {
+        "description": "Deletes an evidence attachment. Only allowed while case is active.",
+        "rolePermissions": {
+          "CMS_INVESTIGATOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_SUPERVISOR": {
+            "allowedCurrentStatuses": [
+              "STATUS_20_IN_PROGRESS"
+            ]
+          },
+          "CMS_COMPLIANCE_OFFICER": {
+            "allowedCurrentStatuses": [
+              "STATUS_82_CLOSED_CONFIRMED"
+            ]
+          }
+        }
+      }
+    },
     "POST /api/v1/comment": {
       "tier2": {
         "description": "Adds a comment to a case or task. Allowed while case is active.",

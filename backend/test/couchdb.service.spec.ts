@@ -188,6 +188,28 @@ describe('CouchdbService', () => {
     });
   });
 
+  describe('deleteEvidence', () => {
+    beforeEach(async () => {
+      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
+      await service.onModuleInit();
+    });
+
+    it('should delete evidence successfully', async () => {
+      mockDb.destroy.mockResolvedValue({ ok: true, id: 'doc-123', rev: '2-xyz' });
+
+      const result = await service.deleteEvidence('doc-123', 'file.pdf', '1-abc');
+
+      expect(mockDb.destroy).toHaveBeenCalledWith('doc-123', '1-abc');
+      expect(result).toEqual({ ok: true, id: 'doc-123', rev: '' });
+    });
+
+    it('should handle deletion errors', async () => {
+      mockDb.destroy.mockRejectedValue(new Error('Document not found'));
+
+      await expect(service.deleteEvidence('doc-123', 'file.pdf', '1-abc')).rejects.toThrow();
+    });
+  });
+
   describe('insertAttachment', () => {
     beforeEach(async () => {
       mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
@@ -489,6 +511,28 @@ describe('CouchdbService', () => {
       mockDb.list.mockRejectedValue(new Error('List failed'));
 
       await expect(service.listDocuments()).rejects.toThrow('List failed');
+    });
+  });
+
+  describe('deleteDocument', () => {
+    beforeEach(async () => {
+      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
+      await service.onModuleInit();
+    });
+
+    it('should delete document successfully', async () => {
+      mockDb.destroy.mockResolvedValue({ ok: true, id: 'doc-123', rev: '2-xyz' });
+
+      const result = await service.deleteDocument('doc-123', '1-abc');
+
+      expect(mockDb.destroy).toHaveBeenCalledWith('doc-123', '1-abc');
+      expect(result).toEqual({ ok: true, id: 'doc-123', rev: '2-xyz' });
+    });
+
+    it('should handle delete errors', async () => {
+      mockDb.destroy.mockRejectedValue(new Error('Delete failed'));
+
+      await expect(service.deleteDocument('doc-123', '1-abc')).rejects.toThrow('Delete failed');
     });
   });
 

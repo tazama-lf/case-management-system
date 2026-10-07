@@ -437,6 +437,36 @@ describe('EvidenceService', () => {
     });
   });
 
+  describe('deleteEvidence', () => {
+    it('deletes evidence by id and filename', async () => {
+      (apiClient.delete as vi.Mock).mockResolvedValue(undefined);
+
+      await evidenceService.deleteEvidence('ev-1', 'report.pdf');
+
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/api/v1/evidence/ev-1/attachments/report.pdf',
+      );
+    });
+
+    it('encodes filename with special characters', async () => {
+      (apiClient.delete as vi.Mock).mockResolvedValue(undefined);
+
+      await evidenceService.deleteEvidence('ev-1', 'my file (1).pdf');
+
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        expect.stringContaining('my%20file%20(1).pdf'),
+      );
+    });
+
+    it('throws on error', async () => {
+      (apiClient.delete as vi.Mock).mockRejectedValue(new Error('fail'));
+
+      await expect(
+        evidenceService.deleteEvidence('ev-1', 'file.pdf'),
+      ).rejects.toThrow();
+    });
+  });
+
   describe('searchEvidence', () => {
     it('searches evidence with filters', async () => {
       const mockResponse = {

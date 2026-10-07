@@ -98,6 +98,20 @@ export class CouchdbService implements OnModuleInit {
     return await this.db.insert(metadata, docId);
   }
 
+  async deleteEvidence(evidenceId: string, fileName: string, rev: string): Promise<nano.DocumentDestroyResponse> {
+    try {
+      await this.db.destroy(evidenceId, rev);
+      this.logger.log(`Evidence document "${evidenceId}" deleted successfully`);
+
+      return { ok: true, id: evidenceId, rev: '' };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to delete document: ${errorMessage}`, errorStack, CouchdbService.name);
+      throw new Error(errorMessage, { cause: error });
+    }
+  }
+
   async insertAttachment(
     docId: string,
     rev: string,
@@ -225,6 +239,17 @@ export class CouchdbService implements OnModuleInit {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Failed to list documents: ${errorMessage}`, errorStack, CouchdbService.name);
+      throw error;
+    }
+  }
+
+  async deleteDocument(docId: string, rev: string): Promise<nano.DocumentDestroyResponse> {
+    try {
+      return await this.db.destroy(docId, rev);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to delete document: ${errorMessage}`, errorStack, CouchdbService.name);
       throw error;
     }
   }
