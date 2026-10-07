@@ -19,23 +19,6 @@ vi.mock('@/shared/providers/ToastProvider', () => ({
 vi.mock('@/shared/utils/dateUtils', () => ({
   formatDate: (d: string) => d || 'N/A',
 }));
-vi.mock('../../modals/DeleteEvidenceModal', () => ({
-  default: ({ evidenceToDelete, setEvidenceToDelete, onDeleteSuccess }: any) =>
-    evidenceToDelete ? (
-      <div data-testid="delete-modal">
-        <span>{evidenceToDelete.fileName}</span>
-        <button
-          onClick={() => {
-            onDeleteSuccess();
-            setEvidenceToDelete(null);
-          }}
-        >
-          Confirm Delete
-        </button>
-        <button onClick={() => setEvidenceToDelete(null)}>Cancel Delete</button>
-      </div>
-    ) : null,
-}));
 vi.mock('../../modals/ConfirmUploadEvidenceModal', () => ({
   default: ({ isOpen, onConfirm, onCancel }: any) =>
     isOpen ? (
@@ -471,35 +454,6 @@ describe('TaskEvidenceTab', () => {
     });
   });
 
-  it('shows delete evidence modal when delete button clicked', async () => {
-    render(<TaskEvidenceTab task={mockTask as any} caseId={123} />);
-    fireEvent.click(screen.getByText('KYC/EDD Report'));
-    await waitFor(() => {
-      expect(screen.getByText('kyc-report.pdf')).toBeInTheDocument();
-    });
-    const deleteBtn = screen.getByTitle('Delete Evidence');
-    fireEvent.click(deleteBtn);
-    await waitFor(() => {
-      expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
-    });
-  });
-
-  it('cancels delete evidence modal', async () => {
-    render(<TaskEvidenceTab task={mockTask as any} caseId={123} />);
-    fireEvent.click(screen.getByText('KYC/EDD Report'));
-    await waitFor(() => {
-      expect(screen.getByText('kyc-report.pdf')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByTitle('Delete Evidence'));
-    await waitFor(() => {
-      expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByText('Cancel Delete'));
-    await waitFor(() => {
-      expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
-    });
-  });
-
   it('shows uploaded evidence count', async () => {
     render(<TaskEvidenceTab task={mockTask as any} caseId={123} />);
     fireEvent.click(screen.getByText('KYC/EDD Report'));
@@ -628,15 +582,13 @@ describe('TaskEvidenceTab', () => {
     expect(textarea).toBeDisabled();
   });
 
-  it('hides delete button for completed tasks', async () => {
-    const completedTask = { ...mockTask, status: 'STATUS_30_COMPLETED' };
-    render(<TaskEvidenceTab task={completedTask as any} caseId={123} />);
+  it('does not offer a way to delete evidence', async () => {
+    render(<TaskEvidenceTab task={mockTask as any} caseId={123} />);
     fireEvent.click(screen.getByText('KYC/EDD Report'));
     await waitFor(() => {
       expect(screen.getByText('kyc-report.pdf')).toBeInTheDocument();
     });
-    const deleteBtn = screen.getByTitle('Delete Evidence');
-    expect(deleteBtn).toBeDisabled();
+    expect(screen.queryByTitle('Delete Evidence')).not.toBeInTheDocument();
   });
 
   it('uploads evidence with comments', async () => {
