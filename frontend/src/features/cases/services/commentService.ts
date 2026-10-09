@@ -20,6 +20,7 @@ export interface TaskComment {
   updated_at: string;
   case_id: number;
   task_id: number;
+  task?: { name: string | null } | null;
 }
 
 export interface CommentsByCaseId extends TaskComment {

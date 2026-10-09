@@ -122,6 +122,46 @@ describe('InvestigationNotesTab', () => {
     });
   });
 
+  it('clears the editor after a successful save', async () => {
+    (taskService.updateTaskForSupervisor as vi.Mock).mockResolvedValue({});
+    render(<InvestigationNotesTab task={mockTask} />);
+    const textarea = await screen.findByTestId('mdx-editor');
+    fireEvent.change(textarea, { target: { value: 'Test notes' } });
+    fireEvent.click(
+      screen.getByRole('button', { name: /Save Investigation Notes/i }),
+    );
+    await waitFor(() => {
+      expect(mockShowSuccess).toHaveBeenCalled();
+      expect(screen.getByTestId('mdx-editor')).toHaveValue('');
+    });
+    expect(
+      screen.getByRole('button', { name: /Save Investigation Notes/i }),
+    ).toBeDisabled();
+  });
+
+  it('saves the note only once when save is clicked repeatedly', async () => {
+    let resolveSave: (value: unknown) => void = () => {};
+    (taskService.updateTaskForSupervisor as vi.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        resolveSave = resolve;
+      }),
+    );
+    render(<InvestigationNotesTab task={mockTask} />);
+    const textarea = await screen.findByTestId('mdx-editor');
+    fireEvent.change(textarea, { target: { value: 'Test notes' } });
+    const saveButton = screen.getByRole('button', {
+      name: /Save Investigation Notes/i,
+    });
+    fireEvent.click(saveButton);
+    fireEvent.click(saveButton);
+    fireEvent.click(saveButton);
+    resolveSave({});
+    await waitFor(() => {
+      expect(mockShowSuccess).toHaveBeenCalledTimes(1);
+    });
+    expect(taskService.updateTaskForSupervisor).toHaveBeenCalledTimes(1);
+  });
+
   it('disables save button when notes are empty', async () => {
     render(<InvestigationNotesTab task={mockTask} />);
     const saveButton = await screen.findByRole('button', {
@@ -485,12 +525,17 @@ describe('InvestigationNotesTab', () => {
         'Investigation notes saved successfully!',
       );
     });
-    // Verify saving state is cleared (finally block)
+    // Verify saving state is cleared (finally block); the button stays disabled
+    // only because the editor was reset to empty.
     await waitFor(() => {
-      expect(
-        screen.getByRole('button', { name: /Save Investigation Notes/i }),
-      ).not.toBeDisabled();
+      expect(screen.queryByText('Saving...')).not.toBeInTheDocument();
     });
+    fireEvent.change(screen.getByTestId('mdx-editor'), {
+      target: { value: 'Next note' },
+    });
+    expect(
+      screen.getByRole('button', { name: /Save Investigation Notes/i }),
+    ).not.toBeDisabled();
   });
 
   it('isUserAbleToSaveNotes returns true when user matches assignee', async () => {

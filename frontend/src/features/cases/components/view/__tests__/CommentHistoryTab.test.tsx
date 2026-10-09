@@ -192,6 +192,24 @@ describe('CommentHistoryTab', () => {
     });
   });
 
+  it('displays the task name next to the task id', async () => {
+    mockGetCommentsByCaseId.mockResolvedValue([
+      {
+        comment_id: 'CMT-124',
+        user_id: 'inv-1',
+        task_id: 42,
+        task: { name: 'SAR/STR Filing' },
+        note: 'Note text',
+        created_at: '2024-01-01',
+        updated_at: '2024-01-02',
+      },
+    ]);
+    render(<CommentHistoryTab caseId={1} />);
+    await waitFor(() => {
+      expect(screen.getByText('42 - SAR/STR Filing')).toBeInTheDocument();
+    });
+  });
+
   it('handles fetch error gracefully', async () => {
     mockGetCommentsByCaseId.mockRejectedValue(new Error('Failed'));
     render(<CommentHistoryTab caseId={1} />);
