@@ -344,6 +344,26 @@ describe('TaskLifecycleService', () => {
       mockUserService.getUsersByRole.mockReset().mockResolvedValue([]);
     });
 
+    it('should not wait for slower role lookups once the assignee is found', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockPrisma.task.update.mockResolvedValue({ ...existingTask, assigned_user_id: 'user1' });
+      mockPrisma.case.update.mockResolvedValue(existingCase);
+      mockUserService.getUsersByRole.mockImplementation(async (_token: string, role: string) =>
+        role === 'CMS_INVESTIGATOR' ? [{ id: 'user1', firstName: 'Sandy', lastName: 'Smith' }] : new Promise(() => {}),
+      );
+
+      await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey);
+
+      expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalledWith(
+        expect.objectContaining({ actionPerformed: 'Assigned task 1 to investigator Sandy Smith and updated case 1 to ASSIGNED' }),
+        1,
+        'tenant1',
+        1,
+      );
+      mockUserService.getUsersByRole.mockReset().mockResolvedValue([]);
+    });
+
     it('should create comment if note provided', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);

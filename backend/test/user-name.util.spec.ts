@@ -41,6 +41,15 @@ describe('replaceUserIdsWithNames', () => {
     expect(result[0].action_performed).toBe('Task 5 reassigned to investigator Sandy Smith');
   });
 
+  it('returns the rows unchanged when the name lookup fails', async () => {
+    prisma.cms_usernames.findMany.mockRejectedValue(new Error('db down'));
+    const rows = [{ action_performed: `Assigned task 12 to user ${knownId}` }];
+
+    const result = await replaceUserIdsWithNames(prisma, rows);
+
+    expect(result).toBe(rows);
+  });
+
   it('skips the lookup when no row contains a user ID', async () => {
     const rows = [{ action_performed: 'Assigned task 12 to investigator Sandy Smith' }];
 

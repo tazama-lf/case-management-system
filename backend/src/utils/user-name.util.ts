@@ -18,10 +18,16 @@ export async function replaceUserIdsWithNames<T extends { action_performed: stri
   }
   if (userIds.size === 0) return rows;
 
-  const users = await prisma.cms_usernames.findMany({
-    where: { user_id: { in: [...userIds] } },
-    select: { user_id: true, name: true },
-  });
+  let users: Array<{ user_id: string; name: string }>;
+  try {
+    users = await prisma.cms_usernames.findMany({
+      where: { user_id: { in: [...userIds] } },
+      select: { user_id: true, name: true },
+    });
+  } catch {
+    // Names are cosmetic; never fail the history request because of them.
+    return rows;
+  }
   if (users.length === 0) return rows;
 
   const nameById = new Map(users.map((u) => [u.user_id.toLowerCase(), u.name]));

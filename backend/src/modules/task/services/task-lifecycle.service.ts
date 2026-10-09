@@ -386,21 +386,27 @@ export class TaskLifecycleService {
     if (!userId) return undefined;
     this.logger.log(`Fetching user details for userId: ${userId} in tenant: ${tenantName}`, TaskLifecycleService.name);
     // Tasks can be assigned to any CMS role (e.g. SAR/STR filing goes to compliance officers),
-    // so look in every role; a failed lookup for one role must not hide a match in another.
+    // so look in every role in parallel and return the first match. A failed lookup for one
+    // role must not hide a match in another.
     const roles = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'];
-    const results = await Promise.allSettled(roles.map(async (role) => await this.userService.getUsersByRole(token, role, tenantName)));
-    for (const [index, result] of results.entries()) {
-      if (result.status === 'rejected') {
-        const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason);
-        this.logger.warn(`Failed to fetch ${roles[index]} users: ${errorMessage}`, TaskLifecycleService.name);
-        continue;
+    const lookups = roles.map(async (role) => {
+      let users: Awaited<ReturnType<UserService['getUsersByRole']>>;
+      try {
+        users = await this.userService.getUsersByRole(token, role, tenantName);
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        this.logger.warn(`Failed to fetch ${role} users: ${errorMessage}`, TaskLifecycleService.name);
+        throw e;
       }
-      const match = result.value.find((u) => u.id === userId);
-      if (match) {
-        return `${match.firstName} ${match.lastName}`;
-      }
+      const match = users.find((u) => u.id === userId);
+      if (!match) throw new Error(`User ${userId} not found in ${role}`);
+      return `${match.firstName} ${match.lastName}`;
+    });
+    try {
+      return await Promise.any(lookups);
+    } catch {
+      return undefined;
     }
-    return undefined;
   }
 
   private async fetchTaskAndCase(
