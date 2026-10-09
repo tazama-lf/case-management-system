@@ -88,9 +88,9 @@ const CommentsHistoryTab: React.FC<CommentsHistoryTabProps> = ({ caseId }) => {
 
               {/* Task ID */}
               <div className="col-span-2">
-                <div className="text-xs text-gray-500 uppercase">Task ID</div>
+                <div className="text-xs text-gray-500 uppercase">Task</div>
                 <div className="font-medium text-gray-900 mt-1 whitespace-pre-line">
-                  {c.task_id}
+                  {c.task?.name ? `${c.task_id} - ${c.task.name}` : c.task_id}
                 </div>
               </div>
 
