@@ -163,6 +163,30 @@ describe('CaseReopeningService', () => {
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
     });
 
+    it('should save the supervisor reopen reason as a case comment, not in case history', async () => {
+      const role = 'CMS_SUPERVISOR';
+      caseRepository.findCaseById.mockResolvedValueOnce(mockCase);
+      setupMockTransaction();
+      taskService.createTask.mockResolvedValueOnce({
+        task_id: 2,
+        name: 'Investigate Case',
+        status: TaskStatus.STATUS_01_UNASSIGNED,
+      });
+
+      await service.reopenCase(1, reason, userId, tenantId, role);
+
+      expect(commentRepository.createComment).toHaveBeenCalledWith(
+        userId,
+        { caseId: 1, note: `Case reopened: ${reason}`, tenantId },
+        expect.anything(),
+      );
+      expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalledWith(
+        expect.objectContaining({ actionPerformed: 'Reopened case 1 and created investigation task 2' }),
+        1,
+        expect.anything(),
+      );
+    });
+
     it('should reopen the requested case', async () => {
       const role = 'CMS_SUPERVISOR';
       const tx = {
