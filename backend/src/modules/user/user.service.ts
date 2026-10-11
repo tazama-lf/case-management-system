@@ -4,6 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { UserGroupDetails } from '../../utils/types/UserList';
 
+// Fail a hung auth-service call instead of holding the caller's request open forever.
+const AUTH_REQUEST_TIMEOUT_MS = 10_000;
+
 @Injectable()
 export class UserService {
   private readonly AuthBaseUrl: string;
@@ -21,6 +24,7 @@ export class UserService {
         params: {
           groupName: tenantName,
         },
+        timeout: AUTH_REQUEST_TIMEOUT_MS,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
