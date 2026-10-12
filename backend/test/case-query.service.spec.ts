@@ -135,6 +135,8 @@ describe('CaseQueryService', () => {
 
     const mockCaseInvestigatorService = {
       getAccessibleCaseIds: jest.fn().mockResolvedValue([]),
+      getBlacklistedCaseIds: jest.fn().mockResolvedValue([]),
+      isBlacklisted: jest.fn().mockResolvedValue(null),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
