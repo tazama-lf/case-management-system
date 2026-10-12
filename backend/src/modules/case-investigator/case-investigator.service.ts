@@ -334,13 +334,22 @@ export class CaseInvestigatorService {
       distinct: ['assigned_user_id'],
     });
 
-    if (holders.length === 0 || holders.some((holder) => holder.assigned_user_id === userId)) {
+    if (holders.some((holder) => holder.assigned_user_id === userId)) {
       return;
     }
 
+    // Either the case is open (no current holder at all) or it's held by someone else - either
+    // way the caller still needs to be able to see this case before being allowed to write to
+    // it. Without this, "the case is open" alone let anyone (including a caller with no access
+    // to the case at all - wrong tenant, blacklisted, or just not a member) through unconditionally.
     if (!(await this.hasAccess(caseId, userId, tenantId, role))) {
       throw new NotFoundException('Case not found or access denied');
     }
+
+    if (holders.length === 0) {
+      return;
+    }
+
     throw new ForbiddenException('This case is held by another investigator - only its current holder or a supervisor can modify it.');
   }
 

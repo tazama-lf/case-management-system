@@ -220,10 +220,24 @@ describe('CaseInvestigatorService', () => {
       expect(prisma.task.findMany).not.toHaveBeenCalled();
     });
 
-    it('is open when nobody currently holds the case', async () => {
+    it('is open when nobody currently holds the case, as long as the caller can see it', async () => {
       prisma.task.findMany.mockResolvedValue([]);
+      // A real live whitelist row - genuine case access, not just an unconfigured mock default.
+      prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 1 });
 
       await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBeUndefined();
+    });
+
+    it('rejects a caller with no case access at all even when the case is open (no holder)', async () => {
+      // Regression: "the case is open" alone used to let ANY caller through unconditionally,
+      // with no read-access check at all - including someone with no legitimate access to this
+      // case whatsoever (e.g. a cross-tenant caseId, or simply not a member and not in a
+      // claimable status). That must now 404, same as every other gated path.
+      prisma.task.findMany.mockResolvedValue([]);
+      prisma.caseInvestigator.findFirst.mockResolvedValue(null);
+      prisma.case.findFirst.mockResolvedValue(null);
+
+      await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).rejects.toThrow(NotFoundException);
     });
 
     it('lets the holder through, including when several people hold live tasks on the case', async () => {
