@@ -81,6 +81,18 @@ export class CaseReopeningService {
             tenantId,
             tx,
           );
+
+          // Like suspend/resume, the reason is a case comment (Comments History), not part of
+          // the Case History entry.
+          await this.commentRepository.createComment(
+            userId,
+            {
+              caseId,
+              note: `Case reopened: ${reason}`,
+              tenantId,
+            },
+            tx,
+          );
           return { case: updatedCase, investigationTask };
         });
 
@@ -91,7 +103,7 @@ export class CaseReopeningService {
             userId,
             operation: 'reopenCase',
             entityName: CaseReopeningService.name,
-            actionPerformed: `Reopened case ${caseId} and created investigation task ${txResult.investigationTask.task_id}. Reason: ${reason}`,
+            actionPerformed: `Reopened case ${caseId} and created investigation task ${txResult.investigationTask.task_id}`,
             outcome: Outcome.SUCCESS,
             tenantId: txResult.case.tenant_id,
           },
@@ -158,7 +170,7 @@ export class CaseReopeningService {
             userId,
             operation: 'reopenCase',
             entityName: CaseReopeningService.name,
-            actionPerformed: `Reopened case ${caseId} pending supervisor approval. Reason: ${reason}`,
+            actionPerformed: `Reopened case ${caseId} pending supervisor approval`,
             outcome: Outcome.SUCCESS,
             tenantId: txResult.case.tenant_id,
           },
