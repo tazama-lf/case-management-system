@@ -227,6 +227,16 @@ describe('EventLogService', () => {
       prismaService.eventLog.findMany.mockResolvedValue(mockEventLogs);
     });
 
+    it('should replace user IDs in action_performed with user names', async () => {
+      const userId = '8958bbd1-655f-4129-9293-87f85c74c273';
+      prismaService.eventLog.findMany.mockResolvedValue([{ ...mockEventLogs[0], action_performed: `Assigned task 7 to user ${userId}` }]);
+      prismaService.cms_usernames = { findMany: jest.fn().mockResolvedValue([{ user_id: userId, name: 'Sandy Smith' }]) };
+
+      const result = await service.getLogs();
+
+      expect(result[0].action_performed).toBe('Assigned task 7 to user Sandy Smith');
+    });
+
     it.each([
       ['default pagination', undefined, undefined, 50, 0],
       ['custom limit', 10, undefined, 10, 0],

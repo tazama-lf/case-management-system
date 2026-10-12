@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { v4 as uuidv4, validate as isUuid } from 'uuid';
 import { CaseHistory } from '@prisma/client-cms';
+import { replaceUserIdsWithNames } from '../../utils/user-name.util';
 
 @Injectable()
 export class CaseHistoryService {
@@ -40,11 +41,12 @@ export class CaseHistoryService {
   }
 
   async getCaseHistory(caseId: number, tenantId: string): Promise<CaseHistory[]> {
-    return await this.prisma.caseHistory.findMany({
+    const rows = await this.prisma.caseHistory.findMany({
       where: {
         case_id: caseId,
         tenant_id: tenantId,
       },
     });
+    return await replaceUserIdsWithNames(this.prisma, rows);
   }
 }

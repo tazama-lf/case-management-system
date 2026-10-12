@@ -40,6 +40,9 @@ export class CommentRepository extends BaseRepository {
         case_id: caseId,
         tenant_id: tenantId,
       },
+      include: {
+        task: { select: { name: true } },
+      },
       orderBy: {
         created_at: 'desc',
       },

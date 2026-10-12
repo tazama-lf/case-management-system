@@ -84,6 +84,7 @@ describe('TaskLifecycleService', () => {
   };
 
   const mockLoggerService = {
+    log: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
   };
@@ -300,6 +301,67 @@ describe('TaskLifecycleService', () => {
       await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey);
 
       expect(mockFlowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
+    });
+
+    it('should log the assignee name when the assignee is a compliance officer', async () => {
+      const sarTask = { ...existingTask, name: 'SAR/STR Filing' };
+      mockTaskRepository.findTaskById.mockResolvedValue(sarTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockPrisma.task.update.mockResolvedValue({ ...sarTask, assigned_user_id: 'compliance1' });
+      mockUserService.getUsersByRole.mockImplementation(async (_token: string, role: string) =>
+        role === 'CMS_COMPLIANCE_OFFICER' ? [{ id: 'compliance1', firstName: 'Sandy', lastName: 'Smith' }] : [],
+      );
+
+      await service.assignTaskToInvestigator(1, 'compliance1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey);
+
+      expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalledWith(
+        expect.objectContaining({ actionPerformed: 'Assigned task 1 to user Sandy Smith' }),
+        1,
+        'tenant1',
+        1,
+      );
+      mockUserService.getUsersByRole.mockReset().mockResolvedValue([]);
+    });
+
+    it('should still find the assignee name when one role lookup fails', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockPrisma.task.update.mockResolvedValue({ ...existingTask, assigned_user_id: 'user1' });
+      mockPrisma.case.update.mockResolvedValue(existingCase);
+      mockUserService.getUsersByRole.mockImplementation(async (_token: string, role: string) => {
+        if (role === 'CMS_INVESTIGATOR') throw new Error('upstream returned 403');
+        return role === 'CMS_SUPERVISOR' ? [{ id: 'user1', firstName: 'Sandy', lastName: 'Smith' }] : [];
+      });
+
+      await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey);
+
+      expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalledWith(
+        expect.objectContaining({ actionPerformed: 'Assigned task 1 to investigator Sandy Smith and updated case 1 to ASSIGNED' }),
+        1,
+        'tenant1',
+        1,
+      );
+      mockUserService.getUsersByRole.mockReset().mockResolvedValue([]);
+    });
+
+    it('should not wait for slower role lookups once the assignee is found', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockPrisma.task.update.mockResolvedValue({ ...existingTask, assigned_user_id: 'user1' });
+      mockPrisma.case.update.mockResolvedValue(existingCase);
+      mockUserService.getUsersByRole.mockImplementation(async (_token: string, role: string) =>
+        role === 'CMS_INVESTIGATOR' ? [{ id: 'user1', firstName: 'Sandy', lastName: 'Smith' }] : new Promise(() => {}),
+      );
+
+      await service.assignTaskToInvestigator(1, 'user1', 'supervisor1', 'tenant1', mockSupervisorUser, testEndpointKey);
+
+      expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalledWith(
+        expect.objectContaining({ actionPerformed: 'Assigned task 1 to investigator Sandy Smith and updated case 1 to ASSIGNED' }),
+        1,
+        'tenant1',
+        1,
+      );
+      mockUserService.getUsersByRole.mockReset().mockResolvedValue([]);
     });
 
     it('should create comment if note provided', async () => {

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { v4 as uuidv4, validate as isUuid } from 'uuid';
 import { EventLog } from '@prisma/client-cms';
+import { replaceUserIdsWithNames } from '../../utils/user-name.util';
 
 @Injectable()
 export class EventLogService {
@@ -49,11 +50,12 @@ export class EventLogService {
   }
 
   async getLogs(limit = 50, offset = 0): Promise<EventLog[]> {
-    return await this.prisma.eventLog.findMany({
+    const rows = await this.prisma.eventLog.findMany({
       orderBy: { performed_at: 'desc' },
       take: limit,
       skip: offset,
     });
+    return await replaceUserIdsWithNames(this.prisma, rows);
   }
 
   async getActionHistoryForAlert(alertId: number): Promise<EventLog[]> {

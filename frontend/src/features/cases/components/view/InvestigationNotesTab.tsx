@@ -11,6 +11,7 @@ import {
   CreateLink,
   ListsToggle,
   MDXEditor,
+  type MDXEditorMethods,
   UndoRedo,
   headingsPlugin,
   linkDialogPlugin,
@@ -39,6 +40,10 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   const [notes, setNotes] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  // Synchronous guard: `saving` state only updates on the next render, so rapid
+  // repeat clicks could otherwise each submit the same note.
+  const savingRef = React.useRef(false);
+  const editorRef = React.useRef<MDXEditorMethods>(null);
   const isTaskCompleted = task?.status === TaskStatus.STATUS_30_COMPLETED;
 
   React.useEffect(() => {
@@ -86,6 +91,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
   const isUserCanEdit = isUserAbleToSaveNotes() && !isTaskCompleted;
 
   const handleSaveNotes = async (): Promise<void> => {
+    if (savingRef.current) return;
     if (!task?.task_id || !notes.trim()) {
       showError('Please add investigation notes before saving.');
       return;
@@ -97,12 +103,16 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
     try {
       await taskService.updateTaskForSupervisor(task.task_id, {
         investigationNotes: notes,
       });
       showSuccess('Investigation notes saved successfully!');
+      // Each save is appended as a new note, so clear the editor for the next one.
+      setNotes('');
+      editorRef.current?.setMarkdown('');
 
       if (onNotesUpdate) {
         onNotesUpdate();
@@ -111,6 +121,8 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
       console.error('Failed to save investigation notes:', error);
       showError('Failed to save investigation notes. Please try again.');
     } finally {
+      // eslint-disable-next-line require-atomic-updates -- only this handler writes the ref, and it returns early while a save is in flight
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -130,6 +142,7 @@ const InvestigationNotesTab: React.FC<InvestigationNotesTabProps> = ({
           {/* MDX Editor */}
           <div className="mdx-editor-container min-h-[250px] border border-gray-300 rounded-lg bg-white shadow-sm overflow-hidden">
             <MDXEditor
+              ref={editorRef}
               markdown={notes}
               onChange={handleNotesChange}
               readOnly={

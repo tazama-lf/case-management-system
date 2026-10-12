@@ -117,6 +117,7 @@ describe('UserService', () => {
           params: {
             groupName: TENANT,
           },
+          timeout: 10_000,
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${TOKEN}`,

@@ -383,30 +383,29 @@ export class TaskLifecycleService {
   }
 
   private async fetchUserDetails(token: string, tenantName: string, userId?: string): Promise<string | undefined> {
-    try {
-      this.logger.log(`Fetching user details for userId: ${userId} in tenant: ${tenantName}`, TaskLifecycleService.name);
-      if (userId) {
-        const investigatorList = await this.userService.getUsersByRole(token, 'CMS_INVESTIGATOR', tenantName);
-        this.logger.log(`Fetched ${investigatorList.length} investigators`, TaskLifecycleService.name);
-        const investigator = investigatorList.find((i) => i.id === userId);
-
-        if (investigator) {
-          return `${investigator.firstName} ${investigator.lastName}`;
-        } else {
-          const supervisorList = await this.userService.getUsersByRole(token, 'CMS_SUPERVISOR', tenantName);
-          this.logger.log(`Fetched ${supervisorList.length} supervisors`, TaskLifecycleService.name);
-          const isSupervisor = supervisorList.find((s) => s.id === userId);
-          if (isSupervisor) {
-            return `${isSupervisor.firstName} ${isSupervisor.lastName}`;
-          }
-        }
-      } else {
-        return undefined;
+    if (!userId) return undefined;
+    this.logger.log(`Fetching user details for userId: ${userId} in tenant: ${tenantName}`, TaskLifecycleService.name);
+    // Tasks can be assigned to any CMS role (e.g. SAR/STR filing goes to compliance officers),
+    // so look in every role in parallel and return the first match. A failed lookup for one
+    // role must not hide a match in another.
+    const roles = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'];
+    const lookups = roles.map(async (role) => {
+      let users: Awaited<ReturnType<UserService['getUsersByRole']>>;
+      try {
+        users = await this.userService.getUsersByRole(token, role, tenantName);
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        this.logger.warn(`Failed to fetch ${role} users: ${errorMessage}`, TaskLifecycleService.name);
+        throw e;
       }
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      const errorStack = e instanceof Error ? e.stack : undefined;
-      this.logger.warn(`Failed to fetch user details: ${errorMessage}`, errorStack, TaskLifecycleService.name);
+      const match = users.find((u) => u.id === userId);
+      if (!match) throw new Error(`User ${userId} not found in ${role}`);
+      return `${match.firstName} ${match.lastName}`;
+    });
+    try {
+      return await Promise.any(lookups);
+    } catch {
+      return undefined;
     }
   }
 
