@@ -185,6 +185,23 @@ export class CaseInvestigatorService {
   }
 
   /**
+   * Bulk counterpart to `isBlacklisted`, for list-filtering call sites
+   * (getAllCases / checkUserCaseAccess) that need to exclude every case this
+   * user is currently blacklisted on from their visibility OR — mirroring
+   * `hasAccess`'s own blacklist check for the open-for-claim branch, so a
+   * case list can't surface (with its embedded alert/transaction data) a
+   * case the detail/read gate would otherwise 404 on.
+   */
+  async getBlacklistedCaseIds(userId: string, tenantId: string): Promise<number[]> {
+    const rows = await this.prismaService.caseInvestigatorBlacklist.findMany({
+      where: { user_id: userId, tenant_id: tenantId, unblocked_at: null },
+      select: { case_id: true },
+    });
+
+    return rows.map((row) => row.case_id);
+  }
+
+  /**
    * Creates a live whitelist row if none exists; upgrades an existing row
    * to LEAD in place if the new grant is LEAD (never downgrades LEAD to
    * OBSERVER here — that's `demote`'s job only). Refuses if blacklisted.

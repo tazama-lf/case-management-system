@@ -465,6 +465,38 @@ describe('TaskService', () => {
       expect(unassignedOrder).toBeLessThan(assignedOrder);
     });
 
+    it('should restore the previous holder\'s Flowable claim if claiming the new assignee fails, then still throw', async () => {
+      // The old claim ('user2') was already removed from Flowable by handleTaskUnassigned above
+      // before the new claim ('user3') is attempted. If that new claim never succeeds (even after
+      // all retries), the DB write is about to roll back along with the rest of this transaction -
+      // Flowable must not be left with no claim at all on a task that (post-rollback) the DB still
+      // says 'user2' holds.
+      const assignedTask = { ...existingTask, assigned_user_id: 'user2', name: 'Not Investigate Case' };
+      const updateData = { assignedUserId: 'user3' };
+
+      taskRepository.transaction.mockImplementation(async (callback) => {
+        taskRepository.findTaskWithCase.mockResolvedValue(assignedTask);
+        taskRepository.updateTask.mockResolvedValue({ ...assignedTask, assigned_user_id: 'user3' } as any);
+        return callback(taskRepository as any);
+      });
+      flowableService.handleTaskAssigned
+        .mockResolvedValue(undefined) // the restore attempt (for 'user2') succeeds
+        .mockRejectedValueOnce(new Error('claim failed 1'))
+        .mockRejectedValueOnce(new Error('claim failed 2'))
+        .mockRejectedValueOnce(new Error('claim failed 3'))
+        .mockRejectedValueOnce(new Error('claim failed 4'))
+        .mockRejectedValueOnce(new Error('claim failed 5')); // exhausts the 5 retry attempts for 'user3'
+
+      await expect(service.updateTask(1, updateData, 'user1', 'tenant1')).rejects.toThrow('claim failed 5');
+
+      // 5 failed attempts to claim for 'user3', then 1 successful attempt to reclaim for 'user2'.
+      expect(flowableService.handleTaskAssigned).toHaveBeenCalledTimes(6);
+      expect(flowableService.handleTaskAssigned).toHaveBeenNthCalledWith(
+        6,
+        expect.objectContaining({ taskId: 1, assignedUserId: 'user2' }),
+      );
+    });
+
     it('should NOT call handleTaskUnassigned for a status-only update (no assignee change)', async () => {
       const assignedTask = { ...existingTask, assigned_user_id: 'user2' };
       const updateData = { investigationNotes: 'no assignment change' };
@@ -838,10 +870,12 @@ describe('TaskService', () => {
       );
     });
 
-    it('should gate on the task case membership for everyone else', async () => {
-      taskRepository.findTaskById.mockResolvedValue(baseTask);
+    it('should gate on the task case membership when the task is still unassigned', async () => {
+      // Case access alone is enough here - there's no holder yet to defer to (e.g. a case
+      // member assigning this unclaimed task to a third person, not themselves).
+      taskRepository.findTaskById.mockResolvedValue({ ...baseTask, assigned_user_id: null });
 
-      await service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR');
+      await service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR', 'someone-else');
 
       expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(42, 'user1', 'tenant1', 'CMS_INVESTIGATOR');
     });
@@ -854,6 +888,24 @@ describe('TaskService', () => {
         'Case not found or access denied',
       );
     });
+
+    it('should reject a case member who is not the holder from mutating a task held by someone else', async () => {
+      // Case access (e.g. a live whitelist row from a different task, or a past OBSERVER
+      // row) is not the same as being allowed to mutate someone else's active task.
+      taskRepository.findTaskById.mockResolvedValue(baseTask);
+
+      await expect(service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR')).rejects.toThrow(ForbiddenException);
+      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(42, 'user1', 'tenant1', 'CMS_INVESTIGATOR');
+    });
+
+    it.each(['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'])(
+      'should let a %s mutate a task held by someone else',
+      async (role) => {
+        taskRepository.findTaskById.mockResolvedValue(baseTask);
+
+        await expect(service.assertCanMutateTask(7, 'tenant1', 'user1', role)).resolves.toBeUndefined();
+      },
+    );
   });
 
   describe('getTaskById', () => {

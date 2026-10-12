@@ -151,19 +151,60 @@ export class TaskService {
             updateInput,
             existingTask,
             tenantId,
+            userId,
             tx,
           ));
         } else {
           updatedTask = await this.taskRepository.updateTask(taskId, updateInput, tx);
-          if (existingTask.assigned_user_id && nextAssignedUserId && existingTask.assigned_user_id !== nextAssignedUserId) {
+
+          const assigneeChanged = existingTask.assigned_user_id !== nextAssignedUserId;
+
+          // Covers both reassignment to someone else AND an explicit unassign (nextAssignedUserId
+          // === null) — either way the previous holder is losing the task and Flowable needs to
+          // hear about it before anything else happens with this task.
+          let unassignedPreviousHolder = false;
+          if (assigneeChanged && existingTask.assigned_user_id) {
             await this.flowableService.handleTaskUnassigned({
               taskId,
               caseId: existingTask.case_id,
               taskName: existingTask.name!,
               assignedUser: null,
             });
+            unassignedPreviousHolder = true;
           }
-          await this.executeFlowableOperation(updatedTask, nextAssignedUserId ?? existingTask.assigned_user_id!);
+
+          if (nextAssignedUserId) {
+            // A new (or unchanged) real assignee — Flowable needs the current claim.
+            try {
+              await this.executeFlowableOperation(updatedTask, nextAssignedUserId);
+            } catch (error) {
+              if (unassignedPreviousHolder) {
+                // The old claim was just removed from Flowable above, and the DB write this
+                // transaction made is about to roll back along with everything else once this
+                // error propagates - without putting the old claim back, Flowable would be left
+                // with no claim at all on a task the DB still (once rolled back) says is held by
+                // existingTask.assigned_user_id.
+                try {
+                  await this.executeFlowableOperation(existingTask, existingTask.assigned_user_id!);
+                } catch (restoreError) {
+                  this.logger.error(
+                    `Failed to restore previous Flowable claim for task ${taskId} after a failed reassignment`,
+                    restoreError,
+                    TaskService.name,
+                  );
+                }
+              }
+              throw error;
+            }
+          } else if (!assigneeChanged) {
+            // Status/notes-only update to a task with no assignee, before or after. There's no
+            // real assignee to report, but this status transition still needs Flowable to record
+            // a claim, so fall back to whoever made this call rather than passing null.
+            await this.executeFlowableOperation(updatedTask, userId);
+          }
+          // else: assigneeChanged && !nextAssignedUserId - an explicit unassign. handleTaskUnassigned
+          // above already told Flowable; the previous holder must not be reclaimed for, so there is
+          // nothing left to pass to executeFlowableOperation.
         }
 
         if (existingTask.status === updatedTask.status) {
@@ -291,18 +332,36 @@ export class TaskService {
    * from updateTask itself, because updateTask also has internal callers (draft
    * abandon/complete, triage, closure) that run on cases with no whitelist rows.
    *
-   * Passes if the caller has case access (supervisor/compliance bypass, or a live
-   * whitelist row), OR is the task's current assignee (a task's holder can always
+   * Passes if the caller is the task's current assignee (a task's holder can always
    * act on it), OR is claiming: `newAssigneeId` is the caller and the task is
-   * currently unassigned. Claiming has to stay open - it's how an investigator
-   * first gets onto a case. A missing task is left for the caller's own NotFound.
+   * currently unassigned (claiming has to stay open - it's how an investigator
+   * first gets onto a case). Otherwise the caller needs case access (supervisor/
+   * compliance bypass, or a live whitelist row) just to be considered - a caller
+   * with no access gets the usual NotFound. If the task is still unassigned, case
+   * access alone is enough (e.g. assigning it to someone else). If it's already
+   * held by someone else, only a supervisor/compliance officer may act on it too -
+   * any other case member (e.g. a past OBSERVER, or a peer holding a different
+   * task on the same case) is rejected; mere case visibility isn't the same as
+   * being allowed to mutate someone else's active task. A missing task is left
+   * for the caller's own NotFound.
    */
   async assertCanMutateTask(taskId: number, tenantId: string, userId: string, role: string, newAssigneeId?: string | null): Promise<void> {
     const task = await this.taskRepository.findTaskById(taskId, tenantId);
     if (!task) return;
+    const blocked = await this.caseInvestigatorService.isBlacklisted(task.case_id, userId, tenantId);
+    if (blocked) {
+      throw new ForbiddenException(
+        `User is blacklisted on this case (blocked by ${blocked.blocked_by} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`,
+      );
+    }
     if (task.assigned_user_id === userId) return;
     if (!task.assigned_user_id && newAssigneeId === userId) return;
+
     await this.caseInvestigatorService.assertReadAccess(task.case_id, userId, tenantId, role);
+
+    if (task.assigned_user_id && role !== 'CMS_SUPERVISOR' && role !== 'CMS_COMPLIANCE_OFFICER') {
+      throw new ForbiddenException('This task is held by another investigator - only its current holder or a supervisor can mutate it.');
+    }
   }
 
   async getTaskById(taskId: number, tenantId: string, userId: string, role: string): Promise<Task | null> {
@@ -405,6 +464,7 @@ export class TaskService {
     updateInput: Prisma.TaskUpdateInput,
     existingTask: Task,
     tenantId: string,
+    userId: string,
     tx: Prisma.TransactionClient,
   ): Promise<{ task: Task; caseStatusNotification: { caseId: number; newStatus: CaseStatus } }> {
     try {
@@ -415,7 +475,12 @@ export class TaskService {
       const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
       if (assigneeId && caseRecord!.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
       await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
-      if (existingTask.assigned_user_id && taskRecord.assigned_user_id && existingTask.assigned_user_id !== taskRecord.assigned_user_id) {
+
+      const assigneeChanged = existingTask.assigned_user_id !== taskRecord.assigned_user_id;
+
+      // Same rule as the non-promotion branch above: covers both reassignment to someone else
+      // and an explicit unassign landing alongside this promotion.
+      if (assigneeChanged && existingTask.assigned_user_id) {
         await this.flowableService.handleTaskUnassigned({
           taskId,
           caseId: existingTask.case_id,
@@ -423,7 +488,15 @@ export class TaskService {
           assignedUser: null,
         });
       }
-      await this.executeFlowableOperation(taskRecord, taskRecord.assigned_user_id ?? existingTask.assigned_user_id!);
+
+      if (taskRecord.assigned_user_id) {
+        await this.executeFlowableOperation(taskRecord, taskRecord.assigned_user_id);
+      } else if (!assigneeChanged) {
+        // Status-only promotion of a task that has never had an assignee - fall back to the
+        // caller rather than passing null (previously ended up reclaiming for a stale holder,
+        // or passing null outright, whenever this task had no real assignee).
+        await this.executeFlowableOperation(taskRecord, userId);
+      }
 
       // Notify the Cases Dashboard (via CaseEventsGateway's @OnEvent listener) that this case's
       // status changed - this promotion path updates the case directly and otherwise never

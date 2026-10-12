@@ -607,6 +607,7 @@ export class CaseQueryService {
           andConditions.push(sarStrFilterCondition);
         }
         const accessibleCaseIds = await this.caseInvestigatorService.getAccessibleCaseIds(investigatorUserId, tenantId);
+        const blacklistedCaseIds = await this.caseInvestigatorService.getBlacklistedCaseIds(investigatorUserId, tenantId);
         const visibilityOr = [
           { case_owner_user_id: investigatorUserId },
           {
@@ -633,6 +634,14 @@ export class CaseQueryService {
         } else {
           // No search - just apply standard investigator filters
           andConditions.push({ OR: visibilityOr });
+        }
+
+        // Exclude any case this investigator is currently blacklisted on, regardless of which
+        // visibility branch above would otherwise match (stale case_owner_user_id, a past
+        // completed task assignment, or the unclaimed-case browsing branches) — keeps this list
+        // consistent with hasAccess/assertReadAccess, which already deny a blacklisted user.
+        if (blacklistedCaseIds.length > 0) {
+          andConditions.push({ NOT: { case_id: { in: blacklistedCaseIds } } });
         }
 
         whereClause.AND = andConditions;
@@ -920,6 +929,14 @@ export class CaseQueryService {
 
       if (!isValidUuid) {
         this.logger.log(`[checkUserCaseAccess] Invalid UUID: ${investigatorUserId}`, CaseQueryService.name);
+        return false;
+      }
+
+      // A blacklisted investigator must be denied regardless of which OR branch below would
+      // otherwise match (stale case_owner_user_id, a past completed task, or the unclaimed-case
+      // browsing branches) — mirrors hasAccess/assertReadAccess, which already deny this case.
+      const blocked = await this.caseInvestigatorService.isBlacklisted(caseId, investigatorUserId, tenantId);
+      if (blocked) {
         return false;
       }
 

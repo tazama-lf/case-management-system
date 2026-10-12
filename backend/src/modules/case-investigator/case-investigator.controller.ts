@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, Req, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Req, UseGuards, HttpCode, HttpStatus, ParseUUIDPipe } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { CaseInvestigatorBlacklist } from '@prisma/client-cms';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
@@ -84,7 +84,7 @@ export class CaseInvestigatorController {
   @ApiResponse({ status: 404, description: 'Not Found - no live blacklist entry for this user on this case' })
   async unblockInvestigator(
     @Param('caseId') caseId: number,
-    @Param('userId') userId: string,
+    @Param('userId', new ParseUUIDPipe()) userId: string,
     @Body() dto: UnblockCaseInvestigatorDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<{ message: string }> {
