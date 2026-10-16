@@ -76,6 +76,9 @@ export class TaskLifecycleService {
     const rbacRole = this.rbacService.getRoleFromUser(user);
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    // Assignment grants case ACL membership, so the caller must already have access to the case
+    // (live whitelist row, or the case is still open for claiming). Supervisors/compliance bypass.
+    await this.caseInvestigatorService.assertReadAccess(existingTask.case_id, userId, tenantId, rbacRole);
     // assign is for unassigned tasks (claim / first assignment); taking over a held task goes through
     // reassign. Refusing here keeps self-assign open without letting assign act as an ungated reassign.
     if (existingTask.assigned_user_id) {

@@ -104,6 +104,7 @@ describe('TaskLifecycleService', () => {
 
   const mockCaseInvestigatorService = {
     isBlacklisted: jest.fn().mockResolvedValue(null),
+    assertReadAccess: jest.fn().mockResolvedValue(undefined),
     syncTaskAssignment: jest.fn().mockResolvedValue(undefined),
   };
 
@@ -218,6 +219,7 @@ describe('TaskLifecycleService', () => {
     // failure) would otherwise leak that override into every later test.
     // Restore the known-good defaults explicitly before each test.
     mockCaseInvestigatorService.isBlacklisted.mockResolvedValue(null);
+    mockCaseInvestigatorService.assertReadAccess.mockResolvedValue(undefined);
     mockCaseInvestigatorService.syncTaskAssignment.mockResolvedValue(undefined);
   });
 
@@ -276,6 +278,19 @@ describe('TaskLifecycleService', () => {
         newAssigneeId: 'user1',
         newStatus: TaskStatus.STATUS_10_ASSIGNED,
       });
+    });
+
+    it('should refuse the caller when they have no access to the case, without writing anything', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockCaseInvestigatorService.assertReadAccess.mockRejectedValue(new NotFoundException('Case not found or access denied'));
+
+      await expect(
+        service.assignTaskToInvestigator(1, 'user1', 'user1', 'tenant1', mockSupervisorUser, testEndpointKey),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockCaseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(1, 'user1', 'tenant1', expect.any(String));
+      expect(mockPrisma.task.update).not.toHaveBeenCalled();
+      expect(mockCaseInvestigatorService.syncTaskAssignment).not.toHaveBeenCalled();
     });
 
     it('should refuse to assign to a user blacklisted on this case, without writing anything', async () => {

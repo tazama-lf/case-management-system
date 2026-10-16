@@ -38,7 +38,7 @@ export class CaseInvestigatorController {
   @ApiResponse({ status: 404, description: 'Not Found - no live whitelist entry for this user on this case' })
   async revokeInvestigator(
     @Param('caseId') caseId: number,
-    @Param('userId') userId: string,
+    @Param('userId', new ParseUUIDPipe()) userId: string,
     @Body() dto: RevokeCaseInvestigatorDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<{ message: string }> {
