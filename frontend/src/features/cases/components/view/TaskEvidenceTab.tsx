@@ -5,7 +5,6 @@ import {
   ChevronUpIcon,
   XMarkIcon,
   CheckCircleIcon,
-  TrashIcon,
 } from '@heroicons/react/24/outline';
 import type { User } from '@/shared/interfaces/user.interface';
 import { evidenceService } from '../../services/evidenceService';
@@ -14,7 +13,6 @@ import type {
   EvidenceType,
   UploadEvidenceDto,
 } from '../../types/evidence.types';
-import DeleteEvidenceModal from '../modals/DeleteEvidenceModal';
 import { useToast } from '../../../../shared/providers/ToastProvider';
 import type { TaskForSupervisor } from '../../services/taskService';
 import { TaskStatus } from '../../services/taskService';
@@ -103,10 +101,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
   // const [ , setSaveSuccess] = React.useState(false);
   // const [ , setNoEvidenceError] = React.useState(false);
   const [showUploadConfirm, setShowUploadConfirm] = React.useState(false);
-  const [evidenceToDelete, setEvidenceToDelete] = React.useState<{
-    id: string;
-    fileName: string;
-  } | null>(null);
   const { success, error } = useToast();
   const allowedFileTypes: Record<string, string[]> = {
     sanctions: [
@@ -658,30 +652,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
                               <span className="text-xs text-green-600">
                                 ✓ Uploaded
                               </span>
-
-                              <button
-                                hidden={
-                                  isTaskCompleted ||
-                                  taskAssignedId !== currentUser?.userId ||
-                                  task.status === 'STATUS_21_BLOCKED'
-                                }
-                                disabled={
-                                  isTaskCompleted ||
-                                  taskAssignedId !== currentUser?.userId ||
-                                  task.status === 'STATUS_21_BLOCKED'
-                                }
-                                type="button"
-                                onClick={() => {
-                                  setEvidenceToDelete({
-                                    id: evidence.id,
-                                    fileName: evidence.fileName,
-                                  });
-                                }}
-                                className="rounded-md p-1 text-red-600 hover:bg-red-100 hover:text-red-700"
-                                title="Delete Evidence"
-                              >
-                                <TrashIcon className="h-4.5 w-4.5" />
-                              </button>
                             </div>
                           </li>
                         ))}
@@ -777,17 +747,6 @@ const TaskEvidenceTab: React.FC<TaskEvidenceTabProps> = ({
           </section>
         );
       })}
-      {evidenceToDelete && (
-        <DeleteEvidenceModal
-          evidenceToDelete={evidenceToDelete}
-          setEvidenceToDelete={setEvidenceToDelete}
-          setUploadedEvidence={setUploadedEvidence}
-          onDeleteSuccess={() => {
-            loadEvidence();
-            onUploadComplete?.();
-          }}
-        />
-      )}
       {showUploadConfirm && (
         <ConfirmUploadEvidenceModal
           isOpen={showUploadConfirm}
