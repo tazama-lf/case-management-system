@@ -21,7 +21,7 @@ export class TaskService {
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly caseInvestigatorService: CaseInvestigatorService,
-  ) { }
+  ) {}
   private async syncCaseAcl(caseId: number, tenantId: string, actingUserId: string, params: SyncTaskAssignmentParams): Promise<void> {
     try {
       await this.caseInvestigatorService.syncTaskAssignment(caseId, tenantId, actingUserId, params);
@@ -232,7 +232,7 @@ export class TaskService {
           );
         }
 
-        return { updatedTask, previousAssigneeId: existingTask.assigned_user_id };
+        return { updatedTask, previousAssigneeId: existingTask.assigned_user_id, caseStatusNotification };
       });
 
       await this.syncCaseAcl(txResult.updatedTask.case_id, tenantId, userId, {
@@ -246,8 +246,10 @@ export class TaskService {
           await this.flowableService.handleCaseStatusChanged(txResult.caseStatusNotification);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorStack = error instanceof Error ? error.stack : undefined;
           this.logger.warn(
             `Case status change notification/Flowable sync failed for case ${txResult.caseStatusNotification.caseId} (continuing): ${errorMessage}`,
+            errorStack,
             TaskService.name,
           );
         }
@@ -440,10 +442,10 @@ export class TaskService {
       const statusFilter = includeCompleted
         ? {}
         : {
-          status: {
-            not: TaskStatus.STATUS_30_COMPLETED,
-          },
-        };
+            status: {
+              not: TaskStatus.STATUS_30_COMPLETED,
+            },
+          };
 
       return await this.taskRepository.findTasks({ assigned_user_id: userId, ...statusFilter }, tenantId, true);
     } catch (error) {

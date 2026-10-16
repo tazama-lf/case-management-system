@@ -3,13 +3,14 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { v4 as uuidv4, validate as isUuid } from 'uuid';
 import { TaskHistory } from '@prisma/client-cms';
 import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
+import { replaceUserIdsWithNames } from 'src/utils/user-name.util';
 
 @Injectable()
 export class TaskHistoryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly caseInvestigatorService: CaseInvestigatorService,
-  ) { }
+  ) {}
 
   async logTaskHistoryAction(data: {
     userId?: string;
@@ -49,7 +50,7 @@ export class TaskHistoryService {
   }
   async getTaskHistory(caseId: number, tenantId: string, userId: string, role: string): Promise<TaskHistory[]> {
     await this.caseInvestigatorService.assertReadAccess(caseId, userId, tenantId, role);
-    return await this.prisma.taskHistory.findMany({
+    const rows = await this.prisma.taskHistory.findMany({
       where: {
         case_id: caseId,
         tenant_id: tenantId,
