@@ -7,6 +7,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import { securityHeaders } from './config/security-headers.config';
 import * as httpProxy from 'http-proxy';
 import * as jwt from 'jsonwebtoken';
 import * as fs from 'node:fs';
@@ -24,6 +25,10 @@ async function bootstrap(): Promise<void> {
   app.useLogger(logger);
 
   app.use(cookieParser());
+
+  const allowedOrigins = parseAllowedOrigins(configService.getOrThrow<string>('CORS_ALLOWED_ORIGINS'));
+  const isProduction = configService.getOrThrow<string>('NODE_ENV') === 'prod';
+  app.use(securityHeaders(allowedOrigins, isProduction));
 
   const voilaBaseUrl = configService.getOrThrow<string>('VOILA_BASE_URL');
   const publicKeyPath = configService.getOrThrow<string>('AUTH_PUBLIC_KEY_PATH');
@@ -122,7 +127,7 @@ async function bootstrap(): Promise<void> {
   // Exact-match allowlist. `credentials: true` is required by the cookie-authenticated
   // Voila iframe and the cross-origin frontend, so the origin list must never be reflected.
   app.enableCors({
-    origin: parseAllowedOrigins(configService.getOrThrow<string>('CORS_ALLOWED_ORIGINS')),
+    origin: allowedOrigins,
     credentials: true,
   });
 
