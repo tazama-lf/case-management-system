@@ -432,18 +432,11 @@ describe('AlertStatisticsService', () => {
           expect.objectContaining({
             where: expect.objectContaining({
               OR: expect.arrayContaining([
-                {
-                  transaction: {
-                    path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
-                    equals: 'TX-ABC-123',
-                  },
-                },
-                {
-                  transaction: {
-                    path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
-                    equals: 'TX-ABC-123',
-                  },
-                },
+                { msg_id: { equals: 'TX-ABC-123' } },
+                { orgnl_end_to_end_id: { equals: 'TX-ABC-123' } },
+                { orgnl_instr_id: { equals: 'TX-ABC-123' } },
+                { dbtr_acct_id: { equals: 'TX-ABC-123' } },
+                { cdtr_acct_id: { equals: 'TX-ABC-123' } },
               ]),
             }),
           }),
@@ -634,23 +627,16 @@ describe('AlertStatisticsService', () => {
         });
 
         const callArgs = alertRepository.findMany.mock.calls[0][0];
-        expect(callArgs.where?.OR).toHaveLength(5);
+        expect(callArgs.where?.OR).toHaveLength(8);
         expect(callArgs.where?.OR).toEqual(
           expect.arrayContaining([
             { txtp: { contains: '100', mode: 'insensitive' } },
             { source: { contains: '100', mode: 'insensitive' } },
-            {
-              transaction: {
-                path: ['FIToFIPmtSts', 'GrpHdr', 'MsgId'],
-                equals: '100',
-              },
-            },
-            {
-              transaction: {
-                path: ['FIToFICstmrCdt', 'GrpHdr', 'MsgId'],
-                equals: '100',
-              },
-            },
+            { msg_id: { equals: '100' } },
+            { orgnl_end_to_end_id: { equals: '100' } },
+            { orgnl_instr_id: { equals: '100' } },
+            { dbtr_acct_id: { equals: '100' } },
+            { cdtr_acct_id: { equals: '100' } },
             { alert_id: { equals: 100 } },
           ]),
         );
