@@ -242,8 +242,16 @@ describe('CaseInvestigatorService', () => {
 
     it('lets the holder through, including when several people hold live tasks on the case', async () => {
       prisma.task.findMany.mockResolvedValue(holders('someone-else', USER_ID));
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
 
       await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBeUndefined();
+    });
+
+    it('rejects a blacklisted holder even though they hold a live task on the case', async () => {
+      prisma.task.findMany.mockResolvedValue(holders(USER_ID));
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 9 });
+
+      await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).rejects.toThrow(NotFoundException);
     });
 
     it('only looks at live (non-completed), assigned tasks on this case in this tenant', async () => {

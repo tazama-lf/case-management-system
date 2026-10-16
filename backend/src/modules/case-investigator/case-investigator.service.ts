@@ -335,6 +335,10 @@ export class CaseInvestigatorService {
     });
 
     if (holders.some((holder) => holder.assigned_user_id === userId)) {
+      // Holding a live task doesn't override a blacklist - a blocked user must not modify the case.
+      if ((await this.isBlacklisted(caseId, userId, tenantId)) !== null) {
+        throw new NotFoundException('Case not found or access denied');
+      }
       return;
     }
 
