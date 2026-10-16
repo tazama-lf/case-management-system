@@ -13,6 +13,7 @@ import { UpdateCaseDto } from '../dto';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 import { JsonValue } from '@prisma/client-cms/runtime/library';
 import { TASK_NAMES } from 'src/constants/case.constants';
+import { CaseInvestigatorService } from 'src/modules/case-investigator/case-investigator.service';
 
 @Injectable()
 export class CaseQueryService {
@@ -23,6 +24,7 @@ export class CaseQueryService {
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly taskValidationUtil: TaskValidationUtil,
     private readonly slaPolicyUtil: SlaPolicyUtil,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
 
   /**
@@ -604,6 +606,21 @@ export class CaseQueryService {
         if (sarStrFilterCondition) {
           andConditions.push(sarStrFilterCondition);
         }
+        const accessibleCaseIds = await this.caseInvestigatorService.getAccessibleCaseIds(investigatorUserId, tenantId);
+        const blacklistedCaseIds = await this.caseInvestigatorService.getBlacklistedCaseIds(investigatorUserId, tenantId);
+        const visibilityOr = [
+          { case_owner_user_id: investigatorUserId },
+          {
+            tasks: {
+              some: {
+                assigned_user_id: investigatorUserId,
+              },
+            },
+          },
+          { case_owner_user_id: null },
+          { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
+          { case_id: { in: accessibleCaseIds } },
+        ];
 
         // For investigators with search: apply search filter within their accessible cases
         if (searchFilterCondition) {
@@ -611,38 +628,20 @@ export class CaseQueryService {
           andConditions.push({
             AND: [
               searchFilterCondition, // Must match search
-              {
-                OR: [
-                  { case_owner_user_id: investigatorUserId },
-                  {
-                    tasks: {
-                      some: {
-                        assigned_user_id: investigatorUserId,
-                      },
-                    },
-                  },
-                  { case_owner_user_id: null },
-                  { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
-                ],
-              },
+              { OR: visibilityOr },
             ],
           });
         } else {
           // No search - just apply standard investigator filters
-          andConditions.push({
-            OR: [
-              { case_owner_user_id: investigatorUserId },
-              {
-                tasks: {
-                  some: {
-                    assigned_user_id: investigatorUserId,
-                  },
-                },
-              },
-              { case_owner_user_id: null },
-              { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
-            ],
-          });
+          andConditions.push({ OR: visibilityOr });
+        }
+
+        // Exclude any case this investigator is currently blacklisted on, regardless of which
+        // visibility branch above would otherwise match (stale case_owner_user_id, a past
+        // completed task assignment, or the unclaimed-case browsing branches) — keeps this list
+        // consistent with hasAccess/assertReadAccess, which already deny a blacklisted user.
+        if (blacklistedCaseIds.length > 0) {
+          andConditions.push({ NOT: { case_id: { in: blacklistedCaseIds } } });
         }
 
         whereClause.AND = andConditions;
@@ -933,6 +932,16 @@ export class CaseQueryService {
         return false;
       }
 
+      // A blacklisted investigator must be denied regardless of which OR branch below would
+      // otherwise match (stale case_owner_user_id, a past completed task, or the unclaimed-case
+      // browsing branches) — mirrors hasAccess/assertReadAccess, which already deny this case.
+      const blocked = await this.caseInvestigatorService.isBlacklisted(caseId, investigatorUserId, tenantId);
+      if (blocked) {
+        return false;
+      }
+
+      const accessibleCaseIds = await this.caseInvestigatorService.getAccessibleCaseIds(investigatorUserId, tenantId);
+
       const whereCondition = {
         case_id: caseId,
         tenant_id: tenantId,
@@ -941,6 +950,7 @@ export class CaseQueryService {
           { tasks: { some: { assigned_user_id: investigatorUserId } } }, // 2. User has ANY task assigned
           { case_owner_user_id: null }, // 3. Unassigned cases
           { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, // 4. Ready for assignment
+          { case_id: { in: accessibleCaseIds } }, // 5. Live case-investigator membership
         ],
       };
 

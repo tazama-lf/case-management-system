@@ -12,6 +12,7 @@ import { AgeingSummary, monthlyTrend, resolutionTrend, statusDetails } from './t
 import getDateRange from './helpers/getDateRange';
 import { SlaPolicyUtil, DEFAULT_TENANT_KEY } from '../shared/utils/sla-policy.util';
 import { computeCaseSlaState } from '../alert-priority/sla-state.util';
+import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
 
 /** One independent count per `CaseStatus` — see `ReportsService.STATUS_DISTRIBUTION_MAP`. */
 export interface ReportStatusDistribution {
@@ -41,6 +42,7 @@ export class ReportsService {
     private readonly notificationService: NotificationService,
     private readonly eventLogService: EventLogService,
     private readonly slaPolicyUtil: SlaPolicyUtil,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
 
   private static readonly CLOSED_STATUSES: CaseStatus[] = [
@@ -1667,11 +1669,12 @@ export class ReportsService {
     return report;
   }
 
-  async getFraudReports(caseId: string, userId = 'SYSTEM'): Promise<FraudReport[]> {
+  async getFraudReports(caseId: string, tenantId: string, userId: string, role: string): Promise<FraudReport[]> {
+    await this.caseInvestigatorService.assertReadAccess(Number(caseId), userId, tenantId, role);
+
     // Fetch all reports for case from CouchDB
     const db = this.couchdbService.getDatabase();
-    const result = await db.find({ selector: { caseId, category: 'report' } });
-    // Accept userId as an optional second argument for audit logging
+    const result = await db.find({ selector: { caseId, category: 'report', tenantId } });
     // Sort reports by version descending (latest first)
     const reports = (result.docs as FraudReport[]).sort((a, b) => (b.version || 0) - (a.version || 0));
     return reports;

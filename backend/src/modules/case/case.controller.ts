@@ -24,6 +24,7 @@ import {
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { extractUserData } from '../../utils/helperFunction';
+import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
 import {
   GetUserCasesQueryDto,
   GetUserCasesResponseDto,
@@ -79,6 +80,7 @@ export class CaseController {
     private readonly caseCreationService: CaseCreationService,
     private readonly casePriorityService: CasePriorityService,
     private readonly casePriorityUtil: CasePriorityUtil,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
 
   @Put(':caseId/abandon')
@@ -106,6 +108,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; task: Task }> {
     const { userId, tenantId } = extractUserData(req);
+    await this.caseInvestigatorService.assertCanModifyCase(caseId, userId, tenantId, req.user.actorRole);
     return await this.caseService.abandonCase(caseId, body.reason, userId, tenantId, req.user, 'PUT /api/v1/cases/:caseId/abandon');
   }
 
@@ -233,6 +236,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; completedTask: Task; newTask: Task }> {
     const { userId, tenantId } = extractUserData(req);
+    await this.caseInvestigatorService.assertCanModifyCase(caseId, userId, tenantId, req.user.actorRole);
     return await this.caseService.completeCase(caseId, userId, tenantId, req.user, 'PUT /api/v1/cases/:caseId/complete');
   }
 
@@ -624,7 +628,8 @@ export class CaseController {
   @ApiResponse({ status: 200, description: 'Case retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Case not found' })
   async getCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<Case | null> {
-    const { isComplianceOfficer, tenantId } = extractUserData(req);
+    const { userId, isComplianceOfficer, tenantId } = extractUserData(req);
+    await this.caseInvestigatorService.assertReadAccess(caseId, userId, tenantId, req.user.actorRole);
     return await this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
   }
 
@@ -643,6 +648,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Case not found' })
   async updateCase(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest): Promise<Case> {
     const { userId, tenantId } = extractUserData(req);
+    await this.caseInvestigatorService.assertCanModifyCase(caseId, userId, tenantId, req.user.actorRole);
     return await this.caseService.updateCase(caseId, dto, userId, req.user, 'PUT /api/v1/cases/:caseId', tenantId);
   }
 

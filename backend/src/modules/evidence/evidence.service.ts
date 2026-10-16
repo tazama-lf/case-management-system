@@ -17,6 +17,7 @@ import { EventLogService } from 'src/modules/event_log/eventLog.service';
 import { TaskHistoryService } from '../task_history/taskHistory.service';
 import { RbacService, EndpointKey } from 'src/utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from 'src/utils/types/auth.types';
+import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
 
 @Injectable()
 export class EvidenceService {
@@ -30,6 +31,7 @@ export class EvidenceService {
     private readonly taskRepository: TaskRepository,
     private readonly eventLogSerice: EventLogService,
     private readonly taskHistoryService: TaskHistoryService,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
 
   private sha256(buffer: Buffer): string {
@@ -189,6 +191,7 @@ export class EvidenceService {
     const rbacRole = this.rbacService.getRoleFromUser(user);
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: taskWithCase.case.status });
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    await this.caseInvestigatorService.assertReadAccess(task.case_id, userId, tenantId, rbacRole);
 
     const evidenceId = `ev_${dto.taskId}_${Date.now()}`;
 
@@ -315,6 +318,7 @@ export class EvidenceService {
     const rbacRoleDelete = this.rbacService.getRoleFromUser(user);
     const t2Delete = this.rbacService.checkTier2({ role: rbacRoleDelete, endpointKey, currentStatus: caseRecord.status });
     if (!t2Delete.allowed) throw new ForbiddenException(t2Delete.reason);
+    await this.caseInvestigatorService.assertReadAccess(doc.caseId, userId, tenantId, rbacRoleDelete);
 
     try {
       this.logger.log(`Deleting attachment ${fileName} from evidence ${doc._id} and revision ${doc._rev}`);
@@ -340,11 +344,7 @@ export class EvidenceService {
       limit: 1,
     };
 
-    if (userRole === 'CMS_INVESTIGATOR') {
-      query.uploadedBy = userId;
-    } else if (userRole === 'CMS_SUPERVISOR' || userRole === 'CMS_COMPLIANCE_OFFICER') {
-      //doNothing
-    } else {
+    if (!['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(userRole)) {
       throw new UnauthorizedException('Invalid role');
     }
 
@@ -354,6 +354,7 @@ export class EvidenceService {
     if (!evidenceDoc) {
       throw new ForbiddenException('Access denied or evidence not found');
     }
+    await this.caseInvestigatorService.assertReadAccess(evidenceDoc.caseId, userId, tenantId, userRole);
 
     return {
       id: evidenceDoc.evidenceId,
@@ -381,18 +382,17 @@ export class EvidenceService {
     attachmentName?: string,
   ): Promise<{ files: Array<{ file: Buffer; attachmentMeta: any }>; metadata: EvidenceResponseDto }> {
     this.logger.log(`Downloading evidence ${evidenceId}`);
-    let query: any = { tenantId, evidenceId, archive: false, page: 1, limit: 1 };
-    if (evidenceId.includes('InvestigationReport')) {
-      query = { tenantId, reportId: evidenceId, page: 1, limit: 1 };
-    }
-    // if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) {
+    const query = evidenceId.includes('InvestigationReport')
+      ? { tenantId, reportId: evidenceId, page: 1, limit: 1 }
+      : { tenantId, evidenceId, archive: false, page: 1, limit: 1 };
+    if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) {
       throw new UnauthorizedException('Invalid role');
     }
     const result = await this.couchdb.queryDocuments(query);
 
     const [evidenceDoc] = result.data;
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
+    await this.caseInvestigatorService.assertReadAccess(evidenceDoc.caseId, userId, tenantId, role);
 
     const attachments = evidenceDoc.metadata ?? [];
     if (!attachments.length) throw new NotFoundException('No attachments found for this evidence');
@@ -472,13 +472,13 @@ export class EvidenceService {
   ): Promise<VerifyEvidenceDto & { details?: any[] }> {
     this.logger.log(`Verifying evidence ${evidenceId}`);
 
+    if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) throw new UnauthorizedException('Invalid role');
     const query: any = { tenantId, evidenceId, archive: false, page: 1, limit: 1 };
-    if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
 
     const result = await this.couchdb.queryDocuments(query);
     const [evidenceDoc] = result.data;
     if (!evidenceDoc) throw new NotFoundException(`Evidence ${evidenceId} not found or access denied`);
+    await this.caseInvestigatorService.assertReadAccess(evidenceDoc.caseId, userId, tenantId, role);
 
     const attachments = evidenceDoc.metadata ?? [];
     if (!attachments.length) throw new NotFoundException('No attachments found for this evidence');
@@ -536,9 +536,13 @@ export class EvidenceService {
   }
 
   async getEvidenceByTaskId(taskId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
-    const query: QueryDocumentsParams = { taskId, tenantId, archive: false, page: 1, limit: 100 };
     if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) throw new UnauthorizedException('Invalid role');
 
+    const task = await this.prisma.task.findUnique({ where: { task_id: taskId }, select: { case_id: true } });
+    if (!task) throw new NotFoundException(`Task ${taskId} not found`);
+    await this.caseInvestigatorService.assertReadAccess(task.case_id, userId, tenantId, role);
+
+    const query: QueryDocumentsParams = { taskId, tenantId, archive: false, page: 1, limit: 100 };
     const result = await this.couchdb.queryDocuments(query);
     const docs = result.data;
 
@@ -566,14 +570,13 @@ export class EvidenceService {
   async getEvidenceByCaseId(caseId: number, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
     const allDocs: any[] = [];
 
-    const query: QueryDocumentsParams = { caseId, tenantId, page: 1, limit: 100 };
-
-    if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) {
+    if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) {
       throw new UnauthorizedException('Invalid role');
     }
+    await this.caseInvestigatorService.assertReadAccess(caseId, userId, tenantId, role);
     this.logger.log(`role=${role}`);
 
+    const query: QueryDocumentsParams = { caseId, tenantId, page: 1, limit: 100 };
     const result = await this.couchdb.queryDocuments(query);
 
     const docs = result.data;
@@ -602,9 +605,16 @@ export class EvidenceService {
   }
 
   async getEvidenceByType(evidenceType: EvidenceType, userId: string, tenantId: string, role: string): Promise<EvidenceListResponseDto> {
+    if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'].includes(role)) throw new UnauthorizedException('Invalid role');
+
     const query: any = { tenantId, evidenceType, archive: false, page: 1, limit: 100 };
-    if (role === 'CMS_INVESTIGATOR') query.uploadedBy = userId;
-    else if (!['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'].includes(role)) throw new UnauthorizedException('Invalid role');
+    if (role === 'CMS_INVESTIGATOR') {
+      const accessibleCaseIds = await this.caseInvestigatorService.getAccessibleCaseIds(userId, tenantId);
+      if (accessibleCaseIds.length === 0) {
+        return { evidence: [], total: 0, evidenceType };
+      }
+      query.caseIds = accessibleCaseIds;
+    }
 
     const result = await this.couchdb.queryDocuments(query);
     const docs = result.data;

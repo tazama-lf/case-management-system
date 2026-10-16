@@ -19,6 +19,10 @@ export interface UserDetails {
 export class CacheService {
   private readonly logger = new Logger(CacheService.name);
   private readonly CACHE_ROLES = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'];
+  // Fixed priority for getUserRole when a user is cached with more than one role — the two
+  // ACL-bypass roles always outrank CMS_INVESTIGATOR, regardless of which role's parallel fetch
+  // in initializeUserCache happened to finish last.
+  private readonly ROLE_PRIORITY = ['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'];
   private readonly CACHE_KEY_PREFIX = 'cms:users:';
   private readonly TOKEN_CACHE_KEY_PREFIX = 'cms:tokens:';
   private readonly CACHE_TTL_HOURS = 720; // 720 hours == 30 days TTL
@@ -62,16 +66,31 @@ export class CacheService {
           const users = await this.getUsersByRole(token, role, this.configService.get<string>('KEYCLOAK_GROUP_NAME') ?? '');
 
           for (const user of users) {
-            const userDetails: UserDetails = {
-              id: user.id,
-              username: user.username,
-              firstName: user.firstName,
-              lastName: user.lastName,
-              fullName: `${user.firstName} ${user.lastName}`.trim(),
-              email: user.email,
-            };
+            const key = this.getCacheKey(user.id);
 
-            cacheData[this.getCacheKey(user.id)] = userDetails;
+            // CACHE_ROLES' fetches run in parallel (Promise.all below) and each one's
+            // completion synchronously writes its own users into this shared cacheData
+            // object. A user present in more than one role's results (e.g. an investigator
+            // who is also a supervisor) must keep every role seen so far rather than have
+            // whichever fetch finishes last overwrite the others.
+            // Checked via hasOwn rather than truthiness of cacheData[key] itself - Record's
+            // plain index signature types that lookup as always UserDetails (never undefined),
+            // even though a key nothing has written yet genuinely is undefined at runtime.
+            if (Object.hasOwn(cacheData, key)) {
+              const existing = cacheData[key];
+              existing.roles = [...new Set([...(existing.roles ?? []), role])];
+            } else {
+              cacheData[key] = {
+                id: user.id,
+                username: user.username,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                fullName: `${user.firstName} ${user.lastName}`.trim(),
+                email: user.email,
+                roles: [role],
+              };
+            }
+
             totalUsers += 1;
           }
 
@@ -155,6 +174,23 @@ export class CacheService {
   async getUserEmailFromCache(userId: string): Promise<string | null> {
     const user = await this.getUserFromCache(userId);
     return user?.email ?? null;
+  }
+
+  async getUserRole(userId: string): Promise<string | null> {
+    const user = await this.getUserFromCache(userId);
+    if (!user?.roles || user.roles.length === 0) {
+      return null;
+    }
+
+    // A user cached with multiple roles must resolve deterministically, not by whatever order
+    // initializeUserCache's parallel role fetches happened to populate the array in.
+    for (const priorityRole of this.ROLE_PRIORITY) {
+      if (user.roles.includes(priorityRole)) {
+        return priorityRole;
+      }
+    }
+
+    return user.roles[0];
   }
 
   /**
