@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
 import { CacheService } from '../src/modules/shared/cache.service';
-import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException, BadRequestException, ConflictException } from '@nestjs/common';
 import { CaseInvestigatorMembership, CaseStatus, TaskStatus } from '@prisma/client-cms';
 
 const TENANT = 'tenant-123';
@@ -39,6 +39,7 @@ describe('CaseInvestigatorService', () => {
       },
       case: {
         findFirst: jest.fn(),
+        findMany: jest.fn(),
       },
       task: {
         count: jest.fn(),
@@ -294,12 +295,34 @@ describe('CaseInvestigatorService', () => {
       expect(prisma.caseInvestigator.findMany).not.toHaveBeenCalled();
     });
 
-    it('returns the investigator\'s live whitelist case_ids', async () => {
+    it('returns the investigator\'s whitelist case_ids plus open-for-claim cases, deduplicated', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValue([{ case_id: 1 }, { case_id: 5 }]);
+      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([]);
+      prisma.case.findMany.mockResolvedValue([{ case_id: 5 }, { case_id: 9 }]);
 
       const result = await service.getCaseIdScope(USER_ID, TENANT, 'CMS_INVESTIGATOR');
 
-      expect(result).toEqual([1, 5]);
+      expect(result).toEqual([1, 5, 9]);
+      expect(prisma.case.findMany).toHaveBeenCalledWith({
+        where: {
+          tenant_id: TENANT,
+          status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] },
+        },
+        select: { case_id: true },
+      });
+    });
+
+    it('excludes open cases the investigator is blacklisted on', async () => {
+      prisma.caseInvestigator.findMany.mockResolvedValue([{ case_id: 1 }]);
+      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([{ case_id: 7 }]);
+      prisma.case.findMany.mockResolvedValue([{ case_id: 9 }]);
+
+      const result = await service.getCaseIdScope(USER_ID, TENANT, 'CMS_INVESTIGATOR');
+
+      expect(result).toEqual([1, 9]);
+      expect(prisma.case.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ case_id: { notIn: [7] } }) }),
+      );
     });
 
     it('fails closed for any other role: scoped to its own whitelist, not the whole tenant', async () => {
@@ -308,6 +331,7 @@ describe('CaseInvestigatorService', () => {
       const result = await service.getCaseIdScope(USER_ID, TENANT, 'alert-triage');
 
       expect(result).toEqual([]);
+      expect(prisma.case.findMany).not.toHaveBeenCalled();
     });
   });
 
@@ -802,6 +826,25 @@ describe('CaseInvestigatorService', () => {
 
       expect(prisma.caseInvestigator.update).not.toHaveBeenCalled();
       expect(prisma.caseInvestigatorBlacklist.create).toHaveBeenCalled();
+    });
+
+    it('maps a P2002 from the live-blacklist unique index to a 409 and skips logging and task unassignment', async () => {
+      prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
+      prisma.caseInvestigator.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlacklist.create.mockRejectedValue({ code: 'P2002' });
+
+      await expect(service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'dup')).rejects.toThrow(ConflictException);
+      expect(loggingOrchestrationService.logActionsWithHistory).not.toHaveBeenCalled();
+      expect(prisma.task.findMany).not.toHaveBeenCalled();
+    });
+
+    it('rethrows non-P2002 errors from the blacklist transaction unchanged', async () => {
+      prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
+      prisma.caseInvestigator.findFirst.mockResolvedValue(null);
+      const boom = new Error('db down');
+      prisma.caseInvestigatorBlacklist.create.mockRejectedValue(boom);
+
+      await expect(service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'x')).rejects.toBe(boom);
     });
 
     it('blacklist-then-refuse-grant: a live block causes a later grant() to be refused', async () => {

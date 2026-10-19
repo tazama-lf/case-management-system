@@ -1,4 +1,12 @@
-import { Inject, Injectable, NotFoundException, ForbiddenException, BadRequestException, forwardRef } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  ConflictException,
+  forwardRef,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CaseInvestigator, CaseInvestigatorBlacklist, CaseInvestigatorMembership, CaseStatus, TaskStatus } from '@prisma/client-cms';
@@ -8,6 +16,7 @@ import { CacheService } from '../shared/cache.service';
 import { Outcome } from '../../utils/types/outcome';
 
 const INVESTIGATOR_ROLE = 'CMS_INVESTIGATOR';
+const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
 // Unclaimed cases every investigator can see and claim (same set ReportsService treats as visible to all).
 const OPEN_FOR_CLAIM_STATUSES: CaseStatus[] = [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT];
@@ -165,16 +174,33 @@ export class CaseInvestigatorService {
   /**
    * For tenant-wide list endpoints that have no single caseId to assert on.
    * Returns `null` for CMS_SUPERVISOR/CMS_COMPLIANCE_OFFICER (same bypass as
-   * hasAccess — no filter needed), otherwise the caller's live whitelist
-   * case_ids. Any other role fails closed to its own whitelist rather than
-   * seeing the whole tenant.
+   * hasAccess — no filter needed). CMS_INVESTIGATOR gets its live whitelist
+   * case_ids plus every case still open for claiming (DRAFT /
+   * READY_FOR_ASSIGNMENT) that it isn't blacklisted on, mirroring hasAccess.
+   * Any other role fails closed to its own whitelist rather than seeing the
+   * whole tenant.
    */
   async getCaseIdScope(userId: string, tenantId: string, role: string): Promise<number[] | null> {
     if (role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
       return null;
     }
 
-    return await this.getAccessibleCaseIds(userId, tenantId);
+    const whitelisted = await this.getAccessibleCaseIds(userId, tenantId);
+    if (role !== 'CMS_INVESTIGATOR') {
+      return whitelisted;
+    }
+
+    const blacklisted = await this.getBlacklistedCaseIds(userId, tenantId);
+    const openCases = await this.prismaService.case.findMany({
+      where: {
+        tenant_id: tenantId,
+        status: { in: OPEN_FOR_CLAIM_STATUSES },
+        ...(blacklisted.length > 0 && { case_id: { notIn: blacklisted } }),
+      },
+      select: { case_id: true },
+    });
+
+    return [...new Set([...whitelisted, ...openCases.map((row) => row.case_id)])];
   }
 
   /** The live blacklist row for (case, user), if any — lets refusal messages name who blocked and when. */
@@ -468,28 +494,36 @@ export class CaseInvestigatorService {
     try {
       await this.assertCaseInTenant(caseId, tenantId);
 
-      await this.prismaService.$transaction(async (tx) => {
-        const existing = await tx.caseInvestigator.findFirst({
-          where: { case_id: caseId, user_id: userId, tenant_id: tenantId, revoked_at: null },
-        });
-
-        if (existing) {
-          await tx.caseInvestigator.update({
-            where: { id: existing.id },
-            data: { revoked_at: new Date(), revoked_by: blockedBy, revoke_reason: 'blacklisted' },
+      try {
+        await this.prismaService.$transaction(async (tx) => {
+          const existing = await tx.caseInvestigator.findFirst({
+            where: { case_id: caseId, user_id: userId, tenant_id: tenantId, revoked_at: null },
           });
-        }
 
-        await tx.caseInvestigatorBlacklist.create({
-          data: {
-            case_id: caseId,
-            tenant_id: tenantId,
-            user_id: userId,
-            blocked_by: blockedBy,
-            block_reason: reason,
-          },
+          if (existing) {
+            await tx.caseInvestigator.update({
+              where: { id: existing.id },
+              data: { revoked_at: new Date(), revoked_by: blockedBy, revoke_reason: 'blacklisted' },
+            });
+          }
+
+          await tx.caseInvestigatorBlacklist.create({
+            data: {
+              case_id: caseId,
+              tenant_id: tenantId,
+              user_id: userId,
+              blocked_by: blockedBy,
+              block_reason: reason,
+            },
+          });
         });
-      });
+      } catch (error) {
+        // A concurrent blacklist won the race against the live-row unique index; the transaction has already rolled back.
+        if ((error as { code?: string }).code === UNIQUE_CONSTRAINT_VIOLATION) {
+          throw new ConflictException('User is already blacklisted on this case');
+        }
+        throw error;
+      }
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
