@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -135,6 +135,12 @@ export class TaskService {
               `User is blacklisted on this case (blocked by ${blocked.blocked_by} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`,
             );
           }
+        }
+
+        // A task can't be started with nobody holding it: promoteCaseToInProgress would otherwise
+        // move the case to IN_PROGRESS while leaving case_owner_user_id null.
+        if (updateData.status === TaskStatus.STATUS_20_IN_PROGRESS && !nextAssignedUserId) {
+          throw new BadRequestException('A task must be assigned before it can be set to In Progress');
         }
 
         const updateInput: Prisma.TaskUpdateInput = {

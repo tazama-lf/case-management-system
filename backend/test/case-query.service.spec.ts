@@ -95,6 +95,7 @@ describe('CaseQueryService', () => {
         count: jest.fn() as any,
         findMany: jest.fn() as any,
         findFirst: jest.fn() as any,
+        findUnique: jest.fn() as any,
         groupBy: jest.fn() as any,
       },
       task: {
@@ -614,6 +615,20 @@ describe('CaseQueryService', () => {
       expect(visibilityOr).toContainEqual({ case_id: { in: [42, 43] } });
     });
 
+    it('does not show a bare unowned case: unclaimed cases are visible only while open for claiming, matching hasAccess', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      setupGetAllCasesMocks();
+
+      await service.getAllCases(query, tenantId, 'investigator-123');
+
+      const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
+      const visibilityOr = findManyArgs.where.AND.find((c: any) => Array.isArray(c.OR))?.OR;
+      expect(visibilityOr).not.toContainEqual({ case_owner_user_id: null });
+      expect(visibilityOr).toContainEqual({
+        status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] },
+      });
+    });
+
     it('additively includes accessible case_ids alongside a search filter too', async () => {
       const investigatorId = 'investigator-123';
       caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([42]);
@@ -704,7 +719,7 @@ describe('CaseQueryService', () => {
       expect(prismaService.case.findFirst).not.toHaveBeenCalled();
     });
 
-    it('investigator: true when they own the case, have a task, are unowned, or ready-for-assignment (existing OR branches unchanged)', async () => {
+    it('investigator: true when they own the case, have a task, or it is open for claiming; a bare unowned case no longer matches', async () => {
       caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
       prismaService.case.findFirst.mockResolvedValueOnce({ case_id: caseId });
 
@@ -716,10 +731,10 @@ describe('CaseQueryService', () => {
         expect.arrayContaining([
           { case_owner_user_id: investigatorUserId },
           { tasks: { some: { assigned_user_id: investigatorUserId } } },
-          { case_owner_user_id: null },
-          { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+          { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
         ]),
       );
+      expect(whereArg.OR).not.toContainEqual({ case_owner_user_id: null });
     });
 
     it('additively includes case_investigator membership as one more OR-branch, consistent with getAllCases', async () => {
@@ -932,6 +947,52 @@ describe('CaseQueryService', () => {
         case_owner_user_id: updateData.caseOwnerUserId,
       });
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
+    });
+
+    describe('in-progress owner guard', () => {
+      const inProgressNoOwner = { status: CaseStatus.STATUS_20_IN_PROGRESS };
+
+      it('rejects In Progress when the case has no owner and the request supplies none, without writing', async () => {
+        prismaService.case.findUnique.mockResolvedValueOnce({ case_owner_user_id: null });
+
+        await expect(service.updateCase(caseId, inProgressNoOwner, userId)).rejects.toThrow(BadRequestException);
+        expect(caseRepository.updateCase).not.toHaveBeenCalled();
+      });
+
+      it('rejects In Progress when the request explicitly clears the owner', async () => {
+        prismaService.case.findUnique.mockResolvedValueOnce({ case_owner_user_id: 'user-456' });
+
+        await expect(
+          service.updateCase(caseId, { ...inProgressNoOwner, caseOwnerUserId: null as unknown as string }, userId),
+        ).rejects.toThrow(BadRequestException);
+        expect(caseRepository.updateCase).not.toHaveBeenCalled();
+      });
+
+      it('allows In Progress when the case already has an owner', async () => {
+        prismaService.case.findUnique.mockResolvedValueOnce({ case_owner_user_id: 'user-456' });
+        caseRepository.updateCase.mockResolvedValueOnce(mockCase as any);
+
+        await service.updateCase(caseId, inProgressNoOwner, userId);
+
+        expect(caseRepository.updateCase).toHaveBeenCalled();
+      });
+
+      it('allows In Progress when the request supplies an owner, without looking the case up', async () => {
+        caseRepository.updateCase.mockResolvedValueOnce(mockCase as any);
+
+        await service.updateCase(caseId, { ...inProgressNoOwner, caseOwnerUserId: 'user-456' }, userId);
+
+        expect(prismaService.case.findUnique).not.toHaveBeenCalled();
+        expect(caseRepository.updateCase).toHaveBeenCalled();
+      });
+
+      it('does not check the owner for other statuses', async () => {
+        caseRepository.updateCase.mockResolvedValueOnce(mockCase as any);
+
+        await service.updateCase(caseId, { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, userId);
+
+        expect(prismaService.case.findUnique).not.toHaveBeenCalled();
+      });
     });
 
     it('should update case with partial data', async () => {

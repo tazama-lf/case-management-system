@@ -175,7 +175,7 @@ describe('TaskService', () => {
   });
 
   describe('updateTask', () => {
-    const existingTask = {
+    const unassignedTask = {
       task_id: 1,
       case_id: 1,
       name: 'Investigate Case',
@@ -195,6 +195,7 @@ describe('TaskService', () => {
         case_owner_user_id: null,
       },
     } as any;
+    const existingTask = unassignedTask;
 
     it('should update task without status change', async () => {
       const updateData = { investigationNotes: 'Updated notes' };
@@ -220,7 +221,39 @@ describe('TaskService', () => {
       await expect(service.updateTask(999, {}, 'user1', 'tenant1')).rejects.toThrow(new NotFoundException('Task 999 not found'));
     });
 
+    it('rejects setting an unassigned task to In Progress, without writing the task or touching the case', async () => {
+      taskRepository.transaction.mockImplementation(async (callback) => {
+        taskRepository.findTaskWithCase.mockResolvedValue(unassignedTask);
+        return callback(taskRepository as any);
+      });
+
+      await expect(service.updateTask(1, { status: TaskStatus.STATUS_20_IN_PROGRESS }, 'user1', 'tenant1')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(taskRepository.updateTask).not.toHaveBeenCalled();
+      expect(taskRepository.updateCase).not.toHaveBeenCalled();
+    });
+
+    it('allows In Progress when the same request assigns the task', async () => {
+      taskRepository.transaction.mockImplementation(async (callback) => {
+        taskRepository.findTaskWithCase.mockResolvedValue(unassignedTask);
+        taskRepository.updateTask.mockResolvedValue({ ...unassignedTask, assigned_user_id: 'user2', status: TaskStatus.STATUS_20_IN_PROGRESS } as any);
+        taskRepository.findCaseStatus.mockResolvedValue({ case_id: 1, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null } as any);
+        taskRepository.updateCase.mockResolvedValue({ case_id: 1, status: CaseStatus.STATUS_20_IN_PROGRESS } as any);
+        return callback(taskRepository as any);
+      });
+
+      await service.updateTask(1, { status: TaskStatus.STATUS_20_IN_PROGRESS, assignedUserId: 'user2' }, 'user1', 'tenant1');
+
+      expect(taskRepository.updateCase).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ status: CaseStatus.STATUS_20_IN_PROGRESS, case_owner_user_id: 'user2' }),
+        expect.anything(),
+      );
+    });
+
     it('should promote case to in-progress when investigate task status changes', async () => {
+      const existingTask = { ...unassignedTask, assigned_user_id: 'user1' } as any;
       const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
       const updatedTask = { ...existingTask, status: TaskStatus.STATUS_20_IN_PROGRESS } as any;
 
@@ -253,6 +286,7 @@ describe('TaskService', () => {
     });
 
     it('should still promote the case to in-progress even if the Flowable status-change notification fails', async () => {
+      const existingTask = { ...unassignedTask, assigned_user_id: 'user1' } as any;
       const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
       const updatedTask = { ...existingTask, status: TaskStatus.STATUS_20_IN_PROGRESS } as any;
 
@@ -279,6 +313,7 @@ describe('TaskService', () => {
     });
 
     it('sends the case status notification only after the transaction commits, not from inside it', async () => {
+      const existingTask = { ...unassignedTask, assigned_user_id: 'user1' } as any;
       const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
       const updatedTask = { ...existingTask, status: TaskStatus.STATUS_20_IN_PROGRESS } as any;
 
@@ -556,6 +591,7 @@ describe('TaskService', () => {
     });
 
     it('should promote only the task case', async () => {
+      const existingTask = { ...unassignedTask, assigned_user_id: 'user1' } as any;
       const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
       const updatedCase = {
         case_id: 1,
@@ -625,6 +661,7 @@ describe('TaskService', () => {
     );
 
     it('should not query related cases while promoting the task case', async () => {
+      const existingTask = { ...unassignedTask, assigned_user_id: 'user1' } as any;
       const updateData = { status: TaskStatus.STATUS_20_IN_PROGRESS };
 
       taskRepository.transaction.mockImplementation(async (callback) => {

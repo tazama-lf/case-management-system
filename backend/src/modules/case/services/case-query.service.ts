@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
@@ -617,7 +617,8 @@ export class CaseQueryService {
               },
             },
           },
-          { case_owner_user_id: null },
+          // Unclaimed cases are only browsable while still open for claiming (same set hasAccess allows);
+          // a bare `case_owner_user_id: null` also matched in-progress cases hasAccess then 404s on.
           { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
           { case_id: { in: accessibleCaseIds } },
         ];
@@ -948,9 +949,8 @@ export class CaseQueryService {
         OR: [
           { case_owner_user_id: investigatorUserId }, // 1. User owns the case
           { tasks: { some: { assigned_user_id: investigatorUserId } } }, // 2. User has ANY task assigned
-          { case_owner_user_id: null }, // 3. Unassigned cases
-          { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, // 4. Ready for assignment
-          { case_id: { in: accessibleCaseIds } }, // 5. Live case-investigator membership
+          { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } }, // 3. Open for claiming
+          { case_id: { in: accessibleCaseIds } }, // 4. Live case-investigator membership
         ],
       };
 
@@ -983,6 +983,16 @@ export class CaseQueryService {
 
   async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string): Promise<Case & { sla_state: SlaState | null }> {
     try {
+      // An in-progress case must have an owner: reject a request that would leave it with none,
+      // whether by omitting the owner on a case that has none or by sending null explicitly.
+      if (updateData.status === CaseStatus.STATUS_20_IN_PROGRESS && !updateData.caseOwnerUserId) {
+        const existing = await this.prismaService.case.findUnique({ where: { case_id: caseId }, select: { case_owner_user_id: true } });
+        const isClearingOwner = updateData.caseOwnerUserId !== undefined;
+        if (existing && (isClearingOwner || !existing.case_owner_user_id)) {
+          throw new BadRequestException('A case must have an owner before it can be set to In Progress');
+        }
+      }
+
       const updatedCase = await this.caseRepository.updateCase(caseId, {
         case_type: updateData.caseType,
         priority: updateData.priority,
