@@ -430,6 +430,26 @@ describe('TriageService', () => {
       expect(flowableService.handleTaskCompleted).toHaveBeenCalledTimes(1);
     });
 
+    it('grants the triaging user OBSERVER access on the triaged case, since the triage task is completed outside the task service', async () => {
+      setupManualTriageMocks();
+      setupTransactionMock();
+
+      await service.handleManualTriage(1, updateAlertDto, 'user-123', 'tenant-123');
+
+      expect(caseInvestigatorService.grant).toHaveBeenCalledWith(mockCase.case_id, 'user-123', 'tenant-123', 'user-123', 'OBSERVER');
+    });
+
+    it('does not fail the triage when the ACL grant fails', async () => {
+      setupManualTriageMocks();
+      setupTransactionMock();
+      caseInvestigatorService.grant.mockRejectedValueOnce(new Error('acl down'));
+
+      const result = await service.handleManualTriage(1, updateAlertDto, 'user-123', 'tenant-123');
+
+      expect(result).toEqual(mockAlert);
+      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('ACL grant failed'), expect.anything(), 'TriageService');
+    });
+
     it('should handle FRAUD_AND_AML type by creating child cases', async () => {
       const fraudAndAmlAlert = {
         ...mockAlert,

@@ -436,6 +436,10 @@ export class TriageService {
         return { alert, completeNewCaseTask, existingCase, amlCase: null };
       });
 
+      // The triage task was assigned to and completed by the triaging user through a direct repository
+      // write (no syncTaskAssignment), so give them the whitelist row a completed task normally leaves.
+      await this.grantObserverAccess(transactionResult.existingCase.case_id, userId, userId, tenantId);
+
       if (transactionResult.amlCase) {
         await this.flowableService.handleCaseCreated({
           caseId: transactionResult.amlCase.caseId,
@@ -866,11 +870,11 @@ export class TriageService {
   }
 
   /**
-   * Auto-close completes the triage task with a direct repository write, bypassing the task
-   * service (and so syncTaskAssignment). The person who held it would otherwise never reach the
-   * case-investigator whitelist and lose access to a case they worked, so grant the permanent
+   * Auto-close and manual triage complete the triage task with a direct repository write, bypassing
+   * the task service (and so syncTaskAssignment). The person who held it would otherwise never reach
+   * the case-investigator whitelist and lose access to a case they worked, so grant the permanent
    * OBSERVER tier that completing a task normally leaves them with. Best-effort, like the other
-   * ACL syncs: the auto-close itself has already succeeded.
+   * ACL syncs: the triage/auto-close itself has already succeeded.
    */
   private async grantObserverAccess(caseId: number, assigneeId: string | null, actingUserId: string, tenantId: string): Promise<void> {
     if (!assigneeId) return;
