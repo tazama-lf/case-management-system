@@ -15,6 +15,7 @@ import { TaskHistoryModule } from '../task_history/taskHistory.module';
 import { CaseHistoryModule } from '../case_history/caseHistory.module';
 import { LoggingOrchestrationModule } from '../logging-orchestration/logging-orchestration.module';
 import { InvestigationGroupModule } from '../investigation-group/investigation-group.module';
+import { CaseInvestigatorModule } from '../case-investigator/case-investigator.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { InvestigationGroupModule } from '../investigation-group/investigation-g
     CaseHistoryModule,
     LoggingOrchestrationModule,
     InvestigationGroupModule,
+    CaseInvestigatorModule,
   ],
   controllers: [TriageController],
   providers: [TriageService],
