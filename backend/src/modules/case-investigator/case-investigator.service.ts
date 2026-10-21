@@ -698,6 +698,11 @@ export class CaseInvestigatorService {
       orderBy: { granted_at: 'asc' },
     });
 
+    return await this.withUserRoles(rows);
+  }
+
+  /** Tags each row with its user's cached role (null = unknown), looking each distinct user up once. */
+  private async withUserRoles(rows: CaseInvestigator[]): Promise<CaseInvestigatorWithRole[]> {
     const roles = new Map<string, string | null>();
     await Promise.all(
       [...new Set(rows.map((row) => row.user_id))].map(async (userId) => {
@@ -710,6 +715,30 @@ export class CaseInvestigatorService {
     );
 
     return rows.map((row) => ({ ...row, user_role: roles.get(row.user_id) ?? null }));
+  }
+
+  /**
+   * Who used to have access to this case and lost it, and who was blocked and later unblocked.
+   * Revoking and unblocking are soft updates, so these rows are kept for good, but the live lists
+   * above only show current state - without this the record of a revoke would exist only as a
+   * line in case history. Most recent first. Includes automatic revokes (reassigned away).
+   */
+  async listAccessHistory(
+    caseId: number,
+    tenantId: string,
+  ): Promise<{ revoked: CaseInvestigatorWithRole[]; unblocked: CaseInvestigatorBlacklist[] }> {
+    const [revoked, unblocked] = await Promise.all([
+      this.prismaService.caseInvestigator.findMany({
+        where: { case_id: caseId, tenant_id: tenantId, revoked_at: { not: null } },
+        orderBy: { revoked_at: 'desc' },
+      }),
+      this.prismaService.caseInvestigatorBlacklist.findMany({
+        where: { case_id: caseId, tenant_id: tenantId, unblocked_at: { not: null } },
+        orderBy: { unblocked_at: 'desc' },
+      }),
+    ]);
+
+    return { revoked: await this.withUserRoles(revoked), unblocked };
   }
 
   /** Live blacklist rows for a case, tenant-scoped. */

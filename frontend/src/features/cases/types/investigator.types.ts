@@ -28,6 +28,15 @@ export interface CaseInvestigatorBlacklistEntry {
   unblock_reason: string | null;
 }
 
+/**
+ * Who used to have access to a case and lost it (revoked whitelist rows, manual and automatic),
+ * and who was blacklisted and later unblocked. Most recent first. Supervisor+ only.
+ */
+export interface CaseAccessHistory {
+  revoked: CaseInvestigator[];
+  unblocked: CaseInvestigatorBlacklistEntry[];
+}
+
 // No AddCaseInvestigatorDto — there is no whitelist add endpoint at all
 // The whitelist is populated exclusively by task assignment
 // nobody,including a supervisor, adds to it by hand. "Refuses on blacklist hit"

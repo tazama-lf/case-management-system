@@ -87,6 +87,10 @@ describe('AccessControlTab', () => {
       mockWhitelist,
     );
     (investigatorService.getCaseBlacklist as vi.Mock).mockResolvedValue([]);
+    (investigatorService.getCaseAccessHistory as vi.Mock).mockResolvedValue({
+      revoked: [],
+      unblocked: [],
+    });
   });
 
   it('renders the whitelist with names, tiers, and shows Revoke/Blacklist for investigator rows', async () => {
@@ -311,6 +315,96 @@ describe('AccessControlTab', () => {
       expect(
         screen.getByText('Nobody is blacklisted on this case'),
       ).toBeInTheDocument();
+    });
+  });
+  describe('access history', () => {
+    const revokedRow: CaseInvestigator = {
+      id: 10,
+      case_id: 42,
+      user_id: 'user-revoked',
+      membership: 'LEAD',
+      granted_by: 'user-supervisor',
+      granted_at: '2026-01-01T00:00:00Z',
+      revoked_at: '2026-02-02T00:00:00Z',
+      revoked_by: 'user-supervisor',
+      revoke_reason: 'conflict of interest',
+    };
+
+    it('shows an empty state when nobody has been revoked or unblocked', async () => {
+      renderTab();
+
+      expect(
+        await screen.findByText('No access has been revoked on this case'),
+      ).toBeInTheDocument();
+    });
+
+    it('lists who lost access, by whom, when and why - including who was unblocked - newest first', async () => {
+      (investigatorService.getCaseAccessHistory as vi.Mock).mockResolvedValue({
+        revoked: [revokedRow],
+        unblocked: [
+          {
+            id: 3,
+            case_id: 42,
+            user_id: 'user-unblocked',
+            blocked_by: 'user-supervisor',
+            blocked_at: '2026-01-10T00:00:00Z',
+            block_reason: 'HR flag',
+            unblocked_at: '2026-03-03T00:00:00Z',
+            unblocked_by: 'user-supervisor',
+            unblock_reason: 'cleared by HR',
+          },
+        ],
+      });
+      renderTab();
+
+      await screen.findByText('conflict of interest');
+      expect(screen.getByText('cleared by HR')).toBeInTheDocument();
+      expect(screen.getByText('Revoked')).toBeInTheDocument();
+      expect(screen.getByText('Unblocked')).toBeInTheDocument();
+      expect(screen.getByText(/LEAD, granted/)).toBeInTheDocument();
+      expect(screen.getByText(/Blocked .*HR flag/)).toBeInTheDocument();
+
+      // newest first: the March unblock is listed before the February revoke
+      const reasons = screen
+        .getAllByRole('row')
+        .map((row) => row.textContent ?? '')
+        .filter((text) => /conflict of interest|cleared by HR/.test(text));
+      expect(reasons[0]).toContain('cleared by HR');
+      expect(reasons[1]).toContain('conflict of interest');
+    });
+
+    it('leaves supervisors and compliance officers out of the history - they never lose access, so a Revoked row would mislead', async () => {
+      (investigatorService.getCaseAccessHistory as vi.Mock).mockResolvedValue({
+        revoked: [
+          revokedRow,
+          {
+            ...revokedRow,
+            id: 11,
+            user_id: 'user-sup',
+            user_role: 'CMS_SUPERVISOR',
+            revoke_reason: 'Automatically revoked: no longer assigned to any task on this case',
+          },
+        ],
+        unblocked: [],
+      });
+      renderTab();
+
+      await screen.findByText('conflict of interest');
+      expect(screen.queryByText(/Automatically revoked/)).not.toBeInTheDocument();
+      expect(screen.getAllByText('Revoked')).toHaveLength(1);
+    });
+
+    it('shows an error state when the history fails to load, without hiding the live lists', async () => {
+      (investigatorService.getCaseAccessHistory as vi.Mock).mockRejectedValue(
+        new Error('boom'),
+      );
+      renderTab();
+
+      expect(
+        await screen.findByText('Failed to load access history'),
+      ).toBeInTheDocument();
+      await waitForWhitelistLoaded();
+      expect(screen.getByText('Lee Adley')).toBeInTheDocument();
     });
   });
 });

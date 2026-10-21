@@ -1037,6 +1037,54 @@ describe('CaseInvestigatorService', () => {
     });
   });
 
+  describe('listAccessHistory', () => {
+    it('returns revoked whitelist rows and unblocked blacklist rows, tenant-scoped and most recent first', async () => {
+      const revoked = [{ id: 7, user_id: USER_ID, revoked_at: new Date('2026-10-21'), revoke_reason: 'fsafasde' }];
+      const unblocked = [{ id: 2, user_id: OTHER_USER_ID, unblocked_at: new Date('2026-10-20'), unblock_reason: 'cleared' }];
+      prisma.caseInvestigator.findMany.mockResolvedValue(revoked);
+      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue(unblocked);
+
+      const result = await service.listAccessHistory(CASE_ID, TENANT);
+
+      expect(result).toEqual({ revoked: [{ ...revoked[0], user_role: 'CMS_INVESTIGATOR' }], unblocked });
+      expect(prisma.caseInvestigator.findMany).toHaveBeenCalledWith({
+        where: { case_id: CASE_ID, tenant_id: TENANT, revoked_at: { not: null } },
+        orderBy: { revoked_at: 'desc' },
+      });
+      expect(prisma.caseInvestigatorBlacklist.findMany).toHaveBeenCalledWith({
+        where: { case_id: CASE_ID, tenant_id: TENANT, unblocked_at: { not: null } },
+        orderBy: { unblocked_at: 'desc' },
+      });
+    });
+
+    it('does not filter by reason, so automatic revokes (reassigned away) are part of the history too', async () => {
+      const auto = { id: 8, user_id: USER_ID, revoked_at: new Date(), revoke_reason: 'Automatically revoked: no longer assigned to any task on this case' };
+      prisma.caseInvestigator.findMany.mockResolvedValue([auto]);
+      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([]);
+
+      const result = await service.listAccessHistory(CASE_ID, TENANT);
+
+      expect(result.revoked.map((row) => row.id)).toEqual([8]);
+    });
+
+    it('returns empty lists when nobody was ever revoked or unblocked', async () => {
+      prisma.caseInvestigator.findMany.mockResolvedValue([]);
+      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([]);
+
+      await expect(service.listAccessHistory(CASE_ID, TENANT)).resolves.toEqual({ revoked: [], unblocked: [] });
+    });
+
+    it('reports role null (unknown), not a guess, when the role lookup fails - and still returns the rows', async () => {
+      prisma.caseInvestigator.findMany.mockResolvedValue([{ id: 7, user_id: USER_ID }]);
+      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([]);
+      cacheService.getUserRole.mockRejectedValue(new Error('redis down'));
+
+      const result = await service.listAccessHistory(CASE_ID, TENANT);
+
+      expect(result.revoked).toEqual([{ id: 7, user_id: USER_ID, user_role: null }]);
+    });
+  });
+
   describe('listWhitelist / listBlacklist', () => {
     it('listWhitelist filters live rows by case_id and tenant_id, ordered by granted_at asc', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValue([{ id: 1, user_id: USER_ID }]);

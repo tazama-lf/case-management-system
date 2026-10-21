@@ -4,11 +4,13 @@ import {
   NoSymbolIcon,
   LockOpenIcon,
   ShieldExclamationIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 import {
   useCaseInvestigators,
   useCaseBlacklist,
+  useCaseAccessHistory,
   useRevokeInvestigator,
   useBlacklistInvestigator,
   useUnblockInvestigator,
@@ -30,6 +32,16 @@ type PendingAction =
   | { type: 'blacklist'; userId: string }
   | { type: 'unblock'; userId: string }
   | null;
+
+interface AccessHistoryEvent {
+  key: string;
+  kind: 'revoked' | 'unblocked';
+  userId: string;
+  at: string;
+  by: string | null;
+  reason: string | null;
+  detail: string;
+}
 
 const membershipBadgeClass = (
   membership: CaseInvestigatorMembership,
@@ -63,6 +75,13 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
     refetch: refetchBlacklist,
   } = useCaseBlacklist(caseId);
 
+  const {
+    data: accessHistory,
+    isLoading: historyLoading,
+    isError: historyError,
+    refetch: refetchHistory,
+  } = useCaseAccessHistory(caseId);
+
   const revokeInvestigator = useRevokeInvestigator(caseId);
   const blacklistInvestigator = useBlacklistInvestigator(caseId);
   const unblockInvestigator = useUnblockInvestigator(caseId);
@@ -77,6 +96,48 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
     () => blacklist.filter((row) => !row.unblocked_at),
     [blacklist],
   );
+
+  // One timeline, newest first: revokes (including automatic ones) and unblocks together.
+  const historyEvents = useMemo<AccessHistoryEvent[]>(() => {
+    // Supervisors and compliance officers also get whitelist rows (and lose them automatically when
+    // reassigned off a task), but they bypass the ACL and never lose access - listing those as
+    // "Revoked" would be misleading, so only people who can actually lose access are shown.
+    const revoked = (accessHistory?.revoked ?? []).flatMap(
+      (row): AccessHistoryEvent[] =>
+        row.revoked_at && !(row.user_role && NON_REMOVABLE_ROLE_LABELS[row.user_role])
+          ? [
+              {
+                key: `revoked-${row.id}`,
+                kind: 'revoked',
+                userId: row.user_id,
+                at: row.revoked_at,
+                by: row.revoked_by,
+                reason: row.revoke_reason,
+                detail: `${row.membership}, granted ${formatDate(row.granted_at)}`,
+              },
+            ]
+          : [],
+    );
+    const unblocked = (accessHistory?.unblocked ?? []).flatMap(
+      (row): AccessHistoryEvent[] =>
+        row.unblocked_at
+          ? [
+              {
+                key: `unblocked-${row.id}`,
+                kind: 'unblocked',
+                userId: row.user_id,
+                at: row.unblocked_at,
+                by: row.unblocked_by,
+                reason: row.unblock_reason,
+                detail: `Blocked ${formatDate(row.blocked_at)}: ${row.block_reason}`,
+              },
+            ]
+          : [],
+    );
+    return [...revoked, ...unblocked].sort(
+      (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
+    );
+  }, [accessHistory]);
 
   const resolveName = (userId: string): string => {
     const name = getAssigneeFullName(userId);
@@ -285,6 +346,92 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
                         <LockOpenIcon className="h-4 w-4" />
                         Unblock
                       </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* Access history — revoked and unblocked rows are kept, not deleted; the lists above show only current state. */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <ClockIcon className="h-5 w-5 text-gray-500" />
+          <h3 className="text-base font-semibold text-gray-900">
+            Access History
+          </h3>
+        </div>
+
+        {historyLoading && (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner size="md" />
+          </div>
+        )}
+
+        {historyError && (
+          <ErrorState
+            title="Failed to load access history"
+            message="Could not load who previously had access to this case."
+            onRetry={() => {
+              void refetchHistory();
+            }}
+          />
+        )}
+
+        {!historyLoading && !historyError && historyEvents.length === 0 && (
+          <EmptyState
+            icon="folder"
+            title="No access has been revoked on this case"
+            description="Revoked and unblocked access will be listed here."
+          />
+        )}
+
+        {!historyLoading && !historyError && historyEvents.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="py-2 pr-4">Event</th>
+                  <th className="py-2 pr-4">User</th>
+                  <th className="py-2 pr-4">By</th>
+                  <th className="py-2 pr-4">When</th>
+                  <th className="py-2 pr-4">Reason</th>
+                  <th className="py-2">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historyEvents.map((event) => (
+                  <tr
+                    key={event.key}
+                    className="border-b border-gray-100 last:border-0"
+                  >
+                    <td className="py-2 pr-4">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          event.kind === 'revoked'
+                            ? 'bg-orange-100 text-orange-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}
+                      >
+                        {event.kind === 'revoked' ? 'Revoked' : 'Unblocked'}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-4 text-sm text-gray-900">
+                      {resolveName(event.userId)}
+                    </td>
+                    <td className="py-2 pr-4 text-sm text-gray-500">
+                      {event.by ? resolveName(event.by) : '—'}
+                    </td>
+                    <td className="py-2 pr-4 text-sm text-gray-500">
+                      {formatDate(event.at)}
+                    </td>
+                    <td className="py-2 pr-4 text-sm text-gray-700">
+                      {event.reason ?? '—'}
+                    </td>
+                    <td className="py-2 text-sm text-gray-500">
+                      {event.detail}
                     </td>
                   </tr>
                 ))}

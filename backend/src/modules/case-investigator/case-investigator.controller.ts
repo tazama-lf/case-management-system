@@ -107,6 +107,23 @@ export class CaseInvestigatorController {
     return await this.caseInvestigatorService.listWhitelist(caseId, tenantId);
   }
 
+  @Get(':caseId/investigators/history')
+  @RequireSupervisorRole()
+  @ApiOperation({
+    summary: 'List who lost access to a case, and who was unblocked',
+    description:
+      'Supervisor+ only. Revoked whitelist rows (manual and automatic) and unblocked blacklist rows for this case, most recent first. Rows are soft-updated, never deleted, so this is the full record.',
+  })
+  @ApiParam({ name: 'caseId', type: 'number', example: 123 })
+  @ApiResponse({ status: 200, description: 'Revoked whitelist rows and unblocked blacklist rows' })
+  async getAccessHistory(
+    @Param('caseId') caseId: number,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ revoked: CaseInvestigatorWithRole[]; unblocked: CaseInvestigatorBlacklist[] }> {
+    const { tenantId } = extractUserData(req);
+    return await this.caseInvestigatorService.listAccessHistory(caseId, tenantId);
+  }
+
   @Get(':caseId/blacklist')
   @RequireSupervisorRole()
   @ApiOperation({ summary: 'List a case live blacklist', description: 'Supervisor+ only.' })

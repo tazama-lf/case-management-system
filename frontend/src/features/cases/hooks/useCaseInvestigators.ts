@@ -10,6 +10,8 @@ export const investigatorKeys = {
     [...investigatorKeys.all, 'whitelist', caseId] as const,
   blacklist: (caseId: number) =>
     [...investigatorKeys.all, 'blacklist', caseId] as const,
+  history: (caseId: number) =>
+    [...investigatorKeys.all, 'history', caseId] as const,
 };
 
 /**
@@ -29,6 +31,18 @@ export const useCaseBlacklist = (caseId: number, enabled = true) =>
   useQuery({
     queryKey: investigatorKeys.blacklist(caseId),
     queryFn: async () => await investigatorService.getCaseBlacklist(caseId),
+    enabled: enabled && !!caseId,
+    staleTime: 30 * 1000,
+  });
+
+/**
+ * Hook to fetch a case's access history: who was revoked (manually or by reassignment) and who
+ * was unblocked. Those rows are kept, but the live lists above only show current state.
+ */
+export const useCaseAccessHistory = (caseId: number, enabled = true) =>
+  useQuery({
+    queryKey: investigatorKeys.history(caseId),
+    queryFn: async () => await investigatorService.getCaseAccessHistory(caseId),
     enabled: enabled && !!caseId,
     staleTime: 30 * 1000,
   });
@@ -54,6 +68,9 @@ export const useRevokeInvestigator = (caseId: number) => {
       queryClient.invalidateQueries({
         queryKey: investigatorKeys.whitelist(caseId),
       });
+      queryClient.invalidateQueries({
+        queryKey: investigatorKeys.history(caseId),
+      });
       toast.success('Investigator revoked');
     },
     onError: (error: Error) => {
@@ -78,6 +95,9 @@ export const useBlacklistInvestigator = (caseId: number) => {
       });
       queryClient.invalidateQueries({
         queryKey: investigatorKeys.blacklist(caseId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: investigatorKeys.history(caseId),
       });
       toast.success('Investigator blacklisted');
     },
@@ -108,6 +128,9 @@ export const useUnblockInvestigator = (caseId: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: investigatorKeys.blacklist(caseId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: investigatorKeys.history(caseId),
       });
       toast.success(
         'Investigator unblocked — they still need to be re-added to regain access',

@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances, matching evidenceService.ts's convention */
 import apiClient from '../../../shared/services/apiClient';
 import type {
+  CaseAccessHistory,
   CaseInvestigator,
   CaseInvestigatorBlacklistEntry,
   BlacklistCaseInvestigatorDto,
@@ -32,6 +33,20 @@ export class InvestigatorService {
       return Array.isArray(response) ? response : [];
     } catch (error) {
       throw this.handleError(error, 'get case blacklist');
+    }
+  }
+
+  async getCaseAccessHistory(caseId: number): Promise<CaseAccessHistory> {
+    try {
+      const response = await apiClient.get<Partial<CaseAccessHistory> | null>(
+        `${this.baseUrl}/${caseId}/investigators/history`,
+      );
+      return {
+        revoked: Array.isArray(response?.revoked) ? response.revoked : [],
+        unblocked: Array.isArray(response?.unblocked) ? response.unblocked : [],
+      };
+    } catch (error) {
+      throw this.handleError(error, 'get case access history');
     }
   }
 
