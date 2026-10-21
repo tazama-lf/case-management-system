@@ -119,6 +119,7 @@ describe('EvidenceService', () => {
           useValue: {
             assertReadAccess: jest.fn().mockResolvedValue(undefined),
             getAccessibleCaseIds: jest.fn().mockResolvedValue([]),
+            getCaseIdScope: jest.fn().mockResolvedValue([]),
           },
         },
       ],
@@ -694,18 +695,24 @@ describe('EvidenceService', () => {
       },
     );
 
-    it('should restrict CMS_INVESTIGATOR to their accessible case_ids via the CouchDB selector', async () => {
-      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([100, 101]);
+    it('should restrict CMS_INVESTIGATOR to the cases in their scope (member, creator, open for claiming) via the CouchDB selector', async () => {
+      caseInvestigatorService.getCaseIdScope.mockResolvedValueOnce([100, 101]);
 
       const result = await service.getEvidenceByType(evidenceType as any, userId, tenantId, 'CMS_INVESTIGATOR');
 
       expect(result.evidence).toHaveLength(1);
-      expect(caseInvestigatorService.getAccessibleCaseIds).toHaveBeenCalledWith(userId, tenantId);
+      expect(caseInvestigatorService.getCaseIdScope).toHaveBeenCalledWith(userId, tenantId, 'CMS_INVESTIGATOR');
       expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ caseIds: [100, 101] }));
     });
 
+    it('uses the same scope as the per-case evidence gates, not the narrower whitelist-only ids', async () => {
+      await service.getEvidenceByType(evidenceType as any, userId, tenantId, 'CMS_INVESTIGATOR');
+
+      expect(caseInvestigatorService.getAccessibleCaseIds).not.toHaveBeenCalled();
+    });
+
     it('should short-circuit to an empty result for CMS_INVESTIGATOR with no accessible cases, without querying CouchDB', async () => {
-      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      caseInvestigatorService.getCaseIdScope.mockResolvedValueOnce([]);
 
       const result = await service.getEvidenceByType(evidenceType as any, userId, tenantId, 'CMS_INVESTIGATOR');
 

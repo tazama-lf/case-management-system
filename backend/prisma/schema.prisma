@@ -159,6 +159,9 @@ model CaseInvestigator {
   revoke_reason String?                    @db.VarChar(1000)
   case          Case                       @relation(fields: [case_id], references: [case_id])
 
+  // Live-row uniqueness is enforced by a partial unique index in
+  // migrations/20260914000000_add_case_investigator_acl/migration.sql.
+  // Prisma schema cannot model `WHERE revoked_at IS NULL`; do not drop it on drift.
   @@index([case_id, user_id])
   @@index([user_id])
   @@index([tenant_id])
@@ -178,6 +181,9 @@ model CaseInvestigatorBlacklist {
   unblock_reason String?   @db.VarChar(1000)
   case           Case      @relation(fields: [case_id], references: [case_id])
 
+  // Live-row uniqueness is enforced by a partial unique index in
+  // migrations/20260914000000_add_case_investigator_acl/migration.sql.
+  // Prisma schema cannot model `WHERE unblocked_at IS NULL`; do not drop it on drift.
   @@index([case_id, user_id])
   @@index([user_id])
   @@index([tenant_id])

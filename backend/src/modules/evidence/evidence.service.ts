@@ -609,11 +609,16 @@ export class EvidenceService {
 
     const query: any = { tenantId, evidenceType, archive: false, page: 1, limit: 100 };
     if (role === 'CMS_INVESTIGATOR') {
-      const accessibleCaseIds = await this.caseInvestigatorService.getAccessibleCaseIds(userId, tenantId);
-      if (accessibleCaseIds.length === 0) {
-        return { evidence: [], total: 0, evidenceType };
+      // Same scope as the per-case evidence endpoints (assertReadAccess): cases the investigator is on or created,
+      // plus cases still open for claiming, minus any they are blocked on. getAccessibleCaseIds alone left the
+      // open-for-claim cases out, so the list was narrower than what the per-case endpoints allow.
+      const caseIds = await this.caseInvestigatorService.getCaseIdScope(userId, tenantId, role);
+      if (caseIds !== null) {
+        if (caseIds.length === 0) {
+          return { evidence: [], total: 0, evidenceType };
+        }
+        query.caseIds = caseIds;
       }
-      query.caseIds = accessibleCaseIds;
     }
 
     const result = await this.couchdb.queryDocuments(query);
