@@ -4,6 +4,7 @@ import { RedisService } from '../shared/redis.service';
 import axios from 'axios';
 import * as jwt from 'jsonwebtoken';
 import { UserGroupDetails } from '../../utils/types/UserList';
+import { resolveCmsRole } from '../../utils/cms-roles';
 
 export interface UserDetails {
   id: string;
@@ -19,10 +20,6 @@ export interface UserDetails {
 export class CacheService {
   private readonly logger = new Logger(CacheService.name);
   private readonly CACHE_ROLES = ['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'];
-  // Fixed priority for getUserRole when a user is cached with more than one role — the two
-  // ACL-bypass roles always outrank CMS_INVESTIGATOR, regardless of which role's parallel fetch
-  // in initializeUserCache happened to finish last.
-  private readonly ROLE_PRIORITY = ['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_INVESTIGATOR'];
   private readonly CACHE_KEY_PREFIX = 'cms:users:';
   private readonly TOKEN_CACHE_KEY_PREFIX = 'cms:tokens:';
   private readonly CACHE_TTL_HOURS = 720; // 720 hours == 30 days TTL
@@ -259,15 +256,9 @@ export class CacheService {
       return null;
     }
 
-    // A user cached with multiple roles must resolve deterministically, not by whatever order
-    // initializeUserCache's parallel role fetches happened to populate the array in.
-    for (const priorityRole of this.ROLE_PRIORITY) {
-      if (user.roles.includes(priorityRole)) {
-        return priorityRole;
-      }
-    }
-
-    return user.roles[0];
+    // Resolved by the shared precedence (utils/cms-roles), not by whichever role's parallel fetch in
+    // initializeUserCache finished last - and identically to the token's role.
+    return resolveCmsRole(user.roles) ?? user.roles[0];
   }
 
   /**

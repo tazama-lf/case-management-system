@@ -14,12 +14,12 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { CacheService } from '../shared/cache.service';
 import { Outcome } from '../../utils/types/outcome';
+import { isAclBypassRole } from '../../utils/cms-roles';
 
 const INVESTIGATOR_ROLE = 'CMS_INVESTIGATOR';
 
 // Supervisors and compliance officers bypass the ACL entirely (hasAccess), so a whitelist row for
 // them means nothing. They are no longer given one; rows from before this rule are left as they are.
-const ACL_BYPASS_ROLES = new Set(['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER']);
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
 // Unclaimed cases every investigator can see and claim (same set ReportsService treats as visible to all).
@@ -141,7 +141,7 @@ export class CaseInvestigatorService {
    * user isn't blacklisted on it.
    */
   async hasAccess(caseId: number, userId: string, tenantId: string, role: string): Promise<boolean> {
-    if (role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
+    if (isAclBypassRole(role)) {
       return true;
     }
 
@@ -302,7 +302,7 @@ export class CaseInvestigatorService {
    * history logs a revoked investigator may still read.
    */
   async getCaseIdScope(userId: string, tenantId: string, role: string, includeRestricted = false): Promise<number[] | null> {
-    if (role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
+    if (isAclBypassRole(role)) {
       return null;
     }
 
@@ -517,7 +517,7 @@ export class CaseInvestigatorService {
    * who can see the case but isn't its holder (e.g. a past OBSERVER) gets a 403.
    */
   async assertCanModifyCase(caseId: number, userId: string, tenantId: string, role: string): Promise<void> {
-    if (role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
+    if (isAclBypassRole(role)) {
       return;
     }
 
@@ -792,7 +792,7 @@ export class CaseInvestigatorService {
   private async hasBypassRole(userId: string): Promise<boolean> {
     try {
       const role = await this.cacheService.getUserRole(userId);
-      return role !== null && ACL_BYPASS_ROLES.has(role);
+      return isAclBypassRole(role);
     } catch {
       return false;
     }

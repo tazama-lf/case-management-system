@@ -522,6 +522,12 @@ describe('CacheService', () => {
       await expect(service.getUserRole('user-2')).resolves.toBe('CMS_SUPERVISOR');
     });
 
+    it('resolves a user cached with several roles by the shared precedence, whichever role loaded last', async () => {
+      await initWith(mockUserGroupDetails, { investigator: [mockUserGroupDetails[0]], supervisor: [mockUserGroupDetails[0]] });
+
+      await expect(service.getUserRole('user-1')).resolves.toBe('CMS_SUPERVISOR');
+    });
+
     it('is unknown (null) for a user that was never in the directory', async () => {
       await initWith(mockUserGroupDetails);
 
