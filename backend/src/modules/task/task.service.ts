@@ -10,6 +10,7 @@ import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { CaseInvestigatorService, SyncTaskAssignmentParams } from '../case-investigator/case-investigator.service';
+import { syncCaseAcl } from './utils/sync-case-acl';
 import { isInvestigateTask } from '../case-investigator/restricted-view.util';
 import { setTimeout } from 'node:timers/promises';
 
@@ -24,17 +25,7 @@ export class TaskService {
     private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
   private async syncCaseAcl(caseId: number, tenantId: string, actingUserId: string, params: SyncTaskAssignmentParams): Promise<void> {
-    try {
-      await this.caseInvestigatorService.syncTaskAssignment(caseId, tenantId, actingUserId, params);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.warn(
-        `Case-investigator ACL sync failed for case ${caseId}, task ${params.taskId} (task mutation itself already succeeded): ${errorMessage}`,
-        errorStack,
-        TaskService.name,
-      );
-    }
+    await syncCaseAcl(this.caseInvestigatorService, this.logger, TaskService.name, caseId, tenantId, actingUserId, params);
   }
 
   async createTask(taskDTO: CreateTaskDto, userId: string, tenantId: string, tx?: Prisma.TransactionClient): Promise<Task> {

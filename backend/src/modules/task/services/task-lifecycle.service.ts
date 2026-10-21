@@ -15,6 +15,7 @@ import { RbacService, EndpointKey } from 'src/utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from 'src/utils/types/auth.types';
 import { UserService } from 'src/modules/user/user.service';
 import { CaseInvestigatorService, SyncTaskAssignmentParams } from 'src/modules/case-investigator/case-investigator.service';
+import { syncCaseAcl } from '../utils/sync-case-acl';
 import type { CaseInvestigatorAccessRemovedEvent } from 'src/modules/case-investigator/case-investigator.service';
 
 @Injectable()
@@ -34,17 +35,7 @@ export class TaskLifecycleService {
   ) {}
 
   private async syncCaseAcl(caseId: number, tenantId: string, actingUserId: string, params: SyncTaskAssignmentParams): Promise<void> {
-    try {
-      await this.caseInvestigatorService.syncTaskAssignment(caseId, tenantId, actingUserId, params);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.warn(
-        `Case-investigator ACL sync failed for case ${caseId}, task ${params.taskId} (task mutation itself already succeeded): ${errorMessage}`,
-        errorStack,
-        TaskLifecycleService.name,
-      );
-    }
+    await syncCaseAcl(this.caseInvestigatorService, this.logger, TaskLifecycleService.name, caseId, tenantId, actingUserId, params);
   }
 
   /**
