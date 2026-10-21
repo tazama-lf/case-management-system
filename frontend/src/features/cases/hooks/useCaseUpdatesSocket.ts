@@ -13,7 +13,7 @@ const DEBOUNCE_MS = 500;
 
 interface CaseChangedPayload {
   caseId: number;
-  type: 'created' | 'status-changed';
+  type: 'created' | 'status-changed' | 'access-changed';
 }
 
 /**
