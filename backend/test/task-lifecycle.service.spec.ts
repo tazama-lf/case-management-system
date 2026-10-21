@@ -556,6 +556,19 @@ describe('TaskLifecycleService', () => {
       });
     });
 
+    it('should refuse the caller when they have no access to the case, without writing anything', async () => {
+      mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
+      mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
+      mockCaseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new NotFoundException('Case not found or access denied'));
+
+      await expect(
+        service.reassignTask(1, 'user9', 'tenant1', 'user2', 'Reassign note', mockSupervisorUser, testEndpointKey),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockCaseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(1, 'user9', 'tenant1', expect.any(String));
+      expect(mockPrisma.task.update).not.toHaveBeenCalled();
+      expect(mockCaseInvestigatorService.syncTaskAssignment).not.toHaveBeenCalled();
+    });
+
     it('should refuse to reassign to a user blacklisted on this case, without writing anything', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);

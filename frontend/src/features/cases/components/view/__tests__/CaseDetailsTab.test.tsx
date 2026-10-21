@@ -573,5 +573,70 @@ describe('CaseDetailsTab', () => {
       expect(screen.getByText('01/01/2023')).toBeInTheDocument();
     });
   });
+
+  describe('refreshed case data re-evaluates the reports (same case id, new status / access level)', () => {
+    const withReport = {
+      evidence: [
+        {
+          evidenceType: 'INVESTIGATION_REPORT',
+          reportId: 'RPT-001',
+          attachments: [{ submittedAt: '2024-01-01' }],
+        },
+      ],
+    };
+
+    it('loads the reports when an open case is refreshed as closed', async () => {
+      mockGetCaseEvidence.mockResolvedValue(withReport);
+      const { rerender } = render(<CaseDetailsTab row={mockCaseRow} />);
+      expect(mockGetCaseEvidence).not.toHaveBeenCalled();
+      expect(screen.queryByText('View Investigation Report')).not.toBeInTheDocument();
+
+      rerender(<CaseDetailsTab row={{ ...mockCaseRow, status: 'STATUS_82_CLOSED_CONFIRMED' }} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('View Investigation Report')).toBeInTheDocument();
+      });
+      expect(mockGetCaseEvidence).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops the reports it was showing when the viewer is refreshed as restricted, and does not fetch them again', async () => {
+      mockGetCaseEvidence.mockResolvedValue(withReport);
+      const closedRow = { ...mockCaseRow, status: 'STATUS_82_CLOSED_CONFIRMED' };
+      const { rerender } = render(<CaseDetailsTab row={closedRow} />);
+      await waitFor(() => {
+        expect(screen.getByText('View Investigation Report')).toBeInTheDocument();
+      });
+      mockGetCaseEvidence.mockClear();
+
+      rerender(<CaseDetailsTab row={{ ...closedRow, accessLevel: 'RESTRICTED' }} />);
+
+      await waitFor(() => {
+        expect(screen.queryByText('View Investigation Report')).not.toBeInTheDocument();
+      });
+      expect(mockGetCaseEvidence).not.toHaveBeenCalled();
+    });
+
+    it('does not fetch evidence for a closed case the viewer is restricted on', async () => {
+      render(<CaseDetailsTab row={{ ...mockCaseRow, status: 'STATUS_82_CLOSED_CONFIRMED', accessLevel: 'RESTRICTED' }} />);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading case details…')).not.toBeInTheDocument();
+      });
+      expect(mockGetCaseEvidence).not.toHaveBeenCalled();
+    });
+
+    it('does not refetch when the status and access level are unchanged', async () => {
+      mockGetCaseEvidence.mockResolvedValue(withReport);
+      const closedRow = { ...mockCaseRow, status: 'STATUS_82_CLOSED_CONFIRMED' };
+      const { rerender } = render(<CaseDetailsTab row={closedRow} />);
+      await waitFor(() => {
+        expect(screen.getByText('View Investigation Report')).toBeInTheDocument();
+      });
+
+      rerender(<CaseDetailsTab row={{ ...closedRow }} />);
+
+      expect(mockGetCaseEvidence).toHaveBeenCalledTimes(1);
+    });
+  });
 });
 

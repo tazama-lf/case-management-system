@@ -175,6 +175,9 @@ export class TaskLifecycleService {
     const rbacRole = this.rbacService.getRoleFromUser(user);
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
+    // Same gate as assign: the caller must have full access to the case (revoked/no access is refused),
+    // not just be free of a block. Supervisors/compliance bypass.
+    await this.caseInvestigatorService.assertReadAccess(existingTask.case_id, actorUserId, tenantId, rbacRole);
     await this.assertNotBlacklisted(existingTask.case_id, assignedUserId, tenantId);
 
     const result = await this.taskRepository.transaction(async (tx) => {

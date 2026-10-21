@@ -888,7 +888,16 @@ describe('TaskService', () => {
 
       await service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR', 'user1');
 
-      expect(caseInvestigatorService.assertViewAccess).not.toHaveBeenCalled();
+      expect(caseInvestigatorService.assertViewAccess).toHaveBeenCalledWith(42, 'user1', 'tenant1', 'CMS_INVESTIGATOR');
+    });
+
+    it('rejects a user with no access (NONE) claiming an unassigned task, before any assignment can grant access', async () => {
+      taskRepository.findTaskById.mockResolvedValue({ ...baseTask, assigned_user_id: null });
+      caseInvestigatorService.assertViewAccess.mockRejectedValueOnce(new NotFoundException('Case not found or access denied'));
+
+      await expect(service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR', 'user1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should NOT treat assigning an unassigned task to someone else as a claim', async () => {
@@ -951,7 +960,7 @@ describe('TaskService', () => {
       caseInvestigatorService.assertViewAccess.mockResolvedValue('RESTRICTED');
 
       await expect(service.assertCanMutateTask(7, 'tenant1', 'user1', 'CMS_INVESTIGATOR', 'user1')).resolves.toBeUndefined();
-      expect(caseInvestigatorService.assertViewAccess).not.toHaveBeenCalled();
+      expect(caseInvestigatorService.assertViewAccess).toHaveBeenCalled();
     });
 
     it('still gives a user with no access at all the usual 404', async () => {

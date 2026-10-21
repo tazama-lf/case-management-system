@@ -360,11 +360,17 @@ export class TaskService {
       throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
     }
     if (task.assigned_user_id === userId) return;
+
+    // Case visibility comes first: a user with no access at all (NONE) gets the usual 404 before anything
+    // below, so claiming an unassigned task can never be what grants them the case (assignment adds them).
+    const level = await this.caseInvestigatorService.assertViewAccess(task.case_id, userId, tenantId, role);
+
+    // A revoked (RESTRICTED) investigator may still re-claim an unassigned task for themselves - being
+    // assigned again is how their access returns.
     if (!task.assigned_user_id && newAssigneeId === userId) return;
 
     // Someone who was revoked from the case can still see it, but not act on a task they don't hold: say so
     // plainly (403) instead of the "case not found" a person with no access at all gets (404).
-    const level = await this.caseInvestigatorService.assertViewAccess(task.case_id, userId, tenantId, role);
     if (level === 'RESTRICTED') {
       throw new ForbiddenException('Your access to this case was revoked - you can view it but not change its tasks.');
     }

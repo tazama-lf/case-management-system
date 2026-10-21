@@ -282,7 +282,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [row.id]);
+  }, [row.id, row.status, row.accessLevel]);
 
   useEffect(() => {
     loadReport();
