@@ -25,6 +25,7 @@ import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { extractUserData } from '../../utils/helperFunction';
 import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
+import { redactCaseForRestrictedView } from '../case-investigator/restricted-view.util';
 import {
   GetUserCasesQueryDto,
   GetUserCasesResponseDto,
@@ -629,8 +630,11 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Case not found' })
   async getCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<Case | null> {
     const { userId, isComplianceOfficer, tenantId } = extractUserData(req);
-    await this.caseInvestigatorService.assertReadAccess(caseId, userId, tenantId, req.user.actorRole);
-    return await this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
+    // An investigator who was revoked from the case still sees its details (RESTRICTED), minus the
+    // investigation material; access_level is only stamped on the payload for that restricted view.
+    const level = await this.caseInvestigatorService.assertViewAccess(caseId, userId, tenantId, req.user.actorRole);
+    const caseData = await this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
+    return caseData !== null && level === 'RESTRICTED' ? redactCaseForRestrictedView(caseData) : caseData;
   }
 
   @Put(':caseId')

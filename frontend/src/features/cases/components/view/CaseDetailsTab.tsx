@@ -229,7 +229,8 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     if (!row.id) return;
 
     const isClosed = row.status.toLowerCase().includes('closed');
-    if (!isClosed) {
+    // Evidence (the investigation reports) is withheld from an investigator who was revoked from the case.
+    if (!isClosed || row.accessLevel === 'RESTRICTED') {
       setLatestReports({});
       setLoading(false);
       return;

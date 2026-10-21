@@ -32,6 +32,7 @@ import { Task } from '@prisma/client-cms';
 import { Audit } from '../audit/decorators/audit-log.decorator';
 import type { AuthenticatedUser } from '../../utils/types/auth.types';
 import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
+import { redactTasksForRestrictedView } from '../case-investigator/restricted-view.util';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -607,8 +608,9 @@ export class TaskController {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     const userClaims = req.user.token.claims ?? [];
-    await this.caseInvestigatorService.assertReadAccess(caseId, userId, tenantId, req.user.actorRole);
-    return await this.taskService.getTasksByCaseId(caseId, tenantId, userId, userClaims);
+    const level = await this.caseInvestigatorService.assertViewAccess(caseId, userId, tenantId, req.user.actorRole);
+    const tasks = await this.taskService.getTasksByCaseId(caseId, tenantId, userId, userClaims);
+    return level === 'RESTRICTED' ? redactTasksForRestrictedView(tasks) : tasks;
   }
 
   @Get(':taskId')

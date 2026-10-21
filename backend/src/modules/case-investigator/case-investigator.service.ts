@@ -44,6 +44,13 @@ export interface SyncTaskAssignmentParams {
   newStatus?: TaskStatus;
 }
 
+/**
+ * FULL: may work the case. RESTRICTED: was part of the case and later lost access (revoked, by a
+ * supervisor or by being reassigned off it) - still sees it in their queue, its details and its task
+ * log, but not the investigation material. NONE: no access, including anyone blacklisted on it.
+ */
+export type CaseAccessLevel = 'FULL' | 'RESTRICTED' | 'NONE';
+
 /** Payload for the 'case-investigator.access-removed' event - see unassignLiveTasks. */
 export interface CaseInvestigatorAccessRemovedEvent {
   caseId: number;
@@ -165,6 +172,45 @@ export class CaseInvestigatorService {
   }
 
   /**
+   * FULL when hasAccess; RESTRICTED when the user has a revoked whitelist row on the case (manual or
+   * automatic) and is not blacklisted on it; NONE otherwise. A revoke removes the right to work the
+   * case, not the fact that the person was on it, so they keep a read-only view of its details and
+   * task log. A blacklist removes the case from them entirely.
+   */
+  async getAccessLevel(caseId: number, userId: string, tenantId: string, role: string): Promise<CaseAccessLevel> {
+    if (await this.hasAccess(caseId, userId, tenantId, role)) {
+      return 'FULL';
+    }
+
+    return (await this.hasRestrictedAccess(caseId, userId, tenantId)) ? 'RESTRICTED' : 'NONE';
+  }
+
+  private async hasRestrictedAccess(caseId: number, userId: string, tenantId: string): Promise<boolean> {
+    if ((await this.isBlacklisted(caseId, userId, tenantId)) !== null) {
+      return false;
+    }
+
+    const revoked = await this.prismaService.caseInvestigator.findFirst({
+      where: { case_id: caseId, user_id: userId, tenant_id: tenantId, revoked_at: { not: null } },
+      select: { id: true },
+    });
+    return revoked !== null;
+  }
+
+  /**
+   * Gate for what a revoked investigator may still look at (case details, task log, history): FULL
+   * and RESTRICTED pass, NONE gets the same 404 as every other gated read. Returns the level so the
+   * caller can redact for a restricted viewer.
+   */
+  async assertViewAccess(caseId: number, userId: string, tenantId: string, role: string): Promise<CaseAccessLevel> {
+    const level = await this.getAccessLevel(caseId, userId, tenantId, role);
+    if (level === 'NONE') {
+      throw new NotFoundException('Case not found or access denied');
+    }
+    return level;
+  }
+
+  /**
    * The user created this case (case_creator_user_id) and has not been blacklisted or revoked from
    * it. Covers cases that sit pending creation approval: the creator holds no task on them yet (the
    * only task is the supervisor's unassigned "Approve Case Creation"), so neither a whitelist row nor
@@ -252,9 +298,10 @@ export class CaseInvestigatorService {
    * case_ids plus every case still open for claiming (DRAFT /
    * READY_FOR_ASSIGNMENT) that it isn't blacklisted on, mirroring hasAccess.
    * Any other role fails closed to its own whitelist rather than seeing the
-   * whole tenant.
+   * whole tenant. `includeRestricted` adds the cases the user was revoked from, for the
+   * history logs a revoked investigator may still read.
    */
-  async getCaseIdScope(userId: string, tenantId: string, role: string): Promise<number[] | null> {
+  async getCaseIdScope(userId: string, tenantId: string, role: string, includeRestricted = false): Promise<number[] | null> {
     if (role === 'CMS_SUPERVISOR' || role === 'CMS_COMPLIANCE_OFFICER') {
       return null;
     }
@@ -262,6 +309,10 @@ export class CaseInvestigatorService {
     const whitelisted = await this.getAccessibleCaseIds(userId, tenantId);
     if (role !== 'CMS_INVESTIGATOR') {
       return whitelisted;
+    }
+
+    if (includeRestricted) {
+      whitelisted.push(...(await this.getRestrictedCaseIds(userId, tenantId)));
     }
 
     const blacklisted = await this.getBlacklistedCaseIds(userId, tenantId);
@@ -293,12 +344,12 @@ export class CaseInvestigatorService {
    * case the detail/read gate would otherwise 404 on.
    */
   /**
-   * Cases this user was revoked from and has not been re-granted since (no live whitelist row). A
-   * revoked investigator must lose the case from their lists as well as from the detail gate; without
-   * this they kept seeing it - through a task still assigned to them from before the revoke - and then
-   * got a 404 on opening it.
+   * Cases this user was revoked from, manually or automatically, and has not been re-granted since
+   * (no live whitelist row), minus any they are blacklisted on - a blacklist also revokes the row, but
+   * it removes the case from their queue where a plain revoke does not. These stay in the user's
+   * queue with a restricted view (see getAccessLevel).
    */
-  async getRevokedCaseIds(userId: string, tenantId: string): Promise<number[]> {
+  async getRestrictedCaseIds(userId: string, tenantId: string): Promise<number[]> {
     const revoked = await this.prismaService.caseInvestigator.findMany({
       where: { user_id: userId, tenant_id: tenantId, revoked_at: { not: null } },
       select: { case_id: true },
@@ -313,7 +364,8 @@ export class CaseInvestigatorService {
       select: { case_id: true },
     });
     const liveSet = new Set(live.map((row) => row.case_id));
-    return caseIds.filter((caseId) => !liveSet.has(caseId));
+    const blacklisted = new Set(await this.getBlacklistedCaseIds(userId, tenantId));
+    return caseIds.filter((caseId) => !liveSet.has(caseId) && !blacklisted.has(caseId));
   }
 
   async getBlacklistedCaseIds(userId: string, tenantId: string): Promise<number[]> {
@@ -474,8 +526,12 @@ export class CaseInvestigatorService {
     // way the caller still needs to be able to see this case before being allowed to write to
     // it. Without this, "the case is open" alone let anyone (including a caller with no access
     // to the case at all - wrong tenant, blacklisted, or just not a member) through unconditionally.
-    if (!(await this.hasAccess(caseId, userId, tenantId, role))) {
+    const level = await this.getAccessLevel(caseId, userId, tenantId, role);
+    if (level === 'NONE') {
       throw new NotFoundException('Case not found or access denied');
+    }
+    if (level === 'RESTRICTED') {
+      throw new ForbiddenException('Your access to this case was revoked - you can view it but not modify it.');
     }
 
     if (holders.length === 0) {

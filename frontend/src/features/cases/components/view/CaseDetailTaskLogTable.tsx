@@ -66,6 +66,10 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     if (user) setCurrentUser(user);
   }, []);
 
+  const isRestrictedView =
+    (caseData as { accessLevel?: string } | undefined)?.accessLevel ===
+    'RESTRICTED';
+
   const filteredTasks = tasks.filter((task) => {
     if (hasSupervisorRole() || hasComplianceOfficerRole()) {
       return true;
@@ -210,6 +214,12 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     task: UnifiedWorkQueueTask,
   ) => {
     if (onTaskClick) {
+      const isInvestigateTask =
+        !!task.name && task.name.toLowerCase().includes('investigate');
+      // Revoked from this case: the Investigate Case task is withheld from them (the backend refuses it too).
+      if (isInvestigateTask && isRestrictedView) {
+        return;
+      }
       const isInvestigationTask =
         task.name &&
         (task.name.toLowerCase().includes('investigate') ||

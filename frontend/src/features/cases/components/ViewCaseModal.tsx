@@ -145,7 +145,10 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
     typeof extractedTransactionId === 'string'
       ? extractedTransactionId
       : undefined;
-  const shouldShowVisualizations = fiToFIPmtSts !== undefined;
+  // Revoked from this case: they keep the case details, task log and history, but the
+  // investigation material (visualizations, comments) is withheld - by the backend too.
+  const isRestricted = localCaseData?.accessLevel === 'RESTRICTED';
+  const shouldShowVisualizations = fiToFIPmtSts !== undefined && !isRestricted;
 
   React.useEffect(() => {
     if (!shouldShowVisualizations && tab === 'visualizations') {
@@ -158,6 +161,12 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
       setTab('details');
     }
   }, [canManageSupervisorActions, tab]);
+
+  React.useEffect(() => {
+    if (isRestricted && tab === 'comments') {
+      setTab('details');
+    }
+  }, [isRestricted, tab]);
 
   if (!open || !localCaseData) return null;
 
@@ -199,7 +208,9 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                   ] as const)
                   : []),
                 { key: 'history', label: 'Case History' },
-                { key: 'comments', label: 'Comments History' },
+                ...(isRestricted
+                  ? []
+                  : ([{ key: 'comments', label: 'Comments History' }] as const)),
                 ...(canManageSupervisorActions
                   ? ([{ key: 'access', label: 'Access' }] as const)
                   : []),
@@ -272,7 +283,7 @@ const ViewCaseModal: React.FC<ViewCaseModalProps> = ({
                   transactionId={transactionId}
                 />
               )}
-              {tab === 'comments' && (
+              {tab === 'comments' && !isRestricted && (
                 <CommentHistoryTab caseId={displayData.id} />
               )}
               {tab === 'history' && (

@@ -310,4 +310,31 @@ describe('TasksDetailsModal', () => {
 
     expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
   });
+
+  describe('revoked (restricted) view', () => {
+    const restrictedRow = { ...mockCaseData, accessLevel: 'RESTRICTED' } as CaseRow;
+
+    it('hides the Evidence and Investigation Summary tabs but keeps Task Details and Investigation Notes', () => {
+      renderModal({ row: restrictedRow });
+
+      expect(screen.getAllByText('Task Details')[0]).toBeInTheDocument();
+      expect(screen.getByText('Investigation Notes')).toBeInTheDocument();
+      expect(screen.queryByText('Evidence')).not.toBeInTheDocument();
+      expect(screen.queryByText('Investigation Summary')).not.toBeInTheDocument();
+    });
+
+    it('never mounts the evidence or summary panels, so they cannot fire requests the backend refuses', () => {
+      renderModal({ row: restrictedRow });
+
+      expect(screen.queryByText('Task Evidence Tab')).not.toBeInTheDocument();
+      expect(screen.queryByText('Investigation Summary Tab')).not.toBeInTheDocument();
+    });
+
+    it('keeps all tabs for full access', () => {
+      renderModal({});
+
+      expect(screen.getByText('Evidence')).toBeInTheDocument();
+      expect(screen.getByText('Investigation Summary')).toBeInTheDocument();
+    });
+  });
 });

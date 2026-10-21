@@ -43,6 +43,7 @@ async function createTestModule() {
 
   const mockCaseInvestigatorService = {
     assertReadAccess: jest.fn().mockResolvedValue(undefined),
+    assertViewAccess: jest.fn().mockResolvedValue('FULL'),
     getCaseIdScope: jest.fn().mockResolvedValue(null),
   };
 
@@ -231,7 +232,7 @@ describe('TaskHistoryService', () => {
 
       await service.getLogs('tenant-123', TEST_USER_ID, TEST_ROLE);
 
-      expect(caseInvestigatorService.getCaseIdScope).toHaveBeenCalledWith(TEST_USER_ID, 'tenant-123', TEST_ROLE);
+      expect(caseInvestigatorService.getCaseIdScope).toHaveBeenCalledWith(TEST_USER_ID, 'tenant-123', TEST_ROLE, true);
       const where = prismaService.taskHistory.findMany.mock.calls[0][0].where;
       expect(where).toEqual({ tenant_id: 'tenant-123' });
     });
@@ -326,11 +327,11 @@ describe('TaskHistoryService', () => {
     it('should gate on case membership before querying', async () => {
       await service.getTaskHistory(456, 'tenant-123', TEST_USER_ID, TEST_ROLE);
 
-      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(456, TEST_USER_ID, 'tenant-123', TEST_ROLE);
+      expect(caseInvestigatorService.assertViewAccess).toHaveBeenCalledWith(456, TEST_USER_ID, 'tenant-123', TEST_ROLE);
     });
 
     it('should propagate the gate rejection and never query when access is denied', async () => {
-      caseInvestigatorService.assertReadAccess.mockRejectedValue(new Error('Case not found or access denied'));
+      caseInvestigatorService.assertViewAccess.mockRejectedValue(new Error('Case not found or access denied'));
 
       await expect(service.getTaskHistory(456, 'tenant-123', TEST_USER_ID, 'CMS_INVESTIGATOR')).rejects.toThrow(
         'Case not found or access denied',

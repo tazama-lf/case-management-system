@@ -140,3 +140,64 @@ describe('TaskController - mutation ACL gate', () => {
     expect(lifecycle.completeTask).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * The task log of a case: visible to a revoked (RESTRICTED) investigator, with the Investigate
+ * task's notes withheld; refused with the gate's 404 for a user with no access.
+ */
+describe('TaskController - task log read gate (GET /case/:caseId)', () => {
+  let controller: TaskController;
+  let taskService: { getTasksByCaseId: jest.Mock };
+  let acl: { assertViewAccess: jest.Mock };
+  const CASE_ID = 42;
+
+  const tasks = [
+    { task_id: 1, name: 'Investigate Case', investigationNotes: 'secret findings', status: 'STATUS_30_COMPLETED' },
+    { task_id: 2, name: 'Complete New Case', investigationNotes: 'triage note', status: 'STATUS_30_COMPLETED' },
+  ];
+
+  beforeEach(async () => {
+    taskService = { getTasksByCaseId: jest.fn().mockResolvedValue(tasks) };
+    acl = { assertViewAccess: jest.fn().mockResolvedValue('FULL') };
+
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [TaskController],
+      providers: [
+        { provide: TaskService, useValue: taskService },
+        { provide: TaskLifecycleService, useValue: {} },
+        { provide: CaseInvestigatorService, useValue: acl },
+        { provide: 'AUDIT_LOGGER', useValue: { log: jest.fn().mockResolvedValue(undefined) } },
+      ],
+    })
+      .overrideGuard(TazamaAuthGuard)
+      .useClass(AllowAllGuard)
+      .compile();
+
+    controller = module.get(TaskController);
+  });
+
+  it('returns every task unchanged to a user with full access', async () => {
+    const result = await controller.getTasksByCaseId(CASE_ID, req);
+
+    expect(acl.assertViewAccess).toHaveBeenCalledWith(CASE_ID, USER_ID, TENANT, ROLE);
+    expect(result).toBe(tasks);
+  });
+
+  it('shows a restricted user the whole task log but blanks the Investigate Case notes', async () => {
+    acl.assertViewAccess.mockResolvedValueOnce('RESTRICTED');
+
+    const result = (await controller.getTasksByCaseId(CASE_ID, req)) as any[];
+
+    expect(result.map((t) => t.task_id)).toEqual([1, 2]);
+    expect(result[0].investigationNotes).toBeNull();
+    expect(result[1].investigationNotes).toBe('triage note');
+    expect(tasks[0].investigationNotes).toBe('secret findings');
+  });
+
+  it('refuses a user with no access before reading any task', async () => {
+    acl.assertViewAccess.mockRejectedValueOnce(DENIED);
+
+    await expect(controller.getTasksByCaseId(CASE_ID, req)).rejects.toBe(DENIED);
+    expect(taskService.getTasksByCaseId).not.toHaveBeenCalled();
+  });
+});

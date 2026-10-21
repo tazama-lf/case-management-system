@@ -10,6 +10,7 @@ import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { CaseInvestigatorService, SyncTaskAssignmentParams } from '../case-investigator/case-investigator.service';
+import { isInvestigateTask } from '../case-investigator/restricted-view.util';
 import { setTimeout } from 'node:timers/promises';
 
 @Injectable()
@@ -376,7 +377,10 @@ export class TaskService {
     try {
       const task = await this.taskRepository.findTaskWithCase(taskId, tenantId);
       if (task) {
-        await this.caseInvestigatorService.assertReadAccess(task.case_id, userId, tenantId, role);
+        const level = await this.caseInvestigatorService.assertViewAccess(task.case_id, userId, tenantId, role);
+        if (level === 'RESTRICTED' && isInvestigateTask(task.name)) {
+          throw new ForbiddenException('Your access to this case was revoked - the Investigate Case task is no longer available to you.');
+        }
       }
       return task;
     } catch (error) {

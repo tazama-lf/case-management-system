@@ -38,7 +38,7 @@ export class CaseHistoryService {
   async getLogs(tenantId: string, userId: string, role: string, limit = 50, offset = 0): Promise<CaseHistory[]> {
     // Tenant-wide list: without this, an investigator could read history for cases
     // that GET /case-history/:caseId would 404 for them.
-    const caseIds = await this.caseInvestigatorService.getCaseIdScope(userId, tenantId, role);
+    const caseIds = await this.caseInvestigatorService.getCaseIdScope(userId, tenantId, role, true);
     return await this.prisma.caseHistory.findMany({
       where: { tenant_id: tenantId, ...(caseIds ? { case_id: { in: caseIds } } : {}) },
       orderBy: { performed_at: 'desc' },
@@ -48,7 +48,7 @@ export class CaseHistoryService {
   }
 
   async getCaseHistory(caseId: number, tenantId: string, userId: string, role: string): Promise<CaseHistory[]> {
-    await this.caseInvestigatorService.assertReadAccess(caseId, userId, tenantId, role);
+    await this.caseInvestigatorService.assertViewAccess(caseId, userId, tenantId, role);
     const rows = await this.prisma.caseHistory.findMany({
       where: {
         case_id: caseId,

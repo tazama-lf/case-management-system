@@ -137,7 +137,7 @@ describe('CaseQueryService', () => {
     const mockCaseInvestigatorService = {
       getAccessibleCaseIds: jest.fn().mockResolvedValue([]),
       getBlacklistedCaseIds: jest.fn().mockResolvedValue([]),
-      getRevokedCaseIds: jest.fn().mockResolvedValue([]),
+      getRestrictedCaseIds: jest.fn().mockResolvedValue([]),
       isBlacklisted: jest.fn().mockResolvedValue(null),
     } as any;
 
@@ -616,16 +616,59 @@ describe('CaseQueryService', () => {
       expect(visibilityOr).toContainEqual({ case_id: { in: [42, 43] } });
     });
 
-    it('excludes cases the investigator was revoked from, even though a leftover task is still assigned to them', async () => {
+    it('keeps cases the investigator was revoked from in their queue, and excludes only the blacklisted ones', async () => {
       caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
       caseInvestigatorService.getBlacklistedCaseIds.mockResolvedValueOnce([7]);
-      caseInvestigatorService.getRevokedCaseIds.mockResolvedValueOnce([843]);
+      caseInvestigatorService.getRestrictedCaseIds.mockResolvedValueOnce([843]);
       setupGetAllCasesMocks();
 
       await service.getAllCases(query, tenantId, 'investigator-123');
 
       const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
-      expect(findManyArgs.where.AND).toContainEqual({ NOT: { case_id: { in: [7, 843] } } });
+      const visibilityOr = findManyArgs.where.AND.find((c: any) => Array.isArray(c.OR))?.OR;
+      expect(visibilityOr).toContainEqual({ case_id: { in: [843] } });
+      expect(findManyArgs.where.AND).toContainEqual({ NOT: { case_id: { in: [7] } } });
+    });
+
+    it('marks a revoked case RESTRICTED and withholds its transaction and Investigate notes, but not other rows', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      caseInvestigatorService.getRestrictedCaseIds.mockResolvedValueOnce([843]);
+      setupGetAllCasesMocks();
+      prismaService.case.findMany.mockReset().mockResolvedValueOnce([
+        {
+          ...mockCase,
+          case_id: 843,
+          status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+          tasks: [{ task_id: 1, name: 'Investigate Case', status: 'STATUS_30_COMPLETED', assigned_user_id: 'x', investigationNotes: 'secret' }],
+          alert: { alert_id: 1, message: 'm', confidence_per: 80, alert_type: 'FRAUD', transaction: { big: 'payload' } },
+        },
+        { ...mockCase, case_id: 900, tasks: [], alert: { alert_id: 2, transaction: { keep: true } } },
+      ] as any);
+
+      const result = await service.getAllCases(query, tenantId, 'investigator-123');
+
+      const restricted = result.cases.find((c: any) => c.case_id === 843) as any;
+      const normal = result.cases.find((c: any) => c.case_id === 900) as any;
+      expect(restricted.access_level).toBe('RESTRICTED');
+      expect(restricted.alert.transaction).toBeNull();
+      expect(restricted.alert.alert_id).toBe(1);
+      expect(restricted.tasks[0].investigationNotes).toBeNull();
+      expect(normal.access_level).toBeUndefined();
+      expect(normal.alert.transaction).toEqual({ keep: true });
+    });
+
+    it('does not mark a revoked case restricted while it is open for claiming - anyone not blacklisted may claim it', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      caseInvestigatorService.getRestrictedCaseIds.mockResolvedValueOnce([843]);
+      setupGetAllCasesMocks();
+      prismaService.case.findMany.mockReset().mockResolvedValueOnce([
+        { ...mockCase, case_id: 843, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, tasks: [], alert: { alert_id: 1, transaction: { keep: true } } },
+      ] as any);
+
+      const result = await service.getAllCases(query, tenantId, 'investigator-123');
+
+      expect((result.cases[0] as any).access_level).toBeUndefined();
+      expect((result.cases[0] as any).alert.transaction).toEqual({ keep: true });
     });
 
     it('does not show a bare unowned case: unclaimed cases are visible only while open for claiming, matching hasAccess', async () => {
@@ -761,13 +804,15 @@ describe('CaseQueryService', () => {
       expect(whereArg.OR).toContainEqual({ case_id: { in: [caseId] } });
     });
 
-    it('investigator: false for a case they were revoked from, without querying the case', async () => {
-      caseInvestigatorService.getRevokedCaseIds.mockResolvedValueOnce([caseId]);
+    it('investigator: a case they were revoked from still counts as visible (restricted view)', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      caseInvestigatorService.getRestrictedCaseIds.mockResolvedValueOnce([caseId]);
+      prismaService.case.findFirst.mockResolvedValueOnce({ case_id: caseId });
 
       const result = await service.checkUserCaseAccess(caseId, investigatorUserId, tenantId);
 
-      expect(result).toBe(false);
-      expect(prismaService.case.findFirst).not.toHaveBeenCalled();
+      expect(result).toBe(true);
+      expect(prismaService.case.findFirst.mock.calls[0][0].where.OR).toContainEqual({ case_id: { in: [caseId] } });
     });
 
     it('investigator: false when none of the OR branches match', async () => {

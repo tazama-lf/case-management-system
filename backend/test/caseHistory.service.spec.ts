@@ -66,6 +66,7 @@ describe('CaseHistoryService', () => {
 
     const mockCaseInvestigatorService = {
       assertReadAccess: jest.fn().mockResolvedValue(undefined),
+      assertViewAccess: jest.fn().mockResolvedValue('FULL'),
       getCaseIdScope: jest.fn().mockResolvedValue(null),
     };
 
@@ -316,7 +317,7 @@ describe('CaseHistoryService', () => {
 
       await service.getLogs(tenantId, TEST_USER_ID, TEST_ROLE);
 
-      expect(caseInvestigatorService.getCaseIdScope).toHaveBeenCalledWith(TEST_USER_ID, tenantId, TEST_ROLE);
+      expect(caseInvestigatorService.getCaseIdScope).toHaveBeenCalledWith(TEST_USER_ID, tenantId, TEST_ROLE, true);
       const where = prismaService.caseHistory.findMany.mock.calls[0][0].where;
       expect(where).toEqual({ tenant_id: tenantId });
     });
@@ -433,11 +434,11 @@ describe('CaseHistoryService', () => {
 
       await service.getCaseHistory(caseId, tenantId, TEST_USER_ID, TEST_ROLE);
 
-      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(caseId, TEST_USER_ID, tenantId, TEST_ROLE);
+      expect(caseInvestigatorService.assertViewAccess).toHaveBeenCalledWith(caseId, TEST_USER_ID, tenantId, TEST_ROLE);
     });
 
     it('should propagate the gate rejection and never query when access is denied', async () => {
-      caseInvestigatorService.assertReadAccess.mockRejectedValue(new Error('Case not found or access denied'));
+      caseInvestigatorService.assertViewAccess.mockRejectedValue(new Error('Case not found or access denied'));
 
       await expect(service.getCaseHistory(caseId, tenantId, TEST_USER_ID, 'CMS_INVESTIGATOR')).rejects.toThrow(
         'Case not found or access denied',

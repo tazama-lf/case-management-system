@@ -389,4 +389,62 @@ describe('ViewCaseModal', () => {
 
     expect(screen.getByText('Task Log')).toBeInTheDocument();
   });
+
+  describe('revoked (restricted) view', () => {
+    const restrictedCase: CaseRow = { ...mockCaseData, accessLevel: 'RESTRICTED' };
+
+    it('keeps Case Details, Task Log and Case History but hides Visualizations and Comments History', async () => {
+      mockGetCaseDetails.mockResolvedValue(restrictedCase);
+      render(
+        <ViewCaseModal
+          open={true}
+          onClose={mockOnClose}
+          row={restrictedCase}
+          onRefreshCases={mockOnRefreshCases}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(mockGetCaseDetails).toHaveBeenCalled();
+      });
+      expect(screen.getByText('Task Log')).toBeInTheDocument();
+      expect(screen.getByText('Case History')).toBeInTheDocument();
+      expect(screen.queryByText('Visualizations')).not.toBeInTheDocument();
+      expect(screen.queryByText('Comments History')).not.toBeInTheDocument();
+    });
+
+    it('shows Visualizations and Comments History for the same case with full access', async () => {
+      render(
+        <ViewCaseModal
+          open={true}
+          onClose={mockOnClose}
+          row={mockCaseData}
+          onRefreshCases={mockOnRefreshCases}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(mockGetCaseDetails).toHaveBeenCalled();
+      });
+      expect(screen.getByText('Visualizations')).toBeInTheDocument();
+      expect(screen.getByText('Comments History')).toBeInTheDocument();
+    });
+
+    it('never mounts the comments tab for a restricted viewer', async () => {
+      mockGetCaseDetails.mockResolvedValue(restrictedCase);
+      render(
+        <ViewCaseModal
+          open={true}
+          onClose={mockOnClose}
+          row={restrictedCase}
+          onRefreshCases={mockOnRefreshCases}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(mockGetCaseDetails).toHaveBeenCalled();
+      });
+      expect(screen.queryByText('Comments History Tab')).not.toBeInTheDocument();
+    });
+  });
 });

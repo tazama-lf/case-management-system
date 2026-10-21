@@ -598,4 +598,69 @@ describe('CaseDetailTaskLogTable', () => {
     // Non-investigation tasks are not clickable
     expect(onTaskClick).not.toHaveBeenCalled();
   });
+
+  describe('revoked (restricted) view', () => {
+    it('hides the view action on the Investigate Case task', () => {
+      const tasks = [{ ...baseTasks[0], name: 'Investigate Case', status: 'COMPLETED', assignee: 'user-1' }];
+      render(
+        <CaseDetailTaskLogTable
+          tasks={tasks}
+          onAssign={vi.fn()}
+          onTaskClick={vi.fn()}
+          caseData={{ ...caseData, accessLevel: 'RESTRICTED' }}
+        />,
+      );
+
+      expect(screen.getByText('Investigate Case')).toBeInTheDocument();
+      expect(screen.queryByTitle('View task')).not.toBeInTheDocument();
+    });
+
+    it.each(['Investigate Fraud', 'Investigate AML', 'Investigate Alert'])('also hides it on "%s"', (name) => {
+      const tasks = [{ ...baseTasks[0], name, status: 'COMPLETED', assignee: 'user-1' }];
+      render(
+        <CaseDetailTaskLogTable
+          tasks={tasks}
+          onAssign={vi.fn()}
+          onTaskClick={vi.fn()}
+          caseData={{ ...caseData, accessLevel: 'RESTRICTED' }}
+        />,
+      );
+
+      expect(screen.queryByTitle('View task')).not.toBeInTheDocument();
+    });
+
+    it('keeps the whole task log and the view action on other tasks (only the Investigate task loses it)', () => {
+      mockHasSupervisorRole.mockReturnValue(true);
+      const tasks = [
+        { ...baseTasks[0], id: 1, taskId: 101, name: 'Investigate Case', status: 'COMPLETED', assignee: 'user-1' },
+        { ...baseTasks[0], id: 2, taskId: 102, name: 'SAR/STR Filing', status: 'ASSIGNED', assignee: 'user-2' },
+      ];
+      render(
+        <CaseDetailTaskLogTable
+          tasks={tasks}
+          onAssign={vi.fn()}
+          onTaskClick={vi.fn()}
+          caseData={{ ...caseData, accessLevel: 'RESTRICTED' }}
+        />,
+      );
+
+      expect(screen.getByText('Investigate Case')).toBeInTheDocument();
+      expect(screen.getByText('SAR/STR Filing')).toBeInTheDocument();
+      expect(screen.getAllByTitle('View task')).toHaveLength(1);
+    });
+
+    it('still shows the view action on the Investigate Case task when access is full', () => {
+      const tasks = [{ ...baseTasks[0], name: 'Investigate Case', status: 'IN_PROGRESS', assignee: 'user-1' }];
+      render(
+        <CaseDetailTaskLogTable
+          tasks={tasks}
+          onAssign={vi.fn()}
+          onTaskClick={vi.fn()}
+          caseData={{ ...caseData, accessLevel: 'FULL' }}
+        />,
+      );
+
+      expect(screen.getByTitle('View task')).toBeInTheDocument();
+    });
+  });
 });

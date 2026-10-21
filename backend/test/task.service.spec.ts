@@ -100,6 +100,7 @@ describe('TaskService', () => {
             isBlacklisted: jest.fn().mockResolvedValue(null),
             syncTaskAssignment: jest.fn().mockResolvedValue(undefined),
             assertReadAccess: jest.fn().mockResolvedValue(undefined),
+            assertViewAccess: jest.fn().mockResolvedValue('FULL'),
             getCaseIdScope: jest.fn().mockResolvedValue(null),
           },
         },
@@ -968,6 +969,32 @@ describe('TaskService', () => {
       expect(result).toEqual(task);
     });
 
+    it('lets a revoked (restricted) investigator view a task that is not the Investigate Case task', async () => {
+      const task = { task_id: 2, case_id: 1, tenant_id: 'tenant1', name: 'Complete New Case' } as any;
+      taskRepository.findTaskWithCase.mockResolvedValue(task);
+      caseInvestigatorService.assertViewAccess.mockResolvedValueOnce('RESTRICTED');
+
+      await expect(service.getTaskById(2, 'tenant1', 'user1', 'CMS_INVESTIGATOR')).resolves.toEqual(task);
+    });
+
+    it.each(['Investigate Case', 'Investigate case', 'Investigate Fraud', 'Investigate AML'])(
+      'refuses a revoked (restricted) investigator the "%s" task',
+      async (name) => {
+        const task = { task_id: 3, case_id: 1, tenant_id: 'tenant1', name } as any;
+        taskRepository.findTaskWithCase.mockResolvedValue(task);
+        caseInvestigatorService.assertViewAccess.mockResolvedValueOnce('RESTRICTED');
+
+        await expect(service.getTaskById(3, 'tenant1', 'user1', 'CMS_INVESTIGATOR')).rejects.toThrow(ForbiddenException);
+      },
+    );
+
+    it('still returns the Investigate Case task to a user with full access', async () => {
+      const task = { task_id: 3, case_id: 1, tenant_id: 'tenant1', name: 'Investigate Case' } as any;
+      taskRepository.findTaskWithCase.mockResolvedValue(task);
+
+      await expect(service.getTaskById(3, 'tenant1', 'user1', 'CMS_INVESTIGATOR')).resolves.toEqual(task);
+    });
+
     it('should handle errors', async () => {
       taskRepository.findTaskWithCase.mockRejectedValue(new Error('Not found'));
 
@@ -980,13 +1007,13 @@ describe('TaskService', () => {
 
       await service.getTaskById(1, 'tenant1', 'user1', 'CMS_INVESTIGATOR');
 
-      expect(caseInvestigatorService.assertReadAccess).toHaveBeenCalledWith(1, 'user1', 'tenant1', 'CMS_INVESTIGATOR');
+      expect(caseInvestigatorService.assertViewAccess).toHaveBeenCalledWith(1, 'user1', 'tenant1', 'CMS_INVESTIGATOR');
     });
 
     it('should propagate the gate rejection when access is denied', async () => {
       const task = { task_id: 1, case_id: 1, tenant_id: 'tenant1' } as any;
       taskRepository.findTaskWithCase.mockResolvedValue(task);
-      caseInvestigatorService.assertReadAccess.mockRejectedValueOnce(new Error('Case not found or access denied'));
+      caseInvestigatorService.assertViewAccess.mockRejectedValueOnce(new Error('Case not found or access denied'));
 
       await expect(service.getTaskById(1, 'tenant1', 'user1', 'CMS_INVESTIGATOR')).rejects.toThrow(
         'Case not found or access denied',
@@ -999,7 +1026,7 @@ describe('TaskService', () => {
       const result = await service.getTaskById(999, 'tenant1', 'user1', 'CMS_INVESTIGATOR');
 
       expect(result).toBeNull();
-      expect(caseInvestigatorService.assertReadAccess).not.toHaveBeenCalled();
+      expect(caseInvestigatorService.assertViewAccess).not.toHaveBeenCalled();
     });
   });
 

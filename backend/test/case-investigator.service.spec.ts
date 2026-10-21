@@ -774,24 +774,116 @@ describe('CaseInvestigatorService', () => {
 
   });
 
-  describe('getRevokedCaseIds', () => {
+  describe('getRestrictedCaseIds', () => {
     it('returns cases the user was revoked from and has no live row on', async () => {
       prisma.caseInvestigator.findMany
         .mockResolvedValueOnce([{ case_id: 843 }, { case_id: 843 }, { case_id: 9 }]) // revoked rows (843 twice)
         .mockResolvedValueOnce([{ case_id: 9 }]); // 9 was re-granted since
+      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValueOnce([]);
 
-      await expect(service.getRevokedCaseIds(USER_ID, TENANT)).resolves.toEqual([843]);
+      await expect(service.getRestrictedCaseIds(USER_ID, TENANT)).resolves.toEqual([843]);
       expect(prisma.caseInvestigator.findMany).toHaveBeenNthCalledWith(1, {
         where: { user_id: USER_ID, tenant_id: TENANT, revoked_at: { not: null } },
         select: { case_id: true },
       });
     });
 
+    it('leaves out cases the user is blacklisted on - a blacklist also revokes the row, but it removes the case from the queue', async () => {
+      prisma.caseInvestigator.findMany
+        .mockResolvedValueOnce([{ case_id: 843 }, { case_id: 9 }]) // both revoked
+        .mockResolvedValueOnce([]); // neither re-granted
+      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValueOnce([{ case_id: 9 }]); // 9 is blacklisted
+
+      await expect(service.getRestrictedCaseIds(USER_ID, TENANT)).resolves.toEqual([843]);
+    });
+
     it('returns an empty list, with no second query, when nothing was revoked', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValueOnce([]);
 
-      await expect(service.getRevokedCaseIds(USER_ID, TENANT)).resolves.toEqual([]);
+      await expect(service.getRestrictedCaseIds(USER_ID, TENANT)).resolves.toEqual([]);
       expect(prisma.caseInvestigator.findMany).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('access levels: full / restricted / none', () => {
+    // hasAccess false: no live row, case not open for claiming, not the creator.
+    const noFullAccess = (): void => {
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null);
+      prisma.case.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    };
+
+    it('FULL with a live whitelist row', async () => {
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce({ id: 1 });
+
+      await expect(service.getAccessLevel(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe('FULL');
+    });
+
+    it.each(['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'])('FULL for a %s without any lookup', async (role) => {
+      await expect(service.getAccessLevel(CASE_ID, USER_ID, TENANT, role)).resolves.toBe('FULL');
+      expect(prisma.caseInvestigator.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('RESTRICTED when revoked (no live row) and not blacklisted', async () => {
+      noFullAccess();
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce({ id: 9 }); // the revoked row
+
+      await expect(service.getAccessLevel(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe('RESTRICTED');
+    });
+
+    it('NONE when revoked but also blacklisted - a block removes the case, a plain revoke does not', async () => {
+      noFullAccess();
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 1, blocked_by: BLOCKED_BY, blocked_at: new Date(), block_reason: 'x' });
+
+      await expect(service.getAccessLevel(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe('NONE');
+    });
+
+    it('NONE when the user was never part of the case', async () => {
+      noFullAccess();
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null); // no revoked row either
+
+      await expect(service.getAccessLevel(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe('NONE');
+    });
+
+    it('assertViewAccess returns the level for restricted users and the usual 404 for none', async () => {
+      noFullAccess();
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce({ id: 9 });
+      await expect(service.assertViewAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe('RESTRICTED');
+
+      noFullAccess();
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null);
+      await expect(service.assertViewAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).rejects.toThrow(
+        new NotFoundException('Case not found or access denied'),
+      );
+    });
+
+    it('assertReadAccess (evidence, comments, reports) still refuses a restricted user - they are not allowed the investigation material', async () => {
+      noFullAccess();
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+
+      await expect(service.assertReadAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).rejects.toThrow(NotFoundException);
+    });
+
+    it('assertCanModifyCase gives a restricted user a 403 (they can see the case, not change it)', async () => {
+      prisma.task.findMany.mockResolvedValue([{ assigned_user_id: 'someone-else' }]);
+      noFullAccess();
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce({ id: 9 });
+
+      await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('getCaseIdScope adds revoked cases only when asked (the history logs a revoked investigator may read)', async () => {
+      prisma.caseInvestigator.findMany
+        .mockResolvedValueOnce([{ case_id: 1 }]) // live whitelist
+        .mockResolvedValueOnce([{ case_id: 843 }]) // revoked
+        .mockResolvedValueOnce([]); // none re-granted
+      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([]);
+      prisma.case.findMany.mockResolvedValue([]);
+
+      await expect(service.getCaseIdScope(USER_ID, TENANT, 'CMS_INVESTIGATOR', true)).resolves.toEqual([1, 843]);
     });
   });
 

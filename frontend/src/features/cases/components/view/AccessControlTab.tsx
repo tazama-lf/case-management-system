@@ -103,32 +103,32 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
       (row): AccessHistoryEvent[] =>
         row.revoked_at
           ? [
-              {
-                key: `revoked-${row.id}`,
-                kind: 'revoked',
-                userId: row.user_id,
-                at: row.revoked_at,
-                by: row.revoked_by,
-                reason: row.revoke_reason,
-                detail: `${row.membership}, granted ${formatDate(row.granted_at)}`,
-              },
-            ]
+            {
+              key: `revoked-${row.id}`,
+              kind: 'revoked',
+              userId: row.user_id,
+              at: row.revoked_at,
+              by: row.revoked_by,
+              reason: row.revoke_reason,
+              detail: `${row.membership}, granted ${formatDate(row.granted_at)}`,
+            },
+          ]
           : [],
     );
     const unblocked = (accessHistory?.unblocked ?? []).flatMap(
       (row): AccessHistoryEvent[] =>
         row.unblocked_at
           ? [
-              {
-                key: `unblocked-${row.id}`,
-                kind: 'unblocked',
-                userId: row.user_id,
-                at: row.unblocked_at,
-                by: row.unblocked_by,
-                reason: row.unblock_reason,
-                detail: `Blocked ${formatDate(row.blocked_at)}: ${row.block_reason}`,
-              },
-            ]
+            {
+              key: `unblocked-${row.id}`,
+              kind: 'unblocked',
+              userId: row.user_id,
+              at: row.unblocked_at,
+              by: row.unblocked_by,
+              reason: row.unblock_reason,
+              detail: `Blocked ${formatDate(row.blocked_at)}: ${row.block_reason}`,
+            },
+          ]
           : [],
     );
     return [...revoked, ...unblocked].sort(
@@ -406,11 +406,10 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
                   >
                     <td className="py-2 pr-4">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          event.kind === 'revoked'
-                            ? 'bg-orange-100 text-orange-800'
-                            : 'bg-emerald-100 text-emerald-800'
-                        }`}
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${event.kind === 'revoked'
+                          ? 'bg-orange-100 text-orange-800'
+                          : 'bg-emerald-100 text-emerald-800'
+                          }`}
                       >
                         {event.kind === 'revoked' ? 'Revoked' : 'Unblocked'}
                       </span>
@@ -444,7 +443,7 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
         onConfirm={handleConfirmPendingAction}
         title="Revoke Access"
         subtitle={pendingAction ? resolveName(pendingAction.userId) : undefined}
-        description="This removes the investigator's access to this case. They can only regain it by being assigned a task on this case again — not by being re-added here."
+        description="This removes the investigator's access to this case. They can only regain it by being assigned a task on this case again - not by being re-added here."
         icon={<UserMinusIcon className="h-5 w-5 text-orange-600" />}
         iconWrapperClassName="bg-orange-100"
         reasonLabel="Reason for revocation"
