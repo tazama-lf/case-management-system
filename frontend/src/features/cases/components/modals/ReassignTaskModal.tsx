@@ -4,6 +4,7 @@ import { useInvestigatorSupervisorList } from '../../../cases/hooks/useInvestiga
 import type { User } from '../../../auth/types/auth.types';
 import { useAuth } from '@/features/auth';
 import authService from '../../../auth/services/authService';
+import { useBlockedUserIds } from '../../hooks/useBlockedUserIds';
 interface ReassignTaskModalProps {
   open: boolean;
   onClose: () => void;
@@ -35,6 +36,9 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({
   } = useInvestigatorSupervisorList();
   const [currentUserInvestigator, setCurrentUserInvestigator] =
     useState<User | null>(null);
+
+  // People blocked on this case are not offered - the backend would refuse them anyway.
+  const blockedUserIds = useBlockedUserIds(task?.caseId, open);
 
   useEffect(() => {
     setAssignee('');
@@ -169,11 +173,13 @@ const ReassignTaskModal: React.FC<ReassignTaskModalProps> = ({
                   const filteredList = optionsList.filter(
                     (user) =>
                       user.id !== task.assignee &&
-                      user.id !== currentUserInvestigator?.userId,
+                      user.id !== currentUserInvestigator?.userId &&
+                      !blockedUserIds.has(user.id),
                   );
 
                   const canAssignToSelf =
-                    currentUserInvestigator?.userId !== task.assignee;
+                    currentUserInvestigator?.userId !== task.assignee &&
+                    !blockedUserIds.has(currentUserInvestigator?.userId ?? '');
 
                   if (filteredList.length === 0 && !canAssignToSelf) {
                     return (

@@ -36,6 +36,23 @@ export class InvestigatorService {
     }
   }
 
+  /**
+   * Ids of the people currently blocked on a case, so the assign / reassign dropdowns can leave them out.
+   * Open to anyone who may view the case (ids only). Never throws: if it can't be fetched the dropdown
+   * simply isn't filtered, and the backend still refuses to assign a blocked user.
+   */
+  async getBlockedUserIds(caseId: number): Promise<string[]> {
+    try {
+      const response = await apiClient.get<{ userIds?: string[] } | null>(
+        `${this.baseUrl}/${caseId}/blocked-users`,
+      );
+      return Array.isArray(response?.userIds) ? response.userIds : [];
+    } catch (error) {
+      console.error('InvestigatorService Error - get blocked users:', error);
+      return [];
+    }
+  }
+
   async getCaseAccessHistory(caseId: number): Promise<CaseAccessHistory> {
     try {
       const response = await apiClient.get<Partial<CaseAccessHistory> | null>(

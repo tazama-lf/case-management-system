@@ -774,6 +774,24 @@ describe('CaseInvestigatorService', () => {
 
   });
 
+  describe('listBlockedUserIds', () => {
+    it('returns the ids of the live blacklist entries for the case, tenant-scoped, ids only', async () => {
+      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([{ user_id: USER_ID }, { user_id: OTHER_USER_ID }]);
+
+      await expect(service.listBlockedUserIds(CASE_ID, TENANT)).resolves.toEqual([USER_ID, OTHER_USER_ID]);
+      expect(prisma.caseInvestigatorBlacklist.findMany).toHaveBeenCalledWith({
+        where: { case_id: CASE_ID, tenant_id: TENANT, unblocked_at: null },
+        select: { user_id: true },
+      });
+    });
+
+    it('returns an empty list when nobody is blocked', async () => {
+      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([]);
+
+      await expect(service.listBlockedUserIds(CASE_ID, TENANT)).resolves.toEqual([]);
+    });
+  });
+
   describe('formatBlockedMessage', () => {
     const blocked = { id: 1, blocked_by: BLOCKED_BY, blocked_at: new Date('2026-01-01T00:00:00Z'), block_reason: 'conflict of interest' } as any;
 

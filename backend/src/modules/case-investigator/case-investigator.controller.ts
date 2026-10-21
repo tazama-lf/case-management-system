@@ -2,7 +2,7 @@ import { Controller, Get, Post, Delete, Body, Param, Req, UseGuards, HttpCode, H
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { CaseInvestigatorBlacklist } from '@prisma/client-cms';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
-import { RequireSupervisorRole } from 'src/decorators/auth.decorator';
+import { RequireInvestigatorOrSupervisorRole, RequireSupervisorRole } from 'src/decorators/auth.decorator';
 import { Audit } from '../audit/decorators/audit-log.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { extractUserData } from 'src/utils/helperFunction';
@@ -122,6 +122,21 @@ export class CaseInvestigatorController {
   ): Promise<{ revoked: CaseInvestigatorWithRole[]; unblocked: CaseInvestigatorBlacklist[] }> {
     const { tenantId } = extractUserData(req);
     return await this.caseInvestigatorService.listAccessHistory(caseId, tenantId);
+  }
+
+  @Get(':caseId/blocked-users')
+  @RequireInvestigatorOrSupervisorRole()
+  @ApiOperation({
+    summary: 'List the ids of users blocked on a case',
+    description:
+      'Anyone who may view the case (investigator or supervisor). Ids only - no reasons or blockers - so the assign/reassign dropdowns can leave blocked people out. The backend refuses to assign a blocked user regardless.',
+  })
+  @ApiParam({ name: 'caseId', type: 'number', example: 123 })
+  @ApiResponse({ status: 200, description: 'Ids of users with a live block on this case' })
+  async getBlockedUsers(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<{ userIds: string[] }> {
+    const { userId, tenantId } = extractUserData(req);
+    await this.caseInvestigatorService.assertViewAccess(caseId, userId, tenantId, req.user.actorRole);
+    return { userIds: await this.caseInvestigatorService.listBlockedUserIds(caseId, tenantId) };
   }
 
   @Get(':caseId/blacklist')

@@ -5,6 +5,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ReassignTaskModal from '../ReassignTaskModal';
 import type { UnifiedWorkQueueTask } from '../../../../workqueue/types/flowable.types';
 import authService from '../../../../auth/services/authService';
+import { investigatorService } from '@/features/cases/services/investigatorService';
+
+vi.mock('@/features/cases/services/investigatorService');
 
 const mockFetchInvestigatorsList = vi.fn();
 const mockFetchComplianceOfficersList = vi.fn();
@@ -60,6 +63,7 @@ describe('ReassignTaskModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    (investigatorService.getBlockedUserIds as vi.Mock).mockResolvedValue([]);
     mockInvestigators = [
       { id: 'inv-1', firstName: 'John', lastName: 'Doe', name: 'jdoe' },
       { id: 'inv-2', firstName: 'Jane', lastName: 'Smith', name: 'jsmith' },
@@ -505,5 +509,65 @@ describe('ReassignTaskModal', () => {
     );
 
     expect(screen.getByText(/audit log/i)).toBeInTheDocument();
+  });
+
+  describe('people blocked on the case are not offered', () => {
+    const optionTexts = (): string[] =>
+      screen.getAllByRole('option').map((o) => o.textContent ?? '');
+
+    // mockTask is held by inv-1, so inv-1 is never offered; inv-2 is the candidate.
+    it('offers a peer who is not blocked', async () => {
+      render(
+        <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />,
+      );
+
+      await waitFor(() => {
+        expect(optionTexts().some((t) => t.includes('Jane Smith'))).toBe(true);
+      });
+    });
+
+    it('leaves a blocked investigator out of the Reassign To list', async () => {
+      (investigatorService.getBlockedUserIds as vi.Mock).mockResolvedValue(['inv-2']);
+      render(
+        <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />,
+      );
+
+      await waitFor(() => {
+        expect(investigatorService.getBlockedUserIds).toHaveBeenCalledWith(mockTask.caseId);
+      });
+      await waitFor(() => {
+        expect(optionTexts().some((t) => t.includes('Jane Smith'))).toBe(false);
+      });
+    });
+
+    it('does not offer "(Me)" to a user who is blocked on the case', async () => {
+      (investigatorService.getBlockedUserIds as vi.Mock).mockResolvedValue(['user-1']);
+      render(
+        <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />,
+      );
+
+      await waitFor(() => {
+        expect(optionTexts().some((t) => t.includes('(Me)'))).toBe(false);
+      });
+    });
+
+    it('offers "(Me)" when the user is not blocked', async () => {
+      render(
+        <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />,
+      );
+
+      await waitFor(() => {
+        expect(optionTexts().some((t) => t.includes('(Me)'))).toBe(true);
+      });
+    });
+
+    it('says there is nobody available when every other investigator is blocked', async () => {
+      (investigatorService.getBlockedUserIds as vi.Mock).mockResolvedValue(['inv-2', 'user-1']);
+      render(
+        <ReassignTaskModal open={true} onClose={mockOnClose} onReassign={mockOnReassign} task={mockTask} />,
+      );
+
+      expect(await screen.findByText(/No other investigators available for reassignment/)).toBeInTheDocument();
+    });
   });
 });

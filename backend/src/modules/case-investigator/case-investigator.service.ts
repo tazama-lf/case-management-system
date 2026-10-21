@@ -838,6 +838,19 @@ export class CaseInvestigatorService {
     return { revoked: await this.withUserRoles(revoked), unblocked };
   }
 
+  /**
+   * Just the ids of the people currently blocked on a case. The assign / reassign dropdowns use it to stop
+   * offering them - ids only, none of the block details (who blocked them, why), so it is safe to show to
+   * anyone who may view the case. Assigning one of them is refused by the backend regardless.
+   */
+  async listBlockedUserIds(caseId: number, tenantId: string): Promise<string[]> {
+    const rows = await this.prismaService.caseInvestigatorBlacklist.findMany({
+      where: { case_id: caseId, tenant_id: tenantId, unblocked_at: null },
+      select: { user_id: true },
+    });
+    return rows.map((row) => row.user_id);
+  }
+
   /** Live blacklist rows for a case, tenant-scoped. */
   async listBlacklist(caseId: number, tenantId: string): Promise<CaseInvestigatorBlacklist[]> {
     return await this.prismaService.caseInvestigatorBlacklist.findMany({
