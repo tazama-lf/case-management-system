@@ -774,6 +774,47 @@ describe('CaseInvestigatorService', () => {
 
   });
 
+  describe('formatBlockedMessage', () => {
+    const blocked = { id: 1, blocked_by: BLOCKED_BY, blocked_at: new Date('2026-01-01T00:00:00Z'), block_reason: 'conflict of interest' } as any;
+
+    it('names the person who blocked them, not their id', async () => {
+      cacheService.getUserFromCache = jest.fn().mockResolvedValue({ id: BLOCKED_BY, fullName: 'Sam Visor', username: 'sam@x.org' });
+
+      const message = await service.formatBlockedMessage(blocked);
+
+      expect(message).toBe('User is blacklisted on this case (blocked by Sam Visor at 2026-01-01T00:00:00.000Z: conflict of interest) — unblock first.');
+      expect(message).not.toContain(BLOCKED_BY);
+      expect(cacheService.getUserFromCache).toHaveBeenCalledWith(BLOCKED_BY);
+    });
+
+    it('falls back to the username when the full name is blank', async () => {
+      cacheService.getUserFromCache = jest.fn().mockResolvedValue({ id: BLOCKED_BY, fullName: '   ', username: 'sam@x.org' });
+
+      await expect(service.formatBlockedMessage(blocked)).resolves.toContain('blocked by sam@x.org at');
+    });
+
+    it('falls back to the id when the blocker is not in the user cache', async () => {
+      cacheService.getUserFromCache = jest.fn().mockResolvedValue(null);
+
+      await expect(service.formatBlockedMessage(blocked)).resolves.toContain(`blocked by ${BLOCKED_BY} at`);
+    });
+
+    it('falls back to the id, and still returns the message, when the cache lookup throws', async () => {
+      cacheService.getUserFromCache = jest.fn().mockRejectedValue(new Error('redis down'));
+
+      await expect(service.formatBlockedMessage(blocked)).resolves.toContain(`blocked by ${BLOCKED_BY} at`);
+    });
+
+    it('is the message grant() refuses a blocked user with', async () => {
+      cacheService.getUserRole.mockResolvedValue('CMS_INVESTIGATOR');
+      cacheService.getUserFromCache = jest.fn().mockResolvedValue({ id: BLOCKED_BY, fullName: 'Sam Visor', username: 'sam@x.org' });
+      prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(blocked);
+
+      await expect(service.grant(CASE_ID, USER_ID, TENANT, GRANTED_BY)).rejects.toThrow(/blocked by Sam Visor/);
+    });
+  });
+
   describe('getRestrictedCaseIds', () => {
     it('returns cases the user was revoked from and has no live row on', async () => {
       prisma.caseInvestigator.findMany

@@ -98,6 +98,7 @@ describe('TaskService', () => {
           provide: CaseInvestigatorService,
           useValue: {
             isBlacklisted: jest.fn().mockResolvedValue(null),
+            formatBlockedMessage: jest.fn().mockResolvedValue('User is blacklisted on this case (blocked by Sam Visor at 2026-01-01T00:00:00.000Z: conflict of interest) — unblock first.'),
             syncTaskAssignment: jest.fn().mockResolvedValue(undefined),
             assertReadAccess: jest.fn().mockResolvedValue(undefined),
             assertViewAccess: jest.fn().mockResolvedValue('FULL'),
@@ -410,7 +411,7 @@ describe('TaskService', () => {
         block_reason: 'conflict of interest',
       } as any);
 
-      await expect(service.updateTask(1, updateData, 'user1', 'tenant1')).rejects.toThrow(ForbiddenException);
+      await expect(service.updateTask(1, updateData, 'user1', 'tenant1')).rejects.toThrow(/blocked by Sam Visor/);
       expect(taskRepository.updateTask).not.toHaveBeenCalled();
       expect(caseInvestigatorService.syncTaskAssignment).not.toHaveBeenCalled();
     });

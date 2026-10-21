@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ConflictException, 
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { Outcome } from '../../../utils/types/outcome';
-import { CaseStatus, CaseType, Comment, Priority, Task, TaskStatus } from '@prisma/client-cms';
+import { CaseInvestigatorMembership, CaseStatus, CaseType, Comment, Priority, Task, TaskStatus } from '@prisma/client-cms';
 import { CaseRepository } from 'src/modules/repository/case.repository';
 import { TaskService } from 'src/modules/task/task.service';
 import { TASK_NAMES, CANDIDATE_GROUPS, CASE_CLOSURE_OUTCOMES, VALIDATION_LENGTHS } from '../../../constants/case.constants';
@@ -15,6 +15,7 @@ import { CommentService } from 'src/modules/comment/comment.service';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 import { CommentRepository } from 'src/modules/repository/comment.repository';
 import { ApprovalTaskDTO } from '../types/case-closure-approval.types';
+import { CaseInvestigatorService } from 'src/modules/case-investigator/case-investigator.service';
 
 @Injectable()
 export class CaseClosureApprovalService {
@@ -29,6 +30,7 @@ export class CaseClosureApprovalService {
     private readonly commentService: CommentService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly taskValidationUtil: TaskValidationUtil,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
 
   private async createSARFilingTask(caseId: number, tenantId: string, userId: string): Promise<void> {
@@ -543,7 +545,7 @@ export class CaseClosureApprovalService {
     message: string;
     case: { case_id: number; status: string; updated_at: Date };
     completed_approval_task: { task_id: number; status: string };
-    investigation_task: { task_id: number; name: string | null; assigned_to: string; status: string };
+    investigation_task: { task_id: number; name: string | null; assigned_to: string | null; status: string };
   }> {
     try {
       this.logger.log(`Supervisor ${supervisorId} rejecting case closure for ${caseId}`, CaseClosureApprovalService.name);
@@ -568,19 +570,30 @@ export class CaseClosureApprovalService {
         throw new BadRequestException('Cannot determine original investigator for case reassignment');
       }
 
+      // A rejected closure normally goes back to the investigator who submitted it - but not if they
+      // are blocked on this case (blocked after submitting): then the case goes back in the queue,
+      // unassigned and ready for assignment, for anyone not blocked to take. A merely revoked
+      // investigator is fine to hand it back to - being assigned again is how access returns.
+      const investigatorBlocked = (await this.caseInvestigatorService.isBlacklisted(caseId, originalInvestigatorId, tenantId)) !== null;
+      const nextStatus = investigatorBlocked ? CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT : CaseStatus.STATUS_20_IN_PROGRESS;
+
       const result = await this.caseRepository.rejectClosureTask(
         caseId,
         supervisorId,
-        originalInvestigatorId,
+        investigatorBlocked ? null : originalInvestigatorId,
         comments,
         TASK_NAMES,
         caseDetails.tenant_id,
       );
 
+      if (!investigatorBlocked) {
+        await this.restoreInvestigatorAccess(caseId, originalInvestigatorId, supervisorId, caseDetails.tenant_id);
+      }
+
       // Notify Flowable about case status change FIRST to set the BPMN state
       this.flowableService.handleCaseStatusChanged({
         caseId,
-        newStatus: CaseStatus.STATUS_20_IN_PROGRESS,
+        newStatus: nextStatus,
       });
 
       // Then complete the approval task in BPMN
@@ -591,35 +604,42 @@ export class CaseClosureApprovalService {
         completionVariables: {
           approvalDecision: 'reject',
           supervisorComments: comments,
-          newCaseStatus: CaseStatus.STATUS_20_IN_PROGRESS, // Explicitly set target status
+          newCaseStatus: nextStatus, // Explicitly set target status
         },
       });
 
-      try {
-        await this.notificationService.sendNotification({
-          userId: originalInvestigatorId,
-          type: 'CASE_CLOSURE_REJECTED',
-          message: `Your case closure for case ${caseId} was rejected by supervisor`,
-          metadata: {
-            caseId,
-            taskId: result.newInvestigationTask.task_id,
-            supervisorComments: comments,
-            rejectedBy: supervisorId,
-            taskTitle: originalInvestigationTask.name,
-          },
-        });
-      } catch (notificationError) {
-        const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
-        const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
-        this.logger.warn(`Failed to send notification to requesting user: ${errorMessage}`, errorStack, CaseClosureApprovalService.name);
+      // A blocked investigator is not told the case came back to them - it didn't.
+      if (!investigatorBlocked) {
+        try {
+          await this.notificationService.sendNotification({
+            userId: originalInvestigatorId,
+            type: 'CASE_CLOSURE_REJECTED',
+            message: `Your case closure for case ${caseId} was rejected by supervisor`,
+            metadata: {
+              caseId,
+              taskId: result.newInvestigationTask.task_id,
+              supervisorComments: comments,
+              rejectedBy: supervisorId,
+              taskTitle: originalInvestigationTask.name,
+            },
+          });
+        } catch (notificationError) {
+          const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
+          const errorStack = notificationError instanceof Error ? notificationError.stack : undefined;
+          this.logger.warn(`Failed to send notification to requesting user: ${errorMessage}`, errorStack, CaseClosureApprovalService.name);
+        }
       }
+
+      const assignmentNote = investigatorBlocked
+        ? 'created unassigned and open for claiming, because the original investigator is blocked on this case'
+        : `created and assigned to user ${originalInvestigatorId}`;
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
           userId: supervisorId,
           operation: 'rejectCaseClosure',
           entityName: CaseClosureApprovalService.name,
-          actionPerformed: `Case ${caseId} closure rejected. New investigation task ${result.newInvestigationTask.task_id} created and assigned to user ${originalInvestigatorId}`,
+          actionPerformed: `Case ${caseId} closure rejected. New investigation task ${result.newInvestigationTask.task_id} ${assignmentNote}`,
           outcome: Outcome.SUCCESS,
           tenantId: caseDetails.tenant_id,
         },
@@ -628,12 +648,14 @@ export class CaseClosureApprovalService {
       );
 
       this.logger.log(
-        `Case ${caseId} closure rejected successfully. New investigation task ${result.newInvestigationTask.task_id} created and assigned to user ${originalInvestigatorId}`,
+        `Case ${caseId} closure rejected successfully. New investigation task ${result.newInvestigationTask.task_id} ${assignmentNote}`,
         CaseClosureApprovalService.name,
       );
 
       return {
-        message: 'Case closure rejected and new investigation task created',
+        message: investigatorBlocked
+          ? 'Case closure rejected; the original investigator is blocked, so the case is back in the queue unassigned'
+          : 'Case closure rejected and new investigation task created',
         case: {
           case_id: result.updatedCase.case_id,
           status: result.updatedCase.status,
@@ -646,7 +668,7 @@ export class CaseClosureApprovalService {
         investigation_task: {
           task_id: result.newInvestigationTask.task_id,
           name: result.newInvestigationTask.name,
-          assigned_to: originalInvestigatorId,
+          assigned_to: investigatorBlocked ? null : originalInvestigatorId,
           status: result.newInvestigationTask.status,
         },
       };
@@ -665,6 +687,26 @@ export class CaseClosureApprovalService {
       });
 
       throw error;
+    }
+  }
+
+  /**
+   * The rejected closure puts the investigator back on the case through a direct repository write, which
+   * bypasses the task service's whitelist sync - so give them their LEAD row back here. This is what
+   * restores access for an investigator who had been revoked in the meantime. Best-effort: the
+   * rejection itself has already committed.
+   */
+  private async restoreInvestigatorAccess(caseId: number, investigatorId: string, supervisorId: string, tenantId: string): Promise<void> {
+    try {
+      await this.caseInvestigatorService.grant(caseId, investigatorId, tenantId, supervisorId, CaseInvestigatorMembership.LEAD);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.warn(
+        `Case-investigator ACL grant failed for case ${caseId}, user ${investigatorId} (closure rejection itself already succeeded): ${errorMessage}`,
+        errorStack,
+        CaseClosureApprovalService.name,
+      );
     }
   }
 

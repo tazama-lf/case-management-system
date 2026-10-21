@@ -10,6 +10,7 @@ import { FlowableService } from '../src/modules/flowable/flowable.service';
 import { CommentService } from '../src/modules/comment/comment.service';
 import { LoggingOrchestrationService } from '../src/modules/logging-orchestration/logging-orchestration.service';
 import { TaskValidationUtil } from '../src/modules/shared/utils/task-validation.util';
+import { CaseInvestigatorService } from '../src/modules/case-investigator/case-investigator.service';
 import { NotFoundException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { CaseStatus, TaskStatus, CaseType, Priority } from '@prisma/client-cms';
 
@@ -25,6 +26,7 @@ describe('CaseClosureApprovalService', () => {
   let loggingOrchestrationService: jest.Mocked<LoggingOrchestrationService>;
   let logger: jest.Mocked<LoggerService>;
   let taskValidationUtil: any;
+  let caseInvestigatorService: { isBlacklisted: jest.Mock; grant: jest.Mock };
 
   const mockCase = {
     case_id: 1,
@@ -190,6 +192,10 @@ describe('CaseClosureApprovalService', () => {
         { provide: CommentService, useValue: mockCommentService },
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
         { provide: TaskValidationUtil, useValue: mockTaskValidationUtil },
+        {
+          provide: CaseInvestigatorService,
+          useValue: { isBlacklisted: jest.fn().mockResolvedValue(null), grant: jest.fn().mockResolvedValue(undefined) },
+        },
       ],
     }).compile();
 
@@ -204,6 +210,7 @@ describe('CaseClosureApprovalService', () => {
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
     logger = module.get(LoggerService);
     taskValidationUtil = module.get(TaskValidationUtil);
+    caseInvestigatorService = module.get(CaseInvestigatorService);
   });
 
   describe('closeCase', () => {
@@ -942,6 +949,109 @@ describe('CaseClosureApprovalService', () => {
           outcome: 'FAILURE',
         }),
       );
+    });
+  });
+
+  describe('rejectCaseClosure - investigator who is revoked or blocked', () => {
+    const pendingCase = {
+      ...mockCase,
+      status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+      tasks: [
+        { ...mockTask, name: 'Investigate Case', status: TaskStatus.STATUS_30_COMPLETED, assigned_user_id: 'investigator-123', task_id: 1 },
+      ],
+    };
+
+    const arrange = (): void => {
+      caseRepository.findCaseForReview.mockResolvedValue({
+        ...pendingCase,
+        tasks: [{ ...mockTask, name: 'Approve Case Closure', status: TaskStatus.STATUS_01_UNASSIGNED, task_id: 2 }],
+      } as any);
+      caseRepository.findCaseWithCompletedInvestigation.mockResolvedValue(pendingCase as any);
+      notificationService.sendNotification.mockResolvedValue({} as any);
+    };
+
+    it('gives the case back to the original investigator when they are not blocked (a revoked investigator is fine), and restores their whitelist row', async () => {
+      arrange();
+      caseRepository.rejectClosureTask.mockResolvedValue({
+        updatedCase: { ...mockCase, status: CaseStatus.STATUS_20_IN_PROGRESS },
+        completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
+        newInvestigationTask: { task_id: 3, name: 'Investigate Case', status: TaskStatus.STATUS_10_ASSIGNED },
+      } as any);
+
+      const result = await service.rejectCaseClosure(1, 'Need more evidence for fraud confirmation', 'supervisor-123', 'tenant-123');
+
+      expect(caseRepository.rejectClosureTask.mock.calls[0][2]).toBe('investigator-123');
+      expect(result.investigation_task.assigned_to).toBe('investigator-123');
+      expect(result.case.status).toBe(CaseStatus.STATUS_20_IN_PROGRESS);
+      expect(caseInvestigatorService.grant).toHaveBeenCalledWith(1, 'investigator-123', 'tenant-123', 'supervisor-123', 'LEAD');
+      expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledWith({ caseId: 1, newStatus: CaseStatus.STATUS_20_IN_PROGRESS });
+      expect(notificationService.sendNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'investigator-123' }));
+    });
+
+    it('puts the case back in the queue, unassigned, when the original investigator is blocked on it', async () => {
+      arrange();
+      caseInvestigatorService.isBlacklisted.mockResolvedValueOnce({ id: 1, blocked_by: 'supervisor-9', block_reason: 'conflict' });
+      caseRepository.rejectClosureTask.mockResolvedValue({
+        updatedCase: { ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+        completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
+        newInvestigationTask: { task_id: 3, name: 'Investigate Case', status: TaskStatus.STATUS_01_UNASSIGNED },
+      } as any);
+
+      const result = await service.rejectCaseClosure(1, 'Need more evidence for fraud confirmation', 'supervisor-123', 'tenant-123');
+
+      // the repository is told to leave the task unassigned (null investigator)
+      expect(caseRepository.rejectClosureTask.mock.calls[0][2]).toBeNull();
+      expect(result.investigation_task.assigned_to).toBeNull();
+      expect(result.case.status).toBe(CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT);
+      expect(result.message).toContain('blocked');
+      // Flowable is told the case is ready for assignment, not in progress
+      expect(flowableService.handleCaseStatusChanged).toHaveBeenCalledWith({ caseId: 1, newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
+      expect(flowableService.handleTaskCompleted).toHaveBeenCalledWith(
+        expect.objectContaining({ completionVariables: expect.objectContaining({ newCaseStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }) }),
+      );
+    });
+
+    it('does not restore access to, or notify, a blocked investigator', async () => {
+      arrange();
+      caseInvestigatorService.isBlacklisted.mockResolvedValueOnce({ id: 1, blocked_by: 'supervisor-9', block_reason: 'conflict' });
+      caseRepository.rejectClosureTask.mockResolvedValue({
+        updatedCase: { ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
+        completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
+        newInvestigationTask: { task_id: 3, name: 'Investigate Case', status: TaskStatus.STATUS_01_UNASSIGNED },
+      } as any);
+
+      await service.rejectCaseClosure(1, 'Need more evidence for fraud confirmation', 'supervisor-123', 'tenant-123');
+
+      expect(caseInvestigatorService.grant).not.toHaveBeenCalled();
+      expect(notificationService.sendNotification).not.toHaveBeenCalled();
+    });
+
+    it('checks the block for the original investigator on this case and tenant', async () => {
+      arrange();
+      caseRepository.rejectClosureTask.mockResolvedValue({
+        updatedCase: { ...mockCase },
+        completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
+        newInvestigationTask: { task_id: 3, name: 'Investigate Case', status: TaskStatus.STATUS_10_ASSIGNED },
+      } as any);
+
+      await service.rejectCaseClosure(1, 'Need more evidence for fraud confirmation', 'supervisor-123', 'tenant-123');
+
+      expect(caseInvestigatorService.isBlacklisted).toHaveBeenCalledWith(1, 'investigator-123', 'tenant-123');
+    });
+
+    it('still completes the rejection when restoring the whitelist row fails', async () => {
+      arrange();
+      caseInvestigatorService.grant.mockRejectedValueOnce(new Error('acl down'));
+      caseRepository.rejectClosureTask.mockResolvedValue({
+        updatedCase: { ...mockCase, status: CaseStatus.STATUS_20_IN_PROGRESS },
+        completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
+        newInvestigationTask: { task_id: 3, name: 'Investigate Case', status: TaskStatus.STATUS_10_ASSIGNED },
+      } as any);
+
+      const result = await service.rejectCaseClosure(1, 'Need more evidence for fraud confirmation', 'supervisor-123', 'tenant-123');
+
+      expect(result.investigation_task.assigned_to).toBe('investigator-123');
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('ACL grant failed'), expect.anything(), 'CaseClosureApprovalService');
     });
   });
 });

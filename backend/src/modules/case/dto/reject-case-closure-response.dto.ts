@@ -26,8 +26,14 @@ class NewInvestigationTask {
   @ApiProperty({ type: 'string', example: 'Investigate Case' })
   name: string;
 
-  @ApiProperty({ type: 'string', format: 'uuid', description: 'Original investigator user ID' })
-  assigned_to: string;
+  @ApiProperty({
+    type: 'string',
+    format: 'uuid',
+    nullable: true,
+    description:
+      'Original investigator user ID; null when the original investigator is blocked on the case and the task is left open for claiming',
+  })
+  assigned_to: string | null;
 
   @ApiProperty({ type: 'string', example: 'STATUS_10_ASSIGNED' })
   status: string;

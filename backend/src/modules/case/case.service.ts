@@ -551,7 +551,7 @@ export class CaseService {
     message: string;
     case: { case_id: number; status: string; updated_at: Date };
     completed_approval_task: { task_id: number; status: string };
-    investigation_task: { task_id: number; name: string | null; assigned_to: string; status: string };
+    investigation_task: { task_id: number; name: string | null; assigned_to: string | null; status: string };
   }> {
     const existingCase = await this.caseQueryService.retrieveCase(caseId, tenantId);
     if (!existingCase) throw new BadRequestException(`Case not found for caseId ${caseId}`);

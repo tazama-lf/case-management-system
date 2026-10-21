@@ -872,7 +872,7 @@ export class CaseController {
     message: string;
     case: { case_id: number; status: string; updated_at: Date };
     completed_approval_task: { task_id: number; status: string };
-    investigation_task: { task_id: number; name: string | null; assigned_to: string; status: string };
+    investigation_task: { task_id: number; name: string | null; assigned_to: string | null; status: string };
   }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
     return await this.caseService.rejectCaseClosure(

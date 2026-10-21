@@ -132,9 +132,7 @@ export class TaskService {
         if (nextAssignedUserId && nextAssignedUserId !== existingTask.assigned_user_id) {
           const blocked = await this.caseInvestigatorService.isBlacklisted(existingTask.case_id, nextAssignedUserId, tenantId);
           if (blocked) {
-            throw new ForbiddenException(
-              `User is blacklisted on this case (blocked by ${blocked.blocked_by} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`,
-            );
+            throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
           }
         }
 
@@ -359,9 +357,7 @@ export class TaskService {
     if (!task) return;
     const blocked = await this.caseInvestigatorService.isBlacklisted(task.case_id, userId, tenantId);
     if (blocked) {
-      throw new ForbiddenException(
-        `User is blacklisted on this case (blocked by ${blocked.blocked_by} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`,
-      );
+      throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
     }
     if (task.assigned_user_id === userId) return;
     if (!task.assigned_user_id && newAssigneeId === userId) return;
@@ -404,9 +400,7 @@ export class TaskService {
       // blacklisted on this case, before writing anything.
       const blocked = await this.caseInvestigatorService.isBlacklisted(existingTask.case_id, userId, tenantId);
       if (blocked) {
-        throw new ForbiddenException(
-          `User is blacklisted on this case (blocked by ${blocked.blocked_by} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`,
-        );
+        throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
       }
 
       const updatedTask = await this.taskRepository.updateTask(taskId, {

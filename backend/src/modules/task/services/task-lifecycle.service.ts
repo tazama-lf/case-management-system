@@ -56,9 +56,7 @@ export class TaskLifecycleService {
   private async assertNotBlacklisted(caseId: number, userId: string, tenantId: string): Promise<void> {
     const blocked = await this.caseInvestigatorService.isBlacklisted(caseId, userId, tenantId);
     if (blocked) {
-      throw new ForbiddenException(
-        `User is blacklisted on this case (blocked by ${blocked.blocked_by} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`,
-      );
+      throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
     }
   }
 

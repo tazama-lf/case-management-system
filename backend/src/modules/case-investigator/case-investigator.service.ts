@@ -328,6 +328,26 @@ export class CaseInvestigatorService {
     return [...new Set([...whitelisted, ...openCases.map((row) => row.case_id)])];
   }
 
+  /**
+   * The refusal shown to someone who is blocked on a case, naming who blocked them (by name, not
+   * id), when, and why. The name comes from the cached user directory; if the blocker isn't in it
+   * the id is shown rather than nothing.
+   */
+  async formatBlockedMessage(blocked: CaseInvestigatorBlacklist): Promise<string> {
+    const blockedBy = await this.resolveUserName(blocked.blocked_by);
+    return `User is blacklisted on this case (blocked by ${blockedBy} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`;
+  }
+
+  private async resolveUserName(userId: string): Promise<string> {
+    try {
+      const user = await this.cacheService.getUserFromCache(userId);
+      const name = user?.fullName.trim() ?? '';
+      return name === '' ? (user?.username ?? userId) : name;
+    } catch {
+      return userId;
+    }
+  }
+
   /** The live blacklist row for (case, user), if any — lets refusal messages name who blocked and when. */
   async isBlacklisted(caseId: number, userId: string, tenantId: string): Promise<CaseInvestigatorBlacklist | null> {
     return await this.prismaService.caseInvestigatorBlacklist.findFirst({
@@ -402,9 +422,7 @@ export class CaseInvestigatorService {
 
       const blocked = await this.isBlacklisted(caseId, userId, tenantId);
       if (blocked) {
-        throw new ForbiddenException(
-          `User is blacklisted on this case (blocked by ${blocked.blocked_by} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`,
-        );
+        throw new ForbiddenException(await this.formatBlockedMessage(blocked));
       }
 
       const existing = await this.prismaService.caseInvestigator.findFirst({

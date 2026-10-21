@@ -104,6 +104,7 @@ describe('TaskLifecycleService', () => {
 
   const mockCaseInvestigatorService = {
     isBlacklisted: jest.fn().mockResolvedValue(null),
+    formatBlockedMessage: jest.fn().mockResolvedValue('User is blacklisted on this case (blocked by Sam Visor at 2026-01-01T00:00:00.000Z: conflict of interest) — unblock first.'),
     assertReadAccess: jest.fn().mockResolvedValue(undefined),
     syncTaskAssignment: jest.fn().mockResolvedValue(undefined),
   };

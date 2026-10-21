@@ -795,7 +795,7 @@ export class CaseRepository extends BaseRepository {
   async rejectClosureTask(
     caseId: number,
     supervisorId: string,
-    originalInvestigatorId: string,
+    originalInvestigatorId: string | null,
     comments: string,
     taskNames: { APPROVE_CASE_CLOSURE: string; APPROVE_CASE_CLOSURE_LOWER: string; INVESTIGATE_CASE: string },
     tenantId: string,
@@ -832,8 +832,13 @@ export class CaseRepository extends BaseRepository {
           case_id: caseId,
           tenant_id: tenantId,
           name: taskNames.INVESTIGATE_CASE,
-          description: 'Continue investigation based on supervisor feedback. Previous closure was rejected.',
-          status: TaskStatus.STATUS_10_ASSIGNED,
+          description:
+            originalInvestigatorId === null
+              ? 'Continue investigation based on supervisor feedback. Previous closure was rejected, and the original investigator can no longer take this case.'
+              : 'Continue investigation based on supervisor feedback. Previous closure was rejected.',
+          // originalInvestigatorId === null: the original investigator is blocked on the case, so the new task is
+          // left unassigned and the case goes back in the queue for anyone not blocked to claim.
+          status: originalInvestigatorId === null ? TaskStatus.STATUS_01_UNASSIGNED : TaskStatus.STATUS_10_ASSIGNED,
           assigned_user_id: originalInvestigatorId,
           created_at: new Date(),
           updated_at: new Date(),
@@ -855,10 +860,10 @@ export class CaseRepository extends BaseRepository {
       // Update case status LAST to prevent BPMN from overriding it
       const updatedCase = await tx.case.update({
         where: { case_id: caseId },
-        data: {
-          status: CaseStatus.STATUS_20_IN_PROGRESS,
-          updated_at: new Date(),
-        },
+        data:
+          originalInvestigatorId === null
+            ? { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null, updated_at: new Date() }
+            : { status: CaseStatus.STATUS_20_IN_PROGRESS, updated_at: new Date() },
       });
 
       return { updatedCase, completedTask, newInvestigationTask };
