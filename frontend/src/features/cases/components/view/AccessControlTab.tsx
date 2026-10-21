@@ -99,12 +99,9 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
 
   // One timeline, newest first: revokes (including automatic ones) and unblocks together.
   const historyEvents = useMemo<AccessHistoryEvent[]>(() => {
-    // Supervisors and compliance officers also get whitelist rows (and lose them automatically when
-    // reassigned off a task), but they bypass the ACL and never lose access - listing those as
-    // "Revoked" would be misleading, so only people who can actually lose access are shown.
     const revoked = (accessHistory?.revoked ?? []).flatMap(
       (row): AccessHistoryEvent[] =>
-        row.revoked_at && !(row.user_role && NON_REMOVABLE_ROLE_LABELS[row.user_role])
+        row.revoked_at
           ? [
               {
                 key: `revoked-${row.id}`,

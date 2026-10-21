@@ -373,27 +373,6 @@ describe('AccessControlTab', () => {
       expect(reasons[1]).toContain('conflict of interest');
     });
 
-    it('leaves supervisors and compliance officers out of the history - they never lose access, so a Revoked row would mislead', async () => {
-      (investigatorService.getCaseAccessHistory as vi.Mock).mockResolvedValue({
-        revoked: [
-          revokedRow,
-          {
-            ...revokedRow,
-            id: 11,
-            user_id: 'user-sup',
-            user_role: 'CMS_SUPERVISOR',
-            revoke_reason: 'Automatically revoked: no longer assigned to any task on this case',
-          },
-        ],
-        unblocked: [],
-      });
-      renderTab();
-
-      await screen.findByText('conflict of interest');
-      expect(screen.queryByText(/Automatically revoked/)).not.toBeInTheDocument();
-      expect(screen.getAllByText('Revoked')).toHaveLength(1);
-    });
-
     it('shows an error state when the history fails to load, without hiding the live lists', async () => {
       (investigatorService.getCaseAccessHistory as vi.Mock).mockRejectedValue(
         new Error('boom'),

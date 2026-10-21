@@ -16,6 +16,10 @@ import { CacheService } from '../shared/cache.service';
 import { Outcome } from '../../utils/types/outcome';
 
 const INVESTIGATOR_ROLE = 'CMS_INVESTIGATOR';
+
+// Supervisors and compliance officers bypass the ACL entirely (hasAccess), so a whitelist row for
+// them means nothing. They are no longer given one; rows from before this rule are left as they are.
+const ACL_BYPASS_ROLES = new Set(['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER']);
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
 // Unclaimed cases every investigator can see and claim (same set ReportsService treats as visible to all).
@@ -338,6 +342,10 @@ export class CaseInvestigatorService {
     membership: CaseInvestigatorMembership = CaseInvestigatorMembership.OBSERVER,
   ): Promise<void> {
     try {
+      if (await this.hasBypassRole(userId)) {
+        return;
+      }
+
       await this.assertCaseInTenant(caseId, tenantId);
 
       const blocked = await this.isBlacklisted(caseId, userId, tenantId);
@@ -497,7 +505,12 @@ export class CaseInvestigatorService {
     }
 
     if (previousAssigneeId && previousAssigneeId !== newAssigneeId) {
-      // Reassignment / unassignment / claim-away.
+      // Reassignment / unassignment / claim-away. A supervisor or compliance officer was never
+      // given a row, so there is nothing to revoke.
+      if (await this.hasBypassRole(previousAssigneeId)) {
+        return;
+      }
+
       const stillHasClaim = await this.hasOtherLiveClaimOnCase(caseId, previousAssigneeId, tenantId, taskId);
       if (!stillHasClaim) {
         await this.performRevoke(
@@ -699,6 +712,16 @@ export class CaseInvestigatorService {
     });
 
     return await this.withUserRoles(rows);
+  }
+
+  /** true for a supervisor or compliance officer, going by the cached role; unknown (null) is not treated as bypass. */
+  private async hasBypassRole(userId: string): Promise<boolean> {
+    try {
+      const role = await this.cacheService.getUserRole(userId);
+      return role !== null && ACL_BYPASS_ROLES.has(role);
+    } catch {
+      return false;
+    }
   }
 
   /** Tags each row with its user's cached role (null = unknown), looking each distinct user up once. */

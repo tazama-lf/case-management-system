@@ -708,8 +708,8 @@ describe('CaseInvestigatorService', () => {
       expect(prisma.caseInvestigator.findFirst).not.toHaveBeenCalled();
     });
 
-    it("syncTaskAssignment's automatic revoke bypasses the role guard entirely (it's ACL bookkeeping, not the deliberate action the guard is for)", async () => {
-      cacheService.getUserRole.mockResolvedValue('CMS_SUPERVISOR'); // would be refused by revoke()
+    it("syncTaskAssignment's automatic revoke bypasses the role guard (it's ACL bookkeeping, not the deliberate action the guard is for)", async () => {
+      cacheService.getUserRole.mockResolvedValue(null); // unknown role: revoke() fails closed on this, the automatic revoke must not
       jest.spyOn(service, 'hasOtherLiveClaimOnCase').mockResolvedValue(false);
       prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 9 });
 
@@ -720,11 +720,58 @@ describe('CaseInvestigatorService', () => {
         newStatus: TaskStatus.STATUS_01_UNASSIGNED,
       });
 
-      expect(cacheService.getUserRole).not.toHaveBeenCalled();
       expect(prisma.caseInvestigator.update).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 9 } }),
       );
     });
+  });
+
+  describe('supervisors and compliance officers get no whitelist rows', () => {
+    it.each(['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'])('grant() does nothing for a %s', async (role) => {
+      cacheService.getUserRole.mockResolvedValue(role);
+
+      await service.grant(CASE_ID, USER_ID, TENANT, GRANTED_BY, CaseInvestigatorMembership.LEAD);
+
+      expect(prisma.caseInvestigator.create).not.toHaveBeenCalled();
+      expect(prisma.caseInvestigator.update).not.toHaveBeenCalled();
+      expect(prisma.case.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('grant() still writes for an investigator', async () => {
+      cacheService.getUserRole.mockResolvedValue('CMS_INVESTIGATOR');
+      prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigator.findFirst.mockResolvedValue(null);
+
+      await service.grant(CASE_ID, USER_ID, TENANT, GRANTED_BY, CaseInvestigatorMembership.LEAD);
+
+      expect(prisma.caseInvestigator.create).toHaveBeenCalled();
+    });
+
+    it('grant() still writes when the cached role is unknown (a cache miss must never cost an investigator their row)', async () => {
+      cacheService.getUserRole.mockResolvedValue(null);
+      prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigator.findFirst.mockResolvedValue(null);
+
+      await service.grant(CASE_ID, USER_ID, TENANT, GRANTED_BY, CaseInvestigatorMembership.LEAD);
+
+      expect(prisma.caseInvestigator.create).toHaveBeenCalled();
+    });
+
+    it('syncTaskAssignment does not try to revoke a supervisor who is reassigned off a task (there is no row to revoke)', async () => {
+      cacheService.getUserRole.mockResolvedValue('CMS_SUPERVISOR');
+
+      await service.syncTaskAssignment(CASE_ID, TENANT, GRANTED_BY, {
+        taskId: 5,
+        previousAssigneeId: USER_ID,
+        newAssigneeId: null,
+      });
+
+      expect(prisma.task.count).not.toHaveBeenCalled();
+      expect(prisma.caseInvestigator.update).not.toHaveBeenCalled();
+    });
+
   });
 
   describe('getRevokedCaseIds', () => {
@@ -1098,7 +1145,7 @@ describe('CaseInvestigatorService', () => {
       });
     });
 
-    it('listWhitelist tags each row with its user role so supervisors/compliance officers can be told apart', async () => {
+    it('listWhitelist tags each row with its user role, and keeps rows that already exist for supervisors/compliance officers', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValue([
         { id: 1, user_id: USER_ID },
         { id: 2, user_id: OTHER_USER_ID },
