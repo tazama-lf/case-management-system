@@ -28,6 +28,24 @@ export class CacheService {
   private readonly CACHE_TTL_HOURS = 720; // 720 hours == 30 days TTL
   private readonly AuthBaseUrl: string;
 
+  // In-memory copy of the user directory, kept alongside Redis. Redis stays the shared, 30-day source of
+  // truth, but role lookups (who is a supervisor, who may be revoked) must not stop working just because
+  // Redis is down or was restarted empty - without this every role was "unknown" and revoke/blacklist
+  // failed closed. Per process, and short-lived so a role change in Keycloak is picked up.
+  private readonly localUsers = new Map<string, { user: UserDetails; expiresAt: number }>();
+  private readonly LOCAL_USER_TTL_MS = 12 * 60 * 60 * 1000;
+
+  // Guards refreshDirectoryIfUnknown so a burst of requests triggers one refresh, and a user who is
+  // genuinely not in any role group cannot make every request hit the auth service.
+  private directoryRefresh: Promise<void> | null = null;
+  private lastDirectoryRefreshAt = 0;
+  private readonly DIRECTORY_REFRESH_COOLDOWN_MS = 60 * 1000;
+
+  // Users confirmed to be in the directory, and when. Page loads for a known user then cost a Map lookup
+  // - no Redis round trip, no auth-service call - for the next few minutes.
+  private readonly verifiedUsers = new Map<string, number>();
+  private readonly VERIFIED_USER_TTL_MS = 5 * 60 * 1000;
+
   constructor(
     private readonly redisService: RedisService,
     private readonly configService: ConfigService,
@@ -35,28 +53,15 @@ export class CacheService {
     this.AuthBaseUrl = this.configService.get<string>('TAZAMA_AUTH_URL')!;
   }
 
+  /**
+   * Fetches every cached role's users from the auth service and stores them: in Redis when it is
+   * connected (shared, 30-day TTL) and always in the in-memory fallback. `retryCount` is kept for the
+   * existing callers; there is nothing to wait for any more - an unreachable Redis no longer blocks this.
+   */
   public async initializeUserCache(retryCount = 0, token: string): Promise<void> {
-    const maxRetries = 3;
-    this.logger.log(`InitializeUserCache called (attempt ${retryCount + 1}/${maxRetries + 1})`, CacheService.name);
+    this.logger.log(`InitializeUserCache called (attempt ${retryCount + 1})`, CacheService.name);
 
     try {
-      this.logger.log('Redis connection status:', CacheService.name);
-      if (!this.redisService.isConnected()) {
-        this.logger.log('Redis not connected', CacheService.name);
-
-        if (retryCount < maxRetries) {
-          setTimeout(() => {
-            this.initializeUserCache(retryCount + 1, token).catch((error: unknown) => {
-              this.logger.error('Retry failed:', error);
-            });
-          }, 3000);
-          return;
-        } else {
-          this.logger.warn('Redis not connected after retries, skipping cache initialization', CacheService.name);
-          return;
-        }
-      }
-
       const cacheData: Record<string, UserDetails> = {};
       let totalUsers = 0;
       const rolePromises = this.CACHE_ROLES.map(async (role) => {
@@ -103,10 +108,14 @@ export class CacheService {
 
       await Promise.all(rolePromises);
 
-      this.logger.log(`User cache initialized in Redis with ${totalUsers} total users`, CacheService.name);
       if (Object.keys(cacheData).length > 0) {
-        await this.redisService.mset(cacheData, this.CACHE_TTL_HOURS * 3600);
-        this.logger.log(`User cache initialized in Redis with ${totalUsers} total users`, CacheService.name);
+        this.storeLocally(cacheData);
+        if (this.redisService.isConnected()) {
+          await this.redisService.mset(cacheData, this.CACHE_TTL_HOURS * 3600);
+          this.logger.log(`User cache initialized in Redis with ${totalUsers} total users`, CacheService.name);
+        } else {
+          this.logger.warn(`Redis not connected - kept ${totalUsers} users in the in-memory directory only`, CacheService.name);
+        }
       } else {
         this.logger.warn('No users fetched for caching', CacheService.name);
       }
@@ -149,10 +158,31 @@ export class CacheService {
     return `${this.CACHE_KEY_PREFIX}${userId}`;
   }
 
+  private storeLocally(users: Record<string, UserDetails>): void {
+    const expiresAt = Date.now() + this.LOCAL_USER_TTL_MS;
+    for (const user of Object.values(users)) {
+      this.localUsers.set(user.id, { user, expiresAt });
+    }
+  }
+
+  private getLocalUser(userId: string): UserDetails | null {
+    const entry = this.localUsers.get(userId);
+    if (!entry) {
+      return null;
+    }
+    if (entry.expiresAt < Date.now()) {
+      this.localUsers.delete(userId);
+      return null;
+    }
+    return entry.user;
+  }
+
   async getUserFromCache(userId: string): Promise<UserDetails | null> {
+    const localUser = this.getLocalUser(userId);
+
     if (!this.redisService.isConnected()) {
       this.logger.debug('Redis not connected, cache unavailable', CacheService.name);
-      return null;
+      return localUser;
     }
 
     try {
@@ -163,12 +193,59 @@ export class CacheService {
       }
 
       this.logger.debug(`User ${userId} not found in Redis cache`, CacheService.name);
-      return null;
+      return localUser;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Error getting user ${userId} from cache: ${errorMessage}`, CacheService.name);
+      if (localUser) {
+        return localUser;
+      }
       throw error;
     }
+  }
+
+  /**
+   * Repairs the user directory when the given (logged-in) user is not in it - after a backend restart,
+   * a Redis outage or flush, or a user the last refresh predates. Safe to call on every request: it is a
+   * no-op when the user is known, joins a refresh already in flight, and is rate-limited otherwise.
+   */
+  async refreshDirectoryIfUnknown(userId: string, token: string): Promise<void> {
+    // The common case, on every page load: a user confirmed a moment ago, or one in this process's own
+    // in-memory copy. No I/O at all.
+    const verifiedAt = this.verifiedUsers.get(userId);
+    if (verifiedAt !== undefined && Date.now() - verifiedAt < this.VERIFIED_USER_TTL_MS) {
+      return;
+    }
+    if (this.getLocalUser(userId)) {
+      this.verifiedUsers.set(userId, Date.now());
+      return;
+    }
+
+    if (this.directoryRefresh) {
+      await this.directoryRefresh;
+      return;
+    }
+
+    let known: UserDetails | null;
+    try {
+      known = await this.getUserFromCache(userId);
+    } catch {
+      known = null;
+    }
+    if (known) {
+      this.verifiedUsers.set(userId, Date.now());
+      return;
+    }
+
+    if (Date.now() - this.lastDirectoryRefreshAt < this.DIRECTORY_REFRESH_COOLDOWN_MS) {
+      return;
+    }
+    this.lastDirectoryRefreshAt = Date.now();
+
+    this.directoryRefresh = this.initializeUserCache(0, token).finally(() => {
+      this.directoryRefresh = null;
+    });
+    await this.directoryRefresh;
   }
 
   async getUserEmailFromCache(userId: string): Promise<string | null> {

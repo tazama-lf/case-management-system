@@ -9,7 +9,7 @@ const COOKIE_OPTIONS = { httpOnly: true, secure: true, sameSite: 'lax', path: '/
 describe('AuthController session cookie', () => {
   let controller: AuthController;
   let authService: { login: jest.Mock };
-  let cacheService: { deleteUserToken: jest.Mock };
+  let cacheService: { deleteUserToken: jest.Mock; refreshDirectoryIfUnknown: jest.Mock };
   let res: { cookie: jest.Mock; clearCookie: jest.Mock };
 
   const token = jwt.sign({ clientId: 'user-1', tenantId: 'TAZAMA' }, 'test-secret');
@@ -17,7 +17,7 @@ describe('AuthController session cookie', () => {
 
   beforeEach(() => {
     authService = { login: jest.fn().mockResolvedValue({ token, expiresIn: 3600 }) };
-    cacheService = { deleteUserToken: jest.fn().mockResolvedValue(undefined) };
+    cacheService = { deleteUserToken: jest.fn().mockResolvedValue(undefined), refreshDirectoryIfUnknown: jest.fn().mockResolvedValue(undefined) };
     res = { cookie: jest.fn(), clearCookie: jest.fn() };
     const configService = {
       getOrThrow: jest.fn((key: string) => (key === 'SESSION_COOKIE_SECURE' ? 'true' : 'lax')),
@@ -91,6 +91,43 @@ describe('AuthController session cookie', () => {
       expect(res.clearCookie).toHaveBeenCalledWith('access_token', COOKIE_OPTIONS);
       expect(res.clearCookie).toHaveBeenCalledWith('access_token_old', COOKIE_OPTIONS);
       expect(res.clearCookie).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('me - repairs the user directory', () => {
+    const me = { userId: 'user-1', tenantId: 'T', tenantName: 'tn', actorName: 'Sam Visor', actorEmail: 's@x.org', validated: {} } as any;
+    const requestWithAuth = (headers: Record<string, string>, cookies?: Record<string, string>): Request =>
+      ({ headers, cookies }) as unknown as Request;
+
+    it('asks for a directory refresh using the bearer token, and still returns the user', () => {
+      const result = controller.getMe(me, requestWithAuth({ authorization: 'Bearer the-jwt' }));
+
+      expect(cacheService.refreshDirectoryIfUnknown).toHaveBeenCalledWith('user-1', 'the-jwt');
+      expect(result).toMatchObject({ clientId: 'user-1', fullName: 'Sam Visor' });
+    });
+
+    it('falls back to the session cookie when there is no bearer header', () => {
+      controller.getMe(me, requestWithAuth({}, { access_token: 'cookie-jwt' }));
+
+      expect(cacheService.refreshDirectoryIfUnknown).toHaveBeenCalledWith('user-1', 'cookie-jwt');
+    });
+
+    it('does not refresh when the request carries no token at all', () => {
+      controller.getMe(me, requestWithAuth({}, {}));
+
+      expect(cacheService.refreshDirectoryIfUnknown).not.toHaveBeenCalled();
+    });
+
+    it('is unchanged when called without a request (existing callers)', () => {
+      expect(controller.getMe(me)).toMatchObject({ clientId: 'user-1' });
+      expect(cacheService.refreshDirectoryIfUnknown).not.toHaveBeenCalled();
+    });
+
+    it('never fails the response when the refresh itself rejects', async () => {
+      cacheService.refreshDirectoryIfUnknown.mockRejectedValueOnce(new Error('auth service down'));
+
+      expect(() => controller.getMe(me, requestWithAuth({ authorization: 'Bearer the-jwt' }))).not.toThrow();
+      await new Promise((resolve) => setImmediate(resolve));
     });
   });
 });

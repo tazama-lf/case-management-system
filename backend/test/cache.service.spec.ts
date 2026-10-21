@@ -209,31 +209,27 @@ describe('CacheService', () => {
       expect(userIds).toContain('user-2');
     });
 
-    it('should skip initialization when Redis is not connected at max retries', async () => {
+    it('still fetches the users and keeps them in memory when Redis is not connected (no retry, no giving up)', async () => {
       redisService.isConnected.mockReturnValue(false);
-
-      await service.initializeUserCache(3, 'test-token');
-
-      expect(mockedAxios.get).not.toHaveBeenCalled();
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        'Redis not connected after retries, skipping cache initialization',
-        'CacheService',
-      );
-    });
-
-    it('should retry when Redis is not connected', async () => {
-      jest.useFakeTimers();
-      redisService.isConnected.mockReturnValue(false);
-      const initSpy = jest.spyOn(service, 'initializeUserCache');
+      mockedAxios.get.mockResolvedValue({ data: [mockUserGroupDetails[0]] });
 
       await service.initializeUserCache(0, 'test-token');
 
-      jest.advanceTimersByTime(3000);
-      await Promise.resolve();
+      expect(mockedAxios.get).toHaveBeenCalled();
+      expect(redisService.mset).not.toHaveBeenCalled();
+      await expect(service.getUserFromCache('user-1')).resolves.toMatchObject({ id: 'user-1', fullName: 'John Doe' });
+    });
 
-      expect(Logger.prototype.log).toHaveBeenCalledWith('Redis not connected', 'CacheService');
+    it('does not schedule a retry when Redis is not connected', async () => {
+      jest.useFakeTimers();
+      redisService.isConnected.mockReturnValue(false);
+      mockedAxios.get.mockResolvedValue({ data: [] });
 
-      jest.useRealTimers();
+      await service.initializeUserCache(0, 'test-token');
+      await jest.advanceTimersByTimeAsync(10_000);
+
+      // one fetch per cached role, once - not repeated on a timer
+      expect(mockedAxios.get).toHaveBeenCalledTimes(3);
     });
 
     it('should log error when fetching users for a role fails', async () => {
@@ -265,7 +261,7 @@ describe('CacheService', () => {
 
       await service.initializeUserCache(0, 'test-token');
 
-      expect(Logger.prototype.log).toHaveBeenCalledWith('InitializeUserCache called (attempt 1/4)', 'CacheService');
+      expect(Logger.prototype.log).toHaveBeenCalledWith('InitializeUserCache called (attempt 1)', 'CacheService');
     });
 
     it('should handle errors during login gracefully', async () => {
@@ -508,6 +504,157 @@ describe('CacheService', () => {
     });
   });
 
+  describe('in-memory user directory (Redis down or empty)', () => {
+    const initWith = async (users: UserGroupDetails[], roles: { investigator?: UserGroupDetails[]; supervisor?: UserGroupDetails[] } = {}) => {
+      redisService.isConnected.mockReturnValue(false);
+      mockedAxios.get.mockImplementation(async (url: string) => {
+        if (url.endsWith('/CMS_SUPERVISOR')) return { data: roles.supervisor ?? [] } as any;
+        if (url.endsWith('/CMS_INVESTIGATOR')) return { data: roles.investigator ?? users } as any;
+        return { data: [] } as any;
+      });
+      await service.initializeUserCache(0, 'test-token');
+    };
+
+    it('resolves roles with Redis down, so a supervisor is recognised and an investigator can be revoked', async () => {
+      await initWith(mockUserGroupDetails, { investigator: [mockUserGroupDetails[0]], supervisor: [mockUserGroupDetails[1]] });
+
+      await expect(service.getUserRole('user-1')).resolves.toBe('CMS_INVESTIGATOR');
+      await expect(service.getUserRole('user-2')).resolves.toBe('CMS_SUPERVISOR');
+    });
+
+    it('is unknown (null) for a user that was never in the directory', async () => {
+      await initWith(mockUserGroupDetails);
+
+      await expect(service.getUserRole('nobody')).resolves.toBeNull();
+    });
+
+    it('falls back to the in-memory copy when Redis is connected but does not have the user', async () => {
+      await initWith([mockUserGroupDetails[0]]);
+      redisService.isConnected.mockReturnValue(true);
+      redisService.get.mockResolvedValue(null);
+
+      await expect(service.getUserFromCache('user-1')).resolves.toMatchObject({ id: 'user-1' });
+    });
+
+    it('prefers Redis when it has the user', async () => {
+      await initWith([mockUserGroupDetails[0]]);
+      redisService.isConnected.mockReturnValue(true);
+      redisService.get.mockResolvedValue({ ...mockCachedUserDetails, fullName: 'From Redis' });
+
+      await expect(service.getUserFromCache('user-1')).resolves.toMatchObject({ fullName: 'From Redis' });
+    });
+
+    it('falls back to the in-memory copy when the Redis lookup errors, instead of failing', async () => {
+      await initWith([mockUserGroupDetails[0]]);
+      redisService.isConnected.mockReturnValue(true);
+      redisService.get.mockRejectedValue(new Error('Redis error'));
+
+      await expect(service.getUserFromCache('user-1')).resolves.toMatchObject({ id: 'user-1' });
+    });
+
+    it('forgets in-memory users after 12 hours so a role change in Keycloak is picked up', async () => {
+      await initWith([mockUserGroupDetails[0]]);
+      const realNow = Date.now();
+      const spy = jest.spyOn(Date, 'now').mockReturnValue(realNow + 12 * 60 * 60 * 1000 + 1);
+
+      await expect(service.getUserFromCache('user-1')).resolves.toBeNull();
+      spy.mockRestore();
+    });
+  });
+
+  describe('refreshDirectoryIfUnknown', () => {
+    beforeEach(() => {
+      redisService.isConnected.mockReturnValue(false);
+      mockedAxios.get.mockResolvedValue({ data: [mockUserGroupDetails[0]] });
+    });
+
+    it('refreshes the directory when the user is not in it', async () => {
+      await service.refreshDirectoryIfUnknown('user-1', 'jwt');
+
+      expect(mockedAxios.get).toHaveBeenCalledTimes(3);
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        expect.stringContaining('/user/CMS_INVESTIGATOR'),
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer jwt' }) }),
+      );
+      await expect(service.getUserFromCache('user-1')).resolves.not.toBeNull();
+    });
+
+    it('does nothing when the user is already known', async () => {
+      await service.initializeUserCache(0, 'jwt');
+      mockedAxios.get.mockClear();
+
+      await service.refreshDirectoryIfUnknown('user-1', 'jwt');
+
+      expect(mockedAxios.get).not.toHaveBeenCalled();
+    });
+
+    it('does not hammer the auth service for a user who is genuinely not in any role group (1 minute cooldown)', async () => {
+      await service.refreshDirectoryIfUnknown('stranger', 'jwt');
+      mockedAxios.get.mockClear();
+
+      await service.refreshDirectoryIfUnknown('stranger', 'jwt');
+      expect(mockedAxios.get).not.toHaveBeenCalled();
+
+      const spy = jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 61_000);
+      await service.refreshDirectoryIfUnknown('stranger', 'jwt');
+      expect(mockedAxios.get).toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('does no I/O at all for a user confirmed in the last 5 minutes (the every-page-load case)', async () => {
+      redisService.isConnected.mockReturnValue(true);
+      redisService.get.mockResolvedValue(mockCachedUserDetails);
+
+      await service.refreshDirectoryIfUnknown('user-1', 'jwt');
+      expect(redisService.get).toHaveBeenCalledTimes(1);
+
+      await service.refreshDirectoryIfUnknown('user-1', 'jwt');
+      await service.refreshDirectoryIfUnknown('user-1', 'jwt');
+      expect(redisService.get).toHaveBeenCalledTimes(1);
+      expect(mockedAxios.get).not.toHaveBeenCalled();
+    });
+
+    it('checks again after 5 minutes', async () => {
+      redisService.isConnected.mockReturnValue(true);
+      redisService.get.mockResolvedValue(mockCachedUserDetails);
+      await service.refreshDirectoryIfUnknown('user-1', 'jwt');
+
+      const spy = jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 5 * 60 * 1000 + 1);
+      await service.refreshDirectoryIfUnknown('user-1', 'jwt');
+      spy.mockRestore();
+
+      expect(redisService.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('answers from the in-memory copy without asking Redis when it has the user', async () => {
+      await service.initializeUserCache(0, 'jwt');
+      redisService.isConnected.mockReturnValue(true);
+      redisService.get.mockClear();
+
+      await service.refreshDirectoryIfUnknown('user-1', 'jwt');
+
+      expect(redisService.get).not.toHaveBeenCalled();
+    });
+
+    it('lets concurrent callers share one refresh', async () => {
+      await Promise.all([
+        service.refreshDirectoryIfUnknown('user-1', 'jwt'),
+        service.refreshDirectoryIfUnknown('user-1', 'jwt'),
+        service.refreshDirectoryIfUnknown('user-1', 'jwt'),
+      ]);
+
+      expect(mockedAxios.get).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not throw when the Redis lookup for the user fails', async () => {
+      redisService.isConnected.mockReturnValue(true);
+      redisService.get.mockRejectedValue(new Error('Redis error'));
+      redisService.mset.mockResolvedValue(undefined);
+
+      await expect(service.refreshDirectoryIfUnknown('user-1', 'jwt')).resolves.toBeUndefined();
+    });
+  });
+
   describe('Integration scenarios', () => {
     it('should handle complete initialization flow with multiple users', async () => {
       redisService.isConnected.mockReturnValue(true);
@@ -519,7 +666,7 @@ describe('CacheService', () => {
 
       await service.initializeUserCache(0, 'test-token');
 
-      expect(Logger.prototype.log).toHaveBeenCalledWith('InitializeUserCache called (attempt 1/4)', 'CacheService');
+      expect(Logger.prototype.log).toHaveBeenCalledWith('InitializeUserCache called (attempt 1)', 'CacheService');
       expect(redisService.mset).toHaveBeenCalled();
     });
 
