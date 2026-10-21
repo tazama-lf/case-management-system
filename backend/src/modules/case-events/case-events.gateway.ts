@@ -54,7 +54,7 @@ return 1
 
 interface CaseChangedPayload {
   caseId: number;
-  type: 'created' | 'status-changed';
+  type: 'created' | 'status-changed' | 'access-changed';
 }
 
 /**
@@ -239,6 +239,18 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
       this.broadcast(payload.tenantId, { caseId: payload.caseId, type: 'created' });
     } catch (error) {
       this.logger.error(`Failed to broadcast case.created: ${(error as Error).message}`);
+    }
+  }
+
+  // Who may see a case changed (blacklist / revoke / unblock) without its status changing. Clients
+  // react exactly as for any other change: re-fetch GET /cases/all, whose visibility rules already
+  // drop a blacklisted investigator's case from their queue.
+  @OnEvent('case.access-changed')
+  handleCaseAccessChangedEvent(payload: { caseId: number; tenantId: string }): void {
+    try {
+      this.broadcast(payload.tenantId, { caseId: payload.caseId, type: 'access-changed' });
+    } catch (error) {
+      this.logger.error(`Failed to broadcast case.access-changed: ${(error as Error).message}`);
     }
   }
 

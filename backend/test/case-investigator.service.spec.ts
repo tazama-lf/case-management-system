@@ -78,6 +78,7 @@ describe('CaseInvestigatorService', () => {
     // listener-result array, matching "no listener threw."
     const mockEventEmitter = {
       emitAsync: jest.fn().mockResolvedValue([]),
+      emit: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -722,6 +723,67 @@ describe('CaseInvestigatorService', () => {
       expect(prisma.caseInvestigator.update).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 9 } }),
       );
+    });
+  });
+
+  describe('live dashboard refresh: case.access-changed', () => {
+    it('emits case.access-changed after a blacklist, so the investigator queue refreshes', async () => {
+      prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
+      prisma.caseInvestigator.findFirst.mockResolvedValue(null);
+
+      await service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith('case.access-changed', { caseId: CASE_ID, tenantId: TENANT });
+    });
+
+    it('emits it after the task-unassign cascade finishes, so a refetch sees the final state', async () => {
+      prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
+      prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 5 });
+      const order: string[] = [];
+      eventEmitter.emitAsync.mockImplementationOnce(async () => {
+        order.push('cascade');
+        return [];
+      });
+      eventEmitter.emit.mockImplementationOnce(() => {
+        order.push('notify');
+      });
+
+      await service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict');
+
+      expect(order).toEqual(['cascade', 'notify']);
+    });
+
+    it('emits case.access-changed after a revoke', async () => {
+      prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 3 });
+
+      await service.revoke(CASE_ID, USER_ID, TENANT, GRANTED_BY, 'reassigned');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith('case.access-changed', { caseId: CASE_ID, tenantId: TENANT });
+    });
+
+    it('emits case.access-changed after an unblock, so the case reappears in the queue', async () => {
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 6 });
+
+      await service.unblock(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'resolved');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith('case.access-changed', { caseId: CASE_ID, tenantId: TENANT });
+    });
+
+    it('does not emit when the blacklist is refused (nothing changed)', async () => {
+      cacheService.getUserRole.mockResolvedValue('CMS_SUPERVISOR');
+
+      await expect(service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict')).rejects.toThrow();
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
+
+    it('never fails the access change if the emit itself throws', async () => {
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 6 });
+      eventEmitter.emit.mockImplementationOnce(() => {
+        throw new Error('listener blew up');
+      });
+
+      await expect(service.unblock(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'resolved')).resolves.toBeUndefined();
     });
   });
 

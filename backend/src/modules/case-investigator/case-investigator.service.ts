@@ -108,6 +108,21 @@ export class CaseInvestigatorService {
   }
 
   /**
+   * Tells connected dashboards (via CaseEventsGateway) that who can see this case changed, so the
+   * affected investigator's queue refreshes without a manual reload. Without it a blacklist or revoke
+   * on a case with no task to unassign - which is the only thing that otherwise emits a case event -
+   * leaves the case sitting in their list until they reload. Never throws: the access change itself
+   * has already been committed.
+   */
+  private notifyAccessChanged(caseId: number, tenantId: string): void {
+    try {
+      this.eventEmitter.emit('case.access-changed', { caseId, tenantId });
+    } catch (error) {
+      this.logger.error(`Failed to emit case.access-changed for case ${caseId}`, error, CaseInvestigatorService.name);
+    }
+  }
+
+  /**
    * true immediately for CMS_SUPERVISOR/CMS_COMPLIANCE_OFFICER (pure
    * bypass); for CMS_INVESTIGATOR, true iff a live whitelist row exists,
    * or the case is still open for claiming (DRAFT / READY_FOR_ASSIGNMENT —
@@ -436,6 +451,7 @@ export class CaseInvestigatorService {
     await this.assertTargetIsInvestigator(userId);
     await this.performRevoke(caseId, userId, tenantId, revokedBy, reason);
     await this.unassignLiveTasks(caseId, userId, tenantId, revokedBy, `Investigator access revoked: ${reason}`);
+    this.notifyAccessChanged(caseId, tenantId);
   }
 
   /**
@@ -539,6 +555,7 @@ export class CaseInvestigatorService {
       );
 
       await this.unassignLiveTasks(caseId, userId, tenantId, blockedBy, `Investigator blacklisted: ${reason}`);
+      this.notifyAccessChanged(caseId, tenantId);
     } catch (error) {
       this.logger.error(`Error blacklisting user ${userId} on case ${caseId}`, error, CaseInvestigatorService.name);
       throw error;
@@ -579,6 +596,8 @@ export class CaseInvestigatorService {
         caseId,
         tenantId,
       );
+
+      this.notifyAccessChanged(caseId, tenantId);
     } catch (error) {
       this.logger.error(`Error unblocking user ${userId} on case ${caseId}`, error, CaseInvestigatorService.name);
       throw error;

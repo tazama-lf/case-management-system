@@ -387,6 +387,28 @@ describe('CaseEventsGateway', () => {
         });
     });
 
+    // ─── handleCaseAccessChangedEvent ─────────────────────────────────────
+
+    describe('handleCaseAccessChangedEvent', () => {
+        it('should broadcast case:changed with type "access-changed" to the tenant room', () => {
+            gateway.handleCaseAccessChangedEvent({ caseId: 42, tenantId: 'tenant-a' });
+
+            expect(mockServer.to).toHaveBeenCalledWith('tenant:tenant-a');
+            expect(mockServer.emit).toHaveBeenCalledWith('case:changed', {
+                caseId: 42,
+                type: 'access-changed',
+            });
+        });
+
+        it('should not throw when broadcast fails (caught internally)', () => {
+            (mockServer.to as jest.Mock).mockImplementation(() => {
+                throw new Error('server closed');
+            });
+
+            expect(() => gateway.handleCaseAccessChangedEvent({ caseId: 42, tenantId: 'tenant-a' })).not.toThrow();
+        });
+    });
+
     // ─── handleCaseStatusChangedEvent ─────────────────────────────────────
 
     describe('handleCaseStatusChangedEvent', () => {
