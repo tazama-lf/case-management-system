@@ -616,6 +616,28 @@ describe('CaseDetailsTab', () => {
       expect(mockGetCaseEvidence).not.toHaveBeenCalled();
     });
 
+    it('ignores an evidence response that was still pending when the viewer became restricted', async () => {
+      let resolveEvidence: (value: typeof withReport) => void = () => undefined;
+      mockGetCaseEvidence.mockReturnValue(
+        new Promise((resolve) => {
+          resolveEvidence = resolve;
+        }),
+      );
+      const closedRow = { ...mockCaseRow, status: 'STATUS_82_CLOSED_CONFIRMED' };
+      const { rerender } = render(<CaseDetailsTab row={closedRow} />);
+      await waitFor(() => {
+        expect(mockGetCaseEvidence).toHaveBeenCalledTimes(1);
+      });
+
+      rerender(<CaseDetailsTab row={{ ...closedRow, accessLevel: 'RESTRICTED' }} />);
+      resolveEvidence(withReport);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading case details…')).not.toBeInTheDocument();
+      });
+      expect(screen.queryByText('View Investigation Report')).not.toBeInTheDocument();
+    });
+
     it('does not fetch evidence for a closed case the viewer is restricted on', async () => {
       render(<CaseDetailsTab row={{ ...mockCaseRow, status: 'STATUS_82_CLOSED_CONFIRMED', accessLevel: 'RESTRICTED' }} />);
 
