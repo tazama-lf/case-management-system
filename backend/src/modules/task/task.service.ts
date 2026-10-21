@@ -362,7 +362,12 @@ export class TaskService {
     if (task.assigned_user_id === userId) return;
     if (!task.assigned_user_id && newAssigneeId === userId) return;
 
-    await this.caseInvestigatorService.assertReadAccess(task.case_id, userId, tenantId, role);
+    // Someone who was revoked from the case can still see it, but not act on a task they don't hold: say so
+    // plainly (403) instead of the "case not found" a person with no access at all gets (404).
+    const level = await this.caseInvestigatorService.assertViewAccess(task.case_id, userId, tenantId, role);
+    if (level === 'RESTRICTED') {
+      throw new ForbiddenException('Your access to this case was revoked - you can view it but not change its tasks.');
+    }
 
     if (task.assigned_user_id && role !== 'CMS_SUPERVISOR' && role !== 'CMS_COMPLIANCE_OFFICER') {
       throw new ForbiddenException('This task is held by another investigator - only its current holder or a supervisor can mutate it.');

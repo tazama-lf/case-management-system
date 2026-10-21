@@ -663,4 +663,71 @@ describe('CaseDetailTaskLogTable', () => {
       expect(screen.getByTitle('View task')).toBeInTheDocument();
     });
   });
+
+  describe('who is offered Reassign / Unassign', () => {
+    // the mocked current user is 'user-1'
+    const heldByOther = [{ ...baseTasks[0], status: 'IN_PROGRESS', assignee: 'user-2' }];
+    const heldByMe = [{ ...baseTasks[0], status: 'IN_PROGRESS', assignee: 'user-1' }];
+    const renderTable = (tasks: any[], extra: Record<string, unknown> = {}) =>
+      render(
+        <CaseDetailTaskLogTable
+          tasks={tasks}
+          onAssign={vi.fn()}
+          onReassign={vi.fn()}
+          onUnassign={vi.fn()}
+          caseData={caseData}
+          {...extra}
+        />,
+      );
+
+    it('offers them to the investigator who holds the task', () => {
+      renderTable(heldByMe);
+
+      expect(screen.getByTitle('Reassign task')).toBeInTheDocument();
+      expect(screen.getByTitle('Unassign task')).toBeInTheDocument();
+    });
+
+    it('does not offer them to an investigator for a task held by someone else (the backend would refuse)', () => {
+      renderTable(heldByOther);
+
+      expect(screen.queryByTitle('Reassign task')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Unassign task')).not.toBeInTheDocument();
+    });
+
+    it('offers them to a supervisor for any held task', () => {
+      mockHasSupervisorRole.mockReturnValue(true);
+      renderTable(heldByOther);
+
+      expect(screen.getByTitle('Reassign task')).toBeInTheDocument();
+      expect(screen.getByTitle('Unassign task')).toBeInTheDocument();
+    });
+
+    it('offers them to a compliance officer for any held task', () => {
+      mockHasComplianceOfficerRole.mockReturnValue(true);
+      renderTable(heldByOther);
+
+      expect(screen.getByTitle('Reassign task')).toBeInTheDocument();
+    });
+
+    it('offers them when the supervisor-actions flag is set', () => {
+      renderTable(heldByOther, { canManageSupervisorActions: true });
+
+      expect(screen.getByTitle('Reassign task')).toBeInTheDocument();
+    });
+
+    it('never offers them to someone viewing a case they were revoked from', () => {
+      renderTable(heldByOther, { caseData: { ...caseData, accessLevel: 'RESTRICTED' } });
+
+      expect(screen.queryByTitle('Reassign task')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Unassign task')).not.toBeInTheDocument();
+    });
+
+    it('still offers Assign on an unassigned task, so a revoked investigator can be assigned again', () => {
+      renderTable([{ ...baseTasks[0], status: 'UNASSIGNED', assignee: null }], {
+        caseData: { ...caseData, accessLevel: 'RESTRICTED' },
+      });
+
+      expect(screen.getByTitle('Assign task')).toBeInTheDocument();
+    });
+  });
 });
