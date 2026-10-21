@@ -137,6 +137,7 @@ describe('CaseQueryService', () => {
     const mockCaseInvestigatorService = {
       getAccessibleCaseIds: jest.fn().mockResolvedValue([]),
       getBlacklistedCaseIds: jest.fn().mockResolvedValue([]),
+      getRevokedCaseIds: jest.fn().mockResolvedValue([]),
       isBlacklisted: jest.fn().mockResolvedValue(null),
     } as any;
 
@@ -615,6 +616,18 @@ describe('CaseQueryService', () => {
       expect(visibilityOr).toContainEqual({ case_id: { in: [42, 43] } });
     });
 
+    it('excludes cases the investigator was revoked from, even though a leftover task is still assigned to them', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      caseInvestigatorService.getBlacklistedCaseIds.mockResolvedValueOnce([7]);
+      caseInvestigatorService.getRevokedCaseIds.mockResolvedValueOnce([843]);
+      setupGetAllCasesMocks();
+
+      await service.getAllCases(query, tenantId, 'investigator-123');
+
+      const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
+      expect(findManyArgs.where.AND).toContainEqual({ NOT: { case_id: { in: [7, 843] } } });
+    });
+
     it('does not show a bare unowned case: unclaimed cases are visible only while open for claiming, matching hasAccess', async () => {
       caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
       setupGetAllCasesMocks();
@@ -746,6 +759,15 @@ describe('CaseQueryService', () => {
       expect(caseInvestigatorService.getAccessibleCaseIds).toHaveBeenCalledWith(investigatorUserId, tenantId);
       const whereArg = prismaService.case.findFirst.mock.calls[0][0].where;
       expect(whereArg.OR).toContainEqual({ case_id: { in: [caseId] } });
+    });
+
+    it('investigator: false for a case they were revoked from, without querying the case', async () => {
+      caseInvestigatorService.getRevokedCaseIds.mockResolvedValueOnce([caseId]);
+
+      const result = await service.checkUserCaseAccess(caseId, investigatorUserId, tenantId);
+
+      expect(result).toBe(false);
+      expect(prismaService.case.findFirst).not.toHaveBeenCalled();
     });
 
     it('investigator: false when none of the OR branches match', async () => {

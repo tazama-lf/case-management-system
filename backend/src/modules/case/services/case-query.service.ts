@@ -608,6 +608,7 @@ export class CaseQueryService {
         }
         const accessibleCaseIds = await this.caseInvestigatorService.getAccessibleCaseIds(investigatorUserId, tenantId);
         const blacklistedCaseIds = await this.caseInvestigatorService.getBlacklistedCaseIds(investigatorUserId, tenantId);
+        const revokedCaseIds = await this.caseInvestigatorService.getRevokedCaseIds(investigatorUserId, tenantId);
         const visibilityOr = [
           { case_owner_user_id: investigatorUserId },
           {
@@ -637,12 +638,14 @@ export class CaseQueryService {
           andConditions.push({ OR: visibilityOr });
         }
 
-        // Exclude any case this investigator is currently blacklisted on, regardless of which
-        // visibility branch above would otherwise match (stale case_owner_user_id, a past
-        // completed task assignment, or the unclaimed-case browsing branches) — keeps this list
-        // consistent with hasAccess/assertReadAccess, which already deny a blacklisted user.
-        if (blacklistedCaseIds.length > 0) {
-          andConditions.push({ NOT: { case_id: { in: blacklistedCaseIds } } });
+        // Exclude any case this investigator is currently blacklisted on or has been revoked from,
+        // regardless of which visibility branch above would otherwise match (stale
+        // case_owner_user_id, a past completed task assignment, or the unclaimed-case browsing
+        // branches) — keeps this list consistent with hasAccess/assertReadAccess, which already
+        // deny a blacklisted or revoked user.
+        const removedCaseIds = [...new Set([...blacklistedCaseIds, ...revokedCaseIds])];
+        if (removedCaseIds.length > 0) {
+          andConditions.push({ NOT: { case_id: { in: removedCaseIds } } });
         }
 
         whereClause.AND = andConditions;
@@ -938,6 +941,12 @@ export class CaseQueryService {
       // browsing branches) — mirrors hasAccess/assertReadAccess, which already deny this case.
       const blocked = await this.caseInvestigatorService.isBlacklisted(caseId, investigatorUserId, tenantId);
       if (blocked) {
+        return false;
+      }
+
+      // Same for a revoked investigator: a leftover completed task must not keep the case visible.
+      const revokedCaseIds = await this.caseInvestigatorService.getRevokedCaseIds(investigatorUserId, tenantId);
+      if (revokedCaseIds.includes(caseId)) {
         return false;
       }
 

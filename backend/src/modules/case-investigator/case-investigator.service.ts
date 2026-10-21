@@ -154,10 +154,61 @@ export class CaseInvestigatorService {
     });
 
     if (!openCase) {
-      return false;
+      return await this.hasCreatorAccess(caseId, userId, tenantId);
     }
 
     return (await this.isBlacklisted(caseId, userId, tenantId)) === null;
+  }
+
+  /**
+   * The user created this case (case_creator_user_id) and has not been blacklisted or revoked from
+   * it. Covers cases that sit pending creation approval: the creator holds no task on them yet (the
+   * only task is the supervisor's unassigned "Approve Case Creation"), so neither a whitelist row nor
+   * an open-for-claim status would otherwise let them see the case they just submitted.
+   */
+  private async hasCreatorAccess(caseId: number, userId: string, tenantId: string): Promise<boolean> {
+    const created = await this.prismaService.case.findFirst({
+      where: { case_id: caseId, tenant_id: tenantId, case_creator_user_id: userId },
+      select: { case_id: true },
+    });
+    if (!created) {
+      return false;
+    }
+
+    if ((await this.isBlacklisted(caseId, userId, tenantId)) !== null) {
+      return false;
+    }
+
+    const revoked = await this.prismaService.caseInvestigator.findFirst({
+      where: { case_id: caseId, user_id: userId, tenant_id: tenantId, revoked_at: { not: null } },
+      select: { id: true },
+    });
+    return revoked === null;
+  }
+
+  /** Ids of cases this user created, minus any they were blacklisted or revoked from. */
+  private async getCreatedCaseIds(userId: string, tenantId: string): Promise<number[]> {
+    const created = await this.prismaService.case.findMany({
+      where: { tenant_id: tenantId, case_creator_user_id: userId },
+      select: { case_id: true },
+    });
+    if (created.length === 0) {
+      return [];
+    }
+
+    const caseIds = created.map((row) => row.case_id);
+    const [blocked, revoked] = await Promise.all([
+      this.prismaService.caseInvestigatorBlacklist.findMany({
+        where: { tenant_id: tenantId, user_id: userId, case_id: { in: caseIds }, unblocked_at: null },
+        select: { case_id: true },
+      }),
+      this.prismaService.caseInvestigator.findMany({
+        where: { tenant_id: tenantId, user_id: userId, case_id: { in: caseIds }, revoked_at: { not: null } },
+        select: { case_id: true },
+      }),
+    ]);
+    const excluded = new Set([...blocked, ...revoked].map((row) => row.case_id));
+    return caseIds.filter((caseId) => !excluded.has(caseId));
   }
 
   /**
@@ -172,7 +223,10 @@ export class CaseInvestigatorService {
     }
   }
 
-  /** Live whitelist case_ids for this user, tenant-scoped. For list-filtering call sites. */
+  /**
+   * Case ids this user may open on the strength of their own record, tenant-scoped: live whitelist
+   * rows plus cases they created (see hasCreatorAccess). For list-filtering call sites.
+   */
   async getAccessibleCaseIds(userId: string, tenantId: string): Promise<number[]> {
     const rows = await this.prismaService.caseInvestigator.findMany({
       where: {
@@ -182,8 +236,9 @@ export class CaseInvestigatorService {
       },
       select: { case_id: true },
     });
+    const createdCaseIds = await this.getCreatedCaseIds(userId, tenantId);
 
-    return rows.map((row) => row.case_id);
+    return [...new Set([...rows.map((row) => row.case_id), ...createdCaseIds])];
   }
 
   /**
@@ -233,6 +288,30 @@ export class CaseInvestigatorService {
    * case list can't surface (with its embedded alert/transaction data) a
    * case the detail/read gate would otherwise 404 on.
    */
+  /**
+   * Cases this user was revoked from and has not been re-granted since (no live whitelist row). A
+   * revoked investigator must lose the case from their lists as well as from the detail gate; without
+   * this they kept seeing it - through a task still assigned to them from before the revoke - and then
+   * got a 404 on opening it.
+   */
+  async getRevokedCaseIds(userId: string, tenantId: string): Promise<number[]> {
+    const revoked = await this.prismaService.caseInvestigator.findMany({
+      where: { user_id: userId, tenant_id: tenantId, revoked_at: { not: null } },
+      select: { case_id: true },
+    });
+    if (revoked.length === 0) {
+      return [];
+    }
+
+    const caseIds = [...new Set(revoked.map((row) => row.case_id))];
+    const live = await this.prismaService.caseInvestigator.findMany({
+      where: { user_id: userId, tenant_id: tenantId, revoked_at: null, case_id: { in: caseIds } },
+      select: { case_id: true },
+    });
+    const liveSet = new Set(live.map((row) => row.case_id));
+    return caseIds.filter((caseId) => !liveSet.has(caseId));
+  }
+
   async getBlacklistedCaseIds(userId: string, tenantId: string): Promise<number[]> {
     const rows = await this.prismaService.caseInvestigatorBlacklist.findMany({
       where: { user_id: userId, tenant_id: tenantId, unblocked_at: null },

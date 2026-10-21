@@ -39,7 +39,7 @@ describe('CaseInvestigatorService', () => {
       },
       case: {
         findFirst: jest.fn(),
-        findMany: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
       },
       task: {
         count: jest.fn(),
@@ -332,7 +332,8 @@ describe('CaseInvestigatorService', () => {
       const result = await service.getCaseIdScope(USER_ID, TENANT, 'alert-triage');
 
       expect(result).toEqual([]);
-      expect(prisma.case.findMany).not.toHaveBeenCalled();
+      // never browses open-for-claim cases (the only case.findMany with a status filter)
+      expect(prisma.case.findMany).not.toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: expect.anything() }) }));
     });
   });
 
@@ -723,6 +724,77 @@ describe('CaseInvestigatorService', () => {
       expect(prisma.caseInvestigator.update).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 9 } }),
       );
+    });
+  });
+
+  describe('getRevokedCaseIds', () => {
+    it('returns cases the user was revoked from and has no live row on', async () => {
+      prisma.caseInvestigator.findMany
+        .mockResolvedValueOnce([{ case_id: 843 }, { case_id: 843 }, { case_id: 9 }]) // revoked rows (843 twice)
+        .mockResolvedValueOnce([{ case_id: 9 }]); // 9 was re-granted since
+
+      await expect(service.getRevokedCaseIds(USER_ID, TENANT)).resolves.toEqual([843]);
+      expect(prisma.caseInvestigator.findMany).toHaveBeenNthCalledWith(1, {
+        where: { user_id: USER_ID, tenant_id: TENANT, revoked_at: { not: null } },
+        select: { case_id: true },
+      });
+    });
+
+    it('returns an empty list, with no second query, when nothing was revoked', async () => {
+      prisma.caseInvestigator.findMany.mockResolvedValueOnce([]);
+
+      await expect(service.getRevokedCaseIds(USER_ID, TENANT)).resolves.toEqual([]);
+      expect(prisma.caseInvestigator.findMany).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('creator access (cases pending creation approval)', () => {
+    it('lets the creator open their own case when they hold no task, row or open-for-claim status', async () => {
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null); // no live whitelist row
+      prisma.case.findFirst
+        .mockResolvedValueOnce(null) // not open for claiming
+        .mockResolvedValueOnce({ case_id: CASE_ID }); // but created by this user
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null); // no revoked row
+
+      await expect(service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe(true);
+      expect(prisma.case.findFirst).toHaveBeenLastCalledWith({
+        where: { case_id: CASE_ID, tenant_id: TENANT, case_creator_user_id: USER_ID },
+        select: { case_id: true },
+      });
+    });
+
+    it('does not extend access to someone who did not create the case', async () => {
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null);
+      prisma.case.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+
+      await expect(service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe(false);
+    });
+
+    it('denies the creator once they are blacklisted on the case', async () => {
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null);
+      prisma.case.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ case_id: CASE_ID });
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 1, blocked_by: BLOCKED_BY, blocked_at: new Date(), block_reason: 'x' });
+
+      await expect(service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe(false);
+    });
+
+    it('denies the creator once a supervisor has revoked them from the case', async () => {
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 9 }); // no live row, but a revoked one
+      prisma.case.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ case_id: CASE_ID });
+      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+
+      await expect(service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe(false);
+    });
+
+    it('getAccessibleCaseIds adds created cases to the whitelist ids, minus blacklisted and revoked ones', async () => {
+      prisma.caseInvestigator.findMany
+        .mockResolvedValueOnce([{ case_id: 1 }]) // live whitelist
+        .mockResolvedValueOnce([{ case_id: 4 }]); // revoked among the created ones
+      prisma.case.findMany.mockResolvedValueOnce([{ case_id: 1 }, { case_id: 2 }, { case_id: 3 }, { case_id: 4 }]); // created
+      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValueOnce([{ case_id: 3 }]); // blacklisted among the created ones
+
+      await expect(service.getAccessibleCaseIds(USER_ID, TENANT)).resolves.toEqual([1, 2]);
     });
   });
 
